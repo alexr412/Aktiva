@@ -56,8 +56,7 @@ export default function ChatPage() {
 
     const q = query(
       collection(db, 'chats'),
-      where('participantIds', 'array-contains', user.uid),
-      orderBy('createdAt', 'desc')
+      where('participantIds', 'array-contains', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -65,6 +64,14 @@ export default function ChatPage() {
         id: doc.id,
         ...doc.data(),
       } as Chat));
+      
+      // Sort on the client-side
+      userChats.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis() || 0;
+        const bTime = b.createdAt?.toMillis() || 0;
+        return bTime - aTime;
+      });
+
       setChats(userChats);
       setLoading(false);
     }, (error) => {
