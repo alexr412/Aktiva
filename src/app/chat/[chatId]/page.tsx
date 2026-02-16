@@ -78,7 +78,7 @@ const MessageBubble = ({
         <div className={`relative max-w-xs md:max-w-md px-4 py-2 ${bubbleClasses}`}>
           <p className="text-sm pb-1 pr-12 break-words">{message.text}</p>
           <span className="absolute bottom-1.5 right-3 text-xs opacity-70">
-            {message.sentAt ? format(message.sentAt.toDate(), 'p') : ''}
+            {message.sentAt ? format(message.sentAt.toDate(), 'p') : '...'}
           </span>
         </div>
       </div>
@@ -195,19 +195,22 @@ export default function ChatRoomPage() {
           <div className="flex flex-col">
             {messages.map((message, index) => {
               const prevMessage = messages[index - 1];
+              const nextMessage = messages[index + 1];
               const isOwnMessage = message.senderId === user?.uid;
               
-              const showDateSeparator = !prevMessage || !isSameDay(message.sentAt.toDate(), prevMessage.sentAt.toDate());
+              // Guard against null timestamps which can occur during optimistic updates with serverTimestamp.
+              const showDateSeparator = !prevMessage || !prevMessage.sentAt || !message.sentAt || !isSameDay(message.sentAt.toDate(), prevMessage.sentAt.toDate());
               
               const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId || showDateSeparator;
-              const isLastInGroup = !messages[index + 1] || messages[index + 1].senderId !== message.senderId || !isSameDay(message.sentAt.toDate(), messages[index+1].sentAt.toDate());
+              
+              const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId || !nextMessage.sentAt || !message.sentAt || !isSameDay(message.sentAt.toDate(), nextMessage.sentAt.toDate());
 
               const showAvatar = !isOwnMessage && isLastInGroup;
               const showSenderName = !isOwnMessage && isFirstInGroup;
 
               return (
                 <div key={message.id}>
-                  {showDateSeparator && <DateSeparator date={message.sentAt.toDate()} />}
+                  {showDateSeparator && message.sentAt && <DateSeparator date={message.sentAt.toDate()} />}
                   <MessageBubble
                     message={message}
                     isOwnMessage={isOwnMessage}
