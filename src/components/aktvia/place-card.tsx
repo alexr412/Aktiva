@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import type { Place } from '@/lib/types';
-import { Star, MapPin } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 type PlaceCardProps = {
@@ -17,29 +17,31 @@ export function PlaceCard({ place, onClick }: PlaceCardProps) {
   return (
     <Card
       onClick={onClick}
-      className="cursor-pointer group border-0 shadow-none rounded-none bg-transparent overflow-visible"
+      className="cursor-pointer group overflow-hidden rounded-2xl border shadow-sm hover:shadow-md transition-shadow"
     >
-      <div className="relative w-full aspect-[4/5] overflow-hidden rounded-2xl">
+      <div className="relative w-full aspect-[4/5] overflow-hidden">
           <Image
               src={place.imageUrl}
               alt={`Photo of ${place.name}`}
               fill
               className="object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out"
               data-ai-hint={place.imageHint}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              sizes="(max-width: 640px) 100vw, 50vw"
           />
-           {place.rating && (
-              <div className="absolute top-3 right-3 flex items-center gap-1 text-white bg-black/50 backdrop-blur-sm rounded-full px-2 py-1 text-xs font-semibold">
-                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                <span>{place.rating.toFixed(1)}</span>
-              </div>
-            )}
       </div>
 
-      <div className="pt-3 space-y-1">
-          <h3 className="text-base font-semibold leading-tight truncate">{place.name}</h3>
+      <div className="p-3 space-y-1">
+          <div className="flex justify-between items-start">
+            <h3 className="text-base font-semibold leading-tight pr-2">{place.name}</h3>
+            {place.rating && (
+                <div className="flex items-center gap-1 text-sm font-semibold shrink-0">
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  <span>{place.rating.toFixed(1)}</span>
+                </div>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground truncate">{place.address}</p>
-          <p className="text-sm text-muted-foreground capitalize">{mainCategory}</p>
+          <Badge variant="secondary" className="capitalize text-xs font-medium">{mainCategory}</Badge>
       </div>
 
     </Card>

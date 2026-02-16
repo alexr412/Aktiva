@@ -34,11 +34,11 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
         <Button
           key={category.name}
           variant={
-            JSON.stringify(activeCategory) === JSON.stringify(category.id) ? 'default' : 'outline'
+            JSON.stringify(activeCategory) === JSON.stringify(category.id) ? 'default' : 'secondary'
           }
           size="sm"
           onClick={() => onCategoryChange(category.id)}
-          className="flex-shrink-0 flex items-center gap-2"
+          className="flex-shrink-0 flex items-center gap-2 rounded-full"
         >
           <category.icon className="h-4 w-4" />
           <span>{category.name}</span>

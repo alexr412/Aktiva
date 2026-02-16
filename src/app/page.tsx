@@ -117,7 +117,7 @@ export default function Home() {
 
     if (isLoading) {
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
                 <CardSkeleton key={i} />
             ))}
@@ -134,7 +134,7 @@ export default function Home() {
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {places.map(place => (
                 <PlaceCard key={place.id} place={place} onClick={() => handlePlaceSelect(place)} />
             ))}
@@ -143,23 +143,23 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col flex-1 pb-24">
+    <>
         <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 space-y-4 py-4">
-            <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
+          <div className="space-y-4 py-4 px-4 sm:px-6">
+            <h1 className="text-3xl font-bold tracking-tight pt-4">Discover</h1>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
           </div>
         </header>
 
-        <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="px-4 sm:px-6 py-6">
             {renderContent()}
-        </main>
+        </div>
 
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-            <DialogContent className="p-0 h-full w-full max-w-none sm:h-[90vh] sm:max-w-lg sm:rounded-2xl gap-0 overflow-hidden">
+            <DialogContent className="p-0 h-full w-full max-w-none gap-0 overflow-hidden">
                 {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
             </DialogContent>
         </Dialog>
-    </div>
+    </>
   );
 }
