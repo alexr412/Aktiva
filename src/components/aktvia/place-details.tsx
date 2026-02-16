@@ -4,15 +4,13 @@ import {
     Tag,
     X
 } from 'lucide-react';
-
+import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { Place } from '@/lib/types';
 import { AiRecommendation } from './ai-recommendation';
-import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
 
 type PlaceDetailsProps = {
     place: Place;
@@ -26,38 +24,58 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
 
     return (
         <div className="flex flex-col h-full relative bg-background">
-            <DialogHeader className="p-4 pb-2 border-b">
-                <DialogTitle className="text-2xl font-bold font-headline">{place.name}</DialogTitle>
-                <div className="flex items-center gap-2 text-muted-foreground pt-1">
-                    <MapPin className="h-4 w-4" />
-                    <p className="text-sm">{place.address}</p>
-                </div>
-            </DialogHeader>
-
-            <div className="absolute top-2 right-2 z-10">
-                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+             <div className="absolute top-2 right-2 z-20">
+                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full bg-background/50 hover:bg-background/80">
                     <X className="h-5 w-5" />
                     <span className="sr-only">Close details</span>
                 </Button>
             </div>
             
             <ScrollArea className="flex-1">
-                <div className="p-4 space-y-6">
-                    {place.rating && (
-                         <div className="flex items-center gap-2">
-                            <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
-                            <span className="font-bold text-base">{place.rating.toFixed(1)}</span>
-                            <span className="text-sm text-muted-foreground">Rating</span>
+                <div className="relative h-64 w-full">
+                    <Image
+                        src={place.imageUrl}
+                        alt={`Photo of ${place.name}`}
+                        fill
+                        className="object-cover"
+                        data-ai-hint={place.imageHint}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                     <div className="absolute bottom-0 left-0 p-4">
+                        <h1 className="text-2xl font-bold text-white shadow-md">{place.name}</h1>
+                        <div className="flex items-center gap-2 text-white/90 pt-1">
+                            <MapPin className="h-4 w-4" />
+                            <p className="text-sm">{place.address}</p>
                         </div>
-                    )}
+                     </div>
+                </div>
 
-                    <div>
-                        <h3 className="font-semibold mb-2 flex items-center gap-2"><Tag className="h-4 w-4 text-muted-foreground" /> Categories</h3>
-                        <div className="flex flex-wrap gap-2">
-                            {formattedCategories.map(cat => (
-                                <Badge key={cat} variant="secondary">{cat.replace(/_/g, ' ')}</Badge>
-                            ))}
+                <div className="p-4 space-y-6">
+                    <div className="grid grid-cols-2 gap-4 text-center">
+                        {place.rating ? (
+                             <div className="p-4 rounded-lg bg-muted flex flex-col items-center justify-center gap-1">
+                                <div className="flex items-center gap-2">
+                                    <Star className="h-6 w-6 text-amber-400 fill-amber-400" />
+                                    <span className="font-bold text-2xl">{place.rating.toFixed(1)}</span>
+                                </div>
+                                <span className="text-sm text-muted-foreground">Rating</span>
+                            </div>
+                        ) : (
+                            <div className="p-4 rounded-lg bg-muted flex flex-col items-center justify-center gap-1">
+                                <Star className="h-6 w-6 text-muted-foreground" />
+                                <span className="text-sm text-muted-foreground mt-2">No Rating</span>
+                            </div>
+                        )}
+                         <div className="p-4 rounded-lg bg-muted flex flex-col items-center justify-center gap-1">
+                             <Tag className="h-6 w-6 text-primary" />
+                            <span className="text-sm text-muted-foreground mt-2">Categories</span>
                         </div>
+                    </div>
+                     <div className="flex flex-wrap gap-2 justify-center -mt-8 relative z-10">
+                        {formattedCategories.map(cat => (
+                            <Badge key={cat} variant="default" className="capitalize shadow-md">{cat.replace(/_/g, ' ')}</Badge>
+                        ))}
                     </div>
                     
                     <Separator />
