@@ -12,28 +12,32 @@ import {
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import type { Place } from '@/lib/types';
-import { CalendarPlus } from 'lucide-react';
+import { CalendarPlus, Loader2 } from 'lucide-react';
 
 interface CreateActivityDialogProps {
   place: Place | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateActivity: (date: Date) => void;
+  onCreateActivity: (date: Date) => Promise<void>;
 }
 
 export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivity }: CreateActivityDialogProps) {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [isCreating, setIsCreating] = useState(false);
 
-  // Reset date when dialog opens for a new place
+  // Reset date and loading state when dialog opens for a new place
   useEffect(() => {
     if (open) {
       setDate(new Date());
+      setIsCreating(false);
     }
   }, [open]);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (date) {
-      onCreateActivity(date);
+      setIsCreating(true);
+      await onCreateActivity(date);
+      // The parent component will close the dialog, which will reset the state via useEffect
     }
   };
 
@@ -61,8 +65,20 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
           </div>
         </div>
         <DialogFooter className="p-6 sm:justify-center">
-          <Button type="submit" onClick={handleCreate} disabled={!date} className="w-full h-12 text-base font-semibold">
-            Create Activity
+          <Button 
+            type="button" 
+            onClick={handleCreate} 
+            disabled={!date || isCreating} 
+            className="w-full h-12 text-base font-semibold"
+          >
+            {isCreating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              'Create Activity'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

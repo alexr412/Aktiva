@@ -9,7 +9,7 @@ import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MapPin, Sparkles } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -17,9 +17,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { createActivity } from '@/lib/firebase/firestore';
 
 const CardSkeleton = () => (
-    <div className="w-full">
-        <div className="aspect-[16/9] w-full rounded-2xl bg-muted" />
-        <div className="space-y-2 mt-4 p-2">
+    <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
+        <div className="aspect-[16/9] w-full bg-muted" />
+        <div className="space-y-2 mt-4 p-4">
             <Skeleton className="h-5 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
             <Skeleton className="h-4 w-1/3" />
@@ -112,7 +112,7 @@ export default function Home() {
     setActivityModalPlace(place);
   };
 
-  const handleCreateActivity = async (date: Date) => {
+  const handleCreateActivity = async (date: Date): Promise<void> => {
     if (!activityModalPlace || !user) {
         toast({
             title: 'Error',
@@ -170,7 +170,7 @@ export default function Home() {
 
     if (isLoading) {
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
                 <CardSkeleton key={i} />
             ))}
@@ -190,7 +190,7 @@ export default function Home() {
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {places.map(place => (
                 <PlaceCard 
                   key={place.id} 
