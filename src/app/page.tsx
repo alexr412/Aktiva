@@ -11,10 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 
 const CardSkeleton = () => (
     <div className="w-full">
-        <Skeleton className="h-[250px] w-full rounded-2xl" />
+        <div className="aspect-[4/5] w-full rounded-2xl bg-muted" />
         <div className="space-y-2 mt-4">
             <Skeleton className="h-5 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
@@ -28,6 +29,7 @@ export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [activityModalPlace, setActivityModalPlace] = useState<Place | null>(null);
   const [activeCategory, setActiveCategory] = useState<string[]>(defaultCategories[0].id);
   const [isLoading, setIsLoading] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -92,6 +94,24 @@ export default function Home() {
     setSelectedPlace(null);
   }
 
+  const handleOpenActivityModal = (place: Place) => {
+    setActivityModalPlace(place);
+  };
+
+  const handleCreateActivity = (date: Date) => {
+    if (!activityModalPlace) return;
+
+    // For now, we'll just show a confirmation.
+    // In the future, this will create a chatroom.
+    toast({
+      title: 'Activity Created!',
+      description: `An activity for ${activityModalPlace.name} has been scheduled for ${date.toLocaleDateString()}.`,
+    });
+    
+    setActivityModalPlace(null);
+  };
+
+
   const renderContent = () => {
     if (locationError) {
       return (
@@ -117,7 +137,7 @@ export default function Home() {
 
     if (isLoading) {
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Array.from({ length: 8 }).map((_, i) => (
                 <CardSkeleton key={i} />
             ))}
@@ -134,9 +154,14 @@ export default function Home() {
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {places.map(place => (
-                <PlaceCard key={place.id} place={place} onClick={() => handlePlaceSelect(place)} />
+                <PlaceCard 
+                  key={place.id} 
+                  place={place} 
+                  onClick={() => handlePlaceSelect(place)}
+                  onAddActivity={() => handleOpenActivityModal(place)}
+                />
             ))}
         </div>
     );
@@ -145,21 +170,29 @@ export default function Home() {
   return (
     <>
         <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
-          <div className="space-y-4 py-4 px-4 sm:px-6">
+          <div className="container-main space-y-4 py-4">
             <h1 className="text-3xl font-bold tracking-tight pt-4">Discover</h1>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
           </div>
         </header>
 
-        <div className="px-4 sm:px-6 py-6">
+        <div className="container-main py-6">
             {renderContent()}
         </div>
 
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-            <DialogContent className="p-0 h-full w-full max-w-none gap-0 overflow-hidden">
+            <DialogContent className="p-0 h-full w-full max-w-none sm:max-w-md sm:h-auto gap-0 overflow-hidden">
                 {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
             </DialogContent>
         </Dialog>
+
+        <CreateActivityDialog
+          place={activityModalPlace}
+          open={!!activityModalPlace}
+          onOpenChange={(open) => !open && setActivityModalPlace(null)}
+          onCreateActivity={handleCreateActivity}
+        />
+
     </>
   );
 }
