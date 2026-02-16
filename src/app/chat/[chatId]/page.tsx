@@ -191,14 +191,13 @@ export default function ChatRoomPage() {
           </Button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 pb-24">
           <div className="flex flex-col">
             {messages.map((message, index) => {
               const prevMessage = messages[index - 1];
               const nextMessage = messages[index + 1];
               const isOwnMessage = message.senderId === user?.uid;
               
-              // Guard against null timestamps which can occur during optimistic updates with serverTimestamp.
               const showDateSeparator = !prevMessage || !prevMessage.sentAt || !message.sentAt || !isSameDay(message.sentAt.toDate(), prevMessage.sentAt.toDate());
               
               const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId || showDateSeparator;
@@ -224,30 +223,31 @@ export default function ChatRoomPage() {
             <div ref={messagesEndRef} />
           </div>
         </div>
-
-        <footer className="bg-background/95 backdrop-blur-sm border-t">
-          <div className="p-2 sm:p-4">
-            <form onSubmit={handleSendMessage} className="relative">
-              <Input
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Message"
-                autoComplete="off"
-                className="w-full rounded-full bg-muted pr-12 h-12 text-base"
-              />
-              <Button
-                type="submit"
-                size="icon"
-                disabled={!newMessage.trim()}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
-              >
-                <Send className="h-5 w-5" />
-                <span className="sr-only">Send message</span>
-              </Button>
-            </form>
-          </div>
-        </footer>
       </div>
+
+      <footer className="fixed bottom-[72px] left-1/2 z-10 w-full max-w-3xl -translate-x-1/2 border-t bg-background/95 backdrop-blur-sm">
+        <div className="p-2 sm:p-4">
+          <form onSubmit={handleSendMessage} className="relative">
+            <Input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Message"
+              autoComplete="off"
+              className="w-full rounded-full bg-muted pr-12 h-12 text-base"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!newMessage.trim()}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
+            >
+              <Send className="h-5 w-5" />
+              <span className="sr-only">Send message</span>
+            </Button>
+          </form>
+        </div>
+      </footer>
+
       <ChatInfoSheet
         chat={chat}
         open={isInfoSheetOpen}
