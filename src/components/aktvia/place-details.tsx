@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import {
     MapPin,
     Star,
@@ -12,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { Place } from '@/lib/types';
 import { AiRecommendation } from './ai-recommendation';
+import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 
 type PlaceDetailsProps = {
@@ -26,30 +26,21 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
 
     return (
         <div className="flex flex-col h-full relative bg-background">
-             <div className="relative h-64 w-full">
-                <Image
-                    src={place.imageUrl}
-                    alt={place.name}
-                    className="object-cover"
-                    fill
-                    data-ai-hint={place.imageHint}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                <div className="absolute top-2 right-2 z-10">
-                    <Button variant="ghost" size="icon" onClick={onClose} className="bg-black/30 hover:bg-black/50 text-white hover:text-white rounded-full">
-                        <X className="h-5 w-5" />
-                        <span className="sr-only">Close details</span>
-                    </Button>
+            <DialogHeader className="p-4 pb-2 border-b">
+                <DialogTitle className="text-2xl font-bold font-headline">{place.name}</DialogTitle>
+                <div className="flex items-center gap-2 text-muted-foreground pt-1">
+                    <MapPin className="h-4 w-4" />
+                    <p className="text-sm">{place.address}</p>
                 </div>
-                <div className="absolute bottom-4 left-4 right-4 text-white">
-                    <h2 className="text-2xl font-bold font-headline">{place.name}</h2>
-                    <div className="flex items-center gap-2 text-gray-200 mt-1">
-                        <MapPin className="h-4 w-4" />
-                        <p className="text-sm">{place.address}</p>
-                    </div>
-                </div>
-            </div>
+            </DialogHeader>
 
+            <div className="absolute top-2 right-2 z-10">
+                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+                    <X className="h-5 w-5" />
+                    <span className="sr-only">Close details</span>
+                </Button>
+            </div>
+            
             <ScrollArea className="flex-1">
                 <div className="p-4 space-y-6">
                     {place.rating && (

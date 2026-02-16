@@ -13,7 +13,7 @@ import { MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const CardSkeleton = () => (
-    <div className="h-64 rounded-2xl bg-muted overflow-hidden">
+    <div className="h-48 rounded-2xl bg-muted overflow-hidden">
         <Skeleton className="w-full h-full" />
     </div>
 );
