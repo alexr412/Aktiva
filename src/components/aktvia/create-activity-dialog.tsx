@@ -18,7 +18,7 @@ interface CreateActivityDialogProps {
   place: Place | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateActivity: (date: Date) => Promise<void>;
+  onCreateActivity: (date: Date) => Promise<boolean>;
 }
 
 export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivity }: CreateActivityDialogProps) {
@@ -35,8 +35,11 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   const handleCreate = async () => {
     if (date) {
       setIsCreating(true);
-      await onCreateActivity(date);
-      // No need to set isCreating to false, as the component will close on success.
+      const success = await onCreateActivity(date);
+      if (!success) {
+        // If creation failed, reset the button so user can try again.
+        setIsCreating(false);
+      }
     }
   };
 

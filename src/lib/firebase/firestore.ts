@@ -45,8 +45,8 @@ export async function createActivity(place: Place, date: Date, user: User) {
   try {
     await batch.commit();
     return activityRef;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating activity and chat: ', error);
-    throw new Error('Could not create activity. Please try again later.');
+    throw new Error(error.message || 'Could not create activity. Please try again later.');
   }
 }

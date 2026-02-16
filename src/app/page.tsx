@@ -112,14 +112,14 @@ export default function Home() {
     setActivityModalPlace(place);
   };
 
-  const handleCreateActivity = async (date: Date): Promise<void> => {
+  const handleCreateActivity = async (date: Date): Promise<boolean> => {
     if (!activityModalPlace || !user) {
         toast({
             title: 'Error',
             description: 'Something went wrong. Please try again.',
             variant: 'destructive',
         });
-        return;
+        return false;
     }
 
     try {
@@ -133,6 +133,7 @@ export default function Home() {
       setActivityModalPlace(null);
       // Next step: redirect to the newly created chat page
       // router.push(`/chat/${newActivityRef.id}`);
+      return true;
 
     } catch (error: any) {
       console.error(error);
@@ -141,6 +142,7 @@ export default function Home() {
         title: 'Failed to Create Activity',
         description: error.message || 'There was a problem creating your activity.',
       });
+      return false;
     }
   };
 
