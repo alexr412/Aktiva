@@ -57,7 +57,7 @@ export default function ChatPage() {
     const q = query(
       collection(db, 'chats'),
       where('participantIds', 'array-contains', user.uid),
-      orderBy('lastMessage.sentAt', 'desc')
+      orderBy('createdAt', 'desc')
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
