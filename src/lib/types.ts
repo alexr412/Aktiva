@@ -6,6 +6,10 @@ export interface Place {
   lat: number;
   lon: number;
   rating?: number;
+  imageUrl: string;
+  imageWidth: number;
+  imageHeight: number;
+  imageHint: string;
 }
 
 export interface GeoapifyFeature {

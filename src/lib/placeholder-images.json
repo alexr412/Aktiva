@@ -1,0 +1,114 @@
+{
+  "catering.restaurant": [
+    {
+      "seed": "food1",
+      "width": 600,
+      "height": 400,
+      "hint": "restaurant food"
+    },
+    {
+      "seed": "food2",
+      "width": 400,
+      "height": 600,
+      "hint": "restaurant interior"
+    }
+  ],
+  "catering.cafe": [
+    {
+      "seed": "cafe1",
+      "width": 600,
+      "height": 400,
+      "hint": "coffee cup"
+    },
+    {
+      "seed": "cafe2",
+      "width": 400,
+      "height": 600,
+      "hint": "cafe interior"
+    }
+  ],
+  "leisure.park": [
+    {
+      "seed": "park1",
+      "width": 600,
+      "height": 400,
+      "hint": "park bench"
+    },
+    {
+      "seed": "park2",
+      "width": 600,
+      "height": 400,
+      "hint": "green landscape"
+    }
+  ],
+  "tourism.attraction": [
+    {
+      "seed": "landmark1",
+      "width": 400,
+      "height": 600,
+      "hint": "city landmark"
+    },
+    {
+      "seed": "landmark2",
+      "width": 600,
+      "height": 400,
+      "hint": "tourist attraction"
+    }
+  ],
+  "commercial": [
+    {
+      "seed": "shop1",
+      "width": 600,
+      "height": 400,
+      "hint": "shopping mall"
+    },
+    {
+      "seed": "shop2",
+      "width": 400,
+      "height": 600,
+      "hint": "store front"
+    }
+  ],
+  "entertainment.cinema": [
+    {
+      "seed": "cinema1",
+      "width": 600,
+      "height": 400,
+      "hint": "cinema screen"
+    },
+    {
+      "seed": "theater1",
+      "width": 600,
+      "height": 400,
+      "hint": "theater stage"
+    }
+  ],
+  "accommodation.hotel": [
+    {
+      "seed": "hotel1",
+      "width": 600,
+      "height": 400,
+      "hint": "hotel room"
+    },
+    {
+      "seed": "hotel2",
+      "width": 400,
+      "height": 600,
+      "hint": "hotel lobby"
+    }
+  ],
+  "default": [
+    {
+      "seed": "default1",
+      "width": 600,
+      "height": 400,
+      "hint": "city street"
+    },
+    {
+      "seed": "default2",
+      "width": 400,
+      "height": 600,
+      "hint": "abstract architecture"
+    }
+  ]
+}

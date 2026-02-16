@@ -12,6 +12,13 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
+const CardSkeleton = () => (
+    <div className="h-64 rounded-2xl bg-muted overflow-hidden">
+        <Skeleton className="w-full h-full" />
+    </div>
+);
+
+
 export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
@@ -107,15 +114,7 @@ export default function Home() {
       return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {Array.from({ length: 8 }).map((_, i) => (
-                <Card key={i}>
-                    <CardHeader>
-                        <Skeleton className="h-5 w-3/4" />
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-1/2" />
-                    </CardContent>
-                </Card>
+                <CardSkeleton key={i} />
             ))}
         </div>
       );
@@ -141,7 +140,7 @@ export default function Home() {
   return (
     <div className="flex flex-col flex-1">
         <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b p-4 space-y-4">
-            <h1 className="text-2xl font-bold">Discover Nearby</h1>
+            <h1 className="text-3xl font-bold">Discover</h1>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
         </header>
 
@@ -150,7 +149,7 @@ export default function Home() {
         </main>
 
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-            <DialogContent className="sm:max-w-[425px] md:max-w-lg lg:max-w-2xl p-0 h-[90vh] max-h-[800px]">
+            <DialogContent className="sm:max-w-md md:max-w-lg p-0 h-[90vh] max-h-[800px] gap-0 rounded-2xl overflow-hidden">
                 {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
             </DialogContent>
         </Dialog>
