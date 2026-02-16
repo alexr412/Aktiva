@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AppNav } from '@/components/app-nav';
+import { BottomNav } from '@/components/bottom-nav';
 
 export const metadata: Metadata = {
   title: 'Aktvia',
@@ -23,10 +24,11 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <div className="flex min-h-screen w-full bg-muted/40">
           <AppNav />
-          <main className="flex flex-1 flex-col sm:pl-14">
+          <main className="flex flex-1 flex-col pb-16 sm:pl-14 sm:pb-0">
             {children}
           </main>
         </div>
+        <BottomNav />
         <Toaster />
       </body>
     </html>
