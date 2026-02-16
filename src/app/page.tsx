@@ -15,7 +15,6 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/icons/logo';
-import { MapView } from '@/components/aktvia/map-view';
 import { CategoryFilters, categories as defaultCategories } from '@/components/aktvia/category-filters';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
@@ -145,12 +144,18 @@ export default function Home() {
                 </div>
             )}
             {userLocation && (
-                <MapView 
-                    center={userLocation}
-                    places={places}
-                    selectedPlace={selectedPlace}
-                    onMarkerClick={handlePlaceSelect}
-                />
+                <div className="flex h-full w-full items-center justify-center bg-muted">
+                    <div className="text-center p-8">
+                        <MapPin className="h-16 w-16 mx-auto text-muted-foreground" />
+                        <h3 className="text-xl font-semibold mt-4">Map View Removed</h3>
+                        <p className="text-muted-foreground mt-2">
+                            The interactive map feature has been removed.
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            It can be re-enabled by providing a Google Maps API key.
+                        </p>
+                    </div>
+                </div>
             )}
         </SidebarInset>
     </SidebarProvider>
