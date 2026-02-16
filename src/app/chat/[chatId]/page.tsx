@@ -141,20 +141,27 @@ export default function ChatRoomPage() {
         </div>
       </div>
 
-      <footer className="p-4 border-t bg-background">
-        <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            autoComplete="off"
-            className="flex-1"
-          />
-          <Button type="submit" size="icon" disabled={!newMessage.trim()}>
-            <Send />
-            <span className="sr-only">Send message</span>
-          </Button>
-        </form>
+      <footer className="bg-background/95 backdrop-blur-sm sticky bottom-0">
+        <div className="p-4">
+            <form onSubmit={handleSendMessage} className="relative">
+            <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type a message..."
+                autoComplete="off"
+                className="w-full rounded-full pr-12 h-12"
+            />
+            <Button 
+                type="submit" 
+                size="icon" 
+                disabled={!newMessage.trim()} 
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full"
+            >
+                <Send className="h-4 w-4" />
+                <span className="sr-only">Send message</span>
+            </Button>
+            </form>
+        </div>
       </footer>
     </div>
   );
