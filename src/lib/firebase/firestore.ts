@@ -5,7 +5,6 @@ import {
   collection,
   doc,
   writeBatch,
-  serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
@@ -33,7 +32,7 @@ export async function createActivity(place: Place, date: Date, user: User) {
     creatorName: user.displayName,
     creatorPhotoURL: user.photoURL,
     participantIds: [user.uid],
-    createdAt: serverTimestamp(),
+    createdAt: Timestamp.now(),
   };
   batch.set(activityRef, activityData);
 
@@ -42,7 +41,7 @@ export async function createActivity(place: Place, date: Date, user: User) {
   console.log('Generated chatRef with same id:', chatRef.id);
   batch.set(chatRef, {
     activityId: activityRef.id,
-    createdAt: serverTimestamp(),
+    createdAt: Timestamp.now(),
     participantIds: [user.uid],
     lastMessage: null,
   });
