@@ -16,7 +16,7 @@ export function MapView({ center, places, selectedPlace, onMarkerClick }: MapVie
     return (
         <div className="flex h-full w-full items-center justify-center bg-muted">
             <p className="max-w-xs text-center text-muted-foreground">
-                Google Maps API key is not configured. Please add it to `src/lib/config.ts` to display the map.
+                Google Maps API key is not configured. Please add it to your `.env` file as `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to display the map.
             </p>
         </div>
     )
