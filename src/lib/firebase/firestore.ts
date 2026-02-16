@@ -45,6 +45,13 @@ export async function createActivity(place: Place, date: Date, user: User) {
     createdAt: serverTimestamp(),
     participantIds: [user.uid],
     lastMessage: null,
+    placeName: place.name,
+    participantDetails: {
+      [user.uid]: {
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+      },
+    },
   });
 
   try {
@@ -54,6 +61,43 @@ export async function createActivity(place: Place, date: Date, user: User) {
     return activityRef;
   } catch (error: any) {
     console.error('!!! Critical Error creating activity and chat: ', error);
+    if (error.message.includes('permission-denied') || error.message.includes('permission denied')) {
+        throw new Error('Database permission denied. Please check your Firestore security rules.');
+    }
     throw new Error(error.message || 'Could not create activity. Please try again later.');
+  }
+}
+
+export async function sendMessage(chatId: string, text: string, user: User) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  if (!text.trim()) return;
+
+  const messagesRef = collection(db, 'chats', chatId, 'messages');
+  const chatRef = doc(db, 'chats', chatId);
+
+  const batch = writeBatch(db);
+
+  const newMessageRef = doc(messagesRef);
+  batch.set(newMessageRef, {
+    text: text.trim(),
+    senderId: user.uid,
+    senderName: user.displayName,
+    senderPhotoURL: user.photoURL,
+    sentAt: serverTimestamp(),
+  });
+
+  batch.update(chatRef, {
+    lastMessage: {
+      text: text.trim(),
+      senderName: user.displayName,
+      sentAt: serverTimestamp(),
+    },
+  });
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw new Error('Could not send message.');
   }
 }

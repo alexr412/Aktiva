@@ -131,8 +131,7 @@ export default function Home() {
       });
       
       setActivityModalPlace(null);
-      // Next step: redirect to the newly created chat page
-      // router.push(`/chat/${newActivityRef.id}`);
+      router.push(`/chat/${newActivityRef.id}`);
       return true;
 
     } catch (error: any) {

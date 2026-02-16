@@ -24,6 +24,34 @@ export interface Activity {
   createdAt: Timestamp;
 }
 
+export interface Message {
+  id: string;
+  text: string;
+  senderId: string;
+  senderName: string | null;
+  senderPhotoURL: string | null;
+  sentAt: Timestamp;
+}
+
+export interface Chat {
+    id: string;
+    activityId: string;
+    placeName: string;
+    participantIds: string[];
+    participantDetails: {
+        [uid: string]: {
+            displayName: string | null;
+            photoURL: string | null;
+        }
+    };
+    lastMessage: {
+        text: string;
+        senderName: string | null;
+        sentAt: Timestamp;
+    } | null;
+    createdAt: Timestamp;
+}
+
 
 export interface GeoapifyFeature {
   properties: {
