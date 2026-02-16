@@ -29,12 +29,12 @@ type CategoryFiltersProps = {
 
 export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFiltersProps) {
   return (
-    <div className="flex overflow-x-auto gap-2 pb-2 -mx-4 px-4">
+    <div className="flex overflow-x-auto gap-2 pb-2 -mx-4 px-4 hide-scrollbar">
       {categories.map((category) => (
         <Button
           key={category.name}
           variant={
-            JSON.stringify(activeCategory) === JSON.stringify(category.id) ? 'default' : 'secondary'
+            JSON.stringify(activeCategory) === JSON.stringify(category.id) ? 'default' : 'outline'
           }
           size="sm"
           onClick={() => onCategoryChange(category.id)}
