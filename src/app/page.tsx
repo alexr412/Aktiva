@@ -9,14 +9,17 @@ import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MapPin } from 'lucide-react';
+import { MapPin, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
+import { createActivity } from '@/lib/firebase/firestore';
 
 const CardSkeleton = () => (
     <div className="w-full">
-        <div className="aspect-[4/5] w-full rounded-2xl bg-muted" />
-        <div className="space-y-2 mt-4">
+        <div className="aspect-[16/9] w-full rounded-2xl bg-muted" />
+        <div className="space-y-2 mt-4 p-2">
             <Skeleton className="h-5 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
             <Skeleton className="h-4 w-1/3" />
@@ -35,6 +38,9 @@ export default function Home() {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const { toast } = useToast();
+  const { user } = useAuth();
+  const router = useRouter();
+
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -95,27 +101,54 @@ export default function Home() {
   }
 
   const handleOpenActivityModal = (place: Place) => {
+    if (!user) {
+      router.push('/login');
+      toast({
+        title: 'Login Required',
+        description: 'Please log in to create an activity.',
+      });
+      return;
+    }
     setActivityModalPlace(place);
   };
 
-  const handleCreateActivity = (date: Date) => {
-    if (!activityModalPlace) return;
+  const handleCreateActivity = async (date: Date) => {
+    if (!activityModalPlace || !user) {
+        toast({
+            title: 'Error',
+            description: 'Something went wrong. Please try again.',
+            variant: 'destructive',
+        });
+        return;
+    }
 
-    // For now, we'll just show a confirmation.
-    // In the future, this will create a chatroom.
-    toast({
-      title: 'Activity Created!',
-      description: `An activity for ${activityModalPlace.name} has been scheduled for ${date.toLocaleDateString()}.`,
-    });
-    
-    setActivityModalPlace(null);
+    try {
+      const newActivityRef = await createActivity(activityModalPlace, date, user);
+      
+      toast({
+        title: 'Activity Created!',
+        description: `Your activity at ${activityModalPlace.name} is set and a chatroom is ready.`,
+      });
+      
+      setActivityModalPlace(null);
+      // Next step: redirect to the newly created chat page
+      // router.push(`/chat/${newActivityRef.id}`);
+
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Create Activity',
+        description: error.message || 'There was a problem creating your activity.',
+      });
+    }
   };
 
 
   const renderContent = () => {
     if (locationError) {
       return (
-        <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center p-6">
+        <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center p-6 text-center">
             <Card className="max-w-sm">
                 <CardHeader><CardTitle className="text-destructive">Location Error</CardTitle></CardHeader>
                 <CardContent>{locationError}</CardContent>
@@ -147,14 +180,17 @@ export default function Home() {
     
     if (places.length === 0) {
         return (
-            <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center">
-                <p className="text-muted-foreground">No places found. Try a different category!</p>
+            <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center p-6 text-center">
+                <div className="space-y-2">
+                    <h3 className="font-semibold text-lg">No places found</h3>
+                    <p className="text-muted-foreground">Try a different category or check back later!</p>
+                </div>
             </div>
         )
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
             {places.map(place => (
                 <PlaceCard 
                   key={place.id} 
@@ -169,19 +205,19 @@ export default function Home() {
 
   return (
     <>
-        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
-          <div className="container-main space-y-4 py-4">
-            <h1 className="text-3xl font-bold tracking-tight pt-4">Discover</h1>
+        <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
+          <div className="container-main flex flex-col gap-4 py-4">
+            <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
           </div>
         </header>
 
-        <div className="container-main py-6">
+        <main className="container-main flex-1 py-6">
             {renderContent()}
-        </div>
+        </main>
 
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-            <DialogContent className="p-0 h-full w-full max-w-none sm:max-w-md sm:h-auto gap-0 overflow-hidden">
+            <DialogContent className="max-h-dvh flex flex-col p-0 w-full max-w-lg gap-0">
                 {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
             </DialogContent>
         </Dialog>
@@ -192,7 +228,6 @@ export default function Home() {
           onOpenChange={(open) => !open && setActivityModalPlace(null)}
           onCreateActivity={handleCreateActivity}
         />
-
     </>
   );
 }
