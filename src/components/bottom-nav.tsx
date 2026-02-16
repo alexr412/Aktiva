@@ -15,15 +15,15 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 backdrop-blur-sm sm:hidden">
-      <div className="flex h-16 items-center justify-around">
+    <div className="fixed inset-x-0 bottom-4 z-20 flex justify-center px-4 pointer-events-none">
+      <nav className="pointer-events-auto flex h-16 w-full max-w-sm items-center justify-around rounded-full bg-background/95 p-1 shadow-lg ring-1 ring-black/5 backdrop-blur-sm">
         {navItems.map((item) => (
           <Link
             key={item.label}
             href={item.href}
-            className={`flex h-full w-full flex-col items-center justify-center gap-1 text-sm font-medium transition-colors ${
+            className={`flex h-full w-full flex-col items-center justify-center gap-1 rounded-full text-sm font-medium transition-colors ${
               pathname === item.href
-                ? 'text-primary'
+                ? 'text-primary bg-primary/10'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -31,7 +31,7 @@ export function BottomNav() {
             <span className="text-xs">{item.label}</span>
           </Link>
         ))}
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 }
