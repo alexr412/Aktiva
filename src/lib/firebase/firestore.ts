@@ -7,6 +7,7 @@ import {
   writeBatch,
   Timestamp,
   serverTimestamp,
+  getDocs,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import type { Place } from '@/lib/types';
@@ -99,5 +100,30 @@ export async function sendMessage(chatId: string, text: string, user: User) {
   } catch (error) {
     console.error('Error sending message:', error);
     throw new Error('Could not send message.');
+  }
+}
+
+export async function deleteActivityAndChat(chatId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+
+  const batch = writeBatch(db);
+
+  const activityRef = doc(db, 'activities', chatId);
+  const chatRef = doc(db, 'chats', chatId);
+  const messagesRef = collection(db, 'chats', chatId, 'messages');
+
+  const messagesSnapshot = await getDocs(messagesRef);
+  messagesSnapshot.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+
+  batch.delete(chatRef);
+  batch.delete(activityRef);
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error('Error deleting activity and chat:', error);
+    throw new Error('Could not delete activity.');
   }
 }

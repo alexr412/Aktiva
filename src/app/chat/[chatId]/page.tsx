@@ -3,17 +3,40 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/client';
-import { sendMessage } from '@/lib/firebase/firestore';
+import { sendMessage, deleteActivityAndChat } from '@/lib/firebase/firestore';
 import type { Message, Chat } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { format } from 'date-fns';
+import { format, isSameDay, isToday, isYesterday } from 'date-fns';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ChatInfoSheet } from '@/components/aktvia/chat-info-sheet';
+import { ArrowLeft, Send, MoreVertical } from 'lucide-react';
+
+const DateSeparator = ({ date }: { date: Date }) => {
+  const formatDate = (d: Date) => {
+    if (isToday(d)) return 'Today';
+    if (isYesterday(d)) return 'Yesterday';
+    return format(d, 'MMMM d, yyyy');
+  };
+
+  return (
+    <div className="relative my-4">
+      <div className="absolute inset-0 flex items-center">
+        <span className="w-full border-t" />
+      </div>
+      <div className="relative flex justify-center text-xs uppercase">
+        <span className="bg-muted/30 px-2 text-muted-foreground font-semibold">
+          {formatDate(date)}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 const MessageBubble = ({
   message,
@@ -34,7 +57,7 @@ const MessageBubble = ({
 
   const wrapperClasses = `flex items-start gap-3 ${
     isOwnMessage ? 'justify-end' : ''
-  } ${isFirstInGroup ? 'mt-5' : 'mt-1'}`;
+  } ${isFirstInGroup ? 'mt-4' : 'mt-1'}`;
 
   return (
     <div className={wrapperClasses}>
@@ -52,8 +75,8 @@ const MessageBubble = ({
         {showSenderName && (
           <p className="text-xs text-muted-foreground ml-2 mb-0.5">{message.senderName}</p>
         )}
-        <div className={`relative max-w-xs md:max-w-lg px-4 py-2 ${bubbleClasses}`}>
-          <p className="whitespace-pre-wrap text-sm pb-1 pr-12">{message.text}</p>
+        <div className={`relative max-w-xs md:max-w-md px-4 py-2 ${bubbleClasses}`}>
+          <p className="text-sm pb-1 pr-12 break-words">{message.text}</p>
           <span className="absolute bottom-1.5 right-3 text-xs opacity-70">
             {message.sentAt ? format(message.sentAt.toDate(), 'p') : ''}
           </span>
@@ -69,13 +92,16 @@ export default function ChatRoomPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isInfoSheetOpen, setInfoSheetOpen] = useState(false);
+  
   const router = useRouter();
   const params = useParams();
   const chatId = params.chatId as string;
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages]);
 
   useEffect(() => {
@@ -85,6 +111,7 @@ export default function ChatRoomPage() {
       if (doc.exists()) {
         setChat({ id: doc.id, ...doc.data() } as Chat);
       } else {
+        toast({ title: "Chat not found", description: "This chat may have been deleted.", variant: 'destructive'});
         router.push('/chat');
       }
     });
@@ -94,13 +121,17 @@ export default function ChatRoomPage() {
       const newMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Message));
       setMessages(newMessages);
       setLoading(false);
+    }, (error) => {
+      console.error("Error fetching messages:", error);
+      toast({ title: "Error", description: "Could not load messages.", variant: 'destructive'});
+      setLoading(false);
     });
 
     return () => {
       chatUnsubscribe();
       messagesUnsubscribe();
     };
-  }, [chatId, router]);
+  }, [chatId, router, toast]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +144,18 @@ export default function ChatRoomPage() {
     } catch (error) {
       console.error(error);
       setNewMessage(currentMessage);
+      toast({ title: "Error", description: "Could not send message.", variant: 'destructive'});
+    }
+  };
+
+  const handleDeleteActivity = async () => {
+    if (!chat) return;
+    try {
+      await deleteActivityAndChat(chat.id);
+      toast({ title: 'Activity Deleted', description: 'The activity and chat have been removed.' });
+      router.push('/chat');
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
     }
   };
 
@@ -133,77 +176,81 @@ export default function ChatRoomPage() {
   }
 
   return (
-    <div className="flex flex-col h-full max-h-dvh bg-muted/30">
-      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background/90 px-2 backdrop-blur-sm sm:px-4">
-        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()}>
-          <ArrowLeft />
-        </Button>
-        <div className="flex-1 truncate">
-          <h2 className="font-bold truncate">{chat?.placeName}</h2>
+    <>
+      <div className="flex flex-col h-full bg-muted/30">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background/90 px-2 backdrop-blur-sm sm:px-4">
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()}>
+            <ArrowLeft />
+          </Button>
+          <div className="flex-1 truncate">
+            <h2 className="font-bold truncate">{chat?.placeName}</h2>
+          </div>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setInfoSheetOpen(true)}>
+            <MoreVertical />
+            <span className='sr-only'>Chat Info</span>
+          </Button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex flex-col">
+            {messages.map((message, index) => {
+              const prevMessage = messages[index - 1];
+              const isOwnMessage = message.senderId === user?.uid;
+              
+              const showDateSeparator = !prevMessage || !isSameDay(message.sentAt.toDate(), prevMessage.sentAt.toDate());
+              
+              const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId || showDateSeparator;
+              const isLastInGroup = !messages[index + 1] || messages[index + 1].senderId !== message.senderId || !isSameDay(message.sentAt.toDate(), messages[index+1].sentAt.toDate());
+
+              const showAvatar = !isOwnMessage && isLastInGroup;
+              const showSenderName = !isOwnMessage && isFirstInGroup;
+
+              return (
+                <div key={message.id}>
+                  {showDateSeparator && <DateSeparator date={message.sentAt.toDate()} />}
+                  <MessageBubble
+                    message={message}
+                    isOwnMessage={isOwnMessage}
+                    showAvatar={showAvatar}
+                    isFirstInGroup={isFirstInGroup}
+                    showSenderName={showSenderName}
+                  />
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
         </div>
-        <div className="flex -space-x-2">
-          {chat &&
-            Object.values(chat.participantDetails)
-              .slice(0, 3)
-              .map((p, i) => (
-                <Avatar key={i} className="h-8 w-8 border-2 border-background">
-                  <AvatarImage src={p.photoURL || undefined} />
-                  <AvatarFallback>{p.displayName?.charAt(0)}</AvatarFallback>
-                </Avatar>
-              ))}
-        </div>
-      </header>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="flex flex-col">
-          {messages.map((message, index) => {
-            const prevMessage = messages[index - 1];
-            const nextMessage = messages[index + 1];
-            const isOwnMessage = message.senderId === user?.uid;
-            
-            const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId;
-            const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId;
-
-            const showAvatar = !isOwnMessage && isLastInGroup;
-            const showSenderName = !isOwnMessage && isFirstInGroup;
-
-            return (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                isOwnMessage={isOwnMessage}
-                showAvatar={showAvatar}
-                isFirstInGroup={isFirstInGroup}
-                showSenderName={showSenderName}
+        <footer className="bg-background/95 backdrop-blur-sm border-t">
+          <div className="p-2 sm:p-4">
+            <form onSubmit={handleSendMessage} className="relative">
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Message"
+                autoComplete="off"
+                className="w-full rounded-full bg-muted pr-12 h-12 text-base"
               />
-            );
-          })}
-          <div ref={messagesEndRef} />
-        </div>
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!newMessage.trim()}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
+              >
+                <Send className="h-5 w-5" />
+                <span className="sr-only">Send message</span>
+              </Button>
+            </form>
+          </div>
+        </footer>
       </div>
-
-      <footer className="bg-background/95 backdrop-blur-sm sticky bottom-0 border-t">
-        <div className="p-2 sm:p-4">
-          <form onSubmit={handleSendMessage} className="relative">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Message"
-              autoComplete="off"
-              className="w-full rounded-full bg-muted pr-12 h-12 text-base"
-            />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!newMessage.trim()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
-            >
-              <Send className="h-5 w-5" />
-              <span className="sr-only">Send message</span>
-            </Button>
-          </form>
-        </div>
-      </footer>
-    </div>
+      <ChatInfoSheet
+        chat={chat}
+        open={isInfoSheetOpen}
+        onOpenChange={setInfoSheetOpen}
+        onDelete={handleDeleteActivity}
+      />
+    </>
   );
 }
