@@ -1,26 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import {
-    Sidebar,
-    SidebarProvider,
-    SidebarHeader,
-    SidebarContent,
-    SidebarInset,
-    SidebarMenu,
-    SidebarMenuItem,
-    SidebarMenuSkeleton,
-    SidebarTrigger
-} from '@/components/ui/sidebar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Logo } from '@/components/icons/logo';
 import { CategoryFilters, categories as defaultCategories } from '@/components/aktvia/category-filters';
 import { PlaceDetails } from '@/components/aktvia/place-details';
+import { PlaceCard } from '@/components/aktvia/place-card';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MapPin, Search } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { MapPin } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -56,6 +46,7 @@ export default function Home() {
 
   const loadPlaces = useCallback(async (lat: number, lng: number, category: string[]) => {
     setIsLoading(true);
+    setPlaces([]);
     try {
       const fetchedPlaces = await fetchNearbyPlaces(lat, lng, category);
       setPlaces(fetchedPlaces);
@@ -79,80 +70,90 @@ export default function Home() {
 
   const handleCategoryChange = (categoryId: string[]) => {
     setActiveCategory(categoryId);
-    setSelectedPlace(null);
   };
 
-  const handlePlaceSelect = (place: Place | null) => {
+  const handlePlaceSelect = (place: Place) => {
     setSelectedPlace(place);
   };
 
-  return (
-    <SidebarProvider>
-        <Sidebar collapsible="icon">
-            <SidebarHeader>
-                <div className="flex items-center gap-2 p-2">
-                    <Logo className="h-6 w-auto" />
-                    <SidebarTrigger className="ml-auto" />
-                </div>
-            </SidebarHeader>
-            <SidebarContent>
-                <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
-                <ScrollArea className="flex-1">
-                    <SidebarMenu>
-                        {isLoading && (
-                            Array.from({ length: 5 }).map((_, i) => (
-                                <SidebarMenuItem key={i}><SidebarMenuSkeleton showIcon /></SidebarMenuItem>
-                            ))
-                        )}
-                        {!isLoading && places.length === 0 && (
-                            <p className="p-4 text-sm text-muted-foreground">No places found in this category.</p>
-                        )}
-                        {!isLoading && places.map(place => (
-                            <SidebarMenuItem key={place.id}>
-                                <button onClick={() => handlePlaceSelect(place)} className="w-full text-left p-3 hover:bg-sidebar-accent rounded-lg transition-colors">
-                                    <p className="font-semibold text-sm">{place.name}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{place.address}</p>
-                                </button>
-                            </SidebarMenuItem>
-                        ))}
-                    </SidebarMenu>
-                </ScrollArea>
-            </SidebarContent>
-        </Sidebar>
+  const handleDialogClose = () => {
+    setSelectedPlace(null);
+  }
 
-        <SidebarInset>
-            {locationError && (
-                <div className="flex h-full w-full items-center justify-center bg-muted p-4">
-                    <Card className="max-w-sm">
-                        <CardHeader><CardTitle className="text-destructive">Location Error</CardTitle></CardHeader>
-                        <CardContent>{locationError}</CardContent>
-                    </Card>
-                </div>
-            )}
-            {!userLocation && !locationError && (
-                 <div className="flex h-full w-full items-center justify-center bg-muted">
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                        <MapPin className="h-8 w-8 animate-bounce" />
-                        <p>Getting your location...</p>
-                    </div>
-                </div>
-            )}
-            {userLocation && (
-                selectedPlace ? (
-                    <PlaceDetails place={selectedPlace} onClose={() => handlePlaceSelect(null)} />
-                ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-muted">
-                        <div className="text-center p-8">
-                            <Search className="h-16 w-16 mx-auto text-muted-foreground" />
-                            <h3 className="text-xl font-semibold mt-4">Select a place</h3>
-                            <p className="text-muted-foreground mt-2">
-                                Choose a place from the list to see its details.
-                            </p>
-                        </div>
-                    </div>
-                )
-            )}
-        </SidebarInset>
-    </SidebarProvider>
+  const renderContent = () => {
+    if (locationError) {
+      return (
+        <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center p-4">
+            <Card className="max-w-sm">
+                <CardHeader><CardTitle className="text-destructive">Location Error</CardTitle></CardHeader>
+                <CardContent>{locationError}</CardContent>
+            </Card>
+        </div>
+      );
+    }
+
+    if (!userLocation && !isLoading) {
+      return (
+        <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center">
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <MapPin className="h-8 w-8 animate-bounce" />
+                <p>Getting your location...</p>
+            </div>
+        </div>
+      );
+    }
+
+    if (isLoading) {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+                <Card key={i}>
+                    <CardHeader>
+                        <Skeleton className="h-5 w-3/4" />
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-1/2" />
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+      );
+    }
+    
+    if (places.length === 0) {
+        return (
+            <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center">
+                <p className="text-muted-foreground">No places found. Try a different category!</p>
+            </div>
+        )
+    }
+
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {places.map(place => (
+                <PlaceCard key={place.id} place={place} onClick={() => handlePlaceSelect(place)} />
+            ))}
+        </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col flex-1">
+        <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b p-4 space-y-4">
+            <h1 className="text-2xl font-bold">Discover Nearby</h1>
+            <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
+        </header>
+
+        <main className="p-4">
+            {renderContent()}
+        </main>
+
+        <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
+            <DialogContent className="sm:max-w-[425px] md:max-w-lg lg:max-w-2xl p-0 h-[90vh] max-h-[800px]">
+                {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
+            </DialogContent>
+        </Dialog>
+    </div>
   );
 }
