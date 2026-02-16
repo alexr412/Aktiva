@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from '@/components/ui/sheet';
 import { Calendar } from '@/components/ui/calendar';
 import type { Place } from '@/lib/types';
 import { CalendarPlus, Loader2 } from 'lucide-react';
@@ -25,7 +25,6 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isCreating, setIsCreating] = useState(false);
 
-  // Reset date and loading state when dialog opens for a new place
   useEffect(() => {
     if (open) {
       setDate(new Date());
@@ -37,22 +36,22 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     if (date) {
       setIsCreating(true);
       await onCreateActivity(date);
-      // The parent component will close the dialog, which will reset the state via useEffect
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md p-0">
-        <DialogHeader className="p-6 pb-4 text-center items-center">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto">
+        <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-muted" />
+        <SheetHeader className="pt-8 p-6 pb-4 text-center items-center">
           <div className="bg-primary/10 p-3 rounded-full mb-2">
             <CalendarPlus className="h-6 w-6 text-primary" />
           </div>
-          <DialogTitle className="text-xl font-bold">Create an activity</DialogTitle>
-          <DialogDescription className="text-base text-muted-foreground">
+          <SheetTitle className="text-xl font-bold">Create an activity</SheetTitle>
+          <SheetDescription className="text-base text-muted-foreground">
             Pick a date to meet up at <br /> <span className="font-semibold text-foreground">{place?.name}</span>.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <div className="px-6">
             <div className="bg-muted/50 rounded-xl flex justify-center">
                 <Calendar
@@ -64,7 +63,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                 />
           </div>
         </div>
-        <DialogFooter className="p-6 sm:justify-center">
+        <SheetFooter className="p-6 sm:justify-center">
           <Button 
             type="button" 
             onClick={handleCreate} 
@@ -80,8 +79,8 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
               'Create Activity'
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
