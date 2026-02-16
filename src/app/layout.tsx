@@ -24,7 +24,7 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <div className="flex min-h-screen w-full bg-muted/40">
           <AppNav />
-          <main className="flex flex-1 flex-col pb-16 sm:pl-14 sm:pb-0">
+          <main className="flex flex-1 flex-col pb-16 sm:pl-14">
             {children}
           </main>
         </div>
