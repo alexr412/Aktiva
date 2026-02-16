@@ -1,8 +1,9 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
+import { Card } from '@/components/ui/card';
 import type { Place } from '@/lib/types';
-import { MapPin, Star } from 'lucide-react';
+import { Star, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 type PlaceCardProps = {
@@ -16,28 +17,31 @@ export function PlaceCard({ place, onClick }: PlaceCardProps) {
   return (
     <Card
       onClick={onClick}
-      className="cursor-pointer group hover:shadow-lg transition-shadow duration-300 ease-in-out rounded-2xl overflow-hidden"
+      className="cursor-pointer group border-0 shadow-none rounded-none bg-transparent overflow-visible"
     >
-      <CardHeader>
-        <div className="flex justify-between items-start">
-            <CardTitle className="text-xl font-bold truncate pr-4">{place.name}</CardTitle>
-            {place.rating && (
-              <div className="flex items-center gap-1 text-amber-500 flex-shrink-0">
-                <Star className="h-5 w-5 fill-current" />
-                <span className="font-bold text-foreground">{place.rating.toFixed(1)}</span>
+      <div className="relative w-full aspect-[4/5] overflow-hidden rounded-2xl">
+          <Image
+              src={place.imageUrl}
+              alt={`Photo of ${place.name}`}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out"
+              data-ai-hint={place.imageHint}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
+           {place.rating && (
+              <div className="absolute top-3 right-3 flex items-center gap-1 text-white bg-black/50 backdrop-blur-sm rounded-full px-2 py-1 text-xs font-semibold">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                <span>{place.rating.toFixed(1)}</span>
               </div>
             )}
-        </div>
-        <div className="flex items-center gap-2 text-muted-foreground pt-1">
-          <MapPin className="h-4 w-4 flex-shrink-0" />
-          <p className="truncate text-sm">{place.address}</p>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary" className="capitalize">{mainCategory}</Badge>
-        </div>
-      </CardContent>
+      </div>
+
+      <div className="pt-3 space-y-1">
+          <h3 className="text-base font-semibold leading-tight truncate">{place.name}</h3>
+          <p className="text-sm text-muted-foreground truncate">{place.address}</p>
+          <p className="text-sm text-muted-foreground capitalize">{mainCategory}</p>
+      </div>
+
     </Card>
   );
 }

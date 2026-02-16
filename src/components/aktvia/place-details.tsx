@@ -2,7 +2,7 @@ import {
     MapPin,
     Star,
     Tag,
-    X
+    ChevronLeft
 } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
@@ -24,15 +24,15 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
 
     return (
         <div className="flex flex-col h-full relative bg-background">
-             <div className="absolute top-2 right-2 z-20">
-                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full bg-background/50 hover:bg-background/80">
-                    <X className="h-5 w-5" />
-                    <span className="sr-only">Close details</span>
-                </Button>
-            </div>
-            
             <ScrollArea className="flex-1">
-                <div className="relative h-64 w-full">
+                 <div className="sticky top-0 z-20 flex items-center p-2 bg-gradient-to-t from-transparent to-black/20 sm:bg-transparent sm:bg-none">
+                    <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full bg-background/60 hover:bg-background/90 backdrop-blur-sm">
+                        <ChevronLeft className="h-6 w-6" />
+                        <span className="sr-only">Back</span>
+                    </Button>
+                </div>
+                
+                <div className="relative h-80 w-full -mt-14">
                     <Image
                         src={place.imageUrl}
                         alt={`Photo of ${place.name}`}
@@ -41,20 +41,20 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                         data-ai-hint={place.imageHint}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
-                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                     <div className="absolute bottom-0 left-0 p-4">
-                        <h1 className="text-2xl font-bold text-white shadow-md">{place.name}</h1>
-                        <div className="flex items-center gap-2 text-white/90 pt-1">
-                            <MapPin className="h-4 w-4" />
-                            <p className="text-sm">{place.address}</p>
-                        </div>
-                     </div>
+                     <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
                 </div>
 
-                <div className="p-4 space-y-6">
+                <div className="p-6 space-y-6 -mt-10 relative z-10">
+                    <div>
+                        <h1 className="text-3xl font-bold">{place.name}</h1>
+                        <div className="flex items-center gap-2 text-muted-foreground pt-1">
+                            <p className="text-sm">{place.address}</p>
+                        </div>
+                    </div>
+                    
                     <div className="grid grid-cols-2 gap-4 text-center">
                         {place.rating ? (
-                             <div className="p-4 rounded-lg bg-muted flex flex-col items-center justify-center gap-1">
+                             <div className="p-4 rounded-xl bg-muted/80 flex flex-col items-center justify-center gap-1">
                                 <div className="flex items-center gap-2">
                                     <Star className="h-6 w-6 text-amber-400 fill-amber-400" />
                                     <span className="font-bold text-2xl">{place.rating.toFixed(1)}</span>
@@ -62,20 +62,19 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                 <span className="text-sm text-muted-foreground">Rating</span>
                             </div>
                         ) : (
-                            <div className="p-4 rounded-lg bg-muted flex flex-col items-center justify-center gap-1">
+                            <div className="p-4 rounded-xl bg-muted/80 flex flex-col items-center justify-center gap-1">
                                 <Star className="h-6 w-6 text-muted-foreground" />
                                 <span className="text-sm text-muted-foreground mt-2">No Rating</span>
                             </div>
                         )}
-                         <div className="p-4 rounded-lg bg-muted flex flex-col items-center justify-center gap-1">
-                             <Tag className="h-6 w-6 text-primary" />
-                            <span className="text-sm text-muted-foreground mt-2">Categories</span>
+                         <div className="p-4 rounded-xl bg-muted/80 flex flex-col items-center justify-center gap-2">
+                            <div className="flex flex-wrap gap-2 justify-center">
+                                {formattedCategories.slice(0, 2).map(cat => (
+                                    <Badge key={cat} variant="secondary" className="capitalize">{cat.replace(/_/g, ' ')}</Badge>
+                                ))}
+                            </div>
+                            <span className="text-sm text-muted-foreground">Categories</span>
                         </div>
-                    </div>
-                     <div className="flex flex-wrap gap-2 justify-center -mt-8 relative z-10">
-                        {formattedCategories.map(cat => (
-                            <Badge key={cat} variant="default" className="capitalize shadow-md">{cat.replace(/_/g, ' ')}</Badge>
-                        ))}
                     </div>
                     
                     <Separator />

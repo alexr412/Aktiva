@@ -15,22 +15,25 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed inset-x-0 bottom-4 z-20 flex justify-center px-4 pointer-events-none">
-      <nav className="pointer-events-auto flex h-16 w-full max-w-sm items-center justify-around rounded-full bg-background/95 p-1 shadow-lg ring-1 ring-black/5 backdrop-blur-sm">
-        {navItems.map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className={`flex h-full w-full flex-col items-center justify-center gap-1 rounded-full text-sm font-medium transition-colors ${
-              pathname === item.href
-                ? 'text-primary bg-primary/10'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <item.icon className="h-5 w-5" />
-            <span className="text-xs">{item.label}</span>
-          </Link>
-        ))}
+    <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/80 backdrop-blur-sm">
+      <nav className="flex h-20 items-center justify-around">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`flex h-full w-full flex-col items-center justify-center gap-1 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <item.icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} />
+              <span className="text-xs font-semibold">{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
     </div>
   );

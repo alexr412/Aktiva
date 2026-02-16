@@ -13,15 +13,14 @@ import { MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const CardSkeleton = () => (
-    <Card className="rounded-2xl">
-        <CardHeader>
-            <Skeleton className="h-5 w-3/4 mb-2" />
+    <div className="w-full">
+        <Skeleton className="h-[250px] w-full rounded-2xl" />
+        <div className="space-y-2 mt-4">
+            <Skeleton className="h-5 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
-        </CardHeader>
-        <CardContent>
-            <Skeleton className="h-6 w-1/3" />
-        </CardContent>
-    </Card>
+            <Skeleton className="h-4 w-1/3" />
+        </div>
+    </div>
 );
 
 
@@ -96,7 +95,7 @@ export default function Home() {
   const renderContent = () => {
     if (locationError) {
       return (
-        <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center p-4">
+        <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center p-6">
             <Card className="max-w-sm">
                 <CardHeader><CardTitle className="text-destructive">Location Error</CardTitle></CardHeader>
                 <CardContent>{locationError}</CardContent>
@@ -118,7 +117,7 @@ export default function Home() {
 
     if (isLoading) {
       return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
             {Array.from({ length: 8 }).map((_, i) => (
                 <CardSkeleton key={i} />
             ))}
@@ -135,7 +134,7 @@ export default function Home() {
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
             {places.map(place => (
                 <PlaceCard key={place.id} place={place} onClick={() => handlePlaceSelect(place)} />
             ))}
@@ -144,18 +143,20 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col flex-1">
-        <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b p-4 space-y-4">
-            <h1 className="text-3xl font-bold">Discover</h1>
+    <div className="flex flex-col flex-1 pb-24">
+        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 space-y-4 py-4">
+            <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
+          </div>
         </header>
 
-        <main className="p-6">
+        <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {renderContent()}
         </main>
 
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-            <DialogContent className="sm:max-w-md md:max-w-lg p-0 h-[90vh] max-h-[800px] gap-0 rounded-2xl overflow-hidden">
+            <DialogContent className="p-0 h-full w-full max-w-none sm:h-[90vh] sm:max-w-lg sm:rounded-2xl gap-0 overflow-hidden">
                 {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
             </DialogContent>
         </Dialog>
