@@ -1,7 +1,8 @@
 import {
     MapPin,
     Star,
-    Tag
+    Tag,
+    X
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -23,12 +24,15 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         .filter((value, index, self) => self.indexOf(value) === index);
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="p-4">
-                <Button variant="ghost" size="sm" onClick={onClose} className="mb-2">
-                    &larr; Back to list
+        <div className="flex flex-col h-full relative bg-background">
+            <div className="absolute top-4 right-4 z-10">
+                <Button variant="ghost" size="icon" onClick={onClose}>
+                    <X className="h-5 w-5" />
+                    <span className="sr-only">Close details</span>
                 </Button>
-                <h2 className="text-2xl font-bold font-headline">{place.name}</h2>
+            </div>
+            <div className="p-4 pt-6">
+                <h2 className="text-2xl font-bold font-headline pr-10">{place.name}</h2>
                 <div className="flex items-center gap-2 text-muted-foreground mt-1">
                     <MapPin className="h-4 w-4" />
                     <p className="text-sm">{place.address}</p>

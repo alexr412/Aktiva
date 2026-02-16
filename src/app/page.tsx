@@ -20,7 +20,7 @@ import { PlaceDetails } from '@/components/aktvia/place-details';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MapPin } from 'lucide-react';
+import { MapPin, Search } from 'lucide-react';
 
 export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -56,7 +56,6 @@ export default function Home() {
 
   const loadPlaces = useCallback(async (lat: number, lng: number, category: string[]) => {
     setIsLoading(true);
-    setSelectedPlace(null);
     try {
       const fetchedPlaces = await fetchNearbyPlaces(lat, lng, category);
       setPlaces(fetchedPlaces);
@@ -80,6 +79,7 @@ export default function Home() {
 
   const handleCategoryChange = (categoryId: string[]) => {
     setActiveCategory(categoryId);
+    setSelectedPlace(null);
   };
 
   const handlePlaceSelect = (place: Place | null) => {
@@ -96,33 +96,27 @@ export default function Home() {
                 </div>
             </SidebarHeader>
             <SidebarContent>
-              {selectedPlace ? (
-                  <PlaceDetails place={selectedPlace} onClose={() => handlePlaceSelect(null)} />
-              ) : (
-                <>
-                  <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
-                  <ScrollArea className="flex-1">
-                      <SidebarMenu>
-                          {isLoading && (
-                              Array.from({ length: 5 }).map((_, i) => (
-                                  <SidebarMenuItem key={i}><SidebarMenuSkeleton showIcon /></SidebarMenuItem>
-                              ))
-                          )}
-                          {!isLoading && places.length === 0 && (
-                              <p className="p-4 text-sm text-muted-foreground">No places found in this category.</p>
-                          )}
-                          {!isLoading && places.map(place => (
-                              <SidebarMenuItem key={place.id}>
-                                  <button onClick={() => handlePlaceSelect(place)} className="w-full text-left p-3 hover:bg-sidebar-accent rounded-lg transition-colors">
-                                      <p className="font-semibold text-sm">{place.name}</p>
-                                      <p className="text-xs text-muted-foreground truncate">{place.address}</p>
-                                  </button>
-                              </SidebarMenuItem>
-                          ))}
-                      </SidebarMenu>
-                  </ScrollArea>
-                </>
-              )}
+                <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
+                <ScrollArea className="flex-1">
+                    <SidebarMenu>
+                        {isLoading && (
+                            Array.from({ length: 5 }).map((_, i) => (
+                                <SidebarMenuItem key={i}><SidebarMenuSkeleton showIcon /></SidebarMenuItem>
+                            ))
+                        )}
+                        {!isLoading && places.length === 0 && (
+                            <p className="p-4 text-sm text-muted-foreground">No places found in this category.</p>
+                        )}
+                        {!isLoading && places.map(place => (
+                            <SidebarMenuItem key={place.id}>
+                                <button onClick={() => handlePlaceSelect(place)} className="w-full text-left p-3 hover:bg-sidebar-accent rounded-lg transition-colors">
+                                    <p className="font-semibold text-sm">{place.name}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{place.address}</p>
+                                </button>
+                            </SidebarMenuItem>
+                        ))}
+                    </SidebarMenu>
+                </ScrollArea>
             </SidebarContent>
         </Sidebar>
 
@@ -144,18 +138,19 @@ export default function Home() {
                 </div>
             )}
             {userLocation && (
-                <div className="flex h-full w-full items-center justify-center bg-muted">
-                    <div className="text-center p-8">
-                        <MapPin className="h-16 w-16 mx-auto text-muted-foreground" />
-                        <h3 className="text-xl font-semibold mt-4">Map View Removed</h3>
-                        <p className="text-muted-foreground mt-2">
-                            The interactive map feature has been removed.
-                        </p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            It can be re-enabled by providing a Google Maps API key.
-                        </p>
+                selectedPlace ? (
+                    <PlaceDetails place={selectedPlace} onClose={() => handlePlaceSelect(null)} />
+                ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-muted">
+                        <div className="text-center p-8">
+                            <Search className="h-16 w-16 mx-auto text-muted-foreground" />
+                            <h3 className="text-xl font-semibold mt-4">Select a place</h3>
+                            <p className="text-muted-foreground mt-2">
+                                Choose a place from the list to see its details.
+                            </p>
+                        </div>
                     </div>
-                </div>
+                )
             )}
         </SidebarInset>
     </SidebarProvider>
