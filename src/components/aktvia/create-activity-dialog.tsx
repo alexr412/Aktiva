@@ -36,6 +36,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     if (date) {
       setIsCreating(true);
       await onCreateActivity(date);
+      // No need to set isCreating to false, as the component will close on success.
     }
   };
 
