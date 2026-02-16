@@ -1,35 +1,5 @@
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import type { Place, GeoapifyFeature } from '@/lib/types';
-import imageData from './placeholder-images.json';
-
-type ImageData = {
-  seed: string;
-  width: number;
-  height: number;
-  hint: string;
-};
-
-const placeImages = imageData as Record<string, ImageData[]>;
-
-let imageCounter = 0;
-
-function getPlaceholderImage(categories: string[]): ImageData {
-    for (const category of categories) {
-        if (placeImages[category]) {
-            const images = placeImages[category];
-            return images[imageCounter++ % images.length];
-        }
-        // Also check for parent category
-        const parentCategory = category.split('.')[0];
-        if(placeImages[parentCategory]) {
-            const images = placeImages[parentCategory];
-            return images[imageCounter++ % images.length];
-        }
-    }
-    const defaultImages = placeImages.default;
-    return defaultImages[imageCounter++ % defaultImages.length];
-}
-
 
 export async function fetchNearbyPlaces(
   lat: number,
@@ -56,8 +26,6 @@ export async function fetchNearbyPlaces(
         }
       }
 
-      const image = getPlaceholderImage(props.categories);
-
       return {
         id: props.place_id,
         name: props.name || props.address_line1,
@@ -66,10 +34,6 @@ export async function fetchNearbyPlaces(
         lat: props.lat,
         lon: props.lon,
         rating: rating,
-        imageUrl: `https://picsum.photos/seed/${image.seed}/${image.width}/${image.height}`,
-        imageWidth: image.width,
-        imageHeight: image.height,
-        imageHint: image.hint,
       };
     }).filter((place: Place) => place.name);
   } catch (error) {

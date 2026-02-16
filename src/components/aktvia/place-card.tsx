@@ -1,11 +1,44 @@
 'use client';
 
-import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import type { Place } from '@/lib/types';
-import { Star } from 'lucide-react';
+import {
+  Star,
+  UtensilsCrossed,
+  Coffee,
+  TreePine,
+  ShoppingBag,
+  Bed,
+  Landmark,
+  Film,
+  Building,
+  type LucideIcon,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage } from '@/components/ui/avatar';
+
+const categoryIconMap: { [key: string]: LucideIcon } = {
+  'catering.restaurant': UtensilsCrossed,
+  'catering.cafe': Coffee,
+  'leisure.park': TreePine,
+  'tourism.attraction': Landmark,
+  'commercial': ShoppingBag,
+  'entertainment.cinema': Film,
+  'accommodation.hotel': Bed,
+};
+
+const getCategoryIcon = (categories: string[]): LucideIcon => {
+  for (const category of categories) {
+    if (categoryIconMap[category]) {
+      return categoryIconMap[category];
+    }
+    const parentCategory = category.split('.')[0];
+    if (categoryIconMap[parentCategory]) {
+      return categoryIconMap[parentCategory];
+    }
+  }
+  return Building; // Default icon
+};
+
 
 type PlaceCardProps = {
   place: Place;
@@ -14,41 +47,22 @@ type PlaceCardProps = {
 
 export function PlaceCard({ place, onClick }: PlaceCardProps) {
     const mainCategory = place.categories[0]?.split('.')[0].replace(/_/g, ' ') || 'Place';
+    const Icon = getCategoryIcon(place.categories);
 
   return (
     <Card
       onClick={onClick}
-      className="cursor-pointer group overflow-hidden rounded-2xl bg-card shadow-md hover:shadow-lg transition-shadow border"
+      className="cursor-pointer group overflow-hidden rounded-2xl bg-card shadow-md hover:shadow-lg transition-shadow border-none"
     >
-      <div className="relative w-full aspect-video overflow-hidden">
-          <Image
-              src={place.imageUrl}
-              alt={`Photo of ${place.name}`}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out"
-              data-ai-hint={place.imageHint}
-              sizes="(max-width: 640px) 100vw, 50vw"
-          />
-          <div className="absolute bottom-3 right-3 flex items-center">
-            <div className="flex -space-x-2 overflow-hidden rounded-full border-2 border-background/50 backdrop-blur-sm">
-                <Avatar className="h-6 w-6">
-                    <AvatarImage src="https://i.pravatar.cc/150?img=1" alt="User 1" />
-                </Avatar>
-                 <Avatar className="h-6 w-6">
-                    <AvatarImage src="https://i.pravatar.cc/150?img=2" alt="User 2" />
-                </Avatar>
-                 <Avatar className="h-6 w-6">
-                    <AvatarImage src="https://i.pravatar.cc/150?img=3" alt="User 3" />
-                </Avatar>
-            </div>
-          </div>
+      <div className="relative flex items-center justify-center w-full aspect-[16/9] bg-muted/30 overflow-hidden rounded-t-2xl">
+          <Icon className="h-12 w-12 text-muted-foreground/80 transition-colors group-hover:text-primary" />
       </div>
 
       <div className="p-3 space-y-1.5">
           <h3 className="text-lg font-bold leading-tight truncate">{place.name}</h3>
-          <p className="text-sm text-muted-foreground truncate">{place.address}</p>
+          <p className="text-sm text-foreground/80 truncate">{place.address}</p>
           <div className="flex justify-between items-center pt-1">
-            <Badge className="capitalize text-xs font-semibold bg-primary/10 text-primary border-transparent hover:bg-primary/20">{mainCategory}</Badge>
+            <Badge className="capitalize text-xs font-semibold bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">{mainCategory}</Badge>
              {place.rating && (
                 <div className="flex items-center gap-1 text-xs font-bold text-foreground/80 shrink-0">
                   <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
