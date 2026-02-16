@@ -15,7 +15,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <div className="sm:hidden fixed inset-x-0 bottom-4 z-20 flex justify-center px-4 pointer-events-none">
+    <div className="fixed inset-x-0 bottom-4 z-20 flex justify-center px-4 pointer-events-none">
       <nav className="pointer-events-auto flex h-16 w-full max-w-sm items-center justify-around rounded-full bg-background/95 p-1 shadow-lg ring-1 ring-black/5 backdrop-blur-sm">
         {navItems.map((item) => (
           <Link
