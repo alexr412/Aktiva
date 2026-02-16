@@ -6,28 +6,27 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import type { Chat } from '@/lib/types';
-import { collection, query, where, onSnapshot, orderBy, type DocumentData } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 const ChatListItemSkeleton = () => (
-  <div className="flex items-center gap-4 p-4">
-    <Skeleton className="h-12 w-12 rounded-full" />
-    <div className="flex-1 space-y-2">
-      <Skeleton className="h-4 w-3/4" />
-      <Skeleton className="h-3 w-1/2" />
+    <div className="flex items-center gap-4 p-3">
+        <Skeleton className="h-12 w-12 rounded-full" />
+        <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+        </div>
+        <Skeleton className="h-3 w-16" />
     </div>
-    <Skeleton className="h-3 w-1/4" />
-  </div>
 );
 
 const EmptyState = () => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+  <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
     <div className="bg-primary/10 p-4 rounded-full">
       <Users className="h-10 w-10 text-primary" />
     </div>
@@ -65,10 +64,9 @@ export default function ChatPage() {
         ...doc.data(),
       } as Chat));
       
-      // Sort on the client-side
       userChats.sort((a, b) => {
-        const aTime = a.createdAt?.toMillis() || 0;
-        const bTime = b.createdAt?.toMillis() || 0;
+        const aTime = a.lastMessage?.sentAt?.toMillis() || a.createdAt?.toMillis() || 0;
+        const bTime = b.lastMessage?.sentAt?.toMillis() || b.createdAt?.toMillis() || 0;
         return bTime - aTime;
       });
 
@@ -85,7 +83,7 @@ export default function ChatPage() {
   const renderContent = () => {
     if (loading || authLoading) {
       return (
-        <div className="divide-y">
+        <div className="space-y-1 p-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <ChatListItemSkeleton key={i} />
           ))}
@@ -98,29 +96,28 @@ export default function ChatPage() {
     }
 
     return (
-      <ul className="divide-y">
+      <ul className="space-y-1 p-2">
         {chats.map((chat) => (
           <li key={chat.id}>
-            <Link href={`/chat/${chat.id}`} className="block transition-colors hover:bg-muted/50">
-              <div className="flex items-center gap-4 p-4">
+            <Link href={`/chat/${chat.id}`} className="block rounded-xl p-3 transition-colors hover:bg-muted/50">
+              <div className="flex items-center gap-4">
                 <Avatar className="h-12 w-12">
-                   {/* This could be a place image in the future */}
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    <MessageSquare />
+                   <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">
+                    {chat.placeName?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1">
-                  <p className="font-bold truncate">{chat.placeName}</p>
-                  <p className="text-sm text-muted-foreground truncate">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold">{chat.placeName}</p>
+                  <p className="truncate text-sm text-muted-foreground">
                     {chat.lastMessage ? (
                       <>
-                        <span className="font-semibold">{chat.lastMessage.senderName?.split(' ')[0]}:</span> {chat.lastMessage.text}
+                        <span className="font-medium">{chat.lastMessage.senderName?.split(' ')[0]}:</span> {chat.lastMessage.text}
                       </>
                     ) : 'No messages yet.'}
                   </p>
                 </div>
                 {chat.lastMessage?.sentAt && (
-                  <time className="text-xs text-muted-foreground self-start">
+                  <time className="ml-2 shrink-0 self-start text-xs text-muted-foreground">
                     {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: true })}
                   </time>
                 )}
@@ -133,9 +130,9 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
         <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
-          <div className="container-main flex items-center h-16">
+          <div className="container-main flex h-16 items-center">
             <h1 className="text-xl font-bold tracking-tight">Chats</h1>
           </div>
         </header>
