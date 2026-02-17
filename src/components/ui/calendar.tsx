@@ -31,22 +31,22 @@ function Calendar({
         ),
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "grid grid-cols-7 w-full",
+        table: "w-full border-collapse",
+        head_row: "flex w-full justify-between",
         head_cell:
-          "text-muted-foreground font-normal text-[0.8rem] text-center w-full flex items-center justify-center",
-        row: "grid grid-cols-7 w-full mt-2",
-        cell: "text-center text-sm p-0 relative w-full flex items-center justify-center [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+          "flex-1 text-center text-[0.8rem] font-normal text-muted-foreground",
+        row: "flex w-full justify-between mt-2",
+        cell: "flex-1 flex justify-center items-center p-0",
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100 mx-auto"
+          "h-9 w-9 p-0 font-normal"
         ),
         day_range_end: "day-range-end",
         day_selected:
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
         day_today: "bg-accent text-accent-foreground",
         day_outside:
-          "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
+          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
         day_disabled: "text-muted-foreground opacity-50",
         day_range_middle:
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
