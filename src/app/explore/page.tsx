@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -10,33 +11,37 @@ import type { Activity } from '@/lib/types';
 import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'firebase/firestore';
 
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Compass } from 'lucide-react';
 
 const ActivitySkeleton = () => (
     <div className="p-4 border-b">
-        <div className="flex items-start gap-4">
+        <div className="flex items-center gap-4">
             <Skeleton className="h-10 w-10 rounded-lg" />
             <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-3/4" />
                 <Skeleton className="h-3 w-1/2" />
                 <Skeleton className="h-3 w-1/4" />
             </div>
-            <Skeleton className="h-8 w-20 rounded-md" />
+            <Skeleton className="h-8 w-8 rounded-full" />
         </div>
     </div>
 );
 
 const EmptyState = () => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
-    <div className="bg-primary/10 p-4 rounded-full">
-      <Compass className="h-10 w-10 text-primary" />
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
+        <div className="bg-primary/10 p-4 rounded-full">
+            <Compass className="h-10 w-10 text-primary" />
+        </div>
+        <h2 className="text-xl font-semibold">Keine Aktivitäten geplant</h2>
+        <p className="text-muted-foreground">
+            Erstelle jetzt einen Spieleabend oder Sport-Treff!
+        </p>
+        <Button asChild>
+            <Link href="/">Jetzt entdecken</Link>
+        </Button>
     </div>
-    <h2 className="text-xl font-semibold">No Upcoming Activities</h2>
-    <p className="text-muted-foreground">
-      There are no activities scheduled right now. Why not create one?
-    </p>
-  </div>
 );
 
 
