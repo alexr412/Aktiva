@@ -9,7 +9,7 @@ import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MapPin, Map as MapIcon, List } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -34,7 +34,7 @@ export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-  const [activityModalPlace, setActivityModalPlace] = useState<Place | null>(null);
+  const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
   const [activeCategory, setActiveCategory] = useState<string[]>(defaultCategories[0].id);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
@@ -118,23 +118,53 @@ export default function Home() {
     }
     setActivityModalPlace(place);
   };
+  
+  const handleOpenCustomActivityModal = () => {
+    if (!user) {
+      router.push('/login');
+      toast({
+        title: 'Login Required',
+        description: 'Please log in to create an activity.',
+      });
+      return;
+    }
+    setActivityModalPlace('custom');
+  };
 
-  const handleCreateActivity = async (date: Date): Promise<boolean> => {
-    if (!activityModalPlace || !user) {
+  const handleCreateActivity = async (date: Date, customLocationName?: string): Promise<boolean> => {
+    if (!user) {
         toast({
             title: 'Error',
-            description: 'Something went wrong. Please try again.',
+            description: 'You must be logged in to create an activity.',
             variant: 'destructive',
         });
         return false;
     }
 
     try {
-      const newActivityRef = await createActivity(activityModalPlace, date, user);
+      const isCustom = activityModalPlace === 'custom';
       
+      if (isCustom && !customLocationName?.trim()) {
+        toast({
+            title: 'Location required',
+            description: 'Please enter a name for your activity location.',
+            variant: 'destructive',
+        });
+        return false;
+      }
+
+      const payload = isCustom 
+        ? { customLocationName: customLocationName!, date, user }
+        : { place: activityModalPlace as Place, date, user };
+
+      // @ts-ignore
+      const newActivityRef = await createActivity(payload);
+      
+      const activityName = isCustom ? customLocationName : (activityModalPlace as Place).name;
+
       toast({
         title: 'Activity Created!',
-        description: `Your activity at ${activityModalPlace.name} is set and a chatroom is ready.`,
+        description: `Your activity at ${activityName} is set and a chatroom is ready.`,
       });
       
       setActivityModalPlace(null);
@@ -226,14 +256,20 @@ export default function Home() {
           <div className="flex flex-col gap-4 px-4 py-4 sm:px-6">
              <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
-                <div className="flex items-center gap-1 rounded-full bg-muted p-1">
-                    <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-full shadow-sm" onClick={() => setViewMode('list')}>
-                        <List className="h-4 w-4" />
-                        <span className="sr-only">List View</span>
-                    </Button>
-                    <Button variant={viewMode === 'map' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-full shadow-sm" onClick={() => setViewMode('map')}>
-                        <MapIcon className="h-4 w-4" />
-                        <span className="sr-only">Map View</span>
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 rounded-full bg-muted p-1">
+                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-full shadow-sm" onClick={() => setViewMode('list')}>
+                            <List className="h-4 w-4" />
+                            <span className="sr-only">List View</span>
+                        </Button>
+                        <Button variant={viewMode === 'map' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-full shadow-sm" onClick={() => setViewMode('map')}>
+                            <MapIcon className="h-4 w-4" />
+                            <span className="sr-only">Map View</span>
+                        </Button>
+                    </div>
+                    <Button variant="default" size="icon" className="h-9 w-9 rounded-full shadow-sm" onClick={handleOpenCustomActivityModal}>
+                        <Plus className="h-5 w-5" />
+                        <span className="sr-only">Create Custom Activity</span>
                     </Button>
                 </div>
             </div>
@@ -253,7 +289,7 @@ export default function Home() {
       </Dialog>
 
       <CreateActivityDialog
-        place={activityModalPlace}
+        place={activityModalPlace === 'custom' ? null : activityModalPlace}
         open={!!activityModalPlace}
         onOpenChange={(open) => !open && setActivityModalPlace(null)}
         onCreateActivity={handleCreateActivity}

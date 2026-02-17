@@ -13,15 +13,16 @@ export interface Place {
 
 export interface Activity {
   id?: string;
-  placeId: string;
+  placeId?: string;
   placeName: string;
-  placeAddress: string;
+  placeAddress?: string;
   activityDate: Timestamp;
   creatorId: string;
   creatorName: string | null;
   creatorPhotoURL: string | null;
   participantIds: string[];
   createdAt: Timestamp;
+  isCustomActivity?: boolean;
 }
 
 export interface Message {

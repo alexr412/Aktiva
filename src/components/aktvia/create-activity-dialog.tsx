@@ -13,31 +13,35 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import type { Place } from '@/lib/types';
 import { CalendarPlus, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface CreateActivityDialogProps {
   place: Place | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateActivity: (date: Date) => Promise<boolean>;
+  onCreateActivity: (date: Date, customLocationName?: string) => Promise<boolean>;
 }
 
 export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivity }: CreateActivityDialogProps) {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isCreating, setIsCreating] = useState(false);
+  const [customLocationName, setCustomLocationName] = useState('');
+
+  const isCustom = !place;
 
   useEffect(() => {
     if (open) {
       setDate(new Date());
       setIsCreating(false);
+      setCustomLocationName('');
     }
   }, [open]);
 
   const handleCreate = async () => {
     if (date) {
       setIsCreating(true);
-      const success = await onCreateActivity(date);
+      const success = await onCreateActivity(date, isCustom ? customLocationName : undefined);
       if (!success) {
-        // If creation failed, reset the button so user can try again.
         setIsCreating(false);
       }
     }
@@ -51,11 +55,27 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
           <div className="bg-primary/10 p-3 rounded-full mb-2">
             <CalendarPlus className="h-6 w-6 text-primary" />
           </div>
-          <SheetTitle className="text-xl font-bold">Create an activity</SheetTitle>
+          <SheetTitle className="text-xl font-bold">{isCustom ? 'Create a custom activity' : 'Create an activity'}</SheetTitle>
           <SheetDescription className="text-base text-muted-foreground">
-            Pick a date to meet up at <br /> <span className="font-semibold text-foreground">{place?.name}</span>.
+            {isCustom ? (
+                'Choose a name and date for your activity.'
+            ) : (
+                <>Pick a date to meet up at <br /> <span className="font-semibold text-foreground">{place?.name}</span>.</>
+            )}
           </SheetDescription>
         </SheetHeader>
+        
+        {isCustom && (
+          <div className="px-6 pb-4">
+            <Input
+              value={customLocationName}
+              onChange={(e) => setCustomLocationName(e.target.value)}
+              placeholder="E.g., Board Game Night at my place"
+              className="text-center"
+            />
+          </div>
+        )}
+
         <div className="w-full flex justify-center px-0 overflow-visible">
             <div className="bg-muted/50 rounded-xl">
                 <Calendar
@@ -71,7 +91,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
           <Button 
             type="button" 
             onClick={handleCreate} 
-            disabled={!date || isCreating} 
+            disabled={!date || isCreating || (isCustom && !customLocationName.trim())} 
             className="w-full h-12 text-base font-semibold"
           >
             {isCreating ? (
