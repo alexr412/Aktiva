@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 const categoryIconMap: { [key: string]: LucideIcon } = {
@@ -58,17 +57,17 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
       onClick={onClick}
       className="cursor-pointer group overflow-hidden rounded-2xl bg-card shadow-md hover:shadow-lg transition-all duration-300 border-none"
     >
-      {/* --- Mobile View: Horizontal Layout --- */}
-      <div className="flex items-stretch md:hidden">
+      {/* --- Unified Mobile-First Layout --- */}
+      <div className="flex items-stretch">
         <div className="relative flex flex-shrink-0 items-center justify-center w-28 bg-muted/30">
             <Icon className="h-10 w-10 text-muted-foreground/70" />
         </div>
-        <div className="flex-1 p-3 flex flex-col justify-center">
-            <div>
-                <h3 className="font-bold leading-tight truncate">{place.name}</h3>
-                <p className="text-sm text-foreground/80 truncate mt-0.5">{place.address}</p>
-            </div>
-            <div className="flex justify-between items-center pt-2 mt-2">
+
+        <div className="flex-1 min-w-0 flex flex-col justify-center p-3">
+            <h3 className="text-base font-semibold truncate w-full">{place.name}</h3>
+            <p className="text-sm text-muted-foreground truncate w-full mt-1">{place.address}</p>
+            
+            <div className="flex items-center justify-between w-full mt-3">
                 <Badge className="capitalize text-xs font-semibold bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">{mainCategory}</Badge>
                 <Button
                     size="icon"
@@ -84,50 +83,6 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                 </Button>
             </div>
         </div>
-      </div>
-
-      {/* --- Desktop View: Vertical Layout --- */}
-      <div className="hidden md:block">
-          <div className="relative flex items-center justify-center w-full aspect-[16/9] bg-muted/30 overflow-hidden">
-              <Icon className="h-16 w-16 text-muted-foreground/80 transition-transform group-hover:scale-110" />
-              <div className="absolute bottom-2 right-2 flex -space-x-2">
-                {/* Placeholder Avatars */}
-                <Avatar className="h-6 w-6 border-2 border-background">
-                    <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026704d" />
-                    <AvatarFallback>A</AvatarFallback>
-                </Avatar>
-                <Avatar className="h-6 w-6 border-2 border-background">
-                    <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026704e" />
-                    <AvatarFallback>B</AvatarFallback>
-                </Avatar>
-                <Avatar className="h-6 w-6 border-2 border-background">
-                    <AvatarImage src="https://i.pravatar.cc/150?u=a042581f4e29026704f" />
-                    <AvatarFallback>C</AvatarFallback>
-                </Avatar>
-            </div>
-          </div>
-
-          <div className="p-4 bg-card">
-            <div className="space-y-1.5">
-              <h3 className="text-lg font-bold leading-tight truncate">{place.name}</h3>
-              <p className="text-sm text-foreground/80 truncate">{place.address}</p>
-            </div>
-            <div className="flex justify-between items-center pt-3 mt-2 border-t border-border/50">
-                <Badge className="capitalize text-xs font-semibold bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">{mainCategory}</Badge>
-                <Button
-                    size="icon"
-                    variant="outline"
-                    className="rounded-full h-9 w-9 bg-background"
-                    onClick={(e) => {
-                    e.stopPropagation();
-                    onAddActivity(place);
-                    }}
-                >
-                    <Plus className="h-4 w-4" />
-                    <span className="sr-only">Create activity</span>
-                </Button>
-            </div>
-          </div>
       </div>
     </Card>
   );
