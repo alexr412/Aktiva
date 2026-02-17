@@ -67,7 +67,6 @@
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
   }
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
