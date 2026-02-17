@@ -6,20 +6,20 @@ import {
   Coffee,
   TreePine,
   ShoppingBag,
-  Bed,
   Landmark,
   Film,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 
 export const categories: { name: string; id: string[]; icon: LucideIcon }[] = [
+  { name: 'Highlights', id: ['tourism,entertainment,leisure'], icon: Sparkles },
+  { name: 'Attractions', id: ['tourism.attraction'], icon: Landmark },
+  { name: 'Parks', id: ['leisure.park'], icon: TreePine },
+  { name: 'Cinemas', id: ['entertainment.cinema'], icon: Film },
   { name: 'Restaurants', id: ['catering.restaurant'], icon: UtensilsCrossed },
   { name: 'Cafes', id: ['catering.cafe'], icon: Coffee },
-  { name: 'Parks', id: ['leisure.park'], icon: TreePine },
-  { name: 'Attractions', id: ['tourism.attraction'], icon: Landmark },
   { name: 'Shopping', id: ['commercial'], icon: ShoppingBag },
-  { name: 'Cinemas', id: ['entertainment.cinema'], icon: Film },
-  { name: 'Hotels', id: ['accommodation.hotel'], icon: Bed },
 ];
 
 type CategoryFiltersProps = {
