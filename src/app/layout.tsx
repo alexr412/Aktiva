@@ -28,8 +28,8 @@ export default function RootLayout({
             <main className="flex-1 relative flex flex-col overflow-hidden">
               {children}
             </main>
+            <BottomNav />
           </div>
-          <BottomNav />
           <Toaster />
         </AuthProvider>
       </body>
