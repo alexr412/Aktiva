@@ -7,7 +7,7 @@ export async function fetchNearbyPlaces(
   categories: string[]
 ): Promise<Place[]> {
   const categoryList = categories.join(',');
-  const url = `https://api.geoapify.com/v2/places?categories=${categoryList}&filter=circle:${lon},${lat},5000&bias=popularity:${lon},${lat}&limit=20&apiKey=${GEOAPIFY_API_KEY}`;
+  const url = `https://api.geoapify.com/v2/places?categories=${categoryList}&filter=circle:${lon},${lat},5000&bias=popularity:${lon},${lat}&limit=50&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
   try {
     const response = await fetch(url);
@@ -35,7 +35,7 @@ export async function fetchNearbyPlaces(
         lon: props.lon,
         rating: rating,
       };
-    }).filter((place: Place) => place.name);
+    });
   } catch (error) {
     console.error('Geoapify fetch error:', error);
     return [];
