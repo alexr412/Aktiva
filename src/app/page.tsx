@@ -207,15 +207,15 @@ export default function Home() {
   return (
     <>
         <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
-          <div className="px-4 flex flex-col gap-4 py-4">
+          <div className="px-6 flex flex-col gap-4 py-4">
             <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
           </div>
         </header>
 
-        <main className="px-4 flex-1 py-6">
+        <div className="flex-1 p-6">
             {renderContent()}
-        </main>
+        </div>
 
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
             <DialogContent className="max-h-dvh flex flex-col p-0 w-full max-w-lg gap-0">
