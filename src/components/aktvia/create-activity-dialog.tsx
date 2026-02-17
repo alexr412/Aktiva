@@ -56,7 +56,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
             Pick a date to meet up at <br /> <span className="font-semibold text-foreground">{place?.name}</span>.
           </SheetDescription>
         </SheetHeader>
-        <div className="px-2">
+        <div className="w-full flex justify-center px-0 overflow-visible">
             <div className="bg-muted/50 rounded-xl">
                 <Calendar
                     mode="single"
