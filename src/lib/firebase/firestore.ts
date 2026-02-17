@@ -86,13 +86,23 @@ export async function joinActivity(activityId: string, user: User) {
       }
 
       const activityData = activityDoc.data();
-      // Server-side validation
+      
+      // Server-side validation: Creator cannot join
       if (activityData.creatorId === user.uid) {
-        throw "Creator cannot join their own activity.";
+        // This case should be handled by the UI, but as a safeguard.
+        throw "As the creator, you are already part of this activity.";
       }
+      
+      // Server-side validation: Already a participant
       if (activityData.participantIds.includes(user.uid)) {
         console.warn("User is already a participant.");
         return; // Idempotent, just return
+      }
+
+      // Speicher-Limitierung (Storage Limitation)
+      const MAX_PARTICIPANTS = 50;
+      if (activityData.participantIds.length >= MAX_PARTICIPANTS) {
+        throw `This activity has reached its maximum of ${MAX_PARTICIPANTS} participants.`;
       }
 
       // Update activity
@@ -111,9 +121,14 @@ export async function joinActivity(activityId: string, user: User) {
     });
   } catch (e: any) {
     console.error("Join Activity Transaction failed: ", e);
-    if (e === "Creator cannot join their own activity." || e === "Activity does not exist!") {
+     // Propagate specific, user-facing errors
+    if (typeof e === 'string') {
         throw new Error(e);
     }
+    if (e instanceof Error) {
+        throw e;
+    }
+    // Generic fallback error
     throw new Error("Could not join the activity. Please try again.");
   }
 }
