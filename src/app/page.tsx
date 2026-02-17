@@ -207,13 +207,13 @@ export default function Home() {
   return (
     <>
         <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
-          <div className="px-6 flex flex-col gap-4 py-4">
+          <div className="px-4 sm:px-6 flex flex-col gap-4 py-4">
             <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
           </div>
         </header>
 
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-4 sm:p-6">
             {renderContent()}
         </div>
 
