@@ -56,7 +56,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
             Pick a date to meet up at <br /> <span className="font-semibold text-foreground">{place?.name}</span>.
           </SheetDescription>
         </SheetHeader>
-        <div className="px-6">
+        <div className="px-2">
             <div className="bg-muted/50 rounded-xl">
                 <Calendar
                     mode="single"
@@ -67,7 +67,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                 />
           </div>
         </div>
-        <SheetFooter className="p-6 sm:justify-center">
+        <SheetFooter className="py-6 px-2 sm:justify-center">
           <Button 
             type="button" 
             onClick={handleCreate} 
