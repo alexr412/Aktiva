@@ -206,6 +206,7 @@ export default function Home() {
 
   return (
     <>
+      <div className="flex h-full flex-col">
         <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
           <div className="px-4 sm:px-6 flex flex-col gap-4 py-4">
             <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
@@ -213,22 +214,25 @@ export default function Home() {
           </div>
         </header>
 
-        <div className="flex-1 p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 sm:p-6">
             {renderContent()}
+          </div>
         </div>
+      </div>
 
-        <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-            <DialogContent className="max-h-dvh flex flex-col p-0 w-full max-w-lg gap-0">
-                {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
-            </DialogContent>
-        </Dialog>
+      <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
+          <DialogContent className="max-h-dvh flex flex-col p-0 w-full max-w-lg gap-0">
+              {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
+          </DialogContent>
+      </Dialog>
 
-        <CreateActivityDialog
-          place={activityModalPlace}
-          open={!!activityModalPlace}
-          onOpenChange={(open) => !open && setActivityModalPlace(null)}
-          onCreateActivity={handleCreateActivity}
-        />
+      <CreateActivityDialog
+        place={activityModalPlace}
+        open={!!activityModalPlace}
+        onOpenChange={(open) => !open && setActivityModalPlace(null)}
+        onCreateActivity={handleCreateActivity}
+      />
     </>
   );
 }
