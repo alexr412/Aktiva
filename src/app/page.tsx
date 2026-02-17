@@ -9,12 +9,14 @@ import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MapPin } from 'lucide-react';
+import { MapPin, Map as MapIcon, List } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { createActivity } from '@/lib/firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { MapView } from '@/components/aktvia/map-view';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -36,6 +38,7 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState<string[]>(defaultCategories[0].id);
   const [isLoading, setIsLoading] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -169,39 +172,58 @@ export default function Home() {
       );
     }
 
-    if (isLoading) {
-      return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {Array.from({ length: 8 }).map((_, i) => (
-                <CardSkeleton key={i} />
-            ))}
-        </div>
-      );
-    }
-    
-    if (places.length === 0) {
-        return (
-            <div className="flex h-full w-full items-center justify-center p-6 text-center">
-                <div className="space-y-2">
-                    <h3 className="font-semibold text-lg">No places found</h3>
-                    <p className="text-muted-foreground">Try a different category or check back later!</p>
-                </div>
+    if (viewMode === 'list') {
+        if (isLoading) {
+          return (
+            <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                {Array.from({ length: 8 }).map((_, i) => (
+                    <CardSkeleton key={i} />
+                ))}
             </div>
-        )
+          );
+        }
+        
+        if (places.length === 0) {
+            return (
+                <div className="flex h-full w-full items-center justify-center p-6 text-center">
+                    <div className="space-y-2">
+                        <h3 className="font-semibold text-lg">No places found</h3>
+                        <p className="text-muted-foreground">Try a different category or check back later!</p>
+                    </div>
+                </div>
+            )
+        }
+
+        return (
+            <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                {places.map(place => (
+                    <PlaceCard 
+                      key={place.id} 
+                      place={place} 
+                      onClick={() => handlePlaceSelect(place)}
+                      onAddActivity={() => handleOpenActivityModal(place)}
+                    />
+                ))}
+            </div>
+        );
     }
 
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {places.map(place => (
-                <PlaceCard 
-                  key={place.id} 
-                  place={place} 
-                  onClick={() => handlePlaceSelect(place)}
-                  onAddActivity={() => handleOpenActivityModal(place)}
-                />
-            ))}
-        </div>
-    );
+    if (viewMode === 'map') {
+        if (isLoading || !userLocation) {
+             return (
+                <div className="flex h-full w-full items-center justify-center">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <MapPin className="h-8 w-8 animate-bounce" />
+                        <p>{userLocation ? 'Loading places...' : 'Getting your location...'}</p>
+                    </div>
+                </div>
+              );
+        }
+
+        return (
+            <MapView places={places} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />
+        )
+    }
   };
 
   return (
@@ -209,15 +231,25 @@ export default function Home() {
       <div className="flex h-full w-full flex-col">
         <header className="flex-none w-full border-b bg-background z-20">
           <div className="flex flex-col gap-4 px-4 py-4 sm:px-6">
-            <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
+             <div className="flex items-center justify-between">
+                <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
+                <div className="flex items-center gap-1 rounded-full bg-muted p-1">
+                    <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-full shadow-sm" onClick={() => setViewMode('list')}>
+                        <List className="h-4 w-4" />
+                        <span className="sr-only">List View</span>
+                    </Button>
+                    <Button variant={viewMode === 'map' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-full shadow-sm" onClick={() => setViewMode('map')}>
+                        <MapIcon className="h-4 w-4" />
+                        <span className="sr-only">Map View</span>
+                    </Button>
+                </div>
+            </div>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto w-full pb-[100px]">
-          <div className="p-4 sm:p-6">
-            {renderContent()}
-          </div>
+        <div className={`flex-1 w-full pb-[100px] ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
+          {renderContent()}
         </div>
       </div>
 
