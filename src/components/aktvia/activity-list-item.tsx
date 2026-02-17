@@ -6,6 +6,7 @@ import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { Home, Loader2, MapPin, ChevronRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface ActivityListItemProps {
     activity: Activity;
@@ -51,7 +52,10 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     <Icon className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-base truncate">{activity.placeName}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                        <p className="font-semibold text-base truncate">{activity.placeName}</p>
+                        {activity.isCustomActivity && <Badge variant="secondary">Community</Badge>}
+                    </div>
                      <p className="text-sm text-muted-foreground">
                         {format(activity.activityDate.toDate(), "eee, MMM d 'at' p")}
                     </p>

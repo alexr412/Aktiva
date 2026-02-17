@@ -42,6 +42,7 @@ export async function createActivity({
   const activityRef = doc(collection(db, 'activities'));
   console.log('Generated activityRef with id:', activityRef.id);
   
+  const isCustom = !place;
   const activityData = {
     placeId: place?.id || null,
     placeName: place?.name || customLocationName,
@@ -52,7 +53,9 @@ export async function createActivity({
     creatorPhotoURL: user.photoURL,
     participantIds: [user.uid],
     createdAt: serverTimestamp(),
-    isCustomActivity: !place,
+    lastInteractionAt: serverTimestamp(),
+    isCustomActivity: isCustom,
+    categories: isCustom ? ["user_event"] : (place?.categories || []),
   };
   batch.set(activityRef, activityData);
 

@@ -24,6 +24,7 @@ export interface Activity {
   createdAt: Timestamp;
   isCustomActivity?: boolean;
   lastInteractionAt?: Timestamp;
+  categories?: string[];
 }
 
 export interface Message {

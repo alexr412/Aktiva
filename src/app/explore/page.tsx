@@ -9,11 +9,11 @@ import { db } from '@/lib/firebase/client';
 import { joinActivity } from '@/lib/firebase/firestore';
 import type { Activity } from '@/lib/types';
 import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'firebase/firestore';
-
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Compass } from 'lucide-react';
+import { CategoryFilters, categories as defaultCategories } from '@/components/aktvia/category-filters';
 
 const ActivitySkeleton = () => (
     <div className="p-4 border-b">
@@ -50,8 +50,10 @@ export default function ExplorePage() {
     const { toast } = useToast();
     const router = useRouter();
 
-    const [activities, setActivities] = useState<Activity[]>([]);
+    const [allActivities, setAllActivities] = useState<Activity[]>([]);
+    const [filteredActivities, setFilteredActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeCategory, setActiveCategory] = useState<string[]>(defaultCategories[0].id);
 
     useEffect(() => {
         if (!db) return;
@@ -64,7 +66,7 @@ export default function ExplorePage() {
 
         const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
             const fetchedActivities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
-            setActivities(fetchedActivities);
+            setAllActivities(fetchedActivities);
             setLoading(false);
         }, (error) => {
             console.error("Error fetching activities: ", error);
@@ -74,6 +76,19 @@ export default function ExplorePage() {
 
         return () => unsubscribe();
     }, [toast]);
+
+    useEffect(() => {
+        let newFiltered: Activity[];
+        if (activeCategory.includes('user_event')) {
+            newFiltered = allActivities.filter(act => act.categories?.includes('user_event'));
+        } else {
+            // Highlights or other geo-categories
+            newFiltered = allActivities.filter(act => 
+                !act.isCustomActivity && act.categories?.some(cat => activeCategory.includes(cat.split('.')[0]))
+            );
+        }
+        setFilteredActivities(newFiltered);
+    }, [allActivities, activeCategory]);
 
     const handleJoin = async (activityId: string) => {
         if (!user) {
@@ -91,7 +106,10 @@ export default function ExplorePage() {
             throw error;
         }
     };
-
+    
+    const handleCategoryChange = (categoryId: string[]) => {
+      setActiveCategory(categoryId);
+    };
 
     const renderContent = () => {
         if (loading) {
@@ -104,13 +122,13 @@ export default function ExplorePage() {
             );
         }
 
-        if (activities.length === 0) {
+        if (filteredActivities.length === 0) {
             return <EmptyState />;
         }
 
         return (
              <ul className="divide-y divide-border">
-                {activities.map(activity => (
+                {filteredActivities.map(activity => (
                     <li key={activity.id}>
                         <ActivityListItem
                             activity={activity}
@@ -126,8 +144,9 @@ export default function ExplorePage() {
     return (
         <div className="flex h-full flex-col">
             <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
-              <div className="px-4 flex h-16 items-center">
+              <div className="px-4 py-4 space-y-4">
                 <h1 className="text-2xl font-bold tracking-tight">Explore Activities</h1>
+                <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
               </div>
             </header>
             <div className="flex-1 overflow-y-auto pb-20">
