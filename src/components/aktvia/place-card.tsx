@@ -14,7 +14,6 @@ import {
   Plus,
   type LucideIcon,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 
@@ -50,14 +49,12 @@ type PlaceCardProps = {
 
 export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const Icon = getCategoryIcon(place.categories);
-    const mainCategory = place.categories[0]?.split('.')[0].replace(/_/g, ' ') || 'Place';
 
   return (
     <Card
       onClick={onClick}
-      className="cursor-pointer group overflow-hidden rounded-2xl bg-card shadow-md hover:shadow-lg transition-all duration-300 border-none"
+      className="cursor-pointer group overflow-hidden rounded-2xl bg-card shadow-md hover:shadow-lg transition-all duration-300 border-none flex flex-col"
     >
-      {/* --- Unified Mobile-First Layout --- */}
       <div className="flex items-stretch">
         <div className="relative flex flex-shrink-0 items-center justify-center w-28 bg-muted/30">
             <Icon className="h-10 w-10 text-muted-foreground/70" />
@@ -66,22 +63,32 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         <div className="flex-1 min-w-0 flex flex-col justify-center p-3">
             <h3 className="text-base font-semibold truncate w-full">{place.name}</h3>
             <p className="text-sm text-muted-foreground truncate w-full mt-1">{place.address}</p>
-            
-            <div className="flex items-center justify-between w-full mt-3">
-                <Badge className="capitalize text-xs font-semibold bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">{mainCategory}</Badge>
-                <Button
-                    size="icon"
-                    variant="outline"
-                    className="rounded-full h-8 w-8 bg-background"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onAddActivity(place);
-                    }}
+        </div>
+      </div>
+      <div className="flex-1 flex flex-col justify-end p-3 pt-0">
+        <div className="flex items-end justify-between gap-2">
+            <div className="flex flex-wrap gap-2 w-full">
+              {place.categories && place.categories.map((tag, index) => (
+                <span 
+                  key={index} 
+                  className="inline-flex items-center px-2 py-1 text-[10px] font-medium bg-secondary text-secondary-foreground rounded-md whitespace-nowrap"
                 >
-                    <Plus className="h-4 w-4" />
-                    <span className="sr-only">Create activity</span>
-                </Button>
+                  {tag}
+                </span>
+              ))}
             </div>
+            <Button
+                size="icon"
+                variant="outline"
+                className="rounded-full h-8 w-8 bg-background flex-shrink-0"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onAddActivity(place);
+                }}
+            >
+                <Plus className="h-4 w-4" />
+                <span className="sr-only">Create activity</span>
+            </Button>
         </div>
       </div>
     </Card>
