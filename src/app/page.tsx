@@ -149,7 +149,7 @@ export default function Home() {
   const renderContent = () => {
     if (locationError) {
       return (
-        <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center p-6 text-center">
+        <div className="flex h-full w-full items-center justify-center p-6 text-center">
             <Card className="max-w-sm">
                 <CardHeader><CardTitle className="text-destructive">Location Error</CardTitle></CardHeader>
                 <CardContent>{locationError}</CardContent>
@@ -160,7 +160,7 @@ export default function Home() {
 
     if (!userLocation && !isLoading) {
       return (
-        <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center">
+        <div className="flex h-full w-full items-center justify-center">
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
                 <MapPin className="h-8 w-8 animate-bounce" />
                 <p>Getting your location...</p>
@@ -181,7 +181,7 @@ export default function Home() {
     
     if (places.length === 0) {
         return (
-            <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center p-6 text-center">
+            <div className="flex h-full w-full items-center justify-center p-6 text-center">
                 <div className="space-y-2">
                     <h3 className="font-semibold text-lg">No places found</h3>
                     <p className="text-muted-foreground">Try a different category or check back later!</p>
@@ -207,14 +207,14 @@ export default function Home() {
   return (
     <>
       <div className="flex h-full flex-col">
-        <header className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm">
-           <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 sm:px-6">
+        <header className="w-full border-b bg-background">
+          <div className="flex flex-col gap-4 px-4 py-4 sm:px-6">
             <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto overflow-x-hidden pt-[120px]">
+        <div className="flex-1 overflow-y-auto">
           <div className="p-4 sm:p-6">
             {renderContent()}
           </div>
