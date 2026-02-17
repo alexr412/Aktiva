@@ -57,7 +57,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
           </SheetDescription>
         </SheetHeader>
         <div className="px-6">
-            <div className="bg-muted/50 rounded-xl flex justify-center">
+            <div className="bg-muted/50 rounded-xl">
                 <Calendar
                     mode="single"
                     selected={date}
