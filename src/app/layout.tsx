@@ -24,8 +24,8 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased bg-secondary")}>
         <AuthProvider>
-          <div className="relative mx-auto flex min-h-screen w-full max-w-3xl flex-col bg-background">
-            <main className="flex-1 pb-[72px]">
+          <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
+            <main className="flex-1 relative flex flex-col overflow-hidden">
               {children}
             </main>
           </div>

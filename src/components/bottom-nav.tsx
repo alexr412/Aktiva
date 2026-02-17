@@ -20,8 +20,8 @@ export function BottomNav() {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 z-50 w-full border-t border-border/80 bg-background shadow-[0_-2px_8px_rgba(0,0,0,0.05)]">
-      <nav className="mx-auto flex h-[72px] max-w-3xl items-center justify-around">
+    <div className="fixed bottom-0 left-0 w-full z-50 bg-background border-t">
+      <nav className="flex h-[72px] items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
