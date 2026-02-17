@@ -50,6 +50,31 @@ type PlaceCardProps = {
 export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const Icon = getCategoryIcon(place.categories);
 
+    const TAG_BLACKLIST = [
+      "catering", "catering.restaurant", "catering.cafe", "catering.fast_food",
+      "tourism", "tourism.sights", "tourism.attraction",
+      "leisure", "leisure.park", 
+      "entertainment", "entertainment.cinema",
+      "commercial", "commercial.shopping_mall",
+      "wheelchair", "wheelchair.yes", "wheelchair.limited", "wheelchair.no",
+      "internet_access", "internet_access.free",
+      "building", "building.historic", "fee", "fee.yes", "fee.no"
+    ];
+
+    const formatTag = (tag: string) => {
+      const parts = tag.split('.');
+      const semanticPart = parts[parts.length - 1];
+      return semanticPart.charAt(0).toUpperCase() + semanticPart.slice(1).replace(/_/g, ' ');
+    };
+
+    const cleanTags = place.categories
+      ? place.categories
+          .filter(tag => !TAG_BLACKLIST.includes(tag))
+          .map(formatTag)
+          .filter((value, index, self) => self.indexOf(value) === index)
+          .slice(0, 3)
+      : [];
+
   return (
     <Card
       onClick={onClick}
@@ -67,8 +92,8 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
       </div>
       <div className="flex-1 flex flex-col justify-end p-3 pt-0">
         <div className="flex items-end justify-between gap-2">
-            <div className="flex flex-wrap gap-2 w-full">
-              {place.categories && place.categories.map((tag, index) => (
+            <div className="flex flex-wrap gap-2 mt-2 w-full overflow-hidden">
+              {cleanTags.map((tag, index) => (
                 <span 
                   key={index} 
                   className="inline-flex items-center px-2 py-1 text-[10px] font-medium bg-secondary text-secondary-foreground rounded-md whitespace-nowrap"
