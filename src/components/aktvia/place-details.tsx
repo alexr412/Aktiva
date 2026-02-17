@@ -113,6 +113,8 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
             setJoiningActivityId(null);
         }
     };
+    
+    const placeActivities = activities.filter(act => act.placeId === place.id);
 
     return (
         <div className="flex flex-col h-full relative bg-background">
@@ -173,13 +175,13 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                 <Skeleton className="h-16 w-full rounded-lg" />
                             </div>
                         )}
-                        {!loadingActivities && activities.length === 0 && (
+                        {!loadingActivities && placeActivities.length === 0 && (
                             <p className="text-sm text-muted-foreground text-center py-4">
                                 No activities scheduled here yet.
                             </p>
                         )}
                         <div className="space-y-3">
-                            {activities.map(activity => {
+                            {placeActivities.map(activity => {
                                 if (!activity.id) return null;
                                 const isCreator = user?.uid === activity.creatorId;
                                 const isParticipant = activity.participantIds.includes(user?.uid || '---');
