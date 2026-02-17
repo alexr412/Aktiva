@@ -80,11 +80,12 @@ export default function ExplorePage() {
     useEffect(() => {
         let newFiltered: Activity[];
         if (activeCategory.includes('user_event')) {
+            // Handles "Community" filter
             newFiltered = allActivities.filter(act => act.categories?.includes('user_event'));
         } else {
-            // Highlights or other geo-categories
+            // Handles all other Geo-based filters (Highlights, Sport, etc.)
             newFiltered = allActivities.filter(act => 
-                !act.isCustomActivity && act.categories?.some(cat => activeCategory.includes(cat.split('.')[0]))
+                !act.isCustomActivity && act.categories?.some(cat => activeCategory.includes(cat) || activeCategory.includes(cat.split('.')[0]))
             );
         }
         setFilteredActivities(newFiltered);
