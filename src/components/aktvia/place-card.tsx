@@ -50,29 +50,16 @@ type PlaceCardProps = {
 export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const Icon = getCategoryIcon(place.categories);
 
-    const TAG_BLACKLIST = [
-      "catering", "catering.restaurant", "catering.cafe", "catering.fast_food",
-      "tourism", "tourism.sights", "tourism.attraction",
-      "leisure", "leisure.park", 
-      "entertainment", "entertainment.cinema",
-      "commercial", "commercial.shopping_mall",
-      "wheelchair", "wheelchair.yes", "wheelchair.limited", "wheelchair.no",
-      "internet_access", "internet_access.free",
-      "building", "building.historic", "fee", "fee.yes", "fee.no"
-    ];
-
     const formatTag = (tag: string) => {
       const parts = tag.split('.');
       const semanticPart = parts[parts.length - 1];
       return semanticPart.charAt(0).toUpperCase() + semanticPart.slice(1).replace(/_/g, ' ');
     };
-
+    
     const cleanTags = place.categories
       ? place.categories
-          .filter(tag => !TAG_BLACKLIST.includes(tag))
           .map(formatTag)
           .filter((value, index, self) => self.indexOf(value) === index)
-          .slice(0, 3)
       : [];
 
   return (
