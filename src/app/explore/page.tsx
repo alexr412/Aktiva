@@ -52,7 +52,6 @@ export default function ExplorePage() {
 
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
-    const [joiningActivityId, setJoiningActivityId] = useState<string|null>(null);
 
     useEffect(() => {
         if (!db) return;
@@ -80,9 +79,8 @@ export default function ExplorePage() {
         if (!user) {
             toast({ title: 'Login Required', description: 'You must be logged in to join an activity.' });
             router.push('/login');
-            return;
+            throw new Error('Login Required');
         }
-        setJoiningActivityId(activityId);
         try {
             await joinActivity(activityId, user);
             toast({ title: 'Success!', description: 'You have joined the activity. You can find it in your chats.' });
@@ -90,8 +88,7 @@ export default function ExplorePage() {
         } catch (error: any) {
             console.error(error);
             toast({ title: 'Error', description: error.message || 'Failed to join activity.', variant: 'destructive' });
-        } finally {
-            setJoiningActivityId(null);
+            throw error;
         }
     };
 
@@ -119,7 +116,6 @@ export default function ExplorePage() {
                             activity={activity}
                             user={user}
                             onJoin={handleJoin}
-                            isJoining={joiningActivityId === activity.id}
                         />
                     </li>
                 ))}

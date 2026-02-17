@@ -23,6 +23,7 @@ export interface Activity {
   participantIds: string[];
   createdAt: Timestamp;
   isCustomActivity?: boolean;
+  lastInteractionAt?: Timestamp;
 }
 
 export interface Message {

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -9,12 +10,12 @@ import { Home, Loader2, MapPin, ChevronRight } from 'lucide-react';
 interface ActivityListItemProps {
     activity: Activity;
     user: User | null;
-    onJoin: (activityId: string) => void;
-    isJoining: boolean;
+    onJoin: (activityId: string) => Promise<void>;
 }
 
-export function ActivityListItem({ activity, user, onJoin, isJoining }: ActivityListItemProps) {
+export function ActivityListItem({ activity, user, onJoin }: ActivityListItemProps) {
     const router = useRouter();
+    const [isJoining, setIsJoining] = useState(false);
 
     if (!activity.id) return null;
 
@@ -22,13 +23,21 @@ export function ActivityListItem({ activity, user, onJoin, isJoining }: Activity
     
     const Icon = activity.isCustomActivity ? Home : MapPin;
 
-    const handleClick = () => {
+    const handleClick = async () => {
         if (isJoining) return; // Prevent multiple clicks
 
         if (isParticipant) {
             router.push(`/chat/${activity.id}`);
         } else {
-            onJoin(activity.id!);
+            if (!activity.id) return;
+            setIsJoining(true);
+            try {
+                await onJoin(activity.id);
+            } catch (error) {
+                // If onJoin fails, stop the loading spinner.
+                // The parent component is responsible for showing an error toast.
+                setIsJoining(false);
+            }
         }
     };
 

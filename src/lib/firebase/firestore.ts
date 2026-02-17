@@ -122,7 +122,8 @@ export async function joinActivity(activityId: string, user: User) {
 
       // Update activity
       transaction.update(activityRef, {
-        participantIds: arrayUnion(user.uid)
+        participantIds: arrayUnion(user.uid),
+        lastInteractionAt: serverTimestamp(),
       });
 
       // Update chat
