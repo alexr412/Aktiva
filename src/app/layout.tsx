@@ -28,8 +28,8 @@ export default function RootLayout({
             <main className="flex-1 pb-[72px]">
               {children}
             </main>
-            <BottomNav />
           </div>
+          <BottomNav />
           <Toaster />
         </AuthProvider>
       </body>
