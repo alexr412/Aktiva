@@ -133,7 +133,7 @@ export default function ChatPage() {
   return (
     <div className="flex h-full flex-col">
         <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
-          <div className="container-main flex h-16 items-center">
+          <div className="px-4 flex h-16 items-center">
             <h1 className="text-2xl font-bold tracking-tight">Chats</h1>
           </div>
         </header>
