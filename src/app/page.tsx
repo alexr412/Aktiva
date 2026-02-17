@@ -37,7 +37,6 @@ export default function Home() {
   const [activityModalPlace, setActivityModalPlace] = useState<Place | null>(null);
   const [activeCategory, setActiveCategory] = useState<string[]>(defaultCategories[0].id);
   const [isLoading, setIsLoading] = useState(true);
-  const [locationError, setLocationError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   const { toast } = useToast();
@@ -53,19 +52,24 @@ export default function Home() {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           });
-          setLocationError(null);
         },
         (error) => {
           console.error('Geolocation error:', error);
-          setLocationError('Could not get your location. Please enable location services and refresh.');
-          setIsLoading(false);
+          toast({
+            title: 'Location Error',
+            description: 'Could not get location. Using default location (Bremerhaven).',
+          });
+          setUserLocation({ lat: 53.5451, lng: 8.5746 });
         }
       );
     } else {
-      setLocationError('Geolocation is not supported by this browser.');
-      setIsLoading(false);
+      toast({
+        title: 'Location Error',
+        description: 'Geolocation not supported. Using default location (Bremerhaven).',
+      });
+      setUserLocation({ lat: 53.5451, lng: 8.5746 });
     }
-  }, []);
+  }, [toast]);
 
   const loadPlaces = useCallback(async (lat: number, lng: number, category: string[]) => {
     setIsLoading(true);
@@ -150,17 +154,6 @@ export default function Home() {
 
 
   const renderContent = () => {
-    if (locationError) {
-      return (
-        <div className="flex h-full w-full items-center justify-center p-6 text-center">
-            <Card className="max-w-sm">
-                <CardHeader><CardTitle className="text-destructive">Location Error</CardTitle></CardHeader>
-                <CardContent>{locationError}</CardContent>
-            </Card>
-        </div>
-      );
-    }
-
     if (!userLocation && !isLoading) {
       return (
         <div className="flex h-full w-full items-center justify-center">
