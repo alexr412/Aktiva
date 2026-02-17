@@ -43,9 +43,9 @@ export async function createActivity({
   console.log('Generated activityRef with id:', activityRef.id);
   
   const activityData = {
-    placeId: place?.id,
+    placeId: place?.id || null,
     placeName: place?.name || customLocationName,
-    placeAddress: place?.address,
+    placeAddress: place?.address || null,
     activityDate: Timestamp.fromDate(date),
     creatorId: user.uid,
     creatorName: user.displayName,
