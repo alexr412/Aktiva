@@ -191,7 +191,7 @@ export default function ChatRoomPage() {
           </Button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 pb-24">
+        <div className="flex-1 overflow-y-auto p-4 pb-40">
           <div className="flex flex-col">
             {messages.map((message, index) => {
               const prevMessage = messages[index - 1];
@@ -225,7 +225,7 @@ export default function ChatRoomPage() {
         </div>
       </div>
 
-      <footer className="fixed bottom-[72px] left-1/2 z-10 w-full max-w-3xl -translate-x-1/2 border-t bg-background/95 backdrop-blur-sm">
+      <footer className="fixed bottom-[72px] left-0 right-0 z-10 mx-auto w-full max-w-3xl border-t bg-background/95 backdrop-blur-sm">
         <div className="p-2 sm:p-4">
           <form onSubmit={handleSendMessage} className="relative">
             <Input
