@@ -1,3 +1,12 @@
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
+import { joinActivity } from '@/lib/firebase/firestore';
+import { db } from '@/lib/firebase/client';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { format } from 'date-fns';
+
 import {
     Star,
     ChevronLeft,
@@ -10,12 +19,17 @@ import {
     Film,
     Building,
     type LucideIcon,
+    Users,
+    LogIn,
+    Loader2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { Place } from '@/lib/types';
+import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { Place, Activity } from '@/lib/types';
 import { AiRecommendation } from './ai-recommendation';
 
 const categoryIconMap: { [key: string]: LucideIcon } = {
@@ -51,6 +65,54 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
     const formattedCategories = place.categories
         .map(cat => cat.split('.')[0])
         .filter((value, index, self) => self.indexOf(value) === index);
+
+    const { user } = useAuth();
+    const router = useRouter();
+    const { toast } = useToast();
+    const [activities, setActivities] = useState<Activity[]>([]);
+    const [loadingActivities, setLoadingActivities] = useState(true);
+    const [joiningActivityId, setJoiningActivityId] = useState<string|null>(null);
+
+    useEffect(() => {
+        if (!db || !place.id) return;
+
+        setLoadingActivities(true);
+        const activitiesQuery = query(
+            collection(db, 'activities'),
+            where('placeId', '==', place.id)
+        );
+
+        const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
+            const fetchedActivities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
+            fetchedActivities.sort((a, b) => a.activityDate.toMillis() - b.activityDate.toMillis());
+            setActivities(fetchedActivities);
+            setLoadingActivities(false);
+        }, (error) => {
+            console.error("Error fetching activities: ", error);
+            toast({ title: "Error", description: "Could not load activities for this place.", variant: 'destructive'});
+            setLoadingActivities(false);
+        });
+
+        return () => unsubscribe();
+    }, [place.id, toast]);
+
+    const handleJoin = async (activityId: string) => {
+        if (!user) {
+            toast({ title: 'Login Required', description: 'You must be logged in to join an activity.' });
+            router.push('/login');
+            return;
+        }
+        setJoiningActivityId(activityId);
+        try {
+            await joinActivity(activityId, user);
+            toast({ title: 'Success!', description: 'You have joined the activity.' });
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: 'Error', description: error.message || 'Failed to join activity.', variant: 'destructive' });
+        } finally {
+            setJoiningActivityId(null);
+        }
+    };
 
     return (
         <div className="flex flex-col h-full relative bg-background">
@@ -98,6 +160,72 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                         </div>
                     </div>
                     
+                    <Separator />
+
+                    <div className="space-y-4">
+                        <h2 className="text-xl font-bold flex items-center gap-2">
+                            <Users className="h-5 w-5" />
+                            <span>Upcoming Activities</span>
+                        </h2>
+                        {loadingActivities && (
+                            <div className="space-y-3">
+                                <Skeleton className="h-16 w-full rounded-lg" />
+                                <Skeleton className="h-16 w-full rounded-lg" />
+                            </div>
+                        )}
+                        {!loadingActivities && activities.length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                                No activities scheduled here yet.
+                            </p>
+                        )}
+                        <div className="space-y-3">
+                            {activities.map(activity => {
+                                if (!activity.id) return null;
+                                const isCreator = user?.uid === activity.creatorId;
+                                const isParticipant = activity.participantIds.includes(user?.uid || '---');
+                                
+                                return (
+                                    <Card key={activity.id} className="p-3">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <p className="font-semibold text-base">
+                                                    {format(activity.activityDate.toDate(), 'eee, MMM d')} at {format(activity.activityDate.toDate(), 'p')}
+                                                </p>
+                                                <p className="text-sm text-muted-foreground truncate">
+                                                    {activity.participantIds.length} participant{activity.participantIds.length !== 1 ? 's' : ''} &bull; by {activity.creatorName}
+                                                </p>
+                                            </div>
+                                            <div className="flex-shrink-0">
+                                                {isCreator || isParticipant ? (
+                                                    <Button size="sm" variant="outline" onClick={() => router.push(`/chat/${activity.id}`)}>
+                                                        View Chat
+                                                    </Button>
+                                                ) : (
+                                                    <Button 
+                                                        size="sm"
+                                                        onClick={() => handleJoin(activity.id!)} 
+                                                        disabled={joiningActivityId === activity.id}
+                                                        className="w-24"
+                                                    >
+                                                        {joiningActivityId === activity.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <>
+                                                                <LogIn className="mr-2 h-4 w-4" />
+                                                                Join
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+
                     <Separator />
 
                     <AiRecommendation place={place} />

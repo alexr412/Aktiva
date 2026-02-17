@@ -8,6 +8,8 @@ import {
   Timestamp,
   serverTimestamp,
   getDocs,
+  arrayUnion,
+  runTransaction,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import type { Place } from '@/lib/types';
@@ -66,6 +68,53 @@ export async function createActivity(place: Place, date: Date, user: User) {
         throw new Error('Database permission denied. Please check your Firestore security rules.');
     }
     throw new Error(error.message || 'Could not create activity. Please try again later.');
+  }
+}
+
+export async function joinActivity(activityId: string, user: User) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  if (!user) throw new Error('User is not authenticated.');
+
+  const activityRef = doc(db, 'activities', activityId);
+  const chatRef = doc(db, 'chats', activityId);
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const activityDoc = await transaction.get(activityRef);
+      if (!activityDoc.exists()) {
+        throw "Activity does not exist!";
+      }
+
+      const activityData = activityDoc.data();
+      // Server-side validation
+      if (activityData.creatorId === user.uid) {
+        throw "Creator cannot join their own activity.";
+      }
+      if (activityData.participantIds.includes(user.uid)) {
+        console.warn("User is already a participant.");
+        return; // Idempotent, just return
+      }
+
+      // Update activity
+      transaction.update(activityRef, {
+        participantIds: arrayUnion(user.uid)
+      });
+
+      // Update chat
+      transaction.update(chatRef, {
+        participantIds: arrayUnion(user.uid),
+        [`participantDetails.${user.uid}`]: {
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+        }
+      });
+    });
+  } catch (e: any) {
+    console.error("Join Activity Transaction failed: ", e);
+    if (e === "Creator cannot join their own activity." || e === "Activity does not exist!") {
+        throw new Error(e);
+    }
+    throw new Error("Could not join the activity. Please try again.");
   }
 }
 
