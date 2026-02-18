@@ -4,7 +4,9 @@ import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { getUserProfile, updateUserProfile } from '@/lib/firebase/firestore';
+import { getUserProfile } from '@/lib/firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 import type { UserProfile } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
@@ -74,16 +76,21 @@ export default function EditProfilePage() {
 
     startSaving(async () => {
       try {
-        const updateData: Partial<UserProfile> = {
-          ...formData,
-          age: formData.age ? parseInt(String(formData.age), 10) : undefined,
+        const updateData = {
+          displayName: formData.displayName,
+          age: formData.age ? parseInt(String(formData.age), 10) : null,
+          location: formData.location,
+          bio: formData.bio,
+          pronouns: formData.pronouns,
+          gender: formData.gender,
+          socialBattery: formData.socialBattery
         };
         
-        await updateUserProfile(user.uid, updateData);
+        await setDoc(doc(db, "users", user.uid), updateData, { merge: true });
         toast({ title: "Profile updated", description: "Your changes have been saved." });
         router.push('/profile');
         router.refresh(); // To reflect changes immediately on profile page
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to save profile:", error);
         toast({ variant: 'destructive', title: "Error", description: "Failed to save your profile." });
       }
