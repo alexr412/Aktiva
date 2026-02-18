@@ -94,9 +94,10 @@ export async function createActivity({
     creatorPhotoURL: user.photoURL,
     participantIds: [user.uid],
     createdAt: serverTimestamp(),
-    lastInteractionAt: serverTimestamp(),
     isCustomLocation: isCustomLocation,
     category: isCustomLocation ? "community" : (place?.categories[0].split('.')[0] || "other"),
+    categories: isCustomLocation ? ["user_event"] : placeCategories,
+    lastInteractionAt: serverTimestamp(),
   };
   batch.set(activityRef, activityData);
 
