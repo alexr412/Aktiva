@@ -32,25 +32,25 @@ function Calendar({
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
         table: "w-full border-collapse space-y-1",
-        // FIX: Kein Flexbox mehr auf Rows. Wir nutzen natives Tabellen-Layout.
-        head_row: "",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+        
+        // HIER IST DER FIX: Wir erzwingen ein 7-Spalten-Grid
+        head_row: "grid grid-cols-7 mb-2",
+        head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] flex justify-center items-center m-auto",
+        
+        row: "grid grid-cols-7 w-full mt-2",
+        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20 flex justify-center items-center m-auto",
+        
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100 rounded-full"
+          "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-indigo-100 hover:text-indigo-900 rounded-full flex justify-center items-center"
         ),
         day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary focus:text-primary-foreground rounded-full",
+          "bg-indigo-600 text-white hover:bg-indigo-700 hover:text-white focus:bg-indigo-700 focus:text-white rounded-full",
         day_today: "bg-accent text-accent-foreground font-bold",
         day_outside:
           "text-muted-foreground opacity-50",
         day_disabled: "text-muted-foreground opacity-50",
         day_hidden: "invisible",
-        day_range_end: "day-range-end",
-        day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
         ...classNames,
       }}
       components={{

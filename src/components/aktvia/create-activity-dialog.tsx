@@ -49,18 +49,18 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-background">
-        <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-muted" />
+      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-white">
+        <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-gray-200" />
         <SheetHeader className="pt-8 p-6 pb-2 text-center items-center">
-          <div className="bg-primary/10 p-3 rounded-full mb-2">
-            <CalendarPlus className="h-6 w-6 text-primary" />
+          <div className="bg-indigo-50 p-3 rounded-full mb-2">
+            <CalendarPlus className="h-6 w-6 text-indigo-600" />
           </div>
-          <SheetTitle className="text-xl font-bold text-foreground">{isCustom ? 'Create a custom activity' : 'Create an activity'}</SheetTitle>
-          <SheetDescription className="text-base text-muted-foreground">
+          <SheetTitle className="text-xl font-bold text-gray-900">{isCustom ? 'Create a custom activity' : 'Create an activity'}</SheetTitle>
+          <SheetDescription className="text-base text-gray-500">
             {isCustom ? (
                 'Choose a name and date for your activity.'
             ) : (
-                <>Pick a date to meet up at <br /> <span className="font-semibold text-foreground">{place?.name}</span>.</>
+                <>Pick a date to meet up at <br /> <span className="font-semibold text-gray-900">{place?.name}</span>.</>
             )}
           </SheetDescription>
         </SheetHeader>
@@ -76,15 +76,15 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
           </div>
         )}
 
-        {/* Zentrierter Container für den Kalender */}
+        {/* Kalender Container - Zentriert und Stabil */}
         <div className="flex justify-center w-full py-2 px-4">
-            <div className="rounded-xl border shadow-sm bg-card p-2">
+            <div className="rounded-xl border border-gray-100 shadow-sm bg-white p-2 w-auto inline-block">
               <Calendar
                   mode="single"
                   selected={date}
                   onSelect={setDate}
                   disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
-                  className="w-fit mx-auto"
+                  className="mx-auto" 
               />
             </div>
         </div>
@@ -94,7 +94,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
             type="button" 
             onClick={handleCreate} 
             disabled={!date || isCreating || (isCustom && !customLocationName.trim())} 
-            className="w-full h-12 text-base font-semibold rounded-xl"
+            className="w-full h-12 text-base font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
           >
             {isCreating ? (
               <>
