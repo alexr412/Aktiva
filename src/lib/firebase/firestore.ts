@@ -13,6 +13,9 @@ import {
   arrayRemove,
   deleteDoc,
   deleteField,
+  query,
+  where,
+  orderBy,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import type { Place } from '@/lib/types';
@@ -72,6 +75,7 @@ export async function createActivity({
     participantIds: [user.uid],
     lastMessage: null,
     placeName: place?.name || customLocationName,
+    creatorId: user.uid,
     participantDetails: {
       [user.uid]: {
         displayName: user.displayName,
@@ -233,4 +237,17 @@ export async function deleteActivity(activityId: string) {
     console.error('Error deleting activity and chat:', error);
     throw new Error('Could not delete activity.');
   }
+}
+
+export async function fetchUserActivities(userId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+
+  const q = query(
+    collection(db, 'activities'),
+    where('participantIds', 'array-contains', userId),
+    orderBy('activityDate', 'desc')
+  );
+
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
