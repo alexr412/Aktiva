@@ -4,6 +4,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, updateDoc } from "firebase/firestore";
 import { db, app } from "./client";
 import { auth } from "./auth";
+import { updateProfile } from "firebase/auth";
 
 if (!app) {
     throw new Error("Firebase has not been initialized.");
@@ -27,9 +28,7 @@ export const uploadProfileImage = async (userId: string, file: File): Promise<st
   });
 
   if(auth.currentUser){
-    await auth.updateCurrentUser(
-      {...auth.currentUser, photoURL: downloadURL}
-    )
+    await updateProfile(auth.currentUser, { photoURL: downloadURL });
   }
   
   return downloadURL;

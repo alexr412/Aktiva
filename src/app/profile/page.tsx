@@ -1,32 +1,44 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { signOut } from '@/lib/firebase/auth';
 import { fetchUserActivities, joinActivity } from '@/lib/firebase/firestore';
-import type { Activity } from '@/lib/types';
+import type { Activity, UserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { uploadProfileImage } from '@/lib/firebase/storage';
+
 
 export default function ProfilePage() {
-    const { user, userProfile, loading: authLoading } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [userData, setUserData] = useState<UserProfile | null>(null);
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loadingActivities, setLoadingActivities] = useState(true);
     const [activeTab, setActiveTab] = useState('activities');
 
     useEffect(() => {
         if (user) {
+            getDoc(doc(db, "users", user.uid)).then(snap => {
+                if (snap.exists()) {
+                    setUserData(snap.data() as UserProfile);
+                }
+            });
+            
             const loadActivities = async () => {
                 setLoadingActivities(true);
                 try {
@@ -48,6 +60,19 @@ export default function ProfilePage() {
             router.push('/login');
         }
     }, [user, authLoading, router, toast]);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user?.uid) return;
+        try {
+          const photoURL = await uploadProfileImage(user.uid, file);
+          setUserData((prev: UserProfile | null) => (prev ? { ...prev, photoURL } : { photoURL } as UserProfile));
+          toast({ title: "Profile picture updated!" });
+        } catch (error: any) {
+          console.error(error);
+          toast({ variant: 'destructive', title: 'Upload failed', description: error.message });
+        }
+    };
 
     const handleSignOut = async () => {
         try {
@@ -145,6 +170,9 @@ export default function ProfilePage() {
         </button>
     );
 
+    const photoUrlToDisplay = userData?.photoURL || user.photoURL || '';
+    const displayName = userData?.displayName || user.displayName || 'Anonymous User';
+
     return (
         <div className="relative flex flex-col h-full bg-background overflow-y-auto pb-20">
             <Button
@@ -158,22 +186,41 @@ export default function ProfilePage() {
             </Button>
             
             <div className="p-6 flex flex-col items-center justify-center text-center space-y-4 pt-16">
-                <Avatar className="h-24 w-24 border-2 border-primary/20">
-                    <AvatarImage src={userProfile?.photoURL || user.photoURL || ''} />
-                    <AvatarFallback className="text-3xl bg-muted">
-                        {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                </Avatar>
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleImageUpload} 
+                    className="hidden" 
+                    accept="image/*" 
+                />
+                <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="relative group cursor-pointer"
+                >
+                    <Avatar className="h-24 w-24 border-2 border-primary/20">
+                        <AvatarImage src={photoUrlToDisplay} alt="Profil" />
+                        <AvatarFallback className="text-3xl bg-muted">
+                            {displayName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
+                        <Edit className="h-6 w-6" />
+                    </div>
+                </div>
+
                 <div>
-                    <h1 className="text-2xl font-bold">{userProfile?.displayName || 'Anonymous User'}</h1>
-                    <p className="text-muted-foreground">{userProfile?.email}</p>
-                    {userProfile?.location && <p className="text-sm text-muted-foreground">{userProfile.location}</p>}
+                    <h1 className="text-2xl font-bold">
+                        {displayName}
+                        {userData?.age && `, ${userData.age}`}
+                    </h1>
+                    <p className="text-muted-foreground">{userData?.email || user.email}</p>
+                    {userData?.location && <p className="text-sm text-muted-foreground">{userData.location}</p>}
                 </div>
             </div>
             
-            {userProfile?.bio && (
+            {userData?.bio && (
                 <div className="px-6 text-center">
-                    <p className="text-foreground/80">{userProfile.bio}</p>
+                    <p className="text-foreground/80">{userData.bio}</p>
                 </div>
             )}
 
@@ -185,12 +232,12 @@ export default function ProfilePage() {
             <div className="p-6 space-y-4">
                  <h2 className="font-bold text-lg">Interests</h2>
                 <div className="flex flex-wrap gap-2 items-center">
-                    {userProfile?.interests?.map(tag => (
+                    {userData?.interests?.map(tag => (
                          <Badge key={tag} variant="secondary" className="text-base py-1 px-3">
                             {tag}
                         </Badge>
                     ))}
-                    <button onClick={() => router.push('/profile/interests')} className="border border-dashed border-gray-400 text-gray-500 rounded-full px-4 py-1 text-sm hover:bg-muted/50 transition-colors">
+                    <button onClick={() => router.push('/profile/edit')} className="border border-dashed border-gray-400 text-gray-500 rounded-full px-4 py-1 text-sm hover:bg-muted/50 transition-colors">
                         + Hinzufügen
                     </button>
                 </div>
