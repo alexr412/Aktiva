@@ -6,15 +6,19 @@ import { auth } from '@/lib/firebase/client';
 import { onAuthStateChanged } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import { getUserProfile } from '@/lib/firebase/firestore';
+import type { UserProfile } from '@/lib/types';
 
 export interface AuthContextType {
   user: User | null;
+  userProfile: UserProfile | null;
   loading: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
+  userProfile: null,
   loading: true,
 });
 
@@ -37,27 +41,64 @@ const NotConfigured = () => (
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!auth) {
         setLoading(false);
         return;
     }
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setLoading(true);
+      if (user) {
+        setUser(user);
+        const profile = await getUserProfile(user.uid);
+        setUserProfile(profile);
+
+        if (profile && !profile.onboardingCompleted) {
+          if (pathname !== '/onboarding') {
+            router.replace('/onboarding');
+          }
+        }
+      } else {
+        setUser(null);
+        setUserProfile(null);
+      }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [router, pathname]);
 
   if (!auth && !loading) {
     return <NotConfigured />;
   }
+  
+  // While the initial auth state and profile are loading, and we might redirect,
+  // don't render the children to avoid flashing content.
+  if (loading) {
+      return (
+          <div className="flex h-screen w-full items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+      )
+  }
+
+  // If user is not onboarded and we are not on the onboarding page,
+  // we wait for the redirect to happen.
+  if (user && userProfile && !userProfile.onboardingCompleted && pathname !== '/onboarding') {
+      return (
+          <div className="flex h-screen w-full items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+      )
+  }
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, userProfile, loading }}>
       {children}
     </AuthContext.Provider>
   );

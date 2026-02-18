@@ -16,9 +16,12 @@ import {
   query,
   where,
   orderBy,
+  setDoc,
+  getDoc,
+  updateDoc,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import type { Place } from '@/lib/types';
+import type { Place, UserProfile } from '@/lib/types';
 
 type CreateActivityPayload = {
   place?: Place;
@@ -26,6 +29,36 @@ type CreateActivityPayload = {
   date: Date;
   user: User;
 };
+
+export async function createUserProfileDocument(user: User) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const userDocRef = doc(db, 'users', user.uid);
+  const userProfile: UserProfile = {
+    uid: user.uid,
+    displayName: user.displayName,
+    email: user.email,
+    photoURL: user.photoURL,
+    onboardingCompleted: false,
+  };
+  await setDoc(userDocRef, userProfile);
+}
+
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const userDocRef = doc(db, 'users', userId);
+  const docSnap = await getDoc(userDocRef);
+  if (docSnap.exists()) {
+    return docSnap.data() as UserProfile;
+  }
+  return null;
+}
+
+export async function updateUserProfile(userId: string, data: Partial<UserProfile>) {
+    if (!db) throw new Error('Firestore is not initialized.');
+    const userDocRef = doc(db, 'users', userId);
+    await updateDoc(userDocRef, data);
+}
+
 
 export async function createActivity({
   place,
@@ -48,11 +81,11 @@ export async function createActivity({
   const activityRef = doc(collection(db, 'activities'));
   console.log('Generated activityRef with id:', activityRef.id);
   
-  const isCustomActivity = !place;
-  const finalCategories = isCustomActivity ? ["user_event"] : (place?.categories || []);
-
+  const isCustomLocation = !place;
+  const placeCategories = place?.categories ? (Array.isArray(place.categories) ? place.categories : [place.categories]) : [];
+  
   const activityData = {
-    placeId: place?.id || null,
+    placeId: place?.id || "custom",
     placeName: place?.name || customLocationName,
     placeAddress: place?.address || null,
     activityDate: Timestamp.fromDate(date),
@@ -62,8 +95,8 @@ export async function createActivity({
     participantIds: [user.uid],
     createdAt: serverTimestamp(),
     lastInteractionAt: serverTimestamp(),
-    isCustomActivity: isCustomActivity,
-    categories: finalCategories,
+    isCustomLocation: isCustomLocation,
+    category: isCustomLocation ? "community" : (place?.categories[0].split('.')[0] || "other"),
   };
   batch.set(activityRef, activityData);
 
@@ -114,24 +147,21 @@ export async function joinActivity(activityId: string, user: User) {
 
       const activityData = activityDoc.data();
       
-      // Server-side validation: Already a participant
       if (activityData.participantIds.includes(user.uid)) {
-        throw new Error("Benutzer ist bereits Teilnehmer dieser Aktivität.");
+        // Allow re-joining if already a participant, just return
+        return;
       }
       
-      // Speicher-Limitierung (Storage Limitation)
       const MAX_PARTICIPANTS = 50;
       if (activityData.participantIds.length >= MAX_PARTICIPANTS) {
         throw `This activity has reached its maximum of ${MAX_PARTICIPANTS} participants.`;
       }
 
-      // Update activity
       transaction.update(activityRef, {
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
       });
 
-      // Update chat
       transaction.update(chatRef, {
         participantIds: arrayUnion(user.uid),
         [`participantDetails.${user.uid}`]: {
@@ -142,14 +172,12 @@ export async function joinActivity(activityId: string, user: User) {
     });
   } catch (e: any) {
     console.error("Join Activity Transaction failed: ", e);
-     // Propagate specific, user-facing errors
     if (typeof e === 'string') {
         throw new Error(e);
     }
     if (e instanceof Error) {
         throw e;
     }
-    // Generic fallback error
     throw new Error("Could not join the activity. Please try again.");
   }
 }

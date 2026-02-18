@@ -14,11 +14,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
 import { LogOut, UserPlus, Compass } from 'lucide-react';
-
-const interestTags = ['Board Games', 'Rock-Climbing', 'Photography', 'Live Music', 'Hiking'];
+import { Badge } from '@/components/ui/badge';
 
 export default function ProfilePage() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, userProfile, loading: authLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 
@@ -54,6 +53,10 @@ export default function ProfilePage() {
         try {
             await signOut();
             router.push('/');
+            toast({
+                title: 'Logged Out',
+                description: 'You have been successfully signed out.',
+            });
         } catch (error) {
             console.error("Logout failed", error);
             toast({
@@ -156,28 +159,36 @@ export default function ProfilePage() {
             
             <div className="p-6 flex flex-col items-center justify-center text-center space-y-4 pt-16">
                 <Avatar className="h-24 w-24 border-2 border-primary/20">
-                    <AvatarImage src={user.photoURL || ''} />
+                    <AvatarImage src={userProfile?.photoURL || user.photoURL || ''} />
                     <AvatarFallback className="text-3xl bg-muted">
                         {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                 </Avatar>
                 <div>
-                    <h1 className="text-2xl font-bold">{user.displayName || 'Anonymous User'}</h1>
-                    <p className="text-muted-foreground">{user.email}</p>
+                    <h1 className="text-2xl font-bold">{userProfile?.displayName || 'Anonymous User'}</h1>
+                    <p className="text-muted-foreground">{userProfile?.email}</p>
+                    {userProfile?.location && <p className="text-sm text-muted-foreground">{userProfile.location}</p>}
                 </div>
             </div>
+            
+            {userProfile?.bio && (
+                <div className="px-6 text-center">
+                    <p className="text-foreground/80">{userProfile.bio}</p>
+                </div>
+            )}
 
-            <div className="px-6">
+
+            <div className="px-6 mt-6">
                 <Button variant="outline" className="w-full" onClick={() => router.push('/profile/edit')}>Edit Profile</Button>
             </div>
             
             <div className="p-6 space-y-4">
                  <h2 className="font-bold text-lg">Interests</h2>
                 <div className="flex flex-wrap gap-2 items-center">
-                    {interestTags.map(tag => (
-                         <span key={tag} className="inline-flex items-center px-3 py-1 text-sm font-medium bg-secondary text-secondary-foreground rounded-full">
+                    {userProfile?.interests?.map(tag => (
+                         <Badge key={tag} variant="secondary" className="text-base py-1 px-3">
                             {tag}
-                        </span>
+                        </Badge>
                     ))}
                     <button onClick={() => router.push('/profile/interests')} className="border border-dashed border-gray-400 text-gray-500 rounded-full px-4 py-1 text-sm hover:bg-muted/50 transition-colors">
                         + Hinzufügen

@@ -22,8 +22,9 @@ export interface Activity {
   creatorPhotoURL: string | null;
   participantIds: string[];
   createdAt: Timestamp;
-  isCustomActivity?: boolean;
+  isCustomLocation?: boolean;
   lastInteractionAt?: Timestamp;
+  category?: string;
   categories?: string[];
 }
 
@@ -62,14 +63,27 @@ export interface GeoapifyFeature {
     name?: string;
     address_line1: string;
     address_line2: string;
-    categories: string[];
+    categories: string[] | string;
     lat: number;
     lon: number;
     place_id: string;
     datasource: {
       raw: {
         rating?: string;
+        ['building:part']?: string;
       };
     };
   };
+}
+
+export interface UserProfile {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+  age?: number;
+  location?: string;
+  bio?: string;
+  interests?: string[]; 
+  onboardingCompleted: boolean;
 }

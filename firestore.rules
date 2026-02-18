@@ -3,6 +3,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
+    }
+
     match /activities/{activityId} {
       allow read: if request.auth != null;
       
@@ -11,13 +16,8 @@ service cloud.firestore {
 
       // Users can update an activity ONLY to join it
       allow update: if request.auth.uid != null
-                       // The user must not be the creator
-                       && resource.data.creatorId != request.auth.uid
-                       // The user must not already be a participant
-                       && !(request.auth.uid in resource.data.participantIds)
-                       // The only change must be adding the user's ID to participantIds
+                       && resource.data.participantIds.hasAny([request.auth.uid]) == false
                        && request.resource.data.participantIds == resource.data.participantIds.concat([request.auth.uid])
-                       // And no other sensitive fields are changed.
                        && request.resource.data.placeId == resource.data.placeId
                        && request.resource.data.activityDate == resource.data.activityDate
                        && request.resource.data.creatorId == resource.data.creatorId;
