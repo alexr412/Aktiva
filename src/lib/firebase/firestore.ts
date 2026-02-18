@@ -110,18 +110,11 @@ export async function joinActivity(activityId: string, user: User) {
 
       const activityData = activityDoc.data();
       
-      // Server-side validation: Creator cannot join
-      if (activityData.creatorId === user.uid) {
-        // This case should be handled by the UI, but as a safeguard.
-        throw "As the creator, you are already part of this activity.";
-      }
-      
       // Server-side validation: Already a participant
       if (activityData.participantIds.includes(user.uid)) {
-        console.warn("User is already a participant.");
-        return; // Idempotent, just return
+        throw new Error("Benutzer ist bereits Teilnehmer dieser Aktivität.");
       }
-
+      
       // Speicher-Limitierung (Storage Limitation)
       const MAX_PARTICIPANTS = 50;
       if (activityData.participantIds.length >= MAX_PARTICIPANTS) {
