@@ -49,18 +49,18 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-white">
-        <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-gray-200" />
+      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-card">
+        <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-muted" />
         <SheetHeader className="pt-8 p-6 pb-2 text-center items-center">
-          <div className="bg-indigo-50 p-3 rounded-full mb-2">
-            <CalendarPlus className="h-6 w-6 text-indigo-600" />
+          <div className="bg-primary/10 p-3 rounded-full mb-2">
+            <CalendarPlus className="h-6 w-6 text-primary" />
           </div>
-          <SheetTitle className="text-xl font-bold text-gray-900">{isCustom ? 'Create a custom activity' : 'Create an activity'}</SheetTitle>
-          <SheetDescription className="text-base text-gray-500">
+          <SheetTitle className="text-xl font-bold text-foreground">{isCustom ? 'Create a custom activity' : 'Create an activity'}</SheetTitle>
+          <SheetDescription className="text-base text-muted-foreground">
             {isCustom ? (
                 'Choose a name and date for your activity.'
             ) : (
-                <>Pick a date to meet up at <br /> <span className="font-semibold text-gray-900">{place?.name}</span>.</>
+                <>Pick a date to meet up at <br /> <span className="font-semibold text-foreground">{place?.name}</span>.</>
             )}
           </SheetDescription>
         </SheetHeader>
@@ -76,9 +76,8 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
           </div>
         )}
 
-        {/* Kalender Container - Zentriert und Stabil */}
         <div className="flex justify-center w-full py-2 px-4">
-            <div className="rounded-xl border border-gray-100 shadow-sm bg-white p-2 w-auto inline-block">
+            <div className="rounded-xl border shadow-sm bg-card p-2 w-auto inline-block">
               <Calendar
                   mode="single"
                   selected={date}
@@ -94,7 +93,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
             type="button" 
             onClick={handleCreate} 
             disabled={!date || isCreating || (isCustom && !customLocationName.trim())} 
-            className="w-full h-12 text-base font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
+            className="w-full h-12 text-base font-semibold rounded-xl"
           >
             {isCreating ? (
               <>
