@@ -76,8 +76,8 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
           </div>
         )}
 
-        <div className="w-full flex justify-center px-0 overflow-visible">
-            <div className="bg-muted/50 rounded-xl">
+        <div className="w-full flex justify-center px-4 sm:px-0 overflow-visible">
+            <div className="bg-muted/30 rounded-xl">
                 <Calendar
                     mode="single"
                     selected={date}
@@ -87,7 +87,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                 />
           </div>
         </div>
-        <SheetFooter className="py-6 px-2 sm:justify-center">
+        <SheetFooter className="p-6 sm:justify-center">
           <Button 
             type="button" 
             onClick={handleCreate} 
