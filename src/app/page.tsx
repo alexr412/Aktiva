@@ -6,17 +6,19 @@ import { CategoryFilters, categories as defaultCategories } from '@/components/a
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { PlaceCard } from '@/components/aktvia/place-card';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
-import type { Place } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { Place, Activity } from '@/lib/types';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { MapPin, Map as MapIcon, List, Plus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { createActivity } from '@/lib/firebase/firestore';
+import { createActivity, joinActivity } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { MapView } from '@/components/aktvia/map-view';
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase/client";
+import { ActivityListItem } from "@/components/aktvia/activity-list-item";
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -38,6 +40,7 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState<string[]>(defaultCategories[0].id);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [customActivities, setCustomActivities] = useState<Activity[]>([]);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -90,7 +93,32 @@ export default function Home() {
   }, [toast]);
 
   useEffect(() => {
+    const isCommunityCategory = activeCategory.includes("user_event") || activeCategory.includes("community");
+
+    if (isCommunityCategory) {
+      setPlaces([]); // Clear Geoapify places
+      setIsLoading(true);
+      const fetchCustomActivities = async () => {
+        if (!db) {
+          console.error("Firestore DB not available");
+          setIsLoading(false);
+          return;
+        }
+        const q = query(collection(db, "activities"), where("isCustomActivity", "==", true));
+        const querySnapshot = await getDocs(q);
+        const activitiesData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Activity[];
+        setCustomActivities(activitiesData);
+        setIsLoading(false);
+      };
+      fetchCustomActivities();
+      return; // Abort to prevent Geoapify call
+    }
+    
     if (userLocation) {
+      setCustomActivities([]); // Clear custom activities if not in community tab
       loadPlaces(userLocation.lat, userLocation.lng, activeCategory);
     }
   }, [userLocation, activeCategory, loadPlaces]);
@@ -182,6 +210,23 @@ export default function Home() {
     }
   };
 
+  const handleJoin = async (activityId: string) => {
+    if (!user) {
+        toast({ title: 'Login Required', description: 'You must be logged in to join an activity.' });
+        router.push('/login');
+        throw new Error('Login Required');
+    }
+    try {
+        await joinActivity(activityId, user);
+        toast({ title: 'Success!', description: 'You have joined the activity. You can find it in your chats.' });
+        router.push(`/chat/${activityId}`);
+    } catch (error: any) {
+        console.error(error);
+        toast({ title: 'Error', description: error.message || 'Failed to join activity.', variant: 'destructive' });
+        throw error;
+    }
+  };
+
 
   const renderContent = () => {
     if (!userLocation && !isLoading) {
@@ -195,6 +240,8 @@ export default function Home() {
       );
     }
 
+    const isCommunityCategory = activeCategory.includes("user_event") || activeCategory.includes("community");
+
     if (viewMode === 'list') {
         if (isLoading) {
           return (
@@ -206,7 +253,18 @@ export default function Home() {
           );
         }
         
-        if (places.length === 0) {
+        if (isCommunityCategory && customActivities.length === 0) {
+            return (
+                <div className="flex h-full w-full items-center justify-center p-6 text-center">
+                    <div className="space-y-2">
+                        <h3 className="font-semibold text-lg">No community activities found</h3>
+                        <p className="text-muted-foreground">Why not create one?</p>
+                    </div>
+                </div>
+            )
+        }
+        
+        if (!isCommunityCategory && places.length === 0) {
             return (
                 <div className="flex h-full w-full items-center justify-center p-6 text-center">
                     <div className="space-y-2">
@@ -219,14 +277,20 @@ export default function Home() {
 
         return (
             <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                {places.map(place => (
-                    <PlaceCard 
-                      key={place.id} 
-                      place={place} 
-                      onClick={() => handlePlaceSelect(place)}
-                      onAddActivity={() => handleOpenActivityModal(place)}
-                    />
-                ))}
+                {isCommunityCategory ? (
+                  customActivities.map((activity) => (
+                    <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
+                  ))
+                ) : (
+                  places.map(place => (
+                      <PlaceCard 
+                        key={place.id} 
+                        place={place} 
+                        onClick={() => handlePlaceSelect(place)}
+                        onAddActivity={() => handleOpenActivityModal(place)}
+                      />
+                  ))
+                )}
             </div>
         );
     }
