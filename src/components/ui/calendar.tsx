@@ -20,6 +20,7 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
+        // Basis-Layout
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
@@ -31,12 +32,16 @@ function Calendar({
         ),
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
+        
+        // DAS IST DER FIX: Wir zwingen die "Table"-Elemente, sich wie ein Grid zu verhalten
+        // Wir ignorieren die HTML-Tags (table, tr, td) visuell komplett.
         table: "w-full border-collapse space-y-1",
         
-        // HIER IST DER FIX: Wir erzwingen ein 7-Spalten-Grid
-        head_row: "grid grid-cols-7 mb-2",
+        // Kopfzeile (Mo, Di, Mi...): 7 Spalten Grid
+        head_row: "grid grid-cols-7 mb-2 w-full",
         head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] flex justify-center items-center m-auto",
         
+        // Datumszeile: 7 Spalten Grid. Das überschreibt jedes globale "display: block"
         row: "grid grid-cols-7 w-full mt-2",
         cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20 flex justify-center items-center m-auto",
         
