@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/client';
-import { sendMessage, deleteActivityAndChat } from '@/lib/firebase/firestore';
+import { sendMessage } from '@/lib/firebase/firestore';
 import type { Message, Chat } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
@@ -148,17 +148,6 @@ export default function ChatRoomPage() {
     }
   };
 
-  const handleDeleteActivity = async () => {
-    if (!chat) return;
-    try {
-      await deleteActivityAndChat(chat.id);
-      toast({ title: 'Activity Deleted', description: 'The activity and chat have been removed.' });
-      router.push('/chat');
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message });
-    }
-  };
-
   if (loading || authLoading) {
     return (
       <div className="flex flex-col h-full bg-muted/30">
@@ -252,7 +241,6 @@ export default function ChatRoomPage() {
         chat={chat}
         open={isInfoSheetOpen}
         onOpenChange={setInfoSheetOpen}
-        onDelete={handleDeleteActivity}
       />
     </>
   );

@@ -40,6 +40,7 @@ export interface Chat {
     id: string;
     activityId: string;
     placeName: string;
+    creatorId?: string;
     participantIds: string[];
     participantDetails: {
         [uid: string]: {

@@ -1,6 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
+import { leaveActivity, deleteActivity } from '@/lib/firebase/firestore';
+
 import {
   Sheet,
   SheetContent,
@@ -31,21 +36,39 @@ interface ChatInfoSheetProps {
   chat: Chat | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onDelete: () => Promise<void>;
 }
 
-export function ChatInfoSheet({ chat, open, onOpenChange, onDelete }: ChatInfoSheetProps) {
-  const [isDeleting, setIsDeleting] = useState(false);
+export function ChatInfoSheet({ chat, open, onOpenChange }: ChatInfoSheetProps) {
+  const [isActing, setIsActing] = useState(false);
+  const { user } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
 
-  if (!chat) return null;
+  if (!chat || !user) return null;
 
   const participants = Object.values(chat.participantDetails);
+  const isOnlyParticipant = chat.participantIds.length === 1;
 
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    await onDelete();
-    setIsDeleting(false);
+  const handleAction = async () => {
+    if (!chat?.id || !user?.uid) return;
+    setIsActing(true);
+    try {
+      if (isOnlyParticipant) {
+        await deleteActivity(chat.id);
+        toast({ title: 'Activity Deleted', description: 'The activity and chat have been removed.' });
+      } else {
+        await leaveActivity(chat.id, user.uid);
+        toast({ title: 'You have left the activity.' });
+      }
+      onOpenChange(false);
+      router.push('/chat');
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Action Failed', description: error.message });
+      setIsActing(false);
+    }
   };
+
+  const amCreator = chat.participantDetails[user.uid] && chat.creatorId === user.uid;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -79,21 +102,29 @@ export function ChatInfoSheet({ chat, open, onOpenChange, onDelete }: ChatInfoSh
             <AlertDialogTrigger asChild>
               <Button variant="destructive" className="w-full">
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete Activity
+                {isOnlyParticipant || amCreator ? 'Delete Activity' : 'Leave Activity'}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {isOnlyParticipant || amCreator
+                    ? 'Are you absolutely sure?'
+                    : 'Are you sure you want to leave?'}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete this activity and all associated chat messages.
+                  {isOnlyParticipant || amCreator
+                    ? 'This action cannot be undone. This will permanently delete this activity and all associated chat messages.'
+                    : 'You can rejoin this activity later as long as it exists.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className='bg-destructive hover:bg-destructive/90'>
-                  {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isDeleting ? 'Deleting...' : 'Delete'}
+                <AlertDialogAction onClick={handleAction} disabled={isActing} className='bg-destructive hover:bg-destructive/90'>
+                  {isActing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isActing
+                    ? (isOnlyParticipant || amCreator ? 'Deleting...' : 'Leaving...')
+                    : (isOnlyParticipant || amCreator ? 'Delete' : 'Leave')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

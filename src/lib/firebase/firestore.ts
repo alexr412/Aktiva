@@ -10,6 +10,9 @@ import {
   getDocs,
   arrayUnion,
   runTransaction,
+  arrayRemove,
+  deleteDoc,
+  deleteField,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import type { Place } from '@/lib/types';
@@ -188,14 +191,40 @@ export async function sendMessage(chatId: string, text: string, user: User) {
   }
 }
 
-export async function deleteActivityAndChat(chatId: string) {
+export async function leaveActivity(activityId: string, userId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+
+  const activityRef = doc(db, 'activities', activityId);
+  const chatRef = doc(db, 'chats', activityId);
+  
+  const batch = writeBatch(db);
+
+  batch.update(activityRef, {
+    participantIds: arrayRemove(userId),
+  });
+
+  batch.update(chatRef, {
+    participantIds: arrayRemove(userId),
+    [`participantDetails.${userId}`]: deleteField(),
+  });
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error('Error leaving activity:', error);
+    throw new Error('Could not leave activity.');
+  }
+}
+
+
+export async function deleteActivity(activityId: string) {
   if (!db) throw new Error('Firestore is not initialized.');
 
   const batch = writeBatch(db);
 
-  const activityRef = doc(db, 'activities', chatId);
-  const chatRef = doc(db, 'chats', chatId);
-  const messagesRef = collection(db, 'chats', chatId, 'messages');
+  const activityRef = doc(db, 'activities', activityId);
+  const chatRef = doc(db, 'chats', activityId);
+  const messagesRef = collection(db, 'chats', activityId, 'messages');
 
   const messagesSnapshot = await getDocs(messagesRef);
   messagesSnapshot.forEach(doc => {
