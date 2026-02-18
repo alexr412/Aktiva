@@ -51,8 +51,17 @@ export default function ProfilePage() {
     }, [user, authLoading, router, toast]);
 
     const handleSignOut = async () => {
-        await signOut();
-        router.push('/');
+        try {
+            await signOut();
+            router.push('/');
+        } catch (error) {
+            console.error("Logout failed", error);
+            toast({
+                title: "Logout Failed",
+                description: "There was a problem signing you out.",
+                variant: "destructive",
+            });
+        }
     };
     
     const handleJoin = async (activityId: string) => {
@@ -123,10 +132,10 @@ export default function ProfilePage() {
     const TabButton = ({ tabName, label }: { tabName: string, label: string }) => (
         <button
             onClick={() => setActiveTab(tabName)}
-            className={`transition-colors duration-200 text-sm ${
+            className={`transition-colors duration-200 text-sm pb-2 ${
                 activeTab === tabName
-                ? 'border-b-2 border-primary text-primary font-bold pb-2'
-                : 'text-muted-foreground border-b-2 border-transparent pb-2'
+                ? 'border-b-2 border-primary text-primary font-bold'
+                : 'text-muted-foreground border-b-2 border-transparent'
             }`}
         >
             {label}
@@ -159,7 +168,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="px-6">
-                <Button variant="outline" className="w-full">Edit Profile</Button>
+                <Button variant="outline" className="w-full" onClick={() => router.push('/profile/edit')}>Edit Profile</Button>
             </div>
             
             <div className="p-6 space-y-4">
@@ -170,7 +179,7 @@ export default function ProfilePage() {
                             {tag}
                         </span>
                     ))}
-                    <button className="border border-dashed border-gray-400 text-gray-500 rounded-full px-4 py-1 text-sm hover:bg-muted/50 transition-colors">
+                    <button onClick={() => router.push('/profile/interests')} className="border border-dashed border-gray-400 text-gray-500 rounded-full px-4 py-1 text-sm hover:bg-muted/50 transition-colors">
                         + Hinzufügen
                     </button>
                 </div>
