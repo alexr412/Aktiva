@@ -76,16 +76,14 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
           </div>
         )}
 
-        <div className="w-full flex justify-center px-4 sm:px-0 overflow-visible">
-            <div className="bg-muted/30 rounded-xl">
-                <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
-                    className="p-0"
-                />
-          </div>
+        <div className="flex justify-center w-full py-4">
+            <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
+                className="rounded-md border shadow-sm w-fit mx-auto"
+            />
         </div>
         <SheetFooter className="p-6 sm:justify-center">
           <Button 
