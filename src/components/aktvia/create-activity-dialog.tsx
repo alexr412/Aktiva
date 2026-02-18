@@ -49,9 +49,10 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto">
+      {/* sm:max-w-md sorgt für gute Breite auf Desktop */}
+      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto">
         <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-muted" />
-        <SheetHeader className="pt-8 p-6 pb-4 text-center items-center">
+        <SheetHeader className="pt-8 p-6 pb-2 text-center items-center">
           <div className="bg-primary/10 p-3 rounded-full mb-2">
             <CalendarPlus className="h-6 w-6 text-primary" />
           </div>
@@ -66,31 +67,33 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
         </SheetHeader>
         
         {isCustom && (
-          <div className="px-6 pb-4">
+          <div className="px-6 pb-2">
             <Input
               value={customLocationName}
               onChange={(e) => setCustomLocationName(e.target.value)}
               placeholder="E.g., Board Game Night at my place"
-              className="text-center"
+              className="text-center h-12 text-lg"
             />
           </div>
         )}
 
-        <div className="flex justify-center w-full py-4">
+        {/* CONTAINER FÜR DEN KALENDER */}
+        <div className="flex justify-center w-full py-2 px-4">
             <Calendar
                 mode="single"
                 selected={date}
                 onSelect={setDate}
                 disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
-                className="rounded-md border shadow-sm w-fit mx-auto"
+                className="rounded-xl border shadow-sm bg-card w-fit mx-auto"
             />
         </div>
-        <SheetFooter className="p-6 sm:justify-center">
+
+        <SheetFooter className="p-6 pt-2 sm:justify-center">
           <Button 
             type="button" 
             onClick={handleCreate} 
             disabled={!date || isCreating || (isCustom && !customLocationName.trim())} 
-            className="w-full h-12 text-base font-semibold"
+            className="w-full h-12 text-base font-semibold rounded-xl"
           >
             {isCreating ? (
               <>
