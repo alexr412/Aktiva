@@ -20,11 +20,11 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
-        // Container für Monate
+        // Container for months
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         
-        // Header (Monatsname + Pfeile)
+        // Header (Month name + arrows)
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
         nav: "space-x-1 flex items-center",
@@ -35,33 +35,33 @@ function Calendar({
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
         
-        // --- DER FIX (CSS GRID) ---
-        // Wir setzen !important (!), um globale Styles zu überschreiben.
+        // --- THE FIX (CSS GRID) ---
+        // Forcing grid layout to override global table styles.
         
-        // Die Tabelle selbst
+        // The table itself
         table: "!w-full !border-collapse space-y-1",
         
-        // Die Kopfzeile (Mo, Di, Mi...): Zwingend 7 Spalten
+        // Header row (Mon, Tue, Wed...): Force 7 columns
         head_row: "!grid !grid-cols-7 !w-full mb-2",
         head_cell: "text-muted-foreground rounded-md !w-9 font-normal text-[0.8rem] flex justify-center items-center m-auto",
         
-        // Die Datumszeilen: Zwingend 7 Spalten. Das verhindert das Stapeln!
+        // Date rows: Force 7 columns. This prevents vertical stacking.
         row: "!grid !grid-cols-7 !w-full mt-2",
         
-        // Die einzelne Zelle
+        // A single cell
         cell: "!h-9 !w-9 text-center text-sm !p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20 flex justify-center items-center m-auto",
         
-        // Der Button im Tag (Interaktion & Style)
+        // The interactive button within a day cell
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "!h-9 !w-9 !p-0 font-normal aria-selected:opacity-100 hover:bg-indigo-100 hover:text-indigo-900 rounded-full flex justify-center items-center transition-all"
+          "!h-9 !w-9 !p-0 font-normal aria-selected:opacity-100 hover:bg-primary/10 transition-all"
         ),
         
-        // --- VISUELLE STYLES (wie in deinen Beispielen) ---
+        // --- VISUAL STYLES ---
         day_selected:
-          "bg-indigo-600 text-white hover:bg-indigo-700 hover:text-white focus:bg-indigo-700 focus:text-white rounded-full shadow-md", // Runder blauer Kreis
+          "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-full shadow-md",
         
-        day_today: "bg-indigo-50 text-indigo-600 font-bold border border-indigo-200 rounded-full", // Aktueller Tag leicht hervorgehoben
+        day_today: "bg-accent text-accent-foreground font-bold rounded-full",
         
         day_outside:
           "text-muted-foreground opacity-50",
