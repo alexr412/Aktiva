@@ -49,14 +49,13 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      {/* sm:max-w-md sorgt für gute Breite auf Desktop */}
-      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-background">
         <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-muted" />
         <SheetHeader className="pt-8 p-6 pb-2 text-center items-center">
           <div className="bg-primary/10 p-3 rounded-full mb-2">
             <CalendarPlus className="h-6 w-6 text-primary" />
           </div>
-          <SheetTitle className="text-xl font-bold">{isCustom ? 'Create a custom activity' : 'Create an activity'}</SheetTitle>
+          <SheetTitle className="text-xl font-bold text-foreground">{isCustom ? 'Create a custom activity' : 'Create an activity'}</SheetTitle>
           <SheetDescription className="text-base text-muted-foreground">
             {isCustom ? (
                 'Choose a name and date for your activity.'
@@ -72,20 +71,22 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
               value={customLocationName}
               onChange={(e) => setCustomLocationName(e.target.value)}
               placeholder="E.g., Board Game Night at my place"
-              className="text-center h-12 text-lg"
+              className="text-center h-12 text-lg rounded-xl"
             />
           </div>
         )}
 
-        {/* CONTAINER FÜR DEN KALENDER */}
+        {/* Zentrierter Container für den Kalender */}
         <div className="flex justify-center w-full py-2 px-4">
-            <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
-                className="rounded-xl border shadow-sm bg-card w-fit mx-auto"
-            />
+            <div className="rounded-xl border shadow-sm bg-card p-2">
+              <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
+                  className="w-fit mx-auto"
+              />
+            </div>
         </div>
 
         <SheetFooter className="p-6 pt-2 sm:justify-center">
