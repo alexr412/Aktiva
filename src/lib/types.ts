@@ -84,6 +84,12 @@ export interface UserProfile {
   age?: number;
   location?: string;
   bio?: string;
-  interests?: string[]; 
+  interests?: string[];
+  gender?: string;
+  pronouns?: string;
+  languages?: string[];
+  dietaryPreferences?: string[];
+  socialBattery?: string;
+  verified?: boolean;
   onboardingCompleted: boolean;
 }
