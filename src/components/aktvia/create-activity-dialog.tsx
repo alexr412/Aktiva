@@ -11,9 +11,23 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import type { Place } from '@/lib/types';
-import { Loader2, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import {
+  format,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isToday,
+  isSameDay,
+  getDate,
+} from 'date-fns';
 
 interface CreateActivityDialogProps {
   place: Place | null;
@@ -25,7 +39,10 @@ interface CreateActivityDialogProps {
 export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivity }: CreateActivityDialogProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [customLocationName, setCustomLocationName] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  
+  // Calendar State
+  const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const isCustom = !place;
 
@@ -33,7 +50,9 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     if (open) {
       setIsCreating(false);
       setCustomLocationName('');
-      setSelectedDate(new Date());
+      const today = new Date();
+      setSelectedDate(today);
+      setCurrentMonthDate(today);
     }
   }, [open]);
 
@@ -48,9 +67,25 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     }
   };
 
+  // Calendar Logic
+  const firstDayOfMonth = startOfMonth(currentMonthDate);
+  const lastDayOfMonth = endOfMonth(currentMonthDate);
+  const firstDayOfGrid = startOfWeek(firstDayOfMonth);
+  const lastDayOfGrid = endOfWeek(lastDayOfMonth);
+
+  const days = eachDayOfInterval({
+    start: firstDayOfGrid,
+    end: lastDayOfGrid,
+  });
+
+  const nextMonth = () => setCurrentMonthDate(addMonths(currentMonthDate, 1));
+  const prevMonth = () => setCurrentMonthDate(subMonths(currentMonthDate, 1));
+
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-background">
+      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto max-h-[95vh] flex flex-col bg-background">
         <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-muted" />
         <SheetHeader className="pt-8 p-6 pb-4 text-center items-center">
           <div className="bg-primary/10 p-3 rounded-full mb-2">
@@ -62,27 +97,60 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
           </SheetDescription>
         </SheetHeader>
         
-        {isCustom && (
-          <div className="px-6 pb-4">
-            <Input
-              value={customLocationName}
-              onChange={(e) => setCustomLocationName(e.target.value)}
-              placeholder="E.g., Board Game Night"
-              className="text-center h-12 text-lg rounded-xl"
-            />
-          </div>
-        )}
+        <div className="flex-1 overflow-y-auto px-4">
+          {isCustom && (
+            <div className="px-2 pb-4">
+              <Input
+                value={customLocationName}
+                onChange={(e) => setCustomLocationName(e.target.value)}
+                placeholder="E.g., Board Game Night"
+                className="text-center h-12 text-lg rounded-xl"
+              />
+            </div>
+          )}
 
-        <div className="px-4 flex justify-center">
-             <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                className="rounded-md border"
-            />
+          {/* Calendar Implementation */}
+          <div className="w-full max-w-md p-4 mx-auto">
+            <div className="flex items-center justify-between mb-4">
+              <Button variant="ghost" size="icon" onClick={prevMonth}>
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <h2 className="text-lg font-semibold text-center">
+                {format(currentMonthDate, 'MMMM yyyy')}
+              </h2>
+              <Button variant="ghost" size="icon" onClick={nextMonth}>
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 text-center text-sm font-medium text-muted-foreground mb-2">
+              {weekDays.map((day) => (
+                <div key={day}>{day}</div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {days.map((day) => (
+                <div
+                  key={day.toString()}
+                  onClick={() => setSelectedDate(day)}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-center h-10 w-10 rounded-lg font-medium transition-colors mx-auto',
+                    !isSameMonth(day, currentMonthDate) && 'text-muted-foreground/50 hover:bg-accent/50',
+                    isToday(day) && !isSameDay(day, selectedDate) && 'bg-accent text-accent-foreground',
+                    isSameDay(day, selectedDate)
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'hover:bg-accent hover:text-accent-foreground'
+                  )}
+                >
+                  {getDate(day)}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <SheetFooter className="p-6 pt-4 sm:justify-center">
+        <SheetFooter className="p-6 pt-4 sm:justify-center mt-auto">
           <Button 
             type="button" 
             onClick={handleCreate} 
