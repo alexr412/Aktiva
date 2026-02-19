@@ -11,7 +11,7 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import type { Place } from '@/lib/types';
-import { CalendarPlus, Loader2 } from 'lucide-react';
+import { Clock, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface CreateActivityDialogProps {
@@ -49,7 +49,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
         <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-gray-200" />
         <SheetHeader className="pt-8 p-6 pb-4 text-center items-center">
           <div className="bg-indigo-50 p-3 rounded-full mb-2">
-            <CalendarPlus className="h-6 w-6 text-indigo-600" />
+            <Clock className="h-6 w-6 text-indigo-600" />
           </div>
           <SheetTitle className="text-xl font-bold text-gray-900">{isCustom ? 'Create a custom activity' : 'Create an activity'}</SheetTitle>
           <SheetDescription className="text-base text-gray-500">
