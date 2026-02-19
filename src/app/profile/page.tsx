@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2 } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Bell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 
@@ -219,15 +219,25 @@ export default function ProfilePage() {
 
     return (
         <div className="relative flex flex-col h-full bg-background overflow-y-auto pb-20">
-            <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleSignOut}
-                className="absolute top-4 right-4 text-muted-foreground z-10"
-            >
-                <LogOut className="h-5 w-5" />
-                <span className="sr-only">Sign Out</span>
-            </Button>
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground"
+                >
+                    <Bell className="h-5 w-5" />
+                    <span className="sr-only">Benachrichtigungen</span>
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleSignOut}
+                    className="text-muted-foreground"
+                >
+                    <LogOut className="h-5 w-5" />
+                    <span className="sr-only">Sign Out</span>
+                </Button>
+            </div>
             
             <div className="p-6 flex flex-col items-center justify-center text-center space-y-4 pt-16">
                 <input 

@@ -8,7 +8,7 @@ import { PlaceCard } from '@/components/aktvia/place-card';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place, Activity } from '@/lib/types';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MapPin, Map as MapIcon, List, Plus } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus, Bell } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -321,6 +321,10 @@ export default function Home() {
              <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
                 <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+                        <Bell className="h-5 w-5" />
+                        <span className="sr-only">Benachrichtigungen</span>
+                    </Button>
                     <div className="flex items-center gap-1 rounded-full bg-muted p-1">
                         <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-full shadow-sm" onClick={() => setViewMode('list')}>
                             <List className="h-4 w-4" />

@@ -12,7 +12,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Users } from 'lucide-react';
+import { Users, Bell } from 'lucide-react';
 
 const ChatListItemSkeleton = () => (
     <div className="flex items-center gap-4 p-4">
@@ -133,8 +133,12 @@ export default function ChatPage() {
   return (
     <div className="flex h-full flex-col">
         <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
-          <div className="px-4 flex h-16 items-center">
+          <div className="px-4 flex h-16 items-center justify-between">
             <h1 className="text-2xl font-bold tracking-tight">Chats</h1>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+                <Bell className="h-5 w-5" />
+                <span className="sr-only">Benachrichtigungen</span>
+            </Button>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto">

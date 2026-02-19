@@ -12,7 +12,7 @@ import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'fireba
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Compass } from 'lucide-react';
+import { Compass, Bell } from 'lucide-react';
 import { CategoryFilters, categories as defaultCategories } from '@/components/aktvia/category-filters';
 
 const ActivitySkeleton = () => (
@@ -146,7 +146,13 @@ export default function ExplorePage() {
         <div className="flex h-full flex-col">
             <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
               <div className="px-4 py-4 space-y-4">
-                <h1 className="text-2xl font-bold tracking-tight">Explore Activities</h1>
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold tracking-tight">Explore Activities</h1>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+                        <Bell className="h-5 w-5" />
+                        <span className="sr-only">Benachrichtigungen</span>
+                    </Button>
+                </div>
                 <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
               </div>
             </header>
