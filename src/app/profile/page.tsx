@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Bell } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Bell, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 
@@ -227,6 +227,16 @@ export default function ProfilePage() {
                 >
                     <Bell className="h-5 w-5" />
                     <span className="sr-only">Benachrichtigungen</span>
+                </Button>
+                <Button asChild
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground"
+                >
+                    <Link href="/settings">
+                        <Settings className="h-5 w-5" />
+                        <span className="sr-only">Settings</span>
+                    </Link>
                 </Button>
                 <Button
                     variant="ghost"
