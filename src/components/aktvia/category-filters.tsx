@@ -18,7 +18,7 @@ export const categories: { name: string; id: string[]; icon: LucideIcon }[] = [
   { name: 'Highlights', id: ['tourism', 'entertainment', 'leisure'], icon: Sparkles },
   { name: 'Community', id: ['user_event'], icon: Users },
   { name: 'Attractions', id: ['tourism.attraction'], icon: Landmark },
-  { name: 'Sport', id: ['leisure.sport', 'service.sport_centre', 'leisure.stadium'], icon: Dumbbell },
+  { name: 'Sport', id: ['sport', 'sport.sports_centre', 'sport.stadium'], icon: Dumbbell },
   { name: 'Parks', id: ['leisure.park'], icon: TreePine },
   { name: 'Cinemas', id: ['entertainment.cinema'], icon: Film },
   { name: 'Restaurants', id: ['catering.restaurant'], icon: UtensilsCrossed },
