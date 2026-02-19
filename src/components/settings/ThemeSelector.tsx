@@ -2,9 +2,10 @@
 
 import { useTheme, themes } from '@/contexts/theme-context';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Moon, Sun } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 export function ThemeSelector() {
     const { theme, setTheme, mode, toggleMode } = useTheme();
@@ -30,15 +31,16 @@ export function ThemeSelector() {
 
             <Separator className="my-4" />
             
-            <div className="space-y-1">
-                <p className="font-medium">Mode</p>
-                <p className="text-sm text-muted-foreground">Toggle between light and dark mode.</p>
-            </div>
-            <div className="mt-4">
-                <Button onClick={toggleMode} variant="outline" className="w-full justify-start gap-4 px-4 h-12">
-                    {mode === 'light' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                    <span>{mode === 'light' ? 'Light Mode' : 'Dark Mode'}</span>
-                </Button>
+             <div className="flex items-center justify-between">
+                <Label htmlFor="dark-mode" className="flex items-center gap-2 font-medium">
+                     {mode === 'light' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                    <span>{mode === 'light' ? 'Light' : 'Dark'} Mode</span>
+                </Label>
+                <Switch 
+                    id="dark-mode" 
+                    checked={mode === 'dark'} 
+                    onCheckedChange={toggleMode}
+                />
             </div>
         </div>
     );
