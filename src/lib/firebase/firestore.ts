@@ -26,7 +26,8 @@ import type { Place, UserProfile } from '@/lib/types';
 type CreateActivityPayload = {
   place?: Place;
   customLocationName?: string;
-  date: Date;
+  startDate: Date;
+  endDate?: Date;
   user: User;
   isTimeFlexible?: boolean;
 };
@@ -67,7 +68,8 @@ export async function updateUserProfile(userId: string, data: Partial<UserProfil
 export async function createActivity({
   place,
   customLocationName,
-  date,
+  startDate,
+  endDate,
   user,
   isTimeFlexible,
 }: CreateActivityPayload) {
@@ -93,7 +95,8 @@ export async function createActivity({
     placeId: place?.id || "custom",
     placeName: place?.name || customLocationName,
     placeAddress: place?.address || null,
-    activityDate: Timestamp.fromDate(date),
+    activityDate: Timestamp.fromDate(startDate),
+    activityEndDate: endDate ? Timestamp.fromDate(endDate) : null,
     creatorId: user.uid,
     creatorName: user.displayName,
     creatorPhotoURL: user.photoURL,

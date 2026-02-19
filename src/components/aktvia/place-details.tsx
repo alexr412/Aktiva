@@ -114,6 +114,16 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         }
     };
     
+    const renderActivityDate = (activity: Activity) => {
+        if (activity.activityEndDate) {
+            return `${format(activity.activityDate.toDate(), 'eee, MMM d')} - ${format(activity.activityEndDate.toDate(), 'MMM d')}`;
+        }
+        if (activity.isTimeFlexible) {
+            return `${format(activity.activityDate.toDate(), 'eee, MMM d')} (Flexible Time)`;
+        }
+        return `${format(activity.activityDate.toDate(), 'eee, MMM d')} at ${format(activity.activityDate.toDate(), 'p')}`;
+    };
+
     const placeActivities = activities.filter(act => act.placeId === place.id);
 
     return (
@@ -191,9 +201,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                         <div className="flex items-center justify-between gap-2">
                                             <div className="min-w-0">
                                                 <p className="font-semibold text-base">
-                                                    {activity.isTimeFlexible
-                                                        ? `${format(activity.activityDate.toDate(), 'eee, MMM d')} (Flexible Time)`
-                                                        : `${format(activity.activityDate.toDate(), 'eee, MMM d')} at ${format(activity.activityDate.toDate(), 'p')}`}
+                                                    {renderActivityDate(activity)}
                                                 </p>
                                                 <p className="text-sm text-muted-foreground truncate">
                                                     {activity.participantIds.length} participant{activity.participantIds.length !== 1 ? 's' : ''} &bull; by {activity.creatorName}

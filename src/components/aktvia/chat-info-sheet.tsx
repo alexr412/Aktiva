@@ -71,6 +71,19 @@ export function ChatInfoSheet({ chat, open, onOpenChange }: ChatInfoSheetProps) 
         fetchActivity();
     }
   }, [open, chat?.activityId]);
+  
+  const renderDate = () => {
+      if (!activity) return null;
+
+      if (activity.activityEndDate) {
+          return `${format(activity.activityDate.toDate(), "eee, MMM d")} - ${format(activity.activityEndDate.toDate(), "eee, MMM d")}`;
+      }
+      if (activity.isTimeFlexible) {
+          return `${format(activity.activityDate.toDate(), "eee, MMM d")} (Flexible Time)`;
+      }
+      return format(activity.activityDate.toDate(), "eee, MMM d 'at' p");
+  }
+
 
   if (!chat || !user) return null;
 
@@ -108,11 +121,7 @@ export function ChatInfoSheet({ chat, open, onOpenChange }: ChatInfoSheetProps) 
           ) : activity ? (
             <div className="flex items-center gap-2 text-muted-foreground pt-2 text-sm">
                 <Calendar className="h-4 w-4" />
-                <span>
-                  {activity.isTimeFlexible
-                    ? `${format(activity.activityDate.toDate(), "eee, MMM d")} (Flexible Time)`
-                    : format(activity.activityDate.toDate(), "eee, MMM d 'at' p")}
-                </span>
+                <span>{renderDate()}</span>
             </div>
           ) : null}
         </SheetHeader>

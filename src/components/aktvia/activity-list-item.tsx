@@ -42,6 +42,16 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
         }
     };
 
+    const renderDate = () => {
+        if (activity.activityEndDate) {
+            return `${format(activity.activityDate.toDate(), "eee, MMM d")} - ${format(activity.activityEndDate.toDate(), "eee, MMM d")}`;
+        }
+        if (activity.isTimeFlexible) {
+            return `${format(activity.activityDate.toDate(), "eee, MMM d")} (Flexible Time)`;
+        }
+        return format(activity.activityDate.toDate(), "eee, MMM d 'at' p");
+    }
+
     return (
         <div 
             className="p-4 transition-colors hover:bg-muted/50 cursor-pointer"
@@ -57,9 +67,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                         {activity.isCustomActivity && <Badge variant="secondary">Community</Badge>}
                     </div>
                      <p className="text-sm text-muted-foreground">
-                        {activity.isTimeFlexible 
-                            ? `${format(activity.activityDate.toDate(), "eee, MMM d")} (Flexible Time)`
-                            : format(activity.activityDate.toDate(), "eee, MMM d 'at' p")}
+                        {renderDate()}
                     </p>
                     <p className="text-sm text-muted-foreground truncate mt-1">
                         {activity.participantIds.length} participant{activity.participantIds.length !== 1 ? 's' : ''} &bull; by {activity.creatorName}
