@@ -191,7 +191,9 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                         <div className="flex items-center justify-between gap-2">
                                             <div className="min-w-0">
                                                 <p className="font-semibold text-base">
-                                                    {format(activity.activityDate.toDate(), 'eee, MMM d')} at {format(activity.activityDate.toDate(), 'p')}
+                                                    {activity.isTimeFlexible
+                                                        ? `${format(activity.activityDate.toDate(), 'eee, MMM d')} (Flexible Time)`
+                                                        : `${format(activity.activityDate.toDate(), 'eee, MMM d')} at ${format(activity.activityDate.toDate(), 'p')}`}
                                                 </p>
                                                 <p className="text-sm text-muted-foreground truncate">
                                                     {activity.participantIds.length} participant{activity.participantIds.length !== 1 ? 's' : ''} &bull; by {activity.creatorName}

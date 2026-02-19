@@ -17,6 +17,7 @@ export interface Activity {
   placeName: string;
   placeAddress?: string;
   activityDate: Timestamp;
+  isTimeFlexible?: boolean;
   creatorId: string;
   creatorName: string | null;
   creatorPhotoURL: string | null;

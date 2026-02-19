@@ -13,6 +13,8 @@ import {
 import type { Place } from '@/lib/types';
 import { Loader2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import {
   format,
@@ -34,7 +36,7 @@ interface CreateActivityDialogProps {
   place: Place | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateActivity: (date: Date, customLocationName?: string) => Promise<boolean>;
+  onCreateActivity: (date: Date, isFlexible: boolean, customLocationName?: string) => Promise<boolean>;
 }
 
 export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivity }: CreateActivityDialogProps) {
@@ -44,10 +46,10 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   // Calendar State
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedTime, setSelectedTime] = useState<string>('18:00'); // Default to 6 PM
+  const [selectedTime, setSelectedTime] = useState<string>('18:00');
+  const [isFlexible, setIsFlexible] = useState(false);
 
   const isCustom = !place;
-  const timeSlots = ['10:00', '14:00', '18:00', '20:00'];
 
   useEffect(() => {
     if (open) {
@@ -57,19 +59,24 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
       setSelectedDate(today);
       setCurrentMonthDate(today);
       setSelectedTime('18:00'); // Reset time
+      setIsFlexible(false);
     }
   }, [open]);
 
   const handleCreate = async () => {
-    if (!selectedDate || !selectedTime) {
-        return;
+    if (!selectedDate) return;
+    if (!isFlexible && !selectedTime) return;
+
+    let finalDate = new Date(selectedDate);
+    if (!isFlexible) {
+        const [hours, minutes] = selectedTime.split(':').map(Number);
+        finalDate.setHours(hours, minutes, 0, 0);
+    } else {
+        finalDate.setHours(0, 0, 0, 0);
     }
-    const [hours, minutes] = selectedTime.split(':').map(Number);
-    const finalDate = new Date(selectedDate);
-    finalDate.setHours(hours, minutes, 0, 0);
 
     setIsCreating(true);
-    const success = await onCreateActivity(finalDate, isCustom ? customLocationName : undefined);
+    const success = await onCreateActivity(finalDate, isFlexible, isCustom ? customLocationName : undefined);
     if (!success) {
       setIsCreating(false);
     }
@@ -161,28 +168,17 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
              <h3 className="text-lg font-semibold text-center mb-4 capitalize">
                 Uhrzeit
               </h3>
-              <div className="grid grid-cols-4 gap-2">
-                {timeSlots.map(time => (
-                  <Button
-                    key={time}
-                    variant={selectedTime === time ? 'default' : 'outline'}
-                    onClick={() => setSelectedTime(time)}
-                  >
-                    {time}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2 mt-4">
-                 <div className="flex-1 border-t" />
-                 <span className="text-sm text-muted-foreground">ODER</span>
-                 <div className="flex-1 border-t" />
-              </div>
               <Input
                 type="time"
                 value={selectedTime}
                 onChange={(e) => setSelectedTime(e.target.value)}
-                className="w-full mt-4 h-12 text-lg text-center rounded-xl"
+                className="w-full h-12 text-lg text-center rounded-xl"
+                disabled={isFlexible}
               />
+              <div className="flex items-center justify-center space-x-2 pt-4">
+                <Switch id="flexible-time" checked={isFlexible} onCheckedChange={setIsFlexible} />
+                <Label htmlFor="flexible-time">Ich bin zeitlich flexibel</Label>
+              </div>
           </div>
 
         </div>
@@ -191,7 +187,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
           <Button 
             type="button" 
             onClick={handleCreate} 
-            disabled={isCreating || !selectedDate || !selectedTime || (isCustom && !customLocationName.trim())} 
+            disabled={isCreating || !selectedDate || (!isFlexible && !selectedTime) || (isCustom && !customLocationName.trim())}
             className="w-full h-12 text-base font-semibold rounded-xl"
           >
             {isCreating ? (

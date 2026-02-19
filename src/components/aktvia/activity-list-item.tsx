@@ -57,7 +57,9 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                         {activity.isCustomActivity && <Badge variant="secondary">Community</Badge>}
                     </div>
                      <p className="text-sm text-muted-foreground">
-                        {format(activity.activityDate.toDate(), "eee, MMM d 'at' p")}
+                        {activity.isTimeFlexible 
+                            ? `${format(activity.activityDate.toDate(), "eee, MMM d")} (Flexible Time)`
+                            : format(activity.activityDate.toDate(), "eee, MMM d 'at' p")}
                     </p>
                     <p className="text-sm text-muted-foreground truncate mt-1">
                         {activity.participantIds.length} participant{activity.participantIds.length !== 1 ? 's' : ''} &bull; by {activity.creatorName}

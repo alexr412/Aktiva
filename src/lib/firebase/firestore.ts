@@ -28,6 +28,7 @@ type CreateActivityPayload = {
   customLocationName?: string;
   date: Date;
   user: User;
+  isTimeFlexible?: boolean;
 };
 
 export async function createUserProfileDocument(user: User) {
@@ -68,6 +69,7 @@ export async function createActivity({
   customLocationName,
   date,
   user,
+  isTimeFlexible,
 }: CreateActivityPayload) {
   console.log('Attempting to create activity...');
   if (!db) {
@@ -98,6 +100,7 @@ export async function createActivity({
     participantIds: [user.uid],
     createdAt: serverTimestamp(),
     isCustomActivity: isCustomActivity,
+    isTimeFlexible: !!isTimeFlexible,
     category: isCustomActivity ? "community" : (place?.categories[0].split('.')[0] || "other"),
     categories: isCustomActivity ? ["user_event"] : placeCategories,
     lastInteractionAt: serverTimestamp(),

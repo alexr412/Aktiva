@@ -159,7 +159,7 @@ export default function Home() {
     setActivityModalPlace('custom');
   };
 
-  const handleCreateActivity = async (date: Date, customLocationName?: string): Promise<boolean> => {
+  const handleCreateActivity = async (date: Date, isFlexible: boolean, customLocationName?: string): Promise<boolean> => {
     if (!user) {
         toast({
             title: 'Error',
@@ -182,8 +182,8 @@ export default function Home() {
       }
 
       const payload = isCustom 
-        ? { customLocationName: customLocationName!, date, user }
-        : { place: activityModalPlace as Place, date, user };
+        ? { customLocationName: customLocationName!, date, user, isTimeFlexible: isFlexible }
+        : { place: activityModalPlace as Place, date, user, isTimeFlexible: isFlexible };
 
       // @ts-ignore
       const newActivityRef = await createActivity(payload);

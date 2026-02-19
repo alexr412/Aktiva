@@ -108,7 +108,11 @@ export function ChatInfoSheet({ chat, open, onOpenChange }: ChatInfoSheetProps) 
           ) : activity ? (
             <div className="flex items-center gap-2 text-muted-foreground pt-2 text-sm">
                 <Calendar className="h-4 w-4" />
-                <span>{format(activity.activityDate.toDate(), "eee, MMM d 'at' p")}</span>
+                <span>
+                  {activity.isTimeFlexible
+                    ? `${format(activity.activityDate.toDate(), "eee, MMM d")} (Flexible Time)`
+                    : format(activity.activityDate.toDate(), "eee, MMM d 'at' p")}
+                </span>
             </div>
           ) : null}
         </SheetHeader>
