@@ -9,6 +9,7 @@ export interface Place {
   lon: number;
   rating?: number;
   imageUrl?: string;
+  activityCount?: number;
 }
 
 export interface Activity {

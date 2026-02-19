@@ -12,6 +12,7 @@ import {
   Film,
   Building,
   Plus,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -72,7 +73,13 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
       </div>
       <div className="flex-1 flex flex-col justify-end p-3 pt-0">
         <div className="flex items-end justify-between gap-2">
-            <div className="flex flex-wrap gap-2 mt-2 w-full overflow-hidden">
+            <div className="flex flex-wrap items-center gap-2 mt-2 w-full overflow-hidden">
+              {place.activityCount && place.activityCount > 0 ? (
+                <div className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-bold bg-primary/10 text-primary rounded-md whitespace-nowrap">
+                    <MessageSquare className="h-3 w-3" />
+                    <span>{place.activityCount}</span>
+                </div>
+              ) : null}
               {cleanTags.map((tag, index) => (
                 <span 
                   key={index} 

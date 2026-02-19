@@ -16,7 +16,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { createActivity, joinActivity } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { MapView } from '@/components/aktvia/map-view';
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { ActivityListItem } from "@/components/aktvia/activity-list-item";
 
@@ -41,6 +41,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [customActivities, setCustomActivities] = useState<Activity[]>([]);
+  const [allUpcomingActivities, setAllUpcomingActivities] = useState<Activity[]>([]);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -73,13 +74,34 @@ export default function Home() {
       setUserLocation({ lat: 53.5451, lng: 8.5746 });
     }
   }, [toast]);
+  
+  useEffect(() => {
+    const fetchAllUpcomingActivities = async () => {
+        if (!db) return;
+        const activitiesQuery = query(
+            collection(db, "activities"),
+            where("activityDate", ">=", Timestamp.now())
+        );
+        const querySnapshot = await getDocs(activitiesQuery);
+        const activitiesData = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as Activity[];
+        setAllUpcomingActivities(activitiesData);
+    };
+    fetchAllUpcomingActivities();
+  }, []);
 
   const loadPlaces = useCallback(async (lat: number, lng: number, category: string[]) => {
     setIsLoading(true);
     setPlaces([]);
     try {
       const fetchedPlaces = await fetchNearbyPlaces(lat, lng, category);
-      setPlaces(fetchedPlaces);
+      const placesWithCounts = fetchedPlaces.map(p => ({
+          ...p,
+          activityCount: allUpcomingActivities.filter(a => a.placeId === p.id).length
+      }));
+      setPlaces(placesWithCounts);
     } catch (error) {
       console.error('Failed to load places:', error);
       toast({
@@ -90,38 +112,24 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, allUpcomingActivities]);
 
   useEffect(() => {
     const isCommunityCategory = activeCategory.includes("user_event") || activeCategory.includes("community");
 
     if (isCommunityCategory) {
-      setPlaces([]); // Clear Geoapify places
-      setIsLoading(true);
-      const fetchCustomActivities = async () => {
-        if (!db) {
-          console.error("Firestore DB not available");
-          setIsLoading(false);
-          return;
-        }
-        const q = query(collection(db, "activities"), where("isCustomActivity", "==", true));
-        const querySnapshot = await getDocs(q);
-        const activitiesData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Activity[];
-        setCustomActivities(activitiesData);
+        setPlaces([]);
+        setIsLoading(true);
+        const custom = allUpcomingActivities.filter(act => act.isCustomActivity);
+        setCustomActivities(custom);
         setIsLoading(false);
-      };
-      fetchCustomActivities();
-      return; // Abort to prevent Geoapify call
+    } else {
+        if (userLocation) {
+            setCustomActivities([]);
+            loadPlaces(userLocation.lat, userLocation.lng, activeCategory);
+        }
     }
-    
-    if (userLocation) {
-      setCustomActivities([]); // Clear custom activities if not in community tab
-      loadPlaces(userLocation.lat, userLocation.lng, activeCategory);
-    }
-  }, [userLocation, activeCategory, loadPlaces]);
+  }, [userLocation, activeCategory, loadPlaces, allUpcomingActivities]);
 
   const handleCategoryChange = (categoryId: string[]) => {
     setActiveCategory(categoryId);
