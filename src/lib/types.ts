@@ -95,6 +95,11 @@ export interface UserProfile {
   languages?: string[];
   dietaryPreferences?: string[];
   socialBattery?: string;
+  notificationSettings?: {
+    friendRequests: boolean;
+    activityInvites: boolean;
+    chatMessages: boolean;
+  };
   verified?: boolean;
   onboardingCompleted: boolean;
 }

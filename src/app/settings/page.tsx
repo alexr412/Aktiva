@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { sendPasswordReset, deleteAccount } from '@/lib/firebase/auth';
-import { deleteUserDocument } from '@/lib/firebase/firestore';
+import { deleteUserDocument, updateUserProfile } from '@/lib/firebase/firestore';
 import { themes, useTheme } from '@/contexts/theme-context';
 import { cn } from '@/lib/utils';
 import {
@@ -26,15 +26,55 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 
+type NotificationSettings = {
+    friendRequests: boolean;
+    activityInvites: boolean;
+    chatMessages: boolean;
+};
+
 export default function SettingsPage() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, userProfile } = useAuth();
     const { toast } = useToast();
     const { theme, setTheme } = useTheme();
     
     const [isSendingReset, setIsSendingReset] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+    const [notifications, setNotifications] = useState<NotificationSettings>({
+        friendRequests: true,
+        activityInvites: true,
+        chatMessages: true,
+    });
+
+    useEffect(() => {
+        if (userProfile?.notificationSettings) {
+            setNotifications(userProfile.notificationSettings);
+        }
+    }, [userProfile]);
+
+    const handleNotificationChange = async (key: keyof NotificationSettings, value: boolean) => {
+        if (!user?.uid) return;
+
+        const currentSettings = { ...notifications };
+        const newSettings = { ...notifications, [key]: value };
+        setNotifications(newSettings); // Optimistic update
+
+        try {
+            await updateUserProfile(user.uid, {
+                notificationSettings: newSettings
+            });
+        } catch (error) {
+            console.error("Failed to save notification settings", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not save your settings.',
+            });
+            setNotifications(currentSettings); // Revert on failure
+        }
+    };
 
     const handlePasswordReset = async () => {
         if (!user?.email) {
@@ -115,7 +155,11 @@ export default function SettingsPage() {
                                     <Label htmlFor="friend-requests" className="font-medium">Friend Requests</Label>
                                     <p className="text-sm text-muted-foreground">Notify me about new friend requests.</p>
                                 </div>
-                                <Switch id="friend-requests" />
+                                <Switch
+                                    id="friend-requests"
+                                    checked={notifications.friendRequests}
+                                    onCheckedChange={(checked) => handleNotificationChange('friendRequests', checked)}
+                                />
                             </div>
                             <Separator className="my-4"/>
                             <div className="flex items-center justify-between">
@@ -123,7 +167,11 @@ export default function SettingsPage() {
                                     <Label htmlFor="activity-invites" className="font-medium">Activity Invites</Label>
                                     <p className="text-sm text-muted-foreground">Notify me when I'm invited to an activity.</p>
                                 </div>
-                                <Switch id="activity-invites" defaultChecked />
+                                <Switch
+                                    id="activity-invites"
+                                    checked={notifications.activityInvites}
+                                    onCheckedChange={(checked) => handleNotificationChange('activityInvites', checked)}
+                                />
                             </div>
                              <Separator className="my-4"/>
                              <div className="flex items-center justify-between">
@@ -131,7 +179,11 @@ export default function SettingsPage() {
                                     <Label htmlFor="chat-messages" className="font-medium">Chat Messages</Label>
                                     <p className="text-sm text-muted-foreground">Notify me about new messages in chats.</p>
                                 </div>
-                                <Switch id="chat-messages" defaultChecked />
+                                <Switch
+                                    id="chat-messages"
+                                    checked={notifications.chatMessages}
+                                    onCheckedChange={(checked) => handleNotificationChange('chatMessages', checked)}
+                                />
                             </div>
                         </div>
                     </div>
