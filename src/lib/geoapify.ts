@@ -12,9 +12,19 @@ export async function fetchNearbyPlaces(
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error('Failed to fetch places from Geoapify');
+      const errorText = await response.text();
+      // Using console.warn to avoid showing a scary error overlay in development.
+      // This is likely an API key issue (invalid or rate-limited).
+      console.warn(`Geoapify API request failed: ${response.status}. ${errorText}`);
+      return [];
     }
     const data = await response.json();
+
+    // Guard against a response that doesn't contain the features array.
+    if (!data.features) {
+      console.warn("Geoapify response was successful but contained no 'features' array.");
+      return [];
+    }
 
     return data.features.map((feature: GeoapifyFeature) => {
       const props = feature.properties;
@@ -30,14 +40,15 @@ export async function fetchNearbyPlaces(
         id: props.place_id,
         name: props.name || props.address_line1,
         address: props.address_line2,
-        categories: props.categories,
+        // Geoapify can return a single category as a string, so we ensure it's always an array.
+        categories: Array.isArray(props.categories) ? props.categories : [props.categories],
         lat: props.lat,
         lon: props.lon,
         rating: rating,
       };
     });
   } catch (error) {
-    console.error('Geoapify fetch error:', error);
+    console.error('An unexpected error occurred while fetching places from Geoapify:', error);
     return [];
   }
 }
