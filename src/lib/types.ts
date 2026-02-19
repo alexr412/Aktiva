@@ -85,6 +85,7 @@ export interface UserProfile {
   location?: string;
   bio?: string;
   interests?: string[];
+  friends?: string[];
   gender?: string;
   pronouns?: string;
   languages?: string[];

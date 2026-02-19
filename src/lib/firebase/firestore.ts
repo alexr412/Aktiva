@@ -39,6 +39,7 @@ export async function createUserProfileDocument(user: User) {
     email: user.email,
     photoURL: user.photoURL,
     onboardingCompleted: false,
+    friends: [],
   };
   await setDoc(userDocRef, userProfile);
 }
@@ -279,4 +280,20 @@ export async function fetchUserActivities(userId: string) {
 
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function addFriend(userId: string, friendId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const userDocRef = doc(db, 'users', userId);
+  await updateDoc(userDocRef, {
+    friends: arrayUnion(friendId)
+  });
+}
+
+export async function removeFriend(userId: string, friendId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const userDocRef = doc(db, 'users', userId);
+  await updateDoc(userDocRef, {
+    friends: arrayRemove(friendId)
+  });
 }
