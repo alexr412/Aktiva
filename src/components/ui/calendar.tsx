@@ -23,7 +23,7 @@ function Calendar({
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-2xl font-bold",
+        caption_label: "text-xl font-bold",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -33,15 +33,13 @@ function Calendar({
         nav_button_next: "absolute right-1",
         
         // CSS Grid Fix
-        table: "!w-full !border-collapse !space-y-1",
-        head_row: "!grid !grid-cols-7 !w-full",
+        table: "!border-collapse !space-y-1",
+        head_row: "!grid !grid-cols-7",
         head_cell: "text-muted-foreground !w-9 font-normal text-[0.8rem] flex justify-center items-center m-auto",
-        row: "!grid !grid-cols-7 !w-full mt-2",
+        row: "!grid !grid-cols-7 mt-2",
         
         cell: cn(
-          "relative !h-9 !w-9 !p-0 text-center text-sm focus-within:relative focus-within:z-20 flex justify-center items-center m-auto",
-          // For v9, style the cell for selection. This will create the circular background.
-          "[&:has([aria-selected])]:bg-destructive [&:has([aria-selected])]:text-destructive-foreground [&:has([aria-selected])]:rounded-full",
+          "relative !h-9 !w-9 !p-0 text-center text-sm focus-within:relative focus-within:z-20 flex justify-center items-center m-auto"
         ),
         
         day: cn(
@@ -49,14 +47,14 @@ function Calendar({
           "!h-9 !w-9 !p-0 font-normal !rounded-full"
         ),
         
-        // Modifier classes for react-day-picker v9
-        day_today: "font-bold text-destructive-foreground", // Style for today's date number if it's inside a selected cell
-        day_selected: "text-destructive-foreground",
-        
         day_outside: "text-muted-foreground opacity-50",
         day_disabled: "text-muted-foreground opacity-50",
         day_hidden: "invisible",
         ...classNames,
+      }}
+      modifiersClassNames={{
+        selected: "!bg-primary !text-primary-foreground rounded-full",
+        today: "!bg-accent !text-accent-foreground rounded-full",
       }}
       components={{
         IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
