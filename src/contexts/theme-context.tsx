@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useState, useEffect, useContext, type ReactNode } from 'react';
-import { cn } from '@/lib/utils';
 
 type Theme = 'mint' | 'violet' | 'blue' | 'yellow' | 'orange' | 'green' | 'red';
 
@@ -28,32 +27,30 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setTheme] = useState<Theme>('mint');
+  const [theme, setThemeState] = useState<Theme>('mint');
 
   useEffect(() => {
+    // This effect runs only on the client.
     try {
-      const storedTheme = localStorage.getItem('theme') as Theme | null;
-      if (storedTheme && themes.some(t => t.name === storedTheme)) {
-        setTheme(storedTheme);
-      }
-    } catch (error) {
-      // localStorage is not available on the server
+      const storedTheme = localStorage.getItem('app-theme') as Theme | null;
+      const initialTheme = storedTheme && themes.some(t => t.name === storedTheme) ? storedTheme : 'mint';
+      setThemeState(initialTheme);
+      document.documentElement.setAttribute('data-theme', initialTheme);
+    } catch (e) {
+      // localStorage is not available.
+      document.documentElement.setAttribute('data-theme', 'mint');
     }
   }, []);
 
-  useEffect(() => {
-    const root = window.document.documentElement;
-    // Remove all theme classes
-    themes.forEach(t => root.classList.remove(`theme-${t.name}`));
-    // Add the current theme class
-    root.classList.add(`theme-${theme}`);
-    
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
     try {
-      localStorage.setItem('theme', theme);
-    } catch (error) {
-        // localStorage is not available on the server
+      localStorage.setItem('app-theme', newTheme);
+    } catch (e) {
+      // localStorage is not available.
     }
-  }, [theme]);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>

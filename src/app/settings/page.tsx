@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { sendPasswordReset, deleteAccount } from '@/lib/firebase/auth';
 import { deleteUserDocument, updateUserProfile } from '@/lib/firebase/firestore';
-import { themes, useTheme } from '@/contexts/theme-context';
-import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +23,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
+import { ThemeSelector } from '@/components/settings/ThemeSelector';
 
 type NotificationSettings = {
     friendRequests: boolean;
@@ -36,23 +35,16 @@ export default function SettingsPage() {
     const router = useRouter();
     const { user, userProfile } = useAuth();
     const { toast } = useToast();
-    const { theme, setTheme } = useTheme();
     
     const [isSendingReset, setIsSendingReset] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
     const [notifications, setNotifications] = useState<NotificationSettings>({
-        friendRequests: true,
-        activityInvites: true,
-        chatMessages: true,
+        friendRequests: userProfile?.notificationSettings?.friendRequests ?? true,
+        activityInvites: userProfile?.notificationSettings?.activityInvites ?? true,
+        chatMessages: userProfile?.notificationSettings?.chatMessages ?? true,
     });
-
-    useEffect(() => {
-        if (userProfile?.notificationSettings) {
-            setNotifications(userProfile.notificationSettings);
-        }
-    }, [userProfile]);
 
     const handleNotificationChange = async (key: keyof NotificationSettings, value: boolean) => {
         if (!user?.uid) return;
@@ -194,22 +186,7 @@ export default function SettingsPage() {
                             <Palette className="h-5 w-5 text-primary" />
                             <span>Appearance</span>
                         </h2>
-                         <div className="rounded-lg border bg-card p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium">Theme</p>
-                                    <p className="text-sm text-muted-foreground">Choose your favorite accent color.</p>
-                                </div>
-                            </div>
-                            <div className="mt-4 flex flex-wrap gap-3">
-                                {themes.map((t) => (
-                                    <button key={t.name} onClick={() => setTheme(t.name)} className={cn('h-8 w-8 rounded-full border-2 transition-all', theme === t.name ? 'border-primary scale-110' : 'border-transparent')}>
-                                        <div className="h-full w-full rounded-full" style={{backgroundColor: t.color}}/>
-                                        <span className="sr-only">{t.name}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                         <ThemeSelector />
                     </div>
                      
                     {/* About Section */}
