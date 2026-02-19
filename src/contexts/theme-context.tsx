@@ -3,6 +3,7 @@
 import { createContext, useState, useEffect, useContext, type ReactNode } from 'react';
 
 type Theme = 'mint' | 'violet' | 'blue' | 'yellow' | 'orange' | 'green' | 'red';
+type Mode = 'light' | 'dark';
 
 interface ThemeInfo {
   name: Theme;
@@ -22,24 +23,47 @@ export const themes: ThemeInfo[] = [
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  mode: Mode;
+  toggleMode: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setThemeState] = useState<Theme>('mint');
+  const [mode, setMode] = useState<Mode>('light');
 
   useEffect(() => {
-    // This effect runs only on the client.
+    // Theme initialization
     try {
       const storedTheme = localStorage.getItem('app-theme') as Theme | null;
       const initialTheme = storedTheme && themes.some(t => t.name === storedTheme) ? storedTheme : 'mint';
       setThemeState(initialTheme);
       document.documentElement.setAttribute('data-theme', initialTheme);
     } catch (e) {
-      // localStorage is not available.
       document.documentElement.setAttribute('data-theme', 'mint');
     }
+
+    // Mode initialization
+    try {
+      const storedMode = localStorage.getItem('app-mode') as Mode | null;
+      if (storedMode) {
+        setMode(storedMode);
+        if (storedMode === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      } else {
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const initialMode = systemPrefersDark ? 'dark' : 'light';
+        setMode(initialMode);
+        if (initialMode === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      }
+    } catch (e) {
+      // localStorage not available
+    }
+
   }, []);
 
   const setTheme = (newTheme: Theme) => {
@@ -52,8 +76,23 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.setAttribute('data-theme', newTheme);
   };
 
+  const toggleMode = () => {
+    const newMode = mode === 'light' ? 'dark' : 'light';
+    setMode(newMode);
+    try {
+      localStorage.setItem('app-mode', newMode);
+    } catch (e) {
+      // localStorage not available
+    }
+    if (newMode === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, mode, toggleMode }}>
       {children}
     </ThemeContext.Provider>
   );
