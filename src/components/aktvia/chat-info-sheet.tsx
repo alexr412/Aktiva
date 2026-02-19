@@ -1,10 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { leaveActivity, deleteActivity } from '@/lib/firebase/firestore';
+import Link from 'next/link';
+import { format } from 'date-fns';
+import { db } from '@/lib/firebase/client';
+import { doc, getDoc } from 'firebase/firestore';
 
 import {
   Sheet,
@@ -28,9 +32,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Trash2, Users } from 'lucide-react';
-import type { Chat } from '@/lib/types';
+import { Loader2, Trash2, Users, Calendar } from 'lucide-react';
+import type { Chat, Activity } from '@/lib/types';
 import { Separator } from '../ui/separator';
+import { Skeleton } from '../ui/skeleton';
 
 interface ChatInfoSheetProps {
   chat: Chat | null;
@@ -43,10 +48,32 @@ export function ChatInfoSheet({ chat, open, onOpenChange }: ChatInfoSheetProps) 
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const [activity, setActivity] = useState<Activity | null>(null);
+  const [loadingActivity, setLoadingActivity] = useState(true);
+
+  useEffect(() => {
+    if (open && chat?.activityId) {
+        setLoadingActivity(true);
+        const fetchActivity = async () => {
+            if (!db) return;
+            try {
+                const activityRef = doc(db, 'activities', chat.activityId);
+                const activitySnap = await getDoc(activityRef);
+                if (activitySnap.exists()) {
+                    setActivity(activitySnap.data() as Activity);
+                }
+            } catch (e) {
+                console.error("Failed to fetch activity details", e);
+            } finally {
+                setLoadingActivity(false);
+            }
+        };
+        fetchActivity();
+    }
+  }, [open, chat?.activityId]);
 
   if (!chat || !user) return null;
 
-  const participants = Object.values(chat.participantDetails);
   const isOnlyParticipant = chat.participantIds.length === 1;
 
   const handleAction = async () => {
@@ -75,21 +102,41 @@ export function ChatInfoSheet({ chat, open, onOpenChange }: ChatInfoSheetProps) 
       <SheetContent className="flex flex-col p-0 sm:max-w-md">
         <SheetHeader className="p-6 pb-4 text-left">
           <SheetTitle className="text-2xl font-bold">{chat.placeName}</SheetTitle>
-          <SheetDescription>{participants.length} Participant{participants.length === 1 ? '' : 's'}</SheetDescription>
+          <SheetDescription>{chat.participantIds.length} Participant{chat.participantIds.length === 1 ? '' : 's'}</SheetDescription>
+           {loadingActivity ? (
+            <Skeleton className="h-5 w-48 mt-2" />
+          ) : activity ? (
+            <div className="flex items-center gap-2 text-muted-foreground pt-2 text-sm">
+                <Calendar className="h-4 w-4" />
+                <span>{format(activity.activityDate.toDate(), "eee, MMM d 'at' p")}</span>
+            </div>
+          ) : null}
         </SheetHeader>
         <Separator />
 
         <ScrollArea className="flex-1">
           <div className="p-6 space-y-4">
             <h3 className="font-semibold flex items-center gap-2 text-sm text-muted-foreground uppercase tracking-wider"><Users className="h-5 w-5" /> Members</h3>
-            <ul className="space-y-3">
-              {participants.map((p, i) => (
-                <li key={i} className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={p.photoURL || undefined} />
-                    <AvatarFallback>{p.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium">{p.displayName}</span>
+            <ul className="space-y-1">
+              {Object.entries(chat.participantDetails).map(([uid, p]) => (
+                 <li key={uid}>
+                    <Link
+                        href={user?.uid === uid ? '/profile' : `/users/${uid}`}
+                        className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition-colors"
+                        onClick={() => onOpenChange(false)}
+                    >
+                        <Avatar>
+                            <AvatarImage src={p.photoURL || undefined} />
+                            <AvatarFallback>{p.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                            <span className="font-medium">
+                                {p.displayName}
+                                {uid === chat.creatorId && <span className="text-xs font-normal text-muted-foreground"> (Creator)</span>}
+                            </span>
+                            {uid === user?.uid && <span className="text-xs text-muted-foreground">You</span>}
+                        </div>
+                    </Link>
                 </li>
               ))}
             </ul>

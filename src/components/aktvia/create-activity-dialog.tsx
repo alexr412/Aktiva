@@ -11,7 +11,7 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import type { Place } from '@/lib/types';
-import { Loader2, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
@@ -28,6 +28,7 @@ import {
   isSameDay,
   getDate,
 } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 interface CreateActivityDialogProps {
   place: Place | null;
@@ -70,8 +71,8 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   // Calendar Logic
   const firstDayOfMonth = startOfMonth(currentMonthDate);
   const lastDayOfMonth = endOfMonth(currentMonthDate);
-  const firstDayOfGrid = startOfWeek(firstDayOfMonth);
-  const lastDayOfGrid = endOfWeek(lastDayOfMonth);
+  const firstDayOfGrid = startOfWeek(firstDayOfMonth, { weekStartsOn: 1 }); // Start week on Monday
+  const lastDayOfGrid = endOfWeek(lastDayOfMonth, { weekStartsOn: 1 });
 
   const days = eachDayOfInterval({
     start: firstDayOfGrid,
@@ -81,7 +82,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   const nextMonth = () => setCurrentMonthDate(addMonths(currentMonthDate, 1));
   const prevMonth = () => setCurrentMonthDate(subMonths(currentMonthDate, 1));
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -89,7 +90,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
         <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-muted" />
         <SheetHeader className="pt-8 p-6 pb-4 text-center items-center">
           <div className="bg-primary/10 p-3 rounded-full mb-2">
-            <CalendarIcon className="h-6 w-6 text-primary" />
+            <Clock className="h-6 w-6 text-primary" />
           </div>
           <SheetTitle className="text-xl font-bold">{isCustom ? 'Create a custom activity' : 'Create an activity'}</SheetTitle>
           <SheetDescription className="text-base text-muted-foreground">
@@ -115,8 +116,8 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
               <Button variant="ghost" size="icon" onClick={prevMonth}>
                 <ChevronLeft className="h-5 w-5" />
               </Button>
-              <h2 className="text-lg font-semibold text-center">
-                {format(currentMonthDate, 'MMMM yyyy')}
+              <h2 className="text-lg font-semibold text-center capitalize">
+                {format(currentMonthDate, 'MMMM yyyy', { locale: de })}
               </h2>
               <Button variant="ghost" size="icon" onClick={nextMonth}>
                 <ChevronRight className="h-5 w-5" />
@@ -135,10 +136,10 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                   key={day.toString()}
                   onClick={() => setSelectedDate(day)}
                   className={cn(
-                    'flex cursor-pointer items-center justify-center h-10 w-10 rounded-lg font-medium transition-colors mx-auto',
+                    'flex cursor-pointer items-center justify-center h-10 w-10 rounded-full font-medium transition-colors mx-auto',
                     !isSameMonth(day, currentMonthDate) && 'text-muted-foreground/50 hover:bg-accent/50',
-                    isToday(day) && !isSameDay(day, selectedDate) && 'bg-accent text-accent-foreground',
-                    isSameDay(day, selectedDate)
+                    isToday(day) && !(selectedDate && isSameDay(day, selectedDate)) && 'bg-accent text-accent-foreground',
+                    selectedDate && isSameDay(day, selectedDate)
                       ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                       : 'hover:bg-accent hover:text-accent-foreground'
                   )}

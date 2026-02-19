@@ -14,16 +14,23 @@ const navItems = [
 export function BottomNav() {
   const pathname = usePathname();
 
-  const hideOnPaths = ['/login', '/signup'];
+  const hideOnPaths = ['/login', '/signup', '/onboarding'];
   if (hideOnPaths.includes(pathname)) {
     return null;
   }
+  
+  // A helper function to determine if a nav item is active.
+  // It handles the root path and sub-paths.
+  const getIsActive = (itemHref: string) => {
+    if (itemHref === '/') return pathname === '/';
+    return pathname.startsWith(itemHref);
+  };
 
   return (
     <div className="fixed bottom-0 left-0 w-full z-50 bg-background border-t">
       <nav className="flex h-[72px] items-center justify-around">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = getIsActive(item.href);
           return (
             <Link
               key={item.label}
