@@ -20,11 +20,9 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
-        // Container for months
+        // Basis-Layout
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
-        
-        // Header (Month name + arrows)
         caption: "flex justify-center pt-1 relative items-center",
         caption_label: "text-sm font-medium",
         nav: "space-x-1 flex items-center",
@@ -35,33 +33,36 @@ function Calendar({
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
         
-        // --- THE FIX (CSS GRID) ---
-        // Forcing grid layout to override global table styles.
+        // --- DIE "TOTAL-OPERATION" (Nuclear Grid v2) ---
+        // Wir setzen ALLE Tabellen-Elemente auf "block". Damit existiert für den Browser keine Tabelle mehr.
         
-        // The table itself
-        table: "!w-full !border-collapse space-y-1",
+        table: "!block w-full border-collapse space-y-1",
+        tbody: "!block w-full", // WICHTIG: tbody muss auch ein Block sein
+        head: "!block w-full",  // WICHTIG: thead muss auch ein Block sein
         
-        // Header row (Mon, Tue, Wed...): Force 7 columns
+        // Kopfzeile (Mo, Di, Mi...): 7 Spalten Grid
         head_row: "!grid !grid-cols-7 !w-full mb-2",
+        
+        // Die Zellen der Kopfzeile
         head_cell: "text-muted-foreground rounded-md !w-9 font-normal text-[0.8rem] flex justify-center items-center m-auto",
         
-        // Date rows: Force 7 columns. This prevents vertical stacking.
+        // Datumszeile: 7 Spalten Grid
         row: "!grid !grid-cols-7 !w-full mt-2",
         
-        // A single cell
+        // Die einzelne Zelle (Datum)
         cell: "!h-9 !w-9 text-center text-sm !p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20 flex justify-center items-center m-auto",
         
-        // The interactive button within a day cell
+        // Der Button im Tag
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "!h-9 !w-9 !p-0 font-normal aria-selected:opacity-100 hover:bg-primary/10 transition-all"
+          "!h-9 !w-9 !p-0 font-normal aria-selected:opacity-100 hover:bg-indigo-100 hover:text-indigo-900 rounded-full flex justify-center items-center transition-all"
         ),
         
-        // --- VISUAL STYLES ---
+        // Visuelle Styles
         day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-full shadow-md",
+          "bg-indigo-600 text-white hover:bg-indigo-700 hover:text-white focus:bg-indigo-700 focus:text-white rounded-full shadow-md",
         
-        day_today: "bg-accent text-accent-foreground font-bold rounded-full",
+        day_today: "bg-indigo-50 text-indigo-600 font-bold border border-indigo-200 rounded-full",
         
         day_outside:
           "text-muted-foreground opacity-50",
