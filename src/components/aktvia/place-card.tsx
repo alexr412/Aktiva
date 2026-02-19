@@ -72,35 +72,42 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         </div>
       </div>
       <div className="flex-1 flex flex-col justify-end p-3 pt-0">
+        {/* Activity Indicator */}
+        {place.activityCount && place.activityCount > 0 ? (
+          <div className="mb-2 inline-flex items-center gap-2 rounded-lg bg-primary px-2.5 py-1.5 text-sm font-semibold text-primary-foreground self-start">
+            <MessageSquare className="h-4 w-4" />
+            <span>
+              {place.activityCount} Aktivität{place.activityCount > 1 ? 'en' : ''}
+            </span>
+          </div>
+        ) : (
+          <div className="h-[34px] mb-2" />
+        )}
+        
+        {/* Tags and Button */}
         <div className="flex items-end justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2 mt-2 w-full overflow-hidden">
-              {place.activityCount && place.activityCount > 0 ? (
-                <div className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-bold bg-primary/10 text-primary rounded-md whitespace-nowrap">
-                    <MessageSquare className="h-3 w-3" />
-                    <span>{place.activityCount}</span>
-                </div>
-              ) : null}
-              {cleanTags.map((tag, index) => (
-                <span 
-                  key={index} 
-                  className="inline-flex items-center px-2 py-1 text-[10px] font-medium bg-secondary text-secondary-foreground rounded-md whitespace-nowrap"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-            <Button
-                size="icon"
-                variant="outline"
-                className="rounded-full h-8 w-8 bg-background flex-shrink-0"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onAddActivity(place);
-                }}
-            >
-                <Plus className="h-4 w-4" />
-                <span className="sr-only">Create activity</span>
-            </Button>
+          <div className="flex w-full flex-wrap items-center gap-2 overflow-hidden">
+            {cleanTags.map((tag, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center rounded-md bg-secondary px-2 py-1 text-[10px] font-medium text-secondary-foreground whitespace-nowrap"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-8 w-8 flex-shrink-0 rounded-full bg-background"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddActivity(place);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            <span className="sr-only">Create activity</span>
+          </Button>
         </div>
       </div>
     </Card>
