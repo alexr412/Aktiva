@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { signOut } from '@/lib/firebase/auth';
-import { fetchUserActivities, joinActivity } from '@/lib/firebase/firestore';
+import { fetchUserActivities, joinActivity, getUserProfile, acceptFriendRequest, declineFriendRequest } from '@/lib/firebase/firestore';
 import type { Activity, UserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc } from 'firebase/firestore';
@@ -15,13 +15,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 
 
 export default function ProfilePage() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, userProfile, loading: authLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 
@@ -30,14 +30,36 @@ export default function ProfilePage() {
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loadingActivities, setLoadingActivities] = useState(true);
     const [activeTab, setActiveTab] = useState('activities');
+    const [requestProfiles, setRequestProfiles] = useState<UserProfile[]>([]);
+    const [loadingRequests, setLoadingRequests] = useState(true);
 
     useEffect(() => {
         if (user) {
-            getDoc(doc(db, "users", user.uid)).then(snap => {
-                if (snap.exists()) {
-                    setUserData(snap.data() as UserProfile);
-                }
-            });
+            // Use userProfile from context if available, otherwise fetch
+            if (userProfile) {
+                setUserData(userProfile);
+            } else {
+                 getDoc(doc(db, "users", user.uid)).then(snap => {
+                    if (snap.exists()) {
+                        setUserData(snap.data() as UserProfile);
+                    }
+                });
+            }
+
+            if (userProfile?.friendRequestsReceived && userProfile.friendRequestsReceived.length > 0) {
+                const fetchRequestProfiles = async () => {
+                    setLoadingRequests(true);
+                    const profiles = await Promise.all(
+                        userProfile.friendRequestsReceived!.map(uid => getUserProfile(uid))
+                    );
+                    setRequestProfiles(profiles.filter(p => p !== null) as UserProfile[]);
+                    setLoadingRequests(false);
+                };
+                fetchRequestProfiles();
+            } else {
+                setLoadingRequests(false);
+                setRequestProfiles([]);
+            }
             
             const loadActivities = async () => {
                 setLoadingActivities(true);
@@ -59,7 +81,7 @@ export default function ProfilePage() {
         } else if (!authLoading) {
             router.push('/login');
         }
-    }, [user, authLoading, router, toast]);
+    }, [user, authLoading, router, toast, userProfile]);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -107,6 +129,28 @@ export default function ProfilePage() {
             console.error(error);
             toast({ title: 'Error', description: error.message || 'Failed to join activity.', variant: 'destructive' });
             throw error;
+        }
+    };
+
+    const handleAcceptRequest = async (requestingUserId: string) => {
+        if (!user?.uid) return;
+        try {
+            await acceptFriendRequest(user.uid, requestingUserId);
+            setRequestProfiles(prev => prev.filter(p => p.uid !== requestingUserId));
+            toast({ title: "Friend added!" });
+        } catch (error) {
+            toast({ title: "Error", description: "Could not accept request.", variant: "destructive" });
+        }
+    };
+
+    const handleDeclineRequest = async (requestingUserId: string) => {
+        if (!user?.uid) return;
+        try {
+            await declineFriendRequest(user.uid, requestingUserId);
+            setRequestProfiles(prev => prev.filter(p => p.uid !== requestingUserId));
+            toast({ title: "Request declined" });
+        } catch (error) {
+            toast({ title: "Error", description: "Could not decline request.", variant: "destructive" });
         }
     };
 
@@ -228,6 +272,29 @@ export default function ProfilePage() {
             <div className="px-6 mt-6">
                 <Button variant="outline" className="w-full" onClick={() => router.push('/profile/edit')}>Edit Profile</Button>
             </div>
+            
+            {loadingRequests && userProfile?.friendRequestsReceived && userProfile.friendRequestsReceived.length > 0 &&(
+                <div className="p-6"><Skeleton className="h-10 w-full" /></div>
+            )}
+
+            {!loadingRequests && requestProfiles.length > 0 && (
+                <div className="p-6 space-y-4 border-b">
+                    <h2 className="font-bold text-lg">Friend Requests</h2>
+                    <ul className="space-y-3">
+                        {requestProfiles.map(profile => (
+                            <li key={profile.uid} className="flex items-center gap-3 p-2 -mx-2 rounded-lg bg-secondary">
+                                <Avatar>
+                                    <AvatarImage src={profile.photoURL || undefined} />
+                                    <AvatarFallback>{profile.displayName?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span className="flex-1 font-medium truncate">{profile.displayName}</span>
+                                <Button size="icon" variant="outline" onClick={() => handleAcceptRequest(profile.uid)}><UserCheck className="h-4 w-4 text-green-500"/></Button>
+                                <Button size="icon" variant="outline" onClick={() => handleDeclineRequest(profile.uid)}><X className="h-4 w-4 text-red-500"/></Button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
             
             <div className="p-6 space-y-4">
                  <h2 className="font-bold text-lg">Interests</h2>

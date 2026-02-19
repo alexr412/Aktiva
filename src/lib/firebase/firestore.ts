@@ -40,6 +40,8 @@ export async function createUserProfileDocument(user: User) {
     photoURL: user.photoURL,
     onboardingCompleted: false,
     friends: [],
+    friendRequestsSent: [],
+    friendRequestsReceived: [],
   };
   await setDoc(userDocRef, userProfile);
 }
@@ -282,18 +284,64 @@ export async function fetchUserActivities(userId: string) {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
-export async function addFriend(userId: string, friendId: string) {
-  if (!db) throw new Error('Firestore is not initialized.');
-  const userDocRef = doc(db, 'users', userId);
-  await updateDoc(userDocRef, {
-    friends: arrayUnion(friendId)
-  });
+
+export async function sendFriendRequest(fromUserId: string, toUserId: string) {
+    if (!db) throw new Error('Firestore is not initialized.');
+    const fromUserRef = doc(db, 'users', fromUserId);
+    const toUserRef = doc(db, 'users', toUserId);
+
+    await runTransaction(db, async (transaction) => {
+        transaction.update(fromUserRef, { friendRequestsSent: arrayUnion(toUserId) });
+        transaction.update(toUserRef, { friendRequestsReceived: arrayUnion(fromUserId) });
+    });
+}
+
+export async function cancelFriendRequest(fromUserId: string, toUserId: string) {
+    if (!db) throw new Error('Firestore is not initialized.');
+    const fromUserRef = doc(db, 'users', fromUserId);
+    const toUserRef = doc(db, 'users', toUserId);
+
+    await runTransaction(db, async (transaction) => {
+        transaction.update(fromUserRef, { friendRequestsSent: arrayRemove(toUserId) });
+        transaction.update(toUserRef, { friendRequestsReceived: arrayRemove(fromUserId) });
+    });
+}
+
+export async function acceptFriendRequest(userId: string, requestingUserId: string) {
+    if (!db) throw new Error('Firestore is not initialized.');
+    const userRef = doc(db, 'users', userId);
+    const requestingUserRef = doc(db, 'users', requestingUserId);
+
+    await runTransaction(db, async (transaction) => {
+        // Remove from requests
+        transaction.update(userRef, { friendRequestsReceived: arrayRemove(requestingUserId) });
+        transaction.update(requestingUserRef, { friendRequestsSent: arrayRemove(userId) });
+
+        // Add to friends
+        transaction.update(userRef, { friends: arrayUnion(requestingUserId) });
+        transaction.update(requestingUserRef, { friends: arrayUnion(userId) });
+    });
+}
+
+export async function declineFriendRequest(userId: string, decliningUserId: string) {
+    // This is the same logic as cancelling a request, just initiated by the receiver
+    if (!db) throw new Error('Firestore is not initialized.');
+    const userRef = doc(db, 'users', userId);
+    const decliningUserRef = doc(db, 'users', decliningUserId);
+    
+    await runTransaction(db, async (transaction) => {
+        transaction.update(userRef, { friendRequestsReceived: arrayRemove(decliningUserId) });
+        transaction.update(decliningUserRef, { friendRequestsSent: arrayRemove(userId) });
+    });
 }
 
 export async function removeFriend(userId: string, friendId: string) {
   if (!db) throw new Error('Firestore is not initialized.');
-  const userDocRef = doc(db, 'users', userId);
-  await updateDoc(userDocRef, {
-    friends: arrayRemove(friendId)
+  const userRef = doc(db, 'users', userId);
+  const friendRef = doc(db, 'users', friendId);
+
+  await runTransaction(db, async (transaction) => {
+      transaction.update(userRef, { friends: arrayRemove(friendId) });
+      transaction.update(friendRef, { friends: arrayRemove(userId) });
   });
 }

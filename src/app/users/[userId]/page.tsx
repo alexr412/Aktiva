@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { fetchUserActivities, joinActivity, getUserProfile, addFriend, removeFriend } from '@/lib/firebase/firestore';
+import { fetchUserActivities, joinActivity, getUserProfile, sendFriendRequest, cancelFriendRequest, removeFriend, acceptFriendRequest, declineFriendRequest } from '@/lib/firebase/firestore';
 import type { Activity, UserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -11,12 +11,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { ArrowLeft, Compass, Loader2, UserPlus, UserMinus } from 'lucide-react';
+import { ArrowLeft, Compass, Loader2, UserPlus, UserMinus, Clock, UserCheck, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 
 export default function UserProfilePage() {
-    const { user: currentUser, userProfile } = useAuth();
+    const { user: currentUser, userProfile, loading: authLoading } = useAuth();
     const router = useRouter();
     const params = useParams();
     const { toast } = useToast();
@@ -26,22 +26,32 @@ export default function UserProfilePage() {
     const [userData, setUserData] = useState<UserProfile | null>(null);
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isFriend, setIsFriend] = useState(false);
     const [isFriendActionLoading, setIsFriendActionLoading] = useState(false);
-
+    const [friendshipStatus, setFriendshipStatus] = useState<'loading' | 'is_self' | 'friends' | 'request_sent' | 'request_received' | 'not_friends'>('loading');
 
     useEffect(() => {
         if (!userId) return;
 
-        // If the user is trying to view their own profile via this page, redirect them
         if (currentUser?.uid === userId) {
+            setFriendshipStatus('is_self');
             router.replace('/profile');
             return;
         }
 
-        if (userProfile?.friends?.includes(userId)) {
-            setIsFriend(true);
+        if (userProfile && !authLoading) {
+            if (userProfile.friends?.includes(userId)) {
+                setFriendshipStatus('friends');
+            } else if (userProfile.friendRequestsSent?.includes(userId)) {
+                setFriendshipStatus('request_sent');
+            } else if (userProfile.friendRequestsReceived?.includes(userId)) {
+                setFriendshipStatus('request_received');
+            } else {
+                setFriendshipStatus('not_friends');
+            }
+        } else if (!authLoading) {
+            setFriendshipStatus('not_friends');
         }
+
 
         const loadData = async () => {
             setLoading(true);
@@ -71,7 +81,7 @@ export default function UserProfilePage() {
         };
         
         loadData();
-    }, [userId, currentUser, router, toast, userProfile]);
+    }, [userId, currentUser, router, toast, userProfile, authLoading]);
 
     const handleJoin = async (activityId: string) => {
         if (!currentUser) {
@@ -91,28 +101,44 @@ export default function UserProfilePage() {
         }
     };
     
-    const handleFriendAction = async () => {
-        if (!currentUser || !userId) return;
-
+    const handleFriendAction = async (action: 'send' | 'cancel' | 'remove' | 'accept' | 'decline') => {
+        if (!currentUser?.uid) return;
         setIsFriendActionLoading(true);
         try {
-            if (isFriend) {
-                await removeFriend(currentUser.uid, userId);
-                toast({ title: "Friend removed" });
-                setIsFriend(false);
-            } else {
-                await addFriend(currentUser.uid, userId);
-                toast({ title: "Friend added!" });
-                setIsFriend(true);
+            switch(action) {
+                case 'send':
+                    await sendFriendRequest(currentUser.uid, userId);
+                    setFriendshipStatus('request_sent');
+                    toast({ title: 'Friend request sent!' });
+                    break;
+                case 'cancel':
+                    await cancelFriendRequest(currentUser.uid, userId);
+                    setFriendshipStatus('not_friends');
+                    toast({ title: 'Friend request cancelled.' });
+                    break;
+                case 'remove':
+                    await removeFriend(currentUser.uid, userId);
+                    setFriendshipStatus('not_friends');
+                    toast({ title: 'Friend removed.' });
+                    break;
+                case 'accept':
+                    await acceptFriendRequest(currentUser.uid, userId);
+                    setFriendshipStatus('friends');
+                    toast({ title: 'Friend request accepted!' });
+                    break;
+                case 'decline':
+                    await declineFriendRequest(currentUser.uid, userId);
+                    setFriendshipStatus('not_friends');
+                    toast({ title: 'Friend request declined.' });
+                    break;
             }
-        } catch (error: any) {
-            console.error(error);
-            toast({ title: 'Error', description: 'Could not perform action.', variant: 'destructive' });
+        } catch (error) {
+            console.error("Friend action failed", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not complete the action.' });
         } finally {
             setIsFriendActionLoading(false);
         }
     };
-
 
     if (loading) {
         return (
@@ -123,13 +149,57 @@ export default function UserProfilePage() {
     }
     
     if (!userData) {
-        // This case is mostly handled by the redirect, but it's a good fallback.
          return (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                 User not found.
             </div>
         );
     }
+
+    const renderFriendButton = () => {
+        if (!currentUser || friendshipStatus === 'is_self' || friendshipStatus === 'loading') {
+            return null;
+        }
+
+        switch (friendshipStatus) {
+            case 'friends':
+                return (
+                    <Button onClick={() => handleFriendAction('remove')} disabled={isFriendActionLoading} variant="outline">
+                        {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserMinus className="mr-2 h-4 w-4" />}
+                        Remove Friend
+                    </Button>
+                );
+            case 'request_sent':
+                return (
+                    <Button onClick={() => handleFriendAction('cancel')} disabled={isFriendActionLoading} variant="secondary">
+                        {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
+                        Request Sent
+                    </Button>
+                );
+            case 'request_received':
+                return (
+                    <div className="flex gap-2">
+                         <Button onClick={() => handleFriendAction('accept')} disabled={isFriendActionLoading} className="flex-1">
+                            {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
+                            Accept
+                        </Button>
+                        <Button onClick={() => handleFriendAction('decline')} disabled={isFriendActionLoading} variant="outline" className="flex-1">
+                             <X className="mr-2 h-4 w-4" />
+                            Decline
+                        </Button>
+                    </div>
+                );
+            case 'not_friends':
+                return (
+                    <Button onClick={() => handleFriendAction('send')} disabled={isFriendActionLoading}>
+                        {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                        Add Friend
+                    </Button>
+                );
+            default:
+                return null;
+        }
+    };
 
 
     const photoUrlToDisplay = userData.photoURL || '';
@@ -161,18 +231,9 @@ export default function UserProfilePage() {
                     {userData.location && <p className="text-sm text-muted-foreground">{userData.location}</p>}
                 </div>
 
-                {currentUser && currentUser.uid !== userId && (
-                    <Button onClick={handleFriendAction} disabled={isFriendActionLoading} className="w-40">
-                        {isFriendActionLoading ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : isFriend ? (
-                            <UserMinus className="mr-2 h-4 w-4" />
-                        ) : (
-                            <UserPlus className="mr-2 h-4 w-4" />
-                        )}
-                        {isFriendActionLoading ? 'Updating...' : isFriend ? 'Remove Friend' : 'Add Friend'}
-                    </Button>
-                )}
+                <div className="w-full max-w-sm">
+                    {renderFriendButton()}
+                </div>
             </div>
             
             {userData.bio && (
