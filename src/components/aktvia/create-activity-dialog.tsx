@@ -44,8 +44,10 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   // Calendar State
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTime, setSelectedTime] = useState<string>('18:00'); // Default to 6 PM
 
   const isCustom = !place;
+  const timeSlots = ['10:00', '14:00', '18:00', '20:00'];
 
   useEffect(() => {
     if (open) {
@@ -54,15 +56,20 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
       const today = new Date();
       setSelectedDate(today);
       setCurrentMonthDate(today);
+      setSelectedTime('18:00'); // Reset time
     }
   }, [open]);
 
   const handleCreate = async () => {
-    if (!selectedDate) {
+    if (!selectedDate || !selectedTime) {
         return;
     }
+    const [hours, minutes] = selectedTime.split(':').map(Number);
+    const finalDate = new Date(selectedDate);
+    finalDate.setHours(hours, minutes, 0, 0);
+
     setIsCreating(true);
-    const success = await onCreateActivity(selectedDate, isCustom ? customLocationName : undefined);
+    const success = await onCreateActivity(finalDate, isCustom ? customLocationName : undefined);
     if (!success) {
       setIsCreating(false);
     }
@@ -149,13 +156,42 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
               ))}
             </div>
           </div>
+          
+          <div className="w-full max-w-md p-4 pt-2 mx-auto">
+             <h3 className="text-lg font-semibold text-center mb-4 capitalize">
+                Uhrzeit
+              </h3>
+              <div className="grid grid-cols-4 gap-2">
+                {timeSlots.map(time => (
+                  <Button
+                    key={time}
+                    variant={selectedTime === time ? 'default' : 'outline'}
+                    onClick={() => setSelectedTime(time)}
+                  >
+                    {time}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mt-4">
+                 <div className="flex-1 border-t" />
+                 <span className="text-sm text-muted-foreground">ODER</span>
+                 <div className="flex-1 border-t" />
+              </div>
+              <Input
+                type="time"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                className="w-full mt-4 h-12 text-lg text-center rounded-xl"
+              />
+          </div>
+
         </div>
 
         <SheetFooter className="p-6 pt-4 sm:justify-center mt-auto">
           <Button 
             type="button" 
             onClick={handleCreate} 
-            disabled={isCreating || !selectedDate || (isCustom && !customLocationName.trim())} 
+            disabled={isCreating || !selectedDate || !selectedTime || (isCustom && !customLocationName.trim())} 
             className="w-full h-12 text-base font-semibold rounded-xl"
           >
             {isCreating ? (
