@@ -22,7 +22,7 @@ export interface Activity {
   creatorPhotoURL: string | null;
   participantIds: string[];
   createdAt: Timestamp;
-  isCustomLocation?: boolean;
+  isCustomActivity?: boolean;
   lastInteractionAt?: Timestamp;
   category?: string;
   categories?: string[];

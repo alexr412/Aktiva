@@ -81,7 +81,7 @@ export async function createActivity({
   const activityRef = doc(collection(db, 'activities'));
   console.log('Generated activityRef with id:', activityRef.id);
   
-  const isCustomLocation = !place;
+  const isCustomActivity = !place;
   const placeCategories = place?.categories ? (Array.isArray(place.categories) ? place.categories : [place.categories]) : [];
   
   const activityData = {
@@ -94,9 +94,9 @@ export async function createActivity({
     creatorPhotoURL: user.photoURL,
     participantIds: [user.uid],
     createdAt: serverTimestamp(),
-    isCustomLocation: isCustomLocation,
-    category: isCustomLocation ? "community" : (place?.categories[0].split('.')[0] || "other"),
-    categories: isCustomLocation ? ["user_event"] : placeCategories,
+    isCustomActivity: isCustomActivity,
+    category: isCustomActivity ? "community" : (place?.categories[0].split('.')[0] || "other"),
+    categories: isCustomActivity ? ["user_event"] : placeCategories,
     lastInteractionAt: serverTimestamp(),
   };
   batch.set(activityRef, activityData);
