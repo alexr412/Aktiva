@@ -70,7 +70,7 @@
     --accent-foreground: 259 92% 20%;
     --ring: 259 92% 67%;
   }
-  .dark .theme-violet {
+  .dark.theme-violet {
     --primary: 259 92% 77%;
     --primary-foreground: 259 92% 10%;
     --accent: 259 92% 20%;
@@ -86,7 +86,7 @@
     --accent-foreground: 217 91% 20%;
     --ring: 217 91% 60%;
   }
-  .dark .theme-blue {
+  .dark.theme-blue {
     --primary: 217 91% 70%;
     --primary-foreground: 217 91% 10%;
     --accent: 217 91% 20%;
@@ -102,7 +102,7 @@
     --accent-foreground: 45 93% 20%;
     --ring: 45 93% 47%;
   }
-  .dark .theme-yellow {
+  .dark.theme-yellow {
     --primary: 45 93% 57%;
     --primary-foreground: 45 93% 10%;
     --accent: 45 93% 20%;
@@ -118,7 +118,7 @@
     --accent-foreground: 25 95% 20%;
     --ring: 25 95% 53%;
   }
-  .dark .theme-orange {
+  .dark.theme-orange {
     --primary: 25 95% 63%;
     --primary-foreground: 25 95% 10%;
     --accent: 25 95% 20%;
@@ -134,7 +134,7 @@
     --accent-foreground: 142 76% 20%;
     --ring: 142 76% 36%;
   }
-  .dark .theme-green {
+  .dark.theme-green {
     --primary: 142 76% 46%;
     --primary-foreground: 142 76% 5%;
     --accent: 142 76% 20%;
@@ -150,7 +150,7 @@
     --accent-foreground: 0 72% 20%;
     --ring: 0 72% 51%;
   }
-  .dark .theme-red {
+  .dark.theme-red {
     --primary: 0 72% 61%;
     --primary-foreground: 0 72% 10%;
     --accent: 0 72% 20%;
