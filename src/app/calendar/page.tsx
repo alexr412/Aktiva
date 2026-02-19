@@ -1,7 +1,11 @@
 'use client';
 
+import { useState } from 'react';
+import { cn } from '@/lib/utils';
+
 export default function CalendarPage() {
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   return (
     <div className="flex h-full flex-col">
@@ -17,7 +21,13 @@ export default function CalendarPage() {
             {days.map((day) => (
               <div
                 key={day}
-                className="flex items-center justify-center h-12 w-12 rounded-lg bg-secondary text-foreground font-medium"
+                onClick={() => setSelectedDay(day)}
+                className={cn(
+                  'flex cursor-pointer items-center justify-center h-12 w-12 rounded-lg font-medium transition-colors',
+                  selectedDay === day
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-foreground hover:bg-accent hover:text-accent-foreground'
+                )}
               >
                 {day}
               </div>
