@@ -5,6 +5,8 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   updateProfile,
+  sendPasswordResetEmail,
+  deleteUser,
   type User,
 } from 'firebase/auth';
 import { auth } from './client';
@@ -38,4 +40,24 @@ export async function signOut(): Promise<void> {
   if (!auth) throw new Error('Firebase has not been initialized.');
   
   await firebaseSignOut(auth);
+}
+
+export async function sendPasswordReset(email: string): Promise<void> {
+  if (!auth) throw new Error('Firebase has not been initialized.');
+  await sendPasswordResetEmail(auth, email);
+}
+
+export async function deleteAccount(): Promise<void> {
+  if (!auth?.currentUser) {
+    throw new Error('No user is currently signed in to delete.');
+  }
+  try {
+    await deleteUser(auth.currentUser);
+  } catch (error: any) {
+    // Handle cases where recent login is required
+    if (error.code === 'auth/requires-recent-login') {
+      throw new Error('This is a sensitive operation and requires a recent login. Please sign in again and retry.');
+    }
+    throw error;
+  }
 }

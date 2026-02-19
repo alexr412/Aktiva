@@ -370,3 +370,12 @@ export async function removeFriend(userId: string, friendId: string) {
       transaction.update(friendRef, { friends: arrayRemove(userId) });
   });
 }
+
+export async function deleteUserDocument(userId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const userDocRef = doc(db, 'users', userId);
+  // Note: This is a simplified deletion. A production app should use a
+  // backend function to clean up all user-related data (e.g., remove from
+  // activities, chats, friend lists) for data integrity.
+  await deleteDoc(userDocRef);
+}

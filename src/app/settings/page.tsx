@@ -1,14 +1,72 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Palette, Info, ChevronRight } from 'lucide-react';
+import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
+import { sendPasswordReset, deleteAccount } from '@/lib/firebase/auth';
+import { deleteUserDocument } from '@/lib/firebase/firestore';
+import { themes, useTheme } from '@/contexts/theme-context';
+import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
 
 export default function SettingsPage() {
     const router = useRouter();
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const { theme, setTheme } = useTheme();
+    
+    const [isSendingReset, setIsSendingReset] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+    const handlePasswordReset = async () => {
+        if (!user?.email) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No email address found for your account.' });
+            return;
+        }
+        setIsSendingReset(true);
+        try {
+            await sendPasswordReset(user.email);
+            toast({ title: 'Password Reset Email Sent', description: 'Check your inbox for a link to reset your password.' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to send password reset email.' });
+        } finally {
+            setIsSendingReset(false);
+        }
+    };
+    
+    const handleDeleteAccount = async () => {
+        if (!user) return;
+        setIsDeleting(true);
+        try {
+            await deleteUserDocument(user.uid);
+            await deleteAccount();
+            toast({ title: 'Account Deleted', description: 'Your account and all data have been successfully deleted.' });
+            router.push('/');
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Deletion Failed', description: error.message || 'Could not delete your account. You may need to log in again.' });
+        } finally {
+            setIsDeleting(false);
+        }
+    }
+
 
     return (
         <div className="flex flex-col h-full bg-secondary">
@@ -35,12 +93,12 @@ export default function SettingsPage() {
                                 </div>
                                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
                             </button>
-                             <button className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
+                             <button onClick={handlePasswordReset} disabled={isSendingReset} className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
                                 <div>
                                     <p className="font-medium">Change Password</p>
                                     <p className="text-sm text-muted-foreground">Set a new password for your account.</p>
                                 </div>
-                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                                {isSendingReset ? <Loader2 className="h-5 w-5 animate-spin" /> : <KeyRound className="h-5 w-5 text-muted-foreground" />}
                             </button>
                         </div>
                     </div>
@@ -84,12 +142,21 @@ export default function SettingsPage() {
                             <Palette className="h-5 w-5 text-primary" />
                             <span>Appearance</span>
                         </h2>
-                         <div className="flex items-center justify-between rounded-lg border bg-card p-4">
-                            <div>
-                                <p className="font-medium">Theme</p>
-                                <p className="text-sm text-muted-foreground">Dark mode is not yet supported.</p>
+                         <div className="rounded-lg border bg-card p-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-medium">Theme</p>
+                                    <p className="text-sm text-muted-foreground">Choose your favorite accent color.</p>
+                                </div>
                             </div>
-                            <Button variant="outline" disabled>Toggle Theme</Button>
+                            <div className="mt-4 flex flex-wrap gap-3">
+                                {themes.map((t) => (
+                                    <button key={t.name} onClick={() => setTheme(t.name)} className={cn('h-8 w-8 rounded-full border-2 transition-all', theme === t.name ? 'border-primary scale-110' : 'border-transparent')}>
+                                        <div className="h-full w-full rounded-full" style={{backgroundColor: t.color}}/>
+                                        <span className="sr-only">{t.name}</span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                      
@@ -120,7 +187,53 @@ export default function SettingsPage() {
                             </button>
                         </div>
                     </div>
-
+                    
+                    {/* Danger Zone */}
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3 text-destructive">
+                            <Trash2 className="h-5 w-5" />
+                            <span>Danger Zone</span>
+                        </h2>
+                        <div className="rounded-lg border-2 border-destructive/50 bg-card p-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-medium">Delete Account</p>
+                                    <p className="text-sm text-muted-foreground">Permanently delete your account and all data.</p>
+                                </div>
+                                 <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive">Delete</Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This action cannot be undone. This will permanently delete your account, chats, and all other data.
+                                                To confirm, please type <strong className="text-foreground">DELETE</strong> below.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <Input 
+                                            value={deleteConfirmText}
+                                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                            placeholder="DELETE"
+                                            className="bg-muted"
+                                        />
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel onClick={() => setDeleteConfirmText('')}>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction
+                                                onClick={handleDeleteAccount}
+                                                disabled={deleteConfirmText !== 'DELETE' || isDeleting}
+                                                className="bg-destructive hover:bg-destructive/90"
+                                            >
+                                                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                {isDeleting ? 'Deleting...' : 'Delete Account'}
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </main>
         </div>

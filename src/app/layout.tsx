@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { BottomNav } from '@/components/bottom-nav';
 import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/contexts/auth-context';
+import { ThemeProvider } from '@/contexts/theme-context';
 
 export const metadata: Metadata = {
   title: 'Aktvia',
@@ -23,15 +24,17 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body className={cn("font-body antialiased bg-secondary")}>
-        <AuthProvider>
-          <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
-            <main className="flex-1 relative flex flex-col overflow-hidden">
-              {children}
-            </main>
-            <BottomNav />
-          </div>
-          <Toaster />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
+              <main className="flex-1 relative flex flex-col overflow-hidden">
+                {children}
+              </main>
+              <BottomNav />
+            </div>
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
