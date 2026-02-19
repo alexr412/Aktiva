@@ -11,8 +11,9 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import type { Place } from '@/lib/types';
-import { Clock, Loader2 } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
 
 interface CreateActivityDialogProps {
   place: Place | null;
@@ -24,6 +25,7 @@ interface CreateActivityDialogProps {
 export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivity }: CreateActivityDialogProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [customLocationName, setCustomLocationName] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   const isCustom = !place;
 
@@ -31,13 +33,16 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     if (open) {
       setIsCreating(false);
       setCustomLocationName('');
+      setSelectedDate(new Date());
     }
   }, [open]);
 
   const handleCreate = async () => {
+    if (!selectedDate) {
+        return;
+    }
     setIsCreating(true);
-    // Activity is created for right now.
-    const success = await onCreateActivity(new Date(), isCustom ? customLocationName : undefined);
+    const success = await onCreateActivity(selectedDate, isCustom ? customLocationName : undefined);
     if (!success) {
       setIsCreating(false);
     }
@@ -45,39 +50,44 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-white">
-        <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-gray-200" />
+      <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto bg-background">
+        <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-muted" />
         <SheetHeader className="pt-8 p-6 pb-4 text-center items-center">
-          <div className="bg-indigo-50 p-3 rounded-full mb-2">
-            <Clock className="h-6 w-6 text-indigo-600" />
+          <div className="bg-primary/10 p-3 rounded-full mb-2">
+            <CalendarIcon className="h-6 w-6 text-primary" />
           </div>
-          <SheetTitle className="text-xl font-bold text-gray-900">{isCustom ? 'Create a custom activity' : 'Create an activity'}</SheetTitle>
-          <SheetDescription className="text-base text-gray-500">
-            {isCustom ? (
-                'Enter a name for your activity. It will be scheduled for today.'
-            ) : (
-                <>Create an activity at <br /> <span className="font-semibold text-gray-900">{place?.name}</span>. It will be scheduled for right now.</>
-            )}
+          <SheetTitle className="text-xl font-bold">{isCustom ? 'Create a custom activity' : 'Create an activity'}</SheetTitle>
+          <SheetDescription className="text-base text-muted-foreground">
+            {isCustom ? 'Choose a date and name for your activity.' : <>Create an activity at <br /> <span className="font-semibold">{place?.name}</span>.</>}
           </SheetDescription>
         </SheetHeader>
         
         {isCustom && (
-          <div className="px-6 py-4">
+          <div className="px-6 pb-4">
             <Input
               value={customLocationName}
               onChange={(e) => setCustomLocationName(e.target.value)}
-              placeholder="E.g., Board Game Night at my place"
+              placeholder="E.g., Board Game Night"
               className="text-center h-12 text-lg rounded-xl"
             />
           </div>
         )}
 
+        <div className="px-4 flex justify-center">
+             <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                className="rounded-md border"
+            />
+        </div>
+
         <SheetFooter className="p-6 pt-4 sm:justify-center">
           <Button 
             type="button" 
             onClick={handleCreate} 
-            disabled={isCreating || (isCustom && !customLocationName.trim())} 
-            className="w-full h-12 text-base font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
+            disabled={isCreating || !selectedDate || (isCustom && !customLocationName.trim())} 
+            className="w-full h-12 text-base font-semibold rounded-xl"
           >
             {isCreating ? (
               <>
@@ -85,7 +95,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                 Creating...
               </>
             ) : (
-              'Create Activity for Now'
+              'Create Activity'
             )}
           </Button>
         </SheetFooter>
