@@ -73,7 +73,9 @@ export async function createActivity({
   user,
   isTimeFlexible,
 }: CreateActivityPayload) {
-  console.log('Attempting to create activity...');
+  console.log('--- Debug: createActivity ---');
+  console.time('createActivity Total');
+  
   if (!db) {
     console.error('Firestore (db) is not initialized!');
     throw new Error('Firestore is not initialized.');
@@ -81,12 +83,10 @@ export async function createActivity({
   if (!place && !customLocationName) {
     throw new Error('Either a place or a custom location name must be provided.');
   }
-  console.log('Firestore is initialized. User:', user.uid);
 
   const batch = writeBatch(db);
 
   const activityRef = doc(collection(db, 'activities'));
-  console.log('Generated activityRef with id:', activityRef.id);
   
   const isCustomActivity = !place;
   const placeCategories = place?.categories ? (Array.isArray(place.categories) ? place.categories : [place.categories]) : [];
@@ -109,9 +109,9 @@ export async function createActivity({
     lastInteractionAt: serverTimestamp(),
   };
   batch.set(activityRef, activityData);
+  console.log('1. Prepared activity document for batch.');
 
   const chatRef = doc(db, 'chats', activityRef.id);
-  console.log('Generated chatRef with same id:', chatRef.id);
   batch.set(chatRef, {
     activityId: activityRef.id,
     createdAt: serverTimestamp(),
@@ -126,13 +126,18 @@ export async function createActivity({
       },
     },
   });
+  console.log('2. Prepared chat document for batch.');
 
   try {
-    console.log('Committing batch...');
+    console.log('3. Committing batch write...');
+    console.time('Firestore Batch Commit');
     await batch.commit();
-    console.log('Batch commit successful!');
+    console.timeEnd('Firestore Batch Commit');
+    console.log('4. Batch commit successful!');
+    console.timeEnd('createActivity Total');
     return activityRef;
   } catch (error: any) {
+    console.timeEnd('createActivity Total');
     console.error('!!! Critical Error creating activity and chat: ', error);
     if (error.message.includes('permission-denied') || error.message.includes('permission denied')) {
         throw new Error('Database permission denied. Please check your Firestore security rules.');
@@ -142,6 +147,8 @@ export async function createActivity({
 }
 
 export async function joinActivity(activityId: string, user: User) {
+  console.log(`--- Debug: User ${user.uid} joining activity ${activityId} ---`);
+  console.time('joinActivity Total');
   if (!db) throw new Error('Firestore is not initialized.');
   if (!user) throw new Error('User is not authenticated.');
 
@@ -149,8 +156,13 @@ export async function joinActivity(activityId: string, user: User) {
   const chatRef = doc(db, 'chats', activityId);
 
   try {
+    console.time('Firestore Transaction');
     await runTransaction(db, async (transaction) => {
+      console.log('1. Starting transaction to join activity.');
+      console.time('Transaction Get');
       const activityDoc = await transaction.get(activityRef);
+      console.timeEnd('Transaction Get');
+
       if (!activityDoc.exists()) {
         throw "Activity does not exist!";
       }
@@ -158,7 +170,7 @@ export async function joinActivity(activityId: string, user: User) {
       const activityData = activityDoc.data();
       
       if (activityData.participantIds.includes(user.uid)) {
-        // Allow re-joining if already a participant, just return
+        console.log('User is already a participant.');
         return;
       }
       
@@ -166,7 +178,8 @@ export async function joinActivity(activityId: string, user: User) {
       if (activityData.participantIds.length >= MAX_PARTICIPANTS) {
         throw `This activity has reached its maximum of ${MAX_PARTICIPANTS} participants.`;
       }
-
+      
+      console.log('2. Preparing transaction updates.');
       transaction.update(activityRef, {
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
@@ -179,7 +192,10 @@ export async function joinActivity(activityId: string, user: User) {
           photoURL: user.photoURL,
         }
       });
+      console.log('3. Transaction updates prepared.');
     });
+    console.timeEnd('Firestore Transaction');
+    console.log('4. Transaction completed successfully.');
   } catch (e: any) {
     console.error("Join Activity Transaction failed: ", e);
     if (typeof e === 'string') {
@@ -189,6 +205,9 @@ export async function joinActivity(activityId: string, user: User) {
         throw e;
     }
     throw new Error("Could not join the activity. Please try again.");
+  } finally {
+    console.timeEnd('joinActivity Total');
+    console.log('--- Debug: Finished joinActivity ---');
   }
 }
 
