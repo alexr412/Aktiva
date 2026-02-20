@@ -87,12 +87,10 @@ export async function createActivity({
   const isCustomActivity = !place;
   const placeCategories = place?.categories ? (Array.isArray(place.categories) ? place.categories : [place.categories]) : [];
   
-  const activityData: Omit<Activity, 'id' | 'participantDetails'> = {
+  const activityData = {
     placeId: place?.id || "custom",
     placeName: place?.name || customLocationName!,
-    placeAddress: place?.address || undefined,
     activityDate: Timestamp.fromDate(startDate),
-    activityEndDate: endDate ? Timestamp.fromDate(endDate) : undefined,
     creatorId: user.uid,
     creatorName: user.displayName,
     creatorPhotoURL: user.photoURL,
@@ -103,8 +101,10 @@ export async function createActivity({
     category: isCustomActivity ? "community" : (place?.categories[0].split('.')[0] || "other"),
     categories: isCustomActivity ? ["user_event"] : placeCategories,
     lastInteractionAt: serverTimestamp() as Timestamp,
-    status: 'active',
+    status: 'active' as const,
     completionVotes: [],
+    ...(place?.address && { placeAddress: place.address }),
+    ...(endDate && { activityEndDate: Timestamp.fromDate(endDate) }),
   };
   batch.set(activityRef, activityData);
 
