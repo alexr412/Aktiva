@@ -377,7 +377,6 @@ export default function Home() {
                     <MapPin className="h-4 w-4" />
                     <span className="text-sm font-medium">
                       {cityName}
-                      {userLocation && ` (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`}
                     </span>
                   </div>
                 </div>
