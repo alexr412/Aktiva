@@ -39,7 +39,7 @@ interface CreateActivityDialogProps {
   place: Place | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateActivity: (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string) => Promise<boolean>;
+  onCreateActivity: (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number) => Promise<boolean>;
 }
 
 export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivity }: CreateActivityDialogProps) {
@@ -53,6 +53,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   const [selectedTime, setSelectedTime] = useState<string>('18:00');
   const [isTimeFlexible, setIsTimeFlexible] = useState(false);
   const [isDateFlexible, setIsDateFlexible] = useState(false);
+  const [maxParticipants, setMaxParticipants] = useState('');
 
   const isCustom = !place;
 
@@ -67,6 +68,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
       setSelectedTime('18:00');
       setIsTimeFlexible(false);
       setIsDateFlexible(false);
+      setMaxParticipants('');
     }
   }, [open]);
 
@@ -94,7 +96,8 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     }
 
     setIsCreating(true);
-    const success = await onCreateActivity(finalDate, endDate, timeIsFlexible, isCustom ? customLocationName : undefined);
+    const numMaxParticipants = parseInt(maxParticipants, 10);
+    const success = await onCreateActivity(finalDate, endDate, timeIsFlexible, isCustom ? customLocationName : undefined, isNaN(numMaxParticipants) ? undefined : numMaxParticipants);
     if (!success) {
       setIsCreating(false);
     }
@@ -231,6 +234,20 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                 <Switch id="flexible-time" checked={isTimeFlexible} onCheckedChange={setIsTimeFlexible} />
                 <Label htmlFor="flexible-time">Ich bin zeitlich flexibel</Label>
               </div>
+          </div>
+
+          <div className="w-full max-w-md p-4 pt-2 mx-auto space-y-2">
+             <h3 className="text-lg font-semibold text-center mb-2 capitalize">
+                Teilnehmerlimit (optional)
+              </h3>
+              <Input
+                type="number"
+                value={maxParticipants}
+                onChange={(e) => setMaxParticipants(e.target.value)}
+                placeholder="Unbegrenzt"
+                className="w-full h-12 text-lg text-center rounded-xl"
+                min="1"
+              />
           </div>
 
         </div>

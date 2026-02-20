@@ -5,8 +5,9 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Home, Loader2, MapPin, ChevronRight } from 'lucide-react';
+import { Home, Loader2, MapPin, LogIn, MessageSquare, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface ActivityListItemProps {
     activity: Activity;
@@ -21,25 +22,25 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     if (!activity.id) return null;
 
     const isParticipant = activity.participantIds.includes(user?.uid || '---');
+    const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
     
     const Icon = activity.isCustomActivity ? Home : MapPin;
 
-    const handleClick = async () => {
-        if (isJoining) return; // Prevent multiple clicks
+    const handleJoinClick = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isJoining || isParticipant || isFull || !activity.id) return; 
 
-        if (isParticipant) {
-            router.push(`/chat/${activity.id}`);
-        } else {
-            if (!activity.id) return;
-            setIsJoining(true);
-            try {
-                await onJoin(activity.id);
-            } catch (error) {
-                // If onJoin fails, stop the loading spinner.
-                // The parent component is responsible for showing an error toast.
-                setIsJoining(false);
-            }
+        setIsJoining(true);
+        try {
+            await onJoin(activity.id);
+        } catch (error) {
+            setIsJoining(false);
         }
+    };
+    
+    const handleViewChatClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        router.push(`/chat/${activity.id}`);
     };
 
     const renderDate = () => {
@@ -53,10 +54,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     }
 
     return (
-        <div 
-            className="p-4 transition-colors hover:bg-muted/50 cursor-pointer"
-            onClick={handleClick}
-        >
+        <div className="p-4">
             <div className="flex items-center gap-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted flex-shrink-0">
                     <Icon className="h-5 w-5 text-muted-foreground" />
@@ -69,15 +67,34 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                      <p className="text-sm text-muted-foreground">
                         {renderDate()}
                     </p>
-                    <p className="text-sm text-muted-foreground truncate mt-1">
-                        {activity.participantIds.length} participant{activity.participantIds.length !== 1 ? 's' : ''} &bull; by {activity.creatorName}
+                    <p className="text-sm text-muted-foreground truncate mt-1 flex items-center gap-1.5">
+                        <Users className="h-4 w-4"/>
+                        <span>
+                            {activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; von {activity.creatorName}
+                        </span>
                     </p>
                 </div>
                 <div className="flex-shrink-0 self-center pl-2">
-                    {isJoining ? (
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    {isParticipant ? (
+                         <Button size="sm" variant="outline" onClick={handleViewChatClick}>
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            Chat
+                        </Button>
+                    ) : isFull ? (
+                        <Button size="sm" variant="secondary" disabled>
+                            Voll
+                        </Button>
                     ) : (
-                        <ChevronRight className="h-6 w-6 text-muted-foreground" />
+                        <Button size="sm" onClick={handleJoinClick} disabled={isJoining}>
+                            {isJoining ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <>
+                                    <LogIn className="mr-2 h-4 w-4" />
+                                    Teilnehmen
+                                </>
+                            )}
+                        </Button>
                     )}
                 </div>
             </div>

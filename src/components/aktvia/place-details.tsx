@@ -22,6 +22,7 @@ import {
     Users,
     LogIn,
     Loader2,
+    MessageSquare,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -193,8 +194,8 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                         <div className="space-y-3">
                             {placeActivities.map(activity => {
                                 if (!activity.id) return null;
-                                const isCreator = user?.uid === activity.creatorId;
                                 const isParticipant = activity.participantIds.includes(user?.uid || '---');
+                                const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
                                 
                                 return (
                                     <Card key={activity.id} className="p-3">
@@ -203,28 +204,36 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                 <p className="font-semibold text-base">
                                                     {renderActivityDate(activity)}
                                                 </p>
-                                                <p className="text-sm text-muted-foreground truncate">
-                                                    {activity.participantIds.length} participant{activity.participantIds.length !== 1 ? 's' : ''} &bull; by {activity.creatorName}
+                                                <p className="text-sm text-muted-foreground truncate flex items-center gap-1.5 mt-1">
+                                                    <Users className="h-4 w-4" />
+                                                    <span>
+                                                        {activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; von {activity.creatorName}
+                                                    </span>
                                                 </p>
                                             </div>
                                             <div className="flex-shrink-0">
-                                                {isCreator || isParticipant ? (
+                                                {isParticipant ? (
                                                     <Button size="sm" variant="outline" onClick={() => router.push(`/chat/${activity.id}`)}>
-                                                        View Chat
+                                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                                        Chat
+                                                    </Button>
+                                                ) : isFull ? (
+                                                    <Button size="sm" variant="secondary" disabled>
+                                                        Voll
                                                     </Button>
                                                 ) : (
                                                     <Button 
                                                         size="sm"
                                                         onClick={() => handleJoin(activity.id!)} 
                                                         disabled={joiningActivityId === activity.id}
-                                                        className="w-24"
+                                                        className="w-28"
                                                     >
                                                         {joiningActivityId === activity.id ? (
                                                             <Loader2 className="h-4 w-4 animate-spin" />
                                                         ) : (
                                                             <>
                                                                 <LogIn className="mr-2 h-4 w-4" />
-                                                                Join
+                                                                Teilnehmen
                                                             </>
                                                         )}
                                                     </Button>

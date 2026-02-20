@@ -27,6 +27,7 @@ export interface Activity {
   creatorName: string | null;
   creatorPhotoURL: string | null;
   participantIds: string[];
+  maxParticipants?: number;
   createdAt: Timestamp;
   isCustomActivity?: boolean;
   lastInteractionAt?: Timestamp;

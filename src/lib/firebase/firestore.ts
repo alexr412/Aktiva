@@ -31,6 +31,7 @@ type CreateActivityPayload = {
   endDate?: Date;
   user: User;
   isTimeFlexible?: boolean;
+  maxParticipants?: number;
 };
 
 function generateFriendCode(length = 8) {
@@ -83,6 +84,7 @@ export async function createActivity({
   endDate,
   user,
   isTimeFlexible,
+  maxParticipants,
 }: CreateActivityPayload) {
   if (!db) {
     throw new Error('Firestore is not initialized.');
@@ -116,6 +118,7 @@ export async function createActivity({
     completionVotes: [],
     ...(place?.address && { placeAddress: place.address }),
     ...(endDate && { activityEndDate: Timestamp.fromDate(endDate) }),
+    ...(maxParticipants && maxParticipants > 0 && { maxParticipants }),
   };
   batch.set(activityRef, activityData);
 
@@ -162,15 +165,14 @@ export async function joinActivity(activityId: string, user: User) {
         throw "Activity does not exist!";
       }
 
-      const activityData = activityDoc.data();
+      const activityData = activityDoc.data() as Activity;
       
       if (activityData.participantIds.includes(user.uid)) {
         return;
       }
       
-      const MAX_PARTICIPANTS = 50;
-      if (activityData.participantIds.length >= MAX_PARTICIPANTS) {
-        throw `This activity has reached its maximum of ${MAX_PARTICIPANTS} participants.`;
+      if (activityData.maxParticipants && activityData.participantIds.length >= activityData.maxParticipants) {
+        throw `This activity has reached its maximum of ${activityData.maxParticipants} participants.`;
       }
       
       transaction.update(activityRef, {
