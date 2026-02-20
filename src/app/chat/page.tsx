@@ -12,7 +12,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Users, Bell } from 'lucide-react';
+import { Users, Bell, UserPlus } from 'lucide-react';
+import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
 
 const ChatListItemSkeleton = () => (
     <div className="flex items-center gap-4 p-4">
@@ -43,6 +44,7 @@ export default function ChatPage() {
   const { user, loading: authLoading } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddFriendDialog, setShowAddFriendDialog] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -131,19 +133,28 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-full flex-col">
-        <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
-          <div className="px-4 flex h-16 items-center justify-between">
-            <h1 className="text-2xl font-bold tracking-tight">Chats</h1>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-                <Bell className="h-5 w-5" />
-                <span className="sr-only">Benachrichtigungen</span>
-            </Button>
+    <>
+      <div className="flex h-full flex-col">
+          <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
+            <div className="px-4 flex h-16 items-center justify-between">
+              <h1 className="text-2xl font-bold tracking-tight">Chats</h1>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => setShowAddFriendDialog(true)}>
+                    <UserPlus className="h-5 w-5" />
+                    <span className="sr-only">Freund hinzufügen</span>
+                </Button>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+                    <Bell className="h-5 w-5" />
+                    <span className="sr-only">Benachrichtigungen</span>
+                </Button>
+              </div>
+            </div>
+          </header>
+          <div className="flex-1 overflow-y-auto">
+              {renderContent()}
           </div>
-        </header>
-        <div className="flex-1 overflow-y-auto">
-            {renderContent()}
-        </div>
-    </div>
+      </div>
+      <AddFriendDialog open={showAddFriendDialog} onOpenChange={setShowAddFriendDialog} />
+    </>
   );
 }
