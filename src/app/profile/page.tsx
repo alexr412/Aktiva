@@ -323,7 +323,6 @@ export default function ProfilePage() {
                         {displayName}
                         {userData?.age && `, ${userData.age}`}
                     </h1>
-                    <p className="text-muted-foreground">{userData?.email || user.email}</p>
                     <div 
                         onClick={userData?.friendCode ? handleCopyCode : undefined}
                         onKeyDown={(e) => userData?.friendCode && (e.key === 'Enter' || e.key === ' ') ? handleCopyCode() : undefined}
