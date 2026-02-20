@@ -7,11 +7,10 @@ export async function fetchNearbyPlaces(
   categories: string[]
 ): Promise<Place[]> {
   const categoryList = categories.join(',');
-  const limit = 500; // Fetch a large number for client-side filtering
+  const limit = 500;
   let url = `https://api.geoapify.com/v2/places?filter=circle:${lon},${lat},5000&bias=proximity:${lon},${lat}&limit=${limit}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
   if (categoryList) {
-    // If categories are specified (not 'All'), use them
     url += `&categories=${categoryList}`;
   }
 
