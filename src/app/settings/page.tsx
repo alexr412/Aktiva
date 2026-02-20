@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound } from 'lucide-react';
+import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { sendPasswordReset, deleteAccount } from '@/lib/firebase/auth';
+import { sendPasswordReset, deleteAccount, signOut } from '@/lib/firebase/auth';
 import { deleteUserDocument, updateUserProfile } from '@/lib/firebase/firestore';
 import {
   AlertDialog,
@@ -97,7 +97,25 @@ export default function SettingsPage() {
         } finally {
             setIsDeleting(false);
         }
-    }
+    };
+
+    const handleSignOut = async () => {
+        try {
+            await signOut();
+            router.push('/login');
+            toast({
+                title: 'Logged Out',
+                description: 'You have been successfully signed out.',
+            });
+        } catch (error) {
+            console.error("Logout failed", error);
+            toast({
+                title: "Logout Failed",
+                description: "There was a problem signing you out.",
+                variant: "destructive",
+            });
+        }
+    };
 
 
     return (
@@ -131,6 +149,13 @@ export default function SettingsPage() {
                                     <p className="text-sm text-muted-foreground">Set a new password for your account.</p>
                                 </div>
                                 {isSendingReset ? <Loader2 className="h-5 w-5 animate-spin" /> : <KeyRound className="h-5 w-5 text-muted-foreground" />}
+                            </button>
+                             <button className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
+                                <div>
+                                    <p className="font-medium">Language</p>
+                                    <p className="text-sm text-muted-foreground">Change application language.</p>
+                                </div>
+                                <Globe className="h-5 w-5 text-muted-foreground" />
                             </button>
                         </div>
                     </div>
@@ -180,6 +205,23 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
+                    {/* Privacy & Safety Section */}
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                            <Ban className="h-5 w-5 text-primary" />
+                            <span>Privacy & Safety</span>
+                        </h2>
+                        <div className="space-y-2">
+                             <button className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
+                                <div>
+                                    <p className="font-medium">Blocked Users</p>
+                                    <p className="text-sm text-muted-foreground">Manage your blocked contacts.</p>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Appearance Section */}
                     <div className="space-y-4">
                         <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
@@ -187,6 +229,23 @@ export default function SettingsPage() {
                             <span>Appearance</span>
                         </h2>
                          <ThemeSelector />
+                    </div>
+
+                    {/* Support Section */}
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                            <Bug className="h-5 w-5 text-primary" />
+                            <span>Support</span>
+                        </h2>
+                        <div className="space-y-2">
+                             <button className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
+                                <div>
+                                    <p className="font-medium">Report a Bug</p>
+                                    <p className="text-sm text-muted-foreground">Help us improve the application.</p>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            </button>
+                        </div>
                     </div>
                      
                     {/* About Section */}
@@ -215,6 +274,14 @@ export default function SettingsPage() {
                                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
                             </button>
                         </div>
+                    </div>
+
+                    {/* Log out section */}
+                    <div className="space-y-4 pt-4">
+                         <Button variant="ghost" onClick={handleSignOut} className="w-full text-destructive hover:text-destructive hover:bg-destructive/10">
+                            <LogOut className="mr-2 h-5 w-5" />
+                            Log Out
+                        </Button>
                     </div>
                     
                     {/* Danger Zone */}
