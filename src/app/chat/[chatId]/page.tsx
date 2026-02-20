@@ -168,6 +168,15 @@ export default function ChatRoomPage() {
     };
   }, [chatId, router, toast, user]);
 
+  useEffect(() => {
+    if (activity?.status === 'completed' && !hasReviewed && user) {
+        const otherParticipants = activity.participantIds.filter(id => id !== user.uid);
+        if (otherParticipants.length > 0) {
+            setShowReviewDialog(true);
+        }
+    }
+  }, [activity, hasReviewed, user]);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() === '' || !user) return;
@@ -182,22 +191,6 @@ export default function ChatRoomPage() {
       toast({ title: "Error", description: "Could not send message.", variant: 'destructive'});
     }
   };
-
-  const renderReviewTrigger = () => {
-    if (!activity || activity.status !== 'completed' || hasReviewed || !user) return null;
-    
-    const otherParticipants = activity.participantIds.filter(id => id !== user.uid);
-    if (otherParticipants.length === 0) return null;
-
-    return (
-      <div className="p-4 border-b bg-background">
-        <Button onClick={() => setShowReviewDialog(true)} className="w-full">
-            <Star className="mr-2 h-4 w-4" />
-            Bewerten Sie die Aktivität
-        </Button>
-      </div>
-    );
-  }
 
   if (loading || authLoading) {
     return (
@@ -234,8 +227,6 @@ export default function ChatRoomPage() {
         {activity && user && activity.status === 'active' && activity.completionVotes && activity.completionVotes.length > 0 && (
           <CompletionBanner activity={activity} currentUser={user} />
         )}
-
-        {renderReviewTrigger()}
 
         <div className="flex-1 overflow-y-auto p-4 pb-40">
           <div className="flex flex-col">
