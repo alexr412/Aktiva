@@ -113,11 +113,11 @@ export default function Home() {
     fetchAllUpcomingActivities();
   }, []);
 
-  const loadPlaces = useCallback(async (lat: number, lng: number, category: string[], searchQuery?: string) => {
+  const loadPlaces = useCallback(async (lat: number, lng: number, category: string[]) => {
     setIsLoading(true);
     setPlaces([]);
     try {
-      const fetchedPlaces = await fetchNearbyPlaces(lat, lng, category, searchQuery);
+      const fetchedPlaces = await fetchNearbyPlaces(lat, lng, category);
       const placesWithCounts = fetchedPlaces.map(p => ({
           ...p,
           activityCount: allUpcomingActivities.filter(a => a.placeId === p.id).length
@@ -147,19 +147,11 @@ export default function Home() {
     } else {
         if (userLocation) {
             setCustomActivities([]);
-            const handler = setTimeout(() => {
-                if (searchQuery) {
-                    loadPlaces(userLocation.lat, userLocation.lng, [], searchQuery);
-                } else {
-                    const categoriesToFetch = activeCategory.includes('all') ? [] : activeCategory;
-                    loadPlaces(userLocation.lat, userLocation.lng, categoriesToFetch);
-                }
-            }, 300); // 300ms debounce
-            
-            return () => clearTimeout(handler);
+            const categoriesToFetch = activeCategory.includes('all') ? [] : activeCategory;
+            loadPlaces(userLocation.lat, userLocation.lng, categoriesToFetch);
         }
     }
-  }, [userLocation, activeCategory, loadPlaces, allUpcomingActivities, searchQuery]);
+  }, [userLocation, activeCategory, loadPlaces, allUpcomingActivities]);
 
   const handleCategoryChange = (categoryId: string[]) => {
     setSearchQuery(''); // Clear search when category changes
@@ -294,6 +286,9 @@ export default function Home() {
         const filteredCustomActivities = customActivities.filter(activity =>
             activity.placeName.toLowerCase().includes(searchQuery.toLowerCase())
         );
+        const filteredPlaces = places.filter(place =>
+            place.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
         
         if (isLoading) {
           return (
@@ -324,12 +319,12 @@ export default function Home() {
               </div>
             );
         } else {
-            if (places.length === 0) {
+            if (filteredPlaces.length === 0) {
                  return <EmptySearchState />;
             }
             return (
                 <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {places.map(place => (
+                  {filteredPlaces.map(place => (
                       <PlaceCard 
                         key={place.id} 
                         place={place} 
@@ -354,8 +349,12 @@ export default function Home() {
               );
         }
 
+        const filteredPlaces = places.filter(place =>
+            place.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
         return (
-            <MapView places={places} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />
+            <MapView places={filteredPlaces} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />
         );
     }
   };

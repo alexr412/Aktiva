@@ -4,18 +4,14 @@ import type { Place, GeoapifyFeature } from '@/lib/types';
 export async function fetchNearbyPlaces(
   lat: number,
   lon: number,
-  categories: string[],
-  text?: string
+  categories: string[]
 ): Promise<Place[]> {
   const categoryList = categories.join(',');
-  const limit = text || !categoryList ? 150 : 50;
+  const limit = 500; // Fetch a large number for client-side filtering
   let url = `https://api.geoapify.com/v2/places?filter=circle:${lon},${lat},5000&bias=proximity:${lon},${lat}&limit=${limit}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
-  if (text) {
-    // If there's a search text, we search across all categories
-    url += `&text=${encodeURIComponent(text)}`;
-  } else if (categoryList) {
-    // Otherwise, we filter by the selected categories
+  if (categoryList) {
+    // If categories are specified (not 'All'), use them
     url += `&categories=${categoryList}`;
   }
 
