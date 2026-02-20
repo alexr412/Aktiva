@@ -6,13 +6,9 @@ export async function fetchNearbyPlaces(
   lon: number,
   categories: string[]
 ): Promise<Place[]> {
-  const categoryList = categories.join(',');
+  const categoryList = categories.length > 0 ? categories.join(',') : 'commercial,catering,entertainment,leisure,tourism,accommodation,sport,natural';
   const limit = 500;
-  let url = `https://api.geoapify.com/v2/places?filter=circle:${lon},${lat},5000&bias=proximity:${lon},${lat}&limit=${limit}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
-
-  if (categoryList) {
-    url += `&categories=${categoryList}`;
-  }
+  const url = `https://api.geoapify.com/v2/places?filter=circle:${lon},${lat},5000&bias=proximity:${lon},${lat}&limit=${limit}&conditions=named&apiKey=${GEOAPIFY_API_KEY}&categories=${categoryList}`;
 
 
   try {
