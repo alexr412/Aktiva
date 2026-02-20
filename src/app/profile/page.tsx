@@ -8,7 +8,7 @@ import { signOut } from '@/lib/firebase/auth';
 import { fetchUserActivities, joinActivity, getUserProfile, acceptFriendRequest, declineFriendRequest } from '@/lib/firebase/firestore';
 import type { Activity, UserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,6 +18,15 @@ import { ActivityListItem } from '@/components/aktvia/activity-list-item';
 import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Bell, Settings, Copy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
+
+function generateFriendCode(length = 8) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
 
 export default function ProfilePage() {
@@ -82,6 +91,28 @@ export default function ProfilePage() {
             router.push('/login');
         }
     }, [user, authLoading, router, toast, userProfile]);
+    
+    useEffect(() => {
+        const createFriendCode = async () => {
+            if (user && userData && !userData.friendCode && db) {
+                const newCode = generateFriendCode();
+                const userDocRef = doc(db, 'users', user.uid);
+                try {
+                    await updateDoc(userDocRef, { friendCode: newCode });
+                    setUserData(prev => prev ? { ...prev, friendCode: newCode } : null);
+                } catch (error) {
+                    console.error("Failed to create friend code:", error);
+                    toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: "Could not generate a friend code for your account.",
+                    });
+                }
+            }
+        };
+        createFriendCode();
+    }, [user, userData, toast]);
+
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -293,18 +324,22 @@ export default function ProfilePage() {
                         {userData?.age && `, ${userData.age}`}
                     </h1>
                     <p className="text-muted-foreground">{userData?.email || user.email}</p>
-                    {userData?.friendCode && (
-                        <div 
-                            onClick={handleCopyCode}
-                            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCopyCode()}
-                            role="button"
-                            tabIndex={0}
-                            className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-muted"
-                        >
-                            <span>{userData.friendCode}</span>
-                            <Copy className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                    )}
+                    <div 
+                        onClick={userData?.friendCode ? handleCopyCode : undefined}
+                        onKeyDown={(e) => userData?.friendCode && (e.key === 'Enter' || e.key === ' ') ? handleCopyCode() : undefined}
+                        role={userData?.friendCode ? "button" : undefined}
+                        tabIndex={userData?.friendCode ? 0 : -1}
+                        className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-muted"
+                    >
+                        {userData?.friendCode ? (
+                            <>
+                                <span>{userData.friendCode}</span>
+                                <Copy className="h-4 w-4 text-muted-foreground" />
+                            </>
+                        ) : (
+                            <span className='text-muted-foreground'>Generating...</span>
+                        )}
+                    </div>
                     {userData?.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
                 </div>
             </div>
