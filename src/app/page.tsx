@@ -20,6 +20,7 @@ import { collection, query, where, getDocs, Timestamp } from "firebase/firestore
 import { db } from "@/lib/firebase/client";
 import { ActivityListItem } from "@/components/aktvia/activity-list-item";
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -45,6 +46,7 @@ export default function Home() {
   const [allUpcomingActivities, setAllUpcomingActivities] = useState<Activity[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [cityName, setCityName] = useState<string>("Locating...");
+  const [sortBy, setSortBy] = useState("distance");
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -283,12 +285,6 @@ export default function Home() {
     );
 
     if (viewMode === 'list') {
-        const filteredCustomActivities = customActivities.filter(activity =>
-            activity.placeName.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-        const filteredPlaces = places.filter(place =>
-            place.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
         
         if (isLoading) {
           return (
@@ -301,7 +297,18 @@ export default function Home() {
         }
         
         if (isCommunityCategory) {
-            if (filteredCustomActivities.length === 0) {
+            const filteredCustomActivities = customActivities.filter(activity =>
+                activity.placeName.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+
+            const sortedActivities = filteredCustomActivities.sort((a, b) => {
+                if (sortBy === 'recent') {
+                    return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
+                }
+                return 0;
+            });
+
+            if (sortedActivities.length === 0) {
                  return searchQuery ? <EmptySearchState /> : (
                     <div className="flex h-full w-full items-center justify-center p-6 text-center">
                         <div className="space-y-2">
@@ -313,18 +320,35 @@ export default function Home() {
             }
             return (
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {filteredCustomActivities.map((activity) => (
+                  {sortedActivities.map((activity) => (
                     <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
                   ))}
               </div>
             );
         } else {
-            if (filteredPlaces.length === 0) {
+            const filteredPlaces = places.filter(place =>
+                place.name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+
+            const sortedPlaces = filteredPlaces.sort((a, b) => {
+                if (sortBy === 'distance') {
+                    return (a.distance || 0) - (b.distance || 0);
+                }
+                if (sortBy === 'rating') {
+                    return (b.rating || 0) - (a.rating || 0);
+                }
+                if (sortBy === 'recent') {
+                    return (b.activityCount || 0) - (a.activityCount || 0);
+                }
+                return 0;
+            });
+
+            if (sortedPlaces.length === 0) {
                  return <EmptySearchState />;
             }
             return (
                 <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {filteredPlaces.map(place => (
+                  {sortedPlaces.map(place => (
                       <PlaceCard 
                         key={place.id} 
                         place={place} 
@@ -396,7 +420,8 @@ export default function Home() {
                 </div>
             </div>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
-            <div className="relative mt-4">
+            <div className="mt-4 flex w-full items-center gap-2">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                     type="search"
@@ -411,6 +436,17 @@ export default function Home() {
                     }}
                     className="w-full rounded-full bg-muted pl-10 h-12"
                 />
+              </div>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-[180px] rounded-full h-12 bg-muted border-none focus:ring-0">
+                      <SelectValue placeholder="Sortieren nach..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="distance">Distanz</SelectItem>
+                      <SelectItem value="rating">Bewertung</SelectItem>
+                      <SelectItem value="recent">Neueste</SelectItem>
+                  </SelectContent>
+              </Select>
             </div>
           </div>
         </header>

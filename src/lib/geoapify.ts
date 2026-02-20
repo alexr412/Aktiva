@@ -47,6 +47,7 @@ export async function fetchNearbyPlaces(
         lat: props.lat,
         lon: props.lon,
         rating: rating,
+        distance: props.distance,
       };
     });
   } catch (error) {

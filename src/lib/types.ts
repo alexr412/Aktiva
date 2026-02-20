@@ -12,6 +12,7 @@ export interface Place {
   rating?: number;
   imageUrl?: string;
   activityCount?: number;
+  distance?: number;
 }
 
 export interface Activity {
@@ -80,6 +81,7 @@ export interface GeoapifyFeature {
     lat: number;
     lon: number;
     place_id: string;
+    distance?: number;
     datasource: {
       raw: {
         rating?: string;
