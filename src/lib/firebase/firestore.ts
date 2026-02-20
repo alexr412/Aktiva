@@ -369,7 +369,7 @@ export async function voteToCompleteActivity(activityId: string, userId: string)
 
       const activityData = activityDoc.data() as Activity;
       
-      const newVotes = [...new Set([...activityData.completionVotes, userId])];
+      const newVotes = [...new Set([...(activityData.completionVotes || []), userId])];
       
       transaction.update(activityRef, {
         completionVotes: newVotes
