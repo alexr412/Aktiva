@@ -8,7 +8,8 @@ export async function fetchNearbyPlaces(
   text?: string
 ): Promise<Place[]> {
   const categoryList = categories.join(',');
-  let url = `https://api.geoapify.com/v2/places?filter=circle:${lon},${lat},5000&bias=proximity:${lon},${lat}&limit=50&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+  const limit = text || !categoryList ? 150 : 50;
+  let url = `https://api.geoapify.com/v2/places?filter=circle:${lon},${lat},5000&bias=proximity:${lon},${lat}&limit=${limit}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
   if (text) {
     // If there's a search text, we search across all categories
