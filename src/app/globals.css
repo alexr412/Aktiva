@@ -65,72 +65,96 @@
   [data-theme="violet"] {
     --primary: 259 92% 67%;
     --primary-foreground: 0 0% 100%;
+    --accent: 259 92% 96%;
+    --accent-foreground: 259 92% 40%;
     --ring: 259 92% 67%;
   }
 
   .dark [data-theme="violet"] {
     --primary: 259 92% 77%;
     --primary-foreground: 259 92% 10%;
+    --accent: 259 92% 20%;
+    --accent-foreground: 259 92% 90%;
     --ring: 259 92% 77%;
   }
 
   [data-theme="blue"] {
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
+    --accent: 217 91% 96%;
+    --accent-foreground: 217 91% 40%;
     --ring: 217 91% 60%;
   }
 
   .dark [data-theme="blue"] {
     --primary: 217 91% 70%;
     --primary-foreground: 217 91% 10%;
+    --accent: 217 91% 20%;
+    --accent-foreground: 217 91% 90%;
     --ring: 217 91% 70%;
   }
 
   [data-theme="yellow"] {
     --primary: 45 93% 47%;
     --primary-foreground: 45 93% 5%;
+    --accent: 45 93% 96%;
+    --accent-foreground: 45 93% 30%;
     --ring: 45 93% 47%;
   }
 
   .dark [data-theme="yellow"] {
     --primary: 45 93% 57%;
     --primary-foreground: 45 93% 10%;
+    --accent: 45 93% 20%;
+    --accent-foreground: 45 93% 90%;
     --ring: 45 93% 57%;
   }
   
   [data-theme="orange"] {
     --primary: 25 95% 53%;
     --primary-foreground: 0 0% 100%;
+    --accent: 25 95% 96%;
+    --accent-foreground: 25 95% 40%;
     --ring: 25 95% 53%;
   }
 
   .dark [data-theme="orange"] {
     --primary: 25 95% 63%;
     --primary-foreground: 25 95% 10%;
+    --accent: 25 95% 20%;
+    --accent-foreground: 25 95% 90%;
     --ring: 25 95% 63%;
   }
 
   [data-theme="green"] {
     --primary: 142 76% 36%;
     --primary-foreground: 0 0% 100%;
+    --accent: 142 76% 92%;
+    --accent-foreground: 142 76% 20%;
     --ring: 142 76% 36%;
   }
 
   .dark [data-theme="green"] {
     --primary: 142 76% 46%;
     --primary-foreground: 142 76% 5%;
+    --accent: 142 76% 15%;
+    --accent-foreground: 142 76% 85%;
     --ring: 142 76% 46%;
   }
 
   [data-theme="red"] {
     --primary: 0 72% 51%;
     --primary-foreground: 0 0% 100%;
+    --accent: 0 72% 96%;
+    --accent-foreground: 0 72% 40%;
     --ring: 0 72% 51%;
   }
 
   .dark [data-theme="red"] {
     --primary: 0 72% 61%;
     --primary-foreground: 0 72% 10%;
+    --accent: 0 72% 20%;
+    --accent-foreground: 0 72% 90%;
     --ring: 0 72% 61%;
   }
 }
