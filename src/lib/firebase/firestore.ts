@@ -301,10 +301,31 @@ export async function sendFriendRequest(fromUserId: string, toUserId: string) {
     if (!db) throw new Error('Firestore is not initialized.');
     const fromUserRef = doc(db, 'users', fromUserId);
     const toUserRef = doc(db, 'users', toUserId);
+    const notificationRef = doc(collection(db, 'notifications'));
 
     await runTransaction(db, async (transaction) => {
+        const fromUserSnap = await transaction.get(fromUserRef);
+        if (!fromUserSnap.exists()) {
+            throw new Error("Sender's user profile does not exist.");
+        }
+        const fromUserProfile = fromUserSnap.data() as UserProfile;
+
+        // Update friend request arrays
         transaction.update(fromUserRef, { friendRequestsSent: arrayUnion(toUserId) });
         transaction.update(toUserRef, { friendRequestsReceived: arrayUnion(fromUserId) });
+
+        // Create notification
+        transaction.set(notificationRef, {
+            recipientId: toUserId,
+            senderId: fromUserId,
+            senderProfile: {
+                displayName: fromUserProfile.displayName,
+                photoURL: fromUserProfile.photoURL
+            },
+            type: 'friend_request',
+            isRead: false,
+            createdAt: serverTimestamp()
+        });
     });
 }
 
@@ -455,4 +476,10 @@ export async function findUserByFriendCode(friendCode: string): Promise<UserProf
     }
 
     return querySnapshot.docs[0].data() as UserProfile;
+}
+
+export async function markNotificationAsRead(notificationId: string) {
+    if (!db) throw new Error('Firestore is not initialized.');
+    const notificationRef = doc(db, 'notifications', notificationId);
+    await updateDoc(notificationRef, { isRead: true });
 }

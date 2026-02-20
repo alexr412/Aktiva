@@ -12,8 +12,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Users, Bell, UserPlus } from 'lucide-react';
+import { Users, UserPlus } from 'lucide-react';
 import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 const ChatListItemSkeleton = () => (
     <div className="flex items-center gap-4 p-4">
@@ -143,10 +144,7 @@ export default function ChatPage() {
                     <UserPlus className="h-5 w-5" />
                     <span className="sr-only">Freund hinzufügen</span>
                 </Button>
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-                    <Bell className="h-5 w-5" />
-                    <span className="sr-only">Benachrichtigungen</span>
-                </Button>
+                <NotificationBell />
               </div>
             </div>
           </header>

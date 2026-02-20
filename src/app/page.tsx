@@ -8,7 +8,7 @@ import { PlaceCard } from '@/components/aktvia/place-card';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place, Activity } from '@/lib/types';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MapPin, Map as MapIcon, List, Plus, Bell, Search } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus, Search } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -21,6 +21,7 @@ import { db } from "@/lib/firebase/client";
 import { ActivityListItem } from "@/components/aktvia/activity-list-item";
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -403,10 +404,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-                        <Bell className="h-5 w-5" />
-                        <span className="sr-only">Benachrichtigungen</span>
-                    </Button>
+                    <NotificationBell />
                     <div className="flex items-center gap-1 rounded-full bg-muted p-1">
                         <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-full shadow-sm" onClick={() => setViewMode('list')}>
                             <List className="h-4 w-4" />

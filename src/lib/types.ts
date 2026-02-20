@@ -127,3 +127,17 @@ export interface Review {
   text?: string;
   createdAt: Timestamp;
 }
+
+export interface Notification {
+    id: string;
+    recipientId: string;
+    senderId: string;
+    senderProfile?: {
+        displayName: string | null;
+        photoURL: string | null;
+    };
+    type: 'friend_request' | 'activity_invite';
+    isRead: boolean;
+    createdAt: Timestamp;
+    referenceId?: string;
+}

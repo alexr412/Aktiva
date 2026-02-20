@@ -15,9 +15,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Bell, Settings, Copy } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 function generateFriendCode(length = 8) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -266,14 +267,7 @@ export default function ProfilePage() {
     return (
         <div className="relative flex flex-col h-full bg-background overflow-y-auto pb-20">
             <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground"
-                >
-                    <Bell className="h-5 w-5" />
-                    <span className="sr-only">Benachrichtigungen</span>
-                </Button>
+                <NotificationBell />
                 <Button asChild
                     variant="ghost"
                     size="icon"

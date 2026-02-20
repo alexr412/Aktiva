@@ -11,8 +11,9 @@ import type { Activity } from '@/lib/types';
 import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Compass, Bell, X, Heart, Home, MapPin, Calendar, Users, Info } from 'lucide-react';
+import { Compass, X, Heart, Home, MapPin, Calendar, Users, Info } from 'lucide-react';
 import { format } from 'date-fns';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 const CardSkeleton = () => (
   <div className="absolute w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-3xl shadow-xl border border-border overflow-hidden flex flex-col items-center justify-center">
@@ -143,10 +144,7 @@ export default function ExplorePage() {
               <div className="px-4 py-4 space-y-4">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold tracking-tight">Explore Activities</h1>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-                        <Bell className="h-5 w-5" />
-                        <span className="sr-only">Benachrichtigungen</span>
-                    </Button>
+                    <NotificationBell />
                 </div>
               </div>
             </header>
