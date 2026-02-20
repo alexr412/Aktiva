@@ -44,6 +44,7 @@ export default function Home() {
   const [customActivities, setCustomActivities] = useState<Activity[]>([]);
   const [allUpcomingActivities, setAllUpcomingActivities] = useState<Activity[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [cityName, setCityName] = useState<string>("Locating...");
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -51,13 +52,28 @@ export default function Home() {
 
 
   useEffect(() => {
+    const reverseGeocode = async (lat: number, lng: number) => {
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        const data = await response.json();
+        setCityName(data.address.city || data.address.town || data.address.village || "Unknown location");
+      } catch (error) {
+        console.error("Reverse geocoding error:", error);
+        setCityName("Could not find city");
+      }
+    };
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
+          const location = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          });
+          };
+          setUserLocation(location);
+          if (location.lat && location.lng) {
+            reverseGeocode(location.lat, location.lng);
+          }
         },
         (error) => {
           console.error('Geolocation error:', error);
@@ -66,7 +82,9 @@ export default function Home() {
             description: 'Could not get location. Using default location (Bremerhaven).',
           });
           setUserLocation({ lat: 53.5451, lng: 8.5746 });
-        }
+          setCityName("Bremerhaven");
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       toast({
@@ -74,6 +92,7 @@ export default function Home() {
         description: 'Geolocation not supported. Using default location (Bremerhaven).',
       });
       setUserLocation({ lat: 53.5451, lng: 8.5746 });
+      setCityName("Bremerhaven");
     }
   }, [toast]);
   
@@ -352,7 +371,13 @@ export default function Home() {
         <header className="flex-none w-full border-b bg-background z-20">
           <div className="flex flex-col gap-4 px-4 py-4 sm:px-6">
              <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
+                  <div className="flex items-center gap-1 text-muted-foreground mt-1">
+                    <MapPin className="h-4 w-4" />
+                    <span className="text-sm font-medium">{cityName}</span>
+                  </div>
+                </div>
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
                         <Bell className="h-5 w-5" />
