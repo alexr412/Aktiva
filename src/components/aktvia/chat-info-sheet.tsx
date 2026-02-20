@@ -66,7 +66,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
 
   const isOnlyParticipant = chat.participantIds.length === 1;
   const amCreator = chat.creatorId === user.uid;
-  const hasVoted = activity.completionVotes.includes(user.uid);
+  const hasVoted = activity?.completionVotes?.includes(user.uid);
   const isCompleted = activity.status === 'completed';
 
   const handleLeaveOrDelete = async () => {

@@ -41,6 +41,8 @@ export default function ExplorePage() {
     const [cards, setCards] = useState<Activity[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const animationControls = useAnimation();
+    const [searchQuery, setSearchQuery] = useState("");
+
 
     useEffect(() => {
         if (!db) return;
@@ -131,6 +133,10 @@ export default function ExplorePage() {
         return format(activity.activityDate.toDate(), "eee, MMM d 'at' p");
     };
 
+    const filteredCards = cards.filter(card =>
+        card.placeName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     return (
         <div className="flex h-full flex-col bg-secondary">
             <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
@@ -147,13 +153,13 @@ export default function ExplorePage() {
             <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
                 {isLoading && <CardSkeleton />}
 
-                {!isLoading && cards.length === 0 && <EmptyState />}
+                {!isLoading && filteredCards.length === 0 && <EmptyState />}
                 
-                {!isLoading && cards.length > 0 &&
+                {!isLoading && filteredCards.length > 0 &&
                     <>
                         <div className="relative flex items-center justify-center w-full flex-1 p-4 -mt-16">
-                            {cards.map((card, index) => {
-                                const isTopCard = index === cards.length - 1;
+                            {filteredCards.map((card, index) => {
+                                const isTopCard = index === filteredCards.length - 1;
                                 
                                 return (
                                     <motion.div
@@ -164,9 +170,9 @@ export default function ExplorePage() {
                                         }}
                                         initial={isTopCard ? { scale: 1, y: 0, opacity: 1 } : {}}
                                         animate={isTopCard ? animationControls : {
-                                            scale: 1 - (cards.length - 1 - index) * 0.05,
-                                            y: (cards.length - 1 - index) * 10,
-                                            opacity: 1 - (cards.length - 1 - index) * 0.2,
+                                            scale: 1 - (filteredCards.length - 1 - index) * 0.05,
+                                            y: (filteredCards.length - 1 - index) * 10,
+                                            opacity: 1 - (filteredCards.length - 1 - index) * 0.2,
                                         }}
                                         drag={isTopCard ? "x" : false}
                                         dragConstraints={{ left: 0, right: 0 }}
