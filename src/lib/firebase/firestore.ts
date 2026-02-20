@@ -21,7 +21,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import type { Place, UserProfile } from '@/lib/types';
+import type { Place, UserProfile, Activity } from '@/lib/types';
 
 type CreateActivityPayload = {
   place?: Place;
@@ -73,11 +73,7 @@ export async function createActivity({
   user,
   isTimeFlexible,
 }: CreateActivityPayload) {
-  console.log('--- Debug: createActivity ---');
-  console.time('createActivity Total');
-  
   if (!db) {
-    console.error('Firestore (db) is not initialized!');
     throw new Error('Firestore is not initialized.');
   }
   if (!place && !customLocationName) {
@@ -107,9 +103,10 @@ export async function createActivity({
     category: isCustomActivity ? "community" : (place?.categories[0].split('.')[0] || "other"),
     categories: isCustomActivity ? ["user_event"] : placeCategories,
     lastInteractionAt: serverTimestamp(),
+    status: 'active',
+    completionVotes: [],
   };
   batch.set(activityRef, activityData);
-  console.log('1. Prepared activity document for batch.');
 
   const chatRef = doc(db, 'chats', activityRef.id);
   batch.set(chatRef, {
@@ -126,18 +123,11 @@ export async function createActivity({
       },
     },
   });
-  console.log('2. Prepared chat document for batch.');
 
   try {
-    console.log('3. Committing batch write...');
-    console.time('Firestore Batch Commit');
     await batch.commit();
-    console.timeEnd('Firestore Batch Commit');
-    console.log('4. Batch commit successful!');
-    console.timeEnd('createActivity Total');
     return activityRef;
   } catch (error: any) {
-    console.timeEnd('createActivity Total');
     console.error('!!! Critical Error creating activity and chat: ', error);
     if (error.message.includes('permission-denied') || error.message.includes('permission denied')) {
         throw new Error('Database permission denied. Please check your Firestore security rules.');
@@ -147,8 +137,6 @@ export async function createActivity({
 }
 
 export async function joinActivity(activityId: string, user: User) {
-  console.log(`--- Debug: User ${user.uid} joining activity ${activityId} ---`);
-  console.time('joinActivity Total');
   if (!db) throw new Error('Firestore is not initialized.');
   if (!user) throw new Error('User is not authenticated.');
 
@@ -156,12 +144,8 @@ export async function joinActivity(activityId: string, user: User) {
   const chatRef = doc(db, 'chats', activityId);
 
   try {
-    console.time('Firestore Transaction');
     await runTransaction(db, async (transaction) => {
-      console.log('1. Starting transaction to join activity.');
-      console.time('Transaction Get');
       const activityDoc = await transaction.get(activityRef);
-      console.timeEnd('Transaction Get');
 
       if (!activityDoc.exists()) {
         throw "Activity does not exist!";
@@ -170,7 +154,6 @@ export async function joinActivity(activityId: string, user: User) {
       const activityData = activityDoc.data();
       
       if (activityData.participantIds.includes(user.uid)) {
-        console.log('User is already a participant.');
         return;
       }
       
@@ -179,7 +162,6 @@ export async function joinActivity(activityId: string, user: User) {
         throw `This activity has reached its maximum of ${MAX_PARTICIPANTS} participants.`;
       }
       
-      console.log('2. Preparing transaction updates.');
       transaction.update(activityRef, {
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
@@ -192,10 +174,7 @@ export async function joinActivity(activityId: string, user: User) {
           photoURL: user.photoURL,
         }
       });
-      console.log('3. Transaction updates prepared.');
     });
-    console.timeEnd('Firestore Transaction');
-    console.log('4. Transaction completed successfully.');
   } catch (e: any) {
     console.error("Join Activity Transaction failed: ", e);
     if (typeof e === 'string') {
@@ -205,9 +184,6 @@ export async function joinActivity(activityId: string, user: User) {
         throw e;
     }
     throw new Error("Could not join the activity. Please try again.");
-  } finally {
-    console.timeEnd('joinActivity Total');
-    console.log('--- Debug: Finished joinActivity ---');
   }
 }
 
@@ -378,4 +354,74 @@ export async function deleteUserDocument(userId: string) {
   // backend function to clean up all user-related data (e.g., remove from
   // activities, chats, friend lists) for data integrity.
   await deleteDoc(userDocRef);
+}
+
+export async function voteToCompleteActivity(activityId: string, userId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const activityRef = doc(db, 'activities', activityId);
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const activityDoc = await transaction.get(activityRef);
+      if (!activityDoc.exists()) {
+        throw new Error("Activity does not exist!");
+      }
+
+      const activityData = activityDoc.data() as Activity;
+      
+      const newVotes = [...new Set([...activityData.completionVotes, userId])];
+      
+      transaction.update(activityRef, {
+        completionVotes: newVotes
+      });
+      
+      const participantIds = activityData.participantIds;
+      const allVoted = participantIds.every(id => newVotes.includes(id)) && newVotes.length === participantIds.length;
+
+      if (allVoted) {
+        transaction.update(activityRef, {
+          status: 'completed'
+        });
+      }
+    });
+  } catch (error: any) {
+    console.error("Vote to complete transaction failed: ", error);
+    throw new Error(error.message || "Could not process your vote.");
+  }
+}
+
+export async function checkIfUserReviewed(activityId: string, reviewerId: string): Promise<boolean> {
+    if (!db) throw new Error('Firestore is not initialized.');
+    const reviewsQuery = query(
+        collection(db, 'reviews'),
+        where('activityId', '==', activityId),
+        where('reviewerId', '==', reviewerId)
+    );
+    const snapshot = await getDocs(reviewsQuery);
+    return !snapshot.empty;
+}
+
+export async function submitReviews(
+    activityId: string,
+    reviewerId: string,
+    otherParticipantIds: string[],
+    rating: number,
+    text?: string,
+) {
+    if (!db) throw new Error('Firestore is not initialized.');
+    const batch = writeBatch(db);
+
+    otherParticipantIds.forEach(targetUserId => {
+        const reviewRef = doc(collection(db, 'reviews'));
+        batch.set(reviewRef, {
+            activityId,
+            reviewerId,
+            targetUserId,
+            rating,
+            text: text || '',
+            createdAt: serverTimestamp()
+        });
+    });
+
+    await batch.commit();
 }

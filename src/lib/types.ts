@@ -29,6 +29,8 @@ export interface Activity {
   lastInteractionAt?: Timestamp;
   category?: string;
   categories?: string[];
+  status: 'active' | 'completed';
+  completionVotes: string[];
 }
 
 export interface Message {
@@ -103,4 +105,14 @@ export interface UserProfile {
   };
   verified?: boolean;
   onboardingCompleted: boolean;
+}
+
+export interface Review {
+  id?: string;
+  activityId: string;
+  reviewerId: string;
+  targetUserId: string;
+  rating: number; // 1-5
+  text?: string;
+  createdAt: Timestamp;
 }

@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/client';
-import { sendMessage } from '@/lib/firebase/firestore';
-import type { Message, Chat } from '@/lib/types';
+import { sendMessage, checkIfUserReviewed } from '@/lib/firebase/firestore';
+import type { Message, Chat, Activity } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
 
@@ -15,7 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChatInfoSheet } from '@/components/aktvia/chat-info-sheet';
-import { ArrowLeft, Send, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Star } from 'lucide-react';
+import { CompletionBanner } from '@/components/aktvia/CompletionBanner';
+import { ReviewDialog } from '@/components/reviews/ReviewDialog';
 
 const DateSeparator = ({ date }: { date: Date }) => {
   const formatDate = (d: Date) => {
@@ -89,10 +91,13 @@ const MessageBubble = ({
 export default function ChatRoomPage() {
   const { user, loading: authLoading } = useAuth();
   const [chat, setChat] = useState<Chat | null>(null);
+  const [activity, setActivity] = useState<Activity | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [isInfoSheetOpen, setInfoSheetOpen] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(true); // Default to true to prevent flash
   
   const router = useRouter();
   const params = useParams();
@@ -105,17 +110,38 @@ export default function ChatRoomPage() {
   }, [messages]);
 
   useEffect(() => {
-    if (!chatId) return;
+    if (!chatId || !user) return;
 
-    const chatUnsubscribe = onSnapshot(doc(db, 'chats', chatId), (doc) => {
-      if (doc.exists()) {
-        setChat({ id: doc.id, ...doc.data() } as Chat);
+    // Listen to Chat document
+    const chatUnsubscribe = onSnapshot(doc(db, 'chats', chatId), (chatDoc) => {
+      if (chatDoc.exists()) {
+        const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
+        setChat(chatData);
+
+        // Once we have the chat, listen to the associated Activity document
+        const activityUnsubscribe = onSnapshot(doc(db, 'activities', chatData.activityId), (activityDoc) => {
+            if (activityDoc.exists()) {
+                const activityData = { id: activityDoc.id, ...activityDoc.data() } as Activity;
+                setActivity(activityData);
+
+                // Check if user has reviewed if activity is completed
+                if (activityData.status === 'completed') {
+                    checkIfUserReviewed(activityData.id!, user.uid).then(setHasReviewed);
+                }
+
+            } else {
+              setActivity(null);
+            }
+        });
+        return () => activityUnsubscribe();
+
       } else {
         toast({ title: "Chat not found", description: "This chat may have been deleted.", variant: 'destructive'});
         router.push('/chat');
       }
     });
 
+    // Listen to Messages subcollection
     const messagesQuery = query(collection(db, 'chats', chatId, 'messages'), orderBy('sentAt', 'asc'));
     const messagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
       const newMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Message));
@@ -131,7 +157,7 @@ export default function ChatRoomPage() {
       chatUnsubscribe();
       messagesUnsubscribe();
     };
-  }, [chatId, router, toast]);
+  }, [chatId, router, toast, user]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,6 +173,22 @@ export default function ChatRoomPage() {
       toast({ title: "Error", description: "Could not send message.", variant: 'destructive'});
     }
   };
+
+  const renderReviewTrigger = () => {
+    if (activity?.status !== 'completed' || hasReviewed || !user) return null;
+    
+    const otherParticipants = activity.participantIds.filter(id => id !== user.uid);
+    if (otherParticipants.length === 0) return null;
+
+    return (
+      <div className="p-4">
+        <Button onClick={() => setShowReviewDialog(true)} className="w-full">
+            <Star className="mr-2 h-4 w-4" />
+            Bewerten Sie die Aktivität
+        </Button>
+      </div>
+    );
+  }
 
   if (loading || authLoading) {
     return (
@@ -179,6 +221,12 @@ export default function ChatRoomPage() {
             <span className='sr-only'>Chat Info</span>
           </Button>
         </header>
+
+        {activity && user && activity.status === 'active' && activity.completionVotes.length > 0 && (
+          <CompletionBanner activity={activity} currentUser={user} />
+        )}
+
+        {renderReviewTrigger()}
 
         <div className="flex-1 overflow-y-auto p-4 pb-40">
           <div className="flex flex-col">
@@ -223,11 +271,12 @@ export default function ChatRoomPage() {
               placeholder="Message"
               autoComplete="off"
               className="w-full rounded-full bg-muted pr-12 h-12 text-base"
+              disabled={activity?.status === 'completed'}
             />
             <Button
               type="submit"
               size="icon"
-              disabled={!newMessage.trim()}
+              disabled={!newMessage.trim() || activity?.status === 'completed'}
               className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
             >
               <Send className="h-5 w-5" />
@@ -239,9 +288,20 @@ export default function ChatRoomPage() {
 
       <ChatInfoSheet
         chat={chat}
+        activity={activity}
         open={isInfoSheetOpen}
         onOpenChange={setInfoSheetOpen}
       />
+      
+      {activity && user && (
+        <ReviewDialog 
+            open={showReviewDialog}
+            onOpenChange={setShowReviewDialog}
+            activity={activity}
+            currentUser={user}
+            onReviewSubmitted={() => setHasReviewed(true)}
+        />
+      )}
     </>
   );
 }

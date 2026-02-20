@@ -4,11 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { leaveActivity, deleteActivity } from '@/lib/firebase/firestore';
+import { leaveActivity, deleteActivity, voteToCompleteActivity } from '@/lib/firebase/firestore';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { db } from '@/lib/firebase/client';
-import { doc, getDoc } from 'firebase/firestore';
 
 import {
   Sheet,
@@ -32,46 +30,25 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Trash2, Users, Calendar } from 'lucide-react';
+import { Loader2, Trash2, Users, Calendar, CheckCircle } from 'lucide-react';
 import type { Chat, Activity } from '@/lib/types';
 import { Separator } from '../ui/separator';
 import { Skeleton } from '../ui/skeleton';
 
 interface ChatInfoSheetProps {
   chat: Chat | null;
+  activity: Activity | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function ChatInfoSheet({ chat, open, onOpenChange }: ChatInfoSheetProps) {
+export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSheetProps) {
   const [isActing, setIsActing] = useState(false);
+  const [isVoting, setIsVoting] = useState(false);
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [activity, setActivity] = useState<Activity | null>(null);
-  const [loadingActivity, setLoadingActivity] = useState(true);
 
-  useEffect(() => {
-    if (open && chat?.activityId) {
-        setLoadingActivity(true);
-        const fetchActivity = async () => {
-            if (!db) return;
-            try {
-                const activityRef = doc(db, 'activities', chat.activityId);
-                const activitySnap = await getDoc(activityRef);
-                if (activitySnap.exists()) {
-                    setActivity(activitySnap.data() as Activity);
-                }
-            } catch (e) {
-                console.error("Failed to fetch activity details", e);
-            } finally {
-                setLoadingActivity(false);
-            }
-        };
-        fetchActivity();
-    }
-  }, [open, chat?.activityId]);
-  
   const renderDate = () => {
       if (!activity) return null;
 
@@ -88,12 +65,15 @@ export function ChatInfoSheet({ chat, open, onOpenChange }: ChatInfoSheetProps) 
   if (!chat || !user) return null;
 
   const isOnlyParticipant = chat.participantIds.length === 1;
+  const amCreator = chat.creatorId === user.uid;
+  const hasVoted = activity?.completionVotes.includes(user.uid);
+  const isCompleted = activity?.status === 'completed';
 
-  const handleAction = async () => {
+  const handleLeaveOrDelete = async () => {
     if (!chat?.id || !user?.uid) return;
     setIsActing(true);
     try {
-      if (isOnlyParticipant) {
+      if (isOnlyParticipant || amCreator) {
         await deleteActivity(chat.id);
         toast({ title: 'Activity Deleted', description: 'The activity and chat have been removed.' });
       } else {
@@ -104,11 +84,23 @@ export function ChatInfoSheet({ chat, open, onOpenChange }: ChatInfoSheetProps) 
       router.push('/chat');
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Action Failed', description: error.message });
+    } finally {
       setIsActing(false);
     }
   };
-
-  const amCreator = chat.participantDetails[user.uid] && chat.creatorId === user.uid;
+  
+  const handleVote = async () => {
+      if (!activity?.id || !user?.uid || hasVoted) return;
+      setIsVoting(true);
+      try {
+        await voteToCompleteActivity(activity.id, user.uid);
+        toast({ title: "Vote submitted!" });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Vote Failed', description: error.message });
+      } finally {
+        setIsVoting(false);
+      }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -116,14 +108,14 @@ export function ChatInfoSheet({ chat, open, onOpenChange }: ChatInfoSheetProps) 
         <SheetHeader className="p-6 pb-4 text-left">
           <SheetTitle className="text-2xl font-bold">{chat.placeName}</SheetTitle>
           <SheetDescription>{chat.participantIds.length} Participant{chat.participantIds.length === 1 ? '' : 's'}</SheetDescription>
-           {loadingActivity ? (
+           {!activity ? (
             <Skeleton className="h-5 w-48 mt-2" />
-          ) : activity ? (
+          ) : (
             <div className="flex items-center gap-2 text-muted-foreground pt-2 text-sm">
                 <Calendar className="h-4 w-4" />
                 <span>{renderDate()}</span>
             </div>
-          ) : null}
+          )}
         </SheetHeader>
         <Separator />
 
@@ -157,38 +149,44 @@ export function ChatInfoSheet({ chat, open, onOpenChange }: ChatInfoSheetProps) 
         </ScrollArea>
 
         <Separator />
-        <SheetFooter className="p-4 bg-muted/30">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full">
-                <Trash2 className="mr-2 h-4 w-4" />
-                {isOnlyParticipant || amCreator ? 'Delete Activity' : 'Leave Activity'}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {isOnlyParticipant || amCreator
-                    ? 'Are you absolutely sure?'
-                    : 'Are you sure you want to leave?'}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {isOnlyParticipant || amCreator
-                    ? 'This action cannot be undone. This will permanently delete this activity and all associated chat messages.'
-                    : 'You can rejoin this activity later as long as it exists.'}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleAction} disabled={isActing} className='bg-destructive hover:bg-destructive/90'>
-                  {isActing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isActing
-                    ? (isOnlyParticipant || amCreator ? 'Deleting...' : 'Leaving...')
-                    : (isOnlyParticipant || amCreator ? 'Delete' : 'Leave')}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        <SheetFooter className="p-4 bg-muted/30 grid grid-cols-1 gap-2">
+            {!isCompleted && (
+                 <Button onClick={handleVote} disabled={isVoting || hasVoted} variant="outline">
+                    {isVoting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
+                    {hasVoted ? "Voted to Complete" : "Mark as Met / Completed"}
+                 </Button>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  {isActing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
+                  {isOnlyParticipant || amCreator ? 'Delete Activity' : 'Leave Activity'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {isOnlyParticipant || amCreator
+                      ? 'Are you absolutely sure?'
+                      : 'Are you sure you want to leave?'}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {isOnlyParticipant || amCreator
+                      ? 'This action cannot be undone. This will permanently delete this activity and all associated chat messages.'
+                      : 'You can rejoin this activity later as long as it exists.'}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleLeaveOrDelete} disabled={isActing} className='bg-destructive hover:bg-destructive/90'>
+                    {isActing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isActing
+                      ? (isOnlyParticipant || amCreator ? 'Deleting...' : 'Leaving...')
+                      : (isOnlyParticipant || amCreator ? 'Delete' : 'Leave')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </SheetFooter>
       </SheetContent>
     </Sheet>
