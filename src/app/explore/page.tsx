@@ -13,7 +13,7 @@ import { ActivityListItem } from '@/components/aktvia/activity-list-item';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Compass, Bell, Search } from 'lucide-react';
+import { Compass, Bell } from 'lucide-react';
 import { CategoryFilters, categories as defaultCategories } from '@/components/aktvia/category-filters';
 
 const ActivitySkeleton = () => (
@@ -45,18 +45,6 @@ const EmptyState = () => (
     </div>
 );
 
-const EmptySearchState = () => (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
-        <div className="bg-primary/10 p-4 rounded-full">
-            <Search className="h-10 w-10 text-primary" />
-        </div>
-        <h2 className="text-xl font-semibold">No Activities Found</h2>
-        <p className="text-muted-foreground">
-            Try adjusting your search or filters to find what you're looking for.
-        </p>
-    </div>
-);
-
 
 export default function ExplorePage() {
     const { user } = useAuth();
@@ -67,7 +55,6 @@ export default function ExplorePage() {
     const [filteredActivities, setFilteredActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState<string[]>(defaultCategories[0].id);
-    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         if (!db) return;
@@ -103,14 +90,8 @@ export default function ExplorePage() {
             );
         }
 
-        if (searchQuery) {
-            newFiltered = newFiltered.filter(activity =>
-                activity.placeName.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        }
-
         setFilteredActivities(newFiltered);
-    }, [allActivities, activeCategory, searchQuery]);
+    }, [allActivities, activeCategory]);
 
     const handleJoin = async (activityId: string) => {
         if (!user) {
@@ -145,7 +126,7 @@ export default function ExplorePage() {
         }
 
         if (filteredActivities.length === 0) {
-            return searchQuery ? <EmptySearchState /> : <EmptyState />;
+            return <EmptyState />;
         }
 
         return (
@@ -175,16 +156,6 @@ export default function ExplorePage() {
                     </Button>
                 </div>
                 <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="Aktivitäten suchen..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-full bg-muted pl-10 h-12"
-                    />
-                </div>
               </div>
             </header>
             <div className="flex-1 overflow-y-auto pb-20">

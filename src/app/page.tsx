@@ -8,7 +8,7 @@ import { PlaceCard } from '@/components/aktvia/place-card';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place, Activity } from '@/lib/types';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MapPin, Map as MapIcon, List, Plus, Bell } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus, Bell, Search } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -19,6 +19,7 @@ import { MapView } from '@/components/aktvia/map-view';
 import { collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { ActivityListItem } from "@/components/aktvia/activity-list-item";
+import { Input } from '@/components/ui/input';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -42,6 +43,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [customActivities, setCustomActivities] = useState<Activity[]>([]);
   const [allUpcomingActivities, setAllUpcomingActivities] = useState<Activity[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -250,7 +252,24 @@ export default function Home() {
 
     const isCommunityCategory = activeCategory.includes("user_event") || activeCategory.includes("community");
 
+    const EmptySearchState = () => (
+        <div className="flex h-full w-full items-center justify-center p-6 text-center">
+            <div className="space-y-2">
+                <h3 className="font-semibold text-lg">No results found</h3>
+                <p className="text-muted-foreground">Try adjusting your search or filters.</p>
+            </div>
+        </div>
+    );
+
     if (viewMode === 'list') {
+        const filteredPlaces = places.filter(place =>
+            place.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        const filteredCustomActivities = customActivities.filter(activity =>
+            activity.placeName.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        
         if (isLoading) {
           return (
             <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -261,49 +280,55 @@ export default function Home() {
           );
         }
         
-        if (isCommunityCategory && customActivities.length === 0) {
-            return (
-                <div className="flex h-full w-full items-center justify-center p-6 text-center">
-                    <div className="space-y-2">
-                        <h3 className="font-semibold text-lg">No community activities found</h3>
-                        <p className="text-muted-foreground">Why not create one?</p>
+        if (isCommunityCategory) {
+            if (filteredCustomActivities.length === 0) {
+                 return searchQuery ? <EmptySearchState /> : (
+                    <div className="flex h-full w-full items-center justify-center p-6 text-center">
+                        <div className="space-y-2">
+                            <h3 className="font-semibold text-lg">No community activities found</h3>
+                            <p className="text-muted-foreground">Why not create one?</p>
+                        </div>
                     </div>
-                </div>
-            )
-        }
-        
-        if (!isCommunityCategory && places.length === 0) {
+                )
+            }
             return (
-                <div className="flex h-full w-full items-center justify-center p-6 text-center">
-                    <div className="space-y-2">
-                        <h3 className="font-semibold text-lg">No places found</h3>
-                        <p className="text-muted-foreground">Try a different category or check back later!</p>
-                    </div>
-                </div>
-            )
-        }
-
-        return (
-            <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                {isCommunityCategory ? (
-                  customActivities.map((activity) => (
+              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {filteredCustomActivities.map((activity) => (
                     <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
-                  ))
-                ) : (
-                  places.map(place => (
+                  ))}
+              </div>
+            );
+        } else {
+            if (filteredPlaces.length === 0) {
+                 return searchQuery ? <EmptySearchState /> : (
+                    <div className="flex h-full w-full items-center justify-center p-6 text-center">
+                        <div className="space-y-2">
+                            <h3 className="font-semibold text-lg">No places found</h3>
+                            <p className="text-muted-foreground">Try a different category or check back later!</p>
+                        </div>
+                    </div>
+                )
+            }
+            return (
+                <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {filteredPlaces.map(place => (
                       <PlaceCard 
                         key={place.id} 
                         place={place} 
                         onClick={() => handlePlaceSelect(place)}
                         onAddActivity={() => handleOpenActivityModal(place)}
                       />
-                  ))
-                )}
-            </div>
-        );
+                  ))}
+                </div>
+            );
+        }
     }
 
     if (viewMode === 'map') {
+        const filteredPlaces = places.filter(place =>
+            place.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
         if (isLoading || !userLocation) {
              return (
                 <div className="flex h-full w-full items-center justify-center">
@@ -316,8 +341,8 @@ export default function Home() {
         }
 
         return (
-            <MapView places={places} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />
-        )
+            <MapView places={filteredPlaces} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />
+        );
     }
   };
 
@@ -350,6 +375,16 @@ export default function Home() {
                 </div>
             </div>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
+            <div className="relative mt-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder="Orte oder Aktivitäten suchen..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-full bg-muted pl-10 h-12"
+                />
+            </div>
           </div>
         </header>
 
