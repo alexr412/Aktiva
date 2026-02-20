@@ -112,28 +112,34 @@ export default function ChatRoomPage() {
   useEffect(() => {
     if (!chatId || !user) return;
 
+    let activityUnsubscribe: (() => void) | undefined;
+
     // Listen to Chat document
     const chatUnsubscribe = onSnapshot(doc(db, 'chats', chatId), (chatDoc) => {
       if (chatDoc.exists()) {
         const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
         setChat(chatData);
 
+        // Clean up previous activity listener if it exists
+        if (activityUnsubscribe) {
+            activityUnsubscribe();
+        }
+
         // Once we have the chat, listen to the associated Activity document
-        const activityUnsubscribe = onSnapshot(doc(db, 'activities', chatData.activityId), (activityDoc) => {
+        activityUnsubscribe = onSnapshot(doc(db, 'activities', chatData.activityId), (activityDoc) => {
             if (activityDoc.exists()) {
                 const activityData = { id: activityDoc.id, ...activityDoc.data() } as Activity;
                 setActivity(activityData);
 
                 // Check if user has reviewed if activity is completed
-                if (activityData.status === 'completed') {
-                    checkIfUserReviewed(activityData.id!, user.uid).then(setHasReviewed);
+                if (activityData.status === 'completed' && activityData.id) {
+                    checkIfUserReviewed(activityData.id, user.uid).then(setHasReviewed);
                 }
 
             } else {
               setActivity(null);
             }
         });
-        return () => activityUnsubscribe();
 
       } else {
         toast({ title: "Chat not found", description: "This chat may have been deleted.", variant: 'destructive'});
@@ -156,6 +162,9 @@ export default function ChatRoomPage() {
     return () => {
       chatUnsubscribe();
       messagesUnsubscribe();
+      if (activityUnsubscribe) {
+        activityUnsubscribe();
+      }
     };
   }, [chatId, router, toast, user]);
 
@@ -175,13 +184,13 @@ export default function ChatRoomPage() {
   };
 
   const renderReviewTrigger = () => {
-    if (activity?.status !== 'completed' || hasReviewed || !user) return null;
+    if (!activity || activity.status !== 'completed' || hasReviewed || !user) return null;
     
     const otherParticipants = activity.participantIds.filter(id => id !== user.uid);
     if (otherParticipants.length === 0) return null;
 
     return (
-      <div className="p-4">
+      <div className="p-4 border-b bg-background">
         <Button onClick={() => setShowReviewDialog(true)} className="w-full">
             <Star className="mr-2 h-4 w-4" />
             Bewerten Sie die Aktivität
@@ -222,7 +231,7 @@ export default function ChatRoomPage() {
           </Button>
         </header>
 
-        {activity && user && activity.status === 'active' && activity.completionVotes.length > 0 && (
+        {activity && user && activity.status === 'active' && activity.completionVotes && activity.completionVotes.length > 0 && (
           <CompletionBanner activity={activity} currentUser={user} />
         )}
 

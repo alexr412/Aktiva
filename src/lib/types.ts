@@ -1,3 +1,5 @@
+'use client';
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface Place {
@@ -31,6 +33,12 @@ export interface Activity {
   categories?: string[];
   status: 'active' | 'completed';
   completionVotes: string[];
+  participantDetails: {
+      [uid: string]: {
+          displayName: string | null;
+          photoURL: string | null;
+      }
+  };
 }
 
 export interface Message {

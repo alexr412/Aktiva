@@ -87,22 +87,22 @@ export async function createActivity({
   const isCustomActivity = !place;
   const placeCategories = place?.categories ? (Array.isArray(place.categories) ? place.categories : [place.categories]) : [];
   
-  const activityData = {
+  const activityData: Omit<Activity, 'id' | 'participantDetails'> = {
     placeId: place?.id || "custom",
-    placeName: place?.name || customLocationName,
-    placeAddress: place?.address || null,
+    placeName: place?.name || customLocationName!,
+    placeAddress: place?.address || undefined,
     activityDate: Timestamp.fromDate(startDate),
-    activityEndDate: endDate ? Timestamp.fromDate(endDate) : null,
+    activityEndDate: endDate ? Timestamp.fromDate(endDate) : undefined,
     creatorId: user.uid,
     creatorName: user.displayName,
     creatorPhotoURL: user.photoURL,
     participantIds: [user.uid],
-    createdAt: serverTimestamp(),
+    createdAt: serverTimestamp() as Timestamp,
     isCustomActivity: isCustomActivity,
     isTimeFlexible: !!isTimeFlexible,
     category: isCustomActivity ? "community" : (place?.categories[0].split('.')[0] || "other"),
     categories: isCustomActivity ? ["user_event"] : placeCategories,
-    lastInteractionAt: serverTimestamp(),
+    lastInteractionAt: serverTimestamp() as Timestamp,
     status: 'active',
     completionVotes: [],
   };
@@ -369,7 +369,8 @@ export async function voteToCompleteActivity(activityId: string, userId: string)
 
       const activityData = activityDoc.data() as Activity;
       
-      const newVotes = [...new Set([...(activityData.completionVotes || []), userId])];
+      const currentVotes = activityData.completionVotes || [];
+      const newVotes = [...new Set([...currentVotes, userId])];
       
       transaction.update(activityRef, {
         completionVotes: newVotes

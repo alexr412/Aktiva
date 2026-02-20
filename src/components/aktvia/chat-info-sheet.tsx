@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -62,12 +62,12 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
   }
 
 
-  if (!chat || !user) return null;
+  if (!chat || !user || !activity) return null;
 
   const isOnlyParticipant = chat.participantIds.length === 1;
   const amCreator = chat.creatorId === user.uid;
-  const hasVoted = (activity?.completionVotes || []).includes(user.uid);
-  const isCompleted = activity?.status === 'completed';
+  const hasVoted = activity.completionVotes.includes(user.uid);
+  const isCompleted = activity.status === 'completed';
 
   const handleLeaveOrDelete = async () => {
     if (!chat?.id || !user?.uid) return;
