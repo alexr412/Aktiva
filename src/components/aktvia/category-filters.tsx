@@ -11,10 +11,12 @@ import {
   Sparkles,
   Dumbbell,
   Users,
+  Layers,
   type LucideIcon,
 } from 'lucide-react';
 
 export const categories: { name: string; id: string[]; icon: LucideIcon }[] = [
+  { name: 'All', id: ['all'], icon: Layers },
   { name: 'Highlights', id: ['tourism', 'entertainment', 'leisure'], icon: Sparkles },
   { name: 'Community', id: ['user_event'], icon: Users },
   { name: 'Attractions', id: ['tourism.attraction'], icon: Landmark },

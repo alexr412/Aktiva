@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { CategoryFilters, categories as defaultCategories } from '@/components/aktvia/category-filters';
+import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { PlaceCard } from '@/components/aktvia/place-card';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
@@ -38,7 +38,7 @@ export default function Home() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string[]>(defaultCategories[0].id);
+  const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [customActivities, setCustomActivities] = useState<Activity[]>([]);
@@ -113,11 +113,11 @@ export default function Home() {
     fetchAllUpcomingActivities();
   }, []);
 
-  const loadPlaces = useCallback(async (lat: number, lng: number, category: string[]) => {
+  const loadPlaces = useCallback(async (lat: number, lng: number, category: string[], searchQuery?: string) => {
     setIsLoading(true);
     setPlaces([]);
     try {
-      const fetchedPlaces = await fetchNearbyPlaces(lat, lng, category);
+      const fetchedPlaces = await fetchNearbyPlaces(lat, lng, category, searchQuery);
       const placesWithCounts = fetchedPlaces.map(p => ({
           ...p,
           activityCount: allUpcomingActivities.filter(a => a.placeId === p.id).length
@@ -147,12 +147,22 @@ export default function Home() {
     } else {
         if (userLocation) {
             setCustomActivities([]);
-            loadPlaces(userLocation.lat, userLocation.lng, activeCategory);
+            const handler = setTimeout(() => {
+                if (searchQuery) {
+                    loadPlaces(userLocation.lat, userLocation.lng, [], searchQuery);
+                } else {
+                    const categoriesToFetch = activeCategory.includes('all') ? [] : activeCategory;
+                    loadPlaces(userLocation.lat, userLocation.lng, categoriesToFetch);
+                }
+            }, 300); // 300ms debounce
+            
+            return () => clearTimeout(handler);
         }
     }
-  }, [userLocation, activeCategory, loadPlaces, allUpcomingActivities]);
+  }, [userLocation, activeCategory, loadPlaces, allUpcomingActivities, searchQuery]);
 
   const handleCategoryChange = (categoryId: string[]) => {
+    setSearchQuery(''); // Clear search when category changes
     setActiveCategory(categoryId);
   };
 
@@ -281,10 +291,6 @@ export default function Home() {
     );
 
     if (viewMode === 'list') {
-        const filteredPlaces = places.filter(place =>
-            place.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-
         const filteredCustomActivities = customActivities.filter(activity =>
             activity.placeName.toLowerCase().includes(searchQuery.toLowerCase())
         );
@@ -318,19 +324,12 @@ export default function Home() {
               </div>
             );
         } else {
-            if (filteredPlaces.length === 0) {
-                 return searchQuery ? <EmptySearchState /> : (
-                    <div className="flex h-full w-full items-center justify-center p-6 text-center">
-                        <div className="space-y-2">
-                            <h3 className="font-semibold text-lg">No places found</h3>
-                            <p className="text-muted-foreground">Try a different category or check back later!</p>
-                        </div>
-                    </div>
-                )
+            if (places.length === 0) {
+                 return <EmptySearchState />;
             }
             return (
                 <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {filteredPlaces.map(place => (
+                  {places.map(place => (
                       <PlaceCard 
                         key={place.id} 
                         place={place} 
@@ -344,10 +343,6 @@ export default function Home() {
     }
 
     if (viewMode === 'map') {
-        const filteredPlaces = places.filter(place =>
-            place.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-
         if (isLoading || !userLocation) {
              return (
                 <div className="flex h-full w-full items-center justify-center">
@@ -360,7 +355,7 @@ export default function Home() {
         }
 
         return (
-            <MapView places={filteredPlaces} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />
+            <MapView places={places} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />
         );
     }
   };
@@ -408,7 +403,13 @@ export default function Home() {
                     type="search"
                     placeholder="Orte oder Aktivitäten suchen..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        const isCommunity = activeCategory.includes("user_event") || activeCategory.includes("community");
+                        if (e.target.value && !activeCategory.includes('all') && !isCommunity) {
+                            setActiveCategory(['all']);
+                        }
+                    }}
                     className="w-full rounded-full bg-muted pl-10 h-12"
                 />
             </div>
