@@ -375,7 +375,10 @@ export default function Home() {
                   <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
                   <div className="flex items-center gap-1 text-muted-foreground mt-1">
                     <MapPin className="h-4 w-4" />
-                    <span className="text-sm font-medium">{cityName}</span>
+                    <span className="text-sm font-medium">
+                      {cityName}
+                      {userLocation && ` (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
