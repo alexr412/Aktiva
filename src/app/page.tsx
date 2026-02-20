@@ -158,6 +158,8 @@ export default function Home() {
   const handleCategoryChange = (categoryId: string[]) => {
     setSearchQuery(''); // Clear search when category changes
     setActiveCategory(categoryId);
+    const isCommunity = categoryId.includes("user_event") || categoryId.includes("community");
+    setSortBy(isCommunity ? 'newest' : 'distance');
   };
 
   const handlePlaceSelect = (place: Place) => {
@@ -302,7 +304,7 @@ export default function Home() {
             );
 
             const sortedActivities = filteredCustomActivities.sort((a, b) => {
-                if (sortBy === 'recent') {
+                if (sortBy === 'newest') {
                     return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
                 }
                 return 0;
@@ -337,7 +339,7 @@ export default function Home() {
                 if (sortBy === 'rating') {
                     return (b.rating || 0) - (a.rating || 0);
                 }
-                if (sortBy === 'recent') {
+                if (sortBy === 'popular') {
                     return (b.activityCount || 0) - (a.activityCount || 0);
                 }
                 return 0;
@@ -382,6 +384,8 @@ export default function Home() {
         );
     }
   };
+
+  const isCommunityView = activeCategory.includes("user_event") || activeCategory.includes("community");
 
   return (
     <>
@@ -429,8 +433,7 @@ export default function Home() {
                     value={searchQuery}
                     onChange={(e) => {
                         setSearchQuery(e.target.value);
-                        const isCommunity = activeCategory.includes("user_event") || activeCategory.includes("community");
-                        if (e.target.value && !activeCategory.includes('all') && !isCommunity) {
+                        if (e.target.value && !activeCategory.includes('all') && !isCommunityView) {
                             setActiveCategory(['all']);
                         }
                     }}
@@ -442,9 +445,15 @@ export default function Home() {
                       <SelectValue placeholder="Sortieren nach..." />
                   </SelectTrigger>
                   <SelectContent>
-                      <SelectItem value="distance">Distanz</SelectItem>
-                      <SelectItem value="rating">Bewertung</SelectItem>
-                      <SelectItem value="recent">Neueste</SelectItem>
+                      {isCommunityView ? (
+                        <SelectItem value="newest">Neueste</SelectItem>
+                      ) : (
+                        <>
+                            <SelectItem value="distance">Distanz</SelectItem>
+                            <SelectItem value="rating">Bewertung</SelectItem>
+                            <SelectItem value="popular">Beliebteste</SelectItem>
+                        </>
+                      )}
                   </SelectContent>
               </Select>
             </div>
