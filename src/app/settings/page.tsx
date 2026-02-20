@@ -150,7 +150,7 @@ export default function SettingsPage() {
                                 </div>
                                 {isSendingReset ? <Loader2 className="h-5 w-5 animate-spin" /> : <KeyRound className="h-5 w-5 text-muted-foreground" />}
                             </button>
-                             <button className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
+                             <button onClick={() => router.push('/settings/language')} className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
                                 <div>
                                     <p className="font-medium">Language</p>
                                     <p className="text-sm text-muted-foreground">Change application language.</p>
@@ -212,7 +212,7 @@ export default function SettingsPage() {
                             <span>Privacy & Safety</span>
                         </h2>
                         <div className="space-y-2">
-                             <button className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
+                             <button onClick={() => router.push('/settings/blocked')} className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
                                 <div>
                                     <p className="font-medium">Blocked Users</p>
                                     <p className="text-sm text-muted-foreground">Manage your blocked contacts.</p>
@@ -238,7 +238,7 @@ export default function SettingsPage() {
                             <span>Support</span>
                         </h2>
                         <div className="space-y-2">
-                             <button className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
+                             <button onClick={() => window.location.href = 'mailto:support@app.com?subject=Bug%20Report'} className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
                                 <div>
                                     <p className="font-medium">Report a Bug</p>
                                     <p className="text-sm text-muted-foreground">Help us improve the application.</p>
