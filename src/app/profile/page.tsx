@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Bell, Settings } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Bell, Settings, Copy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 
@@ -153,6 +153,21 @@ export default function ProfilePage() {
             toast({ title: "Error", description: "Could not decline request.", variant: "destructive" });
         }
     };
+    
+    const handleCopyCode = () => {
+        if (!userData?.friendCode) return;
+        navigator.clipboard.writeText(userData.friendCode)
+        .then(() => {
+            toast({ title: "Friend Code Copied!" });
+        })
+        .catch(err => {
+            toast({
+                variant: 'destructive',
+                title: 'Copy Failed',
+                description: 'Could not copy the code to your clipboard.',
+            });
+        });
+    };
 
 
     if (authLoading || (!user && !authLoading)) {
@@ -278,7 +293,19 @@ export default function ProfilePage() {
                         {userData?.age && `, ${userData.age}`}
                     </h1>
                     <p className="text-muted-foreground">{userData?.email || user.email}</p>
-                    {userData?.location && <p className="text-sm text-muted-foreground">{userData.location}</p>}
+                    {userData?.friendCode && (
+                        <div 
+                            onClick={handleCopyCode}
+                            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCopyCode()}
+                            role="button"
+                            tabIndex={0}
+                            className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-muted"
+                        >
+                            <span>{userData.friendCode}</span>
+                            <Copy className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                    )}
+                    {userData?.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
                 </div>
             </div>
             

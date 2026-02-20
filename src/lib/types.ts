@@ -113,6 +113,7 @@ export interface UserProfile {
   };
   verified?: boolean;
   onboardingCompleted: boolean;
+  friendCode?: string;
 }
 
 export interface Review {

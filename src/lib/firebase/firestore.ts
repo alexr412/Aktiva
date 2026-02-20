@@ -19,6 +19,7 @@ import {
   setDoc,
   getDoc,
   updateDoc,
+  limit,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, Activity } from '@/lib/types';
@@ -32,6 +33,15 @@ type CreateActivityPayload = {
   isTimeFlexible?: boolean;
 };
 
+function generateFriendCode(length = 8) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 export async function createUserProfileDocument(user: User) {
   if (!db) throw new Error('Firestore is not initialized.');
   const userDocRef = doc(db, 'users', user.uid);
@@ -44,6 +54,7 @@ export async function createUserProfileDocument(user: User) {
     friends: [],
     friendRequestsSent: [],
     friendRequestsReceived: [],
+    friendCode: generateFriendCode(),
   };
   await setDoc(userDocRef, userProfile);
 }
@@ -425,4 +436,23 @@ export async function submitReviews(
     });
 
     await batch.commit();
+}
+
+export async function findUserByFriendCode(friendCode: string): Promise<UserProfile | null> {
+    if (!db) throw new Error('Firestore is not initialized.');
+    
+    // Friend codes are stored in uppercase
+    const userQuery = query(
+        collection(db, 'users'), 
+        where('friendCode', '==', friendCode.toUpperCase()),
+        limit(1)
+    );
+
+    const querySnapshot = await getDocs(userQuery);
+
+    if (querySnapshot.empty) {
+        return null;
+    }
+
+    return querySnapshot.docs[0].data() as UserProfile;
 }

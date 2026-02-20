@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Compass, MessageCircle, User } from 'lucide-react';
+import { Home, Compass, MessageCircle, User, Users } from 'lucide-react';
 
 const navItems = [
-  { href: '/', label: 'Home', icon: Home },
+  { href: '/', label: 'Discover', icon: Home },
   { href: '/explore', label: 'Explore', icon: Compass },
+  { href: '/community', label: 'Community', icon: Users },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/profile', label: 'Profile', icon: User },
 ];
@@ -23,6 +24,8 @@ export function BottomNav() {
   // It handles the root path and sub-paths.
   const getIsActive = (itemHref: string) => {
     if (itemHref === '/') return pathname === '/';
+    // Special case for community as it's new
+    if (itemHref === '/community') return pathname.startsWith('/community') || pathname.startsWith('/friends');
     return pathname.startsWith(itemHref);
   };
 
