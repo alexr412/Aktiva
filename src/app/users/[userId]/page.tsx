@@ -33,6 +33,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { EntityMoreOptions } from '@/components/common/EntityMoreOptions';
 
 
 export default function UserProfilePage() {
@@ -52,6 +53,12 @@ export default function UserProfilePage() {
 
     useEffect(() => {
         if (!userId) return;
+        
+        if (userProfile?.hiddenEntityIds?.includes(userId)) {
+            router.back();
+            toast({ title: "User cannot be viewed", description: "This user is hidden." });
+            return;
+        }
 
         if (currentUser?.uid === userId) {
             setFriendshipStatus('is_self');
@@ -250,14 +257,21 @@ export default function UserProfilePage() {
 
     const photoUrlToDisplay = userData.photoURL || '';
     const displayName = userData.displayName || 'Anonymous User';
+    
+    const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
 
     return (
         <div className="flex flex-col h-full bg-background overflow-y-auto pb-20">
-            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur-sm">
+            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background/80 px-4 backdrop-blur-sm">
                 <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()}>
                     <ArrowLeft />
                 </Button>
                 <h1 className="font-bold truncate">{displayName}'s Profile</h1>
+                <EntityMoreOptions
+                    entityId={userId}
+                    entityType="user"
+                    entityName={displayName}
+                />
             </header>
 
             <div className="p-6 flex flex-col items-center justify-center text-center space-y-4">
@@ -316,9 +330,9 @@ export default function UserProfilePage() {
                             <ActivityListItemSkeleton />
                             <ActivityListItemSkeleton />
                         </div>
-                    ) : activities.length > 0 ? (
+                    ) : visibleActivities.length > 0 ? (
                         <ul className="divide-y divide-border">
-                            {activities.map(activity => (
+                            {visibleActivities.map(activity => (
                                 <li key={activity.id}>
                                     <ActivityListItem
                                         activity={activity}

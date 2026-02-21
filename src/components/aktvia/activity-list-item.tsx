@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { Home, Loader2, MapPin, LogIn, MessageSquare, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EntityMoreOptions } from '../common/EntityMoreOptions';
 
 interface ActivityListItemProps {
     activity: Activity;
@@ -23,6 +24,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
     const isParticipant = activity.participantIds.includes(user?.uid || '---');
     const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
+    const isOwnActivity = activity.creatorId === user?.uid;
     
     const Icon = activity.isCustomActivity ? Home : MapPin;
 
@@ -54,7 +56,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     }
 
     return (
-        <div className="p-4">
+        <div className="p-4 relative group">
             <div className="flex items-center gap-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted flex-shrink-0">
                     <Icon className="h-5 w-5 text-muted-foreground" />
@@ -98,6 +100,15 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     )}
                 </div>
             </div>
+             {!isOwnActivity && user && (
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <EntityMoreOptions
+                        entityId={activity.id}
+                        entityType="activity"
+                        entityName={activity.placeName}
+                    />
+                </div>
+            )}
         </div>
     );
 }

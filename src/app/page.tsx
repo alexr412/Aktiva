@@ -50,7 +50,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState("distance");
 
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const router = useRouter();
 
 
@@ -309,8 +309,10 @@ export default function Home() {
                 }
                 return 0;
             });
+            
+            const visibleActivities = sortedActivities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
 
-            if (sortedActivities.length === 0) {
+            if (visibleActivities.length === 0) {
                  return searchQuery ? <EmptySearchState /> : (
                     <div className="flex h-full w-full items-center justify-center p-6 text-center">
                         <div className="space-y-2">
@@ -322,7 +324,7 @@ export default function Home() {
             }
             return (
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {sortedActivities.map((activity) => (
+                  {visibleActivities.map((activity) => (
                     <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
                   ))}
               </div>

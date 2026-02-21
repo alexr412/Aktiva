@@ -117,6 +117,7 @@ export interface UserProfile {
   verified?: boolean;
   onboardingCompleted: boolean;
   friendCode?: string;
+  hiddenEntityIds?: string[];
 }
 
 export interface Review {
@@ -141,4 +142,14 @@ export interface Notification {
     isRead: boolean;
     createdAt: Timestamp;
     referenceId?: string;
+}
+
+export interface Report {
+  id?: string;
+  reporterId: string;
+  reportedEntityId: string;
+  entityType: 'activity' | 'user';
+  reason: string;
+  status: 'pending' | 'resolved';
+  createdAt: Timestamp;
 }

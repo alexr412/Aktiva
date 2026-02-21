@@ -274,6 +274,9 @@ export default function ProfilePage() {
     const photoUrlToDisplay = userData?.photoURL || user.photoURL || '';
     const displayName = userData?.displayName || user.displayName || 'Anonymous User';
 
+    const visibleRequestProfiles = requestProfiles.filter(p => !userProfile?.hiddenEntityIds?.includes(p.uid));
+    const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
+
     return (
         <div className="relative flex flex-col h-full bg-background overflow-y-auto pb-20">
             <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
@@ -362,11 +365,11 @@ export default function ProfilePage() {
                 <div className="p-6"><Skeleton className="h-10 w-full" /></div>
             )}
 
-            {!loadingRequests && requestProfiles.length > 0 && (
+            {!loadingRequests && visibleRequestProfiles.length > 0 && (
                 <div className="p-6 space-y-4 border-b">
                     <h2 className="font-bold text-lg">Friend Requests</h2>
                     <ul className="space-y-3">
-                        {requestProfiles.map(profile => (
+                        {visibleRequestProfiles.map(profile => (
                             <li key={profile.uid} className="flex items-center gap-3 p-2 -mx-2 rounded-lg bg-secondary">
                                 <Avatar>
                                     <AvatarImage src={profile.photoURL || undefined} />
@@ -412,9 +415,9 @@ export default function ProfilePage() {
                                 <ActivityListItemSkeleton />
                                 <ActivityListItemSkeleton />
                             </div>
-                        ) : activities.length > 0 ? (
+                        ) : visibleActivities.length > 0 ? (
                             <ul className="divide-y divide-border">
-                                {activities.map(activity => (
+                                {visibleActivities.map(activity => (
                                     <li key={activity.id}>
                                         <ActivityListItem
                                             activity={activity}

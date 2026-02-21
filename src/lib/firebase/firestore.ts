@@ -56,6 +56,7 @@ export async function createUserProfileDocument(user: User) {
     friendRequestsSent: [],
     friendRequestsReceived: [],
     friendCode: generateFriendCode(),
+    hiddenEntityIds: [],
   };
   await setDoc(userDocRef, userProfile);
 }
@@ -520,4 +521,33 @@ export async function getOrCreateDirectChat(user1Id: string, user2Id: string): P
   }
 
   return chatId;
+}
+
+export async function submitReportAndHide(
+  reporterId: string,
+  reportedEntityId: string,
+  entityType: 'activity' | 'user',
+  reason: string
+) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const batch = writeBatch(db);
+
+  // 1. Create a report document
+  const reportRef = doc(collection(db, 'reports'));
+  batch.set(reportRef, {
+    reporterId,
+    reportedEntityId,
+    entityType,
+    reason,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+  });
+
+  // 2. Add entity to reporter's hidden list
+  const userRef = doc(db, 'users', reporterId);
+  batch.update(userRef, {
+    hiddenEntityIds: arrayUnion(reportedEntityId),
+  });
+
+  await batch.commit();
 }
