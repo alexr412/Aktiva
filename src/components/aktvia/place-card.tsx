@@ -14,6 +14,7 @@ import {
   Plus,
   MessageSquare,
   type LucideIcon,
+  Navigation,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -39,6 +40,16 @@ const getCategoryIcon = (categories: string[]): LucideIcon => {
     }
   }
   return Building; // Default icon
+};
+
+const formatDistance = (distanceInMeters?: number) => {
+    if (distanceInMeters === undefined) {
+        return null;
+    }
+    if (distanceInMeters < 1000) {
+        return `${Math.round(distanceInMeters)} m`;
+    }
+    return `${(distanceInMeters / 1000).toFixed(1)} km`;
 };
 
 
@@ -69,6 +80,12 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         <div className="flex-1 min-w-0 flex flex-col justify-center p-3">
             <h3 className="text-base font-semibold truncate w-full">{place.name}</h3>
             <p className="text-sm text-muted-foreground truncate w-full mt-1">{place.address}</p>
+            {place.distance !== undefined && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 font-medium">
+                    <Navigation className="h-3 w-3"/>
+                    <span>{formatDistance(place.distance)}</span>
+                </div>
+            )}
         </div>
       </div>
       <div className="flex-1 flex flex-col justify-end p-3 pt-0">

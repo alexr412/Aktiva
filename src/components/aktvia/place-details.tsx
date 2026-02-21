@@ -23,6 +23,7 @@ import {
     LogIn,
     Loader2,
     MessageSquare,
+    Navigation,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,16 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loadingActivities, setLoadingActivities] = useState(true);
     const [joiningActivityId, setJoiningActivityId] = useState<string|null>(null);
+
+    const formatDistance = (distanceInMeters?: number) => {
+        if (distanceInMeters === undefined) {
+            return null;
+        }
+        if (distanceInMeters < 1000) {
+            return `${Math.round(distanceInMeters)} m`;
+        }
+        return `${(distanceInMeters / 1000).toFixed(1)} km`;
+    };
 
     useEffect(() => {
         if (!db || !place.id) return;
@@ -143,8 +154,14 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                 <div className="p-6 space-y-6">
                     <div>
                         <h1 className="text-3xl font-bold">{place.name}</h1>
-                        <div className="flex items-center gap-2 text-muted-foreground pt-1">
-                            <p className="text-sm">{place.address}</p>
+                         <div className="flex flex-col gap-1 mt-2">
+                            <p className="text-sm text-muted-foreground">{place.address}</p>
+                            {place.distance !== undefined && (
+                                <div className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
+                                    <Navigation className="h-4 w-4"/>
+                                    <span>{formatDistance(place.distance)} entfernt</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                     
