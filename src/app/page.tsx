@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { PlaceDetails } from '@/components/aktvia/place-details';
@@ -37,6 +37,7 @@ const CardSkeleton = () => (
     </div>
 );
 
+const PLACES_PER_PAGE = 20;
 
 export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -53,12 +54,16 @@ export default function Home() {
   const [sortBy, setSortBy] = useState("distance");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
 
+  // State for infinite scroll
+  const [pageOffset, setPageOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const router = useRouter();
   const { planningState } = usePlanningMode();
   const { favorites } = useFavorites();
-
 
   useEffect(() => {
     const reverseGeocode = async (lat: number, lng: number) => {
@@ -128,16 +133,25 @@ export default function Home() {
     fetchAllUpcomingActivities();
   }, []);
 
-  const loadPlaces = useCallback(async (lat: number, lng: number, category: string[]) => {
+  const loadInitialPlaces = useCallback(async () => {
+    if (!userLocation) return;
     setIsLoading(true);
     setPlaces([]);
+    setPageOffset(0);
+    setHasMore(true);
+
     try {
-      const fetchedPlaces = await fetchNearbyPlaces(lat, lng, category);
+      const categoriesToFetch = activeCategory.includes('all') ? [] : activeCategory;
+      const fetchedPlaces = await fetchNearbyPlaces(userLocation.lat, userLocation.lng, categoriesToFetch, PLACES_PER_PAGE, 0);
+      
       const placesWithCounts = fetchedPlaces.map(p => ({
           ...p,
           activityCount: allUpcomingActivities.filter(a => a.placeId === p.id).length
       }));
+      
       setPlaces(placesWithCounts);
+      setPageOffset(placesWithCounts.length);
+      setHasMore(placesWithCounts.length === PLACES_PER_PAGE);
     } catch (error) {
       console.error('Failed to load places:', error);
       toast({
@@ -148,7 +162,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, allUpcomingActivities]);
+  }, [userLocation, activeCategory, allUpcomingActivities, toast]);
 
   useEffect(() => {
     const isCommunityCategory = activeCategory.includes("user_event") || activeCategory.includes("community");
@@ -156,25 +170,67 @@ export default function Home() {
 
     if (isCommunityCategory) {
         setPlaces([]);
-        setIsLoading(true);
-        const custom = allUpcomingActivities.filter(act => act.isCustomActivity);
-        setCustomActivities(custom);
+        setCustomActivities(allUpcomingActivities.filter(act => act.isCustomActivity));
         setIsLoading(false);
     } else if (isFavoritesCategory) {
         setPlaces([]);
         setCustomActivities([]);
         setIsLoading(false);
     } else {
-        if (userLocation) {
-            setCustomActivities([]);
-            const categoriesToFetch = activeCategory.includes('all') ? [] : activeCategory;
-            loadPlaces(userLocation.lat, userLocation.lng, categoriesToFetch);
-        }
+        loadInitialPlaces();
     }
-  }, [userLocation, activeCategory, loadPlaces, allUpcomingActivities]);
+  }, [userLocation, activeCategory, loadInitialPlaces, allUpcomingActivities]);
+
+  const loadMorePlaces = useCallback(async () => {
+    if (isFetchingMore || !hasMore || !userLocation) return;
+
+    setIsFetchingMore(true);
+    try {
+      const categoriesToFetch = activeCategory.includes('all') ? [] : activeCategory;
+      const fetchedPlaces = await fetchNearbyPlaces(userLocation.lat, userLocation.lng, categoriesToFetch, PLACES_PER_PAGE, pageOffset);
+
+      const placesWithCounts = fetchedPlaces.map(p => ({
+        ...p,
+        activityCount: allUpcomingActivities.filter(a => a.placeId === p.id).length
+      }));
+
+      setPlaces(prevPlaces => {
+        const existingPlaceIds = new Set(prevPlaces.map(p => p.id));
+        const newUniquePlaces = placesWithCounts.filter(p => !existingPlaceIds.has(p.id));
+        return [...prevPlaces, ...newUniquePlaces];
+      });
+
+      setPageOffset(prevOffset => prevOffset + fetchedPlaces.length);
+      setHasMore(fetchedPlaces.length === PLACES_PER_PAGE);
+
+    } catch (error) {
+      console.error('Failed to load more places:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not fetch more places.',
+      });
+    } finally {
+      setIsFetchingMore(false);
+    }
+  }, [isFetchingMore, hasMore, userLocation, activeCategory, pageOffset, allUpcomingActivities, toast]);
+
+  const observer = useRef<IntersectionObserver>();
+  const lastElementRef = useCallback(node => {
+    if (isLoading || isFetchingMore) return;
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        loadMorePlaces();
+      }
+    });
+
+    if (node) observer.current.observe(node);
+  }, [isLoading, isFetchingMore, hasMore, loadMorePlaces]);
 
   const handleCategoryChange = (categoryId: string[]) => {
-    setSearchQuery(''); // Clear search when category changes
+    setSearchQuery('');
     setActiveCategory(categoryId);
     const isCommunity = categoryId.includes("user_event") || categoryId.includes("community");
     const isFavorites = categoryId.includes("favorites");
@@ -280,8 +336,17 @@ export default function Home() {
     }
   };
 
-
   const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+                <CardSkeleton key={i} />
+            ))}
+        </div>
+      );
+    }
+    
     if (!userLocation && !isLoading) {
       return (
         <div className="flex h-full w-full items-center justify-center">
@@ -306,118 +371,129 @@ export default function Home() {
     );
 
     if (viewMode === 'list') {
-        if (isLoading) {
-          return (
-            <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Array.from({ length: 8 }).map((_, i) => (
-                    <CardSkeleton key={i} />
-                ))}
-            </div>
-          );
-        }
-
-        if (isFavoritesCategory) {
-            if (favorites.length === 0) {
-                 return (
-                    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
-                        <div className="bg-primary/10 p-4 rounded-full">
-                            <Bookmark className="h-10 w-10 text-primary" />
+        const renderList = () => {
+            if (isFavoritesCategory) {
+                if (favorites.length === 0) {
+                     return (
+                        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
+                            <div className="bg-primary/10 p-4 rounded-full">
+                                <Bookmark className="h-10 w-10 text-primary" />
+                            </div>
+                            <h2 className="text-xl font-semibold">No Favorites Yet</h2>
+                            <p className="text-muted-foreground">
+                                Tap the bookmark icon on a place to save it for later.
+                            </p>
                         </div>
-                        <h2 className="text-xl font-semibold">No Favorites Yet</h2>
-                        <p className="text-muted-foreground">
-                            Tap the bookmark icon on a place to save it for later.
-                        </p>
+                    );
+                }
+                return (
+                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {favorites.map(place => (
+                          <PlaceCard
+                            key={place.id}
+                            place={place as Place}
+                            onClick={() => handlePlaceSelect(place as Place)}
+                            onAddActivity={() => handleOpenActivityModal(place as Place)}
+                          />
+                      ))}
                     </div>
                 );
             }
-            return (
-                <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {favorites.map(place => (
-                      <PlaceCard
-                        key={place.id}
-                        place={place as Place}
-                        onClick={() => handlePlaceSelect(place as Place)}
-                        onAddActivity={() => handleOpenActivityModal(place as Place)}
-                      />
-                  ))}
-                </div>
-            );
-        }
-        
-        if (isCommunityCategory) {
-            const filteredCustomActivities = customActivities.filter(activity =>
-                activity.placeName.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-
-            const sortedActivities = filteredCustomActivities.sort((a, b) => {
-                if (sortBy === 'newest') {
-                    return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
-                }
-                return 0;
-            });
             
-            const visibleActivities = sortedActivities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
-
-            if (visibleActivities.length === 0) {
-                 return searchQuery ? <EmptySearchState /> : (
-                    <div className="flex h-full w-full items-center justify-center p-6 text-center">
-                        <div className="space-y-2">
-                            <h3 className="font-semibold text-lg">No community activities found</h3>
-                            <p className="text-muted-foreground">Why not create one?</p>
+            if (isCommunityCategory) {
+                const filteredCustomActivities = customActivities.filter(activity =>
+                    activity.placeName.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+    
+                const sortedActivities = filteredCustomActivities.sort((a, b) => {
+                    if (sortBy === 'newest') {
+                        return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
+                    }
+                    return 0;
+                });
+                
+                const visibleActivities = sortedActivities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
+    
+                if (visibleActivities.length === 0) {
+                     return searchQuery ? <EmptySearchState /> : (
+                        <div className="flex h-full w-full items-center justify-center p-6 text-center">
+                            <div className="space-y-2">
+                                <h3 className="font-semibold text-lg">No community activities found</h3>
+                                <p className="text-muted-foreground">Why not create one?</p>
+                            </div>
                         </div>
+                    )
+                }
+                return (
+                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {visibleActivities.map((activity) => (
+                        <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
+                      ))}
+                  </div>
+                );
+            } else {
+                const filteredPlaces = places.filter(place =>
+                    place.name.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+    
+                const sortedPlaces = filteredPlaces.sort((a, b) => {
+                    if (sortBy === 'distance') {
+                        return (a.distance || 0) - (b.distance || 0);
+                    }
+                    if (sortBy === 'rating') {
+                        return (b.rating || 0) - (a.rating || 0);
+                    }
+                    if (sortBy === 'popular') {
+                        return (b.activityCount || 0) - (a.activityCount || 0);
+                    }
+                    return 0;
+                });
+    
+                if (sortedPlaces.length === 0 && !isFetchingMore) {
+                     return <EmptySearchState />;
+                }
+                return (
+                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {sortedPlaces.map((place, index) => {
+                        const isLastElement = index === sortedPlaces.length - 1;
+                        return (
+                          <div ref={isLastElement ? lastElementRef : null} key={place.id}>
+                            <PlaceCard 
+                              place={place} 
+                              onClick={() => handlePlaceSelect(place)}
+                              onAddActivity={() => handleOpenActivityModal(place)}
+                            />
+                          </div>
+                        )
+                      })}
                     </div>
-                )
+                );
             }
-            return (
-              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {visibleActivities.map((activity) => (
-                    <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
-                  ))}
-              </div>
-            );
-        } else {
-            const filteredPlaces = places.filter(place =>
-                place.name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
+        };
 
-            const sortedPlaces = filteredPlaces.sort((a, b) => {
-                if (sortBy === 'distance') {
-                    return (a.distance || 0) - (b.distance || 0);
-                }
-                if (sortBy === 'rating') {
-                    return (b.rating || 0) - (a.rating || 0);
-                }
-                if (sortBy === 'popular') {
-                    return (b.activityCount || 0) - (a.activityCount || 0);
-                }
-                return 0;
-            });
-
-            if (sortedPlaces.length === 0) {
-                 return <EmptySearchState />;
-            }
-            return (
-                <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {sortedPlaces.map(place => (
-                      <PlaceCard 
-                        key={place.id} 
-                        place={place} 
-                        onClick={() => handlePlaceSelect(place)}
-                        onAddActivity={() => handleOpenActivityModal(place)}
-                      />
-                  ))}
-                </div>
-            );
-        }
+        return (
+            <>
+                {renderList()}
+                {isFetchingMore && (
+                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <CardSkeleton />
+                        <CardSkeleton />
+                    </div>
+                )}
+                {!isFetchingMore && !hasMore && places.length > 0 && !isCommunityCategory && !isFavoritesCategory && (
+                    <p className="text-center text-muted-foreground p-6">You've reached the end of the list.</p>
+                )}
+            </>
+        );
     }
 
     if (viewMode === 'map') {
-        if (isLoading || !userLocation) {
+        if (!userLocation) {
              return (
                 <div className="flex h-full w-full items-center justify-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <MapPin className="h-8 w-8 animate-bounce" />
-                        <p>{userLocation ? 'Loading places...' : 'Getting your location...'}</p>
+                        <p>Getting your location...</p>
                     </div>
                 </div>
               );
