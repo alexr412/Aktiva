@@ -29,6 +29,8 @@ export interface Activity {
   placeId?: string;
   placeName: string;
   placeAddress?: string;
+  lat?: number;
+  lon?: number;
   activityDate: Timestamp;
   activityEndDate?: Timestamp;
   isTimeFlexible?: boolean;

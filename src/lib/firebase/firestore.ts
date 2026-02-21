@@ -118,6 +118,8 @@ export async function createActivity({
     status: 'active' as const,
     completionVotes: [],
     ...(place?.address && { placeAddress: place.address }),
+    ...(place?.lat && { lat: place.lat }),
+    ...(place?.lon && { lon: place.lon }),
     ...(endDate && { activityEndDate: Timestamp.fromDate(endDate) }),
     ...(maxParticipants && maxParticipants > 0 && { maxParticipants }),
   };
