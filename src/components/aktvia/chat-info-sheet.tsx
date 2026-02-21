@@ -65,7 +65,6 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
   if (!chat || !user || !activity) return null;
 
   const isOnlyParticipant = chat.participantIds.length === 1;
-  const amCreator = chat.creatorId === user.uid;
   const hasVoted = activity?.completionVotes?.includes(user.uid);
   const isCompleted = activity.status === 'completed';
 
@@ -73,7 +72,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
     if (!chat?.id || !user?.uid) return;
     setIsActing(true);
     try {
-      if (isOnlyParticipant || amCreator) {
+      if (isOnlyParticipant) {
         await deleteActivity(chat.id);
         toast({ title: 'Activity Deleted', description: 'The activity and chat have been removed.' });
       } else {
@@ -160,18 +159,18 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
               <AlertDialogTrigger asChild>
                 <Button variant="destructive">
                   {isActing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
-                  {isOnlyParticipant || amCreator ? 'Delete Activity' : 'Leave Activity'}
+                  {isOnlyParticipant ? 'Delete Activity' : 'Leave Activity'}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>
-                    {isOnlyParticipant || amCreator
+                    {isOnlyParticipant
                       ? 'Are you absolutely sure?'
                       : 'Are you sure you want to leave?'}
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    {isOnlyParticipant || amCreator
+                    {isOnlyParticipant
                       ? 'This action cannot be undone. This will permanently delete this activity and all associated chat messages.'
                       : 'You can rejoin this activity later as long as it exists.'}
                   </AlertDialogDescription>
@@ -181,8 +180,8 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                   <AlertDialogAction onClick={handleLeaveOrDelete} disabled={isActing} className='bg-destructive hover:bg-destructive/90'>
                     {isActing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {isActing
-                      ? (isOnlyParticipant || amCreator ? 'Deleting...' : 'Leaving...')
-                      : (isOnlyParticipant || amCreator ? 'Delete' : 'Leave')}
+                      ? (isOnlyParticipant ? 'Deleting...' : 'Leaving...')
+                      : (isOnlyParticipant ? 'Delete' : 'Leave')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
