@@ -118,6 +118,16 @@ export default function ProfilePage() {
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !user?.uid) return;
+
+        if (file.size > 5242880) { // 5MB
+            toast({ variant: 'destructive', title: 'File too large', description: 'Please select an image smaller than 5MB.' });
+            return;
+        }
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            toast({ variant: 'destructive', title: 'Invalid file type', description: 'Please select a JPG, PNG, or WEBP image.' });
+            return;
+        }
+
         try {
           const photoURL = await uploadProfileImage(user.uid, file);
           setUserData((prev: UserProfile | null) => (prev ? { ...prev, photoURL } : { photoURL } as UserProfile));
@@ -295,7 +305,7 @@ export default function ProfilePage() {
                     ref={fileInputRef} 
                     onChange={handleImageUpload} 
                     className="hidden" 
-                    accept="image/*" 
+                    accept="image/jpeg,image/png,image/webp" 
                 />
                 <div 
                     onClick={() => fileInputRef.current?.click()}

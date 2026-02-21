@@ -73,6 +73,14 @@ export default function OnboardingPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+       if (file.size > 5242880) { // 5MB
+            toast({ variant: 'destructive', title: 'File too large', description: 'Please select an image smaller than 5MB.' });
+            return;
+        }
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            toast({ variant: 'destructive', title: 'Invalid file type', description: 'Please select a JPG, PNG, or WEBP image.' });
+            return;
+        }
       setProfileImage(file);
       setPreviewImage(URL.createObjectURL(file));
     }
@@ -180,7 +188,7 @@ export default function OnboardingPage() {
                         </Avatar>
                         <label htmlFor="profile-picture" className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/90">
                            <Camera className="w-5 h-5"/>
-                           <Input id="profile-picture" type="file" accept="image/*" className="hidden" onChange={handleImageChange}/>
+                           <Input id="profile-picture" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageChange}/>
                         </label>
                    </div>
                    <Button type="button" variant="link" onClick={() => handleNext()}>Skip for now</Button>
