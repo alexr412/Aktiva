@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Compass, MessageCircle, User, Bookmark } from 'lucide-react';
+import { Home, Compass, MessageCircle, User } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Discover', icon: Home },
   { href: '/explore', label: 'Explore', icon: Compass },
-  { href: '/favorites', label: 'Favorites', icon: Bookmark },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/profile', label: 'Profile', icon: User },
 ];

@@ -12,10 +12,12 @@ import {
   Dumbbell,
   Users,
   Layers,
+  Bookmark,
   type LucideIcon,
 } from 'lucide-react';
 
 export const categories: { name: string; id: string[]; icon: LucideIcon }[] = [
+  { name: 'Favorites', id: ['favorites'], icon: Bookmark },
   { name: 'All', id: ['all'], icon: Layers },
   { name: 'Highlights', id: ['tourism', 'entertainment', 'leisure'], icon: Sparkles },
   { name: 'Community', id: ['user_event'], icon: Users },

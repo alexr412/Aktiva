@@ -5,20 +5,26 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { signOut } from '@/lib/firebase/auth';
-import { fetchUserActivities, joinActivity, getUserProfile, acceptFriendRequest, declineFriendRequest } from '@/lib/firebase/firestore';
-import type { Activity, UserProfile } from '@/lib/types';
+import { fetchUserActivities, joinActivity, getUserProfile, acceptFriendRequest, declineFriendRequest, createActivity } from '@/lib/firebase/firestore';
+import type { Activity, UserProfile, Place } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { useFavorites } from '@/contexts/favorites-context';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { PlaceCard } from '@/components/aktvia/place-card';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { PlaceDetails } from '@/components/aktvia/place-details';
+import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
+
 
 function generateFriendCode(length = 8) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -34,6 +40,7 @@ export default function ProfilePage() {
     const { user, userProfile, loading: authLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
+    const { favorites } = useFavorites();
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [userData, setUserData] = useState<UserProfile | null>(null);
@@ -42,10 +49,12 @@ export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState('activities');
     const [requestProfiles, setRequestProfiles] = useState<UserProfile[]>([]);
     const [loadingRequests, setLoadingRequests] = useState(true);
+    
+    const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+    const [activityModalPlace, setActivityModalPlace] = useState<Place | null>(null);
 
     useEffect(() => {
         if (user) {
-            // Use userProfile from context if available, otherwise fetch
             if (userProfile) {
                 setUserData(userProfile);
             } else {
@@ -210,6 +219,58 @@ export default function ProfilePage() {
             });
         });
     };
+    
+    const handleOpenActivityModal = (place: Place) => {
+        if (!user) {
+            router.push('/login');
+            toast({
+                title: 'Login Required',
+                description: 'Please log in to create an activity.',
+            });
+            return;
+        }
+        setActivityModalPlace(place);
+    };
+
+    const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number): Promise<boolean> => {
+        if (!user || !activityModalPlace) {
+            toast({
+                title: 'Error',
+                description: 'You must be logged in to create an activity.',
+                variant: 'destructive',
+            });
+            return false;
+        }
+
+        try {
+            const newActivityRef = await createActivity({
+                place: activityModalPlace,
+                startDate,
+                endDate,
+                user,
+                isTimeFlexible,
+                maxParticipants,
+            });
+            toast({
+                title: 'Activity Created!',
+                description: `Your activity at ${activityModalPlace.name} is set.`,
+            });
+            setActivityModalPlace(null);
+            router.push(`/chat/${newActivityRef.id}`);
+            return true;
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Failed to Create Activity',
+                description: error.message,
+            });
+            return false;
+        }
+    };
+
+    const handlePlaceSelect = (place: Place) => {
+        setSelectedPlace(place);
+    };
 
 
     if (authLoading || (!user && !authLoading)) {
@@ -278,178 +339,215 @@ export default function ProfilePage() {
     const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
 
     return (
-        <div className="relative flex flex-col h-full bg-background overflow-y-auto pb-20">
-            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-                <NotificationBell />
-                <Button asChild
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground"
-                >
-                    <Link href="/settings">
-                        <Settings className="h-5 w-5" />
-                        <span className="sr-only">Settings</span>
-                    </Link>
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleSignOut}
-                    className="text-muted-foreground"
-                >
-                    <LogOut className="h-5 w-5" />
-                    <span className="sr-only">Sign Out</span>
-                </Button>
-            </div>
-            
-            <div className="p-6 flex flex-col items-center justify-center text-center space-y-4 pt-16">
-                <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleImageUpload} 
-                    className="hidden" 
-                    accept="image/jpeg,image/png,image/webp" 
-                />
-                <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="relative group cursor-pointer"
-                >
-                    <Avatar className="h-24 w-24 border-2 border-primary/20">
-                        <AvatarImage src={photoUrlToDisplay} alt="Profil" />
-                        <AvatarFallback className="text-3xl bg-muted">
-                            {displayName.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
-                        <Edit className="h-6 w-6" />
-                    </div>
-                </div>
-
-                <div>
-                    <h1 className="text-2xl font-bold">
-                        {displayName}
-                        {userData?.age && `, ${userData.age}`}
-                    </h1>
-                    <div 
-                        onClick={userData?.friendCode ? handleCopyCode : undefined}
-                        onKeyDown={(e) => userData?.friendCode && (e.key === 'Enter' || e.key === ' ') ? handleCopyCode() : undefined}
-                        role={userData?.friendCode ? "button" : undefined}
-                        tabIndex={userData?.friendCode ? 0 : -1}
-                        className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-muted"
+        <>
+            <div className="relative flex flex-col h-full bg-background overflow-y-auto pb-20">
+                <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                    <NotificationBell />
+                    <Button asChild
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground"
                     >
-                        {userData?.friendCode ? (
-                            <>
-                                <span>{userData.friendCode}</span>
-                                <Copy className="h-4 w-4 text-muted-foreground" />
-                            </>
-                        ) : (
-                            <span className='text-muted-foreground'>Generating...</span>
-                        )}
+                        <Link href="/settings">
+                            <Settings className="h-5 w-5" />
+                            <span className="sr-only">Settings</span>
+                        </Link>
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleSignOut}
+                        className="text-muted-foreground"
+                    >
+                        <LogOut className="h-5 w-5" />
+                        <span className="sr-only">Sign Out</span>
+                    </Button>
+                </div>
+                
+                <div className="p-6 flex flex-col items-center justify-center text-center space-y-4 pt-16">
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleImageUpload} 
+                        className="hidden" 
+                        accept="image/jpeg,image/png,image/webp" 
+                    />
+                    <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="relative group cursor-pointer"
+                    >
+                        <Avatar className="h-24 w-24 border-2 border-primary/20">
+                            <AvatarImage src={photoUrlToDisplay} alt="Profil" />
+                            <AvatarFallback className="text-3xl bg-muted">
+                                {displayName.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
+                            <Edit className="h-6 w-6" />
+                        </div>
                     </div>
-                    {userData?.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
-                </div>
-            </div>
-            
-            {userData?.bio && (
-                <div className="px-6 text-center">
-                    <p className="text-foreground/80">{userData.bio}</p>
-                </div>
-            )}
 
-
-            <div className="px-6 mt-6">
-                <Button variant="outline" className="w-full" onClick={() => router.push('/profile/edit')}>Edit Profile</Button>
-            </div>
-            
-            {loadingRequests && userProfile?.friendRequestsReceived && userProfile.friendRequestsReceived.length > 0 &&(
-                <div className="p-6"><Skeleton className="h-10 w-full" /></div>
-            )}
-
-            {!loadingRequests && visibleRequestProfiles.length > 0 && (
-                <div className="p-6 space-y-4 border-b">
-                    <h2 className="font-bold text-lg">Friend Requests</h2>
-                    <ul className="space-y-3">
-                        {visibleRequestProfiles.map(profile => (
-                            <li key={profile.uid} className="flex items-center gap-3 p-2 -mx-2 rounded-lg bg-secondary">
-                                <Avatar>
-                                    <AvatarImage src={profile.photoURL || undefined} />
-                                    <AvatarFallback>{profile.displayName?.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <span className="flex-1 font-medium truncate">{profile.displayName}</span>
-                                <Button size="icon" variant="outline" onClick={() => handleAcceptRequest(profile.uid)}><UserCheck className="h-4 w-4 text-green-500"/></Button>
-                                <Button size="icon" variant="outline" onClick={() => handleDeclineRequest(profile.uid)}><X className="h-4 w-4 text-red-500"/></Button>
-                            </li>
-                        ))}
-                    </ul>
+                    <div>
+                        <h1 className="text-2xl font-bold">
+                            {displayName}
+                            {userData?.age && `, ${userData.age}`}
+                        </h1>
+                        <div 
+                            onClick={userData?.friendCode ? handleCopyCode : undefined}
+                            onKeyDown={(e) => userData?.friendCode && (e.key === 'Enter' || e.key === ' ') ? handleCopyCode() : undefined}
+                            role={userData?.friendCode ? "button" : undefined}
+                            tabIndex={userData?.friendCode ? 0 : -1}
+                            className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-muted"
+                        >
+                            {userData?.friendCode ? (
+                                <>
+                                    <span>{userData.friendCode}</span>
+                                    <Copy className="h-4 w-4 text-muted-foreground" />
+                                </>
+                            ) : (
+                                <span className='text-muted-foreground'>Generating...</span>
+                            )}
+                        </div>
+                        {userData?.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
+                    </div>
                 </div>
-            )}
-            
-            <div className="p-6 space-y-4">
-                 <h2 className="font-bold text-lg">Interests</h2>
-                <div className="flex flex-wrap gap-2 items-center">
-                    {userData?.interests?.map(tag => (
-                         <Badge key={tag} variant="secondary" className="text-base py-1 px-3">
-                            {tag}
-                        </Badge>
-                    ))}
-                    <button onClick={() => router.push('/profile/edit')} className="border border-dashed border-gray-400 text-gray-500 rounded-full px-4 py-1 text-sm hover:bg-muted/50 transition-colors">
-                        + Hinzufügen
-                    </button>
-                </div>
-            </div>
-            
-            <div className="w-full border-b mt-2">
-                <nav className="flex justify-around items-center font-medium px-6">
-                    <TabButton tabName="activities" label="Aktivitäten" />
-                    <TabButton tabName="favorites" label="Favoriten" />
-                    <TabButton tabName="reviews" label="Reviews" />
-                </nav>
-            </div>
-
-            <div className="flex-1">
-                {activeTab === 'activities' && (
-                    <div className="pt-4">
-                        {loadingActivities ? (
-                             <div className="divide-y divide-border">
-                                <ActivityListItemSkeleton />
-                                <ActivityListItemSkeleton />
-                                <ActivityListItemSkeleton />
-                            </div>
-                        ) : visibleActivities.length > 0 ? (
-                            <ul className="divide-y divide-border">
-                                {visibleActivities.map(activity => (
-                                    <li key={activity.id}>
-                                        <ActivityListItem
-                                            activity={activity}
-                                            user={user}
-                                            onJoin={handleJoin}
-                                        />
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
-                                <p className="text-muted-foreground">Noch keine Aktivitäten erstellt.</p>
-                                <Button onClick={() => router.push('/explore')}>
-                                    <Compass className="mr-2 h-4 w-4" />
-                                    Aktivitäten entdecken
-                                </Button>
-                            </div>
-                        )}
+                
+                {userData?.bio && (
+                    <div className="px-6 text-center">
+                        <p className="text-foreground/80">{userData.bio}</p>
                     </div>
                 )}
-                 {activeTab === 'favorites' && (
-                     <div className="text-center text-muted-foreground p-10">
-                        <p>Favorites are not yet implemented.</p>
+
+
+                <div className="px-6 mt-6">
+                    <Button variant="outline" className="w-full" onClick={() => router.push('/profile/edit')}>Edit Profile</Button>
+                </div>
+                
+                {loadingRequests && userProfile?.friendRequestsReceived && userProfile.friendRequestsReceived.length > 0 &&(
+                    <div className="p-6"><Skeleton className="h-10 w-full" /></div>
+                )}
+
+                {!loadingRequests && visibleRequestProfiles.length > 0 && (
+                    <div className="p-6 space-y-4 border-b">
+                        <h2 className="font-bold text-lg">Friend Requests</h2>
+                        <ul className="space-y-3">
+                            {visibleRequestProfiles.map(profile => (
+                                <li key={profile.uid} className="flex items-center gap-3 p-2 -mx-2 rounded-lg bg-secondary">
+                                    <Avatar>
+                                        <AvatarImage src={profile.photoURL || undefined} />
+                                        <AvatarFallback>{profile.displayName?.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="flex-1 font-medium truncate">{profile.displayName}</span>
+                                    <Button size="icon" variant="outline" onClick={() => handleAcceptRequest(profile.uid)}><UserCheck className="h-4 w-4 text-green-500"/></Button>
+                                    <Button size="icon" variant="outline" onClick={() => handleDeclineRequest(profile.uid)}><X className="h-4 w-4 text-red-500"/></Button>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
-                 )}
-                 {activeTab === 'reviews' && (
-                     <div className="text-center text-muted-foreground p-10">
-                        <p>Reviews are not yet implemented.</p>
+                )}
+                
+                <div className="p-6 space-y-4">
+                     <h2 className="font-bold text-lg">Interests</h2>
+                    <div className="flex flex-wrap gap-2 items-center">
+                        {userData?.interests?.map(tag => (
+                             <Badge key={tag} variant="secondary" className="text-base py-1 px-3">
+                                {tag}
+                            </Badge>
+                        ))}
+                        <button onClick={() => router.push('/profile/edit')} className="border border-dashed border-gray-400 text-gray-500 rounded-full px-4 py-1 text-sm hover:bg-muted/50 transition-colors">
+                            + Hinzufügen
+                        </button>
                     </div>
-                 )}
+                </div>
+                
+                <div className="w-full border-b mt-2">
+                    <nav className="flex justify-around items-center font-medium px-6">
+                        <TabButton tabName="activities" label="Aktivitäten" />
+                        <TabButton tabName="favorites" label="Favoriten" />
+                        <TabButton tabName="reviews" label="Reviews" />
+                    </nav>
+                </div>
+
+                <div className="flex-1">
+                    {activeTab === 'activities' && (
+                        <div className="pt-4">
+                            {loadingActivities ? (
+                                 <div className="divide-y divide-border">
+                                    <ActivityListItemSkeleton />
+                                    <ActivityListItemSkeleton />
+                                    <ActivityListItemSkeleton />
+                                </div>
+                            ) : visibleActivities.length > 0 ? (
+                                <ul className="divide-y divide-border">
+                                    {visibleActivities.map(activity => (
+                                        <li key={activity.id}>
+                                            <ActivityListItem
+                                                activity={activity}
+                                                user={user}
+                                                onJoin={handleJoin}
+                                            />
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
+                                    <p className="text-muted-foreground">Noch keine Aktivitäten erstellt.</p>
+                                    <Button onClick={() => router.push('/explore')}>
+                                        <Compass className="mr-2 h-4 w-4" />
+                                        Aktivitäten entdecken
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                     {activeTab === 'favorites' && (
+                        <div className="pt-4">
+                            {favorites.length === 0 ? (
+                                <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
+                                     <div className="bg-primary/10 p-4 rounded-full">
+                                        <Bookmark className="h-8 w-8 text-primary" />
+                                    </div>
+                                    <p className="text-muted-foreground">Noch keine Favoriten gespeichert.</p>
+                                     <Button onClick={() => router.push('/')}>
+                                        <Compass className="mr-2 h-4 w-4" />
+                                        Orte entdecken
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="p-4 grid grid-cols-1 gap-4">
+                                    {favorites.map(fav => (
+                                        <PlaceCard
+                                            key={fav.id}
+                                            place={fav as Place}
+                                            onClick={() => handlePlaceSelect(fav as Place)}
+                                            onAddActivity={() => handleOpenActivityModal(fav as Place)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                     )}
+                     {activeTab === 'reviews' && (
+                         <div className="text-center text-muted-foreground p-10">
+                            <p>Reviews are not yet implemented.</p>
+                        </div>
+                     )}
+                </div>
             </div>
-        </div>
+
+            <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
+                <DialogContent className="max-h-dvh flex flex-col p-0 w-full max-w-lg gap-0">
+                    {selectedPlace && <PlaceDetails place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
+                </DialogContent>
+            </Dialog>
+
+            <CreateActivityDialog
+                place={activityModalPlace}
+                open={!!activityModalPlace}
+                onOpenChange={(open) => !open && setActivityModalPlace(null)}
+                onCreateActivity={handleCreateActivity}
+            />
+        </>
     );
 }
 

@@ -8,7 +8,7 @@ import { PlaceCard } from '@/components/aktvia/place-card';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place, Activity } from '@/lib/types';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MapPin, Map as MapIcon, List, Plus, Search } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { usePlanningMode } from '@/contexts/planning-mode-context';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
+import { useFavorites } from '@/contexts/favorites-context';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -56,6 +57,7 @@ export default function Home() {
   const { user, userProfile } = useAuth();
   const router = useRouter();
   const { planningState } = usePlanningMode();
+  const { favorites } = useFavorites();
 
 
   useEffect(() => {
@@ -150,12 +152,17 @@ export default function Home() {
 
   useEffect(() => {
     const isCommunityCategory = activeCategory.includes("user_event") || activeCategory.includes("community");
+    const isFavoritesCategory = activeCategory.includes("favorites");
 
     if (isCommunityCategory) {
         setPlaces([]);
         setIsLoading(true);
         const custom = allUpcomingActivities.filter(act => act.isCustomActivity);
         setCustomActivities(custom);
+        setIsLoading(false);
+    } else if (isFavoritesCategory) {
+        setPlaces([]);
+        setCustomActivities([]);
         setIsLoading(false);
     } else {
         if (userLocation) {
@@ -170,7 +177,8 @@ export default function Home() {
     setSearchQuery(''); // Clear search when category changes
     setActiveCategory(categoryId);
     const isCommunity = categoryId.includes("user_event") || categoryId.includes("community");
-    setSortBy(isCommunity ? 'newest' : 'distance');
+    const isFavorites = categoryId.includes("favorites");
+    setSortBy(isCommunity ? 'newest' : (isFavorites ? 'distance' : 'distance'));
   };
 
   const handlePlaceSelect = (place: Place) => {
@@ -286,6 +294,7 @@ export default function Home() {
     }
 
     const isCommunityCategory = activeCategory.includes("user_event") || activeCategory.includes("community");
+    const isFavoritesCategory = activeCategory.includes("favorites");
 
     const EmptySearchState = () => (
         <div className="flex h-full w-full items-center justify-center p-6 text-center">
@@ -297,7 +306,6 @@ export default function Home() {
     );
 
     if (viewMode === 'list') {
-        
         if (isLoading) {
           return (
             <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -306,6 +314,34 @@ export default function Home() {
                 ))}
             </div>
           );
+        }
+
+        if (isFavoritesCategory) {
+            if (favorites.length === 0) {
+                 return (
+                    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
+                        <div className="bg-primary/10 p-4 rounded-full">
+                            <Bookmark className="h-10 w-10 text-primary" />
+                        </div>
+                        <h2 className="text-xl font-semibold">No Favorites Yet</h2>
+                        <p className="text-muted-foreground">
+                            Tap the bookmark icon on a place to save it for later.
+                        </p>
+                    </div>
+                );
+            }
+            return (
+                <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {favorites.map(place => (
+                      <PlaceCard
+                        key={place.id}
+                        place={place as Place}
+                        onClick={() => handlePlaceSelect(place as Place)}
+                        onAddActivity={() => handleOpenActivityModal(place as Place)}
+                      />
+                  ))}
+                </div>
+            );
         }
         
         if (isCommunityCategory) {
@@ -386,18 +422,19 @@ export default function Home() {
                 </div>
               );
         }
-
-        const filteredPlaces = places.filter(place =>
-            place.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        
+        const placesForMap = isFavoritesCategory
+            ? (favorites as Place[])
+            : places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
         return (
-            <MapView places={filteredPlaces} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />
+            <MapView places={placesForMap} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />
         );
     }
   };
 
   const isCommunityView = activeCategory.includes("user_event") || activeCategory.includes("community");
+  const isFavoritesView = activeCategory.includes("favorites");
 
   return (
     <>
@@ -442,29 +479,31 @@ export default function Home() {
                     value={searchQuery}
                     onChange={(e) => {
                         setSearchQuery(e.target.value);
-                        if (e.target.value && !activeCategory.includes('all') && !isCommunityView) {
+                        if (e.target.value && !activeCategory.includes('all') && !isCommunityView && !isFavoritesView) {
                             setActiveCategory(['all']);
                         }
                     }}
                     className="w-full rounded-full bg-muted pl-10 h-12"
                 />
               </div>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-[180px] rounded-full h-12 bg-muted border-none focus:ring-0">
-                      <SelectValue placeholder="Sortieren nach..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                      {isCommunityView ? (
-                        <SelectItem value="newest">Neueste</SelectItem>
-                      ) : (
-                        <>
-                            <SelectItem value="distance">Distanz</SelectItem>
-                            <SelectItem value="rating">Bewertung</SelectItem>
-                            <SelectItem value="popular">Beliebteste</SelectItem>
-                        </>
-                      )}
-                  </SelectContent>
-              </Select>
+              {!isFavoritesView && (
+                <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-[180px] rounded-full h-12 bg-muted border-none focus:ring-0">
+                        <SelectValue placeholder="Sortieren nach..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {isCommunityView ? (
+                          <SelectItem value="newest">Neueste</SelectItem>
+                        ) : (
+                          <>
+                              <SelectItem value="distance">Distanz</SelectItem>
+                              <SelectItem value="rating">Bewertung</SelectItem>
+                              <SelectItem value="popular">Beliebteste</SelectItem>
+                          </>
+                        )}
+                    </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
         </header>
