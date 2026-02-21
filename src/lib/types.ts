@@ -15,6 +15,15 @@ export interface Place {
   distance?: number;
 }
 
+export interface FavoritePlace {
+  id: string;
+  name: string;
+  address: string;
+  categories: string[];
+  lat: number;
+  lon: number;
+}
+
 export interface Activity {
   id?: string;
   placeId?: string;

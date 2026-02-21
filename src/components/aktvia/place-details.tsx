@@ -24,6 +24,7 @@ import {
     Loader2,
     MessageSquare,
     Navigation,
+    Bookmark,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,8 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Place, Activity } from '@/lib/types';
 import { AiRecommendation } from './ai-recommendation';
+import { useFavorites } from '@/contexts/favorites-context';
+import { cn } from '@/lib/utils';
 
 const categoryIconMap: { [key: string]: LucideIcon } = {
   'catering.restaurant': UtensilsCrossed,
@@ -74,6 +77,17 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loadingActivities, setLoadingActivities] = useState(true);
     const [joiningActivityId, setJoiningActivityId] = useState<string|null>(null);
+    
+    const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
+    const isFavorite = checkIsFavorite(place.id);
+
+    const handleBookmarkToggle = () => {
+        if (isFavorite) {
+            removeFavorite(place.id);
+        } else {
+            addFavorite(place);
+        }
+    };
 
     const formatDistance = (distanceInMeters?: number) => {
         if (distanceInMeters === undefined) {
@@ -140,10 +154,14 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
 
     return (
         <div className="flex flex-col h-full relative bg-background">
-            <div className="absolute top-0 left-0 z-20 flex items-center p-2">
+            <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-2">
                 <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full bg-background/60 hover:bg-background/90 backdrop-blur-sm">
                     <ChevronLeft className="h-6 w-6" />
                     <span className="sr-only">Back</span>
+                </Button>
+                <Button variant="ghost" size="icon" onClick={handleBookmarkToggle} className="rounded-full bg-background/60 hover:bg-background/90 backdrop-blur-sm text-primary">
+                    <Bookmark className={cn("h-5 w-5", isFavorite && "fill-current")} />
+                    <span className="sr-only">Bookmark</span>
                 </Button>
             </div>
             <ScrollArea className="flex-1">

@@ -15,8 +15,11 @@ import {
   MessageSquare,
   type LucideIcon,
   Navigation,
+  Bookmark,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useFavorites } from '@/contexts/favorites-context';
+import { cn } from '@/lib/utils';
 
 
 const categoryIconMap: { [key: string]: LucideIcon } = {
@@ -60,12 +63,24 @@ type PlaceCardProps = {
 };
 
 export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
+    const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
+    const isFavorite = checkIsFavorite(place.id);
     const Icon = getCategoryIcon(place.categories);
     
     const cleanTags = place.categories
       ? place.categories
           .filter((value, index, self) => self.indexOf(value) === index)
       : [];
+    
+    const handleBookmarkToggle = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent card's onClick from firing
+        if (isFavorite) {
+            removeFavorite(place.id);
+        } else {
+            addFavorite(place);
+        }
+    };
+
 
   return (
     <Card
@@ -113,18 +128,29 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
               </span>
             ))}
           </div>
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-8 w-8 flex-shrink-0 rounded-full bg-background"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddActivity(place);
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            <span className="sr-only">Create activity</span>
-          </Button>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <Button
+                size="icon"
+                variant="outline"
+                className="h-8 w-8 rounded-full bg-background"
+                onClick={handleBookmarkToggle}
+            >
+                <Bookmark className={cn("h-4 w-4", isFavorite && "fill-current text-primary")} />
+                <span className="sr-only">Bookmark place</span>
+            </Button>
+            <Button
+                size="icon"
+                variant="outline"
+                className="h-8 w-8 flex-shrink-0 rounded-full bg-background"
+                onClick={(e) => {
+                e.stopPropagation();
+                onAddActivity(place);
+                }}
+            >
+                <Plus className="h-4 w-4" />
+                <span className="sr-only">Create activity</span>
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

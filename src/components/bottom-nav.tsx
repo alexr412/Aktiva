@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Compass, MessageCircle, User } from 'lucide-react';
+import { Home, Compass, MessageCircle, User, Bookmark } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Discover', icon: Home },
   { href: '/explore', label: 'Explore', icon: Compass },
+  { href: '/favorites', label: 'Favorites', icon: Bookmark },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/profile', label: 'Profile', icon: User },
 ];
@@ -19,10 +20,12 @@ export function BottomNav() {
     return null;
   }
   
-  // A helper function to determine if a nav item is active.
-  // It handles the root path and sub-paths.
   const getIsActive = (itemHref: string) => {
-    if (itemHref === '/') return pathname === '/';
+    // Root path is only active if it's an exact match
+    if (itemHref === '/') {
+      return pathname === '/';
+    }
+    // Other paths are active if the current path starts with their href
     return pathname.startsWith(itemHref);
   };
 
