@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { PlaceCard } from '@/components/aktvia/place-card';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
-import type { Place, Activity } from '@/lib/types';
+import type { Place, Activity, GeoapifyFeature } from '@/lib/types';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,6 +25,8 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { usePlanningMode } from '@/contexts/planning-mode-context';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
+import useSWRInfinite from 'swr/infinite';
+import { GEOAPIFY_API_KEY } from '@/lib/config';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -38,14 +40,13 @@ const CardSkeleton = () => (
 );
 
 const PLACES_PER_PAGE = 20;
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [places, setPlaces] = useState<Place[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
   const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
-  const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [customActivities, setCustomActivities] = useState<Activity[]>([]);
   const [allUpcomingActivities, setAllUpcomingActivities] = useState<Activity[]>([]);
@@ -54,16 +55,70 @@ export default function Home() {
   const [sortBy, setSortBy] = useState("distance");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
 
-  // State for infinite scroll
-  const [pageOffset, setPageOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const router = useRouter();
   const { planningState } = usePlanningMode();
   const { favorites } = useFavorites();
+
+  const isCommunityCategory = activeCategory.includes("user_event") || activeCategory.includes("community");
+  const isFavoritesCategory = activeCategory.includes("favorites");
+
+  const getKey = (pageIndex: number, previousPageData: any) => {
+    if (isCommunityCategory || isFavoritesCategory) return null;
+    if (!userLocation) return null;
+    if (previousPageData && !previousPageData.features?.length) return null;
+
+    const categoriesToFetch = activeCategory.includes('all') ? [] : activeCategory;
+    const categoryList = categoriesToFetch.length > 0 ? categoriesToFetch.join(',') : 'commercial,catering,entertainment,leisure,tourism,accommodation,sport,natural';
+    const offset = pageIndex * PLACES_PER_PAGE;
+    
+    return `https://api.geoapify.com/v2/places?filter=circle:${userLocation.lng},${userLocation.lat},5000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}&categories=${categoryList}`;
+  }
+
+  const { data, error, size, setSize, isLoading, isValidating } = useSWRInfinite(getKey, fetcher, {
+    revalidateFirstPage: false,
+    dedupingInterval: 60000,
+  });
+
+  const rawPlaces = useMemo(() => {
+    if (!data) return [];
+    return data.flatMap(page =>
+      page.features?.map((feature: GeoapifyFeature) => {
+        const props = feature.properties;
+        let rating;
+        if (props.datasource?.raw?.rating) {
+          const parsedRating = parseFloat(props.datasource.raw.rating);
+          if (!isNaN(parsedRating)) {
+              rating = Math.max(0, Math.min(5, parsedRating));
+          }
+        }
+        return {
+          id: props.place_id,
+          name: props.name || props.address_line1,
+          address: props.address_line2,
+          categories: Array.isArray(props.categories) ? props.categories : [props.categories],
+          lat: props.lat,
+          lon: props.lon,
+          rating: rating,
+          distance: props.distance,
+        } as Place;
+      }) || []
+    );
+  }, [data]);
+  
+  const places = useMemo(() => {
+    return rawPlaces.map(p => ({
+        ...p,
+        activityCount: allUpcomingActivities.filter(a => a.placeId === p.id).length
+    }));
+  }, [rawPlaces, allUpcomingActivities]);
+
+
+  const isLoadingInitialData = isLoading;
+  const isFetchingMore = isValidating && !isLoadingInitialData;
+  const isEmpty = data?.[0]?.features.length === 0;
+  const hasMore = !isEmpty && data && data[data.length - 1]?.features?.length === PLACES_PER_PAGE;
 
   const resetFilters = () => {
     setActiveCategory(['all']);
@@ -139,101 +194,25 @@ export default function Home() {
     fetchAllUpcomingActivities();
   }, []);
 
-  const loadInitialPlaces = useCallback(async () => {
-    if (!userLocation) return;
-    setIsLoading(true);
-    setPlaces([]);
-    setPageOffset(0);
-    setHasMore(true);
-
-    try {
-      const categoriesToFetch = activeCategory.includes('all') ? [] : activeCategory;
-      const fetchedPlaces = await fetchNearbyPlaces(userLocation.lat, userLocation.lng, categoriesToFetch, PLACES_PER_PAGE, 0);
-      
-      const placesWithCounts = fetchedPlaces.map(p => ({
-          ...p,
-          activityCount: allUpcomingActivities.filter(a => a.placeId === p.id).length
-      }));
-      
-      setPlaces(placesWithCounts);
-      setPageOffset(placesWithCounts.length);
-      setHasMore(placesWithCounts.length === PLACES_PER_PAGE);
-    } catch (error) {
-      console.error('Failed to load places:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not fetch nearby places. Please try again later.',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userLocation, activeCategory, allUpcomingActivities, toast]);
-
   useEffect(() => {
-    const isCommunityCategory = activeCategory.includes("user_event") || activeCategory.includes("community");
-    const isFavoritesCategory = activeCategory.includes("favorites");
-
     if (isCommunityCategory) {
-        setPlaces([]);
         setCustomActivities(allUpcomingActivities.filter(act => act.isCustomActivity));
-        setIsLoading(false);
-    } else if (isFavoritesCategory) {
-        setPlaces([]);
-        setCustomActivities([]);
-        setIsLoading(false);
-    } else {
-        loadInitialPlaces();
     }
-  }, [userLocation, activeCategory, loadInitialPlaces, allUpcomingActivities]);
-
-  const loadMorePlaces = useCallback(async () => {
-    if (isFetchingMore || !hasMore || !userLocation) return;
-
-    setIsFetchingMore(true);
-    try {
-      const categoriesToFetch = activeCategory.includes('all') ? [] : activeCategory;
-      const fetchedPlaces = await fetchNearbyPlaces(userLocation.lat, userLocation.lng, categoriesToFetch, PLACES_PER_PAGE, pageOffset);
-
-      const placesWithCounts = fetchedPlaces.map(p => ({
-        ...p,
-        activityCount: allUpcomingActivities.filter(a => a.placeId === p.id).length
-      }));
-
-      setPlaces(prevPlaces => {
-        const existingPlaceIds = new Set(prevPlaces.map(p => p.id));
-        const newUniquePlaces = placesWithCounts.filter(p => !existingPlaceIds.has(p.id));
-        return [...prevPlaces, ...newUniquePlaces];
-      });
-
-      setPageOffset(prevOffset => prevOffset + fetchedPlaces.length);
-      setHasMore(fetchedPlaces.length === PLACES_PER_PAGE);
-
-    } catch (error) {
-      console.error('Failed to load more places:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not fetch more places.',
-      });
-    } finally {
-      setIsFetchingMore(false);
-    }
-  }, [isFetchingMore, hasMore, userLocation, activeCategory, pageOffset, allUpcomingActivities, toast]);
+  }, [isCommunityCategory, allUpcomingActivities]);
 
   const observer = useRef<IntersectionObserver>();
   const lastElementRef = useCallback(node => {
-    if (isLoading || isFetchingMore) return;
+    if (isFetchingMore || !hasMore) return;
     if (observer.current) observer.current.disconnect();
 
     observer.current = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting && hasMore) {
-        loadMorePlaces();
+        setSize(size + 1);
       }
     });
 
     if (node) observer.current.observe(node);
-  }, [isLoading, isFetchingMore, hasMore, loadMorePlaces]);
+  }, [isFetchingMore, hasMore, setSize, size]);
 
   const handleCategoryChange = (categoryId: string[]) => {
     setSearchQuery('');
@@ -343,7 +322,7 @@ export default function Home() {
   };
 
   const renderContent = () => {
-    if (isLoading) {
+    if (isLoadingInitialData) {
       return (
         <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -353,7 +332,7 @@ export default function Home() {
       );
     }
     
-    if (!userLocation && !isLoading) {
+    if (!userLocation && !isLoadingInitialData) {
       return (
         <div className="flex h-full w-full items-center justify-center">
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -363,9 +342,14 @@ export default function Home() {
         </div>
       );
     }
-
-    const isCommunityCategory = activeCategory.includes("user_event") || activeCategory.includes("community");
-    const isFavoritesCategory = activeCategory.includes("favorites");
+    
+    if (error) {
+        return (
+            <div className="flex h-full w-full items-center justify-center p-6 text-center">
+                <p className="text-destructive">Could not load places. Please try again later.</p>
+            </div>
+        );
+    }
 
     const EmptySearchState = () => (
         <div className="flex h-full w-full items-center justify-center p-6 text-center">
@@ -490,7 +474,7 @@ export default function Home() {
                         <CardSkeleton />
                     </div>
                 )}
-                {!isFetchingMore && !hasMore && places.length > 0 && !isCommunityView && !isFavoritesView && (
+                {!isFetchingMore && !hasMore && places.length > 0 && !isCommunityCategory && !isFavoritesCategory && (
                     <p className="text-center text-muted-foreground p-6">You've reached the end of the list.</p>
                 )}
             </>
@@ -518,9 +502,6 @@ export default function Home() {
         );
     }
   };
-
-  const isCommunityView = activeCategory.includes("user_event") || activeCategory.includes("community");
-  const isFavoritesView = activeCategory.includes("favorites");
 
   return (
     <>
@@ -565,20 +546,20 @@ export default function Home() {
                     value={searchQuery}
                     onChange={(e) => {
                         setSearchQuery(e.target.value);
-                        if (e.target.value && !activeCategory.includes('all') && !isCommunityView && !isFavoritesView) {
+                        if (e.target.value && !activeCategory.includes('all') && !isCommunityCategory && !isFavoritesCategory) {
                             setActiveCategory(['all']);
                         }
                     }}
                     className="w-full rounded-full bg-muted pl-10 h-12"
                 />
               </div>
-              {!isFavoritesView && (
+              {!isFavoritesCategory && (
                 <Select value={sortBy} onValueChange={setSortBy}>
                     <SelectTrigger className="w-[180px] rounded-full h-12 bg-muted border-none focus:ring-0">
                         <SelectValue placeholder="Sortieren nach..." />
                     </SelectTrigger>
                     <SelectContent>
-                        {isCommunityView ? (
+                        {isCommunityCategory ? (
                           <SelectItem value="newest">Neueste</SelectItem>
                         ) : (
                           <>
