@@ -18,7 +18,7 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CategoryFilters, categories as placeCategories } from '@/components/aktvia/category-filters';
 
 const CardSkeleton = () => (
-  <div className="absolute w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-3xl shadow-xl border border-border overflow-hidden flex flex-col items-center justify-center">
+  <div className="w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-3xl shadow-xl border border-border overflow-hidden flex flex-col items-center justify-center">
     <Skeleton className="h-full w-full" />
   </div>
 );
@@ -215,7 +215,7 @@ export default function ExplorePage() {
 
     return (
         <div className="flex h-full flex-col bg-secondary">
-            <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
+            <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm shrink-0">
               <div className="px-4 py-4 space-y-4">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold tracking-tight">Explore Activities</h1>
@@ -243,14 +243,22 @@ export default function ExplorePage() {
                 </div>
               </div>
             </header>
-            <main className="flex-1 flex flex-col items-center justify-center relative overflow-hidden p-4">
-                {isLoading && <CardSkeleton />}
+            <main className="flex-1 flex flex-col min-h-0">
+                {isLoading && (
+                    <div className="flex-1 flex items-center justify-center">
+                        <CardSkeleton />
+                    </div>
+                )}
 
-                {!isLoading && cards.length === 0 && <EmptyState />}
+                {!isLoading && cards.length === 0 && (
+                     <div className="flex-1">
+                        <EmptyState />
+                    </div>
+                )}
                 
                 {!isLoading && cards.length > 0 &&
                     <>
-                        <div className="relative flex items-center justify-center w-full flex-1">
+                        <div className="flex-1 min-h-0 relative flex items-center justify-center p-4">
                             {cards.map((card, index) => {
                                 const isTopCard = index === cards.length - 1;
                                 
@@ -297,7 +305,7 @@ export default function ExplorePage() {
                                 );
                             })}
                         </div>
-                        <div className="flex items-center justify-center gap-8 py-4 z-20">
+                        <div className="shrink-0 flex items-center justify-center gap-8 pt-4 pb-24 z-20">
                             <Button onClick={() => handleSwipe('left')} variant="outline" size="icon" className="h-20 w-20 rounded-full shadow-lg border-2 border-destructive/50 hover:bg-destructive/10">
                                 <X className="h-10 w-10 text-destructive"/>
                             </Button>
