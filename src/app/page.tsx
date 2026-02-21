@@ -480,7 +480,7 @@ export default function Home() {
                         <CardSkeleton />
                     </div>
                 )}
-                {!isFetchingMore && !hasMore && places.length > 0 && !isCommunityCategory && !isFavoritesCategory && (
+                {!isFetchingMore && !hasMore && places.length > 0 && !isCommunityCategory && !isFavoritesView && (
                     <p className="text-center text-muted-foreground p-6">You've reached the end of the list.</p>
                 )}
             </>
