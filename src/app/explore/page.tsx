@@ -23,18 +23,6 @@ const CardSkeleton = () => (
   </div>
 );
 
-const EmptyState = () => (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
-        <div className="bg-primary/10 p-4 rounded-full">
-            <Compass className="h-10 w-10 text-primary" />
-        </div>
-        <h2 className="text-xl font-semibold">No More Activities</h2>
-        <p className="text-muted-foreground">
-            You've swiped through all available activities. Check back later!
-        </p>
-    </div>
-);
-
 // Haversine distance calculation
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
     const R = 6371; // Radius of the earth in km
@@ -65,6 +53,27 @@ export default function ExplorePage() {
     const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
     const [radiusKm, setRadiusKm] = useState<number | null>(null);
     const [lastSwipedCard, setLastSwipedCard] = useState<Activity | null>(null);
+
+    const resetFilters = () => {
+        setActiveCategory(['all']);
+        setRadiusKm(null);
+    };
+
+    const EmptyState = () => (
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
+            <div className="bg-primary/10 p-4 rounded-full">
+                <Compass className="h-10 w-10 text-primary" />
+            </div>
+            <h2 className="text-xl font-semibold">Keine Aktivitäten gefunden</h2>
+            <p className="text-muted-foreground">
+                Passe deine Filter an oder schau später wieder vorbei.
+            </p>
+            <Button onClick={resetFilters} variant="outline">
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Filter zurücksetzen
+            </Button>
+        </div>
+    );
 
     // Get User Location
     useEffect(() => {

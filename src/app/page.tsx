@@ -8,7 +8,7 @@ import { PlaceCard } from '@/components/aktvia/place-card';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place, Activity } from '@/lib/types';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -64,6 +64,12 @@ export default function Home() {
   const router = useRouter();
   const { planningState } = usePlanningMode();
   const { favorites } = useFavorites();
+
+  const resetFilters = () => {
+    setActiveCategory(['all']);
+    setSearchQuery('');
+    setSortBy('distance');
+  };
 
   useEffect(() => {
     const reverseGeocode = async (lat: number, lng: number) => {
@@ -363,9 +369,13 @@ export default function Home() {
 
     const EmptySearchState = () => (
         <div className="flex h-full w-full items-center justify-center p-6 text-center">
-            <div className="space-y-2">
-                <h3 className="font-semibold text-lg">No results found</h3>
-                <p className="text-muted-foreground">Try adjusting your search or filters.</p>
+            <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Keine Ergebnisse gefunden</h3>
+                <p className="text-muted-foreground">Passe deine Suche oder die Filter an.</p>
+                <Button onClick={resetFilters} variant="outline">
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Filter zurücksetzen
+                </Button>
             </div>
         </div>
     );
@@ -480,7 +490,7 @@ export default function Home() {
                         <CardSkeleton />
                     </div>
                 )}
-                {!isFetchingMore && !hasMore && places.length > 0 && !isCommunityCategory && !isFavoritesView && (
+                {!isFetchingMore && !hasMore && places.length > 0 && !isCommunityView && !isFavoritesView && (
                     <p className="text-center text-muted-foreground p-6">You've reached the end of the list.</p>
                 )}
             </>
