@@ -12,7 +12,7 @@ import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'fireba
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Compass, X, Heart, Home, MapPin, Calendar, Users, Info } from 'lucide-react';
+import { Compass, X, Heart, Home, MapPin, Calendar, Users, Info, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CategoryFilters, categories as placeCategories } from '@/components/aktvia/category-filters';
@@ -64,6 +64,7 @@ export default function ExplorePage() {
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
     const [radiusKm, setRadiusKm] = useState<number | null>(null);
+    const [lastSwipedCard, setLastSwipedCard] = useState<Activity | null>(null);
 
     // Get User Location
     useEffect(() => {
@@ -180,6 +181,7 @@ export default function ExplorePage() {
                 .then(() => {
                     toast({ title: 'Activity Joined!', description: 'You can now find it in your chats.' });
                     setTimeout(removeCard, 200);
+                    setLastSwipedCard(null);
                 })
                 .catch((error) => {
                     console.error(error);
@@ -187,8 +189,24 @@ export default function ExplorePage() {
                     animationControls.start({ x: 0, rotate: 0, opacity: 1, transition: { duration: 0.4 }});
                 });
         } else {
+            setLastSwipedCard(topCard);
             setTimeout(removeCard, 200);
         }
+    };
+
+    const handleUndo = () => {
+        if (!lastSwipedCard) return;
+
+        animationControls.start({
+            x: 0,
+            rotate: 0,
+            opacity: 1,
+            transition: { duration: 0.2, ease: "easeIn" }
+        });
+        
+        setCards(prev => [...prev, lastSwipedCard]);
+        
+        setLastSwipedCard(null);
     };
     
     const onDragEnd = (event: any, info: any) => {
@@ -308,6 +326,15 @@ export default function ExplorePage() {
                         <div className="shrink-0 flex items-center justify-center gap-8 pt-4 pb-24 z-20">
                             <Button onClick={() => handleSwipe('left')} variant="outline" size="icon" className="h-20 w-20 rounded-full shadow-lg border-2 border-destructive/50 hover:bg-destructive/10">
                                 <X className="h-10 w-10 text-destructive"/>
+                            </Button>
+                             <Button 
+                                onClick={handleUndo} 
+                                variant="outline" 
+                                size="icon" 
+                                className="h-16 w-16 rounded-full shadow-md border-2 border-gray-400/50 hover:bg-gray-400/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={!lastSwipedCard}
+                            >
+                                <RotateCcw className="h-8 w-8 text-gray-500"/>
                             </Button>
                              <Button onClick={() => handleSwipe('right')} variant="outline" size="icon" className="h-20 w-20 rounded-full shadow-lg border-2 border-primary/50 hover:bg-primary/10">
                                 <Heart className="h-10 w-10 text-primary"/>
