@@ -18,9 +18,10 @@ import {
 interface CompletionBannerProps {
   activity: Activity;
   currentUser: User;
+  participantDetails: Activity['participantDetails'];
 }
 
-export function CompletionBanner({ activity, currentUser }: CompletionBannerProps) {
+export function CompletionBanner({ activity, currentUser, participantDetails }: CompletionBannerProps) {
   const { toast } = useToast();
   const [isVoting, setIsVoting] = useState(false);
   const userHasVoted = activity.completionVotes.includes(currentUser.uid);
@@ -40,7 +41,7 @@ export function CompletionBanner({ activity, currentUser }: CompletionBannerProp
 
   const getVoterDetails = () => {
     return activity.completionVotes.map(voterId => {
-      const details = activity.participantDetails[voterId];
+      const details = (participantDetails || {})[voterId];
       return details ? details : { displayName: "Unknown", photoURL: null };
     });
   };

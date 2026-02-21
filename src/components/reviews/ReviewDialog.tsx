@@ -27,9 +27,10 @@ interface ReviewDialogProps {
   activity: Activity;
   currentUser: User;
   onReviewSubmitted: () => void;
+  participantDetails: Activity['participantDetails'];
 }
 
-export function ReviewDialog({ open, onOpenChange, activity, currentUser, onReviewSubmitted }: ReviewDialogProps) {
+export function ReviewDialog({ open, onOpenChange, activity, currentUser, onReviewSubmitted, participantDetails }: ReviewDialogProps) {
   const { toast } = useToast();
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
@@ -37,7 +38,8 @@ export function ReviewDialog({ open, onOpenChange, activity, currentUser, onRevi
 
   const otherParticipants = activity.participantIds
     .filter(id => id !== currentUser.uid)
-    .map(id => activity.participantDetails[id]);
+    .map(id => (participantDetails || {})[id])
+    .filter(p => p);
 
   const handleSubmit = async () => {
     if (rating === 0) {

@@ -242,8 +242,8 @@ export default function ChatRoomPage() {
           )}
         </header>
 
-        {!isDirectMessage && activity && user && activity.status === 'active' && activity.completionVotes && activity.completionVotes.length > 0 && (
-          <CompletionBanner activity={activity} currentUser={user} />
+        {!isDirectMessage && activity && user && chat && activity.status === 'active' && activity.completionVotes && activity.completionVotes.length > 0 && (
+          <CompletionBanner activity={activity} currentUser={user} participantDetails={chat.participantDetails} />
         )}
 
         <div className="flex-1 overflow-y-auto p-4 pb-40">
@@ -313,13 +313,14 @@ export default function ChatRoomPage() {
         />
       )}
       
-      {!isDirectMessage && activity && user && (
+      {!isDirectMessage && activity && user && chat && (
         <ReviewDialog 
             open={showReviewDialog}
             onOpenChange={setShowReviewDialog}
             activity={activity}
             currentUser={user}
             onReviewSubmitted={() => setHasReviewed(true)}
+            participantDetails={chat.participantDetails}
         />
       )}
     </>
