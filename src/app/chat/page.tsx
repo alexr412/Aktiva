@@ -42,7 +42,7 @@ const EmptyState = () => (
 );
 
 export default function ChatPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddFriendDialog, setShowAddFriendDialog] = useState(false);
@@ -66,13 +66,31 @@ export default function ChatPage() {
         ...doc.data(),
       } as Chat));
       
-      userChats.sort((a, b) => {
+      const visibleChats = userChats.filter(chat => {
+          if (!userProfile?.hiddenEntityIds) return true;
+
+          if (chat.activityId && userProfile.hiddenEntityIds.includes(chat.activityId)) {
+              return false;
+          }
+
+          const isDM = !chat.activityId;
+          if (isDM) {
+              const otherUserId = chat.participantIds.find(id => id !== user.uid);
+              if (otherUserId && userProfile.hiddenEntityIds.includes(otherUserId)) {
+                  return false;
+              }
+          }
+          
+          return true;
+      });
+
+      visibleChats.sort((a, b) => {
         const aTime = a.lastMessage?.sentAt?.toMillis() || a.createdAt?.toMillis() || 0;
         const bTime = b.lastMessage?.sentAt?.toMillis() || b.createdAt?.toMillis() || 0;
         return bTime - aTime;
       });
 
-      setChats(userChats);
+      setChats(visibleChats);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching chats: ", error);
@@ -80,7 +98,7 @@ export default function ChatPage() {
     });
 
     return () => unsubscribe();
-  }, [user, authLoading, router]);
+  }, [user, userProfile, authLoading, router]);
 
   const renderContent = () => {
     if (loading || authLoading) {
