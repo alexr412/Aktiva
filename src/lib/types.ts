@@ -153,3 +153,14 @@ export interface Report {
   status: 'pending' | 'resolved';
   createdAt: Timestamp;
 }
+
+export interface Destination {
+    name: string;
+    lat: number;
+    lng: number;
+}
+
+export interface PlanningState {
+    isPlanning: boolean;
+    destination: Destination | null;
+}

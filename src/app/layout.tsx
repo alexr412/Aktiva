@@ -5,6 +5,8 @@ import { BottomNav } from '@/components/bottom-nav';
 import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/contexts/auth-context';
 import { ThemeProvider } from '@/contexts/theme-context';
+import { PlanningModeProvider } from '@/contexts/planning-mode-context';
+import { PlanningModeBanner } from '@/components/common/PlanningModeBanner';
 
 export const metadata: Metadata = {
   title: 'Aktvia',
@@ -26,13 +28,16 @@ export default function RootLayout({
       <body className={cn("font-body antialiased bg-secondary")}>
         <ThemeProvider>
           <AuthProvider>
-            <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
-              <main className="flex-1 relative flex flex-col overflow-hidden">
-                {children}
-              </main>
-              <BottomNav />
-            </div>
-            <Toaster />
+            <PlanningModeProvider>
+              <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
+                <PlanningModeBanner />
+                <main className="flex-1 relative flex flex-col overflow-hidden">
+                  {children}
+                </main>
+                <BottomNav />
+              </div>
+              <Toaster />
+            </PlanningModeProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

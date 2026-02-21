@@ -22,6 +22,8 @@ import { ActivityListItem } from "@/components/aktvia/activity-list-item";
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { usePlanningMode } from '@/contexts/planning-mode-context';
+import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -48,10 +50,12 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [cityName, setCityName] = useState<string>("Locating...");
   const [sortBy, setSortBy] = useState("distance");
+  const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
 
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const router = useRouter();
+  const { planningState } = usePlanningMode();
 
 
   useEffect(() => {
@@ -65,6 +69,12 @@ export default function Home() {
         setCityName("Could not find city");
       }
     };
+
+    if (planningState.isPlanning && planningState.destination) {
+      setUserLocation(planningState.destination);
+      setCityName(planningState.destination.name);
+      return;
+    }
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -97,7 +107,7 @@ export default function Home() {
       setUserLocation({ lat: 53.5451, lng: 8.5746 });
       setCityName("Bremerhaven");
     }
-  }, [toast]);
+  }, [toast, planningState]);
   
   useEffect(() => {
     const fetchAllUpcomingActivities = async () => {
@@ -397,12 +407,12 @@ export default function Home() {
              <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
-                  <div className="flex items-center gap-1 text-muted-foreground mt-1">
+                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1 text-muted-foreground mt-1 hover:text-primary transition-colors">
                     <MapPin className="h-4 w-4" />
                     <span className="text-sm font-medium">
                       {cityName}
                     </span>
-                  </div>
+                  </button>
                 </div>
                 <div className="flex items-center gap-2">
                     <NotificationBell />
@@ -475,6 +485,11 @@ export default function Home() {
         open={!!activityModalPlace}
         onOpenChange={(open) => !open && setActivityModalPlace(null)}
         onCreateActivity={handleCreateActivity}
+      />
+
+      <LocationSearchDialog 
+        open={isLocationSearchOpen}
+        onOpenChange={setIsLocationSearchOpen}
       />
     </>
   );
