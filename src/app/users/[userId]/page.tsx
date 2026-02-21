@@ -3,7 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { fetchUserActivities, joinActivity, getUserProfile, sendFriendRequest, cancelFriendRequest, removeFriend, acceptFriendRequest, declineFriendRequest } from '@/lib/firebase/firestore';
+import {
+  fetchUserActivities,
+  joinActivity,
+  getUserProfile,
+  sendFriendRequest,
+  cancelFriendRequest,
+  removeFriend,
+  acceptFriendRequest,
+  declineFriendRequest,
+  getOrCreateDirectChat,
+} from '@/lib/firebase/firestore';
 import type { Activity, UserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -11,7 +21,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { ArrowLeft, Compass, Loader2, UserPlus, UserMinus, Clock, UserCheck, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Compass,
+  Loader2,
+  UserPlus,
+  UserMinus,
+  Clock,
+  UserCheck,
+  X,
+  MessageSquare,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 
@@ -27,6 +47,7 @@ export default function UserProfilePage() {
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFriendActionLoading, setIsFriendActionLoading] = useState(false);
+    const [isCreatingChat, setIsCreatingChat] = useState(false);
     const [friendshipStatus, setFriendshipStatus] = useState<'loading' | 'is_self' | 'friends' | 'request_sent' | 'request_received' | 'not_friends'>('loading');
 
     useEffect(() => {
@@ -139,6 +160,25 @@ export default function UserProfilePage() {
             setIsFriendActionLoading(false);
         }
     };
+    
+    const handleMessage = async () => {
+        if (!currentUser?.uid) return;
+        setIsCreatingChat(true);
+        try {
+            const chatId = await getOrCreateDirectChat(currentUser.uid, userId);
+            router.push(`/chat/${chatId}`);
+        } catch (error) {
+            console.error("Failed to create or get chat", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not start a chat.',
+            });
+        } finally {
+            setIsCreatingChat(false);
+        }
+    }
+
 
     if (loading) {
         return (
@@ -164,10 +204,16 @@ export default function UserProfilePage() {
         switch (friendshipStatus) {
             case 'friends':
                 return (
-                    <Button onClick={() => handleFriendAction('remove')} disabled={isFriendActionLoading} variant="outline">
-                        {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserMinus className="mr-2 h-4 w-4" />}
-                        Remove Friend
-                    </Button>
+                    <div className="w-full flex gap-4">
+                        <Button onClick={handleMessage} disabled={isCreatingChat} className="flex-1">
+                            {isCreatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
+                            Message
+                        </Button>
+                        <Button onClick={() => handleFriendAction('remove')} disabled={isFriendActionLoading} variant="outline" className="flex-1">
+                            {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserMinus className="mr-2 h-4 w-4" />}
+                            Remove
+                        </Button>
+                    </div>
                 );
             case 'request_sent':
                 return (
@@ -227,8 +273,8 @@ export default function UserProfilePage() {
                         {displayName}
                         {userData.age && `, ${userData.age}`}
                     </h1>
-                    <p className="text-muted-foreground">{userData.email}</p>
-                    {userData.location && <p className="text-sm text-muted-foreground">{userData.location}</p>}
+                    
+                    {userData.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
                 </div>
 
                 <div className="w-full max-w-sm">

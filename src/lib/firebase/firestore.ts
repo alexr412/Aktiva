@@ -485,3 +485,39 @@ export async function markNotificationAsRead(notificationId: string) {
     const notificationRef = doc(db, 'notifications', notificationId);
     await updateDoc(notificationRef, { isRead: true });
 }
+
+export async function getOrCreateDirectChat(user1Id: string, user2Id: string): Promise<string> {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const chatId = [user1Id, user2Id].sort().join('_');
+  const chatRef = doc(db, 'chats', chatId);
+
+  const chatSnap = await getDoc(chatRef);
+
+  if (!chatSnap.exists()) {
+    // Create the chat document if it doesn't exist
+    const user1Profile = await getUserProfile(user1Id);
+    const user2Profile = await getUserProfile(user2Id);
+
+    if (!user1Profile || !user2Profile) {
+        throw new Error("Could not find user profiles to start chat.");
+    }
+
+    await setDoc(chatRef, {
+      participantIds: [user1Id, user2Id],
+      createdAt: serverTimestamp(),
+      participantDetails: {
+        [user1Id]: {
+          displayName: user1Profile.displayName,
+          photoURL: user1Profile.photoURL,
+        },
+        [user2Id]: {
+          displayName: user2Profile.displayName,
+          photoURL: user2Profile.photoURL,
+        }
+      },
+      lastMessage: null,
+    });
+  }
+
+  return chatId;
+}

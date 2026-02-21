@@ -31,9 +31,9 @@ const EmptyState = () => (
     <div className="bg-primary/10 p-4 rounded-full">
       <Users className="h-10 w-10 text-primary" />
     </div>
-    <h2 className="text-xl font-semibold">No Activities Yet</h2>
+    <h2 className="text-xl font-semibold">No Chats Yet</h2>
     <p className="text-muted-foreground">
-      Looks like you haven't joined or created any activities.
+      Join an activity or add a friend to start chatting.
     </p>
     <Button asChild>
       <Link href="/">Find an Activity</Link>
@@ -99,36 +99,55 @@ export default function ChatPage() {
 
     return (
       <ul className="divide-y divide-border">
-        {chats.map((chat) => (
-          <li key={chat.id}>
-            <Link href={`/chat/${chat.id}`} className="block p-4 transition-colors hover:bg-muted/50">
-              <div className="flex items-start gap-4">
-                <Avatar className="h-12 w-12">
-                   <AvatarFallback className="bg-primary/10 text-xl font-bold text-primary">
-                    {chat.placeName?.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <div className="flex justify-between items-center mb-0.5">
-                    <p className="truncate font-semibold text-base">{chat.placeName}</p>
-                     {chat.lastMessage?.sentAt && (
-                      <time className="shrink-0 text-xs text-muted-foreground">
-                        {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: true, includeSeconds: true }).replace('about ', '')}
-                      </time>
-                    )}
+        {chats.map((chat) => {
+          const isDM = !chat.activityId;
+          let otherUser: { displayName: string | null; photoURL: string | null; } | undefined;
+          let chatName = chat.placeName;
+          let avatarUrl: string | undefined;
+          let avatarFallback = chat.placeName?.charAt(0).toUpperCase();
+
+          if (isDM && user) {
+              const otherUserId = chat.participantIds.find(id => id !== user.uid);
+              if (otherUserId && chat.participantDetails) {
+                  otherUser = chat.participantDetails[otherUserId];
+                  chatName = otherUser?.displayName || 'Chat';
+                  avatarUrl = otherUser?.photoURL || undefined;
+                  avatarFallback = otherUser?.displayName?.charAt(0).toUpperCase();
+              }
+          }
+
+          return (
+            <li key={chat.id}>
+              <Link href={`/chat/${chat.id}`} className="block p-4 transition-colors hover:bg-muted/50">
+                <div className="flex items-start gap-4">
+                  <Avatar className="h-12 w-12">
+                    {avatarUrl && <AvatarImage src={avatarUrl} />}
+                    <AvatarFallback className={isDM ? '' : 'bg-primary/10 text-xl font-bold text-primary'}>
+                      {avatarFallback}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex justify-between items-center mb-0.5">
+                      <p className="truncate font-semibold text-base">{chatName}</p>
+                       {chat.lastMessage?.sentAt && (
+                        <time className="shrink-0 text-xs text-muted-foreground">
+                          {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: true, includeSeconds: true }).replace('about ', '')}
+                        </time>
+                      )}
+                    </div>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {chat.lastMessage ? (
+                        <>
+                          <span className="font-medium">{chat.lastMessage.senderName?.split(' ')[0]}:</span> {chat.lastMessage.text}
+                        </>
+                      ) : 'No messages yet.'}
+                    </p>
                   </div>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {chat.lastMessage ? (
-                      <>
-                        <span className="font-medium">{chat.lastMessage.senderName?.split(' ')[0]}:</span> {chat.lastMessage.text}
-                      </>
-                    ) : 'No messages yet.'}
-                  </p>
                 </div>
-              </div>
-            </Link>
-          </li>
-        ))}
+              </Link>
+            </li>
+          )
+        })}
       </ul>
     );
   };

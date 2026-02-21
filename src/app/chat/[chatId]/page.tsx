@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/client';
 import { sendMessage, checkIfUserReviewed } from '@/lib/firebase/firestore';
-import type { Message, Chat, Activity } from '@/lib/types';
+import type { Message, Chat, Activity, UserProfile } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
 
@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChatInfoSheet } from '@/components/aktvia/chat-info-sheet';
-import { ArrowLeft, Send, MoreVertical, Star } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical } from 'lucide-react';
 import { CompletionBanner } from '@/components/aktvia/CompletionBanner';
 import { ReviewDialog } from '@/components/reviews/ReviewDialog';
 
@@ -99,6 +99,9 @@ export default function ChatRoomPage() {
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(true); // Default to true to prevent flash
   
+  const [otherUser, setOtherUser] = useState<Partial<UserProfile> | null>(null);
+  const [isDirectMessage, setIsDirectMessage] = useState(false);
+  
   const router = useRouter();
   const params = useParams();
   const chatId = params.chatId as string;
@@ -114,40 +117,47 @@ export default function ChatRoomPage() {
 
     let activityUnsubscribe: (() => void) | undefined;
 
-    // Listen to Chat document
     const chatUnsubscribe = onSnapshot(doc(db, 'chats', chatId), (chatDoc) => {
       if (chatDoc.exists()) {
         const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
         setChat(chatData);
 
-        // Clean up previous activity listener if it exists
-        if (activityUnsubscribe) {
-            activityUnsubscribe();
+        const isDM = !chatData.activityId;
+        setIsDirectMessage(isDM);
+
+        if (isDM) {
+          // It's a Direct Message
+          const otherUserId = chatData.participantIds.find(id => id !== user.uid);
+          if (otherUserId && chatData.participantDetails) {
+            setOtherUser(chatData.participantDetails[otherUserId]);
+          }
+          setActivity(null);
+          if (activityUnsubscribe) activityUnsubscribe();
+        } else {
+          // It's an Activity Chat
+          setOtherUser(null);
+          if (activityUnsubscribe) activityUnsubscribe();
+          
+          activityUnsubscribe = onSnapshot(doc(db, 'activities', chatData.activityId!), (activityDoc) => {
+              if (activityDoc.exists()) {
+                  const activityData = { id: activityDoc.id, ...activityDoc.data() } as Activity;
+                  setActivity(activityData);
+
+                  if (activityData.status === 'completed' && activityData.id) {
+                      checkIfUserReviewed(activityData.id, user.uid).then(setHasReviewed);
+                  }
+
+              } else {
+                setActivity(null);
+              }
+          });
         }
-
-        // Once we have the chat, listen to the associated Activity document
-        activityUnsubscribe = onSnapshot(doc(db, 'activities', chatData.activityId), (activityDoc) => {
-            if (activityDoc.exists()) {
-                const activityData = { id: activityDoc.id, ...activityDoc.data() } as Activity;
-                setActivity(activityData);
-
-                // Check if user has reviewed if activity is completed
-                if (activityData.status === 'completed' && activityData.id) {
-                    checkIfUserReviewed(activityData.id, user.uid).then(setHasReviewed);
-                }
-
-            } else {
-              setActivity(null);
-            }
-        });
-
       } else {
         toast({ title: "Chat not found", description: "This chat may have been deleted.", variant: 'destructive'});
         router.push('/chat');
       }
     });
 
-    // Listen to Messages subcollection
     const messagesQuery = query(collection(db, 'chats', chatId, 'messages'), orderBy('sentAt', 'asc'));
     const messagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
       const newMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Message));
@@ -215,16 +225,24 @@ export default function ChatRoomPage() {
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()}>
             <ArrowLeft />
           </Button>
-          <div className="flex-1 truncate">
-            <h2 className="font-bold truncate">{chat?.placeName}</h2>
+          <div className="flex items-center gap-3 flex-1 truncate">
+            {isDirectMessage && otherUser && (
+                <Avatar className="h-9 w-9">
+                    <AvatarImage src={otherUser.photoURL || undefined} />
+                    <AvatarFallback>{otherUser.displayName?.charAt(0)}</AvatarFallback>
+                </Avatar>
+            )}
+            <h2 className="font-bold truncate">{isDirectMessage ? otherUser?.displayName : chat?.placeName}</h2>
           </div>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setInfoSheetOpen(true)}>
-            <MoreVertical />
-            <span className='sr-only'>Chat Info</span>
-          </Button>
+          {!isDirectMessage && (
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setInfoSheetOpen(true)}>
+                <MoreVertical />
+                <span className='sr-only'>Chat Info</span>
+              </Button>
+          )}
         </header>
 
-        {activity && user && activity.status === 'active' && activity.completionVotes && activity.completionVotes.length > 0 && (
+        {!isDirectMessage && activity && user && activity.status === 'active' && activity.completionVotes && activity.completionVotes.length > 0 && (
           <CompletionBanner activity={activity} currentUser={user} />
         )}
 
@@ -286,14 +304,16 @@ export default function ChatRoomPage() {
         </div>
       </footer>
 
-      <ChatInfoSheet
-        chat={chat}
-        activity={activity}
-        open={isInfoSheetOpen}
-        onOpenChange={setInfoSheetOpen}
-      />
+      {!isDirectMessage && (
+        <ChatInfoSheet
+            chat={chat}
+            activity={activity}
+            open={isInfoSheetOpen}
+            onOpenChange={setInfoSheetOpen}
+        />
+      )}
       
-      {activity && user && (
+      {!isDirectMessage && activity && user && (
         <ReviewDialog 
             open={showReviewDialog}
             onOpenChange={setShowReviewDialog}

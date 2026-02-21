@@ -54,8 +54,8 @@ export interface Message {
 
 export interface Chat {
     id: string;
-    activityId: string;
-    placeName: string;
+    activityId?: string;
+    placeName?: string;
     creatorId?: string;
     participantIds: string[];
     participantDetails: {
