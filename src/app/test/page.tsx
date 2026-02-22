@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
 import { Loader2 } from 'lucide-react';
 import type { Place } from '@/lib/types';
+import { PlaceCard } from '@/components/aktvia/place-card';
 
 
 const GEOAPIFY_CATEGORIES = [
@@ -54,8 +55,8 @@ export default function TestPage() {
   return (
     <div className="p-6 flex flex-col gap-6 h-dvh">
       <div>
-        <h1 className="text-2xl font-bold">Geoapify Filter Matrix</h1>
-        <p className="text-muted-foreground">Select categories and fetch the API to see the raw JSON response.</p>
+        <h1 className="text-2xl font-bold">Geoapify Filter Visualisierung</h1>
+        <p className="text-muted-foreground">Wählen Sie Kategorien aus, um die Karten-Darstellung der API-Antwort zu testen.</p>
       </div>
       
       <div className="flex flex-wrap gap-2">
@@ -71,7 +72,7 @@ export default function TestPage() {
         ))}
       </div>
 
-       <div className="flex flex-col gap-4 border-t pt-4">
+       <div className="flex flex-col gap-4 border-t pt-4 flex-1 min-h-0">
         <div className="flex items-center gap-4">
            <Button 
             onClick={fetchTestResults}
@@ -79,7 +80,7 @@ export default function TestPage() {
             className="w-48"
           >
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isLoading ? 'Fetching...' : 'Fetch API'}
+            {isLoading ? 'Lade...' : 'Karten generieren'}
           </Button>
           <Card className="flex-1">
             <CardContent className="p-2">
@@ -92,15 +93,36 @@ export default function TestPage() {
 
         <Card className="flex-1 overflow-hidden flex flex-col">
             <CardHeader>
-                <CardTitle className="text-base">JSON Response</CardTitle>
+                <CardTitle className="text-base">Gefilterte Resultate</CardTitle>
                 <CardDescription>
-                    {results ? `${results.length} entities found` : 'Waiting for data...'}
+                    {results ? `${results.length} Entitäten gefunden` : 'Warten auf Datensatz...'}
                 </CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 overflow-auto bg-muted/50 rounded-b-lg">
-                <pre className="text-xs whitespace-pre-wrap">
-                    {results ? JSON.stringify(results, null, 2) : 'Select categories and click "Fetch API" to see results.'}
-                </pre>
+            <CardContent className="flex-1 overflow-auto bg-muted/50 rounded-b-lg p-4">
+                {isLoading ? (
+                     <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                ) : results && results.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {results.map((place) => (
+                           <PlaceCard 
+                                key={place.id}
+                                place={place}
+                                onClick={() => {}}
+                                onAddActivity={() => {}}
+                           />
+                        ))}
+                    </div>
+                ) : results ? (
+                     <div className="flex items-center justify-center h-full">
+                        <p className="text-muted-foreground">Keine Ergebnisse für diese Filter.</p>
+                    </div>
+                ) : (
+                     <div className="flex items-center justify-center h-full">
+                        <p className="text-muted-foreground">Kategorien auswählen und auf "Karten generieren" klicken, um Ergebnisse anzuzeigen.</p>
+                    </div>
+                )}
             </CardContent>
         </Card>
       </div>
