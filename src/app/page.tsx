@@ -5,7 +5,6 @@ import { useToast } from '@/hooks/use-toast';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { PlaceCard } from '@/components/aktvia/place-card';
-import { fetchNearbyPlaces } from '@/lib/geoapify';
 import type { Place, Activity, GeoapifyFeature } from '@/lib/types';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw } from 'lucide-react';
@@ -70,10 +69,15 @@ export default function Home() {
     if (previousPageData && !previousPageData.features?.length) return null;
 
     const categoriesToFetch = activeCategory.includes('all') ? [] : activeCategory;
-    const categoryList = categoriesToFetch.length > 0 ? categoriesToFetch.join(',') : 'commercial,catering,entertainment,leisure,tourism,accommodation,sport,natural';
     const offset = pageIndex * PLACES_PER_PAGE;
     
-    return `https://api.geoapify.com/v2/places?filter=circle:${userLocation.lng},${userLocation.lat},5000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}&categories=${categoryList}`;
+    let url = `https://api.geoapify.com/v2/places?filter=circle:${userLocation.lng},${userLocation.lat},5000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+
+    if (categoriesToFetch.length > 0) {
+      url += `&categories=${categoriesToFetch.join(',')}`;
+    }
+    
+    return url;
   }
 
   const { data, error, size, setSize, isLoading, isValidating } = useSWRInfinite(getKey, fetcher, {
