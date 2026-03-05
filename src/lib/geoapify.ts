@@ -10,18 +10,22 @@ export async function fetchNearbyPlaces(
   limit: number,
   offset: number
 ): Promise<Place[]> {
-  let url = `https://api.geoapify.com/v2/places?filter=circle:${lon},${lat},5000&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
-
-  if (categories.length > 0) {
-    url += `&categories=${categories.join(',')}`;
+  // Strikte Evaluierung des Kategorie-Strings gemäß System-Anweisung
+  let targetCategories: string[];
+  if (categories.length === 0 || categories.includes('all')) {
+    targetCategories = ["tourism", "leisure", "entertainment", "sport", "heritage", "natural"];
+  } else {
+    targetCategories = categories;
   }
+
+  // Erzwungene Injektion in den Request-String
+  let url = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},5000&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
   try {
     const response = await fetch(url);
     if (!response.ok) {
       const errorText = await response.text();
       // Using console.warn to avoid showing a scary error overlay in development.
-      // This is likely an API key issue (invalid or rate-limited).
       console.warn(`Geoapify API request failed: ${response.status}. ${errorText}`);
       return [];
     }
@@ -47,7 +51,6 @@ export async function fetchNearbyPlaces(
         id: props.place_id,
         name: props.name || props.address_line1,
         address: props.address_line2,
-        // Geoapify can return a single category as a string, so we ensure it's always an array.
         categories: Array.isArray(props.categories) ? props.categories : [props.categories],
         lat: props.lat,
         lon: props.lon,

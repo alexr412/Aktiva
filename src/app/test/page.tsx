@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import { fetchNearbyPlaces } from '@/lib/geoapify';
 import { Loader2 } from 'lucide-react';
 import type { Place } from '@/lib/types';
@@ -32,7 +31,6 @@ export default function TestPage() {
   };
 
   const fetchTestResults = async () => {
-    if (activeFilters.length === 0) return;
     setIsLoading(true);
     setResults(null);
     
@@ -41,6 +39,7 @@ export default function TestPage() {
       const lat = 53.5395845;
       const lng = 8.5809341;
 
+      // Die fetchNearbyPlaces Funktion sorgt nun intern für die korrekte Kategorien-Injektion
       const data = await fetchNearbyPlaces(lat, lng, activeFilters, 10, 0);
       setResults(data);
     } catch (error) {
@@ -76,7 +75,7 @@ export default function TestPage() {
         <div className="flex items-center gap-4">
            <Button 
             onClick={fetchTestResults}
-            disabled={isLoading || activeFilters.length === 0}
+            disabled={isLoading}
             className="w-48"
           >
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -85,7 +84,7 @@ export default function TestPage() {
           <Card className="flex-1">
             <CardContent className="p-2">
                 <code className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">categories=</span>{activeFilters.length > 0 ? activeFilters.join(',') : '(none)'}
+                  <span className="font-semibold text-foreground">categories=</span>{activeFilters.length > 0 ? activeFilters.join(',') : '(All Fallback)'}
                 </code>
             </CardContent>
           </Card>

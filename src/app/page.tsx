@@ -66,17 +66,21 @@ export default function Home() {
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (isCommunityCategory || isFavoritesCategory) return null;
     if (!userLocation) return null;
-    if (previousPageData && !previousPageData.features?.length) return null;
+    if (previousPageData && (!previousPageData.features || previousPageData.features.length === 0)) return null;
 
-    const categoriesToFetch = activeCategory.includes('all') ? [] : activeCategory;
+    // Strikte Evaluierung des Kategorie-Strings gemäß System-Anweisung
+    let categoriesToFetch: string[];
+    if (activeCategory.includes('all') || activeCategory.length === 0) {
+      categoriesToFetch = ["tourism", "leisure", "entertainment", "sport", "heritage", "natural"];
+    } else {
+      categoriesToFetch = activeCategory;
+    }
+
     const offset = pageIndex * PLACES_PER_PAGE;
     
-    let url = `https://api.geoapify.com/v2/places?filter=circle:${userLocation.lng},${userLocation.lat},5000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+    // Erzwungene Injektion in den Request-String
+    let url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},5000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
-    if (categoriesToFetch.length > 0) {
-      url += `&categories=${categoriesToFetch.join(',')}`;
-    }
-    
     return url;
   }
 
