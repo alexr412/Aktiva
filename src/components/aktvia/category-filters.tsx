@@ -8,7 +8,6 @@ import {
   Coffee,
   TreePine,
   ShoppingBag,
-  Landmark,
   Film,
   Sparkles,
   Dumbbell,
@@ -24,6 +23,7 @@ import {
   ShoppingCart,
   Bird,
   Library,
+  Loader2,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -78,48 +78,71 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  
+  // localActiveTabs hält den persistenten Zustand für die horizontale Scroll-Liste
   const [localActiveTabs, setLocalActiveTabs] = useState<string[]>([]);
+  
+  // draftTabs hält den temporären Zustand innerhalb des Modals (Draft-Pattern)
+  const [draftTabs, setDraftTabs] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Synchronisiere lokalen Zustand, wenn das Profil geladen wird oder das Modal öffnet
+  // Synchronisiere lokalen Zustand mit dem Nutzerprofil
   useEffect(() => {
     if (userProfile?.activeTabs) {
       setLocalActiveTabs(userProfile.activeTabs);
     } else {
       setLocalActiveTabs(['Gastronomy', 'Nature']);
     }
-  }, [userProfile, isConfigOpen]);
+  }, [userProfile]);
+
+  // Initialisiere Draft-State beim Öffnen des Modals
+  useEffect(() => {
+    if (isConfigOpen) {
+      setDraftTabs(localActiveTabs);
+    }
+  }, [isConfigOpen, localActiveTabs]);
 
   const displayedTabs = [
     ...coreTabs,
     ...availableTabs.filter(tab => localActiveTabs.includes(tab.id))
   ];
 
-  const handleToggleTab = async (tabId: string) => {
+  const toggleDraftTab = (tabId: string) => {
+    setDraftTabs(prev => 
+      prev.includes(tabId) 
+        ? prev.filter(id => id !== tabId) 
+        : [...prev, tabId]
+    );
+  };
+
+  const saveConfiguration = async () => {
     if (!user || !db) return;
-    
-    // 1. Berechne neuen Zustand
-    const isSelected = localActiveTabs.includes(tabId);
-    const updatedTabs = isSelected 
-      ? localActiveTabs.filter(id => id !== tabId) 
-      : [...localActiveTabs, tabId];
+    setIsSaving(true);
 
-    // 2. Synchrone UI-Mutation (Optimistic Update)
-    const previousTabs = [...localActiveTabs];
-    setLocalActiveTabs(updatedTabs);
-
-    // 3. Asynchrone Datenbank-Mutation
     try {
+      // 1. Asynchroner Schreibzugriff (Persistenz)
       const userRef = doc(db, "users", user.uid);
-      await updateDoc(userRef, { activeTabs: updatedTabs });
+      await updateDoc(userRef, { activeTabs: draftTabs });
+
+      // 2. State-Synchronisation für die UI
+      setLocalActiveTabs(draftTabs);
+      
+      // 3. Schließen des Modals
+      setIsConfigOpen(false);
+      
+      toast({
+        title: 'Gespeichert',
+        description: 'Deine Kategorien wurden aktualisiert.',
+      });
     } catch (error) {
-      console.error("Tab mutation failed:", error);
+      console.error("Tab configuration save failed:", error);
       toast({
         variant: 'destructive',
         title: 'Fehler',
         description: 'Änderungen konnten nicht gespeichert werden.',
       });
-      // Rollback bei Fehler
-      setLocalActiveTabs(previousTabs);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -163,11 +186,12 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
           
           <div className="grid grid-cols-1 gap-2 py-4 max-h-[60vh] overflow-y-auto pr-2">
             {availableTabs.map((tab) => {
-              const isActive = localActiveTabs.includes(tab.id);
+              const isActive = draftTabs.includes(tab.id);
               return (
                 <button
                   key={tab.id}
-                  onClick={() => handleToggleTab(tab.id)}
+                  type="button"
+                  onClick={() => toggleDraftTab(tab.id)}
                   className={`flex items-center justify-between p-4 rounded-xl border transition-all text-left w-full ${
                     isActive 
                       ? 'bg-primary/10 border-primary text-primary' 
@@ -185,8 +209,20 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
           </div>
 
           <DialogFooter>
-            <Button onClick={() => setIsConfigOpen(false)} className="w-full h-12 text-base font-semibold rounded-xl">
-              Fertig
+            <Button 
+              type="button" 
+              onClick={saveConfiguration} 
+              disabled={isSaving}
+              className="w-full h-12 text-base font-semibold rounded-xl"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Speichere...
+                </>
+              ) : (
+                'Fertig'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
