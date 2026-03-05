@@ -129,6 +129,7 @@ export interface UserProfile {
   onboardingCompleted: boolean;
   friendCode?: string;
   hiddenEntityIds?: string[];
+  activeTabs?: string[];
 }
 
 export interface Review {
