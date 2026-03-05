@@ -38,7 +38,8 @@ const CardSkeleton = () => (
     </div>
 );
 
-const PLACES_PER_PAGE = 20;
+// Erhöhtes Limit auf 300 gemäß System-Anweisung zur Gewährleistung der Datentiefe
+const PLACES_PER_PAGE = 300;
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function Home() {
@@ -68,17 +69,17 @@ export default function Home() {
     if (!userLocation) return null;
     if (previousPageData && (!previousPageData.features || previousPageData.features.length === 0)) return null;
 
-    // Strikte Evaluierung des Kategorie-Strings gemäß System-Anweisung
+    // 1. Strikte Evaluierung des Kategorie-Strings gemäß System-Anweisung (Fokus auf POIs)
     let categoriesToFetch: string[];
     if (activeCategory.includes('all') || activeCategory.length === 0) {
-      categoriesToFetch = ["tourism", "leisure", "entertainment", "sport", "heritage", "natural"];
+      categoriesToFetch = ["tourism", "entertainment", "heritage"];
     } else {
       categoriesToFetch = activeCategory;
     }
 
     const offset = pageIndex * PLACES_PER_PAGE;
     
-    // Erzwungene Injektion in den Request-String
+    // 2. Erzwungene Injektion von conditions=named und Limit 300
     let url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},5000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
     return url;

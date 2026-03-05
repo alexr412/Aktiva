@@ -10,28 +10,27 @@ export async function fetchNearbyPlaces(
   limit: number,
   offset: number
 ): Promise<Place[]> {
-  // Strikte Evaluierung des Kategorie-Strings gemäß System-Anweisung
+  // 1. Zuweisung fokussierter POI-Kategorien für den All-Tab gemäß System-Anweisung
   let targetCategories: string[];
   if (categories.length === 0 || categories.includes('all')) {
-    targetCategories = ["tourism", "leisure", "entertainment", "sport", "heritage", "natural"];
+    targetCategories = ["tourism", "entertainment", "heritage"];
   } else {
     targetCategories = categories;
   }
 
-  // Erzwungene Injektion in den Request-String
+  // 2. Erzwungene Injektion von conditions=named zur serverseitigen Filterung namenloser Orte
+  // Limit wird hier dynamisch übergeben, in der Discover-Ansicht auf 300 erhöht
   let url = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},5000&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
   try {
     const response = await fetch(url);
     if (!response.ok) {
       const errorText = await response.text();
-      // Using console.warn to avoid showing a scary error overlay in development.
       console.warn(`Geoapify API request failed: ${response.status}. ${errorText}`);
       return [];
     }
     const data = await response.json();
 
-    // Guard against a response that doesn't contain the features array.
     if (!data.features) {
       console.warn("Geoapify response was successful but contained no 'features' array.");
       return [];
@@ -56,7 +55,7 @@ export async function fetchNearbyPlaces(
         lon: props.lon,
         rating: rating,
         distance: props.distance,
-      };
+      } as Place;
     });
   } catch (error) {
     console.error('An unexpected error occurred while fetching places from Geoapify:', error);
