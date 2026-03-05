@@ -1,131 +1,123 @@
 'use client';
 
 import { useState } from 'react';
+import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { fetchNearbyPlaces } from '@/lib/geoapify';
-import { Loader2 } from 'lucide-react';
-import type { Place } from '@/lib/types';
-import { PlaceCard } from '@/components/aktvia/place-card';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2, Search, Activity } from 'lucide-react';
 
-
-const GEOAPIFY_CATEGORIES = [
-  "accommodation", "adult", "airport", "building", "catering", 
-  "childcare", "commercial", "education", "emergency", "entertainment", 
-  "healthcare", "heritage", "leisure", "natural", "office", 
-  "parking", "public_transport", "religion", "rental", "service", 
-  "sport", "tourism"
-];
+// Statische Koordinaten (Bremerhaven) für reproduzierbare Tests
+const LAT = 53.5395845;
+const LNG = 8.5809341;
 
 export default function TestPage() {
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [results, setResults] = useState<Place[] | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [testCategory, setTestCategory] = useState<string>("commercial,catering");
+  const [results, setResults] = useState<any[]>([]);
+  const [isFetching, setIsFetching] = useState<boolean>(false);
 
-  const toggleCategory = (category: string) => {
-    setActiveFilters(prev => 
-      prev.includes(category) 
-        ? prev.filter(c => c !== category) 
-        : [...prev, category]
-    );
-  };
-
-  const fetchTestResults = async () => {
-    setIsLoading(true);
-    setResults(null);
+  const executeTestQuery = async () => {
+    if (!testCategory.trim()) return;
+    setIsFetching(true);
     
     try {
-      // Statische Koordinaten (Bremerhaven) für isolierte Evaluierung
-      const lat = 53.5395845;
-      const lng = 8.5809341;
-
-      // Die fetchNearbyPlaces Funktion sorgt nun intern für die korrekte Kategorien-Injektion
-      const data = await fetchNearbyPlaces(lat, lng, 5000, activeFilters, 10, 0);
-      setResults(data);
+      // Direkte URL-Konstruktion zur Umgehung interpretierender Logik
+      const url = `https://api.geoapify.com/v2/places?categories=${testCategory}&filter=circle:${LNG},${LAT},5000&limit=100&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+      
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      
+      const data = await response.json();
+      setResults(data.features || []);
     } catch (error) {
-      console.error("Fetch-Fehler:", error);
+      console.error("Test fetch failed:", error);
       setResults([]);
     } finally {
-      setIsLoading(false);
+      setIsFetching(false);
     }
   };
 
-
   return (
-    <div className="p-6 flex flex-col gap-6 h-dvh">
-      <div>
-        <h1 className="text-2xl font-bold">Geoapify Filter Visualisierung</h1>
-        <p className="text-muted-foreground">Wählen Sie Kategorien aus, um die Karten-Darstellung der API-Antwort zu testen.</p>
-      </div>
-      
-      <div className="flex flex-wrap gap-2">
-        {GEOAPIFY_CATEGORIES.map(category => (
-          <Button
-            key={category}
-            variant={activeFilters.includes(category) ? 'default' : 'outline'}
-            onClick={() => toggleCategory(category)}
-            className="rounded-full"
-          >
-            {category}
-          </Button>
-        ))}
-      </div>
+    <div className="flex flex-col h-dvh bg-background">
+      <header className="p-6 border-b shrink-0 bg-card">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Activity className="text-primary" />
+          Geoapify Category Diagnostic
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Echtzeit-Analyse von Kategorie-Strings und Sub-Kategorien. (Base: Bremerhaven)
+        </p>
+      </header>
 
-       <div className="flex flex-col gap-4 border-t pt-4 flex-1 min-h-0">
-        <div className="flex items-center gap-4">
-           <Button 
-            onClick={fetchTestResults}
-            disabled={isLoading}
-            className="w-48"
+      <div className="flex flex-col gap-4 p-6 border-b bg-muted/30 shrink-0">
+        <div className="flex gap-2">
+          <Input 
+            type="text" 
+            value={testCategory} 
+            onChange={(e) => setTestCategory(e.target.value)} 
+            placeholder="z.B. tourism,leisure.park,amenity.toilet"
+            className="flex-1 font-mono text-sm bg-background h-12"
+          />
+          <Button 
+            onClick={executeTestQuery} 
+            disabled={isFetching || !testCategory.trim()}
+            className="h-12 px-6 font-bold"
           >
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isLoading ? 'Lade...' : 'Karten generieren'}
+            {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+            {isFetching ? "Executing..." : "Run Test"}
           </Button>
-          <Card className="flex-1">
-            <CardContent className="p-2">
-                <code className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">categories=</span>{activeFilters.length > 0 ? activeFilters.join(',') : '(All Fallback)'}
-                </code>
-            </CardContent>
-          </Card>
         </div>
-
-        <Card className="flex-1 overflow-hidden flex flex-col">
-            <CardHeader>
-                <CardTitle className="text-base">Gefilterte Resultate</CardTitle>
-                <CardDescription>
-                    {results ? `${results.length} Entitäten gefunden` : 'Warten auf Datensatz...'}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-auto bg-muted/50 rounded-b-lg p-4">
-                {isLoading ? (
-                     <div className="flex items-center justify-center h-full">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                ) : results && results.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {results.map((place) => (
-                           <PlaceCard 
-                                key={place.id}
-                                place={place}
-                                onClick={() => {}}
-                                onAddActivity={() => {}}
-                           />
-                        ))}
-                    </div>
-                ) : results ? (
-                     <div className="flex items-center justify-center h-full">
-                        <p className="text-muted-foreground">Keine Ergebnisse für diese Filter.</p>
-                    </div>
-                ) : (
-                     <div className="flex items-center justify-center h-full">
-                        <p className="text-muted-foreground">Kategorien auswählen und auf "Karten generieren" klicken, um Ergebnisse anzuzeigen.</p>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+        <div className="flex justify-between items-center px-1">
+          <code className="text-xs text-muted-foreground break-all">
+            URL: ...?categories=<span className="text-primary font-bold">{testCategory || "null"}</span>
+          </code>
+          <div className="text-sm font-semibold whitespace-nowrap">
+            Results: <span className="text-primary">{results.length}</span>
+          </div>
+        </div>
       </div>
 
+      <main className="flex-1 overflow-y-auto p-6 bg-secondary/20">
+        <div className="max-w-4xl mx-auto space-y-3 pb-20">
+          {results.length > 0 ? (
+            results.map((feature, index) => (
+              <Card key={index} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start gap-4">
+                    <div>
+                      <h3 className="font-bold text-base">{feature.properties.name || "UNNAMED ENTITY"}</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">{feature.properties.address_line2}</p>
+                    </div>
+                    <div className="text-[10px] bg-muted px-2 py-1 rounded font-mono">
+                      {feature.properties.place_id.slice(0, 8)}...
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {feature.properties.categories?.map((cat: string) => (
+                      <span 
+                        key={cat} 
+                        className="font-mono text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full"
+                      >
+                        {cat}
+                      </span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+              <div className="bg-muted p-4 rounded-full">
+                <Search className="h-10 w-10 text-muted-foreground/50" />
+              </div>
+              <div>
+                <p className="text-muted-foreground">Warte auf Datensatz...</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Gib einen Kategorie-String ein und klicke auf "Run Test".</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
