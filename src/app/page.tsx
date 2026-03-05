@@ -54,6 +54,7 @@ export default function Home() {
   const [cityName, setCityName] = useState<string>("Locating...");
   const [sortBy, setSortBy] = useState("distance");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
+  const [searchRadiusKm, setSearchRadiusKm] = useState<number>(5);
 
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
@@ -78,9 +79,10 @@ export default function Home() {
     }
 
     const offset = pageIndex * PLACES_PER_PAGE;
+    const radiusMeters = searchRadiusKm * 1000;
     
     // 2. Erzwungene Injektion von conditions=named und Limit 300
-    let url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},5000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+    let url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
     return url;
   }
@@ -133,6 +135,7 @@ export default function Home() {
     setActiveCategory(['all']);
     setSearchQuery('');
     setSortBy('distance');
+    setSearchRadiusKm(5);
   };
 
   useEffect(() => {
@@ -581,6 +584,24 @@ export default function Home() {
                 </Select>
               )}
             </div>
+            {/* Radius Slider UI */}
+            {!isCommunityCategory && !isFavoritesCategory && (
+              <div className="flex flex-col gap-2 mb-2">
+                <div className="flex justify-between items-center text-sm font-medium text-muted-foreground px-1">
+                  <span>Search Radius</span>
+                  <span className="text-primary font-bold">{searchRadiusKm} km</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="50"
+                  step="1"
+                  value={searchRadiusKm}
+                  onChange={(e) => setSearchRadiusKm(Number(e.target.value))}
+                  className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+              </div>
+            )}
           </div>
         </header>
 

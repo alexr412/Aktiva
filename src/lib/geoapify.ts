@@ -6,6 +6,7 @@ import type { Place, GeoapifyFeature } from '@/lib/types';
 export async function fetchNearbyPlaces(
   lat: number,
   lon: number,
+  radiusMeters: number,
   categories: string[],
   limit: number,
   offset: number
@@ -20,7 +21,7 @@ export async function fetchNearbyPlaces(
 
   // 2. Erzwungene Injektion von conditions=named zur serverseitigen Filterung namenloser Orte
   // Limit wird hier dynamisch übergeben, in der Discover-Ansicht auf 300 erhöht
-  let url = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},5000&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+  let url = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
   try {
     const response = await fetch(url);

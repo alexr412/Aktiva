@@ -40,7 +40,7 @@ export default function TestPage() {
       const lng = 8.5809341;
 
       // Die fetchNearbyPlaces Funktion sorgt nun intern für die korrekte Kategorien-Injektion
-      const data = await fetchNearbyPlaces(lat, lng, activeFilters, 10, 0);
+      const data = await fetchNearbyPlaces(lat, lng, 5000, activeFilters, 10, 0);
       setResults(data);
     } catch (error) {
       console.error("Fetch-Fehler:", error);
