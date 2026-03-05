@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   UtensilsCrossed,
@@ -16,6 +17,13 @@ import {
   Bookmark,
   Plus,
   Check,
+  Utensils,
+  Waves,
+  Beer,
+  Ticket,
+  ShoppingCart,
+  Bird,
+  Library,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -27,7 +35,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/use-auth';
-import { updateUserProfile } from '@/lib/firebase/firestore';
+import { db } from '@/lib/firebase/client';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 export type CategoryTab = {
@@ -41,17 +50,23 @@ export type CategoryTab = {
 export const coreTabs: CategoryTab[] = [
   { id: "Favorites", label: "Favoriten", query: ["favorites"], icon: Bookmark, isSystem: true },
   { id: "All", label: "Alle", query: ["tourism", "entertainment", "heritage"], icon: Layers, isSystem: true },
-  { id: "Highlights", label: "Highlights", query: ["tourism.attraction", "entertainment.cinema", "heritage.unesco"], icon: Sparkles, isSystem: true },
+  { id: "Highlights", label: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true },
   { id: "Community", label: "Community", query: ["user_event"], icon: Users, isSystem: true },
 ];
 
 export const availableTabs: CategoryTab[] = [
-  { id: "Gastronomy", label: "Gastro", query: ["catering.restaurant", "catering.cafe", "catering.bar"], icon: UtensilsCrossed },
-  { id: "Nature", label: "Natur & Parks", query: ["leisure.park", "natural.forest", "leisure.garden"], icon: TreePine },
-  { id: "Sport", label: "Sport", query: ["sport.sports_centre", "sport.stadium", "sport.swimming_pool"], icon: Dumbbell },
-  { id: "Cinemas", label: "Kinos", query: ["entertainment.cinema", "entertainment.culture"], icon: Film },
-  { id: "Shopping", label: "Shopping", query: ["commercial.shopping_mall", "commercial.clothing", "commercial.books"], icon: ShoppingBag },
-  { id: "Attractions", label: "Attraktionen", query: ["tourism.attraction", "tourism.sights", "heritage"], icon: Landmark },
+  { id: "Gastronomy", label: "Gastro", query: ["catering.restaurant", "catering.cafe"], icon: UtensilsCrossed },
+  { id: "FastFood", label: "Fast Food", query: ["catering.fast_food"], icon: Utensils },
+  { id: "Nightlife", label: "Bars & Pubs", query: ["catering.bar", "catering.pub"], icon: Beer },
+  { id: "Nature", label: "Natur & Parks", query: ["leisure.park", "natural.forest"], icon: TreePine },
+  { id: "Water", label: "Wasser & Strand", query: ["natural.water", "natural.beach"], icon: Waves },
+  { id: "Sport", label: "Sportanlagen", query: ["sport"], icon: Dumbbell },
+  { id: "Museums", label: "Museen", query: ["entertainment.museum"], icon: Library },
+  { id: "Zoos", label: "Zoos & Aquarien", query: ["entertainment.zoo", "entertainment.aquarium"], icon: Bird },
+  { id: "Cinemas", label: "Kinos", query: ["entertainment.cinema"], icon: Film },
+  { id: "Shopping", label: "Shopping", query: ["commercial.shopping_mall", "commercial.clothing"], icon: ShoppingBag },
+  { id: "Supermarkets", label: "Supermärkte", query: ["commercial.supermarket"], icon: ShoppingCart },
+  { id: "Attractions", label: "Attraktionen", query: ["tourism.attraction", "tourism.sights"], icon: Ticket }
 ];
 
 type CategoryFiltersProps = {
@@ -63,29 +78,48 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [localActiveTabs, setLocalActiveTabs] = useState<string[]>([]);
 
-  const userActiveTabIds = userProfile?.activeTabs || ['Gastronomy', 'Nature'];
-  
+  // Synchronisiere lokalen Zustand, wenn das Profil geladen wird oder das Modal öffnet
+  useEffect(() => {
+    if (userProfile?.activeTabs) {
+      setLocalActiveTabs(userProfile.activeTabs);
+    } else {
+      setLocalActiveTabs(['Gastronomy', 'Nature']);
+    }
+  }, [userProfile, isConfigOpen]);
+
   const displayedTabs = [
     ...coreTabs,
-    ...availableTabs.filter(tab => userActiveTabIds.includes(tab.id))
+    ...availableTabs.filter(tab => localActiveTabs.includes(tab.id))
   ];
 
   const handleToggleTab = async (tabId: string) => {
-    if (!user) return;
+    if (!user || !db) return;
     
-    const newActiveTabs = userActiveTabIds.includes(tabId)
-      ? userActiveTabIds.filter(id => id !== tabId)
-      : [...userActiveTabIds, tabId];
+    // 1. Berechne neuen Zustand
+    const isSelected = localActiveTabs.includes(tabId);
+    const updatedTabs = isSelected 
+      ? localActiveTabs.filter(id => id !== tabId) 
+      : [...localActiveTabs, tabId];
 
+    // 2. Synchrone UI-Mutation (Optimistic Update)
+    const previousTabs = [...localActiveTabs];
+    setLocalActiveTabs(updatedTabs);
+
+    // 3. Asynchrone Datenbank-Mutation
     try {
-      await updateUserProfile(user.uid, { activeTabs: newActiveTabs });
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, { activeTabs: updatedTabs });
     } catch (error) {
+      console.error("Tab mutation failed:", error);
       toast({
         variant: 'destructive',
         title: 'Fehler',
-        description: 'Kategorie konnte nicht aktualisiert werden.',
+        description: 'Änderungen konnten nicht gespeichert werden.',
       });
+      // Rollback bei Fehler
+      setLocalActiveTabs(previousTabs);
     }
   };
 
@@ -127,14 +161,14 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid grid-cols-1 gap-2 py-4">
+          <div className="grid grid-cols-1 gap-2 py-4 max-h-[60vh] overflow-y-auto pr-2">
             {availableTabs.map((tab) => {
-              const isActive = userActiveTabIds.includes(tab.id);
+              const isActive = localActiveTabs.includes(tab.id);
               return (
                 <button
                   key={tab.id}
                   onClick={() => handleToggleTab(tab.id)}
-                  className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                  className={`flex items-center justify-between p-4 rounded-xl border transition-all text-left w-full ${
                     isActive 
                       ? 'bg-primary/10 border-primary text-primary' 
                       : 'bg-background border-border text-muted-foreground'
@@ -151,7 +185,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
           </div>
 
           <DialogFooter>
-            <Button onClick={() => setIsConfigOpen(false)} className="w-full">
+            <Button onClick={() => setIsConfigOpen(false)} className="w-full h-12 text-base font-semibold rounded-xl">
               Fertig
             </Button>
           </DialogFooter>
