@@ -89,27 +89,29 @@ export default function FavoritesPage() {
 
     return (
         <>
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full bg-secondary/30">
                 <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
-                    <div className="px-4 flex h-16 items-center">
+                    <div className="px-4 h-16 flex items-center max-w-7xl mx-auto w-full">
                         <h1 className="text-2xl font-bold tracking-tight">Favorites</h1>
                     </div>
                 </header>
                 <main className="flex-1 overflow-y-auto pb-20">
-                    {favorites.length === 0 ? (
-                        <EmptyState />
-                    ) : (
-                        <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {favorites.map(fav => (
-                                <PlaceCard
-                                    key={fav.id}
-                                    place={fav as Place} // Cast FavoritePlace to Place for the card
-                                    onClick={() => handlePlaceSelect(fav as Place)}
-                                    onAddActivity={() => handleOpenActivityModal(fav as Place)}
-                                />
-                            ))}
-                        </div>
-                    )}
+                    <div className="max-w-7xl mx-auto w-full">
+                        {favorites.length === 0 ? (
+                            <EmptyState />
+                        ) : (
+                            <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {favorites.map(fav => (
+                                    <PlaceCard
+                                        key={fav.id}
+                                        place={fav as Place} // Cast FavoritePlace to Place for the card
+                                        onClick={() => handlePlaceSelect(fav as Place)}
+                                        onAddActivity={() => handleOpenActivityModal(fav as Place)}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </main>
             </div>
             
@@ -121,7 +123,7 @@ export default function FavoritesPage() {
             />
 
             <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
-                <DialogContent className="max-h-dvh flex flex-col p-0 w-full max-w-lg gap-0">
+                <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden">
                     {selectedPlace && <PlaceDetails place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
                 </DialogContent>
             </Dialog>

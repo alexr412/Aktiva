@@ -25,6 +25,7 @@ import {
     MessageSquare,
     Navigation,
     Bookmark,
+    Calendar,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -153,138 +154,162 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
     const placeActivities = activities.filter(act => act.placeId === place.id);
 
     return (
-        <div className="flex flex-col h-full relative bg-background">
-            <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-2">
-                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full bg-background/60 hover:bg-background/90 backdrop-blur-sm">
+        <div className="flex flex-col h-full bg-background relative overflow-hidden">
+            {/* Header / Schließen-Button Mobile */}
+            <div className="absolute top-4 left-4 z-20 md:hidden">
+                <Button variant="secondary" size="icon" onClick={onClose} className="rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
                     <ChevronLeft className="h-6 w-6" />
-                    <span className="sr-only">Back</span>
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handleBookmarkToggle} className="rounded-full bg-background/60 hover:bg-background/90 backdrop-blur-sm text-primary">
-                    <Bookmark className={cn("h-5 w-5", isFavorite && "fill-current")} />
-                    <span className="sr-only">Bookmark</span>
                 </Button>
             </div>
-            <ScrollArea className="flex-1">
-                <div className="relative flex items-center justify-center h-48 w-full bg-muted/30">
-                     <Icon className="h-20 w-20 text-muted-foreground/80" />
-                </div>
 
-                <div className="p-6 space-y-6">
-                    <div>
-                        <h1 className="text-3xl font-bold">{place.name}</h1>
-                         <div className="flex flex-col gap-1 mt-2">
-                            <p className="text-sm text-muted-foreground">{place.address}</p>
-                            {place.distance !== undefined && (
-                                <div className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
-                                    <Navigation className="h-4 w-4"/>
-                                    <span>{formatDistance(place.distance)} entfernt</span>
+            <ScrollArea className="flex-1">
+                <div className="flex flex-col md:grid md:grid-cols-[1fr_2fr] gap-8 p-6 md:p-10">
+                    
+                    {/* Linke Spalte: Meta-Daten & Header */}
+                    <div className="flex flex-col items-center border-b md:border-b-0 md:border-r border-border pb-8 md:pb-0 md:pr-10">
+                        <div className="w-24 h-24 md:w-32 md:h-32 bg-secondary rounded-full flex items-center justify-center mb-6 ring-4 ring-primary/5">
+                            <Icon className="h-12 w-12 md:h-16 md:w-16 text-primary/70" />
+                        </div>
+                        
+                        <h1 className="text-2xl md:text-3xl font-extrabold text-center mb-2 tracking-tight">
+                            {place.name}
+                        </h1>
+                        
+                        <p className="text-sm text-muted-foreground text-center mb-4 leading-relaxed max-w-[200px]">
+                            {place.address}
+                        </p>
+
+                        {place.distance !== undefined && (
+                            <div className="flex items-center gap-1.5 text-sm font-semibold text-primary mb-6">
+                                <Navigation className="h-4 w-4"/>
+                                <span>{formatDistance(place.distance)} entfernt</span>
+                            </div>
+                        )}
+                        
+                        <Button 
+                            variant="outline" 
+                            className="w-full h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-secondary transition-all"
+                            onClick={handleBookmarkToggle}
+                        >
+                            <Bookmark className={cn("h-5 w-5 transition-colors", isFavorite && "fill-primary text-primary")} />
+                            <span className="font-semibold">{isFavorite ? 'Gespeichert' : 'Speichern'}</span>
+                        </Button>
+                    </div>
+
+                    {/* Rechte Spalte: Daten-Module & Listen */}
+                    <div className="flex flex-col gap-8">
+                        
+                        {/* Info-Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <Card className="p-4 bg-secondary/30 border-none flex flex-col items-center justify-center gap-1 text-center">
+                                {place.rating ? (
+                                    <>
+                                        <div className="flex items-center gap-1.5">
+                                            <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
+                                            <span className="font-bold text-xl">{place.rating.toFixed(1)}</span>
+                                        </div>
+                                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Rating</span>
+                                    </>
+                                ) : (
+                                    <span className="text-sm font-semibold text-muted-foreground">No Rating</span>
+                                )}
+                            </Card>
+                            
+                            <Card className="p-4 bg-secondary/30 border-none flex flex-col items-center justify-center gap-1 text-center">
+                                <div className="flex flex-wrap gap-1 justify-center">
+                                    {formattedCategories.slice(0, 2).map(cat => (
+                                        <Badge key={cat} variant="outline" className="bg-background/50 capitalize text-[10px]">
+                                            {cat.replace(/_/g, ' ')}
+                                        </Badge>
+                                    ))}
+                                </div>
+                                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">Categories</span>
+                            </Card>
+                        </div>
+
+                        <Separator className="opacity-50" />
+
+                        {/* Activities-Modul */}
+                        <div className="flex flex-col">
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <Users className="h-5 w-5 text-primary" />
+                                <span>Upcoming Activities</span>
+                            </h2>
+                            
+                            {loadingActivities ? (
+                                <div className="space-y-3">
+                                    <Skeleton className="h-20 w-full rounded-xl" />
+                                    <Skeleton className="h-20 w-full rounded-xl" />
+                                </div>
+                            ) : placeActivities.length === 0 ? (
+                                <div className="p-10 border border-dashed border-border rounded-2xl flex flex-col items-center justify-center text-center">
+                                    <Calendar className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                                    <p className="text-sm text-muted-foreground">No activities scheduled here yet.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {placeActivities.map(activity => {
+                                        if (!activity.id) return null;
+                                        const isParticipant = activity.participantIds.includes(user?.uid || '---');
+                                        const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
+                                        
+                                        return (
+                                            <Card key={activity.id} className="p-4 shadow-sm hover:shadow-md transition-shadow border-muted">
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="font-bold text-base truncate">
+                                                            {renderActivityDate(activity)}
+                                                        </p>
+                                                        <div className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
+                                                            <Users className="h-4 w-4" />
+                                                            <span className="truncate">
+                                                                {activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; {activity.creatorName}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex-shrink-0">
+                                                        {isParticipant ? (
+                                                            <Button size="sm" variant="secondary" onClick={() => router.push(`/chat/${activity.id}`)} className="rounded-lg h-9">
+                                                                <MessageSquare className="mr-2 h-4 w-4" />
+                                                                Chat
+                                                            </Button>
+                                                        ) : isFull ? (
+                                                            <Button size="sm" variant="outline" disabled className="rounded-lg h-9 opacity-50">
+                                                                Voll
+                                                            </Button>
+                                                        ) : (
+                                                            <Button 
+                                                                size="sm"
+                                                                onClick={() => handleJoin(activity.id!)} 
+                                                                disabled={joiningActivityId === activity.id}
+                                                                className="w-28 rounded-lg h-9 font-semibold"
+                                                            >
+                                                                {joiningActivityId === activity.id ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <>
+                                                                        <LogIn className="mr-2 h-4 w-4" />
+                                                                        Beitreten
+                                                                    </>
+                                                                )}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 text-center">
-                        {place.rating ? (
-                             <div className="p-4 rounded-xl bg-muted/80 flex flex-col items-center justify-center gap-1">
-                                <div className="flex items-center gap-2">
-                                    <Star className="h-6 w-6 text-amber-400 fill-amber-400" />
-                                    <span className="font-bold text-2xl">{place.rating.toFixed(1)}</span>
-                                </div>
-                                <span className="text-sm text-muted-foreground">Rating</span>
-                            </div>
-                        ) : (
-                            <div className="p-4 rounded-xl bg-muted/80 flex flex-col items-center justify-center gap-1">
-                                <Star className="h-6 w-6 text-muted-foreground" />
-                                <span className="text-sm text-muted-foreground mt-2">No Rating</span>
-                            </div>
-                        )}
-                         <div className="p-4 rounded-xl bg-muted/80 flex flex-col items-center justify-center gap-2">
-                            <div className="flex flex-wrap gap-2 justify-center">
-                                {formattedCategories.slice(0, 2).map(cat => (
-                                    <Badge key={cat} variant="secondary" className="capitalize">{cat.replace(/_/g, ' ')}</Badge>
-                                ))}
-                            </div>
-                            <span className="text-sm text-muted-foreground">Categories</span>
+
+                        <Separator className="opacity-50" />
+
+                        {/* AI Recommendation Modul */}
+                        <div className="rounded-2xl overflow-hidden shadow-inner">
+                            <AiRecommendation place={place} />
                         </div>
                     </div>
-                    
-                    <Separator />
-
-                    <div className="space-y-4">
-                        <h2 className="text-xl font-bold flex items-center gap-2">
-                            <Users className="h-5 w-5" />
-                            <span>Upcoming Activities</span>
-                        </h2>
-                        {loadingActivities && (
-                            <div className="space-y-3">
-                                <Skeleton className="h-16 w-full rounded-lg" />
-                                <Skeleton className="h-16 w-full rounded-lg" />
-                            </div>
-                        )}
-                        {!loadingActivities && placeActivities.length === 0 && (
-                            <p className="text-sm text-muted-foreground text-center py-4">
-                                No activities scheduled here yet.
-                            </p>
-                        )}
-                        <div className="space-y-3">
-                            {placeActivities.map(activity => {
-                                if (!activity.id) return null;
-                                const isParticipant = activity.participantIds.includes(user?.uid || '---');
-                                const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
-                                
-                                return (
-                                    <Card key={activity.id} className="p-3">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <div className="min-w-0">
-                                                <p className="font-semibold text-base">
-                                                    {renderActivityDate(activity)}
-                                                </p>
-                                                <p className="text-sm text-muted-foreground truncate flex items-center gap-1.5 mt-1">
-                                                    <Users className="h-4 w-4" />
-                                                    <span>
-                                                        {activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; von {activity.creatorName}
-                                                    </span>
-                                                </p>
-                                            </div>
-                                            <div className="flex-shrink-0">
-                                                {isParticipant ? (
-                                                    <Button size="sm" variant="outline" onClick={() => router.push(`/chat/${activity.id}`)}>
-                                                        <MessageSquare className="mr-2 h-4 w-4" />
-                                                        Chat
-                                                    </Button>
-                                                ) : isFull ? (
-                                                    <Button size="sm" variant="secondary" disabled>
-                                                        Voll
-                                                    </Button>
-                                                ) : (
-                                                    <Button 
-                                                        size="sm"
-                                                        onClick={() => handleJoin(activity.id!)} 
-                                                        disabled={joiningActivityId === activity.id}
-                                                        className="w-28"
-                                                    >
-                                                        {joiningActivityId === activity.id ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                        ) : (
-                                                            <>
-                                                                <LogIn className="mr-2 h-4 w-4" />
-                                                                Teilnehmen
-                                                            </>
-                                                        )}
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </Card>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-
-                    <Separator />
-
-                    <AiRecommendation place={place} />
                 </div>
             </ScrollArea>
         </div>

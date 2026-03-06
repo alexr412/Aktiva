@@ -343,7 +343,7 @@ export default function Home() {
   const renderContent = () => {
     if (isLoadingInitialData) {
       return (
-        <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
                 <CardSkeleton key={i} />
             ))}
@@ -400,7 +400,7 @@ export default function Home() {
                     );
                 }
                 return (
-                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {favorites.map(place => (
                           <PlaceCard
                             key={place.id}
@@ -438,7 +438,7 @@ export default function Home() {
                     )
                 }
                 return (
-                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {visibleActivities.map((activity) => (
                         <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
                       ))}
@@ -466,7 +466,7 @@ export default function Home() {
                      return <EmptySearchState />;
                 }
                 return (
-                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {sortedPlaces.map((place, index) => {
                         const isLastElement = index === sortedPlaces.length - 1;
                         return (
@@ -485,10 +485,10 @@ export default function Home() {
         };
 
         return (
-            <>
+            <div className="max-w-7xl mx-auto w-full">
                 {renderList()}
                 {isFetchingMore && (
-                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <CardSkeleton />
                         <CardSkeleton />
                     </div>
@@ -496,7 +496,7 @@ export default function Home() {
                 {!isFetchingMore && !hasMore && places.length > 0 && !isCommunityCategory && !isFavoritesCategory && (
                     <p className="text-center text-muted-foreground p-6">You've reached the end of the list.</p>
                 )}
-            </>
+            </div>
         );
     }
 
@@ -526,7 +526,7 @@ export default function Home() {
     <>
       <div className="flex h-full w-full flex-col">
         <header className="flex-none w-full border-b bg-background z-20">
-          <div className="flex flex-col gap-4 px-4 py-4 sm:px-6">
+          <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 max-w-7xl mx-auto w-full">
              <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
@@ -617,7 +617,7 @@ export default function Home() {
       </div>
 
       <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-          <DialogContent className="max-h-dvh flex flex-col p-0 w-full max-w-lg gap-0">
+          <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden">
               {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
           </DialogContent>
       </Dialog>

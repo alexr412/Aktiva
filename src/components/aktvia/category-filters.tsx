@@ -142,7 +142,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
 
   return (
     <>
-      <div className="flex overflow-x-auto gap-2 pb-2 -mx-4 px-4 hide-scrollbar items-center">
+      <div className="flex md:flex-wrap overflow-x-auto md:overflow-visible gap-2 pb-2 -mx-4 px-4 md:px-0 md:mx-0 hide-scrollbar items-center w-full">
         {displayedTabs.map((tab) => (
           <Button
             key={tab.id}
@@ -151,10 +151,10 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
             }
             size="sm"
             onClick={() => onCategoryChange(tab.query)}
-            className="flex-shrink-0 flex items-center gap-2 rounded-full h-9"
+            className="flex-shrink-0 flex items-center gap-2 rounded-full h-9 transition-all hover:scale-105 active:scale-95 shadow-sm"
           >
             <tab.icon className="h-4 w-4" />
-            <span>{tab.label}</span>
+            <span className="font-medium">{tab.label}</span>
           </Button>
         ))}
         
@@ -162,7 +162,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
           variant="ghost"
           size="icon"
           onClick={() => setIsConfigOpen(true)}
-          className="flex-shrink-0 rounded-full h-9 w-9 bg-muted/50 hover:bg-muted"
+          className="flex-shrink-0 rounded-full h-9 w-9 bg-muted/50 hover:bg-muted transition-colors"
         >
           <Plus className="h-4 w-4" />
           <span className="sr-only">Kategorien verwalten</span>
@@ -188,8 +188,8 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
                   onClick={() => toggleDraftTab(tab.id)}
                   className={`flex items-center justify-between p-4 rounded-xl border transition-all text-left w-full ${
                     isActive 
-                      ? 'bg-primary/10 border-primary text-primary' 
-                      : 'bg-background border-border text-muted-foreground'
+                      ? 'bg-primary/10 border-primary text-primary shadow-sm' 
+                      : 'bg-background border-border text-muted-foreground hover:bg-muted/30'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -207,7 +207,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
               type="button" 
               onClick={saveConfiguration} 
               disabled={isSaving}
-              className="w-full h-12 text-base font-semibold rounded-xl"
+              className="w-full h-12 text-base font-bold rounded-xl shadow-lg"
             >
               {isSaving ? (
                 <>
@@ -215,7 +215,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
                   Speichere...
                 </>
               ) : (
-                'Fertig'
+                'Konfiguration übernehmen'
               )}
             </Button>
           </DialogFooter>

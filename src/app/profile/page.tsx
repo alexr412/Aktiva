@@ -275,7 +275,7 @@ export default function ProfilePage() {
 
     if (authLoading || (!user && !authLoading)) {
         return (
-            <div className="p-6 space-y-8">
+            <div className="p-6 space-y-8 max-w-2xl mx-auto">
                 <div className="flex items-center justify-center">
                     <Skeleton className="h-24 w-24 rounded-full" />
                 </div>
@@ -364,179 +364,181 @@ export default function ProfilePage() {
                     </Button>
                 </div>
                 
-                <div className="p-6 flex flex-col items-center justify-center text-center space-y-4 pt-16">
-                    <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleImageUpload} 
-                        className="hidden" 
-                        accept="image/jpeg,image/png,image/webp" 
-                    />
-                    <div 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="relative group cursor-pointer"
-                    >
-                        <Avatar className="h-24 w-24 border-2 border-primary/20">
-                            <AvatarImage src={photoUrlToDisplay} alt="Profil" />
-                            <AvatarFallback className="text-3xl bg-muted">
-                                {displayName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
-                            <Edit className="h-6 w-6" />
-                        </div>
-                    </div>
-
-                    <div>
-                        <h1 className="text-2xl font-bold">
-                            {displayName}
-                            {userData?.age && `, ${userData.age}`}
-                        </h1>
+                <div className="max-w-4xl mx-auto w-full">
+                    <div className="p-6 flex flex-col items-center justify-center text-center space-y-4 pt-16">
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleImageUpload} 
+                            className="hidden" 
+                            accept="image/jpeg,image/png,image/webp" 
+                        />
                         <div 
-                            onClick={userData?.friendCode ? handleCopyCode : undefined}
-                            onKeyDown={(e) => userData?.friendCode && (e.key === 'Enter' || e.key === ' ') ? handleCopyCode() : undefined}
-                            role={userData?.friendCode ? "button" : undefined}
-                            tabIndex={userData?.friendCode ? 0 : -1}
-                            className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-muted"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="relative group cursor-pointer"
                         >
-                            {userData?.friendCode ? (
-                                <>
-                                    <span>{userData.friendCode}</span>
-                                    <Copy className="h-4 w-4 text-muted-foreground" />
-                                </>
-                            ) : (
-                                <span className='text-muted-foreground'>Generating...</span>
-                            )}
+                            <Avatar className="h-24 w-24 border-2 border-primary/20">
+                                <AvatarImage src={photoUrlToDisplay} alt="Profil" />
+                                <AvatarFallback className="text-3xl bg-muted">
+                                    {displayName.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
+                                <Edit className="h-6 w-6" />
+                            </div>
                         </div>
-                        {userData?.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
-                    </div>
-                </div>
-                
-                {userData?.bio && (
-                    <div className="px-6 text-center">
-                        <p className="text-foreground/80">{userData.bio}</p>
-                    </div>
-                )}
 
-
-                <div className="px-6 mt-6">
-                    <Button variant="outline" className="w-full" onClick={() => router.push('/profile/edit')}>Edit Profile</Button>
-                </div>
-                
-                {loadingRequests && userProfile?.friendRequestsReceived && userProfile.friendRequestsReceived.length > 0 &&(
-                    <div className="p-6"><Skeleton className="h-10 w-full" /></div>
-                )}
-
-                {!loadingRequests && visibleRequestProfiles.length > 0 && (
-                    <div className="p-6 space-y-4 border-b">
-                        <h2 className="font-bold text-lg">Friend Requests</h2>
-                        <ul className="space-y-3">
-                            {visibleRequestProfiles.map(profile => (
-                                <li key={profile.uid} className="flex items-center gap-3 p-2 -mx-2 rounded-lg bg-secondary">
-                                    <Avatar>
-                                        <AvatarImage src={profile.photoURL || undefined} />
-                                        <AvatarFallback>{profile.displayName?.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="flex-1 font-medium truncate">{profile.displayName}</span>
-                                    <Button size="icon" variant="outline" onClick={() => handleAcceptRequest(profile.uid)}><UserCheck className="h-4 w-4 text-green-500"/></Button>
-                                    <Button size="icon" variant="outline" onClick={() => handleDeclineRequest(profile.uid)}><X className="h-4 w-4 text-red-500"/></Button>
-                                </li>
-                            ))}
-                        </ul>
+                        <div>
+                            <h1 className="text-2xl font-bold">
+                                {displayName}
+                                {userData?.age && `, ${userData.age}`}
+                            </h1>
+                            <div 
+                                onClick={userData?.friendCode ? handleCopyCode : undefined}
+                                onKeyDown={(e) => userData?.friendCode && (e.key === 'Enter' || e.key === ' ') ? handleCopyCode() : undefined}
+                                role={userData?.friendCode ? "button" : undefined}
+                                tabIndex={userData?.friendCode ? 0 : -1}
+                                className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-muted"
+                            >
+                                {userData?.friendCode ? (
+                                    <>
+                                        <span>{userData.friendCode}</span>
+                                        <Copy className="h-4 w-4 text-muted-foreground" />
+                                    </>
+                                ) : (
+                                    <span className='text-muted-foreground'>Generating...</span>
+                                )}
+                            </div>
+                            {userData?.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
+                        </div>
                     </div>
-                )}
-                
-                <div className="p-6 space-y-4">
-                     <h2 className="font-bold text-lg">Interests</h2>
-                    <div className="flex flex-wrap gap-2 items-center">
-                        {userData?.interests?.map(tag => (
-                             <Badge key={tag} variant="secondary" className="text-base py-1 px-3">
-                                {tag}
-                            </Badge>
-                        ))}
-                        <button onClick={() => router.push('/profile/edit')} className="border border-dashed border-gray-400 text-gray-500 rounded-full px-4 py-1 text-sm hover:bg-muted/50 transition-colors">
-                            + Hinzufügen
-                        </button>
-                    </div>
-                </div>
-                
-                <div className="w-full border-b mt-2">
-                    <nav className="flex justify-around items-center font-medium px-6">
-                        <TabButton tabName="activities" label="Aktivitäten" />
-                        <TabButton tabName="favorites" label="Favoriten" />
-                        <TabButton tabName="reviews" label="Reviews" />
-                    </nav>
-                </div>
-
-                <div className="flex-1">
-                    {activeTab === 'activities' && (
-                        <div className="pt-4">
-                            {loadingActivities ? (
-                                 <div className="divide-y divide-border">
-                                    <ActivityListItemSkeleton />
-                                    <ActivityListItemSkeleton />
-                                    <ActivityListItemSkeleton />
-                                </div>
-                            ) : visibleActivities.length > 0 ? (
-                                <ul className="divide-y divide-border">
-                                    {visibleActivities.map(activity => (
-                                        <li key={activity.id}>
-                                            <ActivityListItem
-                                                activity={activity}
-                                                user={user}
-                                                onJoin={handleJoin}
-                                            />
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
-                                    <p className="text-muted-foreground">Noch keine Aktivitäten erstellt.</p>
-                                    <Button onClick={() => router.push('/explore')}>
-                                        <Compass className="mr-2 h-4 w-4" />
-                                        Aktivitäten entdecken
-                                    </Button>
-                                </div>
-                            )}
+                    
+                    {userData?.bio && (
+                        <div className="px-6 text-center max-w-lg mx-auto">
+                            <p className="text-foreground/80">{userData.bio}</p>
                         </div>
                     )}
-                     {activeTab === 'favorites' && (
-                        <div className="pt-4">
-                            {favorites.length === 0 ? (
-                                <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
-                                     <div className="bg-primary/10 p-4 rounded-full">
-                                        <Bookmark className="h-8 w-8 text-primary" />
+
+
+                    <div className="px-6 mt-6 max-w-sm mx-auto">
+                        <Button variant="outline" className="w-full" onClick={() => router.push('/profile/edit')}>Edit Profile</Button>
+                    </div>
+                    
+                    {loadingRequests && userProfile?.friendRequestsReceived && userProfile.friendRequestsReceived.length > 0 &&(
+                        <div className="p-6"><Skeleton className="h-10 w-full" /></div>
+                    )}
+
+                    {!loadingRequests && visibleRequestProfiles.length > 0 && (
+                        <div className="p-6 space-y-4 border-b">
+                            <h2 className="font-bold text-lg">Friend Requests</h2>
+                            <ul className="space-y-3">
+                                {visibleRequestProfiles.map(profile => (
+                                    <li key={profile.uid} className="flex items-center gap-3 p-2 -mx-2 rounded-lg bg-secondary">
+                                        <Avatar>
+                                            <AvatarImage src={profile.photoURL || undefined} />
+                                            <AvatarFallback>{profile.displayName?.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <span className="flex-1 font-medium truncate">{profile.displayName}</span>
+                                        <Button size="icon" variant="outline" onClick={() => handleAcceptRequest(profile.uid)}><UserCheck className="h-4 w-4 text-green-500"/></Button>
+                                        <Button size="icon" variant="outline" onClick={() => handleDeclineRequest(profile.uid)}><X className="h-4 w-4 text-red-500"/></Button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                    
+                    <div className="p-6 space-y-4">
+                         <h2 className="font-bold text-lg">Interests</h2>
+                        <div className="flex flex-wrap gap-2 items-center">
+                            {userData?.interests?.map(tag => (
+                                 <Badge key={tag} variant="secondary" className="text-base py-1 px-3">
+                                    {tag}
+                                </Badge>
+                            ))}
+                            <button onClick={() => router.push('/profile/edit')} className="border border-dashed border-gray-400 text-gray-500 rounded-full px-4 py-1 text-sm hover:bg-muted/50 transition-colors">
+                                + Hinzufügen
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="w-full border-b mt-2">
+                        <nav className="flex justify-around items-center font-medium px-6">
+                            <TabButton tabName="activities" label="Aktivitäten" />
+                            <TabButton tabName="favorites" label="Favoriten" />
+                            <TabButton tabName="reviews" label="Reviews" />
+                        </nav>
+                    </div>
+
+                    <div className="flex-1">
+                        {activeTab === 'activities' && (
+                            <div className="pt-4">
+                                {loadingActivities ? (
+                                     <div className="divide-y divide-border">
+                                        <ActivityListItemSkeleton />
+                                        <ActivityListItemSkeleton />
+                                        <ActivityListItemSkeleton />
                                     </div>
-                                    <p className="text-muted-foreground">Noch keine Favoriten gespeichert.</p>
-                                     <Button onClick={() => router.push('/')}>
-                                        <Compass className="mr-2 h-4 w-4" />
-                                        Orte entdecken
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="p-4 grid grid-cols-1 gap-4">
-                                    {favorites.map(fav => (
-                                        <PlaceCard
-                                            key={fav.id}
-                                            place={fav as Place}
-                                            onClick={() => handlePlaceSelect(fav as Place)}
-                                            onAddActivity={() => handleOpenActivityModal(fav as Place)}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                     )}
-                     {activeTab === 'reviews' && (
-                         <div className="text-center text-muted-foreground p-10">
-                            <p>Reviews are not yet implemented.</p>
-                        </div>
-                     )}
+                                ) : visibleActivities.length > 0 ? (
+                                    <ul className="divide-y divide-border">
+                                        {visibleActivities.map(activity => (
+                                            <li key={activity.id}>
+                                                <ActivityListItem
+                                                    activity={activity}
+                                                    user={user}
+                                                    onJoin={handleJoin}
+                                                />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
+                                        <p className="text-muted-foreground">Noch keine Aktivitäten erstellt.</p>
+                                        <Button onClick={() => router.push('/explore')}>
+                                            <Compass className="mr-2 h-4 w-4" />
+                                            Aktivitäten entdecken
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                         {activeTab === 'favorites' && (
+                            <div className="pt-4">
+                                {favorites.length === 0 ? (
+                                    <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
+                                         <div className="bg-primary/10 p-4 rounded-full">
+                                            <Bookmark className="h-8 w-8 text-primary" />
+                                        </div>
+                                        <p className="text-muted-foreground">Noch keine Favoriten gespeichert.</p>
+                                         <Button onClick={() => router.push('/')}>
+                                            <Compass className="mr-2 h-4 w-4" />
+                                            Orte entdecken
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {favorites.map(fav => (
+                                            <PlaceCard
+                                                key={fav.id}
+                                                place={fav as Place}
+                                                onClick={() => handlePlaceSelect(fav as Place)}
+                                                onAddActivity={() => handleOpenActivityModal(fav as Place)}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                         )}
+                         {activeTab === 'reviews' && (
+                             <div className="text-center text-muted-foreground p-10">
+                                <p>Reviews are not yet implemented.</p>
+                            </div>
+                         )}
+                    </div>
                 </div>
             </div>
 
             <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
-                <DialogContent className="max-h-dvh flex flex-col p-0 w-full max-w-lg gap-0">
+                <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden">
                     {selectedPlace && <PlaceDetails place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
                 </DialogContent>
             </Dialog>
