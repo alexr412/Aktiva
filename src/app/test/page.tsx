@@ -117,9 +117,6 @@ export default function TestPage() {
             <span className="text-muted-foreground">Resolved Coordinates:</span>
             <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
           </div>
-          <code className="text-[10px] text-muted-foreground/60 break-all mt-1">
-            Exclude: {GLOBAL_EXCLUDE_STRING}
-          </code>
           <div className="text-sm font-semibold whitespace-nowrap mt-2">
             Results (filtered): <span className="text-primary">{results.length}</span>
           </div>
