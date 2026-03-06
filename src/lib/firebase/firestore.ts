@@ -305,6 +305,13 @@ export async function fetchUserActivities(userId: string) {
 
 export async function sendFriendRequest(fromUserId: string, toUserId: string) {
     if (!db) throw new Error('Firestore is not initialized.');
+    
+    // Selbst-Referenz-Sperre
+    if (!fromUserId || fromUserId === toUserId) {
+      console.error("Self-referential friend requests are prohibited.");
+      return; 
+    }
+
     const fromUserRef = doc(db, 'users', fromUserId);
     const toUserRef = doc(db, 'users', toUserId);
     const notificationRef = doc(collection(db, 'notifications'));

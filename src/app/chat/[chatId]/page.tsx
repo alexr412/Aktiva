@@ -9,6 +9,7 @@ import { sendMessage, checkIfUserReviewed } from '@/lib/firebase/firestore';
 import type { Message, Chat, Activity, UserProfile } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
+import Link from 'next/link';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -66,10 +67,12 @@ const MessageBubble = ({
       {!isOwnMessage && (
         <div className="w-8 flex-shrink-0 self-end">
           {showAvatar && (
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={message.senderPhotoURL || undefined} />
-              <AvatarFallback>{message.senderName?.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
+            <Link href={`/profile/${message.senderId}`} className="hover:opacity-80 transition-opacity">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={message.senderPhotoURL || undefined} />
+                <AvatarFallback>{message.senderName?.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+            </Link>
           )}
         </div>
       )}
@@ -99,7 +102,7 @@ export default function ChatRoomPage() {
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(true); // Default to true to prevent flash
   
-  const [otherUser, setOtherUser] = useState<Partial<UserProfile> | null>(null);
+  const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string } | null>(null);
   const [isDirectMessage, setIsDirectMessage] = useState(false);
   
   const router = useRouter();
@@ -129,7 +132,7 @@ export default function ChatRoomPage() {
           // It's a Direct Message
           const otherUserId = chatData.participantIds.find(id => id !== user.uid);
           if (otherUserId && chatData.participantDetails) {
-            setOtherUser(chatData.participantDetails[otherUserId]);
+            setOtherUser({ ...chatData.participantDetails[otherUserId], uid: otherUserId });
           }
           setActivity(null);
           if (activityUnsubscribe) activityUnsubscribe();
@@ -153,7 +156,6 @@ export default function ChatRoomPage() {
           });
         }
       } else {
-        // Chat wurde gelöscht oder existiert nicht
         setLoading(false);
         setChat(null);
         toast({ title: "Chat not found", description: "This chat may have been deleted.", variant: 'destructive'});
@@ -221,7 +223,6 @@ export default function ChatRoomPage() {
     );
   }
 
-  // Zwingende Abfang-Ebene für gelöschte oder nicht vorhandene Chats zur Crash-Vermeidung
   if (!chat && !loading) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 bg-muted/30 p-6 text-center">
@@ -240,15 +241,21 @@ export default function ChatRoomPage() {
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()}>
             <ArrowLeft />
           </Button>
+          
           <div className="flex items-center gap-3 flex-1 truncate">
-            {isDirectMessage && otherUser && (
-                <Avatar className="h-9 w-9">
-                    <AvatarImage src={otherUser.photoURL || undefined} />
-                    <AvatarFallback>{otherUser.displayName?.charAt(0)}</AvatarFallback>
-                </Avatar>
+            {isDirectMessage && otherUser ? (
+                <Link href={`/profile/${otherUser.uid}`} className="flex items-center gap-3 truncate hover:opacity-80 transition-opacity cursor-pointer">
+                    <Avatar className="h-9 w-9">
+                        <AvatarImage src={otherUser.photoURL || undefined} />
+                        <AvatarFallback>{otherUser.displayName?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <h2 className="font-bold truncate">{otherUser.displayName}</h2>
+                </Link>
+            ) : (
+                <h2 className="font-bold truncate ml-2">{chat?.placeName}</h2>
             )}
-            <h2 className="font-bold truncate">{isDirectMessage ? otherUser?.displayName : chat?.placeName}</h2>
           </div>
+
           {!isDirectMessage && (
               <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setInfoSheetOpen(true)}>
                 <MoreVertical />
@@ -269,9 +276,7 @@ export default function ChatRoomPage() {
               const isOwnMessage = message.senderId === user?.uid;
               
               const showDateSeparator = !prevMessage || !prevMessage.sentAt || !message.sentAt || !isSameDay(message.sentAt.toDate(), prevMessage.sentAt.toDate());
-              
               const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId || showDateSeparator;
-              
               const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId || !nextMessage.sentAt || !message.sentAt || !isSameDay(message.sentAt.toDate(), nextMessage.sentAt.toDate());
 
               const showAvatar = !isOwnMessage && isLastInGroup;

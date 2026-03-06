@@ -63,8 +63,8 @@ export default function FriendList({ friendIds }: FriendListProps) {
       <h3 className="font-bold text-xl border-b border-border pb-2">Freunde ({friends.length})</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {friends.map(friend => (
-          <Link href={`/users/${friend.uid}`} key={friend.uid}>
-            <Card className="flex items-center gap-4 p-4 border border-border rounded-xl bg-card hover:bg-secondary/50 transition-colors cursor-pointer">
+          <Link href={`/profile/${friend.uid}`} key={friend.uid} className="block group">
+            <Card className="flex items-center gap-4 p-4 border border-border rounded-xl bg-card group-hover:bg-secondary/50 transition-colors cursor-pointer shadow-sm">
               <Avatar className="h-12 w-12 border border-primary/10">
                 <AvatarImage src={friend.photoURL || undefined} />
                 <AvatarFallback>{friend.displayName?.charAt(0).toUpperCase() || "U"}</AvatarFallback>

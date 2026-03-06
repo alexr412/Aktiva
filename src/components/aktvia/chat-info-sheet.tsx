@@ -84,7 +84,6 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
       }
     } catch (error: any) {
       console.error('Delete/Leave operation failed:', error);
-      // Da wir bereits wegnavigiert sind, loggen wir den Fehler nur noch
     }
   };
   
@@ -125,7 +124,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
               {Object.entries(chat.participantDetails).map(([uid, p]) => (
                  <li key={uid}>
                     <Link
-                        href={user?.uid === uid ? '/profile' : `/users/${uid}`}
+                        href={user?.uid === uid ? '/profile' : `/profile/${uid}`}
                         className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition-colors"
                         onClick={() => onOpenChange(false)}
                     >
@@ -150,14 +149,14 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
         <Separator />
         <SheetFooter className="p-4 bg-muted/30 grid grid-cols-1 gap-2">
             {!isCompleted && (
-                 <Button onClick={handleVote} disabled={isVoting || hasVoted} variant="outline">
+                 <Button onClick={handleVote} disabled={isVoting || hasVoted} variant="outline" className="w-full">
                     {isVoting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
                     {hasVoted ? "Voted to Complete" : "Mark as Met / Completed"}
                  </Button>
             )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive">
+                <Button variant="destructive" className="w-full">
                   {isActing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
                   {isOnlyParticipant ? 'Delete Activity' : 'Leave Activity'}
                 </Button>
