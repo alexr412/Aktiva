@@ -22,7 +22,14 @@ export const BLACKLISTED_CATEGORIES = [
   "highway",
   "parking",
   "service",
-  "populated_place"
+  "populated_place",
+  "power",
+  "postal_code",
+  "political",
+  "low_emission_zone",
+  "amenity",
+  "administrative",
+  "railway"
 ];
 
 // Generiert den Exclude-String für die API-URL (z.B. "categories:adult.stripclub,categories:accommodation...")
