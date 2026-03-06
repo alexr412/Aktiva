@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Search, Activity, MapPin } from 'lucide-react';
-import { GLOBAL_EXCLUDE_STRING, HARD_VETO_CATEGORIES, SOFT_BLACKLIST_CATEGORIES, CONDITION_PREFIXES } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, HARD_VETO_CATEGORIES, SOFT_BLACKLIST_CATEGORIES, CONDITION_PREFIXES, BASE_EXCLUSIONS } from '@/lib/geoapify';
 
 export default function TestPage() {
   const [testCity, setTestCity] = useState<string>("Bremerhaven");
@@ -47,11 +47,14 @@ export default function TestPage() {
       const data = await response.json();
       const rawFeatures = data.features || [];
       
-      // 3-Stufen-Filter-Pipeline (Bidirektional)
+      // 4-Stufen-Filter-Pipeline (Refined Logic)
       const safeFeatures = rawFeatures.filter((feature: any) => {
         const itemTags: string[] = Array.isArray(feature.properties?.categories) 
           ? feature.properties.categories 
           : [feature.properties?.categories];
+
+        // STUFE 0: Base Veto (System-Exklusion)
+        if (itemTags.some(tag => BASE_EXCLUSIONS.includes(tag))) return false;
 
         const coreTags = itemTags.filter(tag => 
           !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`))
@@ -94,7 +97,7 @@ export default function TestPage() {
           Geoapify Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Echtzeit-Analyse mit bidirektionaler Core/Condition-Trennung.
+          Echtzeit-Analyse mit 4-Stufen-Filter-Pipeline (Base Veto Injected).
         </p>
       </header>
 
@@ -136,7 +139,7 @@ export default function TestPage() {
             <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap mt-2">
-            Results (refined logic): <span className="text-primary">{results.length}</span>
+            Results (4-stage logic): <span className="text-primary">{results.length}</span>
           </div>
         </div>
       </div>
@@ -161,7 +164,7 @@ export default function TestPage() {
                       <span 
                         key={cat} 
                         className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
-                          HARD_VETO_CATEGORIES.includes(cat) 
+                          BASE_EXCLUSIONS.includes(cat) || HARD_VETO_CATEGORIES.includes(cat) 
                             ? 'bg-destructive text-white border-none' 
                             : SOFT_BLACKLIST_CATEGORIES.includes(cat)
                             ? 'bg-amber-100 text-amber-700 border-amber-200'

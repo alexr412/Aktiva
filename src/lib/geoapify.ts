@@ -4,6 +4,19 @@ import { GEOAPIFY_API_KEY } from '@/lib/config';
 import type { Place, GeoapifyFeature } from '@/lib/types';
 
 /**
+ * Stufe 0: Statische System-Exklusionen (Irrelevante POIs)
+ * Diese Kategorien besitzen keine Relevanz für den primären Interaktions-Loop.
+ */
+export const BASE_EXCLUSIONS = [
+  "education.school",
+  "education.driving_school",
+  "education.language_school",
+  "education.music_school",
+  "education.college",
+  "heritage.unesco"
+];
+
+/**
  * Statische Metadaten-Attribute (Conditions), die nicht die Kern-Identität definieren.
  */
 export const CONDITION_PREFIXES = [
@@ -13,7 +26,7 @@ export const CONDITION_PREFIXES = [
 ];
 
 /**
- * Hard Veto: Kategorien, die unter allen Umständen blockiert werden.
+ * Stufe 1: Hard Veto - Kategorien, die unter allen Umständen blockiert werden.
  */
 export const HARD_VETO_CATEGORIES = [
   "adult.stripclub",
@@ -24,7 +37,7 @@ export const HARD_VETO_CATEGORIES = [
 ];
 
 /**
- * Soft Blacklist: Kategorien, die nur dann zum Ausschluss führen, 
+ * Stufe 3: Soft Blacklist - Kategorien, die nur dann zum Ausschluss führen, 
  * wenn der Ort KEINE anderen validen Identitäts-Tags besitzt.
  */
 export const SOFT_BLACKLIST_CATEGORIES = [
@@ -47,7 +60,7 @@ export const SOFT_BLACKLIST_CATEGORIES = [
 ];
 
 // Kombinierte Liste für den API-Ausschluss (optimierte Vor-Filterung)
-export const BLACKLISTED_CATEGORIES = [...HARD_VETO_CATEGORIES, ...SOFT_BLACKLIST_CATEGORIES];
+export const BLACKLISTED_CATEGORIES = [...BASE_EXCLUSIONS, ...HARD_VETO_CATEGORIES, ...SOFT_BLACKLIST_CATEGORIES];
 export const GLOBAL_EXCLUDE_STRING = BLACKLISTED_CATEGORIES.map(cat => `categories:${cat}`).join(',');
 
 export async function fetchNearbyPlaces(
@@ -75,18 +88,22 @@ export async function fetchNearbyPlaces(
 
     const rawFeatures = data.features || [];
     
-    // Anwendung der neuen 3-Stufen-Filter-Pipeline
+    // Anwendung der 4-Stufen-Filter-Pipeline
     const safeFeatures = rawFeatures.filter((feature: any) => {
       const allTags: string[] = Array.isArray(feature.properties?.categories) 
         ? feature.properties.categories 
         : [feature.properties?.categories];
+
+      // STUFE 0: Base Veto (Systemseitige Grund-Exklusion)
+      const violatesBaseExclusion = allTags.some(tag => BASE_EXCLUSIONS.includes(tag));
+      if (violatesBaseExclusion) return false;
 
       // Trennung in Identität (Core) und Attribute (Conditions)
       const coreTags = allTags.filter(tag => 
         !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`))
       );
 
-      // STUFE 1: Hard Veto
+      // STUFE 1: Hard Veto (Nutzerdefinierte absolute Exklusion)
       const violatesHardVeto = allTags.some(tag => HARD_VETO_CATEGORIES.includes(tag));
       if (violatesHardVeto) return false;
 

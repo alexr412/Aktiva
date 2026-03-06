@@ -26,7 +26,7 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING, HARD_VETO_CATEGORIES, SOFT_BLACKLIST_CATEGORIES, CONDITION_PREFIXES } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, HARD_VETO_CATEGORIES, SOFT_BLACKLIST_CATEGORIES, CONDITION_PREFIXES, BASE_EXCLUSIONS } from '@/lib/geoapify';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -106,11 +106,14 @@ export default function Home() {
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
+        // 0. Base Veto (Systemseitige Grund-Bereinigung)
+        if (allTags.some(tag => BASE_EXCLUSIONS.includes(tag))) return false;
+
         const coreTags = allTags.filter(tag => 
           !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`))
         );
 
-        // 1. Hard Veto
+        // 1. Hard Veto (Absolute Exklusion)
         if (allTags.some(tag => HARD_VETO_CATEGORIES.includes(tag))) return false;
 
         // 2. Mandatory Inclusion (Whitelist)
