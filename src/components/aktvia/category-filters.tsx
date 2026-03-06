@@ -24,6 +24,7 @@ import {
   Library,
   Music,
   Loader2,
+  Building,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -67,7 +68,9 @@ export const availableTabs: CategoryTab[] = [
   { id: "Cinemas", label: "Kinos", query: ["entertainment.cinema"], icon: Film },
   { id: "Shopping", label: "Shopping", query: ["commercial.shopping_mall", "commercial.clothing"], icon: ShoppingBag },
   { id: "Supermarkets", label: "Supermärkte", query: ["commercial.supermarket"], icon: ShoppingCart },
-  { id: "Attractions", label: "Attraktionen", query: ["tourism.attraction", "tourism.sights"], icon: Ticket }
+  { id: "Attractions", label: "Attraktionen", query: ["tourism.attraction", "tourism.sights"], icon: Ticket },
+  { id: "Coworking", label: "Coworking", query: ["office.coworking"], icon: Building },
+  { id: "Rental", label: "Verleih", query: ["rental.bicycle", "rental.boat", "rental.ski"], icon: ShoppingBag }
 ];
 
 type CategoryFiltersProps = {

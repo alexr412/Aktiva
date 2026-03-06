@@ -7,16 +7,25 @@ import type { Place, GeoapifyFeature } from '@/lib/types';
  * Zentrale Blacklist für permanente System-Ausschlüsse.
  * Diese Kategorien werden sowohl serverseitig (via exclude-Parameter)
  * als auch clientseitig (via Post-Processing) restlos entfernt.
+ * Enthält architektonisch inkompatible Root-Knoten gemäß System-Anweisung.
  */
 export const BLACKLISTED_CATEGORIES = [
   "adult.stripclub",
   "adult.brothel",
   "adult.swingerclub",
   "adult.adult_gaming_centre",
-  "adult.casino"
+  "adult.casino",
+  "accommodation",
+  "airport",
+  "childcare",
+  "healthcare",
+  "highway",
+  "parking",
+  "service",
+  "populated_place"
 ];
 
-// Generiert den Exclude-String für die API-URL (z.B. "categories:adult.stripclub,categories:adult.brothel...")
+// Generiert den Exclude-String für die API-URL (z.B. "categories:adult.stripclub,categories:accommodation...")
 export const GLOBAL_EXCLUDE_STRING = BLACKLISTED_CATEGORIES.map(cat => `categories:${cat}`).join(',');
 
 export async function fetchNearbyPlaces(
@@ -27,7 +36,7 @@ export async function fetchNearbyPlaces(
   limit: number,
   offset: number
 ): Promise<Place[]> {
-  // 1. Zuweisung fokussierter POI-Kategorien für den All-Tab gemäß System-Anweisung
+  // 1. Zuweisung fokussierter POI-Kategorien für den All-Tab
   let targetCategories: string[];
   if (categories.length === 0 || categories.includes('all')) {
     targetCategories = ["tourism", "entertainment", "heritage"];
@@ -35,7 +44,7 @@ export async function fetchNearbyPlaces(
     targetCategories = categories;
   }
 
-  // 2. Erzwungene Injektion von conditions=named und GLOBAL_EXCLUDE_STRING
+  // 2. Erzwungene Injektion von conditions=named und GLOBAL_EXCLUDE_STRING (Defense in Depth)
   const fetchUrl = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
 
   try {
