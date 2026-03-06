@@ -79,8 +79,8 @@ export default function Home() {
     const offset = pageIndex * PLACES_PER_PAGE;
     const radiusMeters = searchRadiusKm * 1000;
     
-    // URL-Konstruktion mit verfeinerter Blacklist zur Trennung von adult.nightclub und Adult-Entertainment/Gambling
-    let url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&exclude=categories:adult.stripclub,adult.brothel,adult.swingerclub,adult.adult_gaming_centre,adult.casino&apiKey=${GEOAPIFY_API_KEY}`;
+    // Bereinigte URL-Konstruktion ohne redundante Blacklist dank striktem Whitelisting
+    let url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
     return url;
   }

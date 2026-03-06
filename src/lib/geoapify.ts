@@ -19,9 +19,9 @@ export async function fetchNearbyPlaces(
     targetCategories = categories;
   }
 
-  // 2. Erzwungene Injektion von conditions=named und gezielte Sub-Knoten-Sperre gegen Richtlinienverstöße
-  // Ermöglicht reguläre Nightclubs (adult.nightclub) während Stripclubs, Casinos etc. blockiert bleiben
-  let url = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&exclude=categories:adult.stripclub,adult.brothel,adult.swingerclub,adult.adult_gaming_centre,adult.casino&apiKey=${GEOAPIFY_API_KEY}`;
+  // 2. Erzwungene Injektion von conditions=named für qualifizierte Ergebnisse.
+  // Durch striktes Whitelisting in den Tab-Definitionen entfällt die manuelle Blacklist.
+  let url = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
   try {
     const response = await fetch(url);
