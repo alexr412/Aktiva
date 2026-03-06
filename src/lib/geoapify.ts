@@ -13,7 +13,15 @@ export const BASE_EXCLUSIONS = [
   "education.language_school",
   "education.music_school",
   "education.college",
-  "heritage.unesco"
+  "heritage.unesco",
+  "accommodation",
+  "accommodation.apartment",
+  "accommodation.chalet",
+  "accommodation.guest_house",
+  "accommodation.hostel",
+  "accommodation.hotel",
+  "accommodation.hut",
+  "accommodation.motel"
 ];
 
 /**
