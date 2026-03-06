@@ -81,6 +81,7 @@ export interface Chat {
         sentAt: Timestamp;
     } | null;
     createdAt: Timestamp;
+    unreadCount?: { [userId: string]: number };
 }
 
 

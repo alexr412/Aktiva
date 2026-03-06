@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/client';
-import { sendMessage, checkIfUserReviewed } from '@/lib/firebase/firestore';
+import { sendMessage, checkIfUserReviewed, markChatAsRead } from '@/lib/firebase/firestore';
 import type { Message, Chat, Activity, UserProfile } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
@@ -182,6 +182,12 @@ export default function ChatRoomPage() {
       }
     };
   }, [chatId, router, toast, user]);
+
+  useEffect(() => {
+    if (chat && user && chat.unreadCount?.[user.uid] && chat.unreadCount[user.uid] > 0) {
+        markChatAsRead(chat.id, user.uid);
+    }
+  }, [chat, user]);
 
   useEffect(() => {
     if (activity?.status === 'completed' && !hasReviewed && user) {

@@ -134,6 +134,9 @@ export default function ChatPage() {
               }
           }
 
+          const unreadCount = user ? (chat.unreadCount?.[user.uid] || 0) : 0;
+          const hasUnread = unreadCount > 0;
+
           return (
             <li key={chat.id}>
               <Link href={`/chat/${chat.id}`} className="block p-4 transition-colors hover:bg-muted/50">
@@ -148,18 +151,25 @@ export default function ChatPage() {
                     <div className="flex justify-between items-center mb-0.5">
                       <p className="truncate font-semibold text-base">{chatName}</p>
                        {chat.lastMessage?.sentAt && (
-                        <time className="shrink-0 text-xs text-muted-foreground">
+                        <time className={`shrink-0 text-xs ${hasUnread ? 'text-green-500 font-bold' : 'text-muted-foreground'}`}>
                           {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: true, includeSeconds: true }).replace('about ', '')}
                         </time>
                       )}
                     </div>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {chat.lastMessage ? (
-                        <>
-                          <span className="font-medium">{chat.lastMessage.senderName?.split(' ')[0]}:</span> {chat.lastMessage.text}
-                        </>
-                      ) : 'No messages yet.'}
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                        <p className={`truncate text-sm ${hasUnread ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                        {chat.lastMessage ? (
+                            <>
+                            <span className="font-medium">{chat.lastMessage.senderName?.split(' ')[0]}:</span> {chat.lastMessage.text}
+                            </>
+                        ) : 'No messages yet.'}
+                        </p>
+                        {hasUnread && (
+                            <div className="bg-green-500 text-white text-[10px] font-bold min-w-[18px] h-4 rounded-full flex items-center justify-center px-1.5 shrink-0 shadow-sm">
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </div>
+                        )}
+                    </div>
                   </div>
                 </div>
               </Link>

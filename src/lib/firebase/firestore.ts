@@ -20,9 +20,10 @@ import {
   getDoc,
   updateDoc,
   limit,
+  increment,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import type { Place, UserProfile, Activity } from '@/lib/types';
+import type { Place, UserProfile, Activity, Chat } from '@/lib/types';
 
 type CreateActivityPayload = {
   place?: Place;
@@ -140,6 +141,9 @@ export async function createActivity({
         photoURL: user.photoURL,
       },
     },
+    unreadCount: {
+      [user.uid]: 0
+    }
   });
 
   try {
@@ -189,7 +193,8 @@ export async function joinActivity(activityId: string, user: User) {
         [`participantDetails.${user.uid}`]: {
           displayName: user.displayName,
           photoURL: user.photoURL,
-        }
+        },
+        [`unreadCount.${user.uid}`]: 0
       });
     });
   } catch (e: any) {
@@ -208,9 +213,12 @@ export async function sendMessage(chatId: string, text: string, user: User) {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!text.trim()) return;
 
-  const messagesRef = collection(db, 'chats', chatId, 'messages');
   const chatRef = doc(db, 'chats', chatId);
+  const chatSnap = await getDoc(chatRef);
+  if (!chatSnap.exists()) return;
+  const chatData = chatSnap.data() as Chat;
 
+  const messagesRef = collection(db, 'chats', chatId, 'messages');
   const batch = writeBatch(db);
 
   const newMessageRef = doc(messagesRef);
@@ -222,19 +230,40 @@ export async function sendMessage(chatId: string, text: string, user: User) {
     sentAt: serverTimestamp(),
   });
 
-  batch.update(chatRef, {
+  const updates: any = {
     lastMessage: {
       text: text.trim(),
       senderName: user.displayName,
       sentAt: serverTimestamp(),
     },
+  };
+
+  // Increment unreadCount for all other participants
+  chatData.participantIds.forEach(pid => {
+    if (pid !== user.uid) {
+      updates[`unreadCount.${pid}`] = increment(1);
+    }
   });
+
+  batch.update(chatRef, updates);
 
   try {
     await batch.commit();
   } catch (error) {
     console.error('Error sending message:', error);
     throw new Error('Could not send message.');
+  }
+}
+
+export async function markChatAsRead(chatId: string, userId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const chatRef = doc(db, 'chats', chatId);
+  try {
+    await updateDoc(chatRef, {
+      [`unreadCount.${userId}`]: 0
+    });
+  } catch (error) {
+    console.error("Error marking chat as read:", error);
   }
 }
 
@@ -253,6 +282,7 @@ export async function leaveActivity(activityId: string, userId: string) {
   batch.update(chatRef, {
     participantIds: arrayRemove(userId),
     [`participantDetails.${userId}`]: deleteField(),
+    [`unreadCount.${userId}`]: deleteField(),
   });
 
   try {
@@ -531,6 +561,10 @@ export async function getOrCreateDirectChat(user1Id: string, user2Id: string): P
         }
       },
       lastMessage: null,
+      unreadCount: {
+        [user1Id]: 0,
+        [user2Id]: 0
+      }
     });
   }
 
