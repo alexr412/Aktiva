@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -126,7 +125,7 @@ export default function Home() {
 
   const isLoadingInitialData = isLoading;
   const isFetchingMore = isValidating && !isLoadingInitialData;
-  const isEmpty = !data?.[0]?.features || data[0].features.length === 0;
+  const isEmpty = !data || data.length === 0 || !data[0].features || data[0].features.length === 0;
   const hasMore = !isEmpty && data && (data[data.length - 1]?.features?.length === PLACES_PER_PAGE);
 
   const resetFilters = () => {

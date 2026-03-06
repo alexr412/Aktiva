@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -17,14 +16,20 @@ export default function TestPage() {
   const [isFetching, setIsFetching] = useState<boolean>(false);
 
   const executeTestQuery = async () => {
-    if (!testCategory.trim()) return;
+    // Bereinige den Input: Entferne Leerzeichen und validiere
+    const sanitizedCategory = testCategory.trim().replace(/\s+/g, '');
+    if (!sanitizedCategory) return;
+    
     setIsFetching(true);
     
     try {
-      const url = `https://api.geoapify.com/v2/places?categories=${testCategory}&filter=circle:${LNG},${LAT},5000&limit=100&conditions=named&exclude=categories:adult&apiKey=${GEOAPIFY_API_KEY}`;
+      const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${LNG},${LAT},5000&limit=100&conditions=named&exclude=categories:adult&apiKey=${GEOAPIFY_API_KEY}`;
       
       const response = await fetch(url);
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`API error: ${response.status} ${JSON.stringify(errorData)}`);
+      }
       
       const data = await response.json();
       setResults(data.features || []);
@@ -68,7 +73,7 @@ export default function TestPage() {
         </div>
         <div className="flex justify-between items-center px-1">
           <code className="text-xs text-muted-foreground break-all">
-            URL: ...?categories=<span className="text-primary font-bold">{testCategory || "null"}</span>
+            URL: ...?categories=<span className="text-primary font-bold">{testCategory.trim().replace(/\s+/g, '') || "null"}</span>
           </code>
           <div className="text-sm font-semibold whitespace-nowrap">
             Results: <span className="text-primary">{results.length}</span>
