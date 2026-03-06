@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { findUserByFriendCode, sendFriendRequest } from '@/lib/firebase/firestore';
+import { sendFriendRequest } from '@/lib/firebase/firestore';
+import { db } from '@/lib/firebase/client';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,8 +16,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Search, UserPlus, Check } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 
 interface AddFriendDialogProps {
   open: boolean;
@@ -23,67 +24,65 @@ interface AddFriendDialogProps {
 }
 
 export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
-  const { user, userProfile } = useAuth();
+  const { user: currentUser, userProfile } = useAuth();
   const { toast } = useToast();
   
-  const [searchQuery, setSearchQuery] = useState('');
-  const [foundUser, setFoundUser] = useState<UserProfile | null>(null);
+  const [searchCode, setSearchCode] = useState('');
+  const [searchedUser, setSearchedUser] = useState<any | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState('');
   const [requestSent, setRequestSent] = useState(false);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-
+  // 1. Vollständiger Ersatz der Such-Logik
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!searchCode.trim()) return;
     setIsSearching(true);
-    setFoundUser(null);
+    setError("");
+    setSearchedUser(null);
     setRequestSent(false);
 
     try {
-      /**
-       * Ausführung der bereinigten Pipeline:
-       * Keine serverseitige Exklusion der eigenen UID.
-       */
-      const result = await findUserByFriendCode(searchQuery);
-      
-      if (result) {
-        setFoundUser(result);
-        if (userProfile?.friendRequestsSent?.includes(result.uid)) {
-          setRequestSent(true);
+      if (!db) throw new Error("Firestore not initialized");
+      // Abfrage ausschließlich auf friendCode (ohne serverseitige UID-Sperre)
+      const q = query(collection(db, "users"), where("friendCode", "==", searchCode.trim().toUpperCase()));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        // Bedingungslose Zuweisung in den UI-State
+        setSearchedUser({ id: doc.id, ...doc.data() });
+        
+        // Prüfen, ob bereits eine Anfrage gesendet wurde
+        if (userProfile?.friendRequestsSent?.includes(doc.id)) {
+            setRequestSent(true);
         }
       } else {
-        toast({
-          variant: 'destructive',
-          title: 'User Not Found',
-          description: 'No user found with that friend code.',
-        });
+        setError("Nutzer nicht gefunden.");
       }
-    } catch (error) {
-       toast({
-          variant: 'destructive',
-          title: 'Search Failed',
-          description: 'An error occurred while searching.',
-       });
+    } catch (err) {
+      console.error(err);
+      setError("Datenbank-Fehler bei der Suche.");
     } finally {
-        setIsSearching(false);
+      setIsSearching(false);
     }
   };
-  
-  const handleAddFriend = async (targetUserId: string) => {
-    if (!user || !foundUser) return;
+
+  const handleSendRequest = async (targetUserId: string) => {
+    if (!currentUser || !searchedUser) return;
     setRequestSent(true);
     try {
-      await sendFriendRequest(user.uid, targetUserId);
+      await sendFriendRequest(currentUser.uid, targetUserId);
       toast({
-        title: 'Friend Request Sent!',
-        description: `Your request has been sent to ${foundUser.displayName}.`,
+        title: 'Anfrage gesendet!',
+        description: `Deine Anfrage wurde an ${searchedUser.displayName} gesendet.`,
       });
-    } catch (error: any) {
+    } catch (err: any) {
       setRequestSent(false);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'Could not send friend request.',
+        title: 'Fehler',
+        description: err.message || 'Konnte Anfrage nicht senden.',
       });
     }
   };
@@ -91,88 +90,87 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
   const handleOpenChange = (isOpen: boolean) => {
       onOpenChange(isOpen);
       if (!isOpen) {
-          setSearchQuery('');
-          setFoundUser(null);
+          setSearchCode('');
+          setSearchedUser(null);
+          setError('');
           setIsSearching(false);
           setRequestSent(false);
       }
   }
 
-  // ID-Normalisierung für robuste Identitätsprüfung
-  const currentUserId = user?.uid;
-  const targetUserId = foundUser?.uid;
-
-  const isSelf = !!currentUserId && !!targetUserId && currentUserId === targetUserId;
-  const isAlreadyFriend = !!userProfile?.friends && !!targetUserId && userProfile.friends.includes(targetUserId);
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add a Friend</DialogTitle>
+          <DialogTitle>Freund hinzufügen</DialogTitle>
           <DialogDescription>
-            Enter a friend's 8-digit code to send them a request.
+            Gib den 8-stelligen Code eines Freundes ein, um ihm eine Anfrage zu senden.
           </DialogDescription>
         </DialogHeader>
         <div className="pt-4">
           <form onSubmit={handleSearch} className="flex gap-2">
             <Input
               placeholder="A1B2C3D4"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
+              value={searchCode}
+              onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
               className="h-12 text-base tracking-widest font-mono"
               maxLength={8}
             />
-            <Button type="submit" size="icon" className="h-12 w-12 flex-shrink-0" disabled={isSearching || !searchQuery}>
+            <Button type="submit" size="icon" className="h-12 w-12 flex-shrink-0" disabled={isSearching || !searchCode}>
               {isSearching ? <Loader2 className="animate-spin" /> : <Search />}
             </Button>
           </form>
+          
+          {error && <p className="text-destructive text-sm mt-2 text-center">{error}</p>}
 
-          {foundUser && targetUserId && (
-            <div className="flex items-center justify-between mt-6 p-3 bg-secondary/20 border border-border rounded-xl">
+          {/* 2. Vollständiger Ersatz des Render-Blocks */}
+          {searchedUser && (
+            <div className="flex items-center justify-between mt-4 p-3 bg-secondary/20 border border-border rounded-xl">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-secondary rounded-full overflow-hidden">
-                  {foundUser.photoURL ? (
-                    <img src={foundUser.photoURL} alt={foundUser.displayName || 'User'} className="w-full h-full object-cover" />
+                <div className="w-10 h-10 bg-secondary rounded-full overflow-hidden flex items-center justify-center">
+                  {searchedUser.photoURL ? (
+                    <img src={searchedUser.photoURL} alt={searchedUser.displayName} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="font-bold flex items-center justify-center h-full w-full bg-muted text-muted-foreground">
-                      {foundUser.displayName?.charAt(0)}
-                    </span>
+                    <span className="font-bold">{searchedUser.displayName?.charAt(0) || "U"}</span>
                   )}
                 </div>
-                <span className="font-bold">{foundUser.displayName}</span>
+                <span className="font-bold">{searchedUser.displayName || "Unbekannt"}</span>
               </div>
 
-              {/* Status-Evaluation */}
-              {isSelf ? (
-                <div className="px-4 py-2 bg-red-500/10 text-red-500 font-bold text-sm rounded-lg flex items-center gap-2">
-                  <span>❤️</span>
-                  <span>Du</span>
-                </div>
-              ) : isAlreadyFriend ? (
-                <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg flex items-center gap-2">
-                  <Check className="w-4 h-4" />
-                  Freunde
-                </div>
-              ) : (
-                <Button 
-                  onClick={() => handleAddFriend(targetUserId)}
-                  disabled={requestSent}
-                  className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold text-sm transition-colors"
-                >
-                  {requestSent ? (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      Gesendet
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Hinzufügen
-                    </>
-                  )}
-                </Button>
-              )}
+              {(() => {
+                // Robuste ID-Extraktion zur Verhinderung von Laufzeitfehlern
+                const currentId = currentUser?.uid || (currentUser as any)?.id;
+                const targetId = searchedUser.id;
+                const isSelf = currentId === targetId;
+                const isAlreadyFriend = userProfile?.friends?.includes(targetId);
+
+                if (isSelf) {
+                  return (
+                    <div className="px-4 py-2 bg-red-500/10 text-red-500 font-bold text-sm rounded-lg flex items-center gap-2">
+                      <span>❤️</span>
+                      <span>Du</span>
+                    </div>
+                  );
+                }
+                
+                if (isAlreadyFriend) {
+                  return (
+                    <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg">
+                      Freunde
+                    </div>
+                  );
+                }
+                
+                return (
+                  <button 
+                    onClick={() => handleSendRequest(targetId)}
+                    disabled={requestSent}
+                    className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {requestSent ? "Gesendet" : "Hinzufügen"}
+                  </button>
+                );
+              })()}
             </div>
           )}
         </div>
