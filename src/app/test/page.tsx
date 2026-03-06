@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Search, Activity, MapPin } from 'lucide-react';
-import { GLOBAL_EXCLUDE_STRING, BLACKLISTED_CATEGORIES } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, HARD_VETO_CATEGORIES, SOFT_BLACKLIST_CATEGORIES, CONDITION_PREFIXES } from '@/lib/geoapify';
 
 export default function TestPage() {
   const [testCity, setTestCity] = useState<string>("Bremerhaven");
@@ -38,34 +37,41 @@ export default function TestPage() {
     
     try {
       const includeTags = sanitizedCategory.split(',');
-      
-      // 1. Dynamische Koordinatenauflösung
       const { lat, lng } = await resolveCoordinates(testCity);
 
-      // 2. Abfrage der Places API mit den aufgelösten Koordinaten
       const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${lng},${lat},5000&limit=100&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
       
       const response = await fetch(url);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API error: ${response.status} ${JSON.stringify(errorData)}`);
-      }
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
       
       const data = await response.json();
       const rawFeatures = data.features || [];
       
-      // 3. Strukturierte Filter-Pipeline (Whitelist Override)
+      // 3-Stufen-Filter-Pipeline (Bidirektional)
       const safeFeatures = rawFeatures.filter((feature: any) => {
-        const itemTags = feature.properties?.categories || [];
-        const catsArray = Array.isArray(itemTags) ? itemTags : [itemTags];
+        const itemTags: string[] = Array.isArray(feature.properties?.categories) 
+          ? feature.properties.categories 
+          : [feature.properties?.categories];
 
-        // Priorität 1: Inklusions-Override (Whitelist)
-        const hasIncludedTag = includeTags.length > 0 && catsArray.some((tag: string) => includeTags.includes(tag));
-        if (hasIncludedTag) return true;
+        const coreTags = itemTags.filter(tag => 
+          !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`))
+        );
 
-        // Priorität 2: Sekundäre Exklusion (Blacklist)
-        const hasExcludedTag = BLACKLISTED_CATEGORIES.length > 0 && catsArray.some((tag: string) => BLACKLISTED_CATEGORIES.includes(cat));
-        if (hasExcludedTag) return false;
+        // STUFE 1: Hard Veto
+        if (itemTags.some(tag => HARD_VETO_CATEGORIES.includes(tag))) return false;
+
+        // STUFE 2: Zwingende Inklusion (Whitelist)
+        if (includeTags.length > 0) {
+          if (!itemTags.some(tag => includeTags.includes(tag))) return false;
+        }
+
+        // STUFE 3: Relative Exklusion (Soft Blacklist)
+        if (coreTags.length > 0) {
+          const isSolelyExcludedIdentity = coreTags.every(coreTag => 
+            SOFT_BLACKLIST_CATEGORIES.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
+          );
+          if (isSolelyExcludedIdentity) return false;
+        }
 
         return true; 
       });
@@ -88,7 +94,7 @@ export default function TestPage() {
           Geoapify Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Echtzeit-Analyse mit Inklusions-Priorität (Whitelist Override).
+          Echtzeit-Analyse mit bidirektionaler Core/Condition-Trennung.
         </p>
       </header>
 
@@ -130,7 +136,7 @@ export default function TestPage() {
             <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap mt-2">
-            Results (filtered with priority logic): <span className="text-primary">{results.length}</span>
+            Results (refined logic): <span className="text-primary">{results.length}</span>
           </div>
         </div>
       </div>
@@ -155,8 +161,10 @@ export default function TestPage() {
                       <span 
                         key={cat} 
                         className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
-                          BLACKLISTED_CATEGORIES.includes(cat) 
-                            ? 'bg-destructive/10 text-destructive border-destructive/20' 
+                          HARD_VETO_CATEGORIES.includes(cat) 
+                            ? 'bg-destructive text-white border-none' 
+                            : SOFT_BLACKLIST_CATEGORIES.includes(cat)
+                            ? 'bg-amber-100 text-amber-700 border-amber-200'
                             : 'bg-primary/10 text-primary border-primary/20'
                         }`}
                       >

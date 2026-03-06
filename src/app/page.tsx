@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -27,7 +26,7 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING, BLACKLISTED_CATEGORIES } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, HARD_VETO_CATEGORIES, SOFT_BLACKLIST_CATEGORIES, CONDITION_PREFIXES } from '@/lib/geoapify';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -103,16 +102,30 @@ export default function Home() {
       const features = page.features || [];
       
       const safeFeatures = features.filter((feature: any) => {
-        const itemTags = feature.properties?.categories || [];
-        const catsArray = Array.isArray(itemTags) ? itemTags : [itemTags];
+        const allTags: string[] = Array.isArray(feature.properties?.categories) 
+          ? feature.properties.categories 
+          : [feature.properties?.categories];
 
-        // Priority 1: Inklusions-Override (Whitelist)
-        const hasIncludedTag = includeTags.length > 0 && catsArray.some((tag: string) => includeTags.includes(tag));
-        if (hasIncludedTag) return true;
+        const coreTags = allTags.filter(tag => 
+          !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`))
+        );
 
-        // Priority 2: Sekundäre Exklusion (Blacklist)
-        const hasExcludedTag = BLACKLISTED_CATEGORIES.length > 0 && catsArray.some((tag: string) => BLACKLISTED_CATEGORIES.includes(tag));
-        if (hasExcludedTag) return false;
+        // 1. Hard Veto
+        if (allTags.some(tag => HARD_VETO_CATEGORIES.includes(tag))) return false;
+
+        // 2. Mandatory Inclusion (Whitelist)
+        const isAllMode = includeTags.includes("tourism") && includeTags.length === 3;
+        if (!isAllMode && includeTags.length > 0) {
+          if (!allTags.some(tag => includeTags.includes(tag))) return false;
+        }
+
+        // 3. Relative Exclusion (Soft Blacklist)
+        if (coreTags.length > 0) {
+          const isSolelyExcludedIdentity = coreTags.every(coreTag => 
+            SOFT_BLACKLIST_CATEGORIES.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
+          );
+          if (isSolelyExcludedIdentity) return false;
+        }
 
         return true; 
       });

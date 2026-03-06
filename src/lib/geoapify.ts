@@ -1,20 +1,33 @@
-
 'use client';
 
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import type { Place, GeoapifyFeature } from '@/lib/types';
 
 /**
- * Zentrale Blacklist für permanente System-Ausschlüsse.
- * Diese Kategorien werden sowohl serverseitig (via exclude-Parameter)
- * als auch clientseitig (via Post-Processing) entfernt, sofern kein Override vorliegt.
+ * Statische Metadaten-Attribute (Conditions), die nicht die Kern-Identität definieren.
  */
-export const BLACKLISTED_CATEGORIES = [
+export const CONDITION_PREFIXES = [
+  "internet_access", "wheelchair", "dogs", "access", "access_limited", 
+  "no_access", "fee", "no_fee", "named", "vegetarian", "vegan", 
+  "halal", "kosher", "organic", "gluten_free", "sugar_free", "egg_free", "soy_free"
+];
+
+/**
+ * Hard Veto: Kategorien, die unter allen Umständen blockiert werden.
+ */
+export const HARD_VETO_CATEGORIES = [
   "adult.stripclub",
   "adult.brothel",
   "adult.swingerclub",
   "adult.adult_gaming_centre",
-  "adult.casino",
+  "adult.casino"
+];
+
+/**
+ * Soft Blacklist: Kategorien, die nur dann zum Ausschluss führen, 
+ * wenn der Ort KEINE anderen validen Identitäts-Tags besitzt.
+ */
+export const SOFT_BLACKLIST_CATEGORIES = [
   "accommodation",
   "airport",
   "childcare",
@@ -29,10 +42,12 @@ export const BLACKLISTED_CATEGORIES = [
   "low_emission_zone",
   "amenity",
   "administrative",
-  "railway"
+  "railway",
+  "heritage"
 ];
 
-// Generiert den Exclude-String für die API-URL
+// Kombinierte Liste für den API-Ausschluss (optimierte Vor-Filterung)
+export const BLACKLISTED_CATEGORIES = [...HARD_VETO_CATEGORIES, ...SOFT_BLACKLIST_CATEGORIES];
 export const GLOBAL_EXCLUDE_STRING = BLACKLISTED_CATEGORIES.map(cat => `categories:${cat}`).join(',');
 
 export async function fetchNearbyPlaces(
@@ -43,7 +58,6 @@ export async function fetchNearbyPlaces(
   limit: number,
   offset: number
 ): Promise<Place[]> {
-  // 1. Zuweisung fokussierter POI-Kategorien für den All-Tab
   let targetCategories: string[];
   if (categories.length === 0 || categories.includes('all')) {
     targetCategories = ["tourism", "entertainment", "heritage"];
@@ -51,38 +65,45 @@ export async function fetchNearbyPlaces(
     targetCategories = categories;
   }
 
-  // 2. Erzwungene Injektion von conditions=named und GLOBAL_EXCLUDE_STRING (Defense in Depth)
   const fetchUrl = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
 
   try {
     const response = await fetch(fetchUrl);
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.warn(`Geoapify API request failed: ${response.status}. ${errorText}`);
-      return [];
-    }
+    if (!response.ok) return [];
     const data = await response.json();
+    if (!data.features) return [];
 
-    if (!data.features) {
-      console.warn("Geoapify response was successful but contained no 'features' array.");
-      return [];
-    }
-
-    // 3. Strukturierte Filter-Pipeline (Inklusions-Priorität / Whitelist Override)
     const rawFeatures = data.features || [];
+    
+    // Anwendung der neuen 3-Stufen-Filter-Pipeline
     const safeFeatures = rawFeatures.filter((feature: any) => {
-      const itemTags = feature.properties?.categories || [];
-      const catsArray = Array.isArray(itemTags) ? itemTags : [itemTags];
+      const allTags: string[] = Array.isArray(feature.properties?.categories) 
+        ? feature.properties.categories 
+        : [feature.properties?.categories];
 
-      // Priorität 1: Inklusions-Override (Whitelist)
-      // Wenn ein gewünschter Tag existiert, wird das Element zwingend gerendert.
-      const hasIncludedTag = targetCategories.length > 0 && catsArray.some((tag: string) => targetCategories.includes(tag));
-      if (hasIncludedTag) return true;
+      // Trennung in Identität (Core) und Attribute (Conditions)
+      const coreTags = allTags.filter(tag => 
+        !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`))
+      );
 
-      // Priorität 2: Sekundäre Exklusion (Blacklist)
-      // Greift nur, wenn Priorität 1 nicht zutrifft.
-      const hasExcludedTag = BLACKLISTED_CATEGORIES.length > 0 && catsArray.some((tag: string) => BLACKLISTED_CATEGORIES.includes(tag));
-      if (hasExcludedTag) return false;
+      // STUFE 1: Hard Veto
+      const violatesHardVeto = allTags.some(tag => HARD_VETO_CATEGORIES.includes(tag));
+      if (violatesHardVeto) return false;
+
+      // STUFE 2: Zwingende Inklusion (Whitelist)
+      const isAllMode = targetCategories.includes("tourism") && targetCategories.length === 3;
+      if (!isAllMode && targetCategories.length > 0) {
+        const satisfiesInclusion = allTags.some(tag => targetCategories.includes(tag));
+        if (!satisfiesInclusion) return false;
+      }
+
+      // STUFE 3: Relative Exklusion (Soft Blacklist)
+      if (coreTags.length > 0) {
+        const isSolelyExcludedIdentity = coreTags.every(coreTag => 
+          SOFT_BLACKLIST_CATEGORIES.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
+        );
+        if (isSolelyExcludedIdentity) return false;
+      }
 
       return true; 
     });
@@ -92,9 +113,7 @@ export async function fetchNearbyPlaces(
       let rating;
       if (props.datasource?.raw?.rating) {
         const parsedRating = parseFloat(props.datasource.raw.rating);
-        if (!isNaN(parsedRating)) {
-            rating = Math.max(0, Math.min(5, parsedRating));
-        }
+        if (!isNaN(parsedRating)) rating = Math.max(0, Math.min(5, parsedRating));
       }
 
       return {
@@ -109,7 +128,7 @@ export async function fetchNearbyPlaces(
       } as Place;
     });
   } catch (error) {
-    console.error('An unexpected error occurred while fetching places from Geoapify:', error);
+    console.error('Fetch error:', error);
     return [];
   }
 }
