@@ -52,7 +52,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
     return (
       <div className="px-6 mt-8">
         <div className="text-sm text-muted-foreground border border-dashed border-border p-8 rounded-xl text-center">
-          Keine Kontakte im Netzwerk.
+          Noch keine Freunde hinzugefügt.
         </div>
       </div>
     );
@@ -60,7 +60,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
 
   return (
     <div className="flex flex-col gap-4 mt-8 w-full px-6">
-      <h3 className="font-bold text-xl border-b border-border pb-2">Netzwerk ({friends.length})</h3>
+      <h3 className="font-bold text-xl border-b border-border pb-2">Freunde ({friends.length})</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {friends.map(friend => (
           <Link href={`/users/${friend.uid}`} key={friend.uid}>
