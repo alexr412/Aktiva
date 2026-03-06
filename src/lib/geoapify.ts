@@ -3,6 +3,12 @@
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import type { Place, GeoapifyFeature } from '@/lib/types';
 
+/**
+ * Zentrale Blacklist-Konstante für permanente System-Ausschlüsse.
+ * Diese Entitäten werden global aus allen API-Abrufen entfernt.
+ */
+export const GLOBAL_EXCLUDE_STRING = "categories:adult.stripclub,adult.brothel,adult.swingerclub,adult.adult_gaming_centre,adult.casino";
+
 export async function fetchNearbyPlaces(
   lat: number,
   lon: number,
@@ -19,9 +25,8 @@ export async function fetchNearbyPlaces(
     targetCategories = categories;
   }
 
-  // 2. Erzwungene Injektion von conditions=named für qualifizierte Ergebnisse.
-  // Durch striktes Whitelisting in den Tab-Definitionen entfällt die manuelle Blacklist.
-  let url = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+  // 2. Erzwungene Injektion von conditions=named und GLOBAL_EXCLUDE_STRING
+  let url = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
 
   try {
     const response = await fetch(url);

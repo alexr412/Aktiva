@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Search, Activity } from 'lucide-react';
+import { GLOBAL_EXCLUDE_STRING } from '@/lib/geoapify';
 
 const LAT = 53.5395845;
 const LNG = 8.5809341;
@@ -23,8 +24,8 @@ export default function TestPage() {
     setIsFetching(true);
     
     try {
-      // Bereinigte URL-Konstruktion ohne redundante Blacklist dank striktem Whitelisting
-      const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${LNG},${LAT},5000&limit=100&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+      // Konstruktion mit Named-Condition, GLOBAL_EXCLUDE_STRING und encodierten Kategorien
+      const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${LNG},${LAT},5000&limit=100&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
       
       const response = await fetch(url);
       if (!response.ok) {
@@ -50,7 +51,7 @@ export default function TestPage() {
           Geoapify Category Diagnostic
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Echtzeit-Analyse von Kategorie-Strings und Sub-Kategorien. (Base: Bremerhaven)
+          Echtzeit-Analyse von Kategorie-Strings unter Berücksichtigung der GLOBAL_EXCLUDE_STRING.
         </p>
       </header>
 
@@ -72,11 +73,14 @@ export default function TestPage() {
             {isFetching ? "Executing..." : "Run Test"}
           </Button>
         </div>
-        <div className="flex justify-between items-center px-1">
+        <div className="flex flex-col gap-1 px-1">
           <code className="text-xs text-muted-foreground break-all">
             URL: ...?categories=<span className="text-primary font-bold">{testCategory.trim().replace(/\s+/g, '') || "null"}</span>
           </code>
-          <div className="text-sm font-semibold whitespace-nowrap">
+          <code className="text-[10px] text-muted-foreground/60 break-all">
+            Exclude: {GLOBAL_EXCLUDE_STRING}
+          </code>
+          <div className="text-sm font-semibold whitespace-nowrap mt-1">
             Results: <span className="text-primary">{results.length}</span>
           </div>
         </div>
