@@ -38,18 +38,12 @@ export default function CommunityPage() {
 
         const result = await findUserByFriendCode(searchQuery);
         
-        if (result && result.uid !== user?.uid) {
+        if (result) {
             setFoundUser(result);
-            // Check if a request was already sent or if they are already friends
-            if (userProfile?.friendRequestsSent?.includes(result.uid) || userProfile?.friends?.includes(result.uid)) {
+            // Check if a request was already sent
+            if (userProfile?.friendRequestsSent?.includes(result.uid)) {
                 setRequestSent(true);
             }
-        } else if (result && result.uid === user?.uid) {
-             toast({
-                variant: 'default',
-                title: 'That\'s you!',
-                description: 'You cannot add yourself as a friend.',
-            });
         } else {
             toast({
                 variant: 'destructive',
@@ -78,6 +72,10 @@ export default function CommunityPage() {
             });
         }
     };
+
+    // Status-Evaluation
+    const isSelf = user?.uid === foundUser?.uid;
+    const isAlreadyFriend = userProfile?.friends?.includes(foundUser?.uid || '');
 
     return (
         <div className="flex flex-col h-full">
@@ -110,34 +108,45 @@ export default function CommunityPage() {
                         </form>
 
                         {foundUser && (
-                            <div className="mt-6 rounded-lg border bg-secondary p-4">
+                            <div className="mt-6 rounded-lg border bg-secondary/30 p-4 border-border">
                                 <div className="flex items-center justify-between gap-4">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <Avatar>
                                             <AvatarImage src={foundUser.photoURL || undefined} />
                                             <AvatarFallback>{foundUser.displayName?.charAt(0)}</AvatarFallback>
                                         </Avatar>
-                                        <div className="font-medium truncate">{foundUser.displayName}</div>
+                                        <div className="font-bold truncate">{foundUser.displayName}</div>
                                     </div>
-                                    <Button onClick={handleAddFriend} disabled={requestSent} className="w-32 flex-shrink-0">
-                                        {requestSent ? (
-                                            <>
-                                                <Check className="mr-2 h-4 w-4" />
-                                                Sent
-                                            </>
-                                        ) : (
-                                            <>
-                                                <UserPlus className="mr-2 h-4 w-4" />
-                                                Add Friend
-                                            </>
-                                        )}
-                                    </Button>
+                                    
+                                    {isSelf ? (
+                                        <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg">
+                                            Du
+                                        </div>
+                                    ) : isAlreadyFriend ? (
+                                        <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg flex items-center gap-2">
+                                            <Check className="w-4 h-4" />
+                                            Befreundet
+                                        </div>
+                                    ) : (
+                                        <Button onClick={handleAddFriend} disabled={requestSent} className="w-32 flex-shrink-0">
+                                            {requestSent ? (
+                                                <>
+                                                    <Check className="mr-2 h-4 w-4" />
+                                                    Gesendet
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <UserPlus className="mr-2 h-4 w-4" />
+                                                    Hinzufügen
+                                                </>
+                                            )}
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         )}
                     </CardContent>
                 </Card>
-                {/* Future: Add Friends List here */}
             </main>
         </div>
     );
