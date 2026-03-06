@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -59,7 +58,7 @@ export const availableTabs: CategoryTab[] = [
   { id: "Gastronomy", label: "Gastro", query: ["catering.restaurant", "catering.cafe"], icon: UtensilsCrossed },
   { id: "FastFood", label: "Fast Food", query: ["catering.fast_food"], icon: Utensils },
   { id: "Nightlife", label: "Bars & Pubs", query: ["catering.bar", "catering.pub"], icon: Beer },
-  { id: "Clubs", label: "Clubs & Discos", query: ["entertainment.nightclub"], icon: Music },
+  { id: "Clubs", label: "Clubs & Discos", query: ["adult.nightclub"], icon: Music },
   { id: "Nature", label: "Natur & Parks", query: ["leisure.park", "natural.forest"], icon: TreePine },
   { id: "Water", label: "Wasser & Strand", query: ["natural.water", "natural.beach"], icon: Waves },
   { id: "Sport", label: "Sportanlagen", query: ["sport"], icon: Dumbbell },

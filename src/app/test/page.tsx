@@ -23,7 +23,8 @@ export default function TestPage() {
     setIsFetching(true);
     
     try {
-      const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${LNG},${LAT},5000&limit=100&conditions=named&exclude=categories:adult&apiKey=${GEOAPIFY_API_KEY}`;
+      // URL-Konstruktion mit verfeinerter Blacklist zur Trennung von adult.nightclub und Adult-Entertainment
+      const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${LNG},${LAT},5000&limit=100&conditions=named&exclude=categories:adult.stripclub,adult.brothel,adult.swingerclub,adult.adult_gaming_centre&apiKey=${GEOAPIFY_API_KEY}`;
       
       const response = await fetch(url);
       if (!response.ok) {
