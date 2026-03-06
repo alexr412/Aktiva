@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Search, Activity, MapPin } from 'lucide-react';
-import { GLOBAL_EXCLUDE_STRING, HARD_VETO_CATEGORIES, SOFT_BLACKLIST_CATEGORIES, CONDITION_PREFIXES, BASE_EXCLUSIONS } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
 
 export default function TestPage() {
   const [testCity, setTestCity] = useState<string>("Bremerhaven");
@@ -47,31 +47,33 @@ export default function TestPage() {
       const data = await response.json();
       const rawFeatures = data.features || [];
       
-      // 4-Stufen-Filter-Pipeline (Refined Logic)
+      // Korrigierte Veto-Pipeline (Hard vs. Soft)
       const safeFeatures = rawFeatures.filter((feature: any) => {
         const itemTags: string[] = Array.isArray(feature.properties?.categories) 
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // STUFE 0: Base Veto (System-Exklusion)
-        if (itemTags.some(tag => BASE_EXCLUSIONS.includes(tag))) return false;
+        // Stufe 0A: Absolutes System-Veto (Hard Veto)
+        const violatesBaseHard = itemTags.some(tag => 
+          BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
+        );
+        if (violatesBaseHard) return false;
 
+        // Extraktion der Identitäts-Tags (Core)
         const coreTags = itemTags.filter(tag => 
-          !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`))
+          !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
+          !tag.startsWith("building")
         );
 
-        // STUFE 1: Hard Veto
-        if (itemTags.some(tag => HARD_VETO_CATEGORIES.includes(tag))) return false;
-
-        // STUFE 2: Zwingende Inklusion (Whitelist)
+        // Stufe 2: Zwingende Inklusion (Whitelist)
         if (includeTags.length > 0) {
           if (!itemTags.some(tag => includeTags.includes(tag))) return false;
         }
 
-        // STUFE 3: Relative Exklusion (Soft Blacklist)
-        if (coreTags.length > 0) {
+        // Stufe 3: Relative Exklusion (Kombiniertes Soft Veto)
+        if (BASE_SOFT_VETO.length > 0 && coreTags.length > 0) {
           const isSolelyExcludedIdentity = coreTags.every(coreTag => 
-            SOFT_BLACKLIST_CATEGORIES.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
+            BASE_SOFT_VETO.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
           );
           if (isSolelyExcludedIdentity) return false;
         }
@@ -97,7 +99,7 @@ export default function TestPage() {
           Geoapify Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Echtzeit-Analyse mit 4-Stufen-Filter-Pipeline (Base Veto Injected).
+          Echtzeit-Analyse mit Hard-/Soft-Veto Schichten.
         </p>
       </header>
 
@@ -139,7 +141,7 @@ export default function TestPage() {
             <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap mt-2">
-            Results (4-stage logic): <span className="text-primary">{results.length}</span>
+            Results (Hard/Soft logic): <span className="text-primary">{results.length}</span>
           </div>
         </div>
       </div>
@@ -164,9 +166,9 @@ export default function TestPage() {
                       <span 
                         key={cat} 
                         className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
-                          BASE_EXCLUSIONS.includes(cat) || HARD_VETO_CATEGORIES.includes(cat) 
+                          BASE_HARD_VETO.includes(cat) 
                             ? 'bg-destructive text-white border-none' 
-                            : SOFT_BLACKLIST_CATEGORIES.includes(cat)
+                            : BASE_SOFT_VETO.includes(cat)
                             ? 'bg-amber-100 text-amber-700 border-amber-200'
                             : 'bg-primary/10 text-primary border-primary/20'
                         }`}

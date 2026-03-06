@@ -26,7 +26,7 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING, HARD_VETO_CATEGORIES, SOFT_BLACKLIST_CATEGORIES, CONDITION_PREFIXES, BASE_EXCLUSIONS } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -106,26 +106,28 @@ export default function Home() {
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // 0. Base Veto (Systemseitige Grund-Bereinigung)
-        if (allTags.some(tag => BASE_EXCLUSIONS.includes(tag))) return false;
+        // Stufe 0A: Absolutes System-Veto (Hard Veto)
+        const violatesBaseHard = allTags.some(tag => 
+          BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
+        );
+        if (violatesBaseHard) return false;
 
+        // Extraktion der Identitäts-Tags (Core)
         const coreTags = allTags.filter(tag => 
-          !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`))
+          !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
+          !tag.startsWith("building")
         );
 
-        // 1. Hard Veto (Absolute Exklusion)
-        if (allTags.some(tag => HARD_VETO_CATEGORIES.includes(tag))) return false;
-
-        // 2. Mandatory Inclusion (Whitelist)
+        // Stufe 2: Zwingende Inklusion (Whitelist)
         const isAllMode = includeTags.includes("tourism") && includeTags.length === 3;
         if (!isAllMode && includeTags.length > 0) {
           if (!allTags.some(tag => includeTags.includes(tag))) return false;
         }
 
-        // 3. Relative Exclusion (Soft Blacklist)
-        if (coreTags.length > 0) {
+        // Stufe 3: Relative Exklusion (Soft Blacklist)
+        if (BASE_SOFT_VETO.length > 0 && coreTags.length > 0) {
           const isSolelyExcludedIdentity = coreTags.every(coreTag => 
-            SOFT_BLACKLIST_CATEGORIES.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
+            BASE_SOFT_VETO.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
           );
           if (isSolelyExcludedIdentity) return false;
         }
