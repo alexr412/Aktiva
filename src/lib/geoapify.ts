@@ -1,3 +1,4 @@
+
 'use client';
 
 import { GEOAPIFY_API_KEY } from '@/lib/config';
@@ -6,8 +7,7 @@ import type { Place, GeoapifyFeature } from '@/lib/types';
 /**
  * Zentrale Blacklist für permanente System-Ausschlüsse.
  * Diese Kategorien werden sowohl serverseitig (via exclude-Parameter)
- * als auch clientseitig (via Post-Processing) restlos entfernt.
- * Enthält architektonisch inkompatible Root-Knoten gemäß System-Anweisung.
+ * als auch clientseitig (via Post-Processing) entfernt, sofern kein Override vorliegt.
  */
 export const BLACKLISTED_CATEGORIES = [
   "adult.stripclub",
@@ -32,7 +32,7 @@ export const BLACKLISTED_CATEGORIES = [
   "railway"
 ];
 
-// Generiert den Exclude-String für die API-URL (z.B. "categories:adult.stripclub,categories:accommodation...")
+// Generiert den Exclude-String für die API-URL
 export const GLOBAL_EXCLUDE_STRING = BLACKLISTED_CATEGORIES.map(cat => `categories:${cat}`).join(',');
 
 export async function fetchNearbyPlaces(
@@ -68,13 +68,23 @@ export async function fetchNearbyPlaces(
       return [];
     }
 
-    // 3. Harte Client-Side-Filterung (Post-Processing)
+    // 3. Strukturierte Filter-Pipeline (Inklusions-Priorität / Whitelist Override)
     const rawFeatures = data.features || [];
     const safeFeatures = rawFeatures.filter((feature: any) => {
-      const featureCats = feature.properties?.categories || [];
-      const catsArray = Array.isArray(featureCats) ? featureCats : [featureCats];
-      // Verwirft das Objekt, sobald eine Kategorie in der Blacklist existiert
-      return !catsArray.some((cat: string) => BLACKLISTED_CATEGORIES.includes(cat));
+      const itemTags = feature.properties?.categories || [];
+      const catsArray = Array.isArray(itemTags) ? itemTags : [itemTags];
+
+      // Priorität 1: Inklusions-Override (Whitelist)
+      // Wenn ein gewünschter Tag existiert, wird das Element zwingend gerendert.
+      const hasIncludedTag = targetCategories.length > 0 && catsArray.some((tag: string) => targetCategories.includes(tag));
+      if (hasIncludedTag) return true;
+
+      // Priorität 2: Sekundäre Exklusion (Blacklist)
+      // Greift nur, wenn Priorität 1 nicht zutrifft.
+      const hasExcludedTag = BLACKLISTED_CATEGORIES.length > 0 && catsArray.some((tag: string) => BLACKLISTED_CATEGORIES.includes(tag));
+      if (hasExcludedTag) return false;
+
+      return true; 
     });
 
     return safeFeatures.map((feature: GeoapifyFeature) => {

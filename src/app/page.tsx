@@ -94,13 +94,27 @@ export default function Home() {
 
   const rawPlaces = useMemo(() => {
     if (!data) return [];
+
+    const includeTags = activeCategory.includes('all') || activeCategory.length === 0
+      ? ["tourism", "entertainment", "heritage"]
+      : activeCategory;
+
     return data.flatMap(page => {
       const features = page.features || [];
       
       const safeFeatures = features.filter((feature: any) => {
-        const featureCats = feature.properties?.categories || [];
-        const catsArray = Array.isArray(featureCats) ? featureCats : [featureCats];
-        return !catsArray.some((cat: string) => BLACKLISTED_CATEGORIES.includes(cat));
+        const itemTags = feature.properties?.categories || [];
+        const catsArray = Array.isArray(itemTags) ? itemTags : [itemTags];
+
+        // Priority 1: Inklusions-Override (Whitelist)
+        const hasIncludedTag = includeTags.length > 0 && catsArray.some((tag: string) => includeTags.includes(tag));
+        if (hasIncludedTag) return true;
+
+        // Priority 2: Sekundäre Exklusion (Blacklist)
+        const hasExcludedTag = BLACKLISTED_CATEGORIES.length > 0 && catsArray.some((tag: string) => BLACKLISTED_CATEGORIES.includes(tag));
+        if (hasExcludedTag) return false;
+
+        return true; 
       });
 
       return safeFeatures.map((feature: GeoapifyFeature) => {
@@ -130,7 +144,7 @@ export default function Home() {
         } as Place;
       });
     });
-  }, [data]);
+  }, [data, activeCategory]);
   
   const places = useMemo(() => {
     return rawPlaces.map(p => ({

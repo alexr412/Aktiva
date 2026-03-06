@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -36,6 +37,8 @@ export default function TestPage() {
     setIsFetching(true);
     
     try {
+      const includeTags = sanitizedCategory.split(',');
+      
       // 1. Dynamische Koordinatenauflösung
       const { lat, lng } = await resolveCoordinates(testCity);
 
@@ -51,11 +54,20 @@ export default function TestPage() {
       const data = await response.json();
       const rawFeatures = data.features || [];
       
-      // 3. Clientseitige Post-Processing Blacklist
+      // 3. Strukturierte Filter-Pipeline (Whitelist Override)
       const safeFeatures = rawFeatures.filter((feature: any) => {
-        const categories = feature.properties?.categories || [];
-        const catsArray = Array.isArray(categories) ? categories : [categories];
-        return !catsArray.some((cat: string) => BLACKLISTED_CATEGORIES.includes(cat));
+        const itemTags = feature.properties?.categories || [];
+        const catsArray = Array.isArray(itemTags) ? itemTags : [itemTags];
+
+        // Priorität 1: Inklusions-Override (Whitelist)
+        const hasIncludedTag = includeTags.length > 0 && catsArray.some((tag: string) => includeTags.includes(tag));
+        if (hasIncludedTag) return true;
+
+        // Priorität 2: Sekundäre Exklusion (Blacklist)
+        const hasExcludedTag = BLACKLISTED_CATEGORIES.length > 0 && catsArray.some((tag: string) => BLACKLISTED_CATEGORIES.includes(cat));
+        if (hasExcludedTag) return false;
+
+        return true; 
       });
 
       setResults(safeFeatures);
@@ -76,7 +88,7 @@ export default function TestPage() {
           Geoapify Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Echtzeit-Analyse mit Geocoding, GLOBAL_EXCLUDE_STRING und Post-Processing.
+          Echtzeit-Analyse mit Inklusions-Priorität (Whitelist Override).
         </p>
       </header>
 
@@ -118,7 +130,7 @@ export default function TestPage() {
             <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap mt-2">
-            Results (filtered): <span className="text-primary">{results.length}</span>
+            Results (filtered with priority logic): <span className="text-primary">{results.length}</span>
           </div>
         </div>
       </div>
