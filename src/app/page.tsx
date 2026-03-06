@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -38,7 +39,6 @@ const CardSkeleton = () => (
     </div>
 );
 
-// Erhöhtes Limit auf 300 gemäß System-Anweisung zur Gewährleistung der Datentiefe
 const PLACES_PER_PAGE = 300;
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -70,7 +70,6 @@ export default function Home() {
     if (!userLocation) return null;
     if (previousPageData && (!previousPageData.features || previousPageData.features.length === 0)) return null;
 
-    // 1. Strikte Evaluierung des Kategorie-Strings gemäß System-Anweisung (Fokus auf POIs)
     let categoriesToFetch: string[];
     if (activeCategory.includes('all') || activeCategory.length === 0) {
       categoriesToFetch = ["tourism", "entertainment", "heritage"];
@@ -81,8 +80,7 @@ export default function Home() {
     const offset = pageIndex * PLACES_PER_PAGE;
     const radiusMeters = searchRadiusKm * 1000;
     
-    // 2. Erzwungene Injektion von conditions=named und Limit 300
-    let url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+    let url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&exclude=categories:adult&apiKey=${GEOAPIFY_API_KEY}`;
 
     return url;
   }
@@ -584,7 +582,6 @@ export default function Home() {
                 </Select>
               )}
             </div>
-            {/* Radius Slider UI */}
             {!isCommunityCategory && !isFavoritesCategory && (
               <div className="flex flex-col gap-2 mb-2">
                 <div className="flex justify-between items-center text-sm font-medium text-muted-foreground px-1">

@@ -23,6 +23,7 @@ import {
   ShoppingCart,
   Bird,
   Library,
+  Music,
   Loader2,
   type LucideIcon,
 } from 'lucide-react';
@@ -58,6 +59,7 @@ export const availableTabs: CategoryTab[] = [
   { id: "Gastronomy", label: "Gastro", query: ["catering.restaurant", "catering.cafe"], icon: UtensilsCrossed },
   { id: "FastFood", label: "Fast Food", query: ["catering.fast_food"], icon: Utensils },
   { id: "Nightlife", label: "Bars & Pubs", query: ["catering.bar", "catering.pub"], icon: Beer },
+  { id: "Clubs", label: "Clubs & Discos", query: ["entertainment.nightclub"], icon: Music },
   { id: "Nature", label: "Natur & Parks", query: ["leisure.park", "natural.forest"], icon: TreePine },
   { id: "Water", label: "Wasser & Strand", query: ["natural.water", "natural.beach"], icon: Waves },
   { id: "Sport", label: "Sportanlagen", query: ["sport"], icon: Dumbbell },
@@ -79,14 +81,10 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
   const { toast } = useToast();
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   
-  // localActiveTabs hält den persistenten Zustand für die horizontale Scroll-Liste
   const [localActiveTabs, setLocalActiveTabs] = useState<string[]>([]);
-  
-  // draftTabs hält den temporären Zustand innerhalb des Modals (Draft-Pattern)
   const [draftTabs, setDraftTabs] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Synchronisiere lokalen Zustand mit dem Nutzerprofil
   useEffect(() => {
     if (userProfile?.activeTabs) {
       setLocalActiveTabs(userProfile.activeTabs);
@@ -95,7 +93,6 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
     }
   }, [userProfile]);
 
-  // Initialisiere Draft-State beim Öffnen des Modals
   useEffect(() => {
     if (isConfigOpen) {
       setDraftTabs(localActiveTabs);
@@ -120,14 +117,9 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
     setIsSaving(true);
 
     try {
-      // 1. Asynchroner Schreibzugriff (Persistenz)
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, { activeTabs: draftTabs });
-
-      // 2. State-Synchronisation für die UI
       setLocalActiveTabs(draftTabs);
-      
-      // 3. Schließen des Modals
       setIsConfigOpen(false);
       
       toast({

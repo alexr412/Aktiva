@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Search, Activity } from 'lucide-react';
 
-// Statische Koordinaten (Bremerhaven) für reproduzierbare Tests
 const LAT = 53.5395845;
 const LNG = 8.5809341;
 
@@ -21,8 +21,7 @@ export default function TestPage() {
     setIsFetching(true);
     
     try {
-      // Direkte URL-Konstruktion zur Umgehung interpretierender Logik
-      const url = `https://api.geoapify.com/v2/places?categories=${testCategory}&filter=circle:${LNG},${LAT},5000&limit=100&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+      const url = `https://api.geoapify.com/v2/places?categories=${testCategory}&filter=circle:${LNG},${LAT},5000&limit=100&conditions=named&exclude=categories:adult&apiKey=${GEOAPIFY_API_KEY}`;
       
       const response = await fetch(url);
       if (!response.ok) throw new Error(`API error: ${response.status}`);
