@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -6,8 +7,8 @@ import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { PlaceCard } from '@/components/aktvia/place-card';
 import type { Place, Activity, GeoapifyFeature } from '@/lib/types';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -55,6 +56,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState("distance");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [searchRadiusKm, setSearchRadiusKm] = useState<number>(5);
+  const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
 
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
@@ -85,7 +87,7 @@ export default function Home() {
     return url;
   }
 
-  const { data, error, size, setSize, isLoading, isValidating } = useSWRInfinite(getKey, fetcher, {
+  const { data, size, setSize, isLoading, isValidating, error } = useSWRInfinite(getKey, fetcher, {
     revalidateFirstPage: false,
     dedupingInterval: 60000,
   });
@@ -95,7 +97,6 @@ export default function Home() {
     return data.flatMap(page => {
       const features = page.features || [];
       
-      // Client-Side Post-Processing Blacklist
       const safeFeatures = features.filter((feature: any) => {
         const featureCats = feature.properties?.categories || [];
         const catsArray = Array.isArray(featureCats) ? featureCats : [featureCats];
@@ -112,7 +113,6 @@ export default function Home() {
           }
         }
 
-        // B2B-Sponsoring Logic: Simulate promoted status for certain categories
         const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
         const isSponsored = cats.some(c => c.includes('office.coworking') || c.includes('rental.'));
 
@@ -125,7 +125,7 @@ export default function Home() {
           lon: props.lon,
           rating: rating,
           distance: props.distance,
-          isSponsored: isSponsored, // B2B Flag
+          isSponsored: isSponsored,
           affiliateUrl: isSponsored ? 'https://example.com/booking?ref=aktvia' : undefined
         } as Place;
       });
@@ -428,7 +428,6 @@ export default function Home() {
                 );
     
                 const sortedActivities = filteredCustomActivities.sort((a, b) => {
-                    // Booster-Architektur: Pinned to top
                     if (a.isBoosted && !b.isBoosted) return -1;
                     if (!a.isBoosted && b.isBoosted) return 1;
 
@@ -463,7 +462,6 @@ export default function Home() {
                 );
     
                 const sortedPlaces = filteredPlaces.sort((a, b) => {
-                    // B2B-Sponsoring: Pins sponsored entities to index 0
                     if (a.isSponsored && !b.isSponsored) return -1;
                     if (!a.isSponsored && b.isSponsored) return 1;
 
@@ -528,6 +526,28 @@ export default function Home() {
                 </div>
               );
         }
+
+        // Premium Gating: Secondary Check in Render Tree
+        if (!userProfile?.isPremium) {
+            return (
+                <div className="flex flex-col items-center justify-center p-8 h-[calc(100%-80px)] text-center space-y-6">
+                    <div className="bg-secondary p-6 rounded-full relative">
+                        <Lock className="h-12 w-12 text-muted-foreground" />
+                        <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground p-1.5 rounded-full border-4 border-background">
+                            <Sparkles className="h-4 w-4" />
+                        </div>
+                    </div>
+                    <div className="space-y-2 max-w-sm">
+                        <h2 className="text-2xl font-bold">Kartenansicht gesperrt</h2>
+                        <p className="text-muted-foreground">Die interaktive geografische Entdeckung ist Teil der Premium-Architektur.</p>
+                    </div>
+                    <Button onClick={() => setIsPremiumUpsellOpen(true)} className="rounded-full px-8 h-12 font-bold shadow-lg gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        Premium freischalten
+                    </Button>
+                </div>
+            );
+        }
         
         const placesForMap = isFavoritesCategory
             ? (favorites as Place[])
@@ -561,8 +581,24 @@ export default function Home() {
                             <List className="h-4 w-4" />
                             <span className="sr-only">List View</span>
                         </Button>
-                        <Button variant={viewMode === 'map' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-full shadow-sm" onClick={() => setViewMode('map')}>
+                        <Button 
+                            variant={viewMode === 'map' ? 'secondary' : 'ghost'} 
+                            size="icon" 
+                            className="h-8 w-8 rounded-full shadow-sm relative" 
+                            onClick={() => {
+                                if (!userProfile?.isPremium) {
+                                    setIsPremiumUpsellOpen(true);
+                                    return;
+                                }
+                                setViewMode('map');
+                            }}
+                        >
                             <MapIcon className="h-4 w-4" />
+                            {!userProfile?.isPremium && (
+                                <div className="absolute -top-1 -right-1 bg-muted-foreground/20 rounded-full p-0.5 border border-background">
+                                    <Lock className="h-2 w-2 text-muted-foreground fill-background" />
+                                </div>
+                            )}
                             <span className="sr-only">Map View</span>
                         </Button>
                     </div>
@@ -650,6 +686,52 @@ export default function Home() {
         open={isLocationSearchOpen}
         onOpenChange={setIsLocationSearchOpen}
       />
+
+      {/* Premium Upsell Dialog */}
+      <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="items-center text-center">
+            <div className="bg-primary/10 p-4 rounded-full mb-4">
+                <Sparkles className="h-10 w-10 text-primary" />
+            </div>
+            <DialogTitle className="text-2xl font-bold">Werde Premium-Mitglied</DialogTitle>
+            <DialogDescription className="text-base">
+                Schalte die interaktive Karte und viele weitere exklusive Funktionen frei.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-secondary/50">
+                <div className="mt-1 bg-primary/20 p-1 rounded-full"><Check className="h-3 w-3 text-primary" /></div>
+                <div>
+                    <p className="font-bold text-sm">Interaktive Kartenansicht</p>
+                    <p className="text-xs text-muted-foreground">Entdecke Aktivitäten und Orte direkt in deiner Umgebung auf der Karte.</p>
+                </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-secondary/50">
+                <div className="mt-1 bg-primary/20 p-1 rounded-full"><Check className="h-3 w-3 text-primary" /></div>
+                <div>
+                    <p className="font-bold text-sm">Individuelle Akzentfarben</p>
+                    <p className="text-xs text-muted-foreground">Personalisiere die App mit deiner Lieblingsfarbe.</p>
+                </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-secondary/50">
+                <div className="mt-1 bg-primary/20 p-1 rounded-full"><Check className="h-3 w-3 text-primary" /></div>
+                <div>
+                    <p className="font-bold text-sm">Keine Werbung</p>
+                    <p className="text-xs text-muted-foreground">Genieße Aktvia ohne Unterbrechungen durch Swipe-Ads.</p>
+                </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button className="w-full h-12 text-base font-bold rounded-xl shadow-lg" onClick={() => {
+                toast({ title: "In-App-Kauf", description: "Zahlungsmodul wird in Kürze implementiert." });
+                setIsPremiumUpsellOpen(false);
+            }}>
+                Jetzt upgraden
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
