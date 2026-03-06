@@ -2,12 +2,12 @@
 
 import { createContext, useState, useEffect, type ReactNode } from 'react';
 import type { User } from 'firebase/auth';
-import { auth } from '@/lib/firebase/client';
+import { auth, db } from '@/lib/firebase/client';
 import { onAuthStateChanged } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import { getUserProfile } from '@/lib/firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 
 export interface AuthContextType {
@@ -47,38 +47,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!auth) {
+    if (!auth || !db) {
         setLoading(false);
         return;
     }
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setLoading(true);
-      if (user) {
-        setUser(user);
-        const profile = await getUserProfile(user.uid);
-        setUserProfile(profile);
 
-        if (profile && !profile.onboardingCompleted) {
-          if (pathname !== '/onboarding') {
-            router.replace('/onboarding');
+    let unsubscribeDoc: (() => void) | undefined;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
+      if (unsubscribeDoc) {
+        unsubscribeDoc();
+        unsubscribeDoc = undefined;
+      }
+
+      if (authUser) {
+        setUser(authUser);
+        
+        // Etabliere Echtzeit-Stream zum Nutzerdokument
+        const userRef = doc(db, 'users', authUser.uid);
+        unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const profile = docSnap.data() as UserProfile;
+            setUserProfile(profile);
+
+            // Onboarding-Check
+            if (!profile.onboardingCompleted && pathname !== '/onboarding') {
+              router.replace('/onboarding');
+            }
           }
-        }
+          setLoading(false);
+        }, (error) => {
+          console.error("User document stream error:", error);
+          setLoading(false);
+        });
       } else {
         setUser(null);
         setUserProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeDoc) unsubscribeDoc();
+    };
   }, [router, pathname]);
 
   if (!auth && !loading) {
     return <NotConfigured />;
   }
   
-  // While the initial auth state and profile are loading, and we might redirect,
-  // don't render the children to avoid flashing content.
   if (loading) {
       return (
           <div className="flex h-screen w-full items-center justify-center">
@@ -87,8 +105,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       )
   }
 
-  // If user is not onboarded and we are not on the onboarding page,
-  // we wait for the redirect to happen.
   if (user && userProfile && !userProfile.onboardingCompleted && pathname !== '/onboarding') {
       return (
           <div className="flex h-screen w-full items-center justify-center">

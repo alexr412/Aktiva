@@ -6,7 +6,6 @@ import { useToast } from '@/hooks/use-toast';
 import { sendFriendRequest } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import type { UserProfile } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,32 +30,24 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
   const [searchedUser, setSearchedUser] = useState<any | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState('');
-  const [requestSent, setRequestSent] = useState(false);
+  const [requestSentLocally, setRequestSentLocally] = useState(false);
 
-  // 1. Vollständiger Ersatz der Such-Logik
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!searchCode.trim()) return;
     setIsSearching(true);
     setError("");
     setSearchedUser(null);
-    setRequestSent(false);
+    setRequestSentLocally(false);
 
     try {
       if (!db) throw new Error("Firestore not initialized");
-      // Abfrage ausschließlich auf friendCode (ohne serverseitige UID-Sperre)
       const q = query(collection(db, "users"), where("friendCode", "==", searchCode.trim().toUpperCase()));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
         const doc = querySnapshot.docs[0];
-        // Bedingungslose Zuweisung in den UI-State
         setSearchedUser({ id: doc.id, ...doc.data() });
-        
-        // Prüfen, ob bereits eine Anfrage gesendet wurde
-        if (userProfile?.friendRequestsSent?.includes(doc.id)) {
-            setRequestSent(true);
-        }
       } else {
         setError("Nutzer nicht gefunden.");
       }
@@ -70,7 +61,7 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
 
   const handleSendRequest = async (targetUserId: string) => {
     if (!currentUser || !searchedUser) return;
-    setRequestSent(true);
+    setRequestSentLocally(true);
     try {
       await sendFriendRequest(currentUser.uid, targetUserId);
       toast({
@@ -78,7 +69,7 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
         description: `Deine Anfrage wurde an ${searchedUser.displayName} gesendet.`,
       });
     } catch (err: any) {
-      setRequestSent(false);
+      setRequestSentLocally(false);
       toast({
         variant: 'destructive',
         title: 'Fehler',
@@ -94,7 +85,7 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
           setSearchedUser(null);
           setError('');
           setIsSearching(false);
-          setRequestSent(false);
+          setRequestSentLocally(false);
       }
   }
 
@@ -123,7 +114,6 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
           
           {error && <p className="text-destructive text-sm mt-2 text-center">{error}</p>}
 
-          {/* 2. Vollständiger Ersatz des Render-Blocks */}
           {searchedUser && (
             <div className="flex items-center justify-between mt-4 p-3 bg-secondary/20 border border-border rounded-xl">
               <div className="flex items-center gap-3">
@@ -138,11 +128,11 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
               </div>
 
               {(() => {
-                // Robuste ID-Extraktion zur Verhinderung von Laufzeitfehlern
-                const currentId = currentUser?.uid || (currentUser as any)?.id;
+                const currentId = currentUser?.uid;
                 const targetId = searchedUser.id;
                 const isSelf = currentId === targetId;
                 const isAlreadyFriend = userProfile?.friends?.includes(targetId);
+                const isRequestAlreadySent = userProfile?.friendRequestsSent?.includes(targetId) || requestSentLocally;
 
                 if (isSelf) {
                   return (
@@ -160,14 +150,21 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
                     </div>
                   );
                 }
+
+                if (isRequestAlreadySent) {
+                  return (
+                    <div className="px-4 py-2 bg-secondary/50 text-muted-foreground font-bold text-sm rounded-lg">
+                      Gesendet
+                    </div>
+                  );
+                }
                 
                 return (
                   <button 
                     onClick={() => handleSendRequest(targetId)}
-                    disabled={requestSent}
-                    className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold text-sm transition-colors"
                   >
-                    {requestSent ? "Gesendet" : "Hinzufügen"}
+                    Hinzufügen
                   </button>
                 );
               })()}
