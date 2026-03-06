@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
+import { updateUserLocation } from '@/lib/firebase/firestore';
 
 export interface AuthContextType {
   user: User | null;
@@ -92,6 +93,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (unsubscribeDoc) unsubscribeDoc();
     };
   }, [router, pathname]);
+
+  // Proximity Radar: Standort-Update bei App-Nutzung (Vordergrund)
+  useEffect(() => {
+    if (!user || !userProfile?.proximitySettings?.enabled) return;
+
+    const updateLocation = () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            updateUserLocation(user.uid, latitude, longitude);
+          },
+          (error) => console.warn("Location update failed:", error),
+          { enableHighAccuracy: false, timeout: 15000 }
+        );
+      }
+    };
+
+    // Update sofort beim Mount
+    updateLocation();
+
+    // Update alle 15 Minuten, solange die App offen ist
+    const interval = setInterval(updateLocation, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user, userProfile?.proximitySettings?.enabled]);
 
   if (!auth && !loading) {
     return <NotConfigured />;

@@ -16,6 +16,7 @@ import { Compass, X, Heart, Home, MapPin, Calendar, Users, Info, RotateCcw, Exte
 import { format } from 'date-fns';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
+import { ProximityRadarView } from '@/components/aktvia/proximity-radar-view';
 
 const CardSkeleton = () => (
   <div className="w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-3xl shadow-xl border border-border overflow-hidden flex flex-col items-center justify-center">
@@ -284,6 +285,7 @@ export default function ExplorePage() {
                   </div>
                 </div>
               </div>
+              <ProximityRadarView />
             </header>
             <main className="flex-1 flex flex-col min-h-0">
                 {isLoading && (

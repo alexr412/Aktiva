@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart } from 'lucide-react';
+import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { sendPasswordReset, deleteAccount, signOut } from '@/lib/firebase/auth';
@@ -66,6 +67,37 @@ export default function SettingsPage() {
             });
             setNotifications(currentSettings); // Revert on failure
         }
+    };
+
+    const handleProximityToggle = async (enabled: boolean) => {
+      if (!user?.uid) return;
+      try {
+        await updateUserProfile(user.uid, {
+          proximitySettings: {
+            ...userProfile?.proximitySettings,
+            enabled,
+            radiusKm: userProfile?.proximitySettings?.radiusKm || 5
+          }
+        });
+        toast({ title: enabled ? "Radar aktiviert" : "Radar deaktiviert" });
+      } catch (err) {
+        toast({ variant: 'destructive', title: "Fehler", description: "Einstellungen konnten nicht gespeichert werden." });
+      }
+    };
+
+    const handleRadiusChange = async (value: number[]) => {
+      if (!user?.uid) return;
+      try {
+        await updateUserProfile(user.uid, {
+          proximitySettings: {
+            ...userProfile?.proximitySettings,
+            enabled: userProfile?.proximitySettings?.enabled || false,
+            radiusKm: value[0]
+          }
+        });
+      } catch (err) {
+        console.error(err);
+      }
     };
 
     const handlePasswordReset = async () => {
@@ -143,6 +175,50 @@ export default function SettingsPage() {
                                 </div>
                                 <ChevronRight className="h-5 w-5 text-red-500" />
                             </button>
+                        </div>
+                    </div>
+
+                    {/* Friends Radar Section */}
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                            <Radar className="h-5 w-5 text-primary" />
+                            <span>Freunde-Radar</span>
+                        </h2>
+                        <div className="space-y-4 rounded-lg border bg-card p-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label htmlFor="radar-enabled" className="font-medium">Radar aktivieren</Label>
+                                    <p className="text-xs text-muted-foreground">Zeigt Freunde in deiner Nähe an, wenn sie die App nutzen.</p>
+                                </div>
+                                <Switch
+                                    id="radar-enabled"
+                                    checked={userProfile?.proximitySettings?.enabled}
+                                    onCheckedChange={handleProximityToggle}
+                                />
+                            </div>
+                            
+                            {userProfile?.proximitySettings?.enabled && (
+                              <>
+                                <Separator />
+                                <div className="space-y-4 pt-2">
+                                  <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Radar-Radius</Label>
+                                    <span className="text-primary font-bold text-sm">{userProfile.proximitySettings.radiusKm} km</span>
+                                  </div>
+                                  <Slider
+                                    defaultValue={[userProfile.proximitySettings.radiusKm]}
+                                    max={50}
+                                    min={1}
+                                    step={1}
+                                    onValueChange={handleRadiusChange}
+                                  />
+                                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                    <MapPin className="h-3 w-3" />
+                                    Dein Standort wird nur bei App-Nutzung aktualisiert.
+                                  </p>
+                                </div>
+                              </>
+                            )}
                         </div>
                     </div>
 

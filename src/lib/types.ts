@@ -133,6 +133,15 @@ export interface UserProfile {
     activityInvites: boolean;
     chatMessages: boolean;
   };
+  proximitySettings?: {
+    enabled: boolean;
+    radiusKm: number;
+  };
+  lastLocation?: {
+    lat: number;
+    lng: number;
+    updatedAt: Timestamp;
+  };
   verified?: boolean;
   onboardingCompleted: boolean;
   friendCode?: string;
@@ -162,7 +171,7 @@ export interface Notification {
         displayName: string | null;
         photoURL: string | null;
     };
-    type: 'friend_request' | 'activity_invite';
+    type: 'friend_request' | 'activity_invite' | 'proximity_alert';
     isRead: boolean;
     createdAt: Timestamp;
     referenceId?: string;

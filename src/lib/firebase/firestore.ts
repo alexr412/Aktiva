@@ -63,6 +63,10 @@ export async function createUserProfileDocument(user: User) {
     isPremium: false,
     isDonator: false,
     adTokens: 0,
+    proximitySettings: {
+      enabled: false,
+      radiusKm: 5
+    }
   };
   await setDoc(userDocRef, userProfile);
 }
@@ -81,6 +85,18 @@ export async function updateUserProfile(userId: string, data: Partial<UserProfil
     if (!db) throw new Error('Firestore is not initialized.');
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, data);
+}
+
+export async function updateUserLocation(userId: string, lat: number, lng: number) {
+  if (!db) return;
+  const userDocRef = doc(db, 'users', userId);
+  await updateDoc(userDocRef, {
+    lastLocation: {
+      lat,
+      lng,
+      updatedAt: serverTimestamp()
+    }
+  });
 }
 
 
