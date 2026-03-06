@@ -472,6 +472,10 @@ export async function submitReviews(
     await batch.commit();
 }
 
+/**
+ * findUserByFriendCode - Bereinigte Abfrage-Pipeline.
+ * Limitiert ausschließlich auf den friendCode, um Selbstreferenz-Sperren auf API-Ebene zu vermeiden.
+ */
 export async function findUserByFriendCode(friendCode: string): Promise<UserProfile | null> {
     if (!db) throw new Error('Firestore is not initialized.');
     

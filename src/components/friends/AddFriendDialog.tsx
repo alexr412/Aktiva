@@ -40,6 +40,10 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
     setRequestSent(false);
 
     try {
+      /**
+       * Ausführung der bereinigten Pipeline:
+       * Keine serverseitige Exklusion der eigenen UID.
+       */
       const result = await findUserByFriendCode(searchQuery);
       
       if (result) {
