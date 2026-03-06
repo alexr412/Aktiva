@@ -5,25 +5,42 @@ import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Search, Activity } from 'lucide-react';
+import { Loader2, Search, Activity, MapPin } from 'lucide-react';
 import { GLOBAL_EXCLUDE_STRING, BLACKLISTED_CATEGORIES } from '@/lib/geoapify';
 
-const LAT = 53.5395845;
-const LNG = 8.5809341;
-
 export default function TestPage() {
+  const [testCity, setTestCity] = useState<string>("Bremerhaven");
   const [testCategory, setTestCategory] = useState<string>("commercial,catering");
+  const [coordinates, setCoordinates] = useState<{lat: number, lng: number}>({ lat: 53.5395845, lng: 8.5809341 });
   const [results, setResults] = useState<any[]>([]);
   const [isFetching, setIsFetching] = useState<boolean>(false);
 
+  const resolveCoordinates = async (cityName: string) => {
+    const geoUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(cityName)}&limit=1&apiKey=${GEOAPIFY_API_KEY}`;
+    const response = await fetch(geoUrl);
+    if (!response.ok) throw new Error("Geocoding service unavailable");
+    
+    const data = await response.json();
+    if (data.features && data.features.length > 0) {
+      const { lat, lon } = data.features[0].properties;
+      setCoordinates({ lat, lng: lon });
+      return { lat, lng: lon };
+    }
+    throw new Error("City not found");
+  };
+
   const executeTestQuery = async () => {
     const sanitizedCategory = testCategory.trim().replace(/\s+/g, '');
-    if (!sanitizedCategory) return;
+    if (!sanitizedCategory || !testCity.trim()) return;
     
     setIsFetching(true);
     
     try {
-      const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${LNG},${LAT},5000&limit=100&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
+      // 1. Dynamische Koordinatenauflösung
+      const { lat, lng } = await resolveCoordinates(testCity);
+
+      // 2. Abfrage der Places API mit den aufgelösten Koordinaten
+      const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${lng},${lat},5000&limit=100&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
       
       const response = await fetch(url);
       if (!response.ok) {
@@ -34,7 +51,7 @@ export default function TestPage() {
       const data = await response.json();
       const rawFeatures = data.features || [];
       
-      // Client-Side Post-Processing Blacklist
+      // 3. Clientseitige Post-Processing Blacklist
       const safeFeatures = rawFeatures.filter((feature: any) => {
         const categories = feature.properties?.categories || [];
         const catsArray = Array.isArray(categories) ? categories : [categories];
@@ -42,8 +59,9 @@ export default function TestPage() {
       });
 
       setResults(safeFeatures);
-    } catch (error) {
-      console.error("Test fetch failed:", error);
+    } catch (error: any) {
+      console.error("Test pipeline failed:", error);
+      alert(error.message || "An error occurred during the test.");
       setResults([]);
     } finally {
       setIsFetching(false);
@@ -55,39 +73,54 @@ export default function TestPage() {
       <header className="p-6 border-b shrink-0 bg-card">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Activity className="text-primary" />
-          Geoapify Category Diagnostic
+          Geoapify Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Echtzeit-Analyse mit GLOBAL_EXCLUDE_STRING und Client-Side Post-Processing.
+          Echtzeit-Analyse mit Geocoding, GLOBAL_EXCLUDE_STRING und Post-Processing.
         </p>
       </header>
 
       <div className="flex flex-col gap-4 p-6 border-b bg-muted/30 shrink-0">
-        <div className="flex gap-2">
-          <Input 
-            type="text" 
-            value={testCategory} 
-            onChange={(e) => setTestCategory(e.target.value)} 
-            placeholder="z.B. tourism,leisure.park,amenity.toilet"
-            className="flex-1 font-mono text-sm bg-background h-12"
-          />
-          <Button 
-            onClick={executeTestQuery} 
-            disabled={isFetching || !testCategory.trim()}
-            className="h-12 px-6 font-bold"
-          >
-            {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-            {isFetching ? "Executing..." : "Run Test"}
-          </Button>
+        <div className="space-y-4">
+          <div className="relative">
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              type="text" 
+              value={testCity} 
+              onChange={(e) => setTestCity(e.target.value)} 
+              placeholder="Stadt eingeben (z.B. Berlin, Hamburg)"
+              className="pl-10 bg-background h-12 font-medium"
+            />
+          </div>
+          
+          <div className="flex gap-2">
+            <Input 
+              type="text" 
+              value={testCategory} 
+              onChange={(e) => setTestCategory(e.target.value)} 
+              placeholder="Kategorien (z.B. tourism,catering.restaurant)"
+              className="flex-1 font-mono text-sm bg-background h-12"
+            />
+            <Button 
+              onClick={executeTestQuery} 
+              disabled={isFetching || !testCategory.trim() || !testCity.trim()}
+              className="h-12 px-6 font-bold"
+            >
+              {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+              {isFetching ? "Resolving..." : "Run Test"}
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-col gap-1 px-1">
-          <code className="text-xs text-muted-foreground break-all">
-            URL: ...?categories=<span className="text-primary font-bold">{testCategory.trim().replace(/\s+/g, '') || "null"}</span>
-          </code>
-          <code className="text-[10px] text-muted-foreground/60 break-all">
+
+        <div className="flex flex-col gap-1 px-1 bg-background/50 p-3 rounded-lg border border-border/50">
+          <div className="flex justify-between text-xs font-mono">
+            <span className="text-muted-foreground">Resolved Coordinates:</span>
+            <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
+          </div>
+          <code className="text-[10px] text-muted-foreground/60 break-all mt-1">
             Exclude: {GLOBAL_EXCLUDE_STRING}
           </code>
-          <div className="text-sm font-semibold whitespace-nowrap mt-1">
+          <div className="text-sm font-semibold whitespace-nowrap mt-2">
             Results (filtered): <span className="text-primary">{results.length}</span>
           </div>
         </div>
@@ -112,7 +145,11 @@ export default function TestPage() {
                     {feature.properties.categories?.map((cat: string) => (
                       <span 
                         key={cat} 
-                        className="font-mono text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full"
+                        className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
+                          BLACKLISTED_CATEGORIES.includes(cat) 
+                            ? 'bg-destructive/10 text-destructive border-destructive/20' 
+                            : 'bg-primary/10 text-primary border-primary/20'
+                        }`}
                       >
                         {cat}
                       </span>
@@ -128,7 +165,7 @@ export default function TestPage() {
               </div>
               <div>
                 <p className="text-muted-foreground">Warte auf Datensatz...</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Gib einen Kategorie-String ein und klicke auf "Run Test".</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Stadt und Kategorien wählen, dann auf "Run Test" klicken.</p>
               </div>
             </div>
           )}
