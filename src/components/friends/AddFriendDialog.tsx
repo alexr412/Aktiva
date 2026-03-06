@@ -65,11 +65,11 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
     }
   };
   
-  const handleAddFriend = async () => {
+  const handleAddFriend = async (targetUserId: string) => {
     if (!user || !foundUser) return;
     setRequestSent(true);
     try {
-      await sendFriendRequest(user.uid, foundUser.uid);
+      await sendFriendRequest(user.uid, targetUserId);
       toast({
         title: 'Friend Request Sent!',
         description: `Your request has been sent to ${foundUser.displayName}.`,
@@ -87,7 +87,6 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
   const handleOpenChange = (isOpen: boolean) => {
       onOpenChange(isOpen);
       if (!isOpen) {
-          // Reset state when closing
           setSearchQuery('');
           setFoundUser(null);
           setIsSearching(false);
@@ -95,9 +94,12 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
       }
   }
 
-  // Status-Evaluation
-  const isSelf = user?.uid === foundUser?.uid;
-  const isAlreadyFriend = userProfile?.friends?.includes(foundUser?.uid || '');
+  // ID-Normalisierung für robuste Identitätsprüfung
+  const currentUserId = user?.uid;
+  const targetUserId = foundUser?.uid;
+
+  const isSelf = !!currentUserId && !!targetUserId && currentUserId === targetUserId;
+  const isAlreadyFriend = !!userProfile?.friends && !!targetUserId && userProfile.friends.includes(targetUserId);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -122,46 +124,50 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
             </Button>
           </form>
 
-          {foundUser && (
-            <div className="mt-6 rounded-lg border bg-secondary/30 p-4 border-border">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Avatar>
-                    <AvatarImage src={foundUser.photoURL || undefined} />
-                    <AvatarFallback>{foundUser.displayName?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="font-bold truncate">{foundUser.displayName}</div>
+          {foundUser && targetUserId && (
+            <div className="flex items-center justify-between mt-6 p-3 bg-secondary/20 border border-border rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-secondary rounded-full overflow-hidden">
+                  {foundUser.photoURL ? (
+                    <img src={foundUser.photoURL} alt={foundUser.displayName || 'User'} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="font-bold flex items-center justify-center h-full w-full bg-muted text-muted-foreground">
+                      {foundUser.displayName?.charAt(0)}
+                    </span>
+                  )}
                 </div>
-                
-                {isSelf ? (
-                  <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg">
-                    Du
-                  </div>
-                ) : isAlreadyFriend ? (
-                  <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg flex items-center gap-2">
-                    <Check className="w-4 h-4" />
-                    Befreundet
-                  </div>
-                ) : (
-                  <Button 
-                    onClick={handleAddFriend} 
-                    disabled={requestSent} 
-                    className="w-32 flex-shrink-0"
-                  >
-                    {requestSent ? (
-                      <>
-                        <Check className="mr-2 h-4 w-4" />
-                        Gesendet
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Hinzufügen
-                      </>
-                    )}
-                  </Button>
-                )}
+                <span className="font-bold">{foundUser.displayName}</span>
               </div>
+
+              {/* Status-Evaluation */}
+              {isSelf ? (
+                <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg">
+                  Du
+                </div>
+              ) : isAlreadyFriend ? (
+                <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  Befreundet
+                </div>
+              ) : (
+                <Button 
+                  onClick={() => handleAddFriend(targetUserId)}
+                  disabled={requestSent}
+                  className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold text-sm transition-colors"
+                >
+                  {requestSent ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Gesendet
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Hinzufügen
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           )}
         </div>
