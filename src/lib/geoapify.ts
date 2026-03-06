@@ -34,8 +34,6 @@ export const CONDITION_PREFIXES = [
 ];
 
 // Kombinierte Liste für den API-Ausschluss (optimierte Vor-Filterung)
-// Hinweis: Wir schließen hier nur die Hard-Vetos und eindeutige Soft-Vetos aus, 
-// um die Wahrscheinlichkeit zu erhöhen, multifunktionale POIs zu erhalten.
 export const GLOBAL_EXCLUDE_STRING = [...BASE_HARD_VETO].map(cat => `categories:${cat}`).join(',');
 
 export async function fetchNearbyPlaces(
@@ -63,7 +61,6 @@ export async function fetchNearbyPlaces(
 
     const rawFeatures = data.features || [];
     
-    // Anwendung der neuen Veto-Pipeline
     const safeFeatures = rawFeatures.filter((feature: any) => {
       const allTags: string[] = Array.isArray(feature.properties?.categories) 
         ? feature.properties.categories 
@@ -75,20 +72,23 @@ export async function fetchNearbyPlaces(
       );
       if (violatesBaseHard) return false;
 
-      // Extraktion der Identitäts-Tags (Core)
+      // STUFE 2: Zwingende Inklusion (Whitelist Override)
+      // Wenn ein Tag explizit angefordert wurde, zeigen wir den Ort an.
+      const isAllMode = targetCategories.includes("tourism") && targetCategories.length === 3;
+      if (!isAllMode && targetCategories.length > 0) {
+        const satisfiesInclusion = allTags.some(tag => targetCategories.includes(tag));
+        if (satisfiesInclusion) return true;
+        // Wenn kein angeforderter Tag dabei ist, in diesem Modus filtern
+        return false;
+      }
+
+      // Extraktion der Identitäts-Tags (Core) für Soft Veto
       const coreTags = allTags.filter(tag => 
         !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
         !tag.startsWith("building")
       );
 
-      // STUFE 2: Zwingende Inklusion (Whitelist)
-      const isAllMode = targetCategories.includes("tourism") && targetCategories.length === 3;
-      if (!isAllMode && targetCategories.length > 0) {
-        const satisfiesInclusion = allTags.some(tag => targetCategories.includes(tag));
-        if (!satisfiesInclusion) return false;
-      }
-
-      // STUFE 3: Relative Exklusion (Kombiniertes Soft Veto)
+      // STUFE 3: Relative Exklusion (Soft Veto)
       if (BASE_SOFT_VETO.length > 0 && coreTags.length > 0) {
         const isSolelyExcludedIdentity = coreTags.every(coreTag => 
           BASE_SOFT_VETO.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))

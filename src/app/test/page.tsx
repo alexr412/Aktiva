@@ -47,30 +47,30 @@ export default function TestPage() {
       const data = await response.json();
       const rawFeatures = data.features || [];
       
-      // Korrigierte Veto-Pipeline (Hard vs. Soft)
       const safeFeatures = rawFeatures.filter((feature: any) => {
         const itemTags: string[] = Array.isArray(feature.properties?.categories) 
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // Stufe 0A: Absolutes System-Veto (Hard Veto)
+        // Stufe 0: Absolutes System-Veto (Hard Veto)
         const violatesBaseHard = itemTags.some(tag => 
           BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
         );
         if (violatesBaseHard) return false;
 
-        // Extraktion der Identitäts-Tags (Core)
+        // Stufe 2: Zwingende Inklusion (Whitelist Override)
+        if (includeTags.length > 0) {
+          const satisfiesInclusion = itemTags.some(tag => includeTags.includes(tag));
+          if (satisfiesInclusion) return true;
+          return false;
+        }
+
+        // Stufe 3: Relative Exklusion (Soft Veto)
         const coreTags = itemTags.filter(tag => 
           !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
           !tag.startsWith("building")
         );
 
-        // Stufe 2: Zwingende Inklusion (Whitelist)
-        if (includeTags.length > 0) {
-          if (!itemTags.some(tag => includeTags.includes(tag))) return false;
-        }
-
-        // Stufe 3: Relative Exklusion (Kombiniertes Soft Veto)
         if (BASE_SOFT_VETO.length > 0 && coreTags.length > 0) {
           const isSolelyExcludedIdentity = coreTags.every(coreTag => 
             BASE_SOFT_VETO.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
@@ -162,20 +162,25 @@ export default function TestPage() {
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {feature.properties.categories?.map((cat: string) => (
-                      <span 
-                        key={cat} 
-                        className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
-                          BASE_HARD_VETO.includes(cat) 
-                            ? 'bg-destructive text-white border-none' 
-                            : BASE_SOFT_VETO.includes(cat)
-                            ? 'bg-amber-100 text-amber-700 border-amber-200'
-                            : 'bg-primary/10 text-primary border-primary/20'
-                        }`}
-                      >
-                        {cat}
-                      </span>
-                    ))}
+                    {feature.properties.categories?.map((cat: string) => {
+                      const isHard = BASE_HARD_VETO.some(veto => cat === veto || cat.startsWith(`${veto}.`));
+                      const isSoft = BASE_SOFT_VETO.some(veto => cat === veto || cat.startsWith(`${veto}.`));
+                      
+                      return (
+                        <span 
+                          key={cat} 
+                          className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
+                            isHard 
+                              ? 'bg-destructive text-white border-none' 
+                              : isSoft
+                              ? 'bg-amber-100 text-amber-700 border-amber-200'
+                              : 'bg-primary/10 text-primary border-primary/20'
+                          }`}
+                        >
+                          {cat}
+                        </span>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>

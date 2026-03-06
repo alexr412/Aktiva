@@ -106,25 +106,26 @@ export default function Home() {
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // Stufe 0A: Absolutes System-Veto (Hard Veto)
+        // Stufe 0: Absolutes System-Veto (Hard Veto)
         const violatesBaseHard = allTags.some(tag => 
           BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
         );
         if (violatesBaseHard) return false;
 
-        // Extraktion der Identitäts-Tags (Core)
+        // Stufe 2: Zwingende Inklusion (Whitelist Override)
+        const isAllMode = includeTags.includes("tourism") && includeTags.length === 3;
+        if (!isAllMode && includeTags.length > 0) {
+          const satisfiesInclusion = allTags.some(tag => includeTags.includes(tag));
+          if (satisfiesInclusion) return true;
+          return false;
+        }
+
+        // Stufe 3: Relative Exklusion (Soft Veto)
         const coreTags = allTags.filter(tag => 
           !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
           !tag.startsWith("building")
         );
 
-        // Stufe 2: Zwingende Inklusion (Whitelist)
-        const isAllMode = includeTags.includes("tourism") && includeTags.length === 3;
-        if (!isAllMode && includeTags.length > 0) {
-          if (!allTags.some(tag => includeTags.includes(tag))) return false;
-        }
-
-        // Stufe 3: Relative Exklusion (Soft Blacklist)
         if (BASE_SOFT_VETO.length > 0 && coreTags.length > 0) {
           const isSolelyExcludedIdentity = coreTags.every(coreTag => 
             BASE_SOFT_VETO.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
