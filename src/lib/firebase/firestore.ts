@@ -59,6 +59,7 @@ export async function createUserProfileDocument(user: User) {
     friendCode: generateFriendCode(),
     hiddenEntityIds: [],
     activeTabs: ['Gastronomy', 'Nature'],
+    isPremium: false,
   };
   await setDoc(userDocRef, userProfile);
 }
