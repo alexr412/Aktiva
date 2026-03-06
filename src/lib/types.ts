@@ -13,6 +13,9 @@ export interface Place {
   imageUrl?: string;
   activityCount?: number;
   distance?: number;
+  // Monetization fields
+  isPromoted?: boolean;
+  affiliateUrl?: string;
 }
 
 export interface FavoritePlace {
@@ -52,6 +55,9 @@ export interface Activity {
           photoURL: string | null;
       }
   };
+  // Monetization fields
+  isBoosted?: boolean;
+  boostExpiresAt?: Timestamp;
 }
 
 export interface Message {
@@ -131,6 +137,9 @@ export interface UserProfile {
   friendCode?: string;
   hiddenEntityIds?: string[];
   activeTabs?: string[];
+  // Monetization fields
+  isPremium?: boolean;
+  tokens?: number;
 }
 
 export interface Review {

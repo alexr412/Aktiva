@@ -16,6 +16,7 @@ import {
   type LucideIcon,
   Navigation,
   Bookmark,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFavorites } from '@/contexts/favorites-context';
@@ -85,11 +86,27 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
   return (
     <Card
       onClick={onClick}
-      className="cursor-pointer group overflow-hidden rounded-2xl bg-card shadow-md hover:shadow-lg transition-all duration-300 border-none flex flex-col"
+      className={cn(
+        "cursor-pointer group overflow-hidden rounded-2xl bg-card shadow-md hover:shadow-lg transition-all duration-300 border-none flex flex-col relative",
+        place.isPromoted && "ring-2 ring-primary/20 bg-primary/[0.02]"
+      )}
     >
+      {place.isPromoted && (
+        <div className="absolute top-2 right-2 z-10 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm animate-pulse">
+          <Sparkles className="h-2.5 w-2.5" />
+          <span>PROMOTED</span>
+        </div>
+      )}
+
       <div className="flex items-stretch">
-        <div className="relative flex flex-shrink-0 items-center justify-center w-28 bg-muted/30">
-            <Icon className="h-10 w-10 text-muted-foreground/70" />
+        <div className={cn(
+          "relative flex flex-shrink-0 items-center justify-center w-28",
+          place.isPromoted ? "bg-primary/10" : "bg-muted/30"
+        )}>
+            <Icon className={cn(
+              "h-10 w-10",
+              place.isPromoted ? "text-primary/70" : "text-muted-foreground/70"
+            )} />
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col justify-center p-3">

@@ -111,15 +111,23 @@ export default function Home() {
               rating = Math.max(0, Math.min(5, parsedRating));
           }
         }
+
+        // Simuliere B2B-Sponsoring (Promoted POIs) für spezifische Kategorien
+        const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
+        const isPromoted = cats.some(c => c.includes('office.coworking') || c.includes('rental.'));
+
         return {
           id: props.place_id,
           name: props.name || props.address_line1,
           address: props.address_line2,
-          categories: Array.isArray(props.categories) ? props.categories : [props.categories],
+          categories: cats,
           lat: props.lat,
           lon: props.lon,
           rating: rating,
           distance: props.distance,
+          isPromoted: isPromoted,
+          // Simuliere Affiliate URL für Rentals
+          ...(isPromoted && cats.some(c => c.includes('rental.')) && { affiliateUrl: 'https://example.com/booking?ref=aktvia' })
         } as Place;
       });
     });
@@ -419,6 +427,10 @@ export default function Home() {
                 );
     
                 const sortedActivities = filteredCustomActivities.sort((a, b) => {
+                    // Booster-Architektur: Gepinnt nach oben
+                    if (a.isBoosted && !b.isBoosted) return -1;
+                    if (!a.isBoosted && b.isBoosted) return 1;
+
                     if (sortBy === 'newest') {
                         return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
                     }
@@ -450,6 +462,10 @@ export default function Home() {
                 );
     
                 const sortedPlaces = filteredPlaces.sort((a, b) => {
+                    // B2B-Sponsoring: Promoted POIs nach oben
+                    if (a.isPromoted && !b.isPromoted) return -1;
+                    if (!a.isPromoted && b.isPromoted) return 1;
+
                     if (sortBy === 'distance') {
                         return (a.distance || 0) - (b.distance || 0);
                     }

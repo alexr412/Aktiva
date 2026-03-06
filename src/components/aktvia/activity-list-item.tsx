@@ -5,10 +5,11 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Home, Loader2, MapPin, LogIn, MessageSquare, Users } from 'lucide-react';
+import { Home, Loader2, MapPin, LogIn, MessageSquare, Users, Flame } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EntityMoreOptions } from '../common/EntityMoreOptions';
+import { cn } from '@/lib/utils';
 
 interface ActivityListItemProps {
     activity: Activity;
@@ -56,14 +57,29 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     }
 
     return (
-        <div className="p-4 relative group">
+        <div className={cn(
+          "p-4 relative group transition-all",
+          activity.isBoosted && "bg-orange-500/5 border-l-4 border-l-orange-500"
+        )}>
             <div className="flex items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted flex-shrink-0">
-                    <Icon className="h-5 w-5 text-muted-foreground" />
+                <div className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-lg flex-shrink-0",
+                  activity.isBoosted ? "bg-orange-500/10" : "bg-muted"
+                )}>
+                    <Icon className={cn(
+                      "h-5 w-5",
+                      activity.isBoosted ? "text-orange-500" : "text-muted-foreground"
+                    )} />
                 </div>
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
                         <p className="font-semibold text-base truncate">{activity.placeName}</p>
+                        {activity.isBoosted && (
+                          <Badge variant="default" className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1">
+                            <Flame className="h-3 w-3" />
+                            <span>HOT</span>
+                          </Badge>
+                        )}
                         {activity.isCustomActivity && <Badge variant="secondary">Community</Badge>}
                     </div>
                      <p className="text-sm text-muted-foreground">
@@ -87,7 +103,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                             Voll
                         </Button>
                     ) : (
-                        <Button size="sm" onClick={handleJoinClick} disabled={isJoining}>
+                        <Button size="sm" onClick={handleJoinClick} disabled={isJoining} className={cn(activity.isBoosted && "bg-orange-500 hover:bg-orange-600")}>
                             {isJoining ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (

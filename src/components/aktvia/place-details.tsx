@@ -26,6 +26,7 @@ import {
     Navigation,
     Bookmark,
     Calendar,
+    ExternalLink,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -186,14 +187,27 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                             </div>
                         )}
                         
-                        <Button 
-                            variant="outline" 
-                            className="w-full h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-secondary transition-all"
-                            onClick={handleBookmarkToggle}
-                        >
-                            <Bookmark className={cn("h-5 w-5 transition-colors", isFavorite && "fill-primary text-primary")} />
-                            <span className="font-semibold">{isFavorite ? 'Gespeichert' : 'Speichern'}</span>
-                        </Button>
+                        <div className="w-full flex flex-col gap-2">
+                            <Button 
+                                variant="outline" 
+                                className="w-full h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-secondary transition-all"
+                                onClick={handleBookmarkToggle}
+                            >
+                                <Bookmark className={cn("h-5 w-5 transition-colors", isFavorite && "fill-primary text-primary")} />
+                                <span className="font-semibold">{isFavorite ? 'Gespeichert' : 'Speichern'}</span>
+                            </Button>
+
+                            {/* Affiliate Infrastructure (Transaktions-Beteiligung) */}
+                            {place.affiliateUrl && (
+                                <Button 
+                                    className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md"
+                                    onClick={() => window.open(place.affiliateUrl, '_blank')}
+                                >
+                                    <ExternalLink className="h-5 w-5" />
+                                    <span>Jetzt Buchen</span>
+                                </Button>
+                            )}
+                        </div>
                     </div>
 
                     {/* Rechte Spalte: Daten-Module & Listen */}
@@ -254,7 +268,10 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                         const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
                                         
                                         return (
-                                            <Card key={activity.id} className="p-4 shadow-sm hover:shadow-md transition-shadow border-muted">
+                                            <Card key={activity.id} className={cn(
+                                              "p-4 shadow-sm hover:shadow-md transition-shadow border-muted",
+                                              activity.isBoosted && "border-orange-500/30 bg-orange-500/5"
+                                            )}>
                                                 <div className="flex items-center justify-between gap-4">
                                                     <div className="min-w-0 flex-1">
                                                         <p className="font-bold text-base truncate">
@@ -282,7 +299,10 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                                 size="sm"
                                                                 onClick={() => handleJoin(activity.id!)} 
                                                                 disabled={joiningActivityId === activity.id}
-                                                                className="w-28 rounded-lg h-9 font-semibold"
+                                                                className={cn(
+                                                                  "w-28 rounded-lg h-9 font-semibold",
+                                                                  activity.isBoosted && "bg-orange-500 hover:bg-orange-600"
+                                                                )}
                                                             >
                                                                 {joiningActivityId === activity.id ? (
                                                                     <Loader2 className="h-4 w-4 animate-spin" />
