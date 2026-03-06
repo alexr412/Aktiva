@@ -153,6 +153,9 @@ export default function ChatRoomPage() {
           });
         }
       } else {
+        // Chat wurde gelöscht oder existiert nicht
+        setLoading(false);
+        setChat(null);
         toast({ title: "Chat not found", description: "This chat may have been deleted.", variant: 'destructive'});
         router.push('/chat');
       }
@@ -213,6 +216,18 @@ export default function ChatRoomPage() {
           <Skeleton className="h-12 w-3/4" />
           <Skeleton className="h-12 w-1/2 self-end" />
           <Skeleton className="h-16 w-2/3" />
+        </div>
+      </div>
+    );
+  }
+
+  // Zwingende Abfang-Ebene für gelöschte oder nicht vorhandene Chats zur Crash-Vermeidung
+  if (!chat && !loading) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 bg-muted/30 p-6 text-center">
+        <div className="bg-background p-8 rounded-3xl shadow-sm space-y-4 max-w-sm w-full">
+          <p className="text-muted-foreground font-semibold">Dieser Chat ist nicht mehr verfügbar.</p>
+          <Button onClick={() => router.push('/chat')} className="w-full rounded-full">Zurück zur Übersicht</Button>
         </div>
       </div>
     );
@@ -304,7 +319,7 @@ export default function ChatRoomPage() {
         </div>
       </footer>
 
-      {!isDirectMessage && (
+      {!isDirectMessage && chat && (
         <ChatInfoSheet
             chat={chat}
             activity={activity}

@@ -70,21 +70,21 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
 
   const handleLeaveOrDelete = async () => {
     if (!chat?.id || !user?.uid) return;
-    setIsActing(true);
+    
+    // 1. Synchrone UI-Bereinigung und Redirect zur Vermeidung von Blockaden
+    onOpenChange(false);
+    router.push('/chat');
+    
+    // 2. Asynchrone Datenbank-Mutation im Hintergrund
     try {
       if (isOnlyParticipant) {
         await deleteActivity(chat.id);
-        toast({ title: 'Activity Deleted', description: 'The activity and chat have been removed.' });
       } else {
         await leaveActivity(chat.id, user.uid);
-        toast({ title: 'You have left the activity.' });
       }
-      onOpenChange(false);
-      router.push('/chat');
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Action Failed', description: error.message });
-    } finally {
-      setIsActing(false);
+      console.error('Delete/Leave operation failed:', error);
+      // Da wir bereits wegnavigiert sind, loggen wir den Fehler nur noch
     }
   };
   
