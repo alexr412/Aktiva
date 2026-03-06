@@ -14,7 +14,8 @@ export interface Place {
   activityCount?: number;
   distance?: number;
   // Monetization fields
-  isPromoted?: boolean;
+  isPromoted?: boolean; // B2B sponsored
+  isSponsored?: boolean; // Used for golden marker / top rank
   affiliateUrl?: string;
 }
 
@@ -139,7 +140,8 @@ export interface UserProfile {
   activeTabs?: string[];
   // Monetization fields
   isPremium?: boolean;
-  tokens?: number;
+  isDonator?: boolean;
+  adTokens?: number;
 }
 
 export interface Review {

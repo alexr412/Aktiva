@@ -1,6 +1,6 @@
 'use client';
 
-import { APIProvider, Map, AdvancedMarker } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 import { GOOGLE_MAPS_API_KEY } from '@/lib/config';
 import type { Place } from '@/lib/types';
 import { useMemo } from 'react';
@@ -39,7 +39,23 @@ export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
               key={place.id}
               position={{ lat: place.lat, lng: place.lon }}
               onClick={() => onPlaceSelect(place)}
-            />
+              zIndex={place.isSponsored ? 1000 : 1}
+            >
+              {place.isSponsored ? (
+                <Pin
+                  background={'#FFD700'} // Gold
+                  borderColor={'#DAA520'}
+                  glyphColor={'#8B4513'}
+                  scale={1.2}
+                />
+              ) : (
+                <Pin
+                  background={'hsl(var(--primary))'}
+                  borderColor={'hsl(var(--primary))'}
+                  glyphColor={'#fff'}
+                />
+              )}
+            </AdvancedMarker>
           ))}
         </Map>
       </APIProvider>

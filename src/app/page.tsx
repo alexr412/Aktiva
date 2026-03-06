@@ -112,9 +112,9 @@ export default function Home() {
           }
         }
 
-        // Simuliere B2B-Sponsoring (Promoted POIs) für spezifische Kategorien
+        // B2B-Sponsoring Logic: Simulate promoted status for certain categories
         const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
-        const isPromoted = cats.some(c => c.includes('office.coworking') || c.includes('rental.'));
+        const isSponsored = cats.some(c => c.includes('office.coworking') || c.includes('rental.'));
 
         return {
           id: props.place_id,
@@ -125,9 +125,8 @@ export default function Home() {
           lon: props.lon,
           rating: rating,
           distance: props.distance,
-          isPromoted: isPromoted,
-          // Simuliere Affiliate URL für Rentals
-          ...(isPromoted && cats.some(c => c.includes('rental.')) && { affiliateUrl: 'https://example.com/booking?ref=aktvia' })
+          isSponsored: isSponsored, // B2B Flag
+          affiliateUrl: isSponsored ? 'https://example.com/booking?ref=aktvia' : undefined
         } as Place;
       });
     });
@@ -281,7 +280,7 @@ export default function Home() {
     setActivityModalPlace('custom');
   };
 
-  const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number): Promise<boolean> => {
+  const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean): Promise<boolean> => {
     if (!user) {
         toast({
             title: 'Error',
@@ -304,16 +303,18 @@ export default function Home() {
       }
 
       const payload = isCustom 
-        ? { customLocationName: customLocationName!, startDate, endDate, user, isTimeFlexible, maxParticipants }
-        : { place: activityModalPlace as Place, startDate, endDate, user, isTimeFlexible, maxParticipants };
+        ? { customLocationName: customLocationName!, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted }
+        : { place: activityModalPlace as Place, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted };
 
       const newActivityRef = await createActivity(payload);
       
       const activityName = isCustom ? customLocationName : (activityModalPlace as Place).name;
 
       toast({
-        title: 'Activity Created!',
-        description: `Your activity at ${activityName} is set and a chatroom is ready.`,
+        title: isBoosted ? 'Aktivität Geboostet!' : 'Activity Created!',
+        description: isBoosted 
+          ? `Deine Aktivität bei ${activityName} steht nun ganz oben.`
+          : `Your activity at ${activityName} is set and a chatroom is ready.`,
       });
       
       setActivityModalPlace(null);
@@ -427,7 +428,7 @@ export default function Home() {
                 );
     
                 const sortedActivities = filteredCustomActivities.sort((a, b) => {
-                    // Booster-Architektur: Gepinnt nach oben
+                    // Booster-Architektur: Pinned to top
                     if (a.isBoosted && !b.isBoosted) return -1;
                     if (!a.isBoosted && b.isBoosted) return 1;
 
@@ -462,9 +463,9 @@ export default function Home() {
                 );
     
                 const sortedPlaces = filteredPlaces.sort((a, b) => {
-                    // B2B-Sponsoring: Promoted POIs nach oben
-                    if (a.isPromoted && !b.isPromoted) return -1;
-                    if (!a.isPromoted && b.isPromoted) return 1;
+                    // B2B-Sponsoring: Pins sponsored entities to index 0
+                    if (a.isSponsored && !b.isSponsored) return -1;
+                    if (!a.isSponsored && b.isSponsored) return 1;
 
                     if (sortBy === 'distance') {
                         return (a.distance || 0) - (b.distance || 0);

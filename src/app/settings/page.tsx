@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut } from 'lucide-react';
+import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -129,6 +129,23 @@ export default function SettingsPage() {
 
             <main className="flex-1 overflow-y-auto pb-20">
                 <div className="p-6 space-y-8 max-w-2xl mx-auto">
+                    {/* Fundraising Section */}
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                            <Heart className="h-5 w-5 text-red-500 fill-red-500" />
+                            <span>Community Support</span>
+                        </h2>
+                        <div className="space-y-2">
+                            <button onClick={() => window.open('https://paypal.me/aktvia', '_blank')} className="flex w-full items-center justify-between rounded-lg border-2 border-red-500/20 bg-red-500/5 p-4 text-left transition-colors hover:bg-red-500/10">
+                                <div>
+                                    <p className="font-bold text-red-600">Unterstütze Aktvia</p>
+                                    <p className="text-sm text-red-600/70">Spende einen kleinen Betrag & erhalte das Supporter-Badge.</p>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-red-500" />
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Account Section */}
                     <div className="space-y-4">
                         <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">

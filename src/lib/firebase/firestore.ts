@@ -33,6 +33,7 @@ type CreateActivityPayload = {
   user: User;
   isTimeFlexible?: boolean;
   maxParticipants?: number;
+  isBoosted?: boolean;
 };
 
 function generateFriendCode(length = 8) {
@@ -60,6 +61,8 @@ export async function createUserProfileDocument(user: User) {
     hiddenEntityIds: [],
     activeTabs: ['Gastronomy', 'Nature'],
     isPremium: false,
+    isDonator: false,
+    adTokens: 0,
   };
   await setDoc(userDocRef, userProfile);
 }
@@ -89,6 +92,7 @@ export async function createActivity({
   user,
   isTimeFlexible,
   maxParticipants,
+  isBoosted = false,
 }: CreateActivityPayload) {
   if (!db) {
     throw new Error('Firestore is not initialized.');
@@ -120,6 +124,7 @@ export async function createActivity({
     lastInteractionAt: serverTimestamp() as Timestamp,
     status: 'active' as const,
     completionVotes: [],
+    isBoosted: isBoosted,
     ...(place?.address && { placeAddress: place.address }),
     ...(place?.lat && { lat: place.lat }),
     ...(place?.lon && { lon: place.lon }),
@@ -146,6 +151,14 @@ export async function createActivity({
       [user.uid]: 0
     }
   });
+
+  // If boosted, deduct token from user
+  if (isBoosted) {
+    const userRef = doc(db, 'users', user.uid);
+    batch.update(userRef, {
+      adTokens: increment(-1)
+    });
+  }
 
   try {
     await batch.commit();
@@ -599,4 +612,12 @@ export async function submitReportAndHide(
   });
 
   await batch.commit();
+}
+
+export async function earnToken(userId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    adTokens: increment(1)
+  });
 }

@@ -12,14 +12,29 @@ import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'fireba
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Compass, X, Heart, Home, MapPin, Calendar, Users, Info, RotateCcw } from 'lucide-react';
+import { Compass, X, Heart, Home, MapPin, Calendar, Users, Info, RotateCcw, ExternalLink, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
-import { CategoryFilters, categories as placeCategories } from '@/components/aktvia/category-filters';
+import { CategoryFilters } from '@/components/aktvia/category-filters';
 
 const CardSkeleton = () => (
   <div className="w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-3xl shadow-xl border border-border overflow-hidden flex flex-col items-center justify-center">
     <Skeleton className="h-full w-full" />
+  </div>
+);
+
+const AdCard = () => (
+  <div className="w-full h-full bg-primary/5 flex flex-col p-8 items-center justify-center text-center">
+    <div className="bg-primary/10 p-4 rounded-full mb-6">
+      <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+    </div>
+    <h2 className="text-2xl font-bold text-primary mb-2">Gesponserter Partner</h2>
+    <p className="text-muted-foreground mb-8">Entdecke exklusive Angebote unserer Partner in deiner Region.</p>
+    <Button className="rounded-full h-12 px-8 font-bold gap-2">
+      <ExternalLink className="h-4 w-4" />
+      Mehr erfahren
+    </Button>
+    <span className="mt-4 text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Anzeige</span>
   </div>
 );
 
@@ -289,6 +304,10 @@ export default function ExplorePage() {
                             {cards.map((card, index) => {
                                 const isTopCard = index === cards.length - 1;
                                 
+                                // Native Ads: Every 10th swipe (modulo 10)
+                                // If not premium, render AdCard instead of standard card
+                                const showAd = !userProfile?.isPremium && (index % 10 === 0 && index !== 0);
+
                                 return (
                                     <motion.div
                                         key={card.id || index}
@@ -307,27 +326,33 @@ export default function ExplorePage() {
                                         onDragEnd={isTopCard ? onDragEnd : undefined}
                                         whileDrag={{ cursor: 'grabbing' }}
                                     >
-                                        <div className="flex-1 bg-muted flex items-center justify-center relative">
-                                             {card.isCustomActivity ? <Home className="h-24 w-24 text-muted-foreground/30"/> : <MapPin className="h-24 w-24 text-muted-foreground/30"/>}
-                                             <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-black/60 to-transparent p-4 flex flex-col justify-end">
-                                                <h2 className="text-2xl font-bold text-white shadow-lg">{card.placeName}</h2>
-                                                <p className="text-sm text-white/90 font-medium shadow-md">{card.placeAddress}</p>
-                                             </div>
-                                        </div>
-                                        <div className="p-6 flex flex-col gap-4">
-                                            <div className="flex items-center gap-3 bg-muted p-3 rounded-xl">
-                                                <Calendar className="h-5 w-5 text-primary"/>
-                                                <span className="font-semibold text-sm">{renderDate(card)}</span>
+                                        {showAd ? (
+                                          <AdCard />
+                                        ) : (
+                                          <>
+                                            <div className="flex-1 bg-muted flex items-center justify-center relative">
+                                                {card.isCustomActivity ? <Home className="h-24 w-24 text-muted-foreground/30"/> : <MapPin className="h-24 w-24 text-muted-foreground/30"/>}
+                                                <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-black/60 to-transparent p-4 flex flex-col justify-end">
+                                                    <h2 className="text-2xl font-bold text-white shadow-lg">{card.placeName}</h2>
+                                                    <p className="text-sm text-white/90 font-medium shadow-md">{card.placeAddress}</p>
+                                                </div>
                                             </div>
-                                             <div className="flex items-center gap-3 bg-muted p-3 rounded-xl">
-                                                <Users className="h-5 w-5 text-primary"/>
-                                                <span className="font-semibold text-sm">{card.participantIds.length} Participants &bull; by {card.creatorName}</span>
+                                            <div className="p-6 flex flex-col gap-4">
+                                                <div className="flex items-center gap-3 bg-muted p-3 rounded-xl">
+                                                    <Calendar className="h-5 w-5 text-primary"/>
+                                                    <span className="font-semibold text-sm">{renderDate(card)}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3 bg-muted p-3 rounded-xl">
+                                                    <Users className="h-5 w-5 text-primary"/>
+                                                    <span className="font-semibold text-sm">{card.participantIds.length} Participants &bull; by {card.creatorName}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3 bg-muted p-3 rounded-xl">
+                                                    <Info className="h-5 w-5 text-primary"/>
+                                                    <span className="font-semibold text-sm">{card.isCustomActivity ? "Community Activity" : "Location-based Activity"}</span>
+                                                </div>
                                             </div>
-                                             <div className="flex items-center gap-3 bg-muted p-3 rounded-xl">
-                                                <Info className="h-5 w-5 text-primary"/>
-                                                <span className="font-semibold text-sm">{card.isCustomActivity ? "Community Activity" : "Location-based Activity"}</span>
-                                            </div>
-                                        </div>
+                                          </>
+                                        )}
                                     </motion.div>
                                 );
                             })}

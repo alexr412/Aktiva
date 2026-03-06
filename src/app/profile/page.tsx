@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -233,7 +233,7 @@ export default function ProfilePage() {
         setActivityModalPlace(place);
     };
 
-    const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number): Promise<boolean> => {
+    const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean): Promise<boolean> => {
         if (!user || !activityModalPlace) {
             toast({
                 title: 'Error',
@@ -251,10 +251,13 @@ export default function ProfilePage() {
                 user,
                 isTimeFlexible,
                 maxParticipants,
+                isBoosted,
             });
             toast({
-                title: 'Activity Created!',
-                description: `Your activity at ${activityModalPlace.name} is set.`,
+                title: isBoosted ? 'Aktivität Geboostet!' : 'Activity Created!',
+                description: isBoosted 
+                  ? `Deine Aktivität bei ${activityModalPlace.name} steht ganz oben im Feed.`
+                  : `Your activity at ${activityModalPlace.name} is set.`,
             });
             setActivityModalPlace(null);
             router.push(`/chat/${newActivityRef.id}`);
@@ -389,11 +392,17 @@ export default function ProfilePage() {
                             </div>
                         </div>
 
-                        <div>
-                            <h1 className="text-2xl font-bold">
-                                {displayName}
-                                {userData?.age && `, ${userData.age}`}
-                            </h1>
+                        <div className="flex flex-col items-center">
+                            <div className="flex items-center gap-2">
+                              <h1 className="text-2xl font-bold">
+                                  {displayName}
+                                  {userData?.age && `, ${userData.age}`}
+                              </h1>
+                              {/* Fundraising: Supporter Badge */}
+                              {userData?.isDonator && (
+                                <ShieldCheck className="h-6 w-6 text-primary fill-primary/10" strokeWidth={2.5} />
+                              )}
+                            </div>
                             <div 
                                 onClick={userData?.friendCode ? handleCopyCode : undefined}
                                 onKeyDown={(e) => userData?.friendCode && (e.key === 'Enter' || e.key === ' ') ? handleCopyCode() : undefined}

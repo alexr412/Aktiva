@@ -11,11 +11,14 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import type { Place } from '@/lib/types';
-import { Loader2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/use-auth';
+import { earnToken } from '@/lib/firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 import {
   format,
   addMonths,
@@ -30,7 +33,6 @@ import {
   isSameDay,
   getDate,
   isAfter,
-  isBefore,
   isWithinInterval,
 } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -39,10 +41,13 @@ interface CreateActivityDialogProps {
   place: Place | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateActivity: (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number) => Promise<boolean>;
+  onCreateActivity: (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean) => Promise<boolean>;
 }
 
 export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivity }: CreateActivityDialogProps) {
+  const { userProfile, user } = useAuth();
+  const { toast } = useToast();
+  
   const [isCreating, setIsCreating] = useState(false);
   const [customLocationName, setCustomLocationName] = useState('');
   
@@ -54,6 +59,10 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   const [isTimeFlexible, setIsTimeFlexible] = useState(false);
   const [isDateFlexible, setIsDateFlexible] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState('');
+  
+  // Monetization: Boost
+  const [isBoosted, setIsBoosted] = useState(false);
+  const [isWatchingAd, setIsWatchingAd] = useState(false);
 
   const isCustom = !place;
 
@@ -69,6 +78,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
       setIsTimeFlexible(false);
       setIsDateFlexible(false);
       setMaxParticipants('');
+      setIsBoosted(false);
     }
   }, [open]);
 
@@ -97,10 +107,36 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
 
     setIsCreating(true);
     const numMaxParticipants = parseInt(maxParticipants, 10);
-    const success = await onCreateActivity(finalDate, endDate, timeIsFlexible, isCustom ? customLocationName : undefined, isNaN(numMaxParticipants) ? undefined : numMaxParticipants);
+    const success = await onCreateActivity(
+      finalDate, 
+      endDate, 
+      timeIsFlexible, 
+      isCustom ? customLocationName : undefined, 
+      isNaN(numMaxParticipants) ? undefined : numMaxParticipants,
+      isBoosted
+    );
     if (!success) {
       setIsCreating(false);
     }
+  };
+
+  // Rewarded Video Simulation
+  const handleEarnToken = async () => {
+    if (!user) return;
+    setIsWatchingAd(true);
+    toast({ title: "Video startet...", description: "Schau dir das Video an, um einen Token zu verdienen." });
+    
+    // Simulate 5s video
+    setTimeout(async () => {
+      try {
+        await earnToken(user.uid);
+        toast({ title: "Token erhalten!", description: "Du hast erfolgreich 1 Token verdient." });
+      } catch (err) {
+        toast({ variant: "destructive", title: "Fehler", description: "Token konnte nicht gutgeschrieben werden." });
+      } finally {
+        setIsWatchingAd(false);
+      }
+    }, 5000);
   };
 
   // Calendar Logic
@@ -137,7 +173,8 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   const isCreateDisabled = isCreating ||
     (isCustom && !customLocationName.trim()) ||
     (isDateFlexible ? !selectedRange.from : !selectedDate) ||
-    (!isTimeFlexible && !isDateFlexible && !selectedTime);
+    (!isTimeFlexible && !isDateFlexible && !selectedTime) ||
+    (isBoosted && (userProfile?.adTokens || 0) < 1);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -248,6 +285,53 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                 className="w-full h-12 text-lg text-center rounded-xl"
                 min="1"
               />
+          </div>
+
+          {/* Token Economy & Boost Functionality */}
+          <div className="w-full max-w-md p-4 pt-2 mx-auto mt-4 border-t border-border">
+             <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Flame className={cn("h-5 w-5", isBoosted ? "text-orange-500 animate-pulse" : "text-muted-foreground")} />
+                  <span className="font-bold">Aktivitäts-Booster</span>
+                </div>
+                <div className="flex items-center gap-2 bg-muted px-3 py-1 rounded-full">
+                  <Coins className="h-4 w-4 text-amber-500" />
+                  <span className="text-sm font-bold">{userProfile?.adTokens || 0}</span>
+                </div>
+             </div>
+             
+             <div className="bg-secondary/30 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="boost-toggle" className="text-base font-semibold">Boost aktivieren</Label>
+                    <p className="text-xs text-muted-foreground">Erhöht Sichtbarkeit & Push-Radius. Preis: 1 Token.</p>
+                  </div>
+                  <Switch 
+                    id="boost-toggle" 
+                    checked={isBoosted} 
+                    onCheckedChange={setIsBoosted}
+                    disabled={(userProfile?.adTokens || 0) < 1}
+                  />
+                </div>
+
+                {(userProfile?.adTokens || 0) < 1 && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-12 rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5"
+                    onClick={handleEarnToken}
+                    disabled={isWatchingAd}
+                  >
+                    {isWatchingAd ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <PlayCircle className="h-5 w-5 text-primary" />
+                        Token verdienen (Video Ad)
+                      </>
+                    )}
+                  </Button>
+                )}
+             </div>
           </div>
 
         </div>
