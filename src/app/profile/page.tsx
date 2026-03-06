@@ -24,6 +24,7 @@ import { PlaceCard } from '@/components/aktvia/place-card';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
+import FriendList from '@/components/profile/FriendList';
 
 
 function generateFriendCode(length = 8) {
@@ -460,8 +461,10 @@ export default function ProfilePage() {
                             </button>
                         </div>
                     </div>
+
+                    <FriendList friendIds={userData?.friends || []} />
                     
-                    <div className="w-full border-b mt-2">
+                    <div className="w-full border-b mt-8">
                         <nav className="flex justify-around items-center font-medium px-6">
                             <TabButton tabName="activities" label="Aktivitäten" />
                             <TabButton tabName="favorites" label="Favoriten" />
@@ -537,18 +540,22 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
-                <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden">
-                    {selectedPlace && <PlaceDetails place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
-                </DialogContent>
-            </Dialog>
+            <div className="fixed inset-0 pointer-events-none">
+                <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
+                    <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden pointer-events-auto">
+                        {selectedPlace && <PlaceDetails place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
+                    </DialogContent>
+                </Dialog>
+            </div>
 
-            <CreateActivityDialog
-                place={activityModalPlace}
-                open={!!activityModalPlace}
-                onOpenChange={(open) => !open && setActivityModalPlace(null)}
-                onCreateActivity={handleCreateActivity}
-            />
+            <div className="fixed inset-0 pointer-events-none">
+                <CreateActivityDialog
+                    place={activityModalPlace}
+                    open={!!activityModalPlace}
+                    onOpenChange={(open) => !open && setActivityModalPlace(null)}
+                    onCreateActivity={handleCreateActivity}
+                />
+            </div>
         </>
     );
 }
