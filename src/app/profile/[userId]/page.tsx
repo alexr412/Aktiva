@@ -31,10 +31,21 @@ import {
   UserCheck,
   X,
   MessageSquare,
+  MapPin,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { EntityMoreOptions } from '@/components/common/EntityMoreOptions';
 
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export default function ExternalUserProfilePage() {
     const { user: currentUser, userProfile, loading: authLoading } = useAuth();
@@ -186,6 +197,26 @@ export default function ExternalUserProfilePage() {
         }
     }
 
+    const getProximityLabel = () => {
+        if (!userProfile?.proximitySettings?.enabled || !userData?.proximitySettings?.enabled) return null;
+        if (!userProfile.lastLocation || !userData.lastLocation?.updatedAt) return null;
+
+        const lastUpdate = userData.lastLocation.updatedAt.toMillis();
+        const now = Date.now();
+        if (now - lastUpdate > 24 * 60 * 60 * 1000) return null;
+
+        const dist = calculateDistance(
+            userProfile.lastLocation.lat,
+            userProfile.lastLocation.lng,
+            userData.lastLocation.lat,
+            userData.lastLocation.lng
+        );
+
+        if (dist < 5) return "In direkter Nähe (< 5km)";
+        if (dist < 20) return "In der Umgebung (< 20km)";
+        return "Weiter entfernt";
+    };
+
 
     if (loading) {
         return (
@@ -257,6 +288,7 @@ export default function ExternalUserProfilePage() {
 
     const photoUrlToDisplay = userData.photoURL || '';
     const displayName = userData.displayName || 'Anonymous User';
+    const proximityLabel = getProximityLabel();
     
     const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
 
@@ -288,7 +320,14 @@ export default function ExternalUserProfilePage() {
                         {userData.age && `, ${userData.age}`}
                     </h1>
                     
-                    {userData.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
+                    {proximityLabel ? (
+                        <div className="flex items-center justify-center gap-1.5 mt-1 text-green-600 font-bold text-xs uppercase tracking-wider">
+                            <MapPin className="h-3.5 w-3.5" />
+                            <span>{proximityLabel}</span>
+                        </div>
+                    ) : (
+                        userData.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>
+                    )}
                 </div>
 
                 <div className="w-full max-w-sm">
