@@ -119,13 +119,14 @@ export default function CommunityPage() {
                                     </div>
                                     
                                     {isSelf ? (
-                                        <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg">
-                                            Du
+                                        <div className="px-4 py-2 bg-red-500/10 text-red-500 font-bold text-sm rounded-lg flex items-center gap-2">
+                                            <span>❤️</span>
+                                            <span>Du</span>
                                         </div>
                                     ) : isAlreadyFriend ? (
                                         <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg flex items-center gap-2">
                                             <Check className="w-4 h-4" />
-                                            Befreundet
+                                            Freunde
                                         </div>
                                     ) : (
                                         <Button onClick={handleAddFriend} disabled={requestSent} className="w-32 flex-shrink-0">

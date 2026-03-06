@@ -148,7 +148,7 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
               ) : isAlreadyFriend ? (
                 <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg flex items-center gap-2">
                   <Check className="w-4 h-4" />
-                  Befreundet
+                  Freunde
                 </div>
               ) : (
                 <Button 
