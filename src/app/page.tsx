@@ -26,7 +26,7 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, BLACKLISTED_CATEGORIES } from '@/lib/geoapify';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -80,7 +80,6 @@ export default function Home() {
     const offset = pageIndex * PLACES_PER_PAGE;
     const radiusMeters = searchRadiusKm * 1000;
     
-    // Bereinigte URL-Konstruktion mit Named-Condition, erhöhtem Limit und GLOBAL_EXCLUDE_STRING
     let url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
 
     return url;
@@ -93,8 +92,17 @@ export default function Home() {
 
   const rawPlaces = useMemo(() => {
     if (!data) return [];
-    return data.flatMap(page =>
-      page.features?.map((feature: GeoapifyFeature) => {
+    return data.flatMap(page => {
+      const features = page.features || [];
+      
+      // Client-Side Post-Processing Blacklist
+      const safeFeatures = features.filter((feature: any) => {
+        const featureCats = feature.properties?.categories || [];
+        const catsArray = Array.isArray(featureCats) ? featureCats : [featureCats];
+        return !catsArray.some((cat: string) => BLACKLISTED_CATEGORIES.includes(cat));
+      });
+
+      return safeFeatures.map((feature: GeoapifyFeature) => {
         const props = feature.properties;
         let rating;
         if (props.datasource?.raw?.rating) {
@@ -113,8 +121,8 @@ export default function Home() {
           rating: rating,
           distance: props.distance,
         } as Place;
-      }) || []
-    );
+      });
+    });
   }, [data]);
   
   const places = useMemo(() => {
@@ -127,7 +135,7 @@ export default function Home() {
 
   const isLoadingInitialData = isLoading;
   const isFetchingMore = isValidating && !isLoadingInitialData;
-  const isEmpty = !data || data.length === 0 || !data[0]?.features || data[0].features.length === 0;
+  const isEmpty = !data || data.length === 0 || !(data[0]?.features?.length > 0);
   const hasMore = !isEmpty && data && (data[data.length - 1]?.features?.length === PLACES_PER_PAGE);
 
   const resetFilters = () => {

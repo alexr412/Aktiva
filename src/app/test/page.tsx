@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Search, Activity } from 'lucide-react';
-import { GLOBAL_EXCLUDE_STRING } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, BLACKLISTED_CATEGORIES } from '@/lib/geoapify';
 
 const LAT = 53.5395845;
 const LNG = 8.5809341;
@@ -17,14 +17,12 @@ export default function TestPage() {
   const [isFetching, setIsFetching] = useState<boolean>(false);
 
   const executeTestQuery = async () => {
-    // Bereinige den Input: Entferne Leerzeichen und validiere
     const sanitizedCategory = testCategory.trim().replace(/\s+/g, '');
     if (!sanitizedCategory) return;
     
     setIsFetching(true);
     
     try {
-      // Konstruktion mit Named-Condition, GLOBAL_EXCLUDE_STRING und encodierten Kategorien
       const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${LNG},${LAT},5000&limit=100&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
       
       const response = await fetch(url);
@@ -34,7 +32,16 @@ export default function TestPage() {
       }
       
       const data = await response.json();
-      setResults(data.features || []);
+      const rawFeatures = data.features || [];
+      
+      // Client-Side Post-Processing Blacklist
+      const safeFeatures = rawFeatures.filter((feature: any) => {
+        const categories = feature.properties?.categories || [];
+        const catsArray = Array.isArray(categories) ? categories : [categories];
+        return !catsArray.some((cat: string) => BLACKLISTED_CATEGORIES.includes(cat));
+      });
+
+      setResults(safeFeatures);
     } catch (error) {
       console.error("Test fetch failed:", error);
       setResults([]);
@@ -51,7 +58,7 @@ export default function TestPage() {
           Geoapify Category Diagnostic
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Echtzeit-Analyse von Kategorie-Strings unter Berücksichtigung der GLOBAL_EXCLUDE_STRING.
+          Echtzeit-Analyse mit GLOBAL_EXCLUDE_STRING und Client-Side Post-Processing.
         </p>
       </header>
 
@@ -81,7 +88,7 @@ export default function TestPage() {
             Exclude: {GLOBAL_EXCLUDE_STRING}
           </code>
           <div className="text-sm font-semibold whitespace-nowrap mt-1">
-            Results: <span className="text-primary">{results.length}</span>
+            Results (filtered): <span className="text-primary">{results.length}</span>
           </div>
         </div>
       </div>

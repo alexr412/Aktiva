@@ -4,10 +4,20 @@ import { GEOAPIFY_API_KEY } from '@/lib/config';
 import type { Place, GeoapifyFeature } from '@/lib/types';
 
 /**
- * Zentrale Blacklist-Konstante für permanente System-Ausschlüsse.
- * Diese Entitäten werden global aus allen API-Abrufen entfernt.
+ * Zentrale Blacklist für permanente System-Ausschlüsse.
+ * Diese Kategorien werden sowohl serverseitig (via exclude-Parameter)
+ * als auch clientseitig (via Post-Processing) restlos entfernt.
  */
-export const GLOBAL_EXCLUDE_STRING = "categories:adult.stripclub,adult.brothel,adult.swingerclub,adult.adult_gaming_centre,adult.casino";
+export const BLACKLISTED_CATEGORIES = [
+  "adult.stripclub",
+  "adult.brothel",
+  "adult.swingerclub",
+  "adult.adult_gaming_centre",
+  "adult.casino"
+];
+
+// Generiert den Exclude-String für die API-URL (z.B. "categories:adult.stripclub,categories:adult.brothel...")
+export const GLOBAL_EXCLUDE_STRING = BLACKLISTED_CATEGORIES.map(cat => `categories:${cat}`).join(',');
 
 export async function fetchNearbyPlaces(
   lat: number,
@@ -26,10 +36,10 @@ export async function fetchNearbyPlaces(
   }
 
   // 2. Erzwungene Injektion von conditions=named und GLOBAL_EXCLUDE_STRING
-  let url = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
+  const fetchUrl = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(fetchUrl);
     if (!response.ok) {
       const errorText = await response.text();
       console.warn(`Geoapify API request failed: ${response.status}. ${errorText}`);
@@ -42,7 +52,16 @@ export async function fetchNearbyPlaces(
       return [];
     }
 
-    return data.features.map((feature: GeoapifyFeature) => {
+    // 3. Harte Client-Side-Filterung (Post-Processing)
+    const rawFeatures = data.features || [];
+    const safeFeatures = rawFeatures.filter((feature: any) => {
+      const featureCats = feature.properties?.categories || [];
+      const catsArray = Array.isArray(featureCats) ? featureCats : [featureCats];
+      // Verwirft das Objekt, sobald eine Kategorie in der Blacklist existiert
+      return !catsArray.some((cat: string) => BLACKLISTED_CATEGORIES.includes(cat));
+    });
+
+    return safeFeatures.map((feature: GeoapifyFeature) => {
       const props = feature.properties;
       let rating;
       if (props.datasource?.raw?.rating) {
