@@ -5,7 +5,7 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Home, Loader2, MapPin, LogIn, MessageSquare, Users, Flame, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Home, Loader2, MapPin, LogIn, MessageSquare, Users, Flame, ArrowUp, ArrowDown, Bookmark, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EntityMoreOptions } from '../common/EntityMoreOptions';
@@ -91,6 +91,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                       activity.isBoosted ? "text-orange-500" : "text-muted-foreground"
                     )} />
                 </div>
+                
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
                         <p className="font-semibold text-base truncate">{activity.placeName}</p>
@@ -111,69 +112,85 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                             {activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; von {activity.creatorName}
                         </span>
                     </p>
-                    
-                    {/* Voting Logic Interface */}
-                    <div className="flex items-center gap-4 mt-3">
-                        <div className="flex items-center bg-secondary/50 rounded-full p-1">
-                            <button 
-                                onClick={(e) => handleVote(e, 'up')}
-                                disabled={isVoting || !user}
-                                className={cn(
-                                    "p-1.5 rounded-full transition-colors",
-                                    currentUserVote === 'up' ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                                )}
-                            >
-                                <ThumbsUp className="h-4 w-4" />
-                            </button>
-                            <button 
-                                onClick={(e) => handleVote(e, 'down')}
-                                disabled={isVoting || !user}
-                                className={cn(
-                                    "p-1.5 rounded-full transition-colors",
-                                    currentUserVote === 'down' ? "bg-destructive text-destructive-foreground" : "hover:bg-muted"
-                                )}
-                            >
-                                <ThumbsDown className="h-4 w-4" />
-                            </button>
-                        </div>
+                </div>
+
+                <div className="flex flex-col items-end gap-3 flex-shrink-0 self-center pl-2">
+                    {/* Voting Controls Area */}
+                    <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-1 border border-border/50">
+                        <button 
+                            onClick={(e) => handleVote(e, 'up')}
+                            disabled={isVoting || !user}
+                            className={cn(
+                                "p-1.5 rounded-full transition-colors",
+                                currentUserVote === 'up' ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                            )}
+                            aria-label="Upvote"
+                        >
+                            <ArrowUp className="h-4 w-4" />
+                        </button>
+                        <button 
+                            onClick={(e) => handleVote(e, 'down')}
+                            disabled={isVoting || !user}
+                            className={cn(
+                                "p-1.5 rounded-full transition-colors",
+                                currentUserVote === 'down' ? "bg-destructive text-destructive-foreground" : "hover:bg-muted"
+                            )}
+                            aria-label="Downvote"
+                        >
+                            <ArrowDown className="h-4 w-4" />
+                        </button>
 
                         {/* Admin-only metrics */}
                         {userProfile?.isAdmin && (
-                            <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-l pl-3 border-border">
-                                <span className="flex items-center gap-1">
-                                    <ThumbsUp className="h-3 w-3 text-primary" />
-                                    {activity.upvotes || 0}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                    <ThumbsDown className="h-3 w-3 text-destructive" />
-                                    {activity.downvotes || 0}
-                                </span>
-                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground px-2 whitespace-nowrap border-l border-border ml-1">
+                                ↑{activity.upvotes || 0} ↓{activity.downvotes || 0}
+                            </span>
                         )}
                     </div>
-                </div>
-                <div className="flex-shrink-0 self-center pl-2">
-                    {isParticipant ? (
-                         <Button size="sm" variant="outline" onClick={handleViewChatClick}>
-                            <MessageSquare className="mr-2 h-4 w-4" />
-                            Chat
+
+                    {/* Interaction Buttons (Bookmark, Plus/Add) */}
+                    <div className="flex items-center gap-2">
+                        <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-9 w-9 rounded-full bg-background hover:bg-secondary"
+                            onClick={(e) => e.stopPropagation()} // Activity bookmarking logic would go here
+                        >
+                            <Bookmark className="h-4 w-4" />
+                            <span className="sr-only">Lesezeichen</span>
                         </Button>
-                    ) : isFull ? (
-                        <Button size="sm" variant="secondary" disabled>
-                            Voll
-                        </Button>
-                    ) : (
-                        <Button size="sm" onClick={handleJoinClick} disabled={isJoining} className={cn(activity.isBoosted && "bg-orange-500 hover:bg-orange-600")}>
-                            {isJoining ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <>
-                                    <LogIn className="mr-2 h-4 w-4" />
-                                    Teilnehmen
-                                </>
-                            )}
-                        </Button>
-                    )}
+
+                        {isParticipant ? (
+                             <Button size="icon" variant="outline" className="h-9 w-9 rounded-full bg-background hover:bg-secondary" onClick={handleViewChatClick}>
+                                <MessageSquare className="h-4 w-4" />
+                                <span className='sr-only'>Chat</span>
+                            </Button>
+                        ) : isFull ? (
+                            <Button size="icon" variant="secondary" disabled className="h-9 w-9 rounded-full">
+                                <Users className="h-4 w-4 opacity-50" />
+                                <span className='sr-only'>Voll</span>
+                            </Button>
+                        ) : (
+                            <Button 
+                                size="icon" 
+                                onClick={handleJoinClick} 
+                                disabled={isJoining} 
+                                className={cn(
+                                    "h-9 w-9 rounded-full shadow-md transition-all active:scale-95",
+                                    activity.isBoosted ? "bg-orange-500 hover:bg-orange-600" : "bg-primary hover:bg-primary/90"
+                                )}
+                            >
+                                {isJoining ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <>
+                                        <Plus className="h-4 w-4" />
+                                        <span className='sr-only'>Hinzufügen</span>
+                                    </>
+                                )}
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
              {!isOwnActivity && user && (
