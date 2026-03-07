@@ -10,7 +10,7 @@ export const BASE_HARD_VETO: string[] = [];
 
 /**
  * Stufe 0B: Relativer Abbruch (Soft Veto)
- * Vollständige Liste gemäß System-Anweisung #018 und Erweiterung #021
+ * Vollständige Liste gemäß System-Anweisung #018, Erweiterung #021 und #022
  */
 export const BASE_SOFT_VETO = [
   "education.school", "education.driving_school", "education.language_school", "education.music_school", "education.college",
@@ -42,7 +42,55 @@ export const BASE_SOFT_VETO = [
   "memorial.graveyard",
   "memorial.hindu",
   "memorial.jewish",
-  "memorial.muslim"
+  "memorial.muslim",
+  "service",
+  "service.ambulance_station",
+  "service.beauty",
+  "service.beauty.hairdresser",
+  "service.bookmaker",
+  "service.cleaning",
+  "service.cleaning.dry_cleaning",
+  "service.cleaning.laundry",
+  "service.cleaning.lavoir",
+  "service.crematorium",
+  "service.crematorium.human",
+  "service.crematorium.pet",
+  "service.estate_agent",
+  "service.financial",
+  "service.financial.atm",
+  "service.financial.bank",
+  "service.financial.bureau_de_change",
+  "service.financial.money_lender",
+  "service.financial.money_transfer",
+  "service.financial.payment_terminal",
+  "service.fire_station",
+  "service.funeral_directors",
+  "service.funeral_hall",
+  "service.locksmith",
+  "service.mortuary",
+  "service.place_of_mourning",
+  "service.police",
+  "service.post",
+  "service.post.box",
+  "service.post.office",
+  "service.recycling",
+  "service.recycling.bin",
+  "service.recycling.centre",
+  "service.recycling.container",
+  "service.social_facility",
+  "service.social_facility.clothers",
+  "service.social_facility.food",
+  "service.social_facility.shelter",
+  "service.tailor",
+  "service.taxi",
+  "service.travel_agency",
+  "service.vehicle",
+  "service.vehicle.car_wash",
+  "service.vehicle.charging_station",
+  "service.vehicle.fuel",
+  "service.vehicle.repair",
+  "service.vehicle.repair.car",
+  "service.vehicle.repair.motorcycle"
 ];
 
 /**
