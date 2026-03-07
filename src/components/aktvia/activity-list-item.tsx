@@ -31,34 +31,29 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
     const isOwnActivity = activity.creatorId === user?.uid;
     
-    const currentUserVote = user ? activity.userVotes?.[user.uid] : undefined;
-    
     const Icon = activity.isCustomActivity ? Home : MapPin;
 
-    const handleJoinClick = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (isJoining || isParticipant || isFull || !activity.id) return; 
+    const handleJoinClick = async (activityId: string) => {
+        if (isJoining || isParticipant || isFull) return; 
 
         setIsJoining(true);
         try {
-            await onJoin(activity.id);
+            await onJoin(activityId);
         } catch (error) {
             setIsJoining(false);
         }
     };
     
-    const handleViewChatClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        router.push(`/chat/${activity.id}`);
+    const handleViewChatClick = (activityId: string) => {
+        router.push(`/chat/${activityId}`);
     };
 
-    const handleVote = async (e: React.MouseEvent, type: 'up' | 'down') => {
-        e.stopPropagation();
-        if (!user || !activity.id || isVoting) return;
+    const handleVote = async (activityId: string, type: 'up' | 'down') => {
+        if (!user || isVoting) return;
         
         setIsVoting(true);
         try {
-            await voteActivity(activity.id, user.uid, type);
+            await voteActivity(activityId, user.uid, type);
         } catch (error) {
             console.error("Voting failed:", error);
         } finally {
@@ -113,86 +108,81 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                         </span>
                     </p>
                 </div>
-
-                <div className="flex flex-col items-end gap-3 flex-shrink-0 self-center pl-2">
-                    {/* Voting Controls Area */}
-                    <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-1 border border-border/50">
-                        <button 
-                            onClick={(e) => handleVote(e, 'up')}
-                            disabled={isVoting || !user}
-                            className={cn(
-                                "p-1.5 rounded-full transition-colors",
-                                currentUserVote === 'up' ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                            )}
-                            aria-label="Upvote"
-                        >
-                            <ArrowUp className="h-4 w-4" />
-                        </button>
-                        <button 
-                            onClick={(e) => handleVote(e, 'down')}
-                            disabled={isVoting || !user}
-                            className={cn(
-                                "p-1.5 rounded-full transition-colors",
-                                currentUserVote === 'down' ? "bg-destructive text-destructive-foreground" : "hover:bg-muted"
-                            )}
-                            aria-label="Downvote"
-                        >
-                            <ArrowDown className="h-4 w-4" />
-                        </button>
-
-                        {/* Admin-only metrics */}
-                        {userProfile?.isAdmin && (
-                            <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground px-2 whitespace-nowrap border-l border-border ml-1">
-                                ↑{activity.upvotes || 0} ↓{activity.downvotes || 0}
-                            </span>
-                        )}
-                    </div>
-
-                    {/* Interaction Buttons (Bookmark, Plus/Add) */}
-                    <div className="flex items-center gap-2">
-                        <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-9 w-9 rounded-full bg-background hover:bg-secondary"
-                            onClick={(e) => e.stopPropagation()} // Activity bookmarking logic would go here
-                        >
-                            <Bookmark className="h-4 w-4" />
-                            <span className="sr-only">Lesezeichen</span>
-                        </Button>
-
-                        {isParticipant ? (
-                             <Button size="icon" variant="outline" className="h-9 w-9 rounded-full bg-background hover:bg-secondary" onClick={handleViewChatClick}>
-                                <MessageSquare className="h-4 w-4" />
-                                <span className='sr-only'>Chat</span>
-                            </Button>
-                        ) : isFull ? (
-                            <Button size="icon" variant="secondary" disabled className="h-9 w-9 rounded-full">
-                                <Users className="h-4 w-4 opacity-50" />
-                                <span className='sr-only'>Voll</span>
-                            </Button>
-                        ) : (
-                            <Button 
-                                size="icon" 
-                                onClick={handleJoinClick} 
-                                disabled={isJoining} 
-                                className={cn(
-                                    "h-9 w-9 rounded-full shadow-md transition-all active:scale-95",
-                                    activity.isBoosted ? "bg-orange-500 hover:bg-orange-600" : "bg-primary hover:bg-primary/90"
-                                )}
-                            >
-                                {isJoining ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <>
-                                        <Plus className="h-4 w-4" />
-                                        <span className='sr-only'>Hinzufügen</span>
-                                    </>
-                                )}
-                            </Button>
-                        )}
-                    </div>
-                </div>
             </div>
+
+            {/* FORCED FRONTEND INTEGRATION: VOTING INTERFACE FOOTER */}
+            <div className="card-footer-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '12px' }}>
+              
+              {/* 1. Unkonditionales Rendering: Buttons zwingend für ALLE Nutzer sichtbar */}
+              <div className="voting-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, 'up'); }} 
+                  disabled={isVoting || !user}
+                  aria-label="Upvote"
+                  style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', cursor: 'pointer', color: '#000000', fontWeight: 'bold', display: 'block', visibility: 'visible', opacity: 1 }}
+                >
+                  {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, 'down'); }} 
+                  disabled={isVoting || !user}
+                  aria-label="Downvote"
+                  style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', cursor: 'pointer', color: '#000000', fontWeight: 'bold', display: 'block', visibility: 'visible', opacity: 1 }}
+                >
+                  {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}
+                </button>
+
+                {/* 2. Konditionales Rendering: Metriken zwingend NUR für Admins sichtbar */}
+                {userProfile?.isAdmin && (
+                  <span className="admin-metrics" style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px', display: 'block', visibility: 'visible' }}>
+                    ↑{activity.upvotes || 0} ↓{activity.downvotes || 0}
+                  </span>
+                )}
+              </div>
+
+              {/* 3. Bestehende Interaktions-Buttons */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  className="bookmark-button" 
+                  aria-label="Save"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ padding: '8px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#ffffff', cursor: 'pointer' }}
+                >
+                  <Bookmark className="h-4 w-4 text-muted-foreground" />
+                </button>
+                
+                {isParticipant ? (
+                  <button 
+                    className="add-button" 
+                    aria-label="Chat"
+                    onClick={(e) => { e.stopPropagation(); handleViewChatClick(activity.id!); }}
+                    style={{ padding: '8px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#ffffff', cursor: 'pointer' }}
+                  >
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                  </button>
+                ) : isFull ? (
+                  <button 
+                    className="add-button" 
+                    aria-label="Full"
+                    disabled
+                    style={{ padding: '8px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#f1f5f9', cursor: 'not-allowed' }}
+                  >
+                    <Users className="h-4 w-4 text-muted-foreground opacity-50" />
+                  </button>
+                ) : (
+                  <button 
+                    className="add-button" 
+                    aria-label="Add"
+                    onClick={(e) => { e.stopPropagation(); handleJoinClick(activity.id!); }}
+                    disabled={isJoining}
+                    style={{ padding: '8px', borderRadius: '50%', border: 'none', background: 'hsl(var(--primary))', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  >
+                    {isJoining ? <Loader2 className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  </button>
+                )}
+              </div>
+            </div>
+
              {!isOwnActivity && user && (
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <EntityMoreOptions
