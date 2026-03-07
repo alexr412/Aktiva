@@ -68,7 +68,8 @@ export async function createUserProfileDocument(user: User) {
     proximitySettings: {
       enabled: false,
       radiusKm: 5
-    }
+    },
+    isAdmin: false
   };
   await setDoc(userDocRef, userProfile);
 }
@@ -143,6 +144,9 @@ export async function createActivity({
     status: 'active' as const,
     completionVotes: [],
     isBoosted: isBoosted,
+    upvotes: 0,
+    downvotes: 0,
+    userVotes: {},
     ...(place?.address && { placeAddress: place.address }),
     ...(place?.lat && { lat: place.lat }),
     ...(place?.lon && { lon: place.lon }),
@@ -188,6 +192,44 @@ export async function createActivity({
     }
     throw new Error(error.message || 'Could not create activity. Please try again later.');
   }
+}
+
+export async function voteActivity(activityId: string, userId: string, type: 'up' | 'down') {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const activityRef = doc(db, 'activities', activityId);
+
+  await runTransaction(db, async (transaction) => {
+    const activitySnap = await transaction.get(activityRef);
+    if (!activitySnap.exists()) throw new Error("Activity not found.");
+
+    const data = activitySnap.data() as Activity;
+    const userVotes = data.userVotes || {};
+    const previousVote = userVotes[userId];
+
+    let upvoteChange = 0;
+    let downvoteChange = 0;
+
+    if (previousVote === type) {
+      // Toggle off
+      if (type === 'up') upvoteChange = -1;
+      else downvoteChange = -1;
+      delete userVotes[userId];
+    } else {
+      // Change or new vote
+      if (previousVote === 'up') upvoteChange = -1;
+      if (previousVote === 'down') downvoteChange = -1;
+
+      if (type === 'up') upvoteChange += 1;
+      else downvoteChange += 1;
+      userVotes[userId] = type;
+    }
+
+    transaction.update(activityRef, {
+      upvotes: increment(upvoteChange),
+      downvotes: increment(downvoteChange),
+      userVotes: userVotes
+    });
+  });
 }
 
 export async function joinActivity(activityId: string, user: User) {

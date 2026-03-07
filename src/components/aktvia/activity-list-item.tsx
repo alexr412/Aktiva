@@ -5,11 +5,13 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Home, Loader2, MapPin, LogIn, MessageSquare, Users, Flame } from 'lucide-react';
+import { Home, Loader2, MapPin, LogIn, MessageSquare, Users, Flame, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EntityMoreOptions } from '../common/EntityMoreOptions';
 import { cn } from '@/lib/utils';
+import { voteActivity } from '@/lib/firebase/firestore';
+import { useAuth } from '@/hooks/use-auth';
 
 interface ActivityListItemProps {
     activity: Activity;
@@ -18,14 +20,18 @@ interface ActivityListItemProps {
 }
 
 export function ActivityListItem({ activity, user, onJoin }: ActivityListItemProps) {
+    const { userProfile } = useAuth();
     const router = useRouter();
     const [isJoining, setIsJoining] = useState(false);
+    const [isVoting, setIsVoting] = useState(false);
 
     if (!activity.id) return null;
 
     const isParticipant = activity.participantIds.includes(user?.uid || '---');
     const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
     const isOwnActivity = activity.creatorId === user?.uid;
+    
+    const currentUserVote = user ? activity.userVotes?.[user.uid] : undefined;
     
     const Icon = activity.isCustomActivity ? Home : MapPin;
 
@@ -44,6 +50,20 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const handleViewChatClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         router.push(`/chat/${activity.id}`);
+    };
+
+    const handleVote = async (e: React.MouseEvent, type: 'up' | 'down') => {
+        e.stopPropagation();
+        if (!user || !activity.id || isVoting) return;
+        
+        setIsVoting(true);
+        try {
+            await voteActivity(activity.id, user.uid, type);
+        } catch (error) {
+            console.error("Voting failed:", error);
+        } finally {
+            setIsVoting(false);
+        }
     };
 
     const renderDate = () => {
@@ -91,6 +111,46 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                             {activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; von {activity.creatorName}
                         </span>
                     </p>
+                    
+                    {/* Voting Logic Interface */}
+                    <div className="flex items-center gap-4 mt-3">
+                        <div className="flex items-center bg-secondary/50 rounded-full p-1">
+                            <button 
+                                onClick={(e) => handleVote(e, 'up')}
+                                disabled={isVoting || !user}
+                                className={cn(
+                                    "p-1.5 rounded-full transition-colors",
+                                    currentUserVote === 'up' ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                                )}
+                            >
+                                <ThumbsUp className="h-4 w-4" />
+                            </button>
+                            <button 
+                                onClick={(e) => handleVote(e, 'down')}
+                                disabled={isVoting || !user}
+                                className={cn(
+                                    "p-1.5 rounded-full transition-colors",
+                                    currentUserVote === 'down' ? "bg-destructive text-destructive-foreground" : "hover:bg-muted"
+                                )}
+                            >
+                                <ThumbsDown className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        {/* Admin-only metrics */}
+                        {userProfile?.isAdmin && (
+                            <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-l pl-3 border-border">
+                                <span className="flex items-center gap-1">
+                                    <ThumbsUp className="h-3 w-3 text-primary" />
+                                    {activity.upvotes || 0}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <ThumbsDown className="h-3 w-3 text-destructive" />
+                                    {activity.downvotes || 0}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="flex-shrink-0 self-center pl-2">
                     {isParticipant ? (

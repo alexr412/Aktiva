@@ -60,6 +60,10 @@ export interface Activity {
   // Monetization fields
   isBoosted?: boolean;
   boostExpiresAt?: Timestamp;
+  // RBAC & Voting fields
+  upvotes?: number;
+  downvotes?: number;
+  userVotes?: Record<string, 'up' | 'down'>;
 }
 
 export interface Message {
@@ -159,6 +163,8 @@ export interface UserProfile {
   isPremium?: boolean;
   isDonator?: boolean;
   adTokens?: number;
+  // RBAC fields
+  isAdmin?: boolean;
 }
 
 export interface Review {

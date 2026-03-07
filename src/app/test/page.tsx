@@ -1,19 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Search, Activity, MapPin } from 'lucide-react';
+import { Loader2, Search, Activity, MapPin, Lock } from 'lucide-react';
 import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
 
 export default function TestPage() {
+  const { userProfile, loading: authLoading } = useAuth();
+  const router = useRouter();
+  
   const [testCity, setTestCity] = useState<string>("Bremerhaven");
   const [testCategory, setTestCategory] = useState<string>("tourism,entertainment,heritage");
   const [coordinates, setCoordinates] = useState<{lat: number, lng: number}>({ lat: 53.5395845, lng: 8.5809341 });
   const [results, setResults] = useState<any[]>([]);
   const [isFetching, setIsFetching] = useState<boolean>(false);
+
+  // RBAC Route Guard: Only admins allowed
+  useEffect(() => {
+    if (!authLoading && (!userProfile || userProfile.isAdmin !== true)) {
+      router.replace('/');
+    }
+  }, [userProfile, authLoading, router]);
+
+  if (authLoading) {
+    return <div className="flex h-dvh items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  }
+
+  if (!userProfile?.isAdmin) {
+    return null; // Will redirect via useEffect
+  }
 
   const resolveCoordinates = async (cityName: string) => {
     const geoUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(cityName)}&limit=1&apiKey=${GEOAPIFY_API_KEY}`;
@@ -53,24 +73,20 @@ export default function TestPage() {
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // 0. Absolute Exklusion (Hard Veto) - Kaskadierende Sperre bleibt aktiv
         const violatesHardVeto = allTags.some(tag => 
           BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
         );
         if (violatesHardVeto) return false;
 
-        // 1. Extraktion der Basis-Attribute
         const coreTags = allTags.filter(tag => 
           !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
           (!tag.startsWith("building") || combinedSoftVetoList.includes(tag))
         );
 
-        // 2. Isolation der tiefsten Sub-Tags (Zerstörung der Parent-Schutzfunktion)
         const specificCoreTags = coreTags.filter(tag => 
           !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
         );
 
-        // 3. Exklusive Soft-Veto-Auswertung (Strict Match ohne kaskadierende Vererbung)
         if (specificCoreTags.length > 0) {
           const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
             combinedSoftVetoList.includes(specificTag)
@@ -95,12 +111,12 @@ export default function TestPage() {
   return (
     <div className="flex flex-col h-dvh bg-background">
       <header className="p-6 border-b shrink-0 bg-card">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Activity className="text-primary" />
-          Geoapify Diagnostic Console
+        <h1 className="text-2xl font-bold flex items-center gap-2 text-primary">
+          <Lock className="h-6 w-6" />
+          Admin Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Pipeline #029: Soft-Veto nutzt nun Strict-Match. Hard-Veto behält Präfix-Matching bei. Isolation der tiefsten Sub-Tags aktiv.
+          Zugriff exklusiv für Administratoren. Pipeline #031 aktiv.
         </p>
       </header>
 
@@ -112,7 +128,7 @@ export default function TestPage() {
               type="text" 
               value={testCity} 
               onChange={(e) => setTestCity(e.target.value)} 
-              placeholder="Stadt eingeben (z.B. Berlin, Hamburg)"
+              placeholder="Stadt eingeben"
               className="pl-10 bg-background h-12 font-medium"
             />
           </div>
@@ -122,7 +138,7 @@ export default function TestPage() {
               type="text" 
               value={testCategory} 
               onChange={(e) => setTestCategory(e.target.value)} 
-              placeholder="Kategorien (z.B. tourism,catering.restaurant)"
+              placeholder="Kategorien"
               className="flex-1 font-mono text-sm bg-background h-12"
             />
             <Button 
@@ -138,11 +154,11 @@ export default function TestPage() {
 
         <div className="flex flex-col gap-1 px-1 bg-background/50 p-3 rounded-lg border border-border/50">
           <div className="flex justify-between text-xs font-mono">
-            <span className="text-muted-foreground">Resolved Coordinates:</span>
+            <span className="text-muted-foreground">Coordinates:</span>
             <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap mt-2">
-            Results (Pipeline #029): <span className="text-primary">{results.length}</span>
+            Results: <span className="text-primary">{results.length}</span>
           </div>
         </div>
       </div>
@@ -192,8 +208,7 @@ export default function TestPage() {
                 <Search className="h-10 w-10 text-muted-foreground/50" />
               </div>
               <div>
-                <p className="text-muted-foreground">Warte auf Datensatz...</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Stadt und Kategorien wählen, dann auf "Run Test" klicken.</p>
+                <p className="text-muted-foreground">Keine Daten...</p>
               </div>
             </div>
           )}
