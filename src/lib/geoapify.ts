@@ -18,9 +18,9 @@ export const BASE_HARD_VETO = [
 /**
  * Stufe 0B: Relativer Abbruch (Soft Veto)
  * Greift nur, wenn keine validen Core-Tags nach der Isolation übrig bleiben.
+ * Neu: Erfordert Strict Match (exakte Übereinstimmung) für den isolierten Tag.
  */
 export const BASE_SOFT_VETO = [
-  "commercial",
   "education.school", "education.driving_school", "education.language_school", "education.music_school", "education.college",
   "heritage.unesco",
   "accommodation", "accommodation.apartment", "accommodation.chalet", "accommodation.guest_house", "accommodation.hostel", "accommodation.hotel", "accommodation.hut", "accommodation.motel",
@@ -42,7 +42,7 @@ export const BASE_SOFT_VETO = [
   "service", "service.ambulance_station", "service.beauty", "service.beauty.hairdresser", "service.bookmaker", "service.cleaning", "service.cleaning.dry_cleaning", "service.cleaning.laundry", "service.cleaning.lavoir", "service.crematorium", "service.crematorium.human", "service.crematorium.pet", "service.estate_agent", "service.financial", "service.financial.atm", "service.financial.bank", "service.financial.bureau_de_change", "service.financial.money_lender", "service.financial.money_transfer", "service.financial.payment_terminal", "service.fire_station", "service.funeral_directors", "service.funeral_hall", "service.locksmith", "service.mortuary", "service.place_of_mourning", "service.police", "service.post", "service.post.box", "service.post.office", "service.recycling", "service.recycling.bin", "service.recycling.centre", "service.recycling.container", "service.social_facility", "service.social_facility.clothers", "service.social_facility.food", "service.social_facility.shelter", "service.tailor", "service.taxi", "service.travel_agency", "service.vehicle", "service.vehicle.car_wash", "service.vehicle.charging_station", "service.vehicle.fuel", "service.vehicle.repair", "service.vehicle.repair.car", "service.vehicle.repair.motorcycle",
   "building.driving_school", "building.healthcare", "building.kindergarten", "building.prison", "building.transportation",
   "commercial.agrarian", "commercial.baby_goods", "commercial.bag", "commercial.chemist", "commercial.energy", "commercial.florist", "commercial.furniture_and_interior", "commercial.furniture_and_interior.bathroom", "commercial.furniture_and_interior.bed", "commercial.furniture_and_interior.carpet", "commercial.furniture_and_interior.curtain", "commercial.furniture_and_interior.kitchen", "commercial.furniture_and_interior.lighting", "commercial.garden", "commercial.gas", "commercial.health_and_beauty", "commercial.health_and_beauty.cosmetics", "commercial.health_and_beauty.hearing_aids", "commercial.health_and_beauty.herbalist", "commercial.health_and_beauty.medical_supply", "commercial.health_and_beauty.wigs", "commercial.jewelry", "commercial.kiosk", "commercial.newsagent", "commercial.pyrotechnics", "commercial.smoking", "commercial.stationery", "commercial.tickets_and_lottery", "commercial.trade", "commercial.vehicle", "commercial.watches", "commercial.weapons", "commercial.wedding",
-  "tourism.attraction.clock"
+  "tourism.attraction.clock", "commercial"
 ];
 
 /**
@@ -89,7 +89,7 @@ export async function fetchNearbyPlaces(
         ? feature.properties.categories 
         : [feature.properties?.categories];
 
-      // 0. Absolute Exklusion (Hard Veto) - Präfix-Matching
+      // 0. Absolute Exklusion (Hard Veto) - Kaskadierende Sperre bleibt aktiv
       const violatesHardVeto = allTags.some(tag => 
         BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
       );
@@ -101,15 +101,15 @@ export async function fetchNearbyPlaces(
         (!tag.startsWith("building") || combinedSoftVetoList.includes(tag))
       );
 
-      // 2. Isolation der Sub-Tags
+      // 2. Isolation der tiefsten Sub-Tags (Zerstörung der Parent-Schutzfunktion)
       const specificCoreTags = coreTags.filter(tag => 
         !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
       );
 
-      // 3. Exklusive Soft-Veto-Auswertung der isolierten Sub-Tags
+      // 3. Exklusive Soft-Veto-Auswertung (Strict Match ohne kaskadierende Vererbung)
       if (specificCoreTags.length > 0) {
         const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
-          combinedSoftVetoList.some(veto => specificTag === veto || specificTag.startsWith(`${veto}.`))
+          combinedSoftVetoList.includes(specificTag)
         );
         
         if (isSolelyExcludedIdentity) return false;

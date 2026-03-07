@@ -104,7 +104,7 @@ export default function Home() {
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // 0. Absolute Exklusion (Hard Veto) - Präfix-Matching für Sub-Tags
+        // 0. Absolute Exklusion (Hard Veto) - Kaskadierende Sperre bleibt aktiv
         const violatesHardVeto = allTags.some(tag => 
           BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
         );
@@ -116,15 +116,15 @@ export default function Home() {
           (!tag.startsWith("building") || combinedSoftVetoList.includes(tag))
         );
 
-        // 2. Isolation der Sub-Tags
+        // 2. Isolation der tiefsten Sub-Tags (Zerstörung der Parent-Schutzfunktion)
         const specificCoreTags = coreTags.filter(tag => 
           !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
         );
 
-        // 3. Exklusive Soft-Veto-Auswertung der isolierten Sub-Tags
+        // 3. Exklusive Soft-Veto-Auswertung (Strict Match ohne kaskadierende Vererbung)
         if (specificCoreTags.length > 0) {
           const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
-            combinedSoftVetoList.some(veto => specificTag === veto || specificTag.startsWith(`${veto}.`))
+            combinedSoftVetoList.includes(specificTag)
           );
           
           if (isSolelyExcludedIdentity) return false;

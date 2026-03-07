@@ -53,7 +53,7 @@ export default function TestPage() {
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // 0. Absolute Exklusion (Hard Veto) - Präfix-Matching
+        // 0. Absolute Exklusion (Hard Veto) - Kaskadierende Sperre bleibt aktiv
         const violatesHardVeto = allTags.some(tag => 
           BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
         );
@@ -65,15 +65,15 @@ export default function TestPage() {
           (!tag.startsWith("building") || combinedSoftVetoList.includes(tag))
         );
 
-        // 2. Isolation der Sub-Tags
+        // 2. Isolation der tiefsten Sub-Tags (Zerstörung der Parent-Schutzfunktion)
         const specificCoreTags = coreTags.filter(tag => 
           !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
         );
 
-        // 3. Exklusive Soft-Veto-Auswertung der isolierten Sub-Tags
+        // 3. Exklusive Soft-Veto-Auswertung (Strict Match ohne kaskadierende Vererbung)
         if (specificCoreTags.length > 0) {
           const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
-            combinedSoftVetoList.some(veto => specificTag === veto || specificTag.startsWith(`${veto}.`))
+            combinedSoftVetoList.includes(specificTag)
           );
           
           if (isSolelyExcludedIdentity) return false;
@@ -100,7 +100,7 @@ export default function TestPage() {
           Geoapify Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Pipeline #025: Migration service.vehicle zu Hard-Veto (Präfix-Matching). Soft-Veto mit Sub-Tag Isolation bleibt aktiv.
+          Pipeline #029: Soft-Veto nutzt nun Strict-Match. Hard-Veto behält Präfix-Matching bei. Isolation der tiefsten Sub-Tags aktiv.
         </p>
       </header>
 
@@ -142,7 +142,7 @@ export default function TestPage() {
             <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap mt-2">
-            Results (Pipeline #025): <span className="text-primary">{results.length}</span>
+            Results (Pipeline #029): <span className="text-primary">{results.length}</span>
           </div>
         </div>
       </div>
@@ -165,7 +165,7 @@ export default function TestPage() {
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {feature.properties.categories?.map((cat: string) => {
                       const isHardVeto = BASE_HARD_VETO.some(veto => cat === veto || cat.startsWith(`${veto}.`));
-                      const isSoftVeto = BASE_SOFT_VETO.some(veto => cat === veto || cat.startsWith(`${veto}.`));
+                      const isSoftVeto = BASE_SOFT_VETO.includes(cat);
                       
                       return (
                         <span 
