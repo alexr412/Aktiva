@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import type { Place } from '@/lib/types';
 import {
@@ -17,10 +18,15 @@ import {
   Navigation,
   Bookmark,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/use-auth';
+import { votePlace } from '@/lib/firebase/firestore';
+import { db } from '@/lib/firebase/client';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 
 const categoryIconMap: { [key: string]: LucideIcon } = {
@@ -64,21 +70,52 @@ type PlaceCardProps = {
 };
 
 export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
+    const { user, userProfile } = useAuth();
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
     const Icon = getCategoryIcon(place.categories);
     
+    const [isVoting, setIsVoting] = useState(false);
+    const [localVotes, setLocalVotes] = useState({ upvotes: 0, downvotes: 0 });
+
+    useEffect(() => {
+        if (!db || !place.id) return;
+        const unsub = onSnapshot(doc(db, 'places', place.id), (doc) => {
+            if (doc.exists()) {
+                const data = doc.data();
+                setLocalVotes({
+                    upvotes: data.upvotes || 0,
+                    downvotes: data.downvotes || 0
+                });
+            }
+        });
+        return () => unsub();
+    }, [place.id]);
+
     const cleanTags = place.categories
       ? place.categories
           .filter((value, index, self) => self.indexOf(value) === index)
       : [];
     
     const handleBookmarkToggle = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent card's onClick from firing
+        e.stopPropagation(); 
         if (isFavorite) {
             removeFavorite(place.id);
         } else {
             addFavorite(place);
+        }
+    };
+
+    const handleVoteClick = async (e: React.MouseEvent, type: 'up' | 'down') => {
+        e.stopPropagation();
+        if (!user || isVoting) return;
+        setIsVoting(true);
+        try {
+            await votePlace(place.id, user.uid, type);
+        } catch (error) {
+            console.error("Voting failed:", error);
+        } finally {
+            setIsVoting(false);
         }
     };
 
@@ -133,40 +170,61 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
           <div className="h-[34px] mb-2" />
         )}
         
-        {/* Tags and Button */}
-        <div className="flex items-end justify-between gap-2">
-          <div className="flex w-full flex-wrap items-center gap-2 overflow-hidden">
-            {cleanTags.map((tag, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center rounded-md bg-secondary px-2 py-1 text-[10px] font-medium text-secondary-foreground whitespace-nowrap"
-              >
-                {tag}
+        {/* Tags */}
+        <div className="flex w-full flex-wrap items-center gap-2 overflow-hidden mb-3">
+          {cleanTags.slice(0, 3).map((tag, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center rounded-md bg-secondary px-2 py-1 text-[10px] font-medium text-secondary-foreground whitespace-nowrap"
+            >
+              {tag.split('.')[0]}
+            </span>
+          ))}
+        </div>
+
+        {/* FORCED FRONTEND INTEGRATION: POI VOTING INTERFACE FOOTER */}
+        <div className="card-footer-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '4px' }}>
+          
+          <div className="voting-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button 
+              onClick={(e) => handleVoteClick(e, 'up')} 
+              disabled={isVoting || !user}
+              aria-label="Upvote"
+              style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', cursor: 'pointer', color: '#000000', fontWeight: 'bold', display: 'block', visibility: 'visible', opacity: 1 }}
+            >
+              {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
+            </button>
+            <button 
+              onClick={(e) => handleVoteClick(e, 'down')} 
+              disabled={isVoting || !user}
+              aria-label="Downvote"
+              style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', cursor: 'pointer', color: '#000000', fontWeight: 'bold', display: 'block', visibility: 'visible', opacity: 1 }}
+            >
+              {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}
+            </button>
+
+            {userProfile?.isAdmin && (
+              <span className="admin-metrics" style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px', display: 'block', visibility: 'visible' }}>
+                ↑{localVotes.upvotes} ↓{localVotes.downvotes}
               </span>
-            ))}
+            )}
           </div>
-          <div className="flex flex-shrink-0 items-center gap-2">
-            <Button
-                size="icon"
-                variant="outline"
-                className="h-8 w-8 rounded-full bg-background"
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+                className="bookmark-button"
                 onClick={handleBookmarkToggle}
+                style={{ padding: '8px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#ffffff', cursor: 'pointer' }}
             >
                 <Bookmark className={cn("h-4 w-4", isFavorite && "fill-current text-primary")} />
-                <span className="sr-only">Bookmark place</span>
-            </Button>
-            <Button
-                size="icon"
-                variant="outline"
-                className="h-8 w-8 flex-shrink-0 rounded-full bg-background"
-                onClick={(e) => {
-                e.stopPropagation();
-                onAddActivity(place);
-                }}
+            </button>
+            <button 
+                className="add-button"
+                onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
+                style={{ padding: '8px', borderRadius: '50%', border: 'none', background: 'hsl(var(--primary))', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
             >
                 <Plus className="h-4 w-4" />
-                <span className="sr-only">Create activity</span>
-            </Button>
+            </button>
           </div>
         </div>
       </div>

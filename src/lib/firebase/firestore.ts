@@ -232,6 +232,45 @@ export async function voteActivity(activityId: string, userId: string, type: 'up
   });
 }
 
+export async function votePlace(placeId: string, userId: string, type: 'up' | 'down') {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const placeRef = doc(db, 'places', placeId);
+
+  await runTransaction(db, async (transaction) => {
+    const placeSnap = await transaction.get(placeRef);
+    
+    let data: any = { upvotes: 0, downvotes: 0, userVotes: {} };
+    if (placeSnap.exists()) {
+      data = placeSnap.data();
+    }
+
+    const userVotes = data.userVotes || {};
+    const previousVote = userVotes[userId];
+
+    let upvoteChange = 0;
+    let downvoteChange = 0;
+
+    if (previousVote === type) {
+      if (type === 'up') upvoteChange = -1;
+      else downvoteChange = -1;
+      delete userVotes[userId];
+    } else {
+      if (previousVote === 'up') upvoteChange = -1;
+      if (previousVote === 'down') downvoteChange = -1;
+
+      if (type === 'up') upvoteChange += 1;
+      else downvoteChange += 1;
+      userVotes[userId] = type;
+    }
+
+    transaction.set(placeRef, {
+      upvotes: increment(upvoteChange),
+      downvotes: increment(downvoteChange),
+      userVotes: userVotes
+    }, { merge: true });
+  });
+}
+
 export async function joinActivity(activityId: string, user: User) {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!user) throw new Error('User is not authenticated.');

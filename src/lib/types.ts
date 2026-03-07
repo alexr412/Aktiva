@@ -18,6 +18,10 @@ export interface Place {
   isPromoted?: boolean; // B2B sponsored
   isSponsored?: boolean; // Used for golden marker / top rank
   affiliateUrl?: string;
+  // Voting fields
+  upvotes?: number;
+  downvotes?: number;
+  userVotes?: Record<string, 'up' | 'down'>;
 }
 
 export interface FavoritePlace {
