@@ -5,9 +5,8 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Home, Loader2, MapPin, LogIn, MessageSquare, Users, Flame, ArrowUp, ArrowDown, Bookmark, Plus } from 'lucide-react';
+import { Home, Loader2, MapPin, LogIn, MessageSquare, Users, Flame, Bookmark, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { EntityMoreOptions } from '../common/EntityMoreOptions';
 import { cn } from '@/lib/utils';
 import { voteActivity } from '@/lib/firebase/firestore';
@@ -73,7 +72,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
     return (
         <div className={cn(
-          "p-4 relative group transition-all",
+          "p-4 relative group transition-all rounded-xl border border-transparent hover:border-border hover:bg-muted/30",
           activity.isBoosted && "bg-orange-500/5 border-l-4 border-l-orange-500"
         )}>
             <div className="flex items-center gap-4">
