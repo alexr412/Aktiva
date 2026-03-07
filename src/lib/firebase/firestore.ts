@@ -60,6 +60,8 @@ export async function createUserProfileDocument(user: User) {
     friendCode: generateFriendCode(),
     hiddenEntityIds: [],
     activeTabs: ['Gastronomy', 'Nature'],
+    likedTags: [],
+    dislikedTags: [],
     isPremium: false,
     isDonator: false,
     adTokens: 0,

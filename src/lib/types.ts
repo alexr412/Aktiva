@@ -13,6 +13,7 @@ export interface Place {
   imageUrl?: string;
   activityCount?: number;
   distance?: number;
+  relevanceScore?: number;
   // Monetization fields
   isPromoted?: boolean; // B2B sponsored
   isSponsored?: boolean; // Used for golden marker / top rank
@@ -111,6 +112,11 @@ export interface GeoapifyFeature {
   };
 }
 
+export interface UserPreferences {
+  likedTags: string[];
+  dislikedTags: string[];
+}
+
 export interface UserProfile {
   uid: string;
   displayName: string | null;
@@ -120,6 +126,8 @@ export interface UserProfile {
   location?: string;
   bio?: string;
   interests?: string[];
+  likedTags: string[];
+  dislikedTags: string[];
   friends?: string[];
   friendRequestsSent?: string[];
   friendRequestsReceived?: string[];

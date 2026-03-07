@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { categories } from '@/components/aktvia/category-filters';
+import { availableTabs } from '@/components/aktvia/category-filters';
 import { updateUserProfile } from '@/lib/firebase/firestore';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 
@@ -94,8 +94,16 @@ export default function OnboardingPage() {
         await uploadProfileImage(user.uid, profileImage);
       }
       
+      // Map interests to likedTags for relevance scoring
+      // interests in the form are the labels, we need to map them back to the query tags
+      const likedTags = availableTabs
+        .filter(tab => data.interests.includes(tab.label))
+        .flatMap(tab => tab.query);
+
       await updateUserProfile(user.uid, {
         ...data,
+        likedTags,
+        dislikedTags: [],
         onboardingCompleted: true,
       });
 
@@ -112,7 +120,7 @@ export default function OnboardingPage() {
     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
-  const interestOptions = categories.filter(c => c.name !== 'Highlights').map(c => c.name);
+  const interestOptions = availableTabs.map(c => c.label);
 
   return (
     <div className="flex min-h-dvh w-full flex-col bg-secondary">

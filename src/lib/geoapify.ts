@@ -1,7 +1,7 @@
 'use client';
 
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import type { Place, GeoapifyFeature } from '@/lib/types';
+import type { Place, GeoapifyFeature, UserPreferences } from '@/lib/types';
 
 /**
  * Stufe 0A: Absoluter Abbruch (Hard Veto)
@@ -57,6 +57,88 @@ export const CONDITION_PREFIXES = [
 // Kombinierte Liste für den API-Ausschluss (optimierte Vor-Filterung)
 export const GLOBAL_EXCLUDE_STRING = [...BASE_HARD_VETO].map(cat => `categories:${cat}`).join(',');
 
+/**
+ * Filter-Pipeline (Strict Match für Soft-Veto, Kaskadierend für Hard-Veto)
+ */
+export const applyFilters = (items: any[], userSoftVetoList: string[] = []) => {
+  const combinedSoftVetoList = [...BASE_SOFT_VETO, ...userSoftVetoList];
+
+  return items.filter(item => {
+    const allTags: string[] = Array.isArray(item.tags) ? item.tags : (item.properties?.categories ? (Array.isArray(item.properties.categories) ? item.properties.categories : [item.properties.categories]) : []);
+
+    // 0. Absolute Exklusion (Hard Veto) - Kaskadierende Sperre bleibt aktiv
+    const violatesHardVeto = allTags.some(tag => 
+      BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
+    );
+    if (violatesHardVeto) return false;
+
+    // 1. Extraktion der Basis-Attribute
+    const coreTags = allTags.filter(tag => 
+      !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
+      (!tag.startsWith("building") || combinedSoftVetoList.includes(tag))
+    );
+
+    // 2. Isolation der tiefsten Sub-Tags (Zerstörung der Parent-Schutzfunktion)
+    const specificCoreTags = coreTags.filter(tag => 
+      !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
+    );
+
+    // 3. Exklusive Soft-Veto-Auswertung (Strict Match ohne kaskadierende Vererbung)
+    if (specificCoreTags.length > 0) {
+      const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
+        combinedSoftVetoList.includes(specificTag)
+      );
+      
+      if (isSolelyExcludedIdentity) return false;
+    }
+
+    // 4. System-Freigabe
+    return true;
+  });
+};
+
+/**
+ * Scoring-Algorithmus zur Berechnung der Relevanz (Gewichtete Pipeline)
+ */
+export const calculateRelevanceScore = (itemTags: string[], distanceInMeters: number, prefs: UserPreferences): number => {
+  let score = 1000; // Basis-Score für Knoten, die den Filter passiert haben
+
+  // Positives Gewichting durch Onboarding-Präferenzen
+  const hasLikedTag = itemTags.some(tag => 
+    prefs.likedTags.some(liked => tag === liked || tag.startsWith(`${liked}.`))
+  );
+  if (hasLikedTag) {
+    score += 5000;
+  }
+
+  // Negatives Gewichting durch explizite Desinteresse-Markierungen
+  const hasDislikedTag = itemTags.some(tag => 
+    prefs.dislikedTags.some(disliked => tag === disliked || tag.startsWith(`${disliked}.`))
+  );
+  if (hasDislikedTag) {
+    score -= 800;
+  }
+
+  // Distanz-Malus: Degradiert Knoten basierend auf räumlicher Entfernung
+  // Beispiel: -1 Punkt pro 10 Meter
+  score -= (distanceInMeters / 10);
+
+  return score;
+};
+
+/**
+ * Nachgelagerte Sortierung basierend auf dem Relevanz-Score
+ */
+export const sortFilteredItems = (filteredItems: any[], userPrefs: UserPreferences) => {
+  return [...filteredItems].sort((a, b) => {
+    // Falls relevanceScore noch nicht berechnet wurde (z.B. in Test-Umgebungen)
+    const scoreA = a.relevanceScore ?? calculateRelevanceScore(a.categories || a.tags, a.distance || 0, userPrefs);
+    const scoreB = b.relevanceScore ?? calculateRelevanceScore(b.categories || b.tags, b.distance || 0, userPrefs);
+    
+    return scoreB - scoreA; // Absteigende Sortierung (höchste Relevanz zuerst)
+  });
+};
+
 export async function fetchNearbyPlaces(
   lat: number,
   lon: number,
@@ -82,44 +164,17 @@ export async function fetchNearbyPlaces(
 
     const rawFeatures = data.features || [];
     
-    const combinedSoftVetoList = [...BASE_SOFT_VETO];
+    // Map features to temporary items for applyFilters
+    const itemsToFilter = rawFeatures.map((f: any) => ({
+        tags: Array.isArray(f.properties.categories) ? f.properties.categories : [f.properties.categories],
+        properties: f.properties,
+        distance: f.properties.distance || 0
+    }));
 
-    const safeFeatures = rawFeatures.filter((feature: any) => {
-      const allTags: string[] = Array.isArray(feature.properties?.categories) 
-        ? feature.properties.categories 
-        : [feature.properties?.categories];
+    const safeItems = applyFilters(itemsToFilter);
 
-      // 0. Absolute Exklusion (Hard Veto) - Kaskadierende Sperre bleibt aktiv
-      const violatesHardVeto = allTags.some(tag => 
-        BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
-      );
-      if (violatesHardVeto) return false;
-
-      // 1. Extraktion der Basis-Attribute
-      const coreTags = allTags.filter(tag => 
-        !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
-        (!tag.startsWith("building") || combinedSoftVetoList.includes(tag))
-      );
-
-      // 2. Isolation der tiefsten Sub-Tags (Zerstörung der Parent-Schutzfunktion)
-      const specificCoreTags = coreTags.filter(tag => 
-        !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
-      );
-
-      // 3. Exklusive Soft-Veto-Auswertung (Strict Match ohne kaskadierende Vererbung)
-      if (specificCoreTags.length > 0) {
-        const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
-          combinedSoftVetoList.includes(specificTag)
-        );
-        
-        if (isSolelyExcludedIdentity) return false;
-      }
-
-      return true; 
-    });
-
-    return safeFeatures.map((feature: GeoapifyFeature) => {
-      const props = feature.properties;
+    return safeItems.map((item: any) => {
+      const props = item.properties;
       let rating;
       if (props.datasource?.raw?.rating) {
         const parsedRating = parseFloat(props.datasource.raw.rating);

@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { PlaceCard } from '@/components/aktvia/place-card';
-import type { Place, Activity, GeoapifyFeature } from '@/lib/types';
+import type { Place, Activity, GeoapifyFeature, UserPreferences } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,7 +26,7 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES, calculateRelevanceScore } from '@/lib/geoapify';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -52,7 +52,7 @@ export default function Home() {
   const [allUpcomingActivities, setAllUpcomingActivities] = useState<Activity[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [cityName, setCityName] = useState<string>("Locating...");
-  const [sortBy, setSortBy] = useState("distance");
+  const [sortBy, setSortBy] = useState("recommended");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [searchRadiusKm, setSearchRadiusKm] = useState<number>(5);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
@@ -90,6 +90,11 @@ export default function Home() {
     revalidateFirstPage: false,
     dedupingInterval: 60000,
   });
+
+  const userPrefs: UserPreferences = useMemo(() => ({
+    likedTags: userProfile?.likedTags || [],
+    dislikedTags: userProfile?.dislikedTags || []
+  }), [userProfile]);
 
   const rawPlaces = useMemo(() => {
     if (!data) return [];
@@ -145,6 +150,10 @@ export default function Home() {
 
         const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
         const isSponsored = cats.some(c => c.includes('office.coworking') || c.includes('rental.'));
+        const distance = props.distance || 0;
+
+        // Scoring berechnen
+        const relevanceScore = calculateRelevanceScore(cats, distance, userPrefs);
 
         return {
           id: props.place_id,
@@ -154,13 +163,14 @@ export default function Home() {
           lat: props.lat,
           lon: props.lon,
           rating: rating,
-          distance: props.distance,
+          distance: distance,
+          relevanceScore: relevanceScore,
           isSponsored: isSponsored,
           affiliateUrl: isSponsored ? 'https://example.com/booking?ref=aktvia' : undefined
         } as Place;
       });
     });
-  }, [data]);
+  }, [data, userPrefs]);
   
   const places = useMemo(() => {
     return rawPlaces.map(p => ({
@@ -178,7 +188,7 @@ export default function Home() {
   const resetFilters = () => {
     setActiveCategory(['all']);
     setSearchQuery('');
-    setSortBy('distance');
+    setSortBy('recommended');
     setSearchRadiusKm(5);
   };
 
@@ -275,7 +285,7 @@ export default function Home() {
     setActiveCategory(categoryId);
     const isCommunity = categoryId.includes("user_event") || categoryId.includes("community");
     const isFavorites = categoryId.includes("favorites");
-    setSortBy(isCommunity ? 'newest' : (isFavorites ? 'distance' : 'distance'));
+    setSortBy(isCommunity ? 'newest' : (isFavorites ? 'recommended' : 'recommended'));
   };
 
   const handlePlaceSelect = (place: Place) => {
@@ -495,8 +505,8 @@ export default function Home() {
                     if (a.isSponsored && !b.isSponsored) return -1;
                     if (!a.isSponsored && b.isSponsored) return 1;
 
-                    if (sortBy === 'distance') {
-                        return (a.distance || 0) - (b.distance || 0);
+                    if (sortBy === 'recommended') {
+                        return (b.relevanceScore || 0) - (a.relevanceScore || 0);
                     }
                     if (sortBy === 'rating') {
                         return (b.rating || 0) - (a.rating || 0);
@@ -665,7 +675,7 @@ export default function Home() {
                           <SelectItem value="newest">Neueste</SelectItem>
                         ) : (
                           <>
-                              <SelectItem value="distance">Distanz</SelectItem>
+                              <SelectItem value="recommended">Empfohlen</SelectItem>
                               <SelectItem value="rating">Bewertung</SelectItem>
                               <SelectItem value="popular">Beliebteste</SelectItem>
                           </>
