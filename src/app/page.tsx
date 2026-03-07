@@ -104,8 +104,10 @@ export default function Home() {
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // 0. Absolute Exklusion (Hard Veto)
-        const violatesHardVeto = allTags.some(tag => BASE_HARD_VETO.includes(tag));
+        // 0. Absolute Exklusion (Hard Veto) - Präfix-Matching für Sub-Tags
+        const violatesHardVeto = allTags.some(tag => 
+          BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
+        );
         if (violatesHardVeto) return false;
 
         // 1. Extraktion der Basis-Attribute

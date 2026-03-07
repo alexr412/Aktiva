@@ -53,8 +53,10 @@ export default function TestPage() {
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // 0. Absolute Exklusion (Hard Veto)
-        const violatesHardVeto = allTags.some(tag => BASE_HARD_VETO.includes(tag));
+        // 0. Absolute Exklusion (Hard Veto) - Präfix-Matching
+        const violatesHardVeto = allTags.some(tag => 
+          BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
+        );
         if (violatesHardVeto) return false;
 
         // 1. Extraktion der Basis-Attribute
@@ -98,7 +100,7 @@ export default function TestPage() {
           Geoapify Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Pipeline #023: Hard-Veto (Struktur) & Soft-Veto (Funktion) mit Sub-Tag Isolation. Whitelist für Commercial Root/Clothing/Food.
+          Pipeline #024: Hard-Veto (Präfix-Matching) & Soft-Veto (Funktion) mit Sub-Tag Isolation. Whitelist für Commercial Root/Clothing/Food.
         </p>
       </header>
 
@@ -128,7 +130,7 @@ export default function TestPage() {
               disabled={isFetching || !testCategory.trim() || !testCity.trim()}
               className="h-12 px-6 font-bold"
             >
-              {isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+              {isFetching ? <Loader2 className="animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
               {isFetching ? "Resolving..." : "Run Test"}
             </Button>
           </div>
@@ -140,7 +142,7 @@ export default function TestPage() {
             <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap mt-2">
-            Results (Pipeline #023): <span className="text-primary">{results.length}</span>
+            Results (Pipeline #024): <span className="text-primary">{results.length}</span>
           </div>
         </div>
       </div>

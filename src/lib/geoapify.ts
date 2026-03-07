@@ -5,15 +5,13 @@ import type { Place, GeoapifyFeature } from '@/lib/types';
 
 /**
  * Stufe 0A: Absoluter Abbruch (Hard Veto)
- * Blockiert das Rendering dieser Knoten bedingungslos.
+ * Blockiert das Rendering dieser Knoten und ihrer Sub-Kategorien bedingungslos.
  */
 export const BASE_HARD_VETO = [
-  "building.accommodation",
-  "building.parking",
-  "building.residential",
-  "building.school",
-  "building.service",
-  "building.toilet"
+  "building.accommodation", "building.parking", "building.residential", "building.school", "building.service", "building.toilet",
+  "memorial", "memorial.buddhist", "memorial.cemetery", "memorial.cemetery.sector", "memorial.christian", "memorial.christian.catholic", "memorial.christian.orthodox", "memorial.christian.protestant", "memorial.graveyard", "memorial.hindu", "memorial.jewish", "memorial.muslim",
+  "tourism.information", "tourism.information.office",
+  "commercial.supermarket", "commercial.convenience", "commercial.discount_store", "commercial.elektronics", "commercial.erotic", "commercial.health_and_beauty.optician", "commercial.health_and_beauty.pharmacy", "commercial.houseware_and_hardware", "commercial.pet"
 ];
 
 /**
@@ -39,10 +37,10 @@ export const BASE_SOFT_VETO = [
   "postal_code", "political", "low_emission_zone",
   "populated_place", "populated_place.allotments", "populated_place.borough", "populated_place.city", "populated_place.city_block", "populated_place.county", "populated_place.district", "populated_place.hamlet", "populated_place.municipality", "populated_place.neighbourhood", "populated_place.province", "populated_place.quarter", "populated_place.region", "populated_place.state", "populated_place.subdistrict", "populated_place.suburb", "populated_place.town", "populated_place.township", "populated_place.village",
   "adult.brothel", "adult.adult_gaming_centre",
-  "memorial", "memorial.buddhist", "memorial.cemetery", "memorial.cemetery.sector", "memorial.christian", "memorial.christian.catholic", "memorial.christian.orthodox", "memorial.christian.protestant", "memorial.graveyard", "memorial.hindu", "memorial.jewish", "memorial.muslim",
   "service", "service.ambulance_station", "service.beauty", "service.beauty.hairdresser", "service.bookmaker", "service.cleaning", "service.cleaning.dry_cleaning", "service.cleaning.laundry", "service.cleaning.lavoir", "service.crematorium", "service.crematorium.human", "service.crematorium.pet", "service.estate_agent", "service.financial", "service.financial.atm", "service.financial.bank", "service.financial.bureau_de_change", "service.financial.money_lender", "service.financial.money_transfer", "service.financial.payment_terminal", "service.fire_station", "service.funeral_directors", "service.funeral_hall", "service.locksmith", "service.mortuary", "service.place_of_mourning", "service.police", "service.post", "service.post.box", "service.post.office", "service.recycling", "service.recycling.bin", "service.recycling.centre", "service.recycling.container", "service.social_facility", "service.social_facility.clothers", "service.social_facility.food", "service.social_facility.shelter", "service.tailor", "service.taxi", "service.travel_agency", "service.vehicle", "service.vehicle.car_wash", "service.vehicle.charging_station", "service.vehicle.fuel", "service.vehicle.repair", "service.vehicle.repair.car", "service.vehicle.repair.motorcycle",
   "building.driving_school", "building.healthcare", "building.kindergarten", "building.prison", "building.transportation",
-  "commercial.agrarian", "commercial.baby_goods", "commercial.bag", "commercial.chemist", "commercial.convenience", "commercial.discount_store", "commercial.elektronics", "commercial.energy", "commercial.erotic", "commercial.florist", "commercial.furniture_and_interior", "commercial.furniture_and_interior.bathroom", "commercial.furniture_and_interior.bed", "commercial.furniture_and_interior.carpet", "commercial.furniture_and_interior.curtain", "commercial.furniture_and_interior.kitchen", "commercial.furniture_and_interior.lighting", "commercial.garden", "commercial.gas", "commercial.health_and_beauty", "commercial.health_and_beauty.cosmetics", "commercial.health_and_beauty.hearing_aids", "commercial.health_and_beauty.herbalist", "commercial.health_and_beauty.medical_supply", "commercial.health_and_beauty.optician", "commercial.health_and_beauty.pharmacy", "commercial.health_and_beauty.wigs", "commercial.houseware_and_hardware", "commercial.houseware_and_hardware.building_materials", "commercial.houseware_and_hardware.building_materials.doors", "commercial.houseware_and_hardware.building_materials.flooring", "commercial.houseware_and_hardware.building_materials.glaziery", "commercial.houseware_and_hardware.building_materials.paint", "commercial.houseware_and_hardware.building_materials.tiles", "commercial.houseware_and_hardware.building_materials.windows", "commercial.houseware_and_hardware.doityourself", "commercial.houseware_and_hardware.fireplace", "commercial.houseware_and_hardware.hardware_and_tools", "commercial.houseware_and_hardware.swimming_pool", "commercial.jewelry", "commercial.kiosk", "commercial.newsagent", "commercial.pet", "commercial.pyrotechnics", "commercial.smoking", "commercial.stationery", "commercial.supermarket", "commercial.tickets_and_lottery", "commercial.trade", "commercial.vehicle", "commercial.watches", "commercial.weapons", "commercial.wedding"
+  "commercial.agrarian", "commercial.baby_goods", "commercial.bag", "commercial.chemist", "commercial.energy", "commercial.florist", "commercial.furniture_and_interior", "commercial.furniture_and_interior.bathroom", "commercial.furniture_and_interior.bed", "commercial.furniture_and_interior.carpet", "commercial.furniture_and_interior.curtain", "commercial.furniture_and_interior.kitchen", "commercial.furniture_and_interior.lighting", "commercial.garden", "commercial.gas", "commercial.health_and_beauty", "commercial.health_and_beauty.cosmetics", "commercial.health_and_beauty.hearing_aids", "commercial.health_and_beauty.herbalist", "commercial.health_and_beauty.medical_supply", "commercial.health_and_beauty.wigs", "commercial.jewelry", "commercial.kiosk", "commercial.newsagent", "commercial.pyrotechnics", "commercial.smoking", "commercial.stationery", "commercial.tickets_and_lottery", "commercial.trade", "commercial.vehicle", "commercial.watches", "commercial.weapons", "commercial.wedding",
+  "tourism.attraction.clock"
 ];
 
 /**
@@ -90,8 +88,10 @@ export async function fetchNearbyPlaces(
         ? feature.properties.categories 
         : [feature.properties?.categories];
 
-      // 0. Absolute Exklusion (Hard Veto)
-      const violatesHardVeto = allTags.some(tag => BASE_HARD_VETO.includes(tag));
+      // 0. Absolute Exklusion (Hard Veto) - Prüft auf exakte Übereinstimmung ODER Sub-Tags
+      const violatesHardVeto = allTags.some(tag => 
+        BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
+      );
       if (violatesHardVeto) return false;
 
       // 1. Extraktion der Basis-Attribute
