@@ -6,13 +6,13 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase/client';
-import { joinActivity } from '@/lib/firebase/firestore';
+import { joinActivity, voteActivity } from '@/lib/firebase/firestore';
 import type { Activity } from '@/lib/types';
 import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Compass, X, Heart, Home, MapPin, Calendar, Users, Info, RotateCcw, ExternalLink, Sparkles } from 'lucide-react';
+import { Compass, X, Heart, Home, MapPin, Calendar, Users, Info, RotateCcw, ExternalLink, Sparkles, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
@@ -39,9 +39,8 @@ const AdCard = () => (
   </div>
 );
 
-// Haversine distance calculation
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-    const R = 6371; // Radius of the earth in km
+    const R = 6371; 
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
     const a =
@@ -51,7 +50,7 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
         Math.sin(dLon / 2) *
         Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c; // Distance in km
+    const d = R * c; 
     return d;
 }
 
@@ -63,6 +62,7 @@ export default function ExplorePage() {
 
     const [allCards, setAllCards] = useState<Activity[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isVoting, setIsVoting] = useState(false);
     const animationControls = useAnimation();
     
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -91,7 +91,6 @@ export default function ExplorePage() {
         </div>
     );
 
-    // Get User Location
     useEffect(() => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -113,7 +112,6 @@ export default function ExplorePage() {
     }, [toast]);
 
 
-    // Fetch all upcoming activities from Firestore
     useEffect(() => {
         if (!db || !user) return;
 
@@ -141,34 +139,28 @@ export default function ExplorePage() {
     const visibleCards = useMemo(() => {
         let filtered = allCards;
 
-        // Filter by Category
-        if (activeCategory[0] !== 'all' && activeCategory[0] !== 'favorites') { // favorites not applicable here
+        if (activeCategory[0] !== 'all' && activeCategory[0] !== 'favorites') { 
              filtered = filtered.filter(activity => {
                  if (!activity.categories) return false;
-                 // For "Highlights" which is an array of categories
                  if (activeCategory.length > 1) {
                      return activity.categories.some(cat => activeCategory.includes(cat));
                  }
-                 // For single categories
                  return activity.categories.includes(activeCategory[0]);
              });
         }
 
-        // Filter by Distance
         if (radiusKm !== null && userLocation) {
             filtered = filtered.filter(activity => {
-                if (!activity.lat || !activity.lon) return false; // Only filter activities with a location
+                if (!activity.lat || !activity.lon) return false; 
                 const distance = getDistance(userLocation.lat, userLocation.lng, activity.lat, activity.lon);
                 return distance <= radiusKm;
             });
         }
         
-        // Filter by hidden IDs
         return filtered.filter(card => !userProfile?.hiddenEntityIds?.includes(card.id!));
 
     }, [allCards, activeCategory, radiusKm, userLocation, userProfile]);
     
-    // This state holds the cards that are currently rendered, which we can mutate for the swipe-away effect
     const [cards, setCards] = useState<Activity[]>([]);
     useEffect(() => {
         setCards(visibleCards);
@@ -232,6 +224,18 @@ export default function ExplorePage() {
         setCards(prev => [...prev, lastSwipedCard]);
         
         setLastSwipedCard(null);
+    };
+
+    const handleVote = async (activityId: string, type: 'up' | 'down') => {
+        if (!user || isVoting) return;
+        setIsVoting(true);
+        try {
+            await voteActivity(activityId, user.uid, type);
+        } catch (error) {
+            console.error("Voting failed:", error);
+        } finally {
+            setIsVoting(false);
+        }
     };
     
     const onDragEnd = (event: any, info: any) => {
@@ -305,9 +309,6 @@ export default function ExplorePage() {
                         <div className="flex-1 min-h-0 relative flex items-center justify-center p-4">
                             {cards.map((card, index) => {
                                 const isTopCard = index === cards.length - 1;
-                                
-                                // Native Ads: Every 10th swipe (modulo 10)
-                                // If not premium, render AdCard instead of standard card
                                 const showAd = !userProfile?.isPremium && (index % 10 === 0 && index !== 0);
 
                                 return (
@@ -348,9 +349,33 @@ export default function ExplorePage() {
                                                     <Users className="h-5 w-5 text-primary"/>
                                                     <span className="font-semibold text-sm">{card.participantIds.length} Participants &bull; by {card.creatorName}</span>
                                                 </div>
-                                                <div className="flex items-center gap-3 bg-muted p-3 rounded-xl">
-                                                    <Info className="h-5 w-5 text-primary"/>
-                                                    <span className="font-semibold text-sm">{card.isCustomActivity ? "Community Activity" : "Location-based Activity"}</span>
+                                                
+                                                {/* INTEGRATED VOTING UI FOR EXPLORE CARDS */}
+                                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
+                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleVote(card.id!, 'up'); }} 
+                                                            disabled={isVoting || !user}
+                                                            style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', cursor: 'pointer', color: '#000000', fontWeight: 'bold' }}
+                                                        >
+                                                            {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
+                                                        </button>
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleVote(card.id!, 'down'); }} 
+                                                            disabled={isVoting || !user}
+                                                            style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', cursor: 'pointer', color: '#000000', fontWeight: 'bold' }}
+                                                        >
+                                                            {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}
+                                                        </button>
+                                                        {userProfile?.isAdmin && (
+                                                            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>
+                                                                ↑{card.upvotes || 0} ↓{card.downvotes || 0}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded">
+                                                        {card.isCustomActivity ? "Community" : "Location"}
+                                                    </div>
                                                 </div>
                                             </div>
                                           </>

@@ -112,7 +112,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
             {/* FORCED FRONTEND INTEGRATION: VOTING INTERFACE FOOTER */}
             <div className="card-footer-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '12px' }}>
               
-              {/* 1. Unkonditionales Rendering: Buttons zwingend für ALLE Nutzer sichtbar */}
               <div className="voting-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, 'up'); }} 
@@ -131,7 +130,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                   {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}
                 </button>
 
-                {/* 2. Konditionales Rendering: Metriken zwingend NUR für Admins sichtbar */}
                 {userProfile?.isAdmin && (
                   <span className="admin-metrics" style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px', display: 'block', visibility: 'visible' }}>
                     ↑{activity.upvotes || 0} ↓{activity.downvotes || 0}
@@ -139,7 +137,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 )}
               </div>
 
-              {/* 3. Bestehende Interaktions-Buttons */}
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
                   className="bookmark-button" 

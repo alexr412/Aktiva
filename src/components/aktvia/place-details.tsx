@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { joinActivity } from '@/lib/firebase/firestore';
+import { joinActivity, voteActivity } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -59,7 +59,7 @@ const getCategoryIcon = (categories: string[]): LucideIcon => {
       return categoryIconMap[parentCategory];
     }
   }
-  return Building; // Default icon
+  return Building; 
 };
 
 type PlaceDetailsProps = {
@@ -73,12 +73,13 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         .map(cat => cat.split('.')[0])
         .filter((value, index, self) => self.indexOf(value) === index);
 
-    const { user } = useAuth();
+    const { user, userProfile } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loadingActivities, setLoadingActivities] = useState(true);
     const [joiningActivityId, setJoiningActivityId] = useState<string|null>(null);
+    const [isVoting, setIsVoting] = useState(false);
     
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
@@ -141,6 +142,18 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
             setJoiningActivityId(null);
         }
     };
+
+    const handleVote = async (activityId: string, type: 'up' | 'down') => {
+        if (!user || isVoting) return;
+        setIsVoting(true);
+        try {
+            await voteActivity(activityId, user.uid, type);
+        } catch (error) {
+            console.error("Voting failed:", error);
+        } finally {
+            setIsVoting(false);
+        }
+    };
     
     const renderActivityDate = (activity: Activity) => {
         if (activity.activityEndDate) {
@@ -156,7 +169,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
 
     return (
         <div className="flex flex-col h-full bg-background relative overflow-hidden">
-            {/* Header / Schließen-Button Mobile */}
             <div className="absolute top-4 left-4 z-20 md:hidden">
                 <Button variant="secondary" size="icon" onClick={onClose} className="rounded-full shadow-lg bg-background/80 backdrop-blur-sm">
                     <ChevronLeft className="h-6 w-6" />
@@ -166,7 +178,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
             <ScrollArea className="flex-1">
                 <div className="flex flex-col md:grid md:grid-cols-[1fr_2fr] gap-8 p-6 md:p-10">
                     
-                    {/* Linke Spalte: Meta-Daten & Header */}
                     <div className="flex flex-col items-center border-b md:border-b-0 md:border-r border-border pb-8 md:pb-0 md:pr-10">
                         <div className="w-24 h-24 md:w-32 md:h-32 bg-secondary rounded-full flex items-center justify-center mb-6 ring-4 ring-primary/5">
                             <Icon className="h-12 w-12 md:h-16 md:w-16 text-primary/70" />
@@ -197,7 +208,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                 <span className="font-semibold">{isFavorite ? 'Gespeichert' : 'Speichern'}</span>
                             </Button>
 
-                            {/* Affiliate Infrastructure (Transaktions-Beteiligung) */}
                             {place.affiliateUrl && (
                                 <Button 
                                     className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold flex items-center justify-center gap-2 transition-all shadow-md"
@@ -210,10 +220,8 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                         </div>
                     </div>
 
-                    {/* Rechte Spalte: Daten-Module & Listen */}
                     <div className="flex flex-col gap-8">
                         
-                        {/* Info-Grid */}
                         <div className="grid grid-cols-2 gap-4">
                             <Card className="p-4 bg-secondary/30 border-none flex flex-col items-center justify-center gap-1 text-center">
                                 {place.rating ? (
@@ -243,7 +251,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
 
                         <Separator className="opacity-50" />
 
-                        {/* Activities-Modul */}
                         <div className="flex flex-col">
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                                 <Users className="h-5 w-5 text-primary" />
@@ -269,7 +276,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                         
                                         return (
                                             <Card key={activity.id} className={cn(
-                                              "p-4 shadow-sm hover:shadow-md transition-shadow border-muted",
+                                              "p-4 shadow-sm hover:shadow-md transition-shadow border-muted flex flex-col gap-3",
                                               activity.isBoosted && "border-orange-500/30 bg-orange-500/5"
                                             )}>
                                                 <div className="flex items-center justify-between gap-4">
@@ -284,7 +291,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <div className="flex-shrink-0">
+                                                    <div className="flex-shrink-0 flex gap-2">
                                                         {isParticipant ? (
                                                             <Button size="sm" variant="secondary" onClick={() => router.push(`/chat/${activity.id}`)} className="rounded-lg h-9">
                                                                 <MessageSquare className="mr-2 h-4 w-4" />
@@ -316,6 +323,29 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                         )}
                                                     </div>
                                                 </div>
+
+                                                {/* INTEGRATED VOTING UI FOR PLACE DETAILS LIST */}
+                                                <div className="flex items-center gap-3 pt-2 border-t border-border/50">
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, 'up'); }} 
+                                                        disabled={isVoting || !user}
+                                                        style={{ padding: '4px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', background: '#ffffff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                                                    >
+                                                        {isVoting ? <Loader2 className="animate-spin h-3 w-3" /> : '↑'}
+                                                    </button>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, 'down'); }} 
+                                                        disabled={isVoting || !user}
+                                                        style={{ padding: '4px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', background: '#ffffff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                                                    >
+                                                        {isVoting ? <Loader2 className="animate-spin h-3 w-3" /> : '↓'}
+                                                    </button>
+                                                    {userProfile?.isAdmin && (
+                                                        <span className="text-[10px] text-muted-foreground font-bold">
+                                                            ↑{activity.upvotes || 0} ↓{activity.downvotes || 0}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </Card>
                                         );
                                     })}
@@ -325,7 +355,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
 
                         <Separator className="opacity-50" />
 
-                        {/* AI Recommendation Modul */}
                         <div className="rounded-2xl overflow-hidden shadow-inner">
                             <AiRecommendation place={place} />
                         </div>
