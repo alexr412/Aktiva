@@ -100,7 +100,7 @@ export default function TestPage() {
           Geoapify Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Pipeline #024: Hard-Veto (Präfix-Matching) & Soft-Veto (Funktion) mit Sub-Tag Isolation. Whitelist für Commercial Root/Clothing/Food.
+          Pipeline #025: Migration service.vehicle zu Hard-Veto (Präfix-Matching). Soft-Veto mit Sub-Tag Isolation bleibt aktiv.
         </p>
       </header>
 
@@ -142,7 +142,7 @@ export default function TestPage() {
             <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap mt-2">
-            Results (Pipeline #024): <span className="text-primary">{results.length}</span>
+            Results (Pipeline #025): <span className="text-primary">{results.length}</span>
           </div>
         </div>
       </div>
