@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Search, Activity, MapPin } from 'lucide-react';
-import { GLOBAL_EXCLUDE_STRING, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
 
 export default function TestPage() {
   const [testCity, setTestCity] = useState<string>("Bremerhaven");
@@ -53,13 +53,17 @@ export default function TestPage() {
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // 1. Extraktion der Basis-Attribute (Ausschluss von Conditions/Struktur)
+        // 0. Absolute Exklusion (Hard Veto)
+        const violatesHardVeto = allTags.some(tag => BASE_HARD_VETO.includes(tag));
+        if (violatesHardVeto) return false;
+
+        // 1. Extraktion der Basis-Attribute
         const coreTags = allTags.filter(tag => 
           !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
-          !tag.startsWith("building")
+          (!tag.startsWith("building") || combinedSoftVetoList.includes(tag))
         );
 
-        // 2. Isolation der Sub-Tags (Zerstörung der Parent-Schutzfunktion)
+        // 2. Isolation der Sub-Tags
         const specificCoreTags = coreTags.filter(tag => 
           !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
         );
@@ -94,7 +98,7 @@ export default function TestPage() {
           Geoapify Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Echtzeit-Analyse mit Isolation der Sub-Tags (Veto Pipeline #018).
+          Pipeline #023: Hard-Veto (Struktur) & Soft-Veto (Funktion) mit Sub-Tag Isolation.
         </p>
       </header>
 
@@ -136,7 +140,7 @@ export default function TestPage() {
             <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap mt-2">
-            Results (Sub-Tag Isolation logic): <span className="text-primary">{results.length}</span>
+            Results (Pipeline #023): <span className="text-primary">{results.length}</span>
           </div>
         </div>
       </div>
@@ -158,15 +162,18 @@ export default function TestPage() {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {feature.properties.categories?.map((cat: string) => {
-                      const isVeto = BASE_SOFT_VETO.some(veto => cat === veto || cat.startsWith(`${veto}.`));
+                      const isHardVeto = BASE_HARD_VETO.some(veto => cat === veto || cat.startsWith(`${veto}.`));
+                      const isSoftVeto = BASE_SOFT_VETO.some(veto => cat === veto || cat.startsWith(`${veto}.`));
                       
                       return (
                         <span 
                           key={cat} 
                           className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
-                            isVeto
-                              ? 'bg-amber-100 text-amber-700 border-amber-200'
-                              : 'bg-primary/10 text-primary border-primary/20'
+                            isHardVeto 
+                              ? 'bg-red-100 text-red-700 border-red-200' 
+                              : isSoftVeto
+                                ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                : 'bg-primary/10 text-primary border-primary/20'
                           }`}
                         >
                           {cat}

@@ -4,13 +4,21 @@ import { GEOAPIFY_API_KEY } from '@/lib/config';
 import type { Place, GeoapifyFeature } from '@/lib/types';
 
 /**
- * Stufe 0A: Absoluter Abbruch (Aktuell deaktiviert gemäß Anforderung)
+ * Stufe 0A: Absoluter Abbruch (Hard Veto)
+ * Blockiert das Rendering dieser Knoten bedingungslos.
  */
-export const BASE_HARD_VETO: string[] = [];
+export const BASE_HARD_VETO = [
+  "building.accommodation",
+  "building.parking",
+  "building.residential",
+  "building.school",
+  "building.service",
+  "building.toilet"
+];
 
 /**
  * Stufe 0B: Relativer Abbruch (Soft Veto)
- * Vollständige Liste gemäß System-Anweisung #018, Erweiterung #021 und #022
+ * Greift nur, wenn keine validen Core-Tags nach der Isolation übrig bleiben.
  */
 export const BASE_SOFT_VETO = [
   "education.school", "education.driving_school", "education.language_school", "education.music_school", "education.college",
@@ -31,66 +39,9 @@ export const BASE_SOFT_VETO = [
   "postal_code", "political", "low_emission_zone",
   "populated_place", "populated_place.allotments", "populated_place.borough", "populated_place.city", "populated_place.city_block", "populated_place.county", "populated_place.district", "populated_place.hamlet", "populated_place.municipality", "populated_place.neighbourhood", "populated_place.province", "populated_place.quarter", "populated_place.region", "populated_place.state", "populated_place.subdistrict", "populated_place.suburb", "populated_place.town", "populated_place.township", "populated_place.village",
   "adult.brothel", "adult.adult_gaming_centre",
-  "memorial",
-  "memorial.buddhist",
-  "memorial.cemetery",
-  "memorial.cemetery.sector",
-  "memorial.christian",
-  "memorial.christian.catholic",
-  "memorial.christian.orthodox",
-  "memorial.christian.protestant",
-  "memorial.graveyard",
-  "memorial.hindu",
-  "memorial.jewish",
-  "memorial.muslim",
-  "service",
-  "service.ambulance_station",
-  "service.beauty",
-  "service.beauty.hairdresser",
-  "service.bookmaker",
-  "service.cleaning",
-  "service.cleaning.dry_cleaning",
-  "service.cleaning.laundry",
-  "service.cleaning.lavoir",
-  "service.crematorium",
-  "service.crematorium.human",
-  "service.crematorium.pet",
-  "service.estate_agent",
-  "service.financial",
-  "service.financial.atm",
-  "service.financial.bank",
-  "service.financial.bureau_de_change",
-  "service.financial.money_lender",
-  "service.financial.money_transfer",
-  "service.financial.payment_terminal",
-  "service.fire_station",
-  "service.funeral_directors",
-  "service.funeral_hall",
-  "service.locksmith",
-  "service.mortuary",
-  "service.place_of_mourning",
-  "service.police",
-  "service.post",
-  "service.post.box",
-  "service.post.office",
-  "service.recycling",
-  "service.recycling.bin",
-  "service.recycling.centre",
-  "service.recycling.container",
-  "service.social_facility",
-  "service.social_facility.clothers",
-  "service.social_facility.food",
-  "service.social_facility.shelter",
-  "service.tailor",
-  "service.taxi",
-  "service.travel_agency",
-  "service.vehicle",
-  "service.vehicle.car_wash",
-  "service.vehicle.charging_station",
-  "service.vehicle.fuel",
-  "service.vehicle.repair",
-  "service.vehicle.repair.car",
-  "service.vehicle.repair.motorcycle"
+  "memorial", "memorial.buddhist", "memorial.cemetery", "memorial.cemetery.sector", "memorial.christian", "memorial.christian.catholic", "memorial.christian.orthodox", "memorial.christian.protestant", "memorial.graveyard", "memorial.hindu", "memorial.jewish", "memorial.muslim",
+  "service", "service.ambulance_station", "service.beauty", "service.beauty.hairdresser", "service.bookmaker", "service.cleaning", "service.cleaning.dry_cleaning", "service.cleaning.laundry", "service.cleaning.lavoir", "service.crematorium", "service.crematorium.human", "service.crematorium.pet", "service.estate_agent", "service.financial", "service.financial.atm", "service.financial.bank", "service.financial.bureau_de_change", "service.financial.money_lender", "service.financial.money_transfer", "service.financial.payment_terminal", "service.fire_station", "service.funeral_directors", "service.funeral_hall", "service.locksmith", "service.mortuary", "service.place_of_mourning", "service.police", "service.post", "service.post.box", "service.post.office", "service.recycling", "service.recycling.bin", "service.recycling.centre", "service.recycling.container", "service.social_facility", "service.social_facility.clothers", "service.social_facility.food", "service.social_facility.shelter", "service.tailor", "service.taxi", "service.travel_agency", "service.vehicle", "service.vehicle.car_wash", "service.vehicle.charging_station", "service.vehicle.fuel", "service.vehicle.repair", "service.vehicle.repair.car", "service.vehicle.repair.motorcycle",
+  "building.driving_school", "building.healthcare", "building.kindergarten", "building.prison", "building.transportation"
 ];
 
 /**
@@ -130,7 +81,7 @@ export async function fetchNearbyPlaces(
 
     const rawFeatures = data.features || [];
     
-    // Implementierung der 5-stufigen Filter-Pipeline gemäß Anweisung #018
+    // Implementierung der 5-stufigen Filter-Pipeline
     const combinedSoftVetoList = [...BASE_SOFT_VETO];
 
     const safeFeatures = rawFeatures.filter((feature: any) => {
@@ -138,18 +89,22 @@ export async function fetchNearbyPlaces(
         ? feature.properties.categories 
         : [feature.properties?.categories];
 
-      // 1. Extraktion der Basis-Attribute (Ausschluss von Conditions/Struktur)
+      // 0. Absolute Exklusion (Hard Veto)
+      const violatesHardVeto = allTags.some(tag => BASE_HARD_VETO.includes(tag));
+      if (violatesHardVeto) return false;
+
+      // 1. Extraktion der Basis-Attribute
       const coreTags = allTags.filter(tag => 
         !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
-        !tag.startsWith("building")
+        (!tag.startsWith("building") || combinedSoftVetoList.includes(tag))
       );
 
-      // 2. Isolation der Sub-Tags (Zerstörung der Parent-Schutzfunktion)
+      // 2. Isolation der Sub-Tags
       const specificCoreTags = coreTags.filter(tag => 
         !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
       );
 
-      // 3. Exklusive Soft-Veto-Auswertung der isolierten Sub-Tags
+      // 3. Exklusive Soft-Veto-Auswertung
       if (specificCoreTags.length > 0) {
         const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
           combinedSoftVetoList.some(veto => specificTag === veto || specificTag.startsWith(`${veto}.`))

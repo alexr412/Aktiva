@@ -26,7 +26,7 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -104,13 +104,17 @@ export default function Home() {
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // 1. Extraktion der Basis-Attribute (Ausschluss von Conditions/Struktur)
+        // 0. Absolute Exklusion (Hard Veto)
+        const violatesHardVeto = allTags.some(tag => BASE_HARD_VETO.includes(tag));
+        if (violatesHardVeto) return false;
+
+        // 1. Extraktion der Basis-Attribute
         const coreTags = allTags.filter(tag => 
           !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
-          !tag.startsWith("building")
+          (!tag.startsWith("building") || combinedSoftVetoList.includes(tag))
         );
 
-        // 2. Isolation der Sub-Tags (Zerstörung der Parent-Schutzfunktion)
+        // 2. Isolation der Sub-Tags
         const specificCoreTags = coreTags.filter(tag => 
           !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
         );
