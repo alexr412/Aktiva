@@ -26,7 +26,7 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
 
 const CardSkeleton = () => (
     <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
@@ -94,9 +94,7 @@ export default function Home() {
   const rawPlaces = useMemo(() => {
     if (!data) return [];
 
-    const includeTags = activeCategory.includes('all') || activeCategory.length === 0
-      ? ["tourism", "entertainment", "heritage"]
-      : activeCategory;
+    const combinedSoftVetoList = [...BASE_SOFT_VETO];
 
     return data.flatMap(page => {
       const features = page.features || [];
@@ -106,30 +104,23 @@ export default function Home() {
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // Stufe 0: Absolutes System-Veto (Hard Veto)
-        const violatesBaseHard = allTags.some(tag => 
-          BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
-        );
-        if (violatesBaseHard) return false;
-
-        // Stufe 2: Zwingende Inklusion (Whitelist Override)
-        const isAllMode = includeTags.includes("tourism") && includeTags.length === 3;
-        if (!isAllMode && includeTags.length > 0) {
-          const satisfiesInclusion = allTags.some(tag => includeTags.includes(tag));
-          if (satisfiesInclusion) return true;
-          return false;
-        }
-
-        // Stufe 3: Relative Exklusion (Soft Veto)
+        // 1. Extraktion der Basis-Attribute (Ausschluss von Conditions/Struktur)
         const coreTags = allTags.filter(tag => 
           !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
           !tag.startsWith("building")
         );
 
-        if (BASE_SOFT_VETO.length > 0 && coreTags.length > 0) {
-          const isSolelyExcludedIdentity = coreTags.every(coreTag => 
-            BASE_SOFT_VETO.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
+        // 2. Isolation der Sub-Tags (Zerstörung der Parent-Schutzfunktion)
+        const specificCoreTags = coreTags.filter(tag => 
+          !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
+        );
+
+        // 3. Exklusive Soft-Veto-Auswertung der isolierten Sub-Tags
+        if (specificCoreTags.length > 0) {
+          const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
+            combinedSoftVetoList.some(veto => specificTag === veto || specificTag.startsWith(`${veto}.`))
           );
+          
           if (isSolelyExcludedIdentity) return false;
         }
 
@@ -163,7 +154,7 @@ export default function Home() {
         } as Place;
       });
     });
-  }, [data, activeCategory]);
+  }, [data]);
   
   const places = useMemo(() => {
     return rawPlaces.map(p => ({

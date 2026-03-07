@@ -9,227 +9,28 @@ import type { Place, GeoapifyFeature } from '@/lib/types';
 export const BASE_HARD_VETO: string[] = [];
 
 /**
- * Stufe 0B: Relativer Abbruch (Greift nur, wenn keine validen Core-Tags übrig bleiben)
+ * Stufe 0B: Relativer Abbruch (Soft Veto)
+ * Vollständige Liste gemäß System-Anweisung #018
  */
 export const BASE_SOFT_VETO = [
-  "education.school",
-  "education.driving_school",
-  "education.language_school",
-  "education.music_school",
-  "education.college",
+  "education.school", "education.driving_school", "education.language_school", "education.music_school", "education.college",
   "heritage.unesco",
-  "accommodation",
-  "accommodation.apartment",
-  "accommodation.chalet",
-  "accommodation.guest_house",
-  "accommodation.hostel",
-  "accommodation.hotel",
-  "accommodation.hut",
-  "accommodation.motel",
-  "emergency",
-  "emergency.access_point",
-  "emergency.air_rescue_service",
-  "emergency.ambulance_station",
-  "emergency.assembly_point",
-  "emergency.bleed_control_kit",
-  "emergency.control_centre",
-  "emergency.defibrillator",
-  "emergency.disaster_help_point",
-  "emergency.disaster_response",
-  "emergency.drinking_water",
-  "emergency.dry_riser_inlet",
-  "emergency.emergency_ward_entrance",
-  "emergency.fire_alarm_box",
-  "emergency.fire_detection_system",
-  "emergency.fire_extinguisher",
-  "emergency.fire_flapper",
-  "emergency.fire_hose",
-  "emergency.fire_hydrant",
-  "emergency.fire_lookout",
-  "emergency.fire_service_inlet",
-  "emergency.fire_water_pond",
-  "emergency.first_aid",
-  "emergency.first_aid_kit",
-  "emergency.key_depot",
-  "emergency.landing_site",
-  "emergency.life_ring",
-  "emergency.lifeguard",
-  "emergency.lifeguard_base",
-  "emergency.marine_rescue",
-  "emergency.mountain_rescue",
-  "emergency.phone",
-  "emergency.rescue_box",
-  "emergency.siren",
-  "emergency.slipway",
-  "emergency.suction_point",
-  "emergency.water_rescue",
-  "emergency.water_tank",
-  "childcare",
-  "childcare.kindergarten",
-  "healthcare",
-  "healthcare.clinic_or_praxis",
-  "healthcare.clinic_or_praxis.allergology",
-  "healthcare.clinic_or_praxis.cardiology",
-  "healthcare.clinic_or_praxis.dermatology",
-  "healthcare.clinic_or_praxis.endocrinology",
-  "healthcare.clinic_or_praxis.gastroenterology",
-  "healthcare.clinic_or_praxis.general",
-  "healthcare.clinic_or_praxis.gynaecology",
-  "healthcare.clinic_or_praxis.occupational",
-  "healthcare.clinic_or_praxis.ophthalmology",
-  "healthcare.clinic_or_praxis.orthopaedics",
-  "healthcare.clinic_or_praxis.otolaryngology",
-  "healthcare.clinic_or_praxis.paediatrics",
-  "healthcare.clinic_or_praxis.psychiatry",
-  "healthcare.clinic_or_praxis.pulmonology",
-  "healthcare.clinic_or_praxis.radiology",
-  "healthcare.clinic_or_praxis.rheumatology",
-  "healthcare.clinic_or_praxis.trauma",
-  "healthcare.clinic_or_praxis.urology",
-  "healthcare.clinic_or_praxis.vascular_surgery",
-  "healthcare.dentist",
-  "healthcare.dentist.orthodontics",
-  "healthcare.hospital",
-  "healthcare.pharmacy",
+  "accommodation", "accommodation.apartment", "accommodation.chalet", "accommodation.guest_house", "accommodation.hostel", "accommodation.hotel", "accommodation.hut", "accommodation.motel",
+  "emergency", "emergency.access_point", "emergency.air_rescue_service", "emergency.ambulance_station", "emergency.assembly_point", "emergency.bleed_control_kit", "emergency.control_centre", "emergency.defibrillator", "emergency.disaster_help_point", "emergency.disaster_response", "emergency.drinking_water", "emergency.dry_riser_inlet", "emergency.emergency_ward_entrance", "emergency.fire_alarm_box", "emergency.fire_detection_system", "emergency.fire_extinguisher", "emergency.fire_flapper", "emergency.fire_hose", "emergency.fire_hydrant", "emergency.fire_lookout", "emergency.fire_service_inlet", "emergency.fire_water_pond", "emergency.first_aid", "emergency.first_aid_kit", "emergency.key_depot", "emergency.landing_site", "emergency.life_ring", "emergency.lifeguard", "emergency.lifeguard_base", "emergency.marine_rescue", "emergency.mountain_rescue", "emergency.phone", "emergency.rescue_box", "emergency.siren", "emergency.slipway", "emergency.suction_point", "emergency.water_rescue", "emergency.water_tank",
+  "childcare", "childcare.kindergarten",
+  "healthcare", "healthcare.clinic_or_praxis", "healthcare.clinic_or_praxis.allergology", "healthcare.clinic_or_praxis.cardiology", "healthcare.clinic_or_praxis.dermatology", "healthcare.clinic_or_praxis.endocrinology", "healthcare.clinic_or_praxis.gastroenterology", "healthcare.clinic_or_praxis.general", "healthcare.clinic_or_praxis.gynaecology", "healthcare.clinic_or_praxis.occupational", "healthcare.clinic_or_praxis.ophthalmology", "healthcare.clinic_or_praxis.orthopaedics", "healthcare.clinic_or_praxis.otolaryngology", "healthcare.clinic_or_praxis.paediatrics", "healthcare.clinic_or_praxis.psychiatry", "healthcare.clinic_or_praxis.pulmonology", "healthcare.clinic_or_praxis.radiology", "healthcare.clinic_or_praxis.rheumatology", "healthcare.clinic_or_praxis.trauma", "healthcare.clinic_or_praxis.urology", "healthcare.clinic_or_praxis.vascular_surgery", "healthcare.dentist", "healthcare.dentist.orthodontics", "healthcare.hospital", "healthcare.pharmacy",
   "heritage",
-  "office",
-  "office.accountant",
-  "office.advertising_agency",
-  "office.architect",
-  "office.association",
-  "office.charity",
-  "office.company",
-  "office.consulting",
-  "office.diplomatic",
-  "office.educational_institution",
-  "office.employment_agency",
-  "office.energy_supplier",
-  "office.estate_agent",
-  "office.financial",
-  "office.financial_advisor",
-  "office.forestry",
-  "office.foundation",
-  "office.government",
-  "office.government.administrative",
-  "office.government.agriculture",
-  "office.government.cadaster",
-  "office.government.customs",
-  "office.government.education",
-  "office.government.environment",
-  "office.government.forestry",
-  "office.government.healthcare",
-  "office.government.legislative",
-  "office.government.migration",
-  "office.government.ministry",
-  "office.government.prosecutor",
-  "office.government.public_service",
-  "office.government.register_office",
-  "office.government.social_security",
-  "office.government.social_services",
-  "office.government.tax",
-  "office.government.transportation",
-  "office.insurance",
-  "office.it",
-  "office.lawyer",
-  "office.logistics",
-  "office.newspaper",
-  "office.non_profit",
-  "office.notary",
-  "office.political_party",
-  "office.religion",
-  "office.research",
-  "office.security",
-  "office.tax_advisor",
-  "office.telecommunication",
-  "office.travel_agent",
-  "office.water_utility",
-  "pet.crematorium",
-  "pet.service",
-  "pet.shop",
-  "pet.veterinary",
+  "office", "office.accountant", "office.advertising_agency", "office.architect", "office.association", "office.charity", "office.company", "office.consulting", "office.diplomatic", "office.educational_institution", "office.employment_agency", "office.energy_supplier", "office.estate_agent", "office.financial", "office.financial_advisor", "office.forestry", "office.foundation", "office.government", "office.government.administrative", "office.government.agriculture", "office.government.cadaster", "office.government.customs", "office.government.education", "office.government.environment", "office.government.forestry", "office.government.healthcare", "office.government.legislative", "office.government.migration", "office.government.ministry", "office.government.prosecutor", "office.government.public_service", "office.government.register_office", "office.government.social_security", "office.government.social_services", "office.government.tax", "office.government.transportation", "office.insurance", "office.it", "office.lawyer", "office.logistics", "office.newspaper", "office.non_profit", "office.notary", "office.political_party", "office.religion", "office.research", "office.security", "office.tax_advisor", "office.telecommunication", "office.travel_agent", "office.water_utility",
+  "pet.crematorium", "pet.service", "pet.shop", "pet.veterinary",
   "production.factory",
-  "rental",
-  "rental.bicycle",
-  "rental.boat",
-  "rental.car",
-  "rental.ski",
-  "rental.storage",
-  "amenity",
-  "amenity.drinking_water",
-  "amenity.give_box",
-  "amenity.give_box.books",
-  "amenity.give_box.food",
-  "amenity.toilet",
-  "public_transport",
-  "public_transport.aerialway",
-  "public_transport.bus",
-  "public_transport.ferry",
-  "public_transport.light_rail",
-  "public_transport.monorail",
-  "public_transport.subway",
-  "public_transport.subway.entrance",
-  "public_transport.train",
-  "public_transport.tram",
-  "power",
-  "power.generator",
-  "power.generator.biomass",
-  "power.generator.coal",
-  "power.generator.gas",
-  "power.generator.geothermal",
-  "power.generator.hydro",
-  "power.generator.nuclear",
-  "power.generator.oil",
-  "power.generator.solar",
-  "power.generator.wind",
-  "power.line",
-  "power.minor_line",
-  "power.plant",
-  "power.plant.biomass",
-  "power.plant.coal",
-  "power.plant.gas",
-  "power.plant.geothermal",
-  "power.plant.hydro",
-  "power.plant.nuclear",
-  "power.plant.oil",
-  "power.plant.solar",
-  "power.plant.waste",
-  "power.plant.wind",
-  "power.substation",
-  "power.transformer",
-  "administrative",
-  "administrative.city_level",
-  "administrative.continent_level",
-  "administrative.country_level",
-  "administrative.country_part_level",
-  "administrative.county_level",
-  "administrative.district_level",
-  "administrative.neighbourhood_level",
-  "administrative.state_level",
-  "administrative.suburb_level",
-  "postal_code",
-  "political",
-  "low_emission_zone",
-  "populated_place",
-  "populated_place.allotments",
-  "populated_place.borough",
-  "populated_place.city",
-  "populated_place.city_block",
-  "populated_place.county",
-  "populated_place.district",
-  "populated_place.hamlet",
-  "populated_place.municipality",
-  "populated_place.neighbourhood",
-  "populated_place.province",
-  "populated_place.quarter",
-  "populated_place.region",
-  "populated_place.state",
-  "populated_place.subdistrict",
-  "populated_place.suburb",
-  "populated_place.town",
-  "populated_place.township",
-  "populated_place.village",
-  "adult.brothel",
-  "adult.adult_gaming_centre"
+  "rental", "rental.bicycle", "rental.boat", "rental.car", "rental.ski", "rental.storage",
+  "amenity", "amenity.drinking_water", "amenity.give_box", "amenity.give_box.books", "amenity.give_box.food", "amenity.toilet",
+  "public_transport", "public_transport.aerialway", "public_transport.bus", "public_transport.ferry", "public_transport.light_rail", "public_transport.monorail", "public_transport.subway", "public_transport.subway.entrance", "public_transport.train", "public_transport.tram",
+  "power", "power.generator", "power.generator.biomass", "power.generator.coal", "power.generator.gas", "power.generator.geothermal", "power.generator.hydro", "power.generator.nuclear", "power.generator.oil", "power.generator.solar", "power.generator.wind", "power.line", "power.minor_line", "power.plant", "power.plant.biomass", "power.plant.coal", "power.plant.gas", "power.plant.geothermal", "power.plant.hydro", "power.plant.nuclear", "power.plant.oil", "power.plant.solar", "power.plant.waste", "power.plant.wind", "power.substation", "power.transformer",
+  "administrative", "administrative.city_level", "administrative.continent_level", "administrative.country_level", "administrative.country_part_level", "administrative.county_level", "administrative.district_level", "administrative.neighbourhood_level", "administrative.state_level", "administrative.suburb_level",
+  "postal_code", "political", "low_emission_zone",
+  "populated_place", "populated_place.allotments", "populated_place.borough", "populated_place.city", "populated_place.city_block", "populated_place.county", "populated_place.district", "populated_place.hamlet", "populated_place.municipality", "populated_place.neighbourhood", "populated_place.province", "populated_place.quarter", "populated_place.region", "populated_place.state", "populated_place.subdistrict", "populated_place.suburb", "populated_place.town", "populated_place.township", "populated_place.village",
+  "adult.brothel", "adult.adult_gaming_centre"
 ];
 
 /**
@@ -269,37 +70,31 @@ export async function fetchNearbyPlaces(
 
     const rawFeatures = data.features || [];
     
+    // Implementierung der 5-stufigen Filter-Pipeline gemäß Anweisung #018
+    const combinedSoftVetoList = [...BASE_SOFT_VETO];
+
     const safeFeatures = rawFeatures.filter((feature: any) => {
       const allTags: string[] = Array.isArray(feature.properties?.categories) 
         ? feature.properties.categories 
         : [feature.properties?.categories];
 
-      // STUFE 0: Absolutes System-Veto (Hard Veto)
-      const violatesBaseHard = allTags.some(tag => 
-        BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
-      );
-      if (violatesBaseHard) return false;
-
-      // STUFE 2: Zwingende Inklusion (Whitelist Override)
-      const isAllMode = targetCategories.includes("tourism") && targetCategories.length === 3;
-      if (!isAllMode && targetCategories.length > 0) {
-        const satisfiesInclusion = allTags.some(tag => targetCategories.includes(tag));
-        if (satisfiesInclusion) return true;
-        return false;
-      }
-
-      // Extraktion der Identitäts-Tags (Core) für Soft Veto
-      // Struktur-Attribute wie building verfälschen die relative Evaluierung und müssen ignoriert werden
+      // 1. Extraktion der Basis-Attribute (Ausschluss von Conditions/Struktur)
       const coreTags = allTags.filter(tag => 
         !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
         !tag.startsWith("building")
       );
 
-      // STUFE 3: Relative Exklusion (Soft Veto)
-      if (BASE_SOFT_VETO.length > 0 && coreTags.length > 0) {
-        const isSolelyExcludedIdentity = coreTags.every(coreTag => 
-          BASE_SOFT_VETO.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
+      // 2. Isolation der Sub-Tags (Zerstörung der Parent-Schutzfunktion)
+      const specificCoreTags = coreTags.filter(tag => 
+        !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
+      );
+
+      // 3. Exklusive Soft-Veto-Auswertung der isolierten Sub-Tags
+      if (specificCoreTags.length > 0) {
+        const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
+          combinedSoftVetoList.some(veto => specificTag === veto || specificTag.startsWith(`${veto}.`))
         );
+        
         if (isSolelyExcludedIdentity) return false;
       }
 

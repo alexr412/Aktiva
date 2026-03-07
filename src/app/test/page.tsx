@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Search, Activity, MapPin } from 'lucide-react';
-import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
 
 export default function TestPage() {
   const [testCity, setTestCity] = useState<string>("Bremerhaven");
-  const [testCategory, setTestCategory] = useState<string>("commercial,catering");
+  const [testCategory, setTestCategory] = useState<string>("tourism,entertainment,heritage");
   const [coordinates, setCoordinates] = useState<{lat: number, lng: number}>({ lat: 53.5395845, lng: 8.5809341 });
   const [results, setResults] = useState<any[]>([]);
   const [isFetching, setIsFetching] = useState<boolean>(false);
@@ -36,7 +36,6 @@ export default function TestPage() {
     setIsFetching(true);
     
     try {
-      const includeTags = sanitizedCategory.split(',');
       const { lat, lng } = await resolveCoordinates(testCity);
 
       const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${lng},${lat},5000&limit=100&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
@@ -47,34 +46,30 @@ export default function TestPage() {
       const data = await response.json();
       const rawFeatures = data.features || [];
       
+      const combinedSoftVetoList = [...BASE_SOFT_VETO];
+
       const safeFeatures = rawFeatures.filter((feature: any) => {
-        const itemTags: string[] = Array.isArray(feature.properties?.categories) 
+        const allTags: string[] = Array.isArray(feature.properties?.categories) 
           ? feature.properties.categories 
           : [feature.properties?.categories];
 
-        // Stufe 0: Absolutes System-Veto (Hard Veto)
-        const violatesBaseHard = itemTags.some(tag => 
-          BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
-        );
-        if (violatesBaseHard) return false;
-
-        // Stufe 2: Zwingende Inklusion (Whitelist Override)
-        if (includeTags.length > 0) {
-          const satisfiesInclusion = itemTags.some(tag => includeTags.includes(tag));
-          if (satisfiesInclusion) return true;
-          return false;
-        }
-
-        // Stufe 3: Relative Exklusion (Soft Veto)
-        const coreTags = itemTags.filter(tag => 
+        // 1. Extraktion der Basis-Attribute (Ausschluss von Conditions/Struktur)
+        const coreTags = allTags.filter(tag => 
           !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
           !tag.startsWith("building")
         );
 
-        if (BASE_SOFT_VETO.length > 0 && coreTags.length > 0) {
-          const isSolelyExcludedIdentity = coreTags.every(coreTag => 
-            BASE_SOFT_VETO.some(excludedTag => coreTag === excludedTag || coreTag.startsWith(`${excludedTag}.`))
+        // 2. Isolation der Sub-Tags (Zerstörung der Parent-Schutzfunktion)
+        const specificCoreTags = coreTags.filter(tag => 
+          !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
+        );
+
+        // 3. Exklusive Soft-Veto-Auswertung der isolierten Sub-Tags
+        if (specificCoreTags.length > 0) {
+          const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
+            combinedSoftVetoList.some(veto => specificTag === veto || specificTag.startsWith(`${veto}.`))
           );
+          
           if (isSolelyExcludedIdentity) return false;
         }
 
@@ -99,7 +94,7 @@ export default function TestPage() {
           Geoapify Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Echtzeit-Analyse mit Hard-/Soft-Veto Schichten.
+          Echtzeit-Analyse mit Isolation der Sub-Tags (Veto Pipeline #018).
         </p>
       </header>
 
@@ -141,7 +136,7 @@ export default function TestPage() {
             <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
           </div>
           <div className="text-sm font-semibold whitespace-nowrap mt-2">
-            Results (Hard/Soft logic): <span className="text-primary">{results.length}</span>
+            Results (Sub-Tag Isolation logic): <span className="text-primary">{results.length}</span>
           </div>
         </div>
       </div>
@@ -163,16 +158,13 @@ export default function TestPage() {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {feature.properties.categories?.map((cat: string) => {
-                      const isHard = BASE_HARD_VETO.some(veto => cat === veto || cat.startsWith(`${veto}.`));
-                      const isSoft = BASE_SOFT_VETO.some(veto => cat === veto || cat.startsWith(`${veto}.`));
+                      const isVeto = BASE_SOFT_VETO.some(veto => cat === veto || cat.startsWith(`${veto}.`));
                       
                       return (
                         <span 
                           key={cat} 
                           className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
-                            isHard 
-                              ? 'bg-destructive text-white border-none' 
-                              : isSoft
+                            isVeto
                               ? 'bg-amber-100 text-amber-700 border-amber-200'
                               : 'bg-primary/10 text-primary border-primary/20'
                           }`}
