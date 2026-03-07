@@ -98,7 +98,7 @@ export default function TestPage() {
           Geoapify Diagnostic Console
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Pipeline #023: Hard-Veto (Struktur) & Soft-Veto (Funktion) mit Sub-Tag Isolation.
+          Pipeline #023: Hard-Veto (Struktur) & Soft-Veto (Funktion) mit Sub-Tag Isolation. Whitelist für Commercial Root/Clothing/Food.
         </p>
       </header>
 
