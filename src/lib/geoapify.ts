@@ -10,7 +10,7 @@ export const BASE_HARD_VETO: string[] = [];
 
 /**
  * Stufe 0B: Relativer Abbruch (Soft Veto)
- * Vollständige Liste gemäß System-Anweisung #018
+ * Vollständige Liste gemäß System-Anweisung #018 und Erweiterung #021
  */
 export const BASE_SOFT_VETO = [
   "education.school", "education.driving_school", "education.language_school", "education.music_school", "education.college",
@@ -30,7 +30,19 @@ export const BASE_SOFT_VETO = [
   "administrative", "administrative.city_level", "administrative.continent_level", "administrative.country_level", "administrative.country_part_level", "administrative.county_level", "administrative.district_level", "administrative.neighbourhood_level", "administrative.state_level", "administrative.suburb_level",
   "postal_code", "political", "low_emission_zone",
   "populated_place", "populated_place.allotments", "populated_place.borough", "populated_place.city", "populated_place.city_block", "populated_place.county", "populated_place.district", "populated_place.hamlet", "populated_place.municipality", "populated_place.neighbourhood", "populated_place.province", "populated_place.quarter", "populated_place.region", "populated_place.state", "populated_place.subdistrict", "populated_place.suburb", "populated_place.town", "populated_place.township", "populated_place.village",
-  "adult.brothel", "adult.adult_gaming_centre"
+  "adult.brothel", "adult.adult_gaming_centre",
+  "memorial",
+  "memorial.buddhist",
+  "memorial.cemetery",
+  "memorial.cemetery.sector",
+  "memorial.christian",
+  "memorial.christian.catholic",
+  "memorial.christian.orthodox",
+  "memorial.christian.protestant",
+  "memorial.graveyard",
+  "memorial.hindu",
+  "memorial.jewish",
+  "memorial.muslim"
 ];
 
 /**
