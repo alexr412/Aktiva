@@ -320,6 +320,7 @@ export default function Home() {
                     const up = place.upvotes || 0;
                     const down = place.downvotes || 0;
                     const matchesSearch = place.name.toLowerCase().includes(searchQuery.toLowerCase());
+                    // KORREKTUR: up >= 1 gemäß Direktive
                     return up >= 1 && up > down && matchesSearch;
                 });
                 const sorted = filtered.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
