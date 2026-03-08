@@ -27,13 +27,21 @@ export const availableTabs = [
   { 
     id: "Sights", 
     label: "Sehenswürdigkeiten", 
-    query: ["tourism.sights", "heritage", "building.historic", "man_made.lighthouse", "man_made.windmill", "man_made.watermill"], 
+    query: [
+      "tourism.sights", "heritage", "building.historic", 
+      "man_made.lighthouse", "man_made.windmill", "man_made.watermill",
+      "heritage.ruins", "tourism.sights.castle", "tourism.sights.fortress", 
+      "tourism.sights.archaeological_site"
+    ], 
     icon: Landmark 
   },
   { 
     id: "Religion", 
     label: "Religion & Glaube", 
-    query: ["religion.place_of_worship", "tourism.sights.place_of_worship", "building.place_of_worship"], 
+    query: [
+      "religion.place_of_worship", "tourism.sights.place_of_worship", 
+      "building.place_of_worship", "religion.monastery"
+    ], 
     icon: Church 
   },
   { 
@@ -45,7 +53,11 @@ export const availableTabs = [
   { 
     id: "Attractions", 
     label: "Attraktionen", 
-    query: ["tourism.attraction"], 
+    query: [
+      "tourism.attraction", "entertainment.theme_park", 
+      "tourism.attraction.viewpoint", "entertainment.planetarium", 
+      "man_made.fountain"
+    ], 
     icon: Ticket 
   },
   { 
@@ -71,7 +83,8 @@ export const availableTabs = [
     label: "Wasser & Strand", 
     query: [
       "natural.water", "natural.water.sea", "natural.water.hot_spring", 
-      "beach", "beach.beach_resort", "natural.sand.dune", "man_made.pier"
+      "beach", "beach.beach_resort", "natural.sand.dune", "man_made.pier",
+      "leisure.spa", "building.spa"
     ], 
     icon: Waves 
   },
@@ -149,7 +162,11 @@ export const availableTabs = [
   { 
     id: "Shopping", 
     label: "Shopping", 
-    query: ["commercial.shopping_mall", "commercial.clothing", "commercial.department_store", "commercial.marketplace", "commercial.gift_and_souvenir", "commercial.books", "commercial.hobby"], 
+    query: [
+      "commercial.shopping_mall", "commercial.clothing", "commercial.department_store", 
+      "commercial.marketplace", "commercial.gift_and_souvenir", "commercial.books", 
+      "commercial.hobby"
+    ], 
     icon: ShoppingBag 
   }
 ];
