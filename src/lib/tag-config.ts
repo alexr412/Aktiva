@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Anchor, Waves, Landmark, Mic, Palette, TreePine,
+  Anchor, Ship, Waves, Landmark, Mic, Palette, TreePine,
   Church, Flame, Film, Coffee, Utensils, Dumbbell, 
   Building, Moon, Circle, Sun, Tent, Shield, Globe, User,
   BookOpen,
@@ -27,7 +27,10 @@ export const getPrimaryIconData = (place: any): TagStyle => {
   const name = (place.name || '').toLowerCase();
 
   // --- PRIORITÄT 1: Maritim & Spezifische Namens-Überschreibungen ---
-  if (tags.includes('tourism.sights.memorial.ship') || name.includes('dock')) {
+  if (tags.includes('tourism.sights.memorial.ship')) {
+    return { icon: Ship, color: '#3b82f6', label: 'Schiff', bgClass: 'bg-blue-50' };
+  }
+  if (name.includes('dock')) {
     return { icon: Anchor, color: '#3b82f6', label: 'Maritim', bgClass: 'bg-blue-50' };
   }
   if (name.includes('synagoge')) {
