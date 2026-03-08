@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -76,7 +77,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const Icon = getCategoryIcon(place.categories);
     
     const [isVoting, setIsVoting] = useState(false);
-    const [localVotes, setLocalVotes] = useState({ upvotes: 0, downvotes: 0 });
+    const [localVotes, setLocalVotes] = useState({ upvotes: 0, downvotes: 0, userVotes: {} as Record<string, 'up' | 'down'> });
 
     useEffect(() => {
         if (!db || !place.id) return;
@@ -85,7 +86,8 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                 const data = doc.data();
                 setLocalVotes({
                     upvotes: data.upvotes || 0,
-                    downvotes: data.downvotes || 0
+                    downvotes: data.downvotes || 0,
+                    userVotes: data.userVotes || {}
                 });
             }
         });
@@ -97,6 +99,8 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
           .filter((value, index, self) => self.indexOf(value) === index)
       : [];
     
+    const userVote = user ? localVotes.userVotes?.[user.uid] : undefined;
+
     const handleBookmarkToggle = (e: React.MouseEvent) => {
         e.stopPropagation(); 
         if (isFavorite) {
@@ -109,6 +113,8 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const handleVoteClick = async (e: React.MouseEvent, type: 'up' | 'down') => {
         e.stopPropagation();
         if (!user || isVoting) return;
+        if (userVote === (type === 'up' ? 'down' : 'up')) return;
+
         setIsVoting(true);
         try {
             await votePlace(place.id, user.uid, type);
@@ -182,23 +188,44 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
           ))}
         </div>
 
-        {/* FORCED FRONTEND INTEGRATION: POI VOTING INTERFACE FOOTER */}
         <div className="card-footer-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '4px' }}>
           
           <div className="voting-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button 
-              onClick={(e) => handleVoteClick(e, 'up')} 
-              disabled={isVoting || !user}
+              onClick={(e) => { e.stopPropagation(); userVote !== 'up' && handleVoteClick(e, 'up'); }} 
+              disabled={isVoting || !user || userVote === 'down'}
               aria-label="Upvote"
-              style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', cursor: 'pointer', color: '#000000', fontWeight: 'bold', display: 'block', visibility: 'visible', opacity: 1 }}
+              style={{ 
+                padding: '6px 12px', 
+                border: '1px solid', 
+                borderRadius: '8px', 
+                fontWeight: 'bold',
+                transition: 'all 0.2s',
+                cursor: userVote === 'down' ? 'not-allowed' : 'pointer',
+                background: userVote === 'up' ? '#22c55e' : (userVote === 'down' ? '#f1f5f9' : '#ffffff'),
+                color: userVote === 'up' ? '#ffffff' : (userVote === 'down' ? '#94a3b8' : '#000000'),
+                borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0',
+                opacity: userVote === 'down' ? 0.6 : 1
+              }}
             >
               {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
             </button>
             <button 
-              onClick={(e) => handleVoteClick(e, 'down')} 
-              disabled={isVoting || !user}
+              onClick={(e) => { e.stopPropagation(); userVote !== 'down' && handleVoteClick(e, 'down'); }} 
+              disabled={isVoting || !user || userVote === 'up'}
               aria-label="Downvote"
-              style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', cursor: 'pointer', color: '#000000', fontWeight: 'bold', display: 'block', visibility: 'visible', opacity: 1 }}
+              style={{ 
+                padding: '6px 12px', 
+                border: '1px solid', 
+                borderRadius: '8px', 
+                fontWeight: 'bold',
+                transition: 'all 0.2s',
+                cursor: userVote === 'up' ? 'not-allowed' : 'pointer',
+                background: userVote === 'down' ? '#ef4444' : (userVote === 'up' ? '#f1f5f9' : '#ffffff'),
+                color: userVote === 'down' ? '#ffffff' : (userVote === 'up' ? '#94a3b8' : '#000000'),
+                borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0',
+                opacity: userVote === 'up' ? 0.6 : 1
+              }}
             >
               {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}
             </button>
