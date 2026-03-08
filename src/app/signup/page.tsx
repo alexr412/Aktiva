@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -17,9 +18,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signUp } from '@/lib/firebase/auth';
+import { signUp, signOut, auth } from '@/lib/firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Mail, CheckCircle2, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -36,17 +37,19 @@ export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
   
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState({ score: 0, text: '', color: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const evaluatePassword = (pass: string) => {
     let score = 0;
-    if (pass.length >= 8) score++; // Längen-Validierung
-    if (/[A-Z]/.test(pass)) score++; // Großbuchstabe
-    if (/[a-z]/.test(pass)) score++; // Kleinbuchstabe
-    if (/[0-9]/.test(pass)) score++; // Zahl
-    if (/[^A-Za-z0-9]/.test(pass)) score++; // Sonderzeichen
+    if (pass.length >= 8) score++; 
+    if (/[A-Z]/.test(pass)) score++; 
+    if (/[a-z]/.test(pass)) score++; 
+    if (/[0-9]/.test(pass)) score++; 
+    if (/[^A-Za-z0-9]/.test(pass)) score++; 
 
     let text = '';
     let color = '';
@@ -75,45 +78,85 @@ export default function SignupPage() {
   const passwordValue = form.watch('password');
   const confirmPasswordValue = form.watch('confirmPassword');
   const nameValue = form.watch('name') || '';
+  const emailValue = form.watch('email') || '';
 
-  // Profanity-Check
   const forbiddenWords = ['sex', 'porn', 'fuck', 'bitch', 'schlampe', 'fotze', 'hurensohn', 'wichser', 'nazi', 'hitler', 'admin', 'support']; 
   const hasProfanity = forbiddenWords.some(word => nameValue.toLowerCase().includes(word));
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    setSubmitError('');
+    
     if (passwordStrength.score < 5) {
-        toast({
-            variant: 'destructive',
-            title: 'Sicherheit',
-            description: 'Dein Passwort muss alle Sicherheitsanforderungen erfüllen.',
-        });
+        setSubmitError('Dein Passwort muss alle Sicherheitsanforderungen erfüllen.');
         return;
     }
 
     if (hasProfanity) {
-        toast({
-            variant: 'destructive',
-            title: 'Unzulässiger Name',
-            description: 'Bitte wähle einen anderen Namen.',
-        });
+        setSubmitError('Bitte wähle einen anderen Namen.');
         return;
     }
 
     try {
+      // 1. Account erstellen (signUp erledigt Auth, Profil-Doc & Verifizierungs-Email)
       await signUp(values.name, values.email, values.password);
+      
+      // 2. Sofortige Session-Trennung erzwingen
+      await signOut();
+      
+      // 3. Status auf Erfolg setzen
+      setIsRegistered(true);
+      
       toast({
         title: 'Account erstellt!',
-        description: "Registrierung erfolgreich. Bitte bestätige deine Email-Adresse über den zugesandten Link.",
+        description: "Bitte bestätige deine Email-Adresse.",
       });
-      router.push('/profile');
     } catch (error: any) {
       console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Sign Up Failed',
-        description: error.message || 'An unexpected error occurred.',
-      });
+      if (error.code === 'auth/email-already-in-use') {
+        setSubmitError('Diese E-Mail-Adresse ist bereits registriert.');
+      } else {
+        setSubmitError('Fehler bei der Registrierung: ' + (error.message || 'Ein unerwarteter Fehler ist aufgetreten.'));
+      }
     }
+  }
+
+  if (isRegistered) {
+    return (
+      <div className="flex min-h-full items-center justify-center p-4 bg-secondary/30">
+        <Card className="w-full max-w-md border-none shadow-xl rounded-3xl overflow-hidden text-center">
+          <CardHeader className="bg-primary/5 pb-8">
+            <div className="flex justify-center mb-4">
+              <div className="p-4 bg-primary/10 rounded-full">
+                <Mail className="h-12 w-12 text-primary animate-pulse" />
+              </div>
+            </div>
+            <CardTitle className="text-3xl font-black tracking-tight">Verifizierung erforderlich</CardTitle>
+            <CardDescription className="font-medium text-base">Fast geschafft!</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-8 space-y-6">
+            <div className="space-y-2">
+              <p className="text-neutral-600 dark:text-neutral-400 font-medium">
+                Wir haben einen Bestätigungslink an <br />
+                <strong className="text-foreground">{emailValue}</strong> <br />
+                gesendet.
+              </p>
+              <p className="text-sm text-neutral-500">
+                Bitte überprüfe deinen Posteingang und klicke auf den Link, um dein Konto zu aktivieren.
+              </p>
+            </div>
+            
+            <div className="pt-4">
+              <Button asChild className="w-full h-14 text-base font-black rounded-2xl">
+                <Link href="/login">
+                  Zum Login
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -197,7 +240,6 @@ export default function SignupPage() {
                     </FormControl>
                     <FormMessage />
                     
-                    {/* Stärke-Indikator */}
                     {passwordValue && passwordValue.length > 0 && (
                         <div className="mt-3 px-1">
                             <div className="flex justify-between text-[10px] uppercase tracking-widest font-black mb-1.5">
@@ -251,6 +293,12 @@ export default function SignupPage() {
                   </FormItem>
                 )}
               />
+
+              {submitError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-xs font-bold text-center">
+                  {submitError}
+                </div>
+              )}
 
               <Button 
                 type="submit" 
