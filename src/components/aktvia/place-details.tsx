@@ -1,4 +1,6 @@
 
+'use client';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
@@ -70,9 +72,14 @@ type PlaceDetailsProps = {
 
 export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
     const Icon = getCategoryIcon(place.categories);
-    const formattedCategories = place.categories
-        .map(cat => cat.split('.')[0])
-        .filter((value, index, self) => self.indexOf(value) === index);
+    
+    const getSpecificTags = (tags: string[]) => {
+      return tags.filter(tag => 
+        !tags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
+      );
+    };
+
+    const specificTags = getSpecificTags(place.categories || []);
 
     const { user, userProfile } = useAuth();
     const router = useRouter();
@@ -240,9 +247,9 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                             
                             <Card className="p-4 bg-secondary/30 border-none flex flex-col items-center justify-center gap-1 text-center">
                                 <div className="flex flex-wrap gap-1 justify-center">
-                                    {formattedCategories.slice(0, 2).map(cat => (
-                                        <Badge key={cat} variant="outline" className="bg-background/50 capitalize text-[10px]">
-                                            {cat.replace(/_/g, ' ')}
+                                    {specificTags.slice(0, 2).map(tag => (
+                                        <Badge key={tag} variant="outline" className="bg-background/50 text-[10px]">
+                                            {tag}
                                         </Badge>
                                     ))}
                                 </div>
@@ -335,7 +342,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                       padding: '4px 10px', 
                                                       border: '1px solid', 
                                                       borderRadius: '6px', 
-                                                      fontSize: '12px',
+                                                      fontSize: '12px', 
                                                       fontWeight: 'bold',
                                                       transition: 'all 0.2s',
                                                       cursor: userVote === 'down' ? 'not-allowed' : 'pointer',
@@ -355,7 +362,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                       padding: '4px 10px', 
                                                       border: '1px solid', 
                                                       borderRadius: '6px', 
-                                                      fontSize: '12px',
+                                                      fontSize: '12px', 
                                                       fontWeight: 'bold',
                                                       transition: 'all 0.2s',
                                                       cursor: userVote === 'up' ? 'not-allowed' : 'pointer',
