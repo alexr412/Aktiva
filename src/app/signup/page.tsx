@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwörter stimmen nicht überein.",
@@ -39,6 +39,7 @@ export default function SignupPage() {
 
   const evaluatePassword = (pass: string) => {
     let score = 0;
+    if (pass.length >= 8) score++; // Längen-Validierung
     if (/[A-Z]/.test(pass)) score++; // Großbuchstabe
     if (/[a-z]/.test(pass)) score++; // Kleinbuchstabe
     if (/[0-9]/.test(pass)) score++; // Zahl
@@ -49,10 +50,11 @@ export default function SignupPage() {
 
     switch (score) {
       case 0:
-      case 1: text = 'Schwach'; color = 'bg-red-500'; break;
-      case 2: text = 'Mittel'; color = 'bg-amber-500'; break;
-      case 3: text = 'Gut'; color = 'bg-blue-500'; break;
-      case 4: text = 'Stark'; color = 'bg-green-500'; break;
+      case 1: text = 'Sehr Schwach'; color = 'bg-red-600'; break;
+      case 2: text = 'Schwach'; color = 'bg-red-500'; break;
+      case 3: text = 'Mittel'; color = 'bg-amber-500'; break;
+      case 4: text = 'Gut'; color = 'bg-blue-500'; break;
+      case 5: text = 'Stark'; color = 'bg-green-500'; break;
     }
     setPasswordStrength({ score, text, color });
   };
@@ -71,7 +73,7 @@ export default function SignupPage() {
   const confirmPasswordValue = form.watch('confirmPassword');
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (passwordStrength.score < 4) {
+    if (passwordStrength.score < 5) {
         toast({
             variant: 'destructive',
             title: 'Sicherheit',
@@ -164,12 +166,12 @@ export default function SignupPage() {
                             <div className="h-1.5 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                                 <div
                                     className={`h-full transition-all duration-500 ease-out ${passwordStrength.color}`}
-                                    style={{ width: `${(passwordStrength.score / 4) * 100}%` }}
+                                    style={{ width: `${(passwordStrength.score / 5) * 100}%` }}
                                 ></div>
                             </div>
-                            {passwordStrength.score < 4 && (
+                            {passwordStrength.score < 5 && (
                                 <p className="text-[10px] text-neutral-500 mt-2 font-bold leading-relaxed">
-                                    Muss enthalten: Groß- & Kleinbuchstaben, Zahl und Sonderzeichen.
+                                    Muss enthalten: Min. 8 Zeichen, Groß- & Kleinbuchstaben, Zahl und Sonderzeichen.
                                 </p>
                             )}
                         </div>
@@ -198,7 +200,7 @@ export default function SignupPage() {
               <Button 
                 type="submit" 
                 className="w-full h-14 text-base font-black rounded-2xl shadow-lg shadow-primary/20 transition-transform active:scale-95 mt-4" 
-                disabled={form.formState.isSubmitting || passwordStrength.score < 4 || passwordValue !== confirmPasswordValue}
+                disabled={form.formState.isSubmitting || passwordStrength.score < 5 || passwordValue !== confirmPasswordValue}
               >
                 {form.formState.isSubmitting ? 'Wird erstellt...' : 'Konto erstellen'}
               </Button>
