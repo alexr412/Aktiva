@@ -21,10 +21,8 @@ export interface TagStyle {
 /**
  * getPrimaryIconData - Hierarchisches Icon-Zuweisungssystem (Weighting Index).
  * Löst visuelle Prioritäten deterministisch nach einer definierten Kaskade auf.
- * Nutzt sowohl Geoapify-Kategorien als auch den Namen zur Kompensation unvollständiger Daten.
  */
 export const getPrimaryIconData = (place: any): TagStyle => {
-  // Unterstützung für beide Datenmodelle (categories in Firestore, tags im Geoapify-Service)
   const tags = place.categories || place.tags || [];
   const name = (place.name || '').toLowerCase();
 
@@ -88,7 +86,7 @@ export const getPrimaryIconData = (place: any): TagStyle => {
 };
 
 /**
- * Kompatibilitäts-Wrapper für Komponenten, die nur Kategorien übergeben.
+ * Kompatibilitäts-Wrapper
  */
 export const getPrimaryTagStyle = (categories: string[]): TagStyle => {
   return getPrimaryIconData({ categories });
