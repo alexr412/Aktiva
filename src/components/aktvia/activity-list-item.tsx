@@ -5,12 +5,13 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Home, Loader2, MapPin, LogIn, MessageSquare, Users, Flame, Bookmark, Plus } from 'lucide-react';
+import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { EntityMoreOptions } from '../common/EntityMoreOptions';
 import { cn } from '@/lib/utils';
 import { voteActivity } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
+import { getPrimaryTagStyle, getTagStyle } from '@/lib/tag-config';
 
 interface ActivityListItemProps {
     activity: Activity;
@@ -33,34 +34,22 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const isOwnActivity = activity.creatorId === user?.uid;
     const userVote = user ? (activity.userVotes?.[user.uid] || 'none') : 'none';
     
-    const Icon = activity.isCustomActivity ? Home : MapPin;
+    // Dynamisches Tag-Mapping
+    const primaryStyle = getPrimaryTagStyle(activity.categories || []);
+    const PrimaryIcon = primaryStyle.icon;
 
     const handleJoinClick = async (activityId: string) => {
         if (isJoining || isParticipant || isFull) return; 
-
         setIsJoining(true);
-        try {
-            await onJoin(activityId);
-        } catch (error) {
-            setIsJoining(false);
-        }
+        try { await onJoin(activityId); } catch (error) { setIsJoining(false); }
     };
     
-    const handleViewChatClick = (activityId: string) => {
-        router.push(`/chat/${activityId}`);
-    };
+    const handleViewChatClick = (activityId: string) => { router.push(`/chat/${activityId}`); };
 
     const handleVote = async (activityId: string, type: 'up' | 'down' | 'none') => {
         if (!user || isVoting) return;
-        
         setIsVoting(true);
-        try {
-            await voteActivity(activityId, user.uid, type);
-        } catch (error) {
-            console.error("Voting failed:", error);
-        } finally {
-            setIsVoting(false);
-        }
+        try { await voteActivity(activityId, user.uid, type); } catch (error) { console.error("Voting failed:", error); } finally { setIsVoting(false); }
     };
 
     const renderDate = () => {
@@ -75,36 +64,35 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
     return (
         <div className={cn(
-          "p-4 relative group transition-all rounded-xl border border-transparent hover:border-border hover:bg-muted/30",
-          activity.isBoosted && "bg-orange-500/5 border-l-4 border-l-orange-500"
+          "p-5 relative group transition-all rounded-2xl bg-[#ffffff] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] border-none mb-4",
+          activity.isBoosted && "ring-2 ring-orange-500/20"
         )}>
-            <div className="flex items-center gap-4">
-                <div className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-lg flex-shrink-0",
-                  activity.isBoosted ? "bg-orange-500/10" : "bg-muted"
-                )}>
-                    <Icon className={cn(
-                      "h-5 w-5",
-                      activity.isBoosted ? "text-orange-500" : "text-muted-foreground"
-                    )} />
+            <div className="flex items-start gap-4">
+                <div 
+                  className="flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0"
+                  style={{ backgroundColor: `${primaryStyle.color}15` }}
+                >
+                    <PrimaryIcon 
+                      className="h-8 w-8" 
+                      style={{ color: primaryStyle.color }}
+                    />
                 </div>
                 
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-base truncate">{activity.placeName}</p>
+                        <p className="text-lg font-extrabold text-[#0f172a] truncate leading-tight">{activity.placeName}</p>
                         {activity.isBoosted && (
-                          <Badge variant="default" className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1">
-                            <Flame className="h-3 w-3" />
+                          <Badge variant="default" className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1 h-5 px-1.5 text-[9px] font-black">
+                            <Flame className="h-2.5 w-2.5" />
                             <span>HOT</span>
                           </Badge>
                         )}
-                        {activity.isCustomActivity && <Badge variant="secondary">Community</Badge>}
                     </div>
-                     <p className="text-sm text-muted-foreground">
+                     <p className="text-xs font-bold text-[#64748b]">
                         {renderDate()}
                     </p>
-                    <p className="text-sm text-muted-foreground truncate mt-1 flex items-center gap-1.5">
-                        <Users className="h-4 w-4"/>
+                    <p className="text-xs text-[#64748b] truncate mt-1.5 flex items-center gap-1.5 font-medium">
+                        <Users className="h-3.5 w-3.5"/>
                         <span>
                             {activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; von {activity.creatorName}
                         </span>
@@ -112,23 +100,23 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 </div>
             </div>
 
-            <div className="card-footer-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '12px' }}>
+            <div className="card-footer-actions flex justify-between items-center w-full mt-5 pt-4 border-t border-slate-50">
               
-              <div className="voting-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div className="voting-controls flex gap-2 items-center">
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'up' ? 'none' : 'up'); }} 
                   aria-label="Upvote"
                   style={{ 
-                    padding: '6px 12px', 
+                    padding: '6px 14px', 
                     border: '1px solid', 
-                    borderRadius: '8px', 
-                    fontWeight: 'bold',
+                    borderRadius: '10px', 
+                    fontWeight: '800',
+                    fontSize: '14px',
                     transition: 'all 0.2s',
                     cursor: 'pointer',
                     background: userVote === 'up' ? '#22c55e' : '#ffffff',
-                    color: userVote === 'up' ? '#ffffff' : '#000000',
+                    color: userVote === 'up' ? '#ffffff' : '#0f172a',
                     borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0',
-                    opacity: 1
                   }}
                 >
                   {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
@@ -137,36 +125,36 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                   onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'down' ? 'none' : 'down'); }} 
                   aria-label="Downvote"
                   style={{ 
-                    padding: '6px 12px', 
+                    padding: '6px 14px', 
                     border: '1px solid', 
-                    borderRadius: '8px', 
-                    fontWeight: 'bold',
+                    borderRadius: '10px', 
+                    fontWeight: '800',
+                    fontSize: '14px',
                     transition: 'all 0.2s',
                     cursor: 'pointer',
                     background: userVote === 'down' ? '#ef4444' : '#ffffff',
-                    color: userVote === 'down' ? '#ffffff' : '#000000',
+                    color: userVote === 'down' ? '#ffffff' : '#0f172a',
                     borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0',
-                    opacity: 1
                   }}
                 >
                   {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}
                 </button>
 
                 {userProfile?.isAdmin && (
-                  <span className="admin-metrics" style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px', display: 'block', visibility: 'visible' }}>
+                  <span className="text-[10px] font-bold text-[#64748b] ml-1">
                     ↑{activity.upvotes || 0} ↓{activity.downvotes || 0}
                   </span>
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="flex gap-2">
                 <button 
                   className="bookmark-button" 
                   aria-label="Save"
                   onClick={(e) => e.stopPropagation()}
-                  style={{ padding: '8px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#ffffff', cursor: 'pointer' }}
+                  style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#ffffff', cursor: 'pointer' }}
                 >
-                  <Bookmark className="h-4 w-4 text-muted-foreground" />
+                  <Bookmark className="h-4 w-4 text-[#64748b]" />
                 </button>
                 
                 {isParticipant ? (
@@ -174,18 +162,18 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     className="add-button" 
                     aria-label="Chat"
                     onClick={(e) => { e.stopPropagation(); handleViewChatClick(activity.id!); }}
-                    style={{ padding: '8px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#ffffff', cursor: 'pointer' }}
+                    style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#ffffff', cursor: 'pointer' }}
                   >
                     <MessageSquare className="h-4 w-4 text-primary" />
                   </button>
                 ) : isFull ? (
                   <button 
-                    className="add-button" 
+                    className="add-button opacity-50" 
                     aria-label="Full"
                     disabled
-                    style={{ padding: '8px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#f1f5f9', cursor: 'not-allowed' }}
+                    style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f1f5f9', cursor: 'not-allowed' }}
                   >
-                    <Users className="h-4 w-4 text-muted-foreground opacity-50" />
+                    <Users className="h-4 w-4 text-[#64748b]" />
                   </button>
                 ) : (
                   <button 
@@ -193,16 +181,16 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     aria-label="Add"
                     onClick={(e) => { e.stopPropagation(); handleJoinClick(activity.id!); }}
                     disabled={isJoining}
-                    style={{ padding: '8px', borderRadius: '50%', border: 'none', background: 'hsl(var(--primary))', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    style={{ padding: '10px', borderRadius: '12px', border: 'none', background: 'hsl(var(--primary))', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 12px -2px rgba(var(--primary), 0.4)' }}
                   >
-                    {isJoining ? <Loader2 className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    {isJoining ? <Loader2 className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4" strokeWidth={3} />}
                   </button>
                 )}
               </div>
             </div>
 
              {!isOwnActivity && user && (
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                     <EntityMoreOptions
                         entityId={activity.id}
                         entityType="activity"

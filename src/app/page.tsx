@@ -27,14 +27,16 @@ import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES, calculateRelevanceScore } from '@/lib/geoapify';
+import { cn } from '@/lib/utils';
 
 const CardSkeleton = () => (
-    <div className="w-full overflow-hidden rounded-2xl bg-card shadow-sm">
-        <div className="aspect-[16/9] w-full bg-muted" />
-        <div className="space-y-2 mt-4 p-4">
-            <Skeleton className="h-5 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-4 w-1/3" />
+    <div className="w-full overflow-hidden rounded-2xl bg-white shadow-sm p-4">
+        <div className="flex gap-4">
+          <Skeleton className="h-20 w-20 rounded-2xl shrink-0" />
+          <div className="flex-1 space-y-2 py-1">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+          </div>
         </div>
     </div>
 );
@@ -98,63 +100,32 @@ export default function Home() {
 
   const rawPlaces = useMemo(() => {
     if (!data) return [];
-
     const combinedSoftVetoList = [...BASE_SOFT_VETO];
-
     return data.flatMap(page => {
       const features = page.features || [];
-      
       const safeFeatures = features.filter((feature: any) => {
-        const allTags: string[] = Array.isArray(feature.properties?.categories) 
-          ? feature.properties.categories 
-          : [feature.properties?.categories];
-
-        // 0. Absolute Exklusion (Hard Veto) - Kaskadierende Sperre bleibt aktiv
-        const violatesHardVeto = allTags.some(tag => 
-          BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
-        );
+        const allTags: string[] = Array.isArray(feature.properties?.categories) ? feature.properties.categories : [feature.properties?.categories];
+        const violatesHardVeto = allTags.some(tag => BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`)));
         if (violatesHardVeto) return false;
-
-        // 1. Extraktion der Basis-Attribute
-        const coreTags = allTags.filter(tag => 
-          !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
-          (!tag.startsWith("building") || combinedSoftVetoList.includes(tag))
-        );
-
-        // 2. Isolation der tiefsten Sub-Tags (Zerstörung der Parent-Schutzfunktion)
-        const specificCoreTags = coreTags.filter(tag => 
-          !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
-        );
-
-        // 3. Exklusive Soft-Veto-Auswertung (Strict Match ohne kaskadierende Vererbung)
+        const coreTags = allTags.filter(tag => !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) && (!tag.startsWith("building") || combinedSoftVetoList.includes(tag)));
+        const specificCoreTags = coreTags.filter(tag => !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`)));
         if (specificCoreTags.length > 0) {
-          const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
-            combinedSoftVetoList.includes(specificTag)
-          );
-          
+          const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => combinedSoftVetoList.includes(specificTag));
           if (isSolelyExcludedIdentity) return false;
         }
-
         return true; 
       });
-
       return safeFeatures.map((feature: GeoapifyFeature) => {
         const props = feature.properties;
         let rating;
         if (props.datasource?.raw?.rating) {
           const parsedRating = parseFloat(props.datasource.raw.rating);
-          if (!isNaN(parsedRating)) {
-              rating = Math.max(0, Math.min(5, parsedRating));
-          }
+          if (!isNaN(parsedRating)) rating = Math.max(0, Math.min(5, parsedRating));
         }
-
         const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
         const isSponsored = cats.some(c => c.includes('office.coworking') || c.includes('rental.'));
         const distance = props.distance || 0;
-
-        // Scoring berechnen
         const relevanceScore = calculateRelevanceScore(cats, distance, userPrefs);
-
         return {
           id: props.place_id,
           name: props.name || props.address_line1,
@@ -179,7 +150,6 @@ export default function Home() {
     }));
   }, [rawPlaces, allUpcomingActivities]);
 
-
   const isLoadingInitialData = isLoading;
   const isFetchingMore = isValidating && !isLoadingInitialData;
   const isEmpty = !data || data.length === 0 || !(data[0]?.features?.length > 0);
@@ -198,236 +168,97 @@ export default function Home() {
         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
         const data = await response.json();
         setCityName(data.address.city || data.address.town || data.address.village || "Unknown location");
-      } catch (error) {
-        console.error("Reverse geocoding error:", error);
-        setCityName("Could not find city");
-      }
+      } catch (error) { setCityName("Unknown location"); }
     };
-
     if (planningState.isPlanning && planningState.destination) {
       setUserLocation(planningState.destination);
       setCityName(planningState.destination.name);
       return;
     }
-
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
+      navigator.geolocation.getCurrentPosition((position) => {
+          const location = { lat: position.coords.latitude, lng: position.coords.longitude };
           setUserLocation(location);
-          if (location.lat && location.lng) {
-            reverseGeocode(location.lat, location.lng);
-          }
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          toast({
-            title: 'Location Error',
-            description: 'Could not get location. Using default location (Bremerhaven).',
-          });
+          if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
+        }, () => {
           setUserLocation({ lat: 53.5451, lng: 8.5746 });
           setCityName("Bremerhaven");
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
-      toast({
-        title: 'Location Error',
-        description: 'Geolocation not supported. Using default location (Bremerhaven).',
-      });
       setUserLocation({ lat: 53.5451, lng: 8.5746 });
       setCityName("Bremerhaven");
     }
-  }, [toast, planningState]);
+  }, [planningState]);
   
   useEffect(() => {
     const fetchAllUpcomingActivities = async () => {
         if (!db) return;
-        const activitiesQuery = query(
-            collection(db, "activities"),
-            where("activityDate", ">=", Timestamp.now())
-        );
+        const activitiesQuery = query(collection(db, "activities"), where("activityDate", ">=", Timestamp.now()));
         const querySnapshot = await getDocs(activitiesQuery);
-        const activitiesData = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        })) as Activity[];
+        const activitiesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
         setAllUpcomingActivities(activitiesData);
     };
     fetchAllUpcomingActivities();
   }, []);
 
-  useEffect(() => {
-    if (isCommunityCategory) {
-        setCustomActivities(allUpcomingActivities.filter(act => act.isCustomActivity));
-    }
-  }, [isCommunityCategory, allUpcomingActivities]);
+  useEffect(() => { if (isCommunityCategory) setCustomActivities(allUpcomingActivities.filter(act => act.isCustomActivity)); }, [isCommunityCategory, allUpcomingActivities]);
 
   const observer = useRef<IntersectionObserver>();
   const lastElementRef = useCallback(node => {
     if (isFetchingMore || !hasMore) return;
     if (observer.current) observer.current.disconnect();
-
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        setSize(size + 1);
-      }
-    });
-
+    observer.current = new IntersectionObserver(entries => { if (entries[0].isIntersecting && hasMore) setSize(size + 1); });
     if (node) observer.current.observe(node);
   }, [isFetchingMore, hasMore, setSize, size]);
 
   const handleCategoryChange = (categoryId: string[]) => {
     setSearchQuery('');
     setActiveCategory(categoryId);
-    const isCommunity = categoryId.includes("user_event") || categoryId.includes("community");
-    const isFavorites = categoryId.includes("favorites");
-    setSortBy(isCommunity ? 'newest' : (isFavorites ? 'recommended' : 'recommended'));
+    setSortBy('recommended');
   };
 
-  const handlePlaceSelect = (place: Place) => {
-    setSelectedPlace(place);
-  };
-
-  const handleDialogClose = () => {
-    setSelectedPlace(null);
-  }
-
-  const handleOpenActivityModal = (place: Place) => {
-    if (!user) {
-      router.push('/login');
-      toast({
-        title: 'Login Required',
-        description: 'Please log in to create an activity.',
-      });
-      return;
-    }
-    setActivityModalPlace(place);
-  };
-  
-  const handleOpenCustomActivityModal = () => {
-    if (!user) {
-      router.push('/login');
-      toast({
-        title: 'Login Required',
-        description: 'Please log in to create an activity.',
-      });
-      return;
-    }
-    setActivityModalPlace('custom');
-  };
+  const handlePlaceSelect = (place: Place) => setSelectedPlace(place);
+  const handleDialogClose = () => setSelectedPlace(null);
+  const handleOpenActivityModal = (place: Place) => { if (!user) { router.push('/login'); return; } setActivityModalPlace(place); };
+  const handleOpenCustomActivityModal = () => { if (!user) { router.push('/login'); return; } setActivityModalPlace('custom'); };
 
   const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean): Promise<boolean> => {
-    if (!user) {
-        toast({
-            title: 'Error',
-            description: 'You must be logged in to create an activity.',
-            variant: 'destructive',
-        });
-        return false;
-    }
-
+    if (!user) return false;
     try {
       const isCustom = activityModalPlace === 'custom';
-      
-      if (isCustom && !customLocationName?.trim()) {
-        toast({
-            title: 'Location required',
-            description: 'Please enter a name for your activity location.',
-            variant: 'destructive',
-        });
-        return false;
-      }
-
-      const payload = isCustom 
-        ? { customLocationName: customLocationName!, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted }
-        : { place: activityModalPlace as Place, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted };
-
+      if (isCustom && !customLocationName?.trim()) return false;
+      const payload = isCustom ? { customLocationName: customLocationName!, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted } : { place: activityModalPlace as Place, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted };
       const newActivityRef = await createActivity(payload);
-      
-      const activityName = isCustom ? customLocationName : (activityModalPlace as Place).name;
-
-      toast({
-        title: isBoosted ? 'Aktivität Geboostet!' : 'Activity Created!',
-        description: isBoosted 
-          ? `Deine Aktivität bei ${activityName} steht nun ganz oben.`
-          : `Your activity at ${activityName} is set and a chatroom is ready.`,
-      });
-      
       setActivityModalPlace(null);
       router.push(`/chat/${newActivityRef.id}`);
       return true;
-
-    } catch (error: any) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Failed to Create Activity',
-        description: error.message || 'There was a problem creating your activity.',
-      });
-      return false;
-    }
+    } catch (error: any) { return false; }
   };
 
   const handleJoin = async (activityId: string) => {
-    if (!user) {
-        toast({ title: 'Login Required', description: 'You must be logged in to join an activity.' });
-        router.push('/login');
-        throw new Error('Login Required');
-    }
+    if (!user) { router.push('/login'); throw new Error('Login Required'); }
     try {
         await joinActivity(activityId, user);
-        toast({ title: 'Success!', description: 'You have joined the activity. You can find it in your chats.' });
         router.push(`/chat/${activityId}`);
-    } catch (error: any) {
-        console.error(error);
-        toast({ title: 'Error', description: error.message || 'Failed to join activity.', variant: 'destructive' });
-        throw error;
-    }
+    } catch (error: any) { throw error; }
   };
 
   const renderContent = () => {
     if (isLoadingInitialData) {
-      return (
-        <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 8 }).map((_, i) => (
-                <CardSkeleton key={i} />
-            ))}
-        </div>
-      );
+      return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}</div>;
     }
-    
     if (!userLocation && !isLoadingInitialData) {
-      return (
-        <div className="flex h-full w-full items-center justify-center">
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <MapPin className="h-8 w-8 animate-bounce" />
-                <p>Getting your location...</p>
-            </div>
-        </div>
-      );
+      return <div className="flex h-full w-full items-center justify-center"><div className="flex flex-col items-center gap-2 text-muted-foreground"><MapPin className="h-8 w-8 animate-bounce text-primary" /><p className="font-bold text-sm">Standort wird ermittelt...</p></div></div>;
     }
-    
-    if (error) {
-        return (
-            <div className="flex h-full w-full items-center justify-center p-6 text-center">
-                <p className="text-destructive">Could not load places. Please try again later.</p>
-            </div>
-        );
-    }
+    if (error) return <div className="flex h-full w-full items-center justify-center p-6 text-center text-destructive font-bold">Verbindungsproblem. Bitte später erneut versuchen.</div>;
 
     const EmptySearchState = () => (
         <div className="flex h-full w-full items-center justify-center p-6 text-center">
             <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Keine Ergebnisse gefunden</h3>
-                <p className="text-muted-foreground">Passe deine Suche oder die Filter an.</p>
-                <Button onClick={resetFilters} variant="outline">
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Filter zurücksetzen
-                </Button>
+                <h3 className="font-black text-xl text-[#0f172a]">Keine Ergebnisse</h3>
+                <p className="text-[#64748b] font-medium">Passe deine Suche oder die Filter an.</p>
+                <Button onClick={resetFilters} variant="outline" className="rounded-xl font-bold">Filter zurücksetzen</Button>
             </div>
         </div>
     );
@@ -436,342 +267,91 @@ export default function Home() {
         const renderList = () => {
             if (isFavoritesCategory) {
                 if (favorites.length === 0) {
-                     return (
-                        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
-                            <div className="bg-primary/10 p-4 rounded-full">
-                                <Bookmark className="h-10 w-10 text-primary" />
-                            </div>
-                            <h2 className="text-xl font-semibold">No Favorites Yet</h2>
-                            <p className="text-muted-foreground">
-                                Tap the bookmark icon on a place to save it for later.
-                            </p>
-                        </div>
-                    );
+                     return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="text-xl font-black text-[#0f172a]">Noch keine Favoriten</h2><p className="text-[#64748b] font-medium max-w-xs">Speichere Orte mit dem Lesezeichen-Symbol, um sie hier zu sehen.</p></div>;
                 }
-                return (
-                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {favorites.map(place => (
-                          <PlaceCard
-                            key={place.id}
-                            place={place as Place}
-                            onClick={() => handlePlaceSelect(place as Place)}
-                            onAddActivity={() => handleOpenActivityModal(place as Place)}
-                          />
-                      ))}
-                    </div>
-                );
+                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{favorites.map(place => <PlaceCard key={place.id} place={place as Place} onClick={() => handlePlaceSelect(place as Place)} onAddActivity={() => handleOpenActivityModal(place as Place)} />)}</div>;
             }
-            
             if (isCommunityCategory) {
-                const filteredCustomActivities = customActivities.filter(activity =>
-                    activity.placeName.toLowerCase().includes(searchQuery.toLowerCase())
-                );
-    
-                const sortedActivities = filteredCustomActivities.sort((a, b) => {
-                    if (a.isBoosted && !b.isBoosted) return -1;
-                    if (!a.isBoosted && b.isBoosted) return 1;
-
-                    if (sortBy === 'newest') {
-                        return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
-                    }
-                    return 0;
-                });
-                
-                const visibleActivities = sortedActivities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
-    
-                if (visibleActivities.length === 0) {
-                     return searchQuery ? <EmptySearchState /> : (
-                        <div className="flex h-full w-full items-center justify-center p-6 text-center">
-                            <div className="space-y-2">
-                                <h3 className="font-semibold text-lg">No community activities found</h3>
-                                <p className="text-muted-foreground">Why not create one?</p>
-                            </div>
-                        </div>
-                    )
-                }
-                return (
-                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {visibleActivities.map((activity) => (
-                        <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
-                      ))}
-                  </div>
-                );
+                const filtered = customActivities.filter(act => act.placeName.toLowerCase().includes(searchQuery.toLowerCase()));
+                const sorted = filtered.sort((a, b) => (a.isBoosted && !b.isBoosted ? -1 : (!a.isBoosted && b.isBoosted ? 1 : (sortBy === 'newest' ? (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0) : 0))));
+                const visible = sorted.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
+                if (visible.length === 0) return searchQuery ? <EmptySearchState /> : <div className="flex h-full w-full items-center justify-center p-10 text-center font-bold text-[#64748b]">Keine Community-Aktivitäten gefunden.</div>;
+                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{visible.map((activity) => <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />)}</div>;
             } else {
-                const filteredPlaces = places.filter(place =>
-                    place.name.toLowerCase().includes(searchQuery.toLowerCase())
-                );
-    
-                const sortedPlaces = filteredPlaces.sort((a, b) => {
-                    if (a.isSponsored && !b.isSponsored) return -1;
-                    if (!a.isSponsored && b.isSponsored) return 1;
-
-                    if (sortBy === 'recommended') {
-                        return (b.relevanceScore || 0) - (a.relevanceScore || 0);
-                    }
-                    if (sortBy === 'rating') {
-                        return (b.rating || 0) - (a.rating || 0);
-                    }
-                    if (sortBy === 'popular') {
-                        return (b.activityCount || 0) - (a.activityCount || 0);
-                    }
-                    return 0;
-                });
-    
-                if (sortedPlaces.length === 0 && !isFetchingMore) {
-                     return <EmptySearchState />;
-                }
-                return (
-                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {sortedPlaces.map((place, index) => {
-                        const isLastElement = index === sortedPlaces.length - 1;
-                        return (
-                          <div ref={isLastElement ? lastElementRef : null} key={place.id}>
-                            <PlaceCard 
-                              place={place} 
-                              onClick={() => handlePlaceSelect(place)}
-                              onAddActivity={() => handleOpenActivityModal(place)}
-                            />
-                          </div>
-                        )
-                      })}
-                    </div>
-                );
+                const filtered = places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                const sorted = filtered.sort((a, b) => (a.isSponsored && !b.isSponsored ? -1 : (!a.isSponsored && b.isSponsored ? 1 : (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : (sortBy === 'popular' ? (b.activityCount || 0) - (a.activityCount || 0) : 0))))));
+                if (sorted.length === 0 && !isFetchingMore) return <EmptySearchState />;
+                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div ref={index === sorted.length - 1 ? lastElementRef : null} key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
             }
         };
-
-        return (
-            <div className="max-w-7xl mx-auto w-full">
-                {renderList()}
-                {isFetchingMore && (
-                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <CardSkeleton />
-                        <CardSkeleton />
-                    </div>
-                )}
-                {!isFetchingMore && !hasMore && places.length > 0 && !isCommunityCategory && !isFavoritesCategory && (
-                    <p className="text-center text-muted-foreground p-6">You've reached the end of the list.</p>
-                )}
-            </div>
-        );
+        return <div className="max-w-7xl mx-auto w-full">{renderList()}{isFetchingMore && <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><CardSkeleton /><CardSkeleton /></div>}{!isFetchingMore && !hasMore && places.length > 0 && !isCommunityCategory && !isFavoritesCategory && <p className="text-center text-[#64748b] p-10 font-bold text-sm">Das war's für heute! 🎉</p>}</div>;
     }
 
     if (viewMode === 'map') {
-        if (!userLocation) {
-             return (
-                <div className="flex h-full w-full items-center justify-center">
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                        <MapPin className="h-8 w-8 animate-bounce" />
-                        <p>Getting your location...</p>
-                    </div>
-                </div>
-              );
-        }
-
-        // Premium Gating: Secondary Check in Render Tree
+        if (!userLocation) return <div className="flex h-full w-full items-center justify-center"><MapPin className="h-8 w-8 animate-bounce text-primary" /></div>;
         if (!userProfile?.isPremium) {
-            return (
-                <div className="flex flex-col items-center justify-center p-8 h-[calc(100%-80px)] text-center space-y-6">
-                    <div className="bg-secondary p-6 rounded-full relative">
-                        <Lock className="h-12 w-12 text-muted-foreground" />
-                        <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground p-1.5 rounded-full border-4 border-background">
-                            <Sparkles className="h-4 w-4" />
-                        </div>
-                    </div>
-                    <div className="space-y-2 max-w-sm">
-                        <h2 className="text-2xl font-bold">Kartenansicht gesperrt</h2>
-                        <p className="text-muted-foreground">Die interaktive geografische Entdeckung ist Teil der Premium-Architektur.</p>
-                    </div>
-                    <Button onClick={() => setIsPremiumUpsellOpen(true)} className="rounded-full px-8 h-12 font-bold shadow-lg gap-2">
-                        <Sparkles className="h-4 w-4" />
-                        Premium freischalten
-                    </Button>
-                </div>
-            );
+            return <div className="flex flex-col items-center justify-center p-10 h-[calc(100%-80px)] text-center space-y-6"><div className="bg-white p-8 rounded-full shadow-xl relative"><Lock className="h-12 w-12 text-[#64748b]" /><div className="absolute -top-1 -right-1 bg-primary text-white p-2 rounded-full border-4 border-white shadow-lg"><Sparkles className="h-5 w-5" /></div></div><div className="space-y-2 max-w-sm"><h2 className="text-2xl font-black text-[#0f172a]">Kartenansicht gesperrt</h2><p className="text-[#64748b] font-medium">Die interaktive geografische Entdeckung ist Teil der Premium-Architektur.</p></div><Button onClick={() => setIsPremiumUpsellOpen(true)} className="rounded-2xl px-10 h-14 font-black shadow-xl shadow-primary/20 gap-2 text-lg transition-transform active:scale-95">Premium freischalten</Button></div>;
         }
-        
-        const placesForMap = isFavoritesCategory
-            ? (favorites as Place[])
-            : places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-        return (
-            <MapView places={placesForMap} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />
-        );
+        const placesForMap = isFavoritesCategory ? (favorites as Place[]) : places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        return <MapView places={placesForMap} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />;
     }
   };
 
   return (
     <>
       <div className="flex h-full w-full flex-col">
-        <header className="flex-none w-full border-b bg-background z-20">
-          <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 max-w-7xl mx-auto w-full">
+        <header className="flex-none w-full border-b border-slate-100 bg-white/80 backdrop-blur-md z-20">
+          <div className="flex flex-col gap-4 px-4 py-5 sm:px-6 max-w-7xl mx-auto w-full">
              <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold tracking-tight">Discover</h1>
-                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1 text-muted-foreground mt-1 hover:text-primary transition-colors">
+                  <h1 className="text-3xl font-black tracking-tight text-[#0f172a]">Entdecken</h1>
+                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 text-[#64748b] mt-1.5 hover:text-primary transition-colors font-bold text-sm">
                     <MapPin className="h-4 w-4" />
-                    <span className="text-sm font-medium">
-                      {cityName}
-                    </span>
+                    <span>{cityName}</span>
                   </button>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     <NotificationBell />
-                    <div className="flex items-center gap-1 rounded-full bg-muted p-1">
-                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-full shadow-sm" onClick={() => setViewMode('list')}>
-                            <List className="h-4 w-4" />
-                            <span className="sr-only">List View</span>
-                        </Button>
-                        <Button 
-                            variant={viewMode === 'map' ? 'secondary' : 'ghost'} 
-                            size="icon" 
-                            className="h-8 w-8 rounded-full shadow-sm relative" 
-                            onClick={() => {
-                                if (!userProfile?.isPremium) {
-                                    setIsPremiumUpsellOpen(true);
-                                    return;
-                                }
-                                setViewMode('map');
-                            }}
-                        >
-                            <MapIcon className="h-4 w-4" />
-                            {!userProfile?.isPremium && (
-                                <div className="absolute -top-1 -right-1 bg-muted-foreground/20 rounded-full p-0.5 border border-background">
-                                    <Lock className="h-2 w-2 text-muted-foreground fill-background" />
-                                </div>
-                            )}
-                            <span className="sr-only">Map View</span>
-                        </Button>
+                    <div className="flex items-center gap-1 rounded-2xl bg-slate-50 p-1.5 shadow-inner">
+                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className={cn("h-9 w-9 rounded-xl shadow-sm transition-all", viewMode === 'list' ? "bg-white text-primary" : "text-[#64748b]")} onClick={() => setViewMode('list')}><List className="h-5 w-5" /></Button>
+                        <Button variant={viewMode === 'map' ? 'secondary' : 'ghost'} size="icon" className={cn("h-9 w-9 rounded-xl shadow-sm relative transition-all", viewMode === 'map' ? "bg-white text-primary" : "text-[#64748b]")} onClick={() => { if (!userProfile?.isPremium) { setIsPremiumUpsellOpen(true); return; } setViewMode('map'); }}><MapIcon className="h-5 w-5" />{!userProfile?.isPremium && <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 border-2 border-white shadow-sm"><Lock className="h-2 w-2 text-white fill-current" /></div>}</Button>
                     </div>
-                    <Button variant="default" size="icon" className="h-9 w-9 rounded-full shadow-sm" onClick={handleOpenCustomActivityModal}>
-                        <Plus className="h-5 w-5" />
-                        <span className="sr-only">Create Custom Activity</span>
-                    </Button>
+                    <Button variant="default" size="icon" className="h-10 w-10 rounded-2xl shadow-lg shadow-primary/20" onClick={handleOpenCustomActivityModal}><Plus className="h-6 w-6" strokeWidth={3} /></Button>
                 </div>
             </div>
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
-            <div className="mt-4 flex w-full items-center gap-2">
+            <div className="mt-2 flex w-full items-center gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#64748b]" />
                 <Input
                     type="search"
-                    placeholder="Orte oder Aktivitäten suchen..."
+                    placeholder="Suchen..."
                     value={searchQuery}
-                    onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        if (e.target.value && !activeCategory.includes('all') && !isCommunityCategory && !isFavoritesCategory) {
-                            setActiveCategory(['all']);
-                        }
-                    }}
-                    className="w-full rounded-full bg-muted pl-10 h-12"
+                    onChange={(e) => { setSearchQuery(e.target.value); if (e.target.value && !activeCategory.includes('all') && !isCommunityCategory && !isFavoritesCategory) setActiveCategory(['all']); }}
+                    className="w-full rounded-2xl bg-slate-50 border-none pl-12 h-12 text-sm font-bold placeholder:text-slate-400 focus-visible:ring-0 focus-visible:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all"
                 />
               </div>
               {!isFavoritesCategory && (
                 <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-[180px] rounded-full h-12 bg-muted border-none focus:ring-0">
-                        <SelectValue placeholder="Sortieren nach..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {isCommunityCategory ? (
-                          <SelectItem value="newest">Neueste</SelectItem>
-                        ) : (
-                          <>
-                              <SelectItem value="recommended">Empfohlen</SelectItem>
-                              <SelectItem value="rating">Bewertung</SelectItem>
-                              <SelectItem value="popular">Beliebteste</SelectItem>
-                          </>
-                        )}
-                    </SelectContent>
+                    <SelectTrigger className="w-[160px] rounded-2xl h-12 bg-slate-50 border-none focus:ring-0 font-bold text-xs text-[#0f172a] shadow-inner px-4"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-2xl border-none shadow-2xl font-bold"><SelectItem value="recommended">Empfohlen</SelectItem><SelectItem value="rating">Bewertung</SelectItem><SelectItem value="popular">Beliebt</SelectItem><SelectItem value="newest">Neueste</SelectItem></SelectContent>
                 </Select>
               )}
             </div>
             {!isCommunityCategory && !isFavoritesCategory && (
-              <div className="flex flex-col gap-2 mb-2">
-                <div className="flex justify-between items-center text-sm font-medium text-muted-foreground px-1">
-                  <span>Search Radius</span>
-                  <span className="text-primary font-bold">{searchRadiusKm} km</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="50"
-                  step="1"
-                  value={searchRadiusKm}
-                  onChange={(e) => setSearchRadiusKm(Number(e.target.value))}
-                  className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
-                />
+              <div className="flex flex-col gap-2.5 mt-1 px-1">
+                <div className="flex justify-between items-center text-[10px] font-black text-[#64748b] uppercase tracking-widest"><span>Suchradius</span><span className="text-primary">{searchRadiusKm} km</span></div>
+                <input type="range" min="1" max="50" step="1" value={searchRadiusKm} onChange={(e) => setSearchRadiusKm(Number(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-primary" />
               </div>
             )}
           </div>
         </header>
-
-        <div className={`flex-1 w-full pb-[100px] ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-          {renderContent()}
-        </div>
+        <div className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden'}`}>{renderContent()}</div>
       </div>
-
-      <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-          <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden">
-              {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
-          </DialogContent>
-      </Dialog>
-
-      <CreateActivityDialog
-        place={activityModalPlace === 'custom' ? null : activityModalPlace}
-        open={!!activityModalPlace}
-        onOpenChange={(open) => !open && setActivityModalPlace(null)}
-        onCreateActivity={handleCreateActivity}
-      />
-
-      <LocationSearchDialog 
-        open={isLocationSearchOpen}
-        onOpenChange={setIsLocationSearchOpen}
-      />
-
-      {/* Premium Upsell Dialog */}
-      <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader className="items-center text-center">
-            <div className="bg-primary/10 p-4 rounded-full mb-4">
-                <Sparkles className="h-10 w-10 text-primary" />
-            </div>
-            <DialogTitle className="text-2xl font-bold">Werde Premium-Mitglied</DialogTitle>
-            <DialogDescription className="text-base">
-                Schalte die interaktive Karte und viele weitere exklusive Funktionen frei.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-secondary/50">
-                <div className="mt-1 bg-primary/20 p-1 rounded-full"><Check className="h-3 w-3 text-primary" /></div>
-                <div>
-                    <p className="font-bold text-sm">Interaktive Kartenansicht</p>
-                    <p className="text-xs text-muted-foreground">Entdecke Aktivitäten und Orte direkt in deiner Umgebung auf der Karte.</p>
-                </div>
-            </div>
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-secondary/50">
-                <div className="mt-1 bg-primary/20 p-1 rounded-full"><Check className="h-3 w-3 text-primary" /></div>
-                <div>
-                    <p className="font-bold text-sm">Individuelle Akzentfarben</p>
-                    <p className="text-xs text-muted-foreground">Personalisiere die App mit deiner Lieblingsfarbe.</p>
-                </div>
-            </div>
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-secondary/50">
-                <div className="mt-1 bg-primary/20 p-1 rounded-full"><Check className="h-3 w-3 text-primary" /></div>
-                <div>
-                    <p className="font-bold text-sm">Keine Werbung</p>
-                    <p className="text-xs text-muted-foreground">Genieße Aktvia ohne Unterbrechungen durch Swipe-Ads.</p>
-                </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button className="w-full h-12 text-base font-bold rounded-xl shadow-lg" onClick={() => {
-                toast({ title: "In-App-Kauf", description: "Zahlungsmodul wird in Kürze implementiert." });
-                setIsPremiumUpsellOpen(false);
-            }}>
-                Jetzt upgraden
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}><DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden rounded-3xl border-none shadow-2xl">{selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}</DialogContent></Dialog>
+      <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
+      <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
+      <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}><DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl"><DialogHeader className="items-center text-center"><div className="bg-primary/10 p-5 rounded-3xl mb-4 shadow-inner"><Sparkles className="h-10 w-10 text-primary" /></div><DialogTitle className="text-2xl font-black text-[#0f172a]">Werde Premium-Mitglied</DialogTitle><DialogDescription className="text-base font-medium text-[#64748b]">Schalte exklusive Funktionen frei und unterstütze die Entwicklung.</DialogDescription></DialogHeader><div className="space-y-4 py-4"><div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50"><div className="mt-1 bg-primary text-white p-1 rounded-lg"><Check className="h-3 w-3" strokeWidth={4} /></div><div><p className="font-black text-sm text-[#0f172a]">Interaktive Kartenansicht</p><p className="text-xs font-medium text-[#64748b]">Entdecke alles direkt auf der Karte.</p></div></div><div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50"><div className="mt-1 bg-primary text-white p-1 rounded-lg"><Check className="h-3 w-3" strokeWidth={4} /></div><div><p className="font-black text-sm text-[#0f172a]">Keine Werbung</p><p className="text-xs font-medium text-[#64748b]">Genieße Aktvia ohne Unterbrechungen.</p></div></div></div><DialogFooter><Button className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20 transition-transform active:scale-95" onClick={() => setIsPremiumUpsellOpen(false)}>Jetzt upgraden</Button></DialogFooter></DialogContent></Dialog>
     </>
   );
 }

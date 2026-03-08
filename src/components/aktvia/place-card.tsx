@@ -4,64 +4,26 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import type { Place } from '@/lib/types';
 import {
-  UtensilsCrossed,
-  Coffee,
-  TreePine,
-  ShoppingBag,
-  Bed,
-  Landmark,
-  Film,
-  Building,
   Plus,
   MessageSquare,
-  type LucideIcon,
   Navigation,
   Bookmark,
   Sparkles,
   Loader2,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { votePlace } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
-
-
-const categoryIconMap: { [key: string]: LucideIcon } = {
-  'catering.restaurant': UtensilsCrossed,
-  'catering.cafe': Coffee,
-  'leisure.park': TreePine,
-  'tourism.attraction': Landmark,
-  'commercial': ShoppingBag,
-  'entertainment.cinema': Film,
-  'accommodation.hotel': Bed,
-};
-
-const getCategoryIcon = (categories: string[]): LucideIcon => {
-  for (const category of categories) {
-    if (categoryIconMap[category]) {
-      return categoryIconMap[category];
-    }
-    const parentCategory = category.split('.')[0];
-    if (categoryIconMap[parentCategory]) {
-      return categoryIconMap[parentCategory];
-    }
-  }
-  return Building; // Default icon
-};
+import { getPrimaryTagStyle, getTagStyle } from '@/lib/tag-config';
 
 const formatDistance = (distanceInMeters?: number) => {
-    if (distanceInMeters === undefined) {
-        return null;
-    }
-    if (distanceInMeters < 1000) {
-        return `${Math.round(distanceInMeters)} m`;
-    }
+    if (distanceInMeters === undefined) return null;
+    if (distanceInMeters < 1000) return `${Math.round(distanceInMeters)} m`;
     return `${(distanceInMeters / 1000).toFixed(1)} km`;
 };
-
 
 type PlaceCardProps = {
   place: Place;
@@ -75,7 +37,10 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const { user, userProfile } = useAuth();
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
-    const Icon = getCategoryIcon(place.categories);
+    
+    // Dynamisches Tag-Mapping
+    const primaryStyle = getPrimaryTagStyle(place.categories);
+    const PrimaryIcon = primaryStyle.icon;
     
     const [isVoting, setIsVoting] = useState(false);
     const [localVotes, setLocalVotes] = useState({ upvotes: 0, downvotes: 0, userVotes: {} as Record<string, 'up' | 'down'> });
@@ -120,84 +85,86 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         }
     };
 
-
   return (
     <Card
       onClick={onClick}
       className={cn(
-        "cursor-pointer group overflow-hidden rounded-2xl bg-card shadow-md hover:shadow-lg transition-all duration-300 border-none flex flex-col relative",
-        place.isPromoted && "ring-2 ring-primary/20 bg-primary/[0.02]"
+        "cursor-pointer group overflow-hidden rounded-2xl bg-[#ffffff] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] transition-all duration-300 border-none flex flex-col relative p-4",
+        place.isPromoted && "ring-2 ring-primary/20"
       )}
     >
       {place.isPromoted && (
-        <div className="absolute top-2 right-2 z-10 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm animate-pulse">
-          <Sparkles className="h-2.5 w-2.5" />
+        <div className="absolute top-3 right-3 z-10 bg-primary text-primary-foreground text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+          <Sparkles className="h-3 w-3" />
           <span>PROMOTED</span>
         </div>
       )}
 
-      <div className="flex items-stretch">
-        <div className={cn(
-          "relative flex flex-shrink-0 items-center justify-center w-28",
-          place.isPromoted ? "bg-primary/10" : "bg-muted/30"
-        )}>
-            <Icon className={cn(
-              "h-10 w-10",
-              place.isPromoted ? "text-primary/70" : "text-muted-foreground/70"
-            )} />
+      <div className="flex items-start gap-4">
+        {/* Dynamischer Icon Anker */}
+        <div 
+          className="relative flex flex-shrink-0 items-center justify-center w-20 h-20 rounded-2xl"
+          style={{ backgroundColor: `${primaryStyle.color}15` }}
+        >
+            <PrimaryIcon 
+              className="h-10 w-10" 
+              style={{ color: primaryStyle.color }}
+            />
         </div>
 
-        <div className="flex-1 min-w-0 flex flex-col justify-center p-3">
-            <h3 className="text-base font-semibold truncate w-full">{place.name}</h3>
-            <p className="text-sm text-muted-foreground truncate w-full mt-1">{place.address}</p>
+        <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-extrabold text-[#0f172a] truncate leading-tight">{place.name}</h3>
+            <p className="text-xs text-[#64748b] truncate mt-1">{place.address}</p>
             {place.distance !== undefined && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1 font-medium">
+                <div className="flex items-center gap-1.5 text-[10px] text-[#64748b] mt-2 font-bold uppercase tracking-wider">
                     <Navigation className="h-3 w-3"/>
-                    <span>{formatDistance(place.distance)}</span>
+                    <span>{formatDistance(place.distance)} entfernt</span>
                 </div>
             )}
         </div>
       </div>
-      <div className="flex-1 flex flex-col justify-end p-3 pt-0">
-        {place.activityCount && place.activityCount > 0 ? (
-          <div className="mb-2 inline-flex items-center gap-2 rounded-lg bg-primary px-2.5 py-1.5 text-sm font-semibold text-primary-foreground self-start">
-            <MessageSquare className="h-4 w-4" />
-            <span>
-              {place.activityCount} Aktivität{place.activityCount > 1 ? 'en' : ''}
-            </span>
+
+      <div className="mt-4 flex-1 flex flex-col justify-end">
+        {place.activityCount && place.activityCount > 0 && (
+          <div className="mb-3 inline-flex items-center gap-2 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary self-start">
+            <MessageSquare className="h-3.5 w-3.5" />
+            <span>{place.activityCount} Aktivität{place.activityCount > 1 ? 'en' : ''}</span>
           </div>
-        ) : (
-          <div className="h-[34px] mb-2" />
         )}
         
-        <div className="flex w-full flex-wrap items-center gap-2 overflow-hidden mb-3">
-          {place.categories && place.categories.map((tag, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center rounded-md bg-secondary px-2 py-1 text-[10px] font-medium text-secondary-foreground whitespace-nowrap"
-            >
-              {tag}
-            </span>
-          ))}
+        <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mb-4">
+          {place.categories && place.categories.map((cat, index) => {
+            const style = getTagStyle(cat);
+            // Blockiere rohe Pfade, falls kein Mapping vorhanden ist und es kein spezifischer Tag ist
+            if (style.label === 'Ort' && cat.includes('.')) return null;
+            return (
+              <span
+                key={index}
+                className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-tight"
+                style={{ backgroundColor: `${style.color}10`, color: style.color }}
+              >
+                {style.label}
+              </span>
+            );
+          })}
         </div>
 
-        <div className="card-footer-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '4px' }}>
-          
-          <div className="voting-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className="card-footer-actions flex justify-between items-center w-full pt-3 border-t border-slate-50">
+          <div className="voting-controls flex gap-2 items-center">
             <button 
               onClick={(e) => { e.stopPropagation(); handleVoteClick(e, userVote === 'up' ? 'none' : 'up'); }} 
               aria-label="Upvote"
               style={{ 
-                padding: '6px 12px', 
+                padding: '6px 14px', 
                 border: '1px solid', 
-                borderRadius: '8px', 
-                fontWeight: 'bold',
+                borderRadius: '10px', 
+                fontWeight: '800',
+                fontSize: '14px',
                 transition: 'all 0.2s',
                 cursor: 'pointer',
                 background: userVote === 'up' ? '#22c55e' : '#ffffff',
-                color: userVote === 'up' ? '#ffffff' : '#000000',
+                color: userVote === 'up' ? '#ffffff' : '#0f172a',
                 borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0',
-                opacity: 1
               }}
             >
               {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
@@ -206,42 +173,42 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
               onClick={(e) => { e.stopPropagation(); handleVoteClick(e, userVote === 'down' ? 'none' : 'down'); }} 
               aria-label="Downvote"
               style={{ 
-                padding: '6px 12px', 
+                padding: '6px 14px', 
                 border: '1px solid', 
-                borderRadius: '8px', 
-                fontWeight: 'bold',
+                borderRadius: '10px', 
+                fontWeight: '800',
+                fontSize: '14px',
                 transition: 'all 0.2s',
                 cursor: 'pointer',
                 background: userVote === 'down' ? '#ef4444' : '#ffffff',
-                color: userVote === 'down' ? '#ffffff' : '#000000',
+                color: userVote === 'down' ? '#ffffff' : '#0f172a',
                 borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0',
-                opacity: 1
               }}
             >
               {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}
             </button>
 
             {userProfile?.isAdmin && (
-              <span className="admin-metrics" style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px', display: 'block', visibility: 'visible' }}>
+              <span className="text-[10px] font-bold text-[#64748b] ml-1">
                 ↑{localVotes.upvotes} ↓{localVotes.downvotes}
               </span>
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="flex gap-2">
             <button 
                 className="bookmark-button"
                 onClick={handleBookmarkToggle}
-                style={{ padding: '8px', borderRadius: '50%', border: '1px solid #e2e8f0', background: '#ffffff', cursor: 'pointer' }}
+                style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#ffffff', cursor: 'pointer' }}
             >
                 <Bookmark className={cn("h-4 w-4", isFavorite && "fill-current text-primary")} />
             </button>
             <button 
                 className="add-button"
                 onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
-                style={{ padding: '8px', borderRadius: '50%', border: 'none', background: 'hsl(var(--primary))', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                style={{ padding: '10px', borderRadius: '12px', border: 'none', background: 'hsl(var(--primary))', color: '#ffffff', cursor: 'pointer', boxShadow: '0 4px 12px -2px rgba(var(--primary), 0.4)' }}
             >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4" strokeWidth={3} />
             </button>
           </div>
         </div>
