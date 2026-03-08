@@ -6,6 +6,8 @@ import {
   Building, Moon, Circle, Sun, Tent, Shield, Globe, User,
   BookOpen,
   PawPrint,
+  Star,
+  MoonStar,
   type LucideIcon
 } from 'lucide-react';
 
@@ -26,6 +28,21 @@ export interface TagStyle {
 export const getPrimaryIconData = (place: any): TagStyle => {
   const tags = place.categories || place.tags || [];
   const name = (place.name || '').toLowerCase();
+  const n = name;
+
+  // --- SAKRALBAUTEN (Höchste Priorität gemäß Direktive) ---
+  if (tags.includes('tourism.sights.place_of_worship.synagogue') || tags.includes('religion.place_of_worship.judaism') || n.includes('synagoge')) {
+    return { icon: Star, color: '#3b82f6', label: 'Synagoge', bgClass: 'bg-blue-50' };
+  }
+  if (tags.includes('tourism.sights.place_of_worship.mosque') || tags.includes('religion.place_of_worship.islam') || n.includes('moschee')) {
+    return { icon: MoonStar, color: '#10b981', label: 'Moschee', bgClass: 'bg-emerald-50' };
+  }
+  if (tags.includes('tourism.sights.place_of_worship.church') || tags.includes('tourism.sights.place_of_worship.cathedral') || tags.includes('tourism.sights.place_of_worship.chapel') || tags.includes('religion.place_of_worship.christianity') || n.includes('kirche') || n.includes('dom') || n.includes('kapelle')) {
+    return { icon: Church, color: '#8b5cf6', label: 'Kirche', bgClass: 'bg-violet-50' };
+  }
+  if (tags.includes('tourism.sights.place_of_worship.temple') || tags.includes('religion.place_of_worship.buddhism') || tags.includes('religion.place_of_worship.hinduism') || n.includes('tempel') || n.includes('schrein')) {
+    return { icon: Landmark, color: '#f59e0b', label: 'Tempel/Schrein', bgClass: 'bg-amber-50' };
+  }
 
   // --- PRIORITÄT 1: Maritim & Spezifische Namens-Überschreibungen ---
   if (tags.includes('tourism.sights.memorial.ship')) {
@@ -36,9 +53,6 @@ export const getPrimaryIconData = (place: any): TagStyle => {
   }
   if (name.includes('dock')) {
     return { icon: Anchor, color: '#3b82f6', label: 'Maritim', bgClass: 'bg-blue-50' };
-  }
-  if (name.includes('synagoge')) {
-    return { icon: Landmark, color: '#64748b', label: 'Synagoge', bgClass: 'bg-slate-50' }; 
   }
   if (name.includes('see')) {
     return { icon: Waves, color: '#0ea5e9', label: 'Gewässer', bgClass: 'bg-sky-50' };
@@ -62,15 +76,6 @@ export const getPrimaryIconData = (place: any): TagStyle => {
   if (tags.includes('leisure.park') || tags.includes('leisure')) {
     return { icon: TreePine, color: '#22c55e', label: 'Park', bgClass: 'bg-green-50' };
   }
-
-  // --- PRIORITÄT 3.5: Verifizierte Religiöse Stätten ---
-  if (tags.includes('religion.place_of_worship.christianity')) return { icon: Church, color: '#64748b', label: 'Kirche', bgClass: 'bg-slate-50' };
-  if (tags.includes('religion.place_of_worship.islam')) return { icon: Moon, color: '#64748b', label: 'Moschee', bgClass: 'bg-slate-50' };
-  if (tags.includes('religion.place_of_worship.buddhism')) return { icon: Circle, color: '#64748b', label: 'Buddhistische Stätte', bgClass: 'bg-slate-50' };
-  if (tags.includes('religion.place_of_worship.hinduism')) return { icon: Sun, color: '#64748b', label: 'Hinduistische Stätte', bgClass: 'bg-slate-50' };
-  if (tags.includes('religion.place_of_worship.shinto')) return { icon: Tent, color: '#64748b', label: 'Shinto-Schrein', bgClass: 'bg-slate-50' };
-  if (tags.includes('religion.place_of_worship.sikhism')) return { icon: Shield, color: '#64748b', label: 'Sikh-Tempel', bgClass: 'bg-slate-50' };
-  if (tags.includes('religion.place_of_worship.multifaith')) return { icon: Globe, color: '#64748b', label: 'Multifaith', bgClass: 'bg-slate-50' };
 
   // --- PRIORITÄT 4: Denkmäler ---
   if (tags.includes('tourism.sights.memorial')) {
