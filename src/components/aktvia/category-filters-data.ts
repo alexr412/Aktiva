@@ -25,7 +25,7 @@ export const availableTabs = [
   { id: "Religion", label: "Religion & Glaube", query: ["religion.place_of_worship"], icon: Church },
   { id: "Museums", label: "Museen", query: ["entertainment.museum"], icon: Library },
   { id: "Attractions", label: "Attraktionen", query: ["tourism.attraction", "tourism.sights"], icon: Ticket },
-  { id: "Cinemas", label: "Kinos", query: ["entertainment.cinema"], icon: Film },
+  { id: "theater_cinema", label: "Theater & Kinos", query: ["entertainment.cinema", "entertainment.culture.theatre", "entertainment.culture.arts_centre"], icon: Film },
   
   // --- NATUR & AKTIV ---
   { id: "Nature", label: "Natur & Parks", query: ["leisure.park", "natural.forest"], icon: TreePine },

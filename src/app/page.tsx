@@ -101,7 +101,8 @@ export default function Home() {
   const rawPlaces = useMemo(() => {
     if (!data) return [];
     const combinedSoftVetoList = [...BASE_SOFT_VETO];
-    return data.flatMap(page => {
+    
+    const mapped = data.flatMap(page => {
       const features = page.features || [];
       const safeFeatures = features.filter((feature: any) => {
         // Deterministische Exklusion von Stolpersteinen über Rohdaten
@@ -144,6 +145,13 @@ export default function Home() {
           affiliateUrl: isSponsored ? 'https://example.com/booking?ref=aktvia' : undefined
         } as Place;
       });
+    });
+
+    // Implement NSFW Blacklist
+    const nsfwBlacklist = ['sex', 'erotik', 'porn', 'strip', 'swinger', 'bordell', 'peep'];
+    return mapped.filter(place => {
+      const placeName = (place.name || '').toLowerCase();
+      return !nsfwBlacklist.some(term => placeName.includes(term));
     });
   }, [data, userPrefs]);
   
