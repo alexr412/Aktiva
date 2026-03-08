@@ -18,6 +18,7 @@ import { votePlace } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { getPrimaryIconData } from '@/lib/tag-config';
+import { formatTags } from '@/lib/tag-parser';
 
 const formatDistance = (distanceInMeters?: number) => {
     if (distanceInMeters === undefined) return null;
@@ -83,11 +84,12 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         }
     };
 
-    const displayTags = (place.categories || []).filter((tag: string) => 
+    const rawTags = (place.categories || []).filter((tag: string) => 
       !tag.startsWith('wheelchair') && 
       !tag.startsWith('fee') && 
       !tag.startsWith('no_fee')
     );
+    const processedTags = formatTags(rawTags);
 
   return (
     <Card
@@ -122,7 +124,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         )}
         
         <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mb-4">
-          {displayTags.map((tag, index) => (
+          {processedTags.map((tag, index) => (
             <span key={index} className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-neutral-100 dark:bg-neutral-700 dark:border dark:border-neutral-600 text-neutral-700 dark:text-neutral-300">
               {tag}
             </span>

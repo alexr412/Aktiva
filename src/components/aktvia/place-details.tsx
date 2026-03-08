@@ -31,6 +31,7 @@ import { AiRecommendation } from './ai-recommendation';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
+import { formatTags } from '@/lib/tag-parser';
 
 type PlaceDetailsProps = {
     place: Place;
@@ -89,6 +90,8 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         try { await voteActivity(activityId, user.uid, type); } catch (error) { console.error("Voting failed:", error); } finally { setIsVoting(false); }
     };
 
+    const processedTags = formatTags(place.categories || []);
+
     return (
         <div className="flex flex-col h-full bg-background relative overflow-hidden dark:bg-neutral-900">
             <div className="absolute top-4 left-4 z-20 md:hidden">
@@ -131,7 +134,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                             </Card>
                             <Card className="p-4 bg-neutral-50 dark:bg-neutral-800 border-none text-center shadow-none">
                                 <div className="flex flex-wrap gap-1 justify-center">
-                                    {place.categories?.map((tag, index) => (
+                                    {processedTags.map((tag, index) => (
                                         <Badge key={index} variant="outline" className="bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-[9px] font-bold border-none">
                                             {tag}
                                         </Badge>

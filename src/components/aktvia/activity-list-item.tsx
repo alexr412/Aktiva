@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { voteActivity } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { getPrimaryIconData } from '@/lib/tag-config';
+import { formatTags } from '@/lib/tag-parser';
 
 interface ActivityListItemProps {
     activity: Activity;
@@ -51,11 +52,12 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
         try { await voteActivity(activityId, user.uid, type); } catch (error) { console.error("Voting failed:", error); } finally { setIsVoting(false); }
     };
 
-    const displayTags = (activity.categories || []).filter((tag: string) => 
+    const rawTags = (activity.categories || []).filter((tag: string) => 
       !tag.startsWith('wheelchair') && 
       !tag.startsWith('fee') && 
       !tag.startsWith('no_fee')
     );
+    const processedTags = formatTags(rawTags);
 
     return (
         <div className={cn(
@@ -83,7 +85,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     </p>
 
                     <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mt-3">
-                      {displayTags.map((tag, index) => (
+                      {processedTags.map((tag, index) => (
                         <span key={index} className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-neutral-100 dark:bg-neutral-700 dark:border dark:border-neutral-600 text-neutral-700 dark:text-neutral-300">
                           {tag}
                         </span>
