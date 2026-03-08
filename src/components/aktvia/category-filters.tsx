@@ -37,9 +37,9 @@ export type CategoryTab = {
 };
 
 export const coreTabs: CategoryTab[] = [
-  { id: "Favorites", label: "Favoriten", query: ["favorites"], icon: Bookmark, isSystem: true },
   { id: "All", label: "Alle", query: ["tourism", "entertainment", "heritage"], icon: Layers, isSystem: true },
   { id: "Highlights", label: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true },
+  { id: "Favorites", label: "Favoriten", query: ["favorites"], icon: Bookmark, isSystem: true },
   { id: "Community", label: "Community", query: ["user_event"], icon: Users, isSystem: true },
 ];
 
@@ -61,7 +61,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
     if (userProfile?.activeTabs) {
       setLocalActiveTabs(userProfile.activeTabs);
     } else {
-      setLocalActiveTabs(['Gastronomy', 'Nature']);
+      setLocalActiveTabs(['Gastronomy', 'Nature', 'Sights']);
     }
   }, [userProfile]);
 
