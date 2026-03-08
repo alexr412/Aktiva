@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -32,7 +31,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const isParticipant = activity.participantIds.includes(user?.uid || '---');
     const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
     const isOwnActivity = activity.creatorId === user?.uid;
-    const userVote = user ? activity.userVotes?.[user.uid] : undefined;
+    const userVote = user ? (activity.userVotes?.[user.uid] || 'none') : 'none';
     
     const Icon = activity.isCustomActivity ? Home : MapPin;
 
@@ -51,9 +50,8 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
         router.push(`/chat/${activityId}`);
     };
 
-    const handleVote = async (activityId: string, type: 'up' | 'down') => {
+    const handleVote = async (activityId: string, type: 'up' | 'down' | 'none') => {
         if (!user || isVoting) return;
-        if (userVote === (type === 'up' ? 'down' : 'up')) return;
         
         setIsVoting(true);
         try {
@@ -118,8 +116,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
               
               <div className="voting-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button 
-                  onClick={(e) => { e.stopPropagation(); userVote !== 'up' && handleVote(activity.id!, 'up'); }} 
-                  disabled={userVote === 'down' || isVoting || !user}
+                  onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'up' ? 'none' : 'up'); }} 
                   aria-label="Upvote"
                   style={{ 
                     padding: '6px 12px', 
@@ -127,18 +124,17 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     borderRadius: '8px', 
                     fontWeight: 'bold',
                     transition: 'all 0.2s',
-                    cursor: userVote === 'down' ? 'not-allowed' : 'pointer',
-                    background: userVote === 'up' ? '#22c55e' : (userVote === 'down' ? '#f1f5f9' : '#ffffff'),
-                    color: userVote === 'up' ? '#ffffff' : (userVote === 'down' ? '#94a3b8' : '#000000'),
+                    cursor: 'pointer',
+                    background: userVote === 'up' ? '#22c55e' : '#ffffff',
+                    color: userVote === 'up' ? '#ffffff' : '#000000',
                     borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0',
-                    opacity: userVote === 'down' ? 0.6 : 1
+                    opacity: 1
                   }}
                 >
                   {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
                 </button>
                 <button 
-                  onClick={(e) => { e.stopPropagation(); userVote !== 'down' && handleVote(activity.id!, 'down'); }} 
-                  disabled={userVote === 'up' || isVoting || !user}
+                  onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'down' ? 'none' : 'down'); }} 
                   aria-label="Downvote"
                   style={{ 
                     padding: '6px 12px', 
@@ -146,11 +142,11 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     borderRadius: '8px', 
                     fontWeight: 'bold',
                     transition: 'all 0.2s',
-                    cursor: userVote === 'up' ? 'not-allowed' : 'pointer',
-                    background: userVote === 'down' ? '#ef4444' : (userVote === 'up' ? '#f1f5f9' : '#ffffff'),
-                    color: userVote === 'down' ? '#ffffff' : (userVote === 'up' ? '#94a3b8' : '#000000'),
+                    cursor: 'pointer',
+                    background: userVote === 'down' ? '#ef4444' : '#ffffff',
+                    color: userVote === 'down' ? '#ffffff' : '#000000',
                     borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0',
-                    opacity: userVote === 'up' ? 0.6 : 1
+                    opacity: 1
                   }}
                 >
                   {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}

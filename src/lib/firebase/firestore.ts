@@ -194,7 +194,7 @@ export async function createActivity({
   }
 }
 
-export async function voteActivity(activityId: string, userId: string, type: 'up' | 'down') {
+export async function voteActivity(activityId: string, userId: string, type: 'up' | 'down' | 'none') {
   if (!db) throw new Error('Firestore is not initialized.');
   const activityRef = doc(db, 'activities', activityId);
 
@@ -206,22 +206,22 @@ export async function voteActivity(activityId: string, userId: string, type: 'up
     const userVotes = data.userVotes || {};
     const previousVote = userVotes[userId];
 
+    if (previousVote === type) return;
+
     let upvoteChange = 0;
     let downvoteChange = 0;
 
-    if (previousVote === type) {
-      // Toggle off
-      if (type === 'up') upvoteChange = -1;
-      else downvoteChange = -1;
-      delete userVotes[userId];
-    } else {
-      // Change or new vote
-      if (previousVote === 'up') upvoteChange = -1;
-      if (previousVote === 'down') downvoteChange = -1;
+    if (previousVote === 'up') upvoteChange -= 1;
+    if (previousVote === 'down') downvoteChange -= 1;
 
-      if (type === 'up') upvoteChange += 1;
-      else downvoteChange += 1;
-      userVotes[userId] = type;
+    if (type === 'up') {
+      upvoteChange += 1;
+      userVotes[userId] = 'up';
+    } else if (type === 'down') {
+      downvoteChange += 1;
+      userVotes[userId] = 'down';
+    } else {
+      delete userVotes[userId];
     }
 
     transaction.update(activityRef, {
@@ -232,7 +232,7 @@ export async function voteActivity(activityId: string, userId: string, type: 'up
   });
 }
 
-export async function votePlace(placeId: string, userId: string, type: 'up' | 'down') {
+export async function votePlace(placeId: string, userId: string, type: 'up' | 'down' | 'none') {
   if (!db) throw new Error('Firestore is not initialized.');
   const placeRef = doc(db, 'places', placeId);
 
@@ -247,20 +247,22 @@ export async function votePlace(placeId: string, userId: string, type: 'up' | 'd
     const userVotes = data.userVotes || {};
     const previousVote = userVotes[userId];
 
+    if (previousVote === type) return;
+
     let upvoteChange = 0;
     let downvoteChange = 0;
 
-    if (previousVote === type) {
-      if (type === 'up') upvoteChange = -1;
-      else downvoteChange = -1;
-      delete userVotes[userId];
-    } else {
-      if (previousVote === 'up') upvoteChange = -1;
-      if (previousVote === 'down') downvoteChange = -1;
+    if (previousVote === 'up') upvoteChange -= 1;
+    if (previousVote === 'down') downvoteChange -= 1;
 
-      if (type === 'up') upvoteChange += 1;
-      else downvoteChange += 1;
-      userVotes[userId] = type;
+    if (type === 'up') {
+      upvoteChange += 1;
+      userVotes[userId] = 'up';
+    } else if (type === 'down') {
+      downvoteChange += 1;
+      userVotes[userId] = 'down';
+    } else {
+      delete userVotes[userId];
     }
 
     transaction.set(placeRef, {
