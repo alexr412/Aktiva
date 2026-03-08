@@ -3,7 +3,7 @@
 /**
  * @fileOverview Utility zur Bereinigung und Formatierung von Kategorien-Tags.
  * 
- * - Entfernt invalide Boolean- und Metadaten-Tags (basiert auf der Endung des Pfads).
+ * - Filtert Tags basierend auf einer Whitelist an validen Root-Kategorien.
  * - Eliminiert hierarchische Redundanzen (z.B. löscht 'tourism', wenn 'tourism.sights' existiert).
  * - Übersetzt Kern-Kategorien über eine erweiterte Lokalisierungs-Matrix ins Deutsche.
  * - Formatiert Fallbacks (Letzter Teil des Pfads, Kapitalisierung, Unterstriche zu Leerzeichen).
@@ -12,14 +12,18 @@
 export const formatTags = (tags: string[]): string[] => {
   if (!tags || !Array.isArray(tags)) return [];
 
-  // 1. Eliminierung invalider Boolean- und Metadaten-Tags basierend auf der Pfad-Endung
-  const invalidEndings = ['yes', 'no', 'true', 'false', 'default', 'customers', 'none', 'null', 'undefined', 'limited'];
+  // 1. Whitelist-Architektur für valide Root-Kategorien
+  const validRoots = [
+    'activity', 'commercial', 'catering', 'education', 'entertainment',
+    'heritage', 'leisure', 'man_made', 'natural', 'national_park', 'pet',
+    'tourism', 'religion', 'camping', 'beach', 'adult', 'building', 'ski',
+    'sport', 'emergency'
+  ];
 
   const cleanedTags = tags.filter(tag => {
     if (!tag) return false;
-    const parts = tag.split('.');
-    const lastPart = parts[parts.length - 1].toLowerCase();
-    return !invalidEndings.includes(lastPart);
+    const root = tag.split('.')[0].toLowerCase();
+    return validRoots.includes(root);
   });
 
   // 2. Hierarchische Redundanzen filtern
