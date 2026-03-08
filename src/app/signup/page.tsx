@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signUp } from '@/lib/firebase/auth';
 import { useToast } from '@/hooks/use-toast';
+import { Eye, EyeOff } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -34,8 +35,9 @@ export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  // State für Passwort-Stärke
   const [passwordStrength, setPasswordStrength] = useState({ score: 0, text: '', color: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const evaluatePassword = (pass: string) => {
     let score = 0;
@@ -143,16 +145,25 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel className="font-bold text-neutral-700 dark:text-neutral-300">Passwort</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="password" 
-                        placeholder="••••••••" 
-                        {...field} 
-                        className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold"
-                        onChange={(e) => {
-                            field.onChange(e);
-                            evaluatePassword(e.target.value);
-                        }}
-                      />
+                      <div className="relative">
+                        <Input 
+                          type={showPassword ? "text" : "password"} 
+                          placeholder="••••••••" 
+                          {...field} 
+                          className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold pr-10"
+                          onChange={(e) => {
+                              field.onChange(e);
+                              evaluatePassword(e.target.value);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 focus:outline-none"
+                        >
+                          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                     
@@ -187,7 +198,21 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel className="font-bold text-neutral-700 dark:text-neutral-300">Passwort bestätigen</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" />
+                      <div className="relative">
+                        <Input 
+                          type={showConfirmPassword ? "text" : "password"} 
+                          placeholder="••••••••" 
+                          {...field} 
+                          className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold pr-10" 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 focus:outline-none"
+                        >
+                          {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                     {confirmPasswordValue && passwordValue !== confirmPasswordValue && (
