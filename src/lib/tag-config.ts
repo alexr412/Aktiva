@@ -5,6 +5,7 @@ import {
   Church, Flame, Film, Coffee, Utensils, Dumbbell, 
   Building, Moon, Circle, Sun, Tent, Shield, Globe, User,
   BookOpen,
+  PawPrint,
   type LucideIcon
 } from 'lucide-react';
 
@@ -29,6 +30,9 @@ export const getPrimaryIconData = (place: any): TagStyle => {
   // --- PRIORITÄT 1: Maritim & Spezifische Namens-Überschreibungen ---
   if (tags.includes('tourism.sights.memorial.ship')) {
     return { icon: Ship, color: '#3b82f6', label: 'Schiff', bgClass: 'bg-blue-50' };
+  }
+  if (tags.includes('entertainment.zoo') || name.includes('zoo') || name.includes('tierpark')) {
+    return { icon: PawPrint, color: '#f59e0b', label: 'Zoo/Tierpark', bgClass: 'bg-amber-50' };
   }
   if (name.includes('dock')) {
     return { icon: Anchor, color: '#3b82f6', label: 'Maritim', bgClass: 'bg-blue-50' };
