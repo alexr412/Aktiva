@@ -20,6 +20,7 @@ import {
   Coffee,
   Flame,
   IceCream,
+  Drumstick,
 } from 'lucide-react';
 
 export const availableTabs = [
@@ -125,7 +126,7 @@ export const availableTabs = [
     id: "FastFood", 
     label: "Fast Food", 
     query: ["catering.fast_food"], 
-    icon: Flame 
+    icon: Drumstick 
   },
   { 
     id: "IceCream", 
