@@ -33,7 +33,6 @@ export const getPrimaryIconData = (place: any): TagStyle => {
     return { icon: Anchor, color: '#3b82f6', label: 'Maritim', bgClass: 'bg-blue-50' };
   }
   if (name.includes('synagoge')) {
-    // Ersetzt das 'Star'-Icon (Verwechslungsgefahr mit Favoriten) durch Landmark
     return { icon: Landmark, color: '#64748b', label: 'Synagoge', bgClass: 'bg-slate-50' }; 
   }
   if (name.includes('see')) {
@@ -48,13 +47,11 @@ export const getPrimaryIconData = (place: any): TagStyle => {
     return { icon: Palette, color: '#f59e0b', label: 'Kunst', bgClass: 'bg-amber-50' };
   }
   if (tags.includes('entertainment.museum')) {
-    // Landmark für historische und Museums-Gebäude
     return { icon: Landmark, color: '#8b5cf6', label: 'Museum', bgClass: 'bg-purple-50' }; 
   }
 
   // --- PRIORITÄT 3: Infrastruktur & Natur ---
   if (tags.includes('man_made.bridge') || name.includes('brücke')) {
-    // Waves als Repräsentation für eine Wasserüberquerung
     return { icon: Waves, color: '#0ea5e9', label: 'Brücke', bgClass: 'bg-sky-50' }; 
   }
   if (tags.includes('leisure.park') || tags.includes('leisure')) {
@@ -72,12 +69,11 @@ export const getPrimaryIconData = (place: any): TagStyle => {
 
   // --- PRIORITÄT 4: Denkmäler ---
   if (tags.includes('tourism.sights.memorial')) {
-    // Ewige Flamme (Flame) als Symbol für Gedenkstätten
     return { icon: Flame, color: '#f97316', label: 'Denkmal', bgClass: 'bg-orange-50' }; 
   }
 
-  // --- PRIORITÄT 4.5: Bildung ---
-  if (tags.some((t: string) => t.startsWith('education'))) {
+  // --- PRIORITÄT 4.5: Bildung (Duale Taxonomie) ---
+  if (tags.some((t: string) => t.startsWith('education') || t === 'building.university' || t === 'building.library' || t === 'building.school')) {
     return { icon: BookOpen, color: '#3b82f6', label: 'Bildung', bgClass: 'bg-blue-50' };
   }
   

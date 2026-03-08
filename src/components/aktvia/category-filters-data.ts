@@ -39,7 +39,12 @@ export const availableTabs = [
   { id: "Clubs", label: "Clubs & Discos", query: ["adult.nightclub"], icon: Music },
   
   // --- UTILITY & WISSEN ---
-  { id: "Education", label: "Bildung", query: ["education"], icon: BookOpen },
+  { 
+    id: "Education", 
+    label: "Bildung", 
+    query: ["education", "building.university", "building.library", "building.school"], 
+    icon: BookOpen 
+  },
   { id: "Coworking", label: "Coworking", query: ["office.coworking"], icon: Building },
   { id: "Shopping", label: "Shopping", query: ["commercial.shopping_mall", "commercial.clothing"], icon: ShoppingBag }
 ];
