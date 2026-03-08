@@ -12,7 +12,8 @@ export const BASE_HARD_VETO = [
   "memorial", "memorial.buddhist", "memorial.cemetery", "memorial.cemetery.sector", "memorial.christian", "memorial.christian.catholic", "memorial.christian.orthodox", "memorial.christian.protestant", "memorial.graveyard", "memorial.hindu", "memorial.jewish", "memorial.muslim",
   "tourism.information", "tourism.information.office",
   "commercial.supermarket", "commercial.convenience", "commercial.discount_store", "commercial.elektronics", "commercial.erotic", "commercial.health_and_beauty.optician", "commercial.health_and_beauty.pharmacy", "commercial.houseware_and_hardware", "commercial.pet",
-  "service.vehicle", "commercial.outdoor_and_sport.bicycle", "commercial.food_and_drink.butcher"
+  "service.vehicle", "commercial.outdoor_and_sport.bicycle", "commercial.food_and_drink.butcher",
+  "tourism.attraction.artwork"
 ];
 
 /**
