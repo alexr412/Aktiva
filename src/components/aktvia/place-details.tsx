@@ -125,11 +125,11 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                             <PrimaryIcon className="h-12 w-12 md:h-16 md:w-16" style={{ color: primaryStyle.color }} />
                         </div>
                         
-                        <h1 className="text-2xl md:text-3xl font-black text-[#0f172a] text-center mb-2 tracking-tight">
+                        <h1 className="text-2xl md:text-3xl font-black text-[#0f172a] dark:text-neutral-200 text-center mb-2 tracking-tight">
                             {place.name}
                         </h1>
                         
-                        <p className="text-sm text-[#64748b] text-center mb-4 leading-relaxed max-w-[200px] font-medium">
+                        <p className="text-sm text-[#64748b] dark:text-neutral-400 text-center mb-4 leading-relaxed max-w-[200px] font-medium">
                             {place.address}
                         </p>
 
@@ -143,7 +143,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                         <div className="w-full flex flex-col gap-3">
                             <Button 
                                 variant="outline" 
-                                className="w-full h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-50 transition-all font-bold"
+                                className="w-full h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-all font-bold"
                                 onClick={handleBookmarkToggle}
                             >
                                 <Bookmark className={cn("h-5 w-5", isFavorite && "fill-primary text-primary")} />
@@ -164,36 +164,36 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
 
                     <div className="flex flex-col gap-8">
                         <div className="grid grid-cols-2 gap-4">
-                            <Card className="p-4 bg-slate-50 border-none flex flex-col items-center justify-center gap-1 text-center shadow-none">
+                            <Card className="p-4 bg-slate-50 dark:bg-neutral-800 border-none flex flex-col items-center justify-center gap-1 text-center shadow-none">
                                 {place.rating ? (
                                     <>
                                         <div className="flex items-center gap-1.5">
                                             <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
-                                            <span className="font-black text-xl text-[#0f172a]">{place.rating.toFixed(1)}</span>
+                                            <span className="font-black text-xl text-[#0f172a] dark:text-neutral-200">{place.rating.toFixed(1)}</span>
                                         </div>
-                                        <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-widest">Rating</span>
+                                        <span className="text-[10px] font-bold text-[#64748b] dark:text-neutral-400 uppercase tracking-widest">Rating</span>
                                     </>
                                 ) : (
-                                    <span className="text-xs font-bold text-[#64748b] uppercase tracking-widest">No Rating</span>
+                                    <span className="text-xs font-bold text-[#64748b] dark:text-neutral-400 uppercase tracking-widest">No Rating</span>
                                 )}
                             </Card>
                             
-                            <Card className="p-4 bg-slate-50 border-none flex flex-col items-center justify-center gap-1 text-center shadow-none">
+                            <Card className="p-4 bg-slate-50 dark:bg-neutral-800 border-none flex flex-col items-center justify-center gap-1 text-center shadow-none">
                                 <div className="flex flex-wrap gap-1 justify-center">
                                     {place.categories?.map((tag, index) => (
-                                        <Badge key={index} variant="outline" className="bg-[#f1f5f9] text-[#475569] text-[9px] font-bold border-none shadow-sm">
+                                        <Badge key={index} variant="outline" className="bg-[#f1f5f9] dark:bg-neutral-700 text-[#475569] dark:text-neutral-300 text-[9px] font-bold border-none shadow-sm">
                                             {tag}
                                         </Badge>
                                     ))}
                                 </div>
-                                <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-widest mt-1">Kategorien</span>
+                                <span className="text-[10px] font-bold text-[#64748b] dark:text-neutral-400 uppercase tracking-widest mt-1">Kategorien</span>
                             </Card>
                         </div>
 
                         <Separator className="opacity-50" />
 
                         <div className="flex flex-col">
-                            <h2 className="text-xl font-black text-[#0f172a] mb-4 flex items-center gap-2 tracking-tight">
+                            <h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200 mb-4 flex items-center gap-2 tracking-tight">
                                 <Users className="h-5 w-5 text-primary" />
                                 <span>Aktivitäten vor Ort</span>
                             </h2>
@@ -203,9 +203,9 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                     <Skeleton className="h-20 w-full rounded-2xl" />
                                 </div>
                             ) : placeActivities.length === 0 ? (
-                                <div className="p-10 border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center">
-                                    <Calendar className="h-8 w-8 text-slate-300 mb-2" />
-                                    <p className="text-sm font-medium text-[#64748b]">Noch keine Treffen geplant.</p>
+                                <div className="p-10 border border-dashed border-slate-200 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center">
+                                    <Calendar className="h-8 w-8 text-slate-300 dark:text-neutral-600 mb-2" />
+                                    <p className="text-sm font-medium text-[#64748b] dark:text-neutral-500">Noch keine Treffen geplant.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -217,15 +217,15 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                         
                                         return (
                                             <Card key={activity.id} className={cn(
-                                              "p-4 shadow-sm border-none bg-slate-50 flex flex-col gap-3 rounded-2xl",
-                                              activity.isBoosted && "ring-1 ring-orange-500/20 bg-orange-50/30"
+                                              "p-4 shadow-sm border-none bg-slate-50 dark:bg-neutral-800 flex flex-col gap-3 rounded-2xl",
+                                              activity.isBoosted && "ring-1 ring-orange-500/20 bg-orange-50/30 dark:bg-orange-900/10"
                                             )}>
                                                 <div className="flex items-center justify-between gap-4">
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="font-extrabold text-[#0f172a] text-base truncate">
+                                                        <p className="font-extrabold text-[#0f172a] dark:text-neutral-200 text-base truncate">
                                                             {renderActivityDate(activity)}
                                                         </p>
-                                                        <div className="text-xs font-bold text-[#64748b] flex items-center gap-1.5 mt-1">
+                                                        <div className="text-xs font-bold text-[#64748b] dark:text-neutral-400 flex items-center gap-1.5 mt-1">
                                                             <Users className="h-3.5 w-3.5" />
                                                             <span className="truncate">
                                                                 {activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; {activity.creatorName}
@@ -256,20 +256,22 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                     </div>
                                                 </div>
 
-                                                <div className="voting-controls flex gap-2 items-center pt-3 border-t border-slate-200/50">
+                                                <div className="voting-controls flex gap-2 items-center pt-3 border-t border-slate-200/50 dark:border-neutral-700/50">
                                                   <button 
                                                     onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'up' ? 'none' : 'up'); }} 
-                                                    style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'up' ? '#22c55e' : '#ffffff', color: userVote === 'up' ? '#ffffff' : '#000000', borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0', cursor: 'pointer' }}
+                                                    style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'up' ? '#22c55e' : 'inherit', color: userVote === 'up' ? '#ffffff' : 'inherit', borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0', cursor: 'pointer' }}
+                                                    className="dark:border-neutral-700"
                                                   >
                                                     {isVoting ? <Loader2 className="animate-spin h-3 w-3" /> : '↑'}
                                                   </button>
                                                   <button 
                                                     onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'down' ? 'none' : 'down'); }} 
-                                                    style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'down' ? '#ef4444' : '#ffffff', color: userVote === 'down' ? '#ffffff' : '#000000', borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0', cursor: 'pointer' }}
+                                                    style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'down' ? '#ef4444' : 'inherit', color: userVote === 'down' ? '#ffffff' : 'inherit', borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0', cursor: 'pointer' }}
+                                                    className="dark:border-neutral-700"
                                                   >
                                                     {isVoting ? <Loader2 className="animate-spin h-3 w-3" /> : '↓'}
                                                   </button>
-                                                  {userProfile?.isAdmin && <span className="text-[10px] font-bold text-[#64748b] ml-1">↑{activity.upvotes || 0} ↓{activity.downvotes || 0}</span>}
+                                                  {userProfile?.isAdmin && <span className="text-[10px] font-bold text-[#64748b] dark:text-neutral-400 ml-1">↑{activity.upvotes || 0} ↓{activity.downvotes || 0}</span>}
                                                 </div>
                                             </Card>
                                         );

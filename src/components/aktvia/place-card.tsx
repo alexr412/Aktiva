@@ -95,7 +95,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     <Card
       onClick={onClick}
       className={cn(
-        "cursor-pointer group overflow-hidden rounded-2xl bg-[#ffffff] dark:bg-slate-800 dark:border-slate-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] transition-all duration-300 border-none flex flex-col relative p-4",
+        "cursor-pointer group overflow-hidden rounded-2xl bg-[#ffffff] dark:bg-neutral-800 dark:border-neutral-700 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1)] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] transition-all duration-300 border-none flex flex-col relative p-4",
         place.isPromoted && "ring-2 ring-primary/20"
       )}
     >
@@ -108,7 +108,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
 
       <div className="flex items-start gap-4">
         <div 
-          className={cn("relative flex flex-shrink-0 items-center justify-center w-20 h-20 rounded-2xl", primaryStyle.bgClass, "dark:bg-slate-700/50")}
+          className={cn("relative flex flex-shrink-0 items-center justify-center w-20 h-20 rounded-2xl", primaryStyle.bgClass, "dark:bg-neutral-700/50")}
         >
             <PrimaryIcon 
               className="h-10 w-10" 
@@ -117,10 +117,10 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         </div>
 
         <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-extrabold text-[#0f172a] dark:text-slate-100 truncate leading-tight">{place.name}</h3>
-            <p className="text-xs text-[#64748b] dark:text-slate-400 truncate mt-1">{place.address}</p>
+            <h3 className="text-lg font-extrabold text-[#0f172a] dark:text-neutral-200 truncate leading-tight">{place.name}</h3>
+            <p className="text-xs text-[#64748b] dark:text-neutral-400 truncate mt-1">{place.address}</p>
             {place.distance !== undefined && (
-                <div className="flex items-center gap-1.5 text-[10px] text-[#64748b] dark:text-slate-400 mt-2 font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 text-[10px] text-[#64748b] dark:text-neutral-400 mt-2 font-bold uppercase tracking-wider">
                     <Navigation className="h-3 w-3"/>
                     <span>{formatDistance(place.distance)} entfernt</span>
                 </div>
@@ -140,19 +140,19 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
           {displayTags.map((tag, index) => (
             <span
               key={index}
-              className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-[#f1f5f9] dark:bg-slate-700 dark:border dark:border-slate-600 text-[#475569] dark:text-slate-200"
+              className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-[#f1f5f9] dark:bg-neutral-700 dark:border dark:border-neutral-600 text-[#475569] dark:text-neutral-300"
             >
               {tag}
             </span>
           ))}
         </div>
 
-        <div className="card-footer-actions flex justify-between items-center w-full pt-3 border-t border-slate-50 dark:border-slate-700/50">
+        <div className="card-footer-actions flex justify-between items-center w-full pt-3 border-t border-slate-50 dark:border-neutral-700/50">
           <div className="voting-controls flex gap-2 items-center">
             <button 
               onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')} 
               aria-label="Upvote"
-              className="dark:bg-slate-700 dark:hover:bg-slate-600 dark:border-slate-600 dark:text-slate-200"
+              className="dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:border-neutral-600 dark:text-neutral-300"
               style={{ 
                 padding: '6px 14px', 
                 border: '1px solid', 
@@ -171,7 +171,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             <button 
               onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')} 
               aria-label="Downvote"
-              className="dark:bg-slate-700 dark:hover:bg-slate-600 dark:border-slate-600 dark:text-slate-200"
+              className="dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:border-neutral-600 dark:text-neutral-300"
               style={{ 
                 padding: '6px 14px', 
                 border: '1px solid', 
@@ -189,7 +189,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             </button>
 
             {userProfile?.isAdmin && (
-              <span className="text-[10px] font-bold text-[#64748b] dark:text-slate-400 ml-1">
+              <span className="text-[10px] font-bold text-[#64748b] dark:text-neutral-400 ml-1">
                 ↑{localVotes.upvotes} ↓{localVotes.downvotes}
               </span>
             )}
@@ -197,7 +197,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
 
           <div className="flex gap-2">
             <button 
-                className="bookmark-button dark:bg-slate-700 dark:hover:bg-slate-600 dark:border-slate-600 dark:text-slate-200"
+                className="bookmark-button dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:border-neutral-600 dark:text-neutral-300"
                 onClick={handleBookmarkToggle}
                 style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'inherit', cursor: 'pointer' }}
             >

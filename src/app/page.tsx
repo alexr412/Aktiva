@@ -30,7 +30,7 @@ import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIX
 import { cn } from '@/lib/utils';
 
 const CardSkeleton = () => (
-    <div className="w-full overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-sm p-4">
+    <div className="w-full overflow-hidden rounded-2xl bg-white dark:bg-neutral-800 shadow-sm p-4">
         <div className="flex gap-4">
           <Skeleton className="h-20 w-20 rounded-2xl shrink-0" />
           <div className="flex-1 space-y-2 py-1">
@@ -292,8 +292,8 @@ export default function Home() {
     const EmptySearchState = () => (
         <div className="flex h-full w-full items-center justify-center p-6 text-center">
             <div className="space-y-4">
-                <h3 className="font-black text-xl text-[#0f172a] dark:text-slate-100">Keine Ergebnisse</h3>
-                <p className="text-[#64748b] dark:text-slate-400 font-medium">Passe deine Suche oder die Filter an.</p>
+                <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">Keine Ergebnisse</h3>
+                <p className="text-[#64748b] dark:text-neutral-400 font-medium">Passe deine Suche oder die Filter an.</p>
                 <Button onClick={resetFilters} variant="outline" className="rounded-xl font-bold">Filter zurücksetzen</Button>
             </div>
         </div>
@@ -303,7 +303,7 @@ export default function Home() {
         const renderList = () => {
             if (isFavoritesCategory) {
                 if (favorites.length === 0) {
-                     return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="text-xl font-black text-[#0f172a] dark:text-slate-100">Noch keine Favoriten</h2><p className="text-[#64748b] dark:text-slate-400 font-medium max-w-xs">Speichere Orte mit dem Lesezeichen-Symbol, um sie hier zu sehen.</p></div>;
+                     return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200">Noch keine Favoriten</h2><p className="text-[#64748b] dark:text-neutral-400 font-medium max-w-xs">Speichere Orte mit dem Lesezeichen-Symbol, um sie hier zu sehen.</p></div>;
                 }
                 return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{favorites.map(place => <PlaceCard key={place.id} place={place as Place} onClick={() => handlePlaceSelect(place as Place)} onAddActivity={() => handleOpenActivityModal(place as Place)} />)}</div>;
             }
@@ -311,7 +311,7 @@ export default function Home() {
                 const filtered = customActivities.filter(act => act.placeName.toLowerCase().includes(searchQuery.toLowerCase()));
                 const sorted = filtered.sort((a, b) => (a.isBoosted && !b.isBoosted ? -1 : (!a.isBoosted && b.isBoosted ? 1 : (sortBy === 'newest' ? (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0) : 0))));
                 const visible = sorted.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
-                if (visible.length === 0) return searchQuery ? <EmptySearchState /> : <div className="flex h-full w-full items-center justify-center p-10 text-center font-bold text-[#64748b] dark:text-slate-400">Keine Community-Aktivitäten gefunden.</div>;
+                if (visible.length === 0) return searchQuery ? <EmptySearchState /> : <div className="flex h-full w-full items-center justify-center p-10 text-center font-bold text-[#64748b] dark:text-neutral-400">Keine Community-Aktivitäten gefunden.</div>;
                 return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{visible.map((activity) => <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />)}</div>;
             }
             
@@ -331,8 +331,8 @@ export default function Home() {
                                 <div className="bg-primary/10 p-6 rounded-3xl inline-block">
                                     <Sparkles className="h-12 w-12 text-primary" />
                                 </div>
-                                <h3 className="font-black text-xl text-[#0f172a] dark:text-slate-100">Keine Highlights</h3>
-                                <p className="text-[#64748b] dark:text-slate-400 font-medium max-w-xs mx-auto">Votings der Community bestimmen, was hier erscheint. Aktuell gibt es keine Orte mit positiver Bilanz.</p>
+                                <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">Keine Highlights</h3>
+                                <p className="text-[#64748b] dark:text-neutral-400 font-medium max-w-xs mx-auto">Votings der Community bestimmen, was hier erscheint. Aktuell gibt es keine Orte mit positiver Bilanz.</p>
                             </div>
                         </div>
                     );
@@ -353,13 +353,13 @@ export default function Home() {
                 return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div ref={index === sorted.length - 1 ? lastElementRef : null} key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
             }
         };
-        return <div className="max-w-7xl mx-auto w-full">{renderList()}{isFetchingMore && <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><CardSkeleton /><CardSkeleton /></div>}{!isFetchingMore && !hasMore && places.length > 0 && !isCommunityCategory && !isFavoritesCategory && <p className="text-center text-[#64748b] dark:text-slate-400 p-10 font-bold text-sm">Das war's für heute! 🎉</p>}</div>;
+        return <div className="max-w-7xl mx-auto w-full">{renderList()}{isFetchingMore && <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><CardSkeleton /><CardSkeleton /></div>}{!isFetchingMore && !hasMore && places.length > 0 && !isCommunityCategory && !isFavoritesCategory && <p className="text-center text-[#64748b] dark:text-neutral-400 p-10 font-bold text-sm">Das war's für heute! 🎉</p>}</div>;
     }
 
     if (viewMode === 'map') {
         if (!userLocation) return <div className="flex h-full w-full items-center justify-center"><MapPin className="h-8 w-8 animate-bounce text-primary" /></div>;
         if (!userProfile?.isPremium) {
-            return <div className="flex flex-col items-center justify-center p-10 h-[calc(100%-80px)] text-center space-y-6"><div className="bg-white dark:bg-slate-800 p-8 rounded-full shadow-xl relative"><Lock className="h-12 w-12 text-[#64748b] dark:text-slate-400" /><div className="absolute -top-1 -right-1 bg-primary text-white p-2 rounded-full border-4 border-white dark:border-slate-800 shadow-lg"><Sparkles className="h-5 w-5" /></div></div><div className="space-y-2 max-w-sm"><h2 className="text-2xl font-black text-[#0f172a] dark:text-slate-100">Kartenansicht gesperrt</h2><p className="text-[#64748b] dark:text-slate-400 font-medium">Die interaktive geografische Entdeckung ist Teil der Premium-Architektur.</p></div><Button onClick={() => setIsPremiumUpsellOpen(true)} className="rounded-2xl px-10 h-14 font-black shadow-xl shadow-primary/20 gap-2 text-lg transition-transform active:scale-95">Premium freischalten</Button></div>;
+            return <div className="flex flex-col items-center justify-center p-10 h-[calc(100%-80px)] text-center space-y-6"><div className="bg-white dark:bg-neutral-800 p-8 rounded-full shadow-xl relative"><Lock className="h-12 w-12 text-[#64748b] dark:text-neutral-400" /><div className="absolute -top-1 -right-1 bg-primary text-white p-2 rounded-full border-4 border-white dark:border-neutral-800 shadow-lg"><Sparkles className="h-5 w-5" /></div></div><div className="space-y-2 max-w-sm"><h2 className="text-2xl font-black text-[#0f172a] dark:text-neutral-200">Kartenansicht gesperrt</h2><p className="text-[#64748b] dark:text-neutral-400 font-medium">Die interaktive geografische Entdeckung ist Teil der Premium-Architektur.</p></div><Button onClick={() => setIsPremiumUpsellOpen(true)} className="rounded-2xl px-10 h-14 font-black shadow-xl shadow-primary/20 gap-2 text-lg transition-transform active:scale-95">Premium freischalten</Button></div>;
         }
         const placesForMap = isFavoritesCategory ? (favorites as Place[]) : places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
         return <MapView places={placesForMap} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />;
@@ -369,21 +369,21 @@ export default function Home() {
   return (
     <>
       <div className="flex h-full w-full flex-col">
-        <header className="flex-none w-full border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/90 backdrop-blur-md z-20">
+        <header className="flex-none w-full border-b border-slate-100 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/90 backdrop-blur-md z-20">
           <div className="flex flex-col gap-4 px-4 py-5 sm:px-6 max-w-7xl mx-auto w-full">
              <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-3xl font-black tracking-tight text-[#0f172a] dark:text-slate-100">Entdecken</h1>
-                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 text-[#64748b] dark:text-slate-400 mt-1.5 hover:text-primary transition-colors font-bold text-sm">
+                  <h1 className="text-3xl font-black tracking-tight text-[#0f172a] dark:text-neutral-200">Entdecken</h1>
+                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 text-[#64748b] dark:text-neutral-400 mt-1.5 hover:text-primary transition-colors font-bold text-sm">
                     <MapPin className="h-4 w-4" />
                     <span>{cityName}</span>
                   </button>
                 </div>
                 <div className="flex items-center gap-3">
                     <NotificationBell />
-                    <div className="flex items-center gap-1 rounded-2xl bg-slate-50 dark:bg-slate-800 p-1.5 shadow-inner">
-                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className={cn("h-9 w-9 rounded-xl shadow-sm transition-all", viewMode === 'list' ? "bg-white dark:bg-slate-700 text-primary" : "text-[#64748b] dark:text-slate-400")} onClick={() => setViewMode('list')}><List className="h-5 w-5" /></Button>
-                        <Button variant={viewMode === 'map' ? 'secondary' : 'ghost'} size="icon" className={cn("h-9 w-9 rounded-xl shadow-sm relative transition-all", viewMode === 'map' ? "bg-white dark:bg-slate-700 text-primary" : "text-[#64748b] dark:text-slate-400")} onClick={() => { if (!userProfile?.isPremium) { setIsPremiumUpsellOpen(true); return; } setViewMode('map'); }}><MapIcon className="h-5 w-5" />{!userProfile?.isPremium && <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 border-2 border-white dark:border-slate-800 shadow-sm"><Lock className="h-2 w-2 text-white fill-current" /></div>}</Button>
+                    <div className="flex items-center gap-1 rounded-2xl bg-slate-50 dark:bg-neutral-800 p-1.5 shadow-inner">
+                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className={cn("h-9 w-9 rounded-xl shadow-sm transition-all", viewMode === 'list' ? "bg-white dark:bg-neutral-700 text-primary" : "text-[#64748b] dark:text-neutral-400")} onClick={() => setViewMode('list')}><List className="h-5 w-5" /></Button>
+                        <Button variant={viewMode === 'map' ? 'secondary' : 'ghost'} size="icon" className={cn("h-9 w-9 rounded-xl shadow-sm relative transition-all", viewMode === 'map' ? "bg-white dark:bg-neutral-700 text-primary" : "text-[#64748b] dark:text-neutral-400")} onClick={() => { if (!userProfile?.isPremium) { setIsPremiumUpsellOpen(true); return; } setViewMode('map'); }}><MapIcon className="h-5 w-5" />{!userProfile?.isPremium && <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 border-2 border-white dark:border-neutral-800 shadow-sm"><Lock className="h-2 w-2 text-white fill-current" /></div>}</Button>
                     </div>
                     <Button variant="default" size="icon" className="h-10 w-10 rounded-2xl shadow-lg shadow-primary/20" onClick={handleOpenCustomActivityModal}><Plus className="h-6 w-6" strokeWidth={3} /></Button>
                 </div>
@@ -391,7 +391,7 @@ export default function Home() {
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
             <div className="mt-2 flex w-full items-center gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#64748b] dark:text-slate-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#64748b] dark:text-neutral-400" />
                 <Input
                     type="search"
                     placeholder="Suchen..."
@@ -402,20 +402,20 @@ export default function Home() {
                             handleCategoryChange(['all'], 'All'); 
                         } 
                     }}
-                    className="w-full rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700 border-none pl-12 h-12 text-sm font-bold placeholder:text-slate-400 focus-visible:ring-0 focus-visible:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all"
+                    className="w-full rounded-2xl bg-slate-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none pl-12 h-12 text-sm font-bold placeholder:text-neutral-500 focus-visible:ring-0 focus-visible:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all"
                 />
               </div>
               {!isFavoritesCategory && (
                 <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-[160px] rounded-2xl h-12 bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 border-none focus:ring-0 font-bold text-xs text-[#0f172a] shadow-inner px-4"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-2xl border-none shadow-2xl font-bold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"><SelectItem value="recommended">Empfohlen</SelectItem><SelectItem value="rating">Bewertung</SelectItem><SelectItem value="popular">Beliebt</SelectItem><SelectItem value="newest">Neueste</SelectItem></SelectContent>
+                    <SelectTrigger className="w-[160px] rounded-2xl h-12 bg-slate-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none focus:ring-0 font-bold text-xs text-[#0f172a] shadow-inner px-4"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-2xl border-none shadow-2xl font-bold dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700"><SelectItem value="recommended">Empfohlen</SelectItem><SelectItem value="rating">Bewertung</SelectItem><SelectItem value="popular">Beliebt</SelectItem><SelectItem value="newest">Neueste</SelectItem></SelectContent>
                 </Select>
               )}
             </div>
             {!isCommunityCategory && !isFavoritesCategory && (
               <div className="flex flex-col gap-2.5 mt-1 px-1">
-                <div className="flex justify-between items-center text-[10px] font-black text-[#64748b] dark:text-slate-400 uppercase tracking-widest"><span>Suchradius</span><span className="text-primary">{searchRadiusKm} km</span></div>
-                <input type="range" min="1" max="50" step="1" value={searchRadiusKm} onChange={(e) => setSearchRadiusKm(Number(e.target.value))} className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary" />
+                <div className="flex justify-between items-center text-[10px] font-black text-[#64748b] dark:text-neutral-400 uppercase tracking-widest"><span>Suchradius</span><span className="text-primary">{searchRadiusKm} km</span></div>
+                <input type="range" min="1" max="50" step="1" value={searchRadiusKm} onChange={(e) => setSearchRadiusKm(Number(e.target.value))} className="w-full h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary" />
               </div>
             )}
           </div>
@@ -423,7 +423,7 @@ export default function Home() {
         <div className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden'}`}>{renderContent()}</div>
       </div>
       <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-        <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden rounded-3xl border-none shadow-2xl dark:bg-slate-900">
+        <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden rounded-3xl border-none shadow-2xl dark:bg-neutral-900">
           <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
           <DialogDescription className="sr-only">Detaillierte Informationen und Aktivitäten zu diesem Ort.</DialogDescription>
           {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
@@ -431,7 +431,7 @@ export default function Home() {
       </Dialog>
       <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
       <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
-      <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}><DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl dark:bg-slate-900"><DialogHeader className="items-center text-center"><div className="bg-primary/10 p-5 rounded-3xl mb-4 shadow-inner"><Sparkles className="h-10 w-10 text-primary" /></div><DialogTitle className="text-2xl font-black text-[#0f172a] dark:text-slate-100">Werde Premium-Mitglied</DialogTitle><DialogDescription className="text-base font-medium text-[#64748b] dark:text-slate-400">Schalte exklusive Funktionen frei und unterstütze die Entwicklung.</DialogDescription></DialogHeader><div className="space-y-4 py-4"><div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800"><div className="mt-1 bg-primary text-white p-1 rounded-lg"><Check className="h-3 w-3" strokeWidth={4} /></div><div><p className="font-black text-sm text-[#0f172a] dark:text-slate-100">Interaktive Kartenansicht</p><p className="text-xs font-medium text-[#64748b] dark:text-slate-400">Entdecke alles direkt auf der Karte.</p></div></div><div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800"><div className="mt-1 bg-primary text-white p-1 rounded-lg"><Check className="h-3 w-3" strokeWidth={4} /></div><div><p className="font-black text-sm text-[#0f172a] dark:text-slate-100">Keine Werbung</p><p className="text-xs font-medium text-[#64748b] dark:text-slate-400">Genieße Aktvia ohne Unterbrechungen.</p></div></div></div><DialogFooter><Button className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20 transition-transform active:scale-95" onClick={() => setIsPremiumUpsellOpen(false)}>Jetzt upgraden</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}><DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl dark:bg-neutral-900"><DialogHeader className="items-center text-center"><div className="bg-primary/10 p-5 rounded-3xl mb-4 shadow-inner"><Sparkles className="h-10 w-10 text-primary" /></div><DialogTitle className="text-2xl font-black text-[#0f172a] dark:text-neutral-200">Werde Premium-Mitglied</DialogTitle><DialogDescription className="text-base font-medium text-[#64748b] dark:text-neutral-400">Schalte exklusive Funktionen frei und unterstütze die Entwicklung.</DialogDescription></DialogHeader><div className="space-y-4 py-4"><div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-neutral-800"><div className="mt-1 bg-primary text-white p-1 rounded-lg"><Check className="h-3 w-3" strokeWidth={4} /></div><div><p className="font-black text-sm text-[#0f172a] dark:text-neutral-200">Interaktive Kartenansicht</p><p className="text-xs font-medium text-[#64748b] dark:text-neutral-400">Entdecke alles direkt auf der Karte.</p></div></div><div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-neutral-800"><div className="mt-1 bg-primary text-white p-1 rounded-lg"><Check className="h-3 w-3" strokeWidth={4} /></div><div><p className="font-black text-sm text-[#0f172a] dark:text-neutral-200">Keine Werbung</p><p className="text-xs font-medium text-[#64748b] dark:text-neutral-400">Genieße Aktvia ohne Unterbrechungen.</p></div></div></div><DialogFooter><Button className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20 transition-transform active:scale-95" onClick={() => setIsPremiumUpsellOpen(false)}>Jetzt upgraden</Button></DialogFooter></DialogContent></Dialog>
     </>
   );
 }
