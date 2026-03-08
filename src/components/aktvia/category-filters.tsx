@@ -26,6 +26,7 @@ import { db } from '@/lib/firebase/client';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { availableTabs } from './category-filters-data';
+import { cn } from '@/lib/utils';
 
 export type CategoryTab = {
   id: string;
