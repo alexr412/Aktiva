@@ -17,7 +17,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { votePlace } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { getPrimaryTagStyle, getTagStyle, DEFAULT_TAG_STYLE } from '@/lib/tag-config';
+import { getPrimaryTagStyle } from '@/lib/tag-config';
 
 const formatDistance = (distanceInMeters?: number) => {
     if (distanceInMeters === undefined) return null;
@@ -38,7 +38,6 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
     
-    // Dynamisches Tag-Mapping
     const primaryStyle = getPrimaryTagStyle(place.categories);
     const PrimaryIcon = primaryStyle.icon;
     
@@ -61,18 +60,6 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     }, [place.id]);
 
     const userVote = user ? (localVotes.userVotes?.[user.uid] || 'none') : 'none';
-
-    // Filter und de-dupliziere Tags basierend auf der Konfiguration
-    const displayTags = useMemo(() => {
-        if (!place.categories) return [];
-        
-        const styles = place.categories
-            .map(cat => getTagStyle(cat))
-            .filter(style => style.label !== DEFAULT_TAG_STYLE.label); // Nur konfigurierte Tags
-            
-        const uniqueLabels = Array.from(new Set(styles.map(s => s.label)));
-        return uniqueLabels.map(label => styles.find(s => s.label === label)!);
-    }, [place.categories]);
 
     const handleBookmarkToggle = (e: React.MouseEvent) => {
         e.stopPropagation(); 
@@ -136,7 +123,6 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
       </div>
 
       <div className="mt-4 flex-1 flex flex-col justify-end">
-        {/* Fix: Strikte Prüfung auf > 0, um "0"-Artefakt zu vermeiden */}
         {place.activityCount !== undefined && place.activityCount > 0 && (
           <div className="mb-3 inline-flex items-center gap-2 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary self-start">
             <MessageSquare className="h-3.5 w-3.5" />
@@ -145,13 +131,12 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         )}
         
         <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mb-4">
-          {displayTags.map((style, index) => (
+          {place.categories?.map((tag, index) => (
             <span
               key={index}
-              className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-tight"
-              style={{ backgroundColor: `${style.color}10`, color: style.color }}
+              className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-[#f1f5f9] text-[#475569]"
             >
-              {style.label}
+              {tag}
             </span>
           ))}
         </div>
@@ -170,7 +155,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                 transition: 'all 0.2s',
                 cursor: 'pointer',
                 background: userVote === 'up' ? '#22c55e' : '#ffffff',
-                color: userVote === 'up' ? '#ffffff' : '#0f172a',
+                color: userVote === 'up' ? '#ffffff' : '#000000',
                 borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0',
               }}
             >
@@ -188,7 +173,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                 transition: 'all 0.2s',
                 cursor: 'pointer',
                 background: userVote === 'down' ? '#ef4444' : '#ffffff',
-                color: userVote === 'down' ? '#ffffff' : '#0f172a',
+                color: userVote === 'down' ? '#ffffff' : '#000000',
                 borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0',
               }}
             >

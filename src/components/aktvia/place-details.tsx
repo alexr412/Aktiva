@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -13,7 +13,6 @@ import {
     Star,
     ChevronLeft,
     Users,
-    LogIn,
     Loader2,
     MessageSquare,
     Navigation,
@@ -31,7 +30,7 @@ import type { Place, Activity } from '@/lib/types';
 import { AiRecommendation } from './ai-recommendation';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
-import { getPrimaryTagStyle, getTagStyle, DEFAULT_TAG_STYLE } from '@/lib/tag-config';
+import { getPrimaryTagStyle } from '@/lib/tag-config';
 
 type PlaceDetailsProps = {
     place: Place;
@@ -52,18 +51,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
     
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
-
-    // Filter und de-dupliziere Tags basierend auf der Konfiguration
-    const displayTags = useMemo(() => {
-        if (!place.categories) return [];
-        
-        const styles = place.categories
-            .map(cat => getTagStyle(cat))
-            .filter(style => style.label !== DEFAULT_TAG_STYLE.label);
-            
-        const uniqueLabels = Array.from(new Set(styles.map(s => s.label)));
-        return uniqueLabels.map(label => styles.find(s => s.label === label)!);
-    }, [place.categories]);
 
     const handleBookmarkToggle = () => {
         if (isFavorite) {
@@ -194,9 +181,9 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                             
                             <Card className="p-4 bg-slate-50 border-none flex flex-col items-center justify-center gap-1 text-center shadow-none">
                                 <div className="flex flex-wrap gap-1 justify-center">
-                                    {displayTags.map(style => (
-                                        <Badge key={style.label} variant="outline" className="bg-white/80 text-[9px] font-bold border-none shadow-sm" style={{ color: style.color }}>
-                                            {style.label}
+                                    {place.categories?.map((tag, index) => (
+                                        <Badge key={index} variant="outline" className="bg-[#f1f5f9] text-[#475569] text-[9px] font-bold border-none shadow-sm">
+                                            {tag}
                                         </Badge>
                                     ))}
                                 </div>
@@ -273,13 +260,13 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                 <div className="voting-controls flex gap-2 items-center pt-3 border-t border-slate-200/50">
                                                   <button 
                                                     onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'up' ? 'none' : 'up'); }} 
-                                                    style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'up' ? '#22c55e' : '#ffffff', color: userVote === 'up' ? '#ffffff' : '#0f172a', borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0', cursor: 'pointer' }}
+                                                    style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'up' ? '#22c55e' : '#ffffff', color: userVote === 'up' ? '#ffffff' : '#000000', borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0', cursor: 'pointer' }}
                                                   >
                                                     {isVoting ? <Loader2 className="animate-spin h-3 w-3" /> : '↑'}
                                                   </button>
                                                   <button 
                                                     onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'down' ? 'none' : 'down'); }} 
-                                                    style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'down' ? '#ef4444' : '#ffffff', color: userVote === 'down' ? '#ffffff' : '#0f172a', borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0', cursor: 'pointer' }}
+                                                    style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'down' ? '#ef4444' : '#ffffff', color: userVote === 'down' ? '#ffffff' : '#000000', borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0', cursor: 'pointer' }}
                                                   >
                                                     {isVoting ? <Loader2 className="animate-spin h-3 w-3" /> : '↓'}
                                                   </button>

@@ -11,7 +11,7 @@ import { EntityMoreOptions } from '../common/EntityMoreOptions';
 import { cn } from '@/lib/utils';
 import { voteActivity } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
-import { getPrimaryTagStyle, getTagStyle } from '@/lib/tag-config';
+import { getPrimaryTagStyle } from '@/lib/tag-config';
 
 interface ActivityListItemProps {
     activity: Activity;
@@ -34,7 +34,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const isOwnActivity = activity.creatorId === user?.uid;
     const userVote = user ? (activity.userVotes?.[user.uid] || 'none') : 'none';
     
-    // Dynamisches Tag-Mapping
     const primaryStyle = getPrimaryTagStyle(activity.categories || []);
     const PrimaryIcon = primaryStyle.icon;
 
@@ -97,6 +96,18 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                             {activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; von {activity.creatorName}
                         </span>
                     </p>
+
+                    {/* DIAGNOSTIC TAGS ROLLBACK */}
+                    <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mt-3">
+                      {activity.categories?.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-[#f1f5f9] text-[#475569]"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                 </div>
             </div>
 
@@ -115,7 +126,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     transition: 'all 0.2s',
                     cursor: 'pointer',
                     background: userVote === 'up' ? '#22c55e' : '#ffffff',
-                    color: userVote === 'up' ? '#ffffff' : '#0f172a',
+                    color: userVote === 'up' ? '#ffffff' : '#000000',
                     borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0',
                   }}
                 >
@@ -133,7 +144,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     transition: 'all 0.2s',
                     cursor: 'pointer',
                     background: userVote === 'down' ? '#ef4444' : '#ffffff',
-                    color: userVote === 'down' ? '#ffffff' : '#0f172a',
+                    color: userVote === 'down' ? '#ffffff' : '#000000',
                     borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0',
                   }}
                 >
