@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff } from 'lucide-react';
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
+  name: z.string().min(4, { message: 'Der Name muss mindestens 4 Zeichen lang sein.' }).max(64),
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
   confirmPassword: z.string(),
@@ -73,6 +73,7 @@ export default function SignupPage() {
 
   const passwordValue = form.watch('password');
   const confirmPasswordValue = form.watch('confirmPassword');
+  const nameValue = form.watch('name');
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (passwordStrength.score < 5) {
@@ -87,8 +88,8 @@ export default function SignupPage() {
     try {
       await signUp(values.name, values.email, values.password);
       toast({
-        title: 'Account Created',
-        description: "Welcome! You've been successfully signed up.",
+        title: 'Account erstellt!',
+        description: "Registrierung erfolgreich. Bitte bestätige deine Email-Adresse über den zugesandten Link.",
       });
       router.push('/profile');
     } catch (error: any) {
@@ -118,8 +119,17 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel className="font-bold text-neutral-700 dark:text-neutral-300">Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Dein Name" {...field} className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" />
+                      <Input 
+                        placeholder="Dein Name" 
+                        {...field} 
+                        minLength={4}
+                        maxLength={64}
+                        className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" 
+                      />
                     </FormControl>
+                    {nameValue.length > 0 && nameValue.length < 4 && (
+                      <p className="text-[10px] text-red-500 mt-1 font-bold uppercase tracking-tight">Der Name muss mindestens 4 Zeichen lang sein.</p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -225,7 +235,7 @@ export default function SignupPage() {
               <Button 
                 type="submit" 
                 className="w-full h-14 text-base font-black rounded-2xl shadow-lg shadow-primary/20 transition-transform active:scale-95 mt-4" 
-                disabled={form.formState.isSubmitting || passwordStrength.score < 5 || passwordValue !== confirmPasswordValue}
+                disabled={form.formState.isSubmitting || passwordStrength.score < 5 || passwordValue !== confirmPasswordValue || nameValue.length < 4}
               >
                 {form.formState.isSubmitting ? 'Wird erstellt...' : 'Konto erstellen'}
               </Button>

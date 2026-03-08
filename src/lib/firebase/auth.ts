@@ -6,6 +6,7 @@ import {
   signOut as firebaseSignOut,
   updateProfile,
   sendPasswordResetEmail,
+  sendEmailVerification,
   deleteUser,
   type User,
 } from 'firebase/auth';
@@ -22,6 +23,9 @@ export async function signUp(name: string, email: string, password: string): Pro
   await updateProfile(userCredential.user, {
     displayName: name,
   });
+  
+  // Initiierung der Email-Verifizierung unmittelbar nach Kontoerstellung
+  await sendEmailVerification(userCredential.user);
   
   // Create a corresponding user document in Firestore
   await createUserProfileDocument(userCredential.user);
