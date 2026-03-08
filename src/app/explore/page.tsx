@@ -6,13 +6,13 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase/client';
-import { joinActivity, voteActivity } from '@/lib/firebase/firestore';
+import { joinActivity } from '@/lib/firebase/firestore';
 import type { Activity } from '@/lib/types';
 import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Compass, X, Heart, Home, MapPin, Calendar, Users, Info, RotateCcw, ExternalLink, Sparkles, Loader2 } from 'lucide-react';
+import { Compass, X, Heart, Home, MapPin, Calendar, Users, RotateCcw, ExternalLink, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
@@ -62,7 +62,6 @@ export default function ExplorePage() {
 
     const [allCards, setAllCards] = useState<Activity[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isVoting, setIsVoting] = useState(false);
     const animationControls = useAnimation();
     
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -225,18 +224,6 @@ export default function ExplorePage() {
         
         setLastSwipedCard(null);
     };
-
-    const handleVote = async (activityId: string, type: 'up' | 'down') => {
-        if (!user || isVoting) return;
-        setIsVoting(true);
-        try {
-            await voteActivity(activityId, user.uid, type);
-        } catch (error) {
-            console.error("Voting failed:", error);
-        } finally {
-            setIsVoting(false);
-        }
-    };
     
     const onDragEnd = (event: any, info: any) => {
       const { offset } = info;
@@ -350,29 +337,7 @@ export default function ExplorePage() {
                                                     <span className="font-semibold text-sm">{card.participantIds.length} Participants &bull; by {card.creatorName}</span>
                                                 </div>
                                                 
-                                                {/* INTEGRATED VOTING UI FOR EXPLORE CARDS */}
                                                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
-                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); handleVote(card.id!, 'up'); }} 
-                                                            disabled={isVoting || !user}
-                                                            style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', cursor: 'pointer', color: '#000000', fontWeight: 'bold' }}
-                                                        >
-                                                            {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
-                                                        </button>
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); handleVote(card.id!, 'down'); }} 
-                                                            disabled={isVoting || !user}
-                                                            style={{ padding: '6px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#ffffff', cursor: 'pointer', color: '#000000', fontWeight: 'bold' }}
-                                                        >
-                                                            {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}
-                                                        </button>
-                                                        {userProfile?.isAdmin && (
-                                                            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>
-                                                                ↑{card.upvotes || 0} ↓{card.downvotes || 0}
-                                                            </span>
-                                                        )}
-                                                    </div>
                                                     <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded">
                                                         {card.isCustomActivity ? "Community" : "Location"}
                                                     </div>
