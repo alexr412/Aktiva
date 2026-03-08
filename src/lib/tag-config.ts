@@ -1,7 +1,7 @@
 'use client';
 
 import {
-  Anchor, Ship, Waves, Landmark, Mic, Palette, TreePine,
+  Anchor, Ship, Waves, Landmark, Mic, Palette, TreePine, Trees,
   Church, Flame, Film, Coffee, Utensils, Dumbbell, 
   Building, Moon, Circle, Sun, Tent, Shield, Globe, User,
   BookOpen,
@@ -32,7 +32,7 @@ export const getPrimaryIconData = (place: any): TagStyle => {
   const name = (place.name || '').toLowerCase();
   const n = name;
 
-  // --- SAKRALBAUTEN (Höchste Priorität gemäß Direktive) ---
+  // --- SAKRALBAUTEN (Höchste Priorität) ---
   if (tags.includes('tourism.sights.place_of_worship.synagogue') || tags.includes('religion.place_of_worship.judaism') || n.includes('synagoge')) {
     return { icon: Star, color: '#3b82f6', label: 'Synagoge', bgClass: 'bg-blue-50' };
   }
@@ -75,6 +75,12 @@ export const getPrimaryIconData = (place: any): TagStyle => {
   if (tags.includes('man_made.bridge') || name.includes('brücke')) {
     return { icon: Waves, color: '#0ea5e9', label: 'Brücke', bgClass: 'bg-sky-50' }; 
   }
+  
+  // Spezifische Wiesen/Parks Regel
+  if (tags.includes('pet.dog_park') || n.includes('wiese') || n.includes('park')) {
+    return { icon: Trees, color: '#22c55e', label: 'Wiese/Park', bgClass: 'bg-green-50 dark:bg-neutral-800' };
+  }
+
   if (tags.includes('leisure.park') || tags.includes('leisure')) {
     return { icon: TreePine, color: '#22c55e', label: 'Park', bgClass: 'bg-green-50' };
   }

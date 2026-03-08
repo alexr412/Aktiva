@@ -12,8 +12,8 @@
 export const formatTags = (tags: string[]): string[] => {
   if (!tags || !Array.isArray(tags)) return [];
 
-  // 1. Eliminierung invalider Boolean- und Metadaten-Tags
-  const invalidTags = ['yes', 'no', 'true', 'false', 'default'];
+  // 1. Eliminierung invalider Boolean- und Metadaten-Tags (Erweiterte Blacklist)
+  const invalidTags = ['yes', 'no', 'true', 'false', 'default', 'customers', 'none', 'null', 'undefined'];
   const cleanedTags = tags.filter(tag => !invalidTags.includes(tag.toLowerCase()));
 
   // 2. Hierarchische Redundanzen filtern
