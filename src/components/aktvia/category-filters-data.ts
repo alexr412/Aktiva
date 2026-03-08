@@ -2,7 +2,6 @@
 
 import {
   UtensilsCrossed,
-  Coffee,
   TreePine,
   ShoppingBag,
   Film,
@@ -11,7 +10,6 @@ import {
   Waves,
   Beer,
   Ticket,
-  ShoppingCart,
   Bird,
   Library,
   Music,
@@ -30,8 +28,6 @@ export const availableTabs = [
   { id: "Zoos", label: "Zoos & Aquarien", query: ["entertainment.zoo", "entertainment.aquarium"], icon: Bird },
   { id: "Cinemas", label: "Kinos", query: ["entertainment.cinema"], icon: Film },
   { id: "Shopping", label: "Shopping", query: ["commercial.shopping_mall", "commercial.clothing"], icon: ShoppingBag },
-  { id: "Supermarkets", label: "Supermärkte", query: ["commercial.supermarket"], icon: ShoppingCart },
   { id: "Attractions", label: "Attraktionen", query: ["tourism.attraction", "tourism.sights"], icon: Ticket },
-  { id: "Coworking", label: "Coworking", query: ["office.coworking"], icon: Building },
-  { id: "Rental", label: "Verleih", query: ["rental.bicycle", "rental.boat", "rental.ski"], icon: ShoppingBag }
+  { id: "Coworking", label: "Coworking", query: ["office.coworking"], icon: Building }
 ];
