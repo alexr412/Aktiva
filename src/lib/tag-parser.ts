@@ -3,21 +3,26 @@
 /**
  * @fileOverview Utility zur Bereinigung und Formatierung von Kategorien-Tags.
  * 
- * - Entfernt hierarchische Redundanzen (z.B. löscht 'tourism', wenn 'tourism.sights' existiert).
- * - Übersetzt Kern-Kategorien ins Deutsche.
+ * - Entfernt invalide Boolean- und Metadaten-Tags.
+ * - Eliminiert hierarchische Redundanzen (z.B. löscht 'tourism', wenn 'tourism.sights' existiert).
+ * - Übersetzt Kern-Kategorien über eine erweiterte Lokalisierungs-Matrix ins Deutsche.
  * - Formatiert Fallbacks (Letzter Teil des Pfads, Kapitalisierung, Unterstriche zu Leerzeichen).
  */
 
 export const formatTags = (tags: string[]): string[] => {
   if (!tags || !Array.isArray(tags)) return [];
 
-  // 1. Hierarchische Redundanzen filtern
+  // 1. Eliminierung invalider Boolean- und Metadaten-Tags
+  const invalidTags = ['yes', 'no', 'true', 'false', 'default'];
+  const cleanedTags = tags.filter(tag => !invalidTags.includes(tag.toLowerCase()));
+
+  // 2. Hierarchische Redundanzen filtern
   // Ein Tag bleibt nur, wenn kein anderer Tag existiert, der mit "dieserTag." beginnt.
-  const specificTags = tags.filter(tag1 => {
-    return !tags.some(tag2 => tag2 !== tag1 && tag2.startsWith(tag1 + '.'));
+  const specificTags = cleanedTags.filter(tag1 => {
+    return !cleanedTags.some(tag2 => tag2 !== tag1 && tag2.startsWith(tag1 + '.'));
   });
 
-  // 2. Lokalisierungs-Mapping für Primär-Entitäten
+  // 3. Erweiterte Lokalisierungs-Matrix (Deutsch)
   const tagDictionary: Record<string, string> = {
     'entertainment.cinema': 'Kino',
     'entertainment.culture.theatre': 'Theater',
@@ -37,10 +42,15 @@ export const formatTags = (tags: string[]): string[] => {
     'natural.water': 'Gewässer',
     'natural.beach': 'Strand',
     'beach': 'Strand',
-    'heritage': 'Kulturerbe'
+    'heritage': 'Kulturerbe',
+    'pet.dog_park': 'Hundewiese',
+    'camping.caravan_site': 'Wohnmobilstellplatz',
+    'camping.camp_site': 'Campingplatz',
+    'building.tourism': 'Tourismus-Gebäude',
+    'building.entertainment': 'Unterhaltungsstätte'
   };
 
-  // 3. Transformation und Fallback
+  // 4. Transformation und Fallback
   return specificTags.map(tag => {
     if (tagDictionary[tag]) {
       return tagDictionary[tag];
