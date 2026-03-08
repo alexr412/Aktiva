@@ -20,6 +20,8 @@ interface ActivityListItemProps {
 }
 
 export function ActivityListItem({ activity, user, onJoin }: ActivityListItemProps) {
+    if (!activity) return null;
+
     const { userProfile } = useAuth();
     const router = useRouter();
     const [isJoining, setIsJoining] = useState(false);
@@ -51,7 +53,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
     const handleVote = async (activityId: string, type: 'up' | 'down') => {
         if (!user || isVoting) return;
-        if (userVote === (type === 'up' ? 'down' : 'up')) return; // Block opposite if already voted (redundant due to disabled button)
+        if (userVote === (type === 'up' ? 'down' : 'up')) return;
         
         setIsVoting(true);
         try {
@@ -117,7 +119,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
               <div className="voting-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button 
                   onClick={(e) => { e.stopPropagation(); userVote !== 'up' && handleVote(activity.id!, 'up'); }} 
-                  disabled={isVoting || !user || userVote === 'down'}
+                  disabled={userVote === 'down' || isVoting || !user}
                   aria-label="Upvote"
                   style={{ 
                     padding: '6px 12px', 
@@ -136,7 +138,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); userVote !== 'down' && handleVote(activity.id!, 'down'); }} 
-                  disabled={isVoting || !user || userVote === 'up'}
+                  disabled={userVote === 'up' || isVoting || !user}
                   aria-label="Downvote"
                   style={{ 
                     padding: '6px 12px', 

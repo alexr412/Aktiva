@@ -71,6 +71,8 @@ type PlaceCardProps = {
 };
 
 export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
+    if (!place) return null;
+
     const { user, userProfile } = useAuth();
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
@@ -164,7 +166,6 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         </div>
       </div>
       <div className="flex-1 flex flex-col justify-end p-3 pt-0">
-        {/* Activity Indicator */}
         {place.activityCount && place.activityCount > 0 ? (
           <div className="mb-2 inline-flex items-center gap-2 rounded-lg bg-primary px-2.5 py-1.5 text-sm font-semibold text-primary-foreground self-start">
             <MessageSquare className="h-4 w-4" />
@@ -176,7 +177,6 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
           <div className="h-[34px] mb-2" />
         )}
         
-        {/* Tags */}
         <div className="flex w-full flex-wrap items-center gap-2 overflow-hidden mb-3">
           {cleanTags.slice(0, 3).map((tag, index) => (
             <span
@@ -193,7 +193,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
           <div className="voting-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button 
               onClick={(e) => { e.stopPropagation(); userVote !== 'up' && handleVoteClick(e, 'up'); }} 
-              disabled={isVoting || !user || userVote === 'down'}
+              disabled={userVote === 'down' || isVoting || !user}
               aria-label="Upvote"
               style={{ 
                 padding: '6px 12px', 
@@ -212,7 +212,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); userVote !== 'down' && handleVoteClick(e, 'down'); }} 
-              disabled={isVoting || !user || userVote === 'up'}
+              disabled={userVote === 'up' || isVoting || !user}
               aria-label="Downvote"
               style={{ 
                 padding: '6px 12px', 
