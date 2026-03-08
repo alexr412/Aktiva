@@ -59,13 +59,20 @@ export const availableTabs = [
   { 
     id: "Nature", 
     label: "Natur & Parks", 
-    query: ["leisure.park", "natural.forest", "natural.protected_area", "national_park", "leisure.picnic"], 
+    query: [
+      "leisure.park", "natural.forest", "natural.protected_area", "national_park", 
+      "leisure.picnic", "pet.dog_park", "camping.camp_site", "camping.caravan_site", 
+      "camping.summer_camp", "natural.mountain", "natural.mountain.peak"
+    ], 
     icon: TreePine 
   },
   { 
     id: "Water", 
     label: "Wasser & Strand", 
-    query: ["natural.water", "beach", "man_made.pier"], 
+    query: [
+      "natural.water", "natural.water.sea", "natural.water.hot_spring", 
+      "beach", "beach.beach_resort", "natural.sand.dune", "man_made.pier"
+    ], 
     icon: Waves 
   },
   { 
@@ -77,7 +84,14 @@ export const availableTabs = [
   { 
     id: "Sport", 
     label: "Sportanlagen", 
-    query: ["sport", "entertainment.activity_park", "entertainment.bowling_alley", "entertainment.water_park", "entertainment.escape_game", "entertainment.miniature_golf"], 
+    query: [
+      "sport.sports_centre", "sport.fitness.fitness_centre", "sport.swimming_pool", 
+      "sport.stadium", "sport.ice_rink", "sport.pitch", "sport.track", 
+      "sport.horse_riding", "sport.dive_centre", "building.sport", "activity.sport_club", 
+      "entertainment.activity_park", "entertainment.bowling_alley", "entertainment.water_park", 
+      "entertainment.escape_game", "entertainment.miniature_golf", "ski", "ski.lift", 
+      "commercial.outdoor_and_sport"
+    ], 
     icon: Dumbbell 
   },
   
