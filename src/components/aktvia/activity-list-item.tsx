@@ -70,12 +70,12 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
     return (
         <div className={cn(
-          "p-5 relative group transition-all rounded-2xl bg-[#ffffff] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] border-none mb-4",
+          "p-5 relative group transition-all rounded-2xl bg-[#ffffff] dark:bg-slate-800 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] border-none dark:border dark:border-slate-700 mb-4",
           activity.isBoosted && "ring-2 ring-orange-500/20"
         )}>
             <div className="flex items-start gap-4">
                 <div 
-                  className={cn("flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0", primaryStyle.bgClass)}
+                  className={cn("flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0", primaryStyle.bgClass, "dark:bg-slate-700/50")}
                 >
                     <PrimaryIcon 
                       className="h-8 w-8" 
@@ -85,7 +85,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                        <p className="text-lg font-extrabold text-[#0f172a] truncate leading-tight">{activity.placeName}</p>
+                        <p className="text-lg font-extrabold text-[#0f172a] dark:text-slate-100 truncate leading-tight">{activity.placeName}</p>
                         {activity.isBoosted && (
                           <Badge variant="default" className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1 h-5 px-1.5 text-[9px] font-black">
                             <Flame className="h-2.5 w-2.5" />
@@ -93,10 +93,10 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                           </Badge>
                         )}
                     </div>
-                     <p className="text-xs font-bold text-[#64748b]">
+                     <p className="text-xs font-bold text-[#64748b] dark:text-slate-400">
                         {renderDate()}
                     </p>
-                    <p className="text-xs text-[#64748b] truncate mt-1.5 flex items-center gap-1.5 font-medium">
+                    <p className="text-xs text-[#64748b] dark:text-slate-400 truncate mt-1.5 flex items-center gap-1.5 font-medium">
                         <Users className="h-3.5 w-3.5"/>
                         <span>
                             {activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; von {activity.creatorName}
@@ -107,7 +107,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                       {displayTags.map((tag, index) => (
                         <span
                           key={index}
-                          className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-[#f1f5f9] text-[#475569]"
+                          className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-[#f1f5f9] dark:bg-slate-700 dark:border dark:border-slate-600 text-[#475569] dark:text-slate-200"
                         >
                           {tag}
                         </span>
@@ -116,12 +116,13 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 </div>
             </div>
 
-            <div className="card-footer-actions flex justify-between items-center w-full mt-5 pt-4 border-t border-slate-50">
+            <div className="card-footer-actions flex justify-between items-center w-full mt-5 pt-4 border-t border-slate-50 dark:border-slate-700/50">
               
               <div className="voting-controls flex gap-2 items-center">
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'up' ? 'none' : 'up'); }} 
                   aria-label="Upvote"
+                  className="dark:bg-slate-700 dark:hover:bg-slate-600 dark:border-slate-600 dark:text-slate-200"
                   style={{ 
                     padding: '6px 14px', 
                     border: '1px solid', 
@@ -130,8 +131,8 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     fontSize: '14px',
                     transition: 'all 0.2s',
                     cursor: 'pointer',
-                    background: userVote === 'up' ? '#22c55e' : '#ffffff',
-                    color: userVote === 'up' ? '#ffffff' : '#000000',
+                    background: userVote === 'up' ? '#22c55e' : 'inherit',
+                    color: userVote === 'up' ? '#ffffff' : 'inherit',
                     borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0',
                   }}
                 >
@@ -140,6 +141,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'down' ? 'none' : 'down'); }} 
                   aria-label="Downvote"
+                  className="dark:bg-slate-700 dark:hover:bg-slate-600 dark:border-slate-600 dark:text-slate-200"
                   style={{ 
                     padding: '6px 14px', 
                     border: '1px solid', 
@@ -148,8 +150,8 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     fontSize: '14px',
                     transition: 'all 0.2s',
                     cursor: 'pointer',
-                    background: userVote === 'down' ? '#ef4444' : '#ffffff',
-                    color: userVote === 'down' ? '#ffffff' : '#000000',
+                    background: userVote === 'down' ? '#ef4444' : 'inherit',
+                    color: userVote === 'down' ? '#ffffff' : 'inherit',
                     borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0',
                   }}
                 >
@@ -157,7 +159,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 </button>
 
                 {userProfile?.isAdmin && (
-                  <span className="text-[10px] font-bold text-[#64748b] ml-1">
+                  <span className="text-[10px] font-bold text-[#64748b] dark:text-slate-400 ml-1">
                     ↑{activity.upvotes || 0} ↓{activity.downvotes || 0}
                   </span>
                 )}
@@ -165,31 +167,31 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
               <div className="flex gap-2">
                 <button 
-                  className="bookmark-button" 
+                  className="bookmark-button dark:bg-slate-700 dark:hover:bg-slate-600 dark:border-slate-600 dark:text-slate-200" 
                   aria-label="Save"
                   onClick={(e) => e.stopPropagation()}
-                  style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#ffffff', cursor: 'pointer' }}
+                  style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'inherit', cursor: 'pointer' }}
                 >
-                  <Bookmark className="h-4 w-4 text-[#64748b]" />
+                  <Bookmark className="h-4 w-4 text-[#64748b] dark:text-slate-400" />
                 </button>
                 
                 {isParticipant ? (
                   <button 
-                    className="add-button" 
+                    className="add-button dark:bg-slate-700 dark:hover:bg-slate-600 dark:border-slate-600" 
                     aria-label="Chat"
                     onClick={(e) => { e.stopPropagation(); handleViewChatClick(activity.id!); }}
-                    style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#ffffff', cursor: 'pointer' }}
+                    style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'inherit', cursor: 'pointer' }}
                   >
                     <MessageSquare className="h-4 w-4 text-primary" />
                   </button>
                 ) : isFull ? (
                   <button 
-                    className="add-button opacity-50" 
+                    className="add-button opacity-50 dark:bg-slate-800" 
                     aria-label="Full"
                     disabled
                     style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f1f5f9', cursor: 'not-allowed' }}
                   >
-                    <Users className="h-4 w-4 text-[#64748b]" />
+                    <Users className="h-4 w-4 text-[#64748b] dark:text-slate-500" />
                   </button>
                 ) : (
                   <button 
