@@ -3,7 +3,7 @@
 /**
  * @fileOverview Utility zur Bereinigung und Formatierung von Kategorien-Tags.
  * 
- * - Entfernt invalide Boolean- und Metadaten-Tags.
+ * - Entfernt invalide Boolean- und Metadaten-Tags (basiert auf der Endung des Pfads).
  * - Eliminiert hierarchische Redundanzen (z.B. löscht 'tourism', wenn 'tourism.sights' existiert).
  * - Übersetzt Kern-Kategorien über eine erweiterte Lokalisierungs-Matrix ins Deutsche.
  * - Formatiert Fallbacks (Letzter Teil des Pfads, Kapitalisierung, Unterstriche zu Leerzeichen).
@@ -12,9 +12,15 @@
 export const formatTags = (tags: string[]): string[] => {
   if (!tags || !Array.isArray(tags)) return [];
 
-  // 1. Eliminierung invalider Boolean- und Metadaten-Tags (Erweiterte Blacklist)
-  const invalidTags = ['yes', 'no', 'true', 'false', 'default', 'customers', 'none', 'null', 'undefined'];
-  const cleanedTags = tags.filter(tag => !invalidTags.includes(tag.toLowerCase()));
+  // 1. Eliminierung invalider Boolean- und Metadaten-Tags basierend auf der Pfad-Endung
+  const invalidEndings = ['yes', 'no', 'true', 'false', 'default', 'customers', 'none', 'null', 'undefined', 'limited'];
+
+  const cleanedTags = tags.filter(tag => {
+    if (!tag) return false;
+    const parts = tag.split('.');
+    const lastPart = parts[parts.length - 1].toLowerCase();
+    return !invalidEndings.includes(lastPart);
+  });
 
   // 2. Hierarchische Redundanzen filtern
   // Ein Tag bleibt nur, wenn kein anderer Tag existiert, der mit "dieserTag." beginnt.
