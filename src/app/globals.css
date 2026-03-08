@@ -33,13 +33,13 @@
   }
 
   .dark {
-    --background: 0 0% 7%; /* Neutral 950-ish für tieferes Schwarz ohne Blauanteil */
+    --background: 0 0% 7%; /* Reines Neutral 950 ohne Blauanteil */
     --foreground: 0 0% 98%;
     --card: 0 0% 9%; /* Neutral 900 */
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 9%;
     --popover-foreground: 0 0% 98%;
-    --secondary: 0 0% 12%; /* Neutral 850-ish */
+    --secondary: 0 0% 12%; /* Neutral 850 */
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 12%;
     --muted-foreground: 0 0% 63.9%;

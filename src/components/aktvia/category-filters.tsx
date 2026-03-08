@@ -61,7 +61,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
     if (userProfile?.activeTabs) {
       setLocalActiveTabs(userProfile.activeTabs);
     } else {
-      setLocalActiveTabs(['Gastronomy', 'Nature', 'Sights']);
+      setLocalActiveTabs(['Sights', 'Nature', 'Restaurants']);
     }
   }, [userProfile]);
 
@@ -110,8 +110,8 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
               size="sm"
               onClick={() => onCategoryChange(tab.query, tab.id)}
               className={cn(
-                "flex-shrink-0 flex items-center gap-2 rounded-full h-9 transition-all active:scale-95 shadow-sm border-none bg-[#ffffff] dark:bg-neutral-800 dark:border-neutral-700 font-bold",
-                isActive ? "bg-primary text-white" : "text-[#64748b] dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:text-[#0f172a] dark:hover:text-neutral-200"
+                "flex-shrink-0 flex items-center gap-2 rounded-full h-9 font-bold border-none transition-all",
+                isActive ? "bg-primary text-white" : "bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 dark:border-neutral-700"
               )}
             >
               <tab.icon className="h-4 w-4" />
@@ -124,20 +124,16 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
           variant="ghost"
           size="icon"
           onClick={() => setIsConfigOpen(true)}
-          className="flex-shrink-0 rounded-full h-9 w-9 bg-white dark:bg-neutral-800 dark:border dark:border-neutral-700 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+          className="flex-shrink-0 rounded-full h-9 w-9 bg-white dark:bg-neutral-800 dark:border dark:border-neutral-700 shadow-sm"
         >
-          <Plus className="h-4 w-4 text-[#64748b] dark:text-neutral-400" />
-          <span className="sr-only">Kategorien verwalten</span>
+          <Plus className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
         </Button>
       </div>
 
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
         <DialogContent className="sm:max-w-md dark:bg-neutral-900">
           <DialogHeader>
-            <DialogTitle className="font-black text-xl text-[#0f172a] dark:text-neutral-200">Kategorien anpassen</DialogTitle>
-            <DialogDescription className="font-medium text-[#64748b] dark:text-neutral-400">
-              Wähle aus, welche Kategorien in deiner Schnellwahl angezeigt werden sollen.
-            </DialogDescription>
+            <DialogTitle className="font-black text-xl dark:text-neutral-200">Kategorien anpassen</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-2 py-4 max-h-[60vh] overflow-y-auto pr-2">
             {availableTabs.map((tab) => {
@@ -150,8 +146,8 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
                   className={cn(
                     "flex items-center justify-between p-4 rounded-xl border transition-all text-left w-full",
                     isActive 
-                      ? 'bg-primary/10 border-primary text-primary shadow-sm dark:bg-primary/20' 
-                      : 'bg-white border-neutral-100 text-[#64748b] hover:bg-neutral-50 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-700'
+                      ? 'bg-primary/10 border-primary text-primary dark:bg-primary/20' 
+                      : 'bg-white border-neutral-100 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400'
                   )}
                 >
                   <div className="flex items-center gap-3">
@@ -164,7 +160,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
             })}
           </div>
           <DialogFooter>
-            <Button onClick={saveConfiguration} disabled={isSaving} className="w-full h-12 text-base font-black rounded-xl shadow-lg">
+            <Button onClick={saveConfiguration} disabled={isSaving} className="w-full h-12 font-black rounded-xl">
               {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Konfiguration übernehmen'}
             </Button>
           </DialogFooter>

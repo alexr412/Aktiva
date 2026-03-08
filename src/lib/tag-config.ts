@@ -9,6 +9,7 @@ import {
   Star,
   MoonStar,
   Library,
+  Drumstick,
   type LucideIcon
 } from 'lucide-react';
 
@@ -83,12 +84,13 @@ export const getPrimaryIconData = (place: any): TagStyle => {
     return { icon: Landmark, color: '#64748b', label: 'Denkmal', bgClass: 'bg-slate-50' };
   }
 
-  // --- PRIORITÄT 4.5: Bildung (Duale Taxonomie) ---
+  // --- PRIORITÄT 4.5: Bildung ---
   if (tags.some((t: string) => t.startsWith('education') || t === 'building.university' || t === 'building.library' || t === 'building.school')) {
     return { icon: BookOpen, color: '#3b82f6', label: 'Bildung', bgClass: 'bg-blue-50' };
   }
   
   // --- PRIORITÄT 5: Verifizierte Basis-Kategorien ---
+  if (tags.some((t: string) => t.startsWith('catering.fast_food'))) return { icon: Drumstick, color: '#f97316', label: 'Fast Food', bgClass: 'bg-orange-50' };
   if (tags.some((t: string) => t.startsWith('catering.cafe') || t.startsWith('catering.bar'))) return { icon: Coffee, color: '#d97706', label: 'Café/Bar', bgClass: 'bg-amber-50' };
   if (tags.some((t: string) => t.startsWith('catering'))) return { icon: Utensils, color: '#ef4444', label: 'Gastronomie', bgClass: 'bg-red-50' };
   if (tags.some((t: string) => t.startsWith('sport'))) return { icon: Dumbbell, color: '#3b82f6', label: 'Sport', bgClass: 'bg-blue-50' };
@@ -98,9 +100,6 @@ export const getPrimaryIconData = (place: any): TagStyle => {
   return { icon: Building, color: '#94a3b8', label: 'Ort', bgClass: 'bg-slate-50' };
 };
 
-/**
- * Kompatibilitäts-Wrapper
- */
 export const getPrimaryTagStyle = (categories: string[]): TagStyle => {
   return getPrimaryIconData({ categories });
 };
