@@ -84,6 +84,13 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         }
     };
 
+    // Korrektur-Direktive: Exklusion von Condition-Tags (wheelchair, fee, no_fee)
+    const displayTags = (place.categories || []).filter((tag: string) => 
+      !tag.startsWith('wheelchair') && 
+      !tag.startsWith('fee') && 
+      !tag.startsWith('no_fee')
+    );
+
   return (
     <Card
       onClick={onClick}
@@ -130,7 +137,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         )}
         
         <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mb-4">
-          {place.categories?.map((tag, index) => (
+          {displayTags.map((tag, index) => (
             <span
               key={index}
               className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-[#f1f5f9] text-[#475569]"

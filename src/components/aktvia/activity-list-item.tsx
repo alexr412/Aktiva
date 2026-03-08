@@ -61,6 +61,13 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
         return format(activity.activityDate.toDate(), "eee, MMM d 'at' p");
     }
 
+    // Korrektur-Direktive: Exklusion von Condition-Tags (wheelchair, fee, no_fee)
+    const displayTags = (activity.categories || []).filter((tag: string) => 
+      !tag.startsWith('wheelchair') && 
+      !tag.startsWith('fee') && 
+      !tag.startsWith('no_fee')
+    );
+
     return (
         <div className={cn(
           "p-5 relative group transition-all rounded-2xl bg-[#ffffff] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] hover:shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] border-none mb-4",
@@ -97,7 +104,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     </p>
 
                     <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mt-3">
-                      {activity.categories?.map((tag, index) => (
+                      {displayTags.map((tag, index) => (
                         <span
                           key={index}
                           className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-[#f1f5f9] text-[#475569]"
