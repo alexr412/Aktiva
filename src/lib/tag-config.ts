@@ -8,6 +8,7 @@ import {
   PawPrint,
   Star,
   MoonStar,
+  Library,
   type LucideIcon
 } from 'lucide-react';
 
@@ -66,7 +67,7 @@ export const getPrimaryIconData = (place: any): TagStyle => {
     return { icon: Palette, color: '#f59e0b', label: 'Kunst', bgClass: 'bg-amber-50' };
   }
   if (tags.includes('entertainment.museum')) {
-    return { icon: Landmark, color: '#8b5cf6', label: 'Museum', bgClass: 'bg-purple-50' }; 
+    return { icon: Library, color: '#8b5cf6', label: 'Museum', bgClass: 'bg-purple-50' }; 
   }
 
   // --- PRIORITÄT 3: Infrastruktur & Natur ---
@@ -77,9 +78,9 @@ export const getPrimaryIconData = (place: any): TagStyle => {
     return { icon: TreePine, color: '#22c55e', label: 'Park', bgClass: 'bg-green-50' };
   }
 
-  // --- PRIORITÄT 4: Denkmäler ---
-  if (tags.includes('tourism.sights.memorial')) {
-    return { icon: Flame, color: '#f97316', label: 'Denkmal', bgClass: 'bg-orange-50' }; 
+  // --- PRIORITÄT 4: Denkmäler & Monumente ---
+  if (tags.some((t: string) => t.includes('memorial') || t.includes('monument')) || n.includes('denkmal') || n.includes('mahnmal')) {
+    return { icon: Landmark, color: '#64748b', label: 'Denkmal', bgClass: 'bg-slate-50' };
   }
 
   // --- PRIORITÄT 4.5: Bildung (Duale Taxonomie) ---
