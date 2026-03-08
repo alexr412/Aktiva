@@ -49,9 +49,11 @@ export default function Home() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
   const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
+  const [activeTabId, setActiveTabId] = useState<string>("All");
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [customActivities, setCustomActivities] = useState<Activity[]>([]);
   const [allUpcomingActivities, setAllUpcomingActivities] = useState<Activity[]>([]);
+  const [placeMetrics, setPlaceMetrics] = useState<Record<string, {upvotes: number, downvotes: number}>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [cityName, setCityName] = useState<string>("Locating...");
   const [sortBy, setSortBy] = useState("recommended");
@@ -65,8 +67,9 @@ export default function Home() {
   const { planningState } = usePlanningMode();
   const { favorites } = useFavorites();
 
-  const isCommunityCategory = activeCategory.includes("user_event") || activeCategory.includes("community");
-  const isFavoritesCategory = activeCategory.includes("favorites");
+  const isCommunityCategory = activeTabId === "Community";
+  const isFavoritesCategory = activeTabId === "Favorites";
+  const isHighlightsCategory = activeTabId === "Highlights";
 
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (isCommunityCategory || isFavoritesCategory) return null;
@@ -105,7 +108,6 @@ export default function Home() {
     const mapped = data.flatMap(page => {
       const features = page.features || [];
       const safeFeatures = features.filter((feature: any) => {
-        // Deterministische Exklusion von Stolpersteinen über Rohdaten
         const isStolperstein = feature.properties?.datasource?.raw?.memorial === 'stolperstein';
         if (isStolperstein) return false;
 
@@ -147,7 +149,6 @@ export default function Home() {
       });
     });
 
-    // Implement NSFW Blacklist
     const nsfwBlacklist = ['sex', 'erotik', 'porn', 'strip', 'swinger', 'bordell', 'peep'];
     return mapped.filter(place => {
       const placeName = (place.name || '').toLowerCase();
@@ -158,9 +159,11 @@ export default function Home() {
   const places = useMemo(() => {
     return rawPlaces.map(p => ({
         ...p,
+        upvotes: placeMetrics[p.id]?.upvotes || 0,
+        downvotes: placeMetrics[p.id]?.downvotes || 0,
         activityCount: allUpcomingActivities.filter(a => a.placeId === p.id).length
     }));
-  }, [rawPlaces, allUpcomingActivities]);
+  }, [rawPlaces, allUpcomingActivities, placeMetrics]);
 
   const isLoadingInitialData = isLoading;
   const isFetchingMore = isValidating && !isLoadingInitialData;
@@ -168,7 +171,7 @@ export default function Home() {
   const hasMore = !isEmpty && data && (data[data.length - 1]?.features?.length === PLACES_PER_PAGE);
 
   const resetFilters = () => {
-    setActiveCategory(['all']);
+    handleCategoryChange(['all'], 'All');
     setSearchQuery('');
     setSortBy('recommended');
     setSearchRadiusKm(5);
@@ -214,6 +217,26 @@ export default function Home() {
     fetchAllUpcomingActivities();
   }, []);
 
+  useEffect(() => {
+    if (!db || rawPlaces.length === 0) return;
+    
+    const fetchMetrics = async () => {
+        const newMetrics: Record<string, any> = {};
+        const ids = rawPlaces.map(p => p.id);
+        
+        for (let i = 0; i < ids.length; i += 30) {
+            const chunk = ids.slice(i, i + 30);
+            const q = query(collection(db, 'places'), where('__name__', 'in', chunk));
+            const snap = await getDocs(q);
+            snap.forEach(doc => {
+                newMetrics[doc.id] = doc.data();
+            });
+        }
+        setPlaceMetrics(prev => ({...prev, ...newMetrics}));
+    };
+    fetchMetrics();
+  }, [rawPlaces]);
+
   useEffect(() => { if (isCommunityCategory) setCustomActivities(allUpcomingActivities.filter(act => act.isCustomActivity)); }, [isCommunityCategory, allUpcomingActivities]);
 
   const observer = useRef<IntersectionObserver>();
@@ -224,9 +247,10 @@ export default function Home() {
     if (node) observer.current.observe(node);
   }, [isFetchingMore, hasMore, setSize, size]);
 
-  const handleCategoryChange = (categoryId: string[]) => {
+  const handleCategoryChange = (categoryId: string[], tabId: string) => {
     setSearchQuery('');
     setActiveCategory(categoryId);
+    setActiveTabId(tabId);
     setSortBy('recommended');
   };
 
@@ -289,6 +313,39 @@ export default function Home() {
                 const visible = sorted.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
                 if (visible.length === 0) return searchQuery ? <EmptySearchState /> : <div className="flex h-full w-full items-center justify-center p-10 text-center font-bold text-[#64748b]">Keine Community-Aktivitäten gefunden.</div>;
                 return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{visible.map((activity) => <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />)}</div>;
+            }
+            
+            if (isHighlightsCategory) {
+                const filtered = places.filter(place => {
+                    const up = place.upvotes || 0;
+                    const down = place.downvotes || 0;
+                    const matchesSearch = place.name.toLowerCase().includes(searchQuery.toLowerCase());
+                    return up >= 1 && up > down && matchesSearch;
+                });
+                const sorted = filtered.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
+                
+                if (sorted.length === 0 && !isFetchingMore) {
+                    return (
+                        <div className="flex h-full w-full items-center justify-center p-10 text-center">
+                            <div className="space-y-4">
+                                <div className="bg-primary/10 p-6 rounded-3xl inline-block">
+                                    <Sparkles className="h-12 w-12 text-primary" />
+                                </div>
+                                <h3 className="font-black text-xl text-[#0f172a]">Keine Highlights</h3>
+                                <p className="text-[#64748b] font-medium max-w-xs mx-auto">Votings der Community bestimmen, was hier erscheint. Aktuell gibt es keine Orte mit positiver Bilanz.</p>
+                            </div>
+                        </div>
+                    );
+                }
+                return (
+                    <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {sorted.map((place, index) => (
+                            <div ref={index === sorted.length - 1 ? lastElementRef : null} key={place.id}>
+                                <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
+                            </div>
+                        ))}
+                    </div>
+                );
             } else {
                 const filtered = places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
                 const sorted = filtered.sort((a, b) => (a.isSponsored && !b.isSponsored ? -1 : (!a.isSponsored && b.isSponsored ? 1 : (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : (sortBy === 'popular' ? (b.activityCount || 0) - (a.activityCount || 0) : 0))))));
@@ -339,7 +396,12 @@ export default function Home() {
                     type="search"
                     placeholder="Suchen..."
                     value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); if (e.target.value && !activeCategory.includes('all') && !isCommunityCategory && !isFavoritesCategory) setActiveCategory(['all']); }}
+                    onChange={(e) => { 
+                        setSearchQuery(e.target.value); 
+                        if (e.target.value && activeTabId !== 'All' && !isCommunityCategory && !isFavoritesCategory) {
+                            handleCategoryChange(['all'], 'All'); 
+                        } 
+                    }}
                     className="w-full rounded-2xl bg-slate-50 border-none pl-12 h-12 text-sm font-bold placeholder:text-slate-400 focus-visible:ring-0 focus-visible:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all"
                 />
               </div>

@@ -45,7 +45,7 @@ export const coreTabs: CategoryTab[] = [
 
 type CategoryFiltersProps = {
   activeCategory: string[];
-  onCategoryChange: (categoryId: string[]) => void;
+  onCategoryChange: (categoryId: string[], tabId: string) => void;
 };
 
 export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFiltersProps) {
@@ -108,7 +108,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
               key={tab.id}
               variant={isActive ? 'default' : 'outline'}
               size="sm"
-              onClick={() => onCategoryChange(tab.query)}
+              onClick={() => onCategoryChange(tab.query, tab.id)}
               className={cn(
                 "flex-shrink-0 flex items-center gap-2 rounded-full h-9 transition-all active:scale-95 shadow-sm border-none bg-[#ffffff] font-bold",
                 isActive ? "bg-primary text-white" : "text-[#64748b] hover:bg-slate-100 hover:text-[#0f172a]"
