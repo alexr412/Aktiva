@@ -4,6 +4,7 @@ import {
   Anchor, Waves, Landmark, Mic, Palette, TreePine,
   Church, Flame, Film, Coffee, Utensils, Dumbbell, 
   Building, Moon, Circle, Sun, Tent, Shield, Globe, User,
+  BookOpen,
   type LucideIcon
 } from 'lucide-react';
 
@@ -73,6 +74,11 @@ export const getPrimaryIconData = (place: any): TagStyle => {
   if (tags.includes('tourism.sights.memorial')) {
     // Ewige Flamme (Flame) als Symbol für Gedenkstätten
     return { icon: Flame, color: '#f97316', label: 'Denkmal', bgClass: 'bg-orange-50' }; 
+  }
+
+  // --- PRIORITÄT 4.5: Bildung ---
+  if (tags.some((t: string) => t.startsWith('education'))) {
+    return { icon: BookOpen, color: '#3b82f6', label: 'Bildung', bgClass: 'bg-blue-50' };
   }
   
   // --- PRIORITÄT 5: Verifizierte Basis-Kategorien ---
