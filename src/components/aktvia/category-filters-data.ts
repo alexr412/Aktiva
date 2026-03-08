@@ -42,7 +42,7 @@ export const availableTabs = [
   { 
     id: "Education", 
     label: "Bildung", 
-    query: ["education.library", "education.university", "education.college", "education.school"], 
+    query: ["education.library", "building.university", "education.university"], 
     icon: BookOpen 
   },
   { id: "Coworking", label: "Coworking", query: ["office.coworking"], icon: Building },
