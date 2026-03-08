@@ -28,7 +28,7 @@ export const BASE_SOFT_VETO = [
   "childcare", "childcare.kindergarten",
   "healthcare", "healthcare.clinic_or_praxis", "healthcare.clinic_or_praxis.allergology", "healthcare.clinic_or_praxis.cardiology", "healthcare.clinic_or_praxis.dermatology", "healthcare.clinic_or_praxis.endocrinology", "healthcare.clinic_or_praxis.gastroenterology", "healthcare.clinic_or_praxis.general", "healthcare.clinic_or_praxis.gynaecology", "healthcare.clinic_or_praxis.occupational", "healthcare.clinic_or_praxis.ophthalmology", "healthcare.clinic_or_praxis.orthopaedics", "healthcare.clinic_or_praxis.otolaryngology", "healthcare.clinic_or_praxis.paediatrics", "healthcare.clinic_or_praxis.psychiatry", "healthcare.clinic_or_praxis.pulmonology", "healthcare.clinic_or_praxis.radiology", "healthcare.clinic_or_praxis.rheumatology", "healthcare.clinic_or_praxis.trauma", "healthcare.clinic_or_praxis.urology", "healthcare.clinic_or_praxis.vascular_surgery", "healthcare.dentist", "healthcare.dentist.orthodontics", "healthcare.hospital", "healthcare.pharmacy",
   "heritage",
-  "office", "office.accountant", "office.advertising_agency", "office.architect", "office.association", "office.charity", "office.company", "office.consulting", "office.diplomatic", "office.educational_institution", "office.employment_agency", "office.energy_supplier", "office.estate_agent", "office.financial", "office.financial_advisor", "office.forestry", "office.foundation", "office.government", "office.government.administrative", "office.government.agriculture", "office.government.cadaster", "office.government.customs", "office.government.education", "office.government.environment", "office.government.forestry", "office.government.healthcare", "office.government.legislative", "office.government.migration", "office.government.ministry", "office.government.prosecutor", "office.government.public_service", "office.government.register_office", "office.government.social_security", "office.government.social_services", "office.government.tax", "office.government.transportation", "office.insurance", "office.it", "office.lawyer", "office.logistics", "office.newspaper", "office.non_profit", "office.notary", "office.political_party", "office.religion", "office.research", "office.security", "office.tax_advisor", "office.telecommunication", "office.travel_agent", "office.water_utility",
+  "office", "office.accountant", "office.advertising_agency", "office.architect", "office.association", "office.charity", "office.company", "office.consulting", "office.diplomatic", "office.educational_institution", "office.employment_agency", "office.energy_supplier", "office.estate_agent", "office.financial", "office.financial_advisor", "office.forestry", "office.foundation", "office.government", "office.government.administrative", "office.government.administrative", "office.government.agriculture", "office.government.cadaster", "office.government.customs", "office.government.education", "office.government.environment", "office.government.forestry", "office.government.healthcare", "office.government.legislative", "office.government.migration", "office.government.ministry", "office.government.prosecutor", "office.government.public_service", "office.government.register_office", "office.government.social_security", "office.government.social_services", "office.government.tax", "office.government.transportation", "office.insurance", "office.it", "office.lawyer", "office.logistics", "office.newspaper", "office.non_profit", "office.notary", "office.political_party", "office.religion", "office.research", "office.security", "office.tax_advisor", "office.telecommunication", "office.travel_agent", "office.water_utility",
   "pet.crematorium", "pet.service", "pet.shop", "pet.veterinary",
   "production.factory",
   "rental", "rental.bicycle", "rental.boat", "rental.car", "rental.ski", "rental.storage",
@@ -107,6 +107,12 @@ export const applyFilters = (items: any[], userSoftVetoList: string[] = []) => {
 export const calculateRelevanceScore = (itemTags: string[], distanceInMeters: number, prefs: UserPreferences): number => {
   let score = 1000; // Basis-Score für Knoten, die den Filter passiert haben
 
+  // --- PRIORISIERUNG: Bibliotheken (education.library) ---
+  // User-Wunsch: Bibliotheken sollen in der Kategorie Bildung immer am höchsten gerankt werden.
+  if (itemTags.includes('education.library')) {
+    score += 15000; // Massiver Boost, um Bibliotheken an die absolute Spitze zu heben
+  }
+
   // Positives Gewichting durch Onboarding-Präferenzen
   const hasLikedTag = itemTags.some(tag => 
     prefs.likedTags.some(liked => tag === liked || tag.startsWith(`${liked}.`))
@@ -124,7 +130,6 @@ export const calculateRelevanceScore = (itemTags: string[], distanceInMeters: nu
   }
 
   // Distanz-Malus: Degradiert Knoten basierend auf räumlicher Entfernung
-  // Beispiel: -1 Punkt pro 10 Meter
   score -= (distanceInMeters / 10);
 
   return score;
@@ -135,7 +140,7 @@ export const calculateRelevanceScore = (itemTags: string[], distanceInMeters: nu
  */
 export const sortFilteredItems = (filteredItems: any[], userPrefs: UserPreferences) => {
   return [...filteredItems].sort((a, b) => {
-    // Falls relevanceScore noch nicht berechnet wurde (z.B. in Test-Umgebungen)
+    // Falls relevanceScore noch nicht berechnet wurde
     const scoreA = a.relevanceScore ?? calculateRelevanceScore(a.categories || a.tags, a.distance || 0, userPrefs);
     const scoreB = b.relevanceScore ?? calculateRelevanceScore(b.categories || b.tags, b.distance || 0, userPrefs);
     
