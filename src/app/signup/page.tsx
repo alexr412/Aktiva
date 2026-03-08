@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { signUp } from '@/lib/firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(4, { message: 'Der Name muss mindestens 4 Zeichen lang sein.' }).max(64),
@@ -73,7 +74,11 @@ export default function SignupPage() {
 
   const passwordValue = form.watch('password');
   const confirmPasswordValue = form.watch('confirmPassword');
-  const nameValue = form.watch('name');
+  const nameValue = form.watch('name') || '';
+
+  // Profanity-Check
+  const forbiddenWords = ['sex', 'porn', 'fuck', 'bitch', 'schlampe', 'fotze', 'hurensohn', 'wichser', 'nazi', 'hitler', 'admin', 'support']; 
+  const hasProfanity = forbiddenWords.some(word => nameValue.toLowerCase().includes(word));
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (passwordStrength.score < 5) {
@@ -81,6 +86,15 @@ export default function SignupPage() {
             variant: 'destructive',
             title: 'Sicherheit',
             description: 'Dein Passwort muss alle Sicherheitsanforderungen erfüllen.',
+        });
+        return;
+    }
+
+    if (hasProfanity) {
+        toast({
+            variant: 'destructive',
+            title: 'Unzulässiger Name',
+            description: 'Bitte wähle einen anderen Namen.',
         });
         return;
     }
@@ -124,11 +138,17 @@ export default function SignupPage() {
                         {...field} 
                         minLength={4}
                         maxLength={64}
-                        className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" 
+                        className={cn(
+                          "h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold",
+                          hasProfanity && "ring-2 ring-red-500"
+                        )} 
                       />
                     </FormControl>
                     {nameValue.length > 0 && nameValue.length < 4 && (
                       <p className="text-[10px] text-red-500 mt-1 font-bold uppercase tracking-tight">Der Name muss mindestens 4 Zeichen lang sein.</p>
+                    )}
+                    {hasProfanity && (
+                      <p className="text-[10px] text-red-500 mt-1 font-bold uppercase tracking-tight">Dieser Name enthält unzulässige Begriffe.</p>
                     )}
                     <FormMessage />
                   </FormItem>
@@ -235,7 +255,7 @@ export default function SignupPage() {
               <Button 
                 type="submit" 
                 className="w-full h-14 text-base font-black rounded-2xl shadow-lg shadow-primary/20 transition-transform active:scale-95 mt-4" 
-                disabled={form.formState.isSubmitting || passwordStrength.score < 5 || passwordValue !== confirmPasswordValue || nameValue.length < 4}
+                disabled={form.formState.isSubmitting || passwordStrength.score < 5 || passwordValue !== confirmPasswordValue || nameValue.length < 4 || hasProfanity}
               >
                 {form.formState.isSubmitting ? 'Wird erstellt...' : 'Konto erstellen'}
               </Button>
