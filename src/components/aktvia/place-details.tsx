@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +31,7 @@ import type { Place, Activity } from '@/lib/types';
 import { AiRecommendation } from './ai-recommendation';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
-import { getPrimaryTagStyle, getTagStyle } from '@/lib/tag-config';
+import { getPrimaryTagStyle, getTagStyle, DEFAULT_TAG_STYLE } from '@/lib/tag-config';
 
 type PlaceDetailsProps = {
     place: Place;
@@ -52,6 +52,18 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
     
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
+
+    // Filter und de-dupliziere Tags basierend auf der Konfiguration
+    const displayTags = useMemo(() => {
+        if (!place.categories) return [];
+        
+        const styles = place.categories
+            .map(cat => getTagStyle(cat))
+            .filter(style => style.label !== DEFAULT_TAG_STYLE.label);
+            
+        const uniqueLabels = Array.from(new Set(styles.map(s => s.label)));
+        return uniqueLabels.map(label => styles.find(s => s.label === label)!);
+    }, [place.categories]);
 
     const handleBookmarkToggle = () => {
         if (isFavorite) {
@@ -182,15 +194,11 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                             
                             <Card className="p-4 bg-slate-50 border-none flex flex-col items-center justify-center gap-1 text-center shadow-none">
                                 <div className="flex flex-wrap gap-1 justify-center">
-                                    {place.categories && place.categories.map(cat => {
-                                        const style = getTagStyle(cat);
-                                        if (style.label === 'Ort' && cat.includes('.')) return null;
-                                        return (
-                                            <Badge key={cat} variant="outline" className="bg-white/80 text-[9px] font-bold border-none shadow-sm" style={{ color: style.color }}>
-                                                {style.label}
-                                            </Badge>
-                                        );
-                                    })}
+                                    {displayTags.map(style => (
+                                        <Badge key={style.label} variant="outline" className="bg-white/80 text-[9px] font-bold border-none shadow-sm" style={{ color: style.color }}>
+                                            {style.label}
+                                        </Badge>
+                                    ))}
                                 </div>
                                 <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-widest mt-1">Kategorien</span>
                             </Card>
