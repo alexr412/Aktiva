@@ -30,7 +30,7 @@ import type { Place, Activity } from '@/lib/types';
 import { AiRecommendation } from './ai-recommendation';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
-import { getPrimaryTagStyle } from '@/lib/tag-config';
+import { getPrimaryIconData } from '@/lib/tag-config';
 
 type PlaceDetailsProps = {
     place: Place;
@@ -38,7 +38,7 @@ type PlaceDetailsProps = {
 };
 
 export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
-    const primaryStyle = getPrimaryTagStyle(place.categories);
+    const primaryStyle = getPrimaryIconData(place);
     const PrimaryIcon = primaryStyle.icon;
     
     const { user, userProfile } = useAuth();
@@ -120,8 +120,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                     
                     <div className="flex flex-col items-center border-b md:border-b-0 md:border-r border-border pb-8 md:pb-0 md:pr-10">
                         <div 
-                          className="w-24 h-24 md:w-32 md:h-32 rounded-3xl flex items-center justify-center mb-6 shadow-sm"
-                          style={{ backgroundColor: `${primaryStyle.color}15` }}
+                          className={cn("w-24 h-24 md:w-32 md:h-32 rounded-3xl flex items-center justify-center mb-6 shadow-sm", primaryStyle.bgClass)}
                         >
                             <PrimaryIcon className="h-12 w-12 md:h-16 md:w-16" style={{ color: primaryStyle.color }} />
                         </div>

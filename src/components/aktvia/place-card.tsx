@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import type { Place } from '@/lib/types';
 import {
@@ -17,7 +17,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { votePlace } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { getPrimaryTagStyle } from '@/lib/tag-config';
+import { getPrimaryIconData } from '@/lib/tag-config';
 
 const formatDistance = (distanceInMeters?: number) => {
     if (distanceInMeters === undefined) return null;
@@ -38,7 +38,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
     
-    const primaryStyle = getPrimaryTagStyle(place.categories);
+    const primaryStyle = getPrimaryIconData(place);
     const PrimaryIcon = primaryStyle.icon;
     
     const [isVoting, setIsVoting] = useState(false);
@@ -101,8 +101,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
 
       <div className="flex items-start gap-4">
         <div 
-          className="relative flex flex-shrink-0 items-center justify-center w-20 h-20 rounded-2xl"
-          style={{ backgroundColor: `${primaryStyle.color}15` }}
+          className={cn("relative flex flex-shrink-0 items-center justify-center w-20 h-20 rounded-2xl", primaryStyle.bgClass)}
         >
             <PrimaryIcon 
               className="h-10 w-10" 
@@ -144,7 +143,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         <div className="card-footer-actions flex justify-between items-center w-full pt-3 border-t border-slate-50">
           <div className="voting-controls flex gap-2 items-center">
             <button 
-              onClick={(e) => { e.stopPropagation(); handleVoteClick(e, userVote === 'up' ? 'none' : 'up'); }} 
+              onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')} 
               aria-label="Upvote"
               style={{ 
                 padding: '6px 14px', 
@@ -162,7 +161,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
               {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
             </button>
             <button 
-              onClick={(e) => { e.stopPropagation(); handleVoteClick(e, userVote === 'down' ? 'none' : 'down'); }} 
+              onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')} 
               aria-label="Downvote"
               style={{ 
                 padding: '6px 14px', 

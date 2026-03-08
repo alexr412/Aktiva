@@ -11,7 +11,7 @@ import { EntityMoreOptions } from '../common/EntityMoreOptions';
 import { cn } from '@/lib/utils';
 import { voteActivity } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
-import { getPrimaryTagStyle } from '@/lib/tag-config';
+import { getPrimaryIconData } from '@/lib/tag-config';
 
 interface ActivityListItemProps {
     activity: Activity;
@@ -34,7 +34,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const isOwnActivity = activity.creatorId === user?.uid;
     const userVote = user ? (activity.userVotes?.[user.uid] || 'none') : 'none';
     
-    const primaryStyle = getPrimaryTagStyle(activity.categories || []);
+    const primaryStyle = getPrimaryIconData({ categories: activity.categories, name: activity.placeName });
     const PrimaryIcon = primaryStyle.icon;
 
     const handleJoinClick = async (activityId: string) => {
@@ -68,8 +68,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
         )}>
             <div className="flex items-start gap-4">
                 <div 
-                  className="flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0"
-                  style={{ backgroundColor: `${primaryStyle.color}15` }}
+                  className={cn("flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0", primaryStyle.bgClass)}
                 >
                     <PrimaryIcon 
                       className="h-8 w-8" 
@@ -97,7 +96,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                         </span>
                     </p>
 
-                    {/* DIAGNOSTIC TAGS ROLLBACK */}
                     <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mt-3">
                       {activity.categories?.map((tag, index) => (
                         <span
