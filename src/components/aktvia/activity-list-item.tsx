@@ -107,7 +107,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                       {displayTags.map((tag, index) => (
                         <span
                           key={index}
-                          className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-[#f1f5f9] dark:bg-neutral-700 dark:border dark:border-neutral-600 text-[#475569] dark:text-neutral-300"
+                          className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-neutral-100 dark:bg-neutral-700 dark:border dark:border-neutral-600 text-[#475569] dark:text-neutral-300"
                         >
                           {tag}
                         </span>
@@ -116,7 +116,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 </div>
             </div>
 
-            <div className="card-footer-actions flex justify-between items-center w-full mt-5 pt-4 border-t border-slate-50 dark:border-neutral-700/50">
+            <div className="card-footer-actions flex justify-between items-center w-full mt-5 pt-4 border-t border-neutral-50 dark:border-neutral-700/50">
               
               <div className="voting-controls flex gap-2 items-center">
                 <button 

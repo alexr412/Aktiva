@@ -143,7 +143,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                         <div className="w-full flex flex-col gap-3">
                             <Button 
                                 variant="outline" 
-                                className="w-full h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-all font-bold"
+                                className="w-full h-12 rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all font-bold"
                                 onClick={handleBookmarkToggle}
                             >
                                 <Bookmark className={cn("h-5 w-5", isFavorite && "fill-primary text-primary")} />
@@ -164,7 +164,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
 
                     <div className="flex flex-col gap-8">
                         <div className="grid grid-cols-2 gap-4">
-                            <Card className="p-4 bg-slate-50 dark:bg-neutral-800 border-none flex flex-col items-center justify-center gap-1 text-center shadow-none">
+                            <Card className="p-4 bg-neutral-50 dark:bg-neutral-800 border-none flex flex-col items-center justify-center gap-1 text-center shadow-none">
                                 {place.rating ? (
                                     <>
                                         <div className="flex items-center gap-1.5">
@@ -178,10 +178,10 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                 )}
                             </Card>
                             
-                            <Card className="p-4 bg-slate-50 dark:bg-neutral-800 border-none flex flex-col items-center justify-center gap-1 text-center shadow-none">
+                            <Card className="p-4 bg-neutral-50 dark:bg-neutral-800 border-none flex flex-col items-center justify-center gap-1 text-center shadow-none">
                                 <div className="flex flex-wrap gap-1 justify-center">
                                     {place.categories?.map((tag, index) => (
-                                        <Badge key={index} variant="outline" className="bg-[#f1f5f9] dark:bg-neutral-700 text-[#475569] dark:text-neutral-300 text-[9px] font-bold border-none shadow-sm">
+                                        <Badge key={index} variant="outline" className="bg-neutral-100 dark:bg-neutral-700 text-[#475569] dark:text-neutral-300 text-[9px] font-bold border-none shadow-sm">
                                             {tag}
                                         </Badge>
                                     ))}
@@ -203,8 +203,8 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                     <Skeleton className="h-20 w-full rounded-2xl" />
                                 </div>
                             ) : placeActivities.length === 0 ? (
-                                <div className="p-10 border border-dashed border-slate-200 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center">
-                                    <Calendar className="h-8 w-8 text-slate-300 dark:text-neutral-600 mb-2" />
+                                <div className="p-10 border border-dashed border-neutral-200 dark:border-neutral-700 rounded-2xl flex flex-col items-center justify-center text-center">
+                                    <Calendar className="h-8 w-8 text-neutral-300 dark:text-neutral-600 mb-2" />
                                     <p className="text-sm font-medium text-[#64748b] dark:text-neutral-500">Noch keine Treffen geplant.</p>
                                 </div>
                             ) : (
@@ -217,7 +217,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                         
                                         return (
                                             <Card key={activity.id} className={cn(
-                                              "p-4 shadow-sm border-none bg-slate-50 dark:bg-neutral-800 flex flex-col gap-3 rounded-2xl",
+                                              "p-4 shadow-sm border-none bg-neutral-50 dark:bg-neutral-800 flex flex-col gap-3 rounded-2xl",
                                               activity.isBoosted && "ring-1 ring-orange-500/20 bg-orange-50/30 dark:bg-orange-900/10"
                                             )}>
                                                 <div className="flex items-center justify-between gap-4">
@@ -256,7 +256,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                     </div>
                                                 </div>
 
-                                                <div className="voting-controls flex gap-2 items-center pt-3 border-t border-slate-200/50 dark:border-neutral-700/50">
+                                                <div className="voting-controls flex gap-2 items-center pt-3 border-t border-neutral-200/50 dark:border-neutral-700/50">
                                                   <button 
                                                     onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'up' ? 'none' : 'up'); }} 
                                                     style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'up' ? '#22c55e' : 'inherit', color: userVote === 'up' ? '#ffffff' : 'inherit', borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0', cursor: 'pointer' }}

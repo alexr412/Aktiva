@@ -111,7 +111,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
               onClick={() => onCategoryChange(tab.query, tab.id)}
               className={cn(
                 "flex-shrink-0 flex items-center gap-2 rounded-full h-9 transition-all active:scale-95 shadow-sm border-none bg-[#ffffff] dark:bg-neutral-800 dark:border-neutral-700 font-bold",
-                isActive ? "bg-primary text-white" : "text-[#64748b] dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-700 hover:text-[#0f172a] dark:hover:text-neutral-200"
+                isActive ? "bg-primary text-white" : "text-[#64748b] dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:text-[#0f172a] dark:hover:text-neutral-200"
               )}
             >
               <tab.icon className="h-4 w-4" />
@@ -124,7 +124,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
           variant="ghost"
           size="icon"
           onClick={() => setIsConfigOpen(true)}
-          className="flex-shrink-0 rounded-full h-9 w-9 bg-white dark:bg-neutral-800 dark:border dark:border-neutral-700 shadow-sm hover:bg-slate-100 dark:hover:bg-neutral-700 transition-colors"
+          className="flex-shrink-0 rounded-full h-9 w-9 bg-white dark:bg-neutral-800 dark:border dark:border-neutral-700 shadow-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
         >
           <Plus className="h-4 w-4 text-[#64748b] dark:text-neutral-400" />
           <span className="sr-only">Kategorien verwalten</span>
@@ -151,7 +151,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
                     "flex items-center justify-between p-4 rounded-xl border transition-all text-left w-full",
                     isActive 
                       ? 'bg-primary/10 border-primary text-primary shadow-sm dark:bg-primary/20' 
-                      : 'bg-white border-slate-100 text-[#64748b] hover:bg-slate-50 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-700'
+                      : 'bg-white border-neutral-100 text-[#64748b] hover:bg-neutral-50 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-700'
                   )}
                 >
                   <div className="flex items-center gap-3">

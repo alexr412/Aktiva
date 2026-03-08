@@ -369,7 +369,7 @@ export default function Home() {
   return (
     <>
       <div className="flex h-full w-full flex-col">
-        <header className="flex-none w-full border-b border-slate-100 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/90 backdrop-blur-md z-20">
+        <header className="flex-none w-full border-b border-neutral-100 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/90 backdrop-blur-md z-20">
           <div className="flex flex-col gap-4 px-4 py-5 sm:px-6 max-w-7xl mx-auto w-full">
              <div className="flex items-center justify-between">
                 <div>
@@ -381,7 +381,7 @@ export default function Home() {
                 </div>
                 <div className="flex items-center gap-3">
                     <NotificationBell />
-                    <div className="flex items-center gap-1 rounded-2xl bg-slate-50 dark:bg-neutral-800 p-1.5 shadow-inner">
+                    <div className="flex items-center gap-1 rounded-2xl bg-neutral-50 dark:bg-neutral-800 p-1.5 shadow-inner">
                         <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className={cn("h-9 w-9 rounded-xl shadow-sm transition-all", viewMode === 'list' ? "bg-white dark:bg-neutral-700 text-primary" : "text-[#64748b] dark:text-neutral-400")} onClick={() => setViewMode('list')}><List className="h-5 w-5" /></Button>
                         <Button variant={viewMode === 'map' ? 'secondary' : 'ghost'} size="icon" className={cn("h-9 w-9 rounded-xl shadow-sm relative transition-all", viewMode === 'map' ? "bg-white dark:bg-neutral-700 text-primary" : "text-[#64748b] dark:text-neutral-400")} onClick={() => { if (!userProfile?.isPremium) { setIsPremiumUpsellOpen(true); return; } setViewMode('map'); }}><MapIcon className="h-5 w-5" />{!userProfile?.isPremium && <div className="absolute -top-1 -right-1 bg-amber-400 rounded-full p-0.5 border-2 border-white dark:border-neutral-800 shadow-sm"><Lock className="h-2 w-2 text-white fill-current" /></div>}</Button>
                     </div>
@@ -402,12 +402,12 @@ export default function Home() {
                             handleCategoryChange(['all'], 'All'); 
                         } 
                     }}
-                    className="w-full rounded-2xl bg-slate-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none pl-12 h-12 text-sm font-bold placeholder:text-neutral-500 focus-visible:ring-0 focus-visible:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all"
+                    className="w-full rounded-2xl bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none pl-12 h-12 text-sm font-bold placeholder:text-neutral-500 focus-visible:ring-0 focus-visible:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all"
                 />
               </div>
               {!isFavoritesCategory && (
                 <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-[160px] rounded-2xl h-12 bg-slate-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none focus:ring-0 font-bold text-xs text-[#0f172a] shadow-inner px-4"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-[160px] rounded-2xl h-12 bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none focus:ring-0 font-bold text-xs text-[#0f172a] shadow-inner px-4"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-2xl border-none shadow-2xl font-bold dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700"><SelectItem value="recommended">Empfohlen</SelectItem><SelectItem value="rating">Bewertung</SelectItem><SelectItem value="popular">Beliebt</SelectItem><SelectItem value="newest">Neueste</SelectItem></SelectContent>
                 </Select>
               )}
@@ -415,7 +415,7 @@ export default function Home() {
             {!isCommunityCategory && !isFavoritesCategory && (
               <div className="flex flex-col gap-2.5 mt-1 px-1">
                 <div className="flex justify-between items-center text-[10px] font-black text-[#64748b] dark:text-neutral-400 uppercase tracking-widest"><span>Suchradius</span><span className="text-primary">{searchRadiusKm} km</span></div>
-                <input type="range" min="1" max="50" step="1" value={searchRadiusKm} onChange={(e) => setSearchRadiusKm(Number(e.target.value))} className="w-full h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary" />
+                <input type="range" min="1" max="50" step="1" value={searchRadiusKm} onChange={(e) => setSearchRadiusKm(Number(e.target.value))} className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary" />
               </div>
             )}
           </div>
@@ -431,7 +431,7 @@ export default function Home() {
       </Dialog>
       <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
       <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
-      <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}><DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl dark:bg-neutral-900"><DialogHeader className="items-center text-center"><div className="bg-primary/10 p-5 rounded-3xl mb-4 shadow-inner"><Sparkles className="h-10 w-10 text-primary" /></div><DialogTitle className="text-2xl font-black text-[#0f172a] dark:text-neutral-200">Werde Premium-Mitglied</DialogTitle><DialogDescription className="text-base font-medium text-[#64748b] dark:text-neutral-400">Schalte exklusive Funktionen frei und unterstütze die Entwicklung.</DialogDescription></DialogHeader><div className="space-y-4 py-4"><div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-neutral-800"><div className="mt-1 bg-primary text-white p-1 rounded-lg"><Check className="h-3 w-3" strokeWidth={4} /></div><div><p className="font-black text-sm text-[#0f172a] dark:text-neutral-200">Interaktive Kartenansicht</p><p className="text-xs font-medium text-[#64748b] dark:text-neutral-400">Entdecke alles direkt auf der Karte.</p></div></div><div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-neutral-800"><div className="mt-1 bg-primary text-white p-1 rounded-lg"><Check className="h-3 w-3" strokeWidth={4} /></div><div><p className="font-black text-sm text-[#0f172a] dark:text-neutral-200">Keine Werbung</p><p className="text-xs font-medium text-[#64748b] dark:text-neutral-400">Genieße Aktvia ohne Unterbrechungen.</p></div></div></div><DialogFooter><Button className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20 transition-transform active:scale-95" onClick={() => setIsPremiumUpsellOpen(false)}>Jetzt upgraden</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}><DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl dark:bg-neutral-900"><DialogHeader className="items-center text-center"><div className="bg-primary/10 p-5 rounded-3xl mb-4 shadow-inner"><Sparkles className="h-10 w-10 text-primary" /></div><DialogTitle className="text-2xl font-black text-[#0f172a] dark:text-neutral-200">Werde Premium-Mitglied</DialogTitle><DialogDescription className="text-base font-medium text-[#64748b] dark:text-neutral-400">Schalte exklusive Funktionen frei und unterstütze die Entwicklung.</DialogDescription></DialogHeader><div className="space-y-4 py-4"><div className="flex items-start gap-4 p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-800"><div className="mt-1 bg-primary text-white p-1 rounded-lg"><Check className="h-3 w-3" strokeWidth={4} /></div><div><p className="font-black text-sm text-[#0f172a] dark:text-neutral-200">Interaktive Kartenansicht</p><p className="text-xs font-medium text-[#64748b] dark:text-neutral-400">Entdecke alles direkt auf der Karte.</p></div></div><div className="flex items-start gap-4 p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-800"><div className="mt-1 bg-primary text-white p-1 rounded-lg"><Check className="h-3 w-3" strokeWidth={4} /></div><div><p className="font-black text-sm text-[#0f172a] dark:text-neutral-200">Keine Werbung</p><p className="text-xs font-medium text-[#64748b] dark:text-neutral-400">Genieße Aktvia ohne Unterbrechungen.</p></div></div></div><DialogFooter><Button className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20 transition-transform active:scale-95" onClick={() => setIsPremiumUpsellOpen(false)}>Jetzt upgraden</Button></DialogFooter></DialogContent></Dialog>
     </>
   );
 }
