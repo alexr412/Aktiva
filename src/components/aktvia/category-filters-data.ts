@@ -15,11 +15,14 @@ import {
   Music,
   Building,
   Landmark,
+  Church,
+  BookOpen,
 } from 'lucide-react';
 
 export const availableTabs = [
-  // --- KULTUR & SIGHTS ---
+  // --- KULTUR & HISTORIE ---
   { id: "Sights", label: "Sehenswürdigkeiten", query: ["tourism.sights", "heritage"], icon: Landmark },
+  { id: "Religion", label: "Religion & Glaube", query: ["religion.place_of_worship"], icon: Church },
   { id: "Museums", label: "Museen", query: ["entertainment.museum"], icon: Library },
   { id: "Attractions", label: "Attraktionen", query: ["tourism.attraction", "tourism.sights"], icon: Ticket },
   { id: "Cinemas", label: "Kinos", query: ["entertainment.cinema"], icon: Film },
@@ -32,11 +35,11 @@ export const availableTabs = [
   
   // --- SOCIAL & FOOD ---
   { id: "Gastronomy", label: "Gastro", query: ["catering.restaurant", "catering.cafe"], icon: UtensilsCrossed },
-  { id: "FastFood", label: "Fast Food", query: ["catering.fast_food"], icon: Utensils },
   { id: "Nightlife", label: "Bars & Pubs", query: ["catering.bar", "catering.pub"], icon: Beer },
   { id: "Clubs", label: "Clubs & Discos", query: ["adult.nightclub"], icon: Music },
   
-  // --- UTILITY-LAYER ---
-  { id: "Shopping", label: "Shopping", query: ["commercial.shopping_mall", "commercial.clothing"], icon: ShoppingBag },
-  { id: "Coworking", label: "Coworking", query: ["office.coworking"], icon: Building }
+  // --- UTILITY & WISSEN ---
+  { id: "Education", label: "Bildung", query: ["education", "amenity.library"], icon: BookOpen },
+  { id: "Coworking", label: "Coworking", query: ["office.coworking"], icon: Building },
+  { id: "Shopping", label: "Shopping", query: ["commercial.shopping_mall", "commercial.clothing"], icon: ShoppingBag }
 ];
