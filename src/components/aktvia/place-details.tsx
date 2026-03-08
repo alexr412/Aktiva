@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -73,14 +72,6 @@ type PlaceDetailsProps = {
 export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
     const Icon = getCategoryIcon(place.categories);
     
-    const getSpecificTags = (tags: string[]) => {
-      return tags.filter(tag => 
-        !tags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
-      );
-    };
-
-    const specificTags = getSpecificTags(place.categories || []);
-
     const { user, userProfile } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
@@ -247,7 +238,7 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                             
                             <Card className="p-4 bg-secondary/30 border-none flex flex-col items-center justify-center gap-1 text-center">
                                 <div className="flex flex-wrap gap-1 justify-center">
-                                    {specificTags.slice(0, 2).map(tag => (
+                                    {place.categories && place.categories.map(tag => (
                                         <Badge key={tag} variant="outline" className="bg-background/50 text-[10px]">
                                             {tag}
                                         </Badge>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -96,14 +95,6 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         return () => unsub();
     }, [place.id]);
 
-    const getSpecificTags = (tags: string[]) => {
-      return tags.filter(tag => 
-        !tags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
-      );
-    };
-
-    const specificTags = getSpecificTags(place.categories || []);
-    
     const userVote = user ? localVotes.userVotes?.[user.uid] : undefined;
 
     const handleBookmarkToggle = (e: React.MouseEvent) => {
@@ -181,7 +172,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         )}
         
         <div className="flex w-full flex-wrap items-center gap-2 overflow-hidden mb-3">
-          {specificTags.slice(0, 3).map((tag, index) => (
+          {place.categories && place.categories.map((tag, index) => (
             <span
               key={index}
               className="inline-flex items-center rounded-md bg-secondary px-2 py-1 text-[10px] font-medium text-secondary-foreground whitespace-nowrap"
