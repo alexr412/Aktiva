@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -23,11 +24,38 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwörter stimmen nicht überein.",
+  path: ["confirmPassword"],
 });
 
 export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
+  
+  // State für Passwort-Stärke
+  const [passwordStrength, setPasswordStrength] = useState({ score: 0, text: '', color: '' });
+
+  const evaluatePassword = (pass: string) => {
+    let score = 0;
+    if (/[A-Z]/.test(pass)) score++; // Großbuchstabe
+    if (/[a-z]/.test(pass)) score++; // Kleinbuchstabe
+    if (/[0-9]/.test(pass)) score++; // Zahl
+    if (/[^A-Za-z0-9]/.test(pass)) score++; // Sonderzeichen
+
+    let text = '';
+    let color = '';
+
+    switch (score) {
+      case 0:
+      case 1: text = 'Schwach'; color = 'bg-red-500'; break;
+      case 2: text = 'Mittel'; color = 'bg-amber-500'; break;
+      case 3: text = 'Gut'; color = 'bg-blue-500'; break;
+      case 4: text = 'Stark'; color = 'bg-green-500'; break;
+    }
+    setPasswordStrength({ score, text, color });
+  };
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -35,10 +63,23 @@ export default function SignupPage() {
       name: '',
       email: '',
       password: '',
+      confirmPassword: '',
     },
   });
 
+  const passwordValue = form.watch('password');
+  const confirmPasswordValue = form.watch('confirmPassword');
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (passwordStrength.score < 4) {
+        toast({
+            variant: 'destructive',
+            title: 'Sicherheit',
+            description: 'Dein Passwort muss alle Sicherheitsanforderungen erfüllen.',
+        });
+        return;
+    }
+
     try {
       await signUp(values.name, values.email, values.password);
       toast({
@@ -57,23 +98,23 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Create an Account</CardTitle>
-          <CardDescription>Enter your details below to get started.</CardDescription>
+    <div className="flex min-h-full items-center justify-center p-4 bg-secondary/30">
+      <Card className="w-full max-w-md border-none shadow-xl rounded-3xl overflow-hidden">
+        <CardHeader className="bg-primary/5 pb-8">
+          <CardTitle className="text-3xl font-black tracking-tight text-center">Registrieren</CardTitle>
+          <CardDescription className="text-center font-medium">Erstelle dein Konto für Aktvia.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-8">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel className="font-bold text-neutral-700 dark:text-neutral-300">Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your Name" {...field} />
+                      <Input placeholder="Dein Name" {...field} className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -84,36 +125,89 @@ export default function SignupPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="font-bold text-neutral-700 dark:text-neutral-300">Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="name@example.com" {...field} />
+                      <Input placeholder="name@beispiel.de" {...field} className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              
               <FormField
                 control={form.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel className="font-bold text-neutral-700 dark:text-neutral-300">Passwort</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••" 
+                        {...field} 
+                        className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold"
+                        onChange={(e) => {
+                            field.onChange(e);
+                            evaluatePassword(e.target.value);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
+                    
+                    {/* Stärke-Indikator */}
+                    {passwordValue && passwordValue.length > 0 && (
+                        <div className="mt-3 px-1">
+                            <div className="flex justify-between text-[10px] uppercase tracking-widest font-black mb-1.5">
+                                <span className="text-neutral-400">Sicherheit</span>
+                                <span className={passwordStrength.color.replace('bg-', 'text-')}>{passwordStrength.text}</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full transition-all duration-500 ease-out ${passwordStrength.color}`}
+                                    style={{ width: `${(passwordStrength.score / 4) * 100}%` }}
+                                ></div>
+                            </div>
+                            {passwordStrength.score < 4 && (
+                                <p className="text-[10px] text-neutral-500 mt-2 font-bold leading-relaxed">
+                                    Muss enthalten: Groß- & Kleinbuchstaben, Zahl und Sonderzeichen.
+                                </p>
+                            )}
+                        </div>
+                    )}
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full h-12 text-base" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Creating Account...' : 'Create Account'}
+
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-bold text-neutral-700 dark:text-neutral-300">Passwort bestätigen</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" />
+                    </FormControl>
+                    <FormMessage />
+                    {confirmPasswordValue && passwordValue !== confirmPasswordValue && (
+                        <p className="text-[10px] text-red-500 mt-1 font-black uppercase tracking-tight">Passwörter stimmen nicht überein.</p>
+                    )}
+                  </FormItem>
+                )}
+              />
+
+              <Button 
+                type="submit" 
+                className="w-full h-14 text-base font-black rounded-2xl shadow-lg shadow-primary/20 transition-transform active:scale-95 mt-4" 
+                disabled={form.formState.isSubmitting || passwordStrength.score < 4 || passwordValue !== confirmPasswordValue}
+              >
+                {form.formState.isSubmitting ? 'Wird erstellt...' : 'Konto erstellen'}
               </Button>
             </form>
           </Form>
-          <div className="mt-4 text-center text-sm">
-            Already have an account?{' '}
-            <Link href="/login" className="underline">
-              Sign in
+          <div className="mt-8 text-center text-sm font-bold text-neutral-500">
+            Du hast bereits ein Konto?{' '}
+            <Link href="/login" className="text-primary hover:underline">
+              Anmelden
             </Link>
           </div>
         </CardContent>
