@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { createActivity } from '@/lib/firebase/firestore';
 import { PlaceDetails } from '@/components/aktvia/place-details';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 
 const EmptyState = () => (
@@ -124,6 +124,8 @@ export default function FavoritesPage() {
 
             <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
                 <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden">
+                    <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
+                    <DialogDescription className="sr-only">Favorisierter Ort Details</DialogDescription>
                     {selectedPlace && <PlaceDetails place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
                 </DialogContent>
             </Dialog>

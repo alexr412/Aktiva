@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { PlaceCard } from '@/components/aktvia/place-card';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import FriendList from '@/components/profile/FriendList';
@@ -430,7 +430,7 @@ export default function ProfilePage() {
                     )}
 
 
-                    <div className="px-6 mt-6 max-w-sm mx-auto">
+                    <div className="px-6 mt-6 max-sm mx-auto">
                         <Button variant="outline" className="w-full" onClick={() => router.push('/profile/edit')}>Edit Profile</Button>
                     </div>
                     
@@ -552,6 +552,8 @@ export default function ProfilePage() {
             <div className="fixed inset-0 pointer-events-none">
                 <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
                     <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden pointer-events-auto">
+                        <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
+                        <DialogDescription className="sr-only">Profil Ort Details</DialogDescription>
                         {selectedPlace && <PlaceDetails place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
                     </DialogContent>
                 </Dialog>
