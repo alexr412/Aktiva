@@ -104,6 +104,10 @@ export default function Home() {
     return data.flatMap(page => {
       const features = page.features || [];
       const safeFeatures = features.filter((feature: any) => {
+        // Deterministische Exklusion von Stolpersteinen über Rohdaten
+        const isStolperstein = feature.properties?.datasource?.raw?.memorial === 'stolperstein';
+        if (isStolperstein) return false;
+
         const allTags: string[] = Array.isArray(feature.properties?.categories) ? feature.properties.categories : [feature.properties?.categories];
         const violatesHardVeto = allTags.some(tag => BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`)));
         if (violatesHardVeto) return false;

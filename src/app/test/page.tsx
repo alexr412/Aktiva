@@ -69,6 +69,10 @@ export default function TestPage() {
       const combinedSoftVetoList = [...BASE_SOFT_VETO];
 
       const safeFeatures = rawFeatures.filter((feature: any) => {
+        // Deterministische Exklusion von Stolpersteinen über Rohdaten
+        const isStolperstein = feature.properties?.datasource?.raw?.memorial === 'stolperstein';
+        if (isStolperstein) return false;
+
         const allTags: string[] = Array.isArray(feature.properties?.categories) 
           ? feature.properties.categories 
           : [feature.properties?.categories];

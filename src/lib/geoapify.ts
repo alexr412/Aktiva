@@ -64,6 +64,10 @@ export const applyFilters = (items: any[], userSoftVetoList: string[] = []) => {
   const combinedSoftVetoList = [...BASE_SOFT_VETO, ...userSoftVetoList];
 
   return items.filter(item => {
+    // Deterministische Exklusion von Stolpersteinen
+    const isStolperstein = item.properties?.datasource?.raw?.memorial === 'stolperstein';
+    if (isStolperstein) return false;
+
     const allTags: string[] = Array.isArray(item.tags) ? item.tags : (item.properties?.categories ? (Array.isArray(item.properties.categories) ? item.properties.categories : [item.properties.categories]) : []);
 
     // 0. Absolute Exklusion (Hard Veto) - Kaskadierende Sperre bleibt aktiv

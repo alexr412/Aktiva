@@ -115,6 +115,7 @@ export interface GeoapifyFeature {
       raw: {
         rating?: string;
         ['building:part']?: string;
+        memorial?: string;
       };
     };
   };
