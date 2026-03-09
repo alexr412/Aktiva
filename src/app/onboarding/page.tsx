@@ -416,7 +416,11 @@ export default function OnboardingPage() {
                     Weiter
                   </Button>
                 ) : step === 4 ? (
-                  <Button type="submit" disabled={isSubmitting} className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-primary/20">
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting || !previewImage} 
+                    className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-primary/20"
+                  >
                     {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
                     Abschließen
                   </Button>
