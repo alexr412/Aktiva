@@ -95,6 +95,7 @@ export default function LoginPage() {
                       <Input 
                         placeholder="name@beispiel.de" 
                         {...field} 
+                        autoComplete="email"
                         className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" 
                       />
                     </FormControl>
@@ -113,6 +114,7 @@ export default function LoginPage() {
                         type="password" 
                         placeholder="••••••••" 
                         {...field} 
+                        autoComplete="current-password"
                         className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" 
                       />
                     </FormControl>
