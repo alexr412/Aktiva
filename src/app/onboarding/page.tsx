@@ -57,7 +57,6 @@ export default function OnboardingPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(user?.photoURL || null);
   const [allowSuggestions, setAllowSuggestions] = useState(true);
   
-  // Flag um zu tracken, ob wir gerade aktiv das Formular abschließen
   const [isFinishing, setIsFinishing] = useState(false);
 
   const form = useForm<ProfileFormData>({
@@ -75,35 +74,52 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
+      console.log("[AUTH] Kein User gefunden, leite zum Login.");
       router.replace('/login');
     }
   }, [user, authLoading, router]);
 
-  // HARTER REDIRECT-SCHUTZ
+  // HARTER REDIRECT-SCHUTZ MIT TELEMETRIE
   useEffect(() => {
-    // Wenn wir nicht laden, ein User existiert, das Profil in der DB sagt "fertig"
-    // UND wir nicht gerade selbst dabei sind (isFinishing), das Onboarding abzuschließen:
+    console.log("[EFFECT] Redirect-Check getriggert.", { 
+        authLoading, 
+        hasUser: !!user, 
+        onboardingCompleted: userProfile?.onboardingCompleted, 
+        isFinishing, 
+        currentStep: step 
+    });
+
     if (!authLoading && user && userProfile?.onboardingCompleted && !isFinishing) {
-        // Dann zwingen wir ihn auf die Startseite.
+        console.warn("[REDIRECT] Bedingung erfüllt. Zwinge Weiterleitung auf '/'");
         router.replace('/');
     }
-  }, [user, userProfile, authLoading, isFinishing, router]);
+  }, [user, userProfile, authLoading, isFinishing, router, step]);
 
   const handleNext = async () => {
+    console.log(`[ACTION] handleNext geklickt. Aktueller Step: ${step}`);
+    
     const fieldsToValidate = onboardingSteps.find(s => s.id === step)?.fields as (keyof ProfileFormData)[] | undefined;
+    console.log(`[VALIDATION] Prüfe Felder:`, fieldsToValidate);
+    
     const isValid = await form.trigger(fieldsToValidate);
+    console.log(`[VALIDATION] Ergebnis: ${isValid}`);
     
     if (step === 2 && hasProfanityInBio) {
+        console.log("[BLOCK] Profanity in Bio detektiert.");
         toast({ variant: 'destructive', title: 'Unzulässige Sprache', description: 'Deine Bio enthält Begriffe, die nicht erlaubt sind.' });
         return;
     }
 
     if (step === 3 && form.watch('interests').length < 3) {
+        console.log(`[BLOCK] Zu wenige Interessen. Aktuell: ${form.watch('interests').length}`);
         return;
     }
 
     if (isValid) {
+      console.log(`[STATE] Wechsle von Step ${step} auf Step ${step + 1}`);
       setStep(prev => prev + 1);
+    } else {
+      console.log("[VALIDATION] Fehlgeschlagen. Fehler:", form.formState.errors);
     }
   };
 
@@ -159,9 +175,16 @@ export default function OnboardingPage() {
   };
 
   const onSubmit = async (data: ProfileFormData) => {
+    console.log("[SUBMIT] Formular-Submit ausgelöst. Aktueller Step:", step);
+    if (step !== 4) {
+        console.warn("[SUBMIT-BLOCK] Submit auf falschem Step ausgelöst! Abbruch.");
+        return;
+    }
+    
     if (!user) return;
     setIsSubmitting(true);
-    setIsFinishing(true); // Sperre aktivieren: Verhindert, dass der useEffect uns weg-redirected
+    setIsFinishing(true); 
+    console.log("[SUBMIT] Sperre aktiviert, starte Datenbank-Schreibvorgang...", data);
     
     try {
       if (profileImage) {
@@ -180,7 +203,6 @@ export default function OnboardingPage() {
           age--;
       }
 
-      // Speichern der Daten inkl. Präferenz für Vorschläge
       await updateUserProfile(user.uid, {
         age,
         location: data.location,
@@ -191,14 +213,15 @@ export default function OnboardingPage() {
         onboardingCompleted: true,
       });
 
+      console.log("[SUBMIT] Datenbank-Update erfolgreich.");
       toast({ title: "Profil bereit!", description: "Willkommen bei Aktvia." });
       
       router.push('/');
     } catch (error: any) {
-      console.error(error);
+      console.error("[SUBMIT-ERROR]", error);
       toast({ variant: 'destructive', title: 'Fehler', description: error.message || "Profil-Update fehlgeschlagen." });
       setIsSubmitting(false);
-      setIsFinishing(false); // Sperre bei Fehler wieder aufheben
+      setIsFinishing(false); 
     }
   };
 
@@ -394,7 +417,7 @@ export default function OnboardingPage() {
                   </Button>
                 ) : step === 4 ? (
                   <Button type="submit" disabled={isSubmitting} className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-primary/20">
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                    {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
                     Abschließen
                   </Button>
                 ) : null}
