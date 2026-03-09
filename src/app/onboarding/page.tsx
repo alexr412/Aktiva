@@ -57,6 +57,7 @@ export default function OnboardingPage() {
   const [isLocating, setIsLocating] = useState(false);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(user?.photoURL || null);
+  const [allowSuggestions, setAllowSuggestions] = useState(true);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -83,6 +84,10 @@ export default function OnboardingPage() {
     
     if (step === 2 && hasProfanityInBio) {
         toast({ variant: 'destructive', title: 'Unzulässige Sprache', description: 'Deine Bio enthält Begriffe, die nicht erlaubt sind.' });
+        return;
+    }
+
+    if (step === 3 && form.watch('interests').length < 3) {
         return;
     }
 
@@ -154,7 +159,6 @@ export default function OnboardingPage() {
         .filter(tab => data.interests.includes(tab.label))
         .flatMap(tab => tab.query);
 
-      // Alter berechnen aus Geburtsdatum
       const birth = new Date(data.birthDate);
       const today = new Date();
       let age = today.getFullYear() - birth.getFullYear();
@@ -209,7 +213,8 @@ export default function OnboardingPage() {
                     <Input 
                         {...form.register('birthDate')} 
                         type="date" 
-                        className="h-12 rounded-xl bg-neutral-800 border-none font-bold text-neutral-200 focus:ring-2 focus:ring-primary" 
+                        className="h-12 rounded-xl bg-neutral-800 border-none font-bold text-neutral-200 focus:ring-2 focus:ring-primary scheme-dark" 
+                        style={{ colorScheme: 'dark' }}
                     />
                     {form.formState.errors.birthDate && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.birthDate.message}</p>}
                   </div>
@@ -298,13 +303,23 @@ export default function OnboardingPage() {
                             </div>
                         )}
                     />
-                   <div className="text-center">
+                   <div className="text-center space-y-4">
                         <p className={cn(
                             "text-[10px] font-black uppercase tracking-widest",
                             form.watch('interests').length < 3 ? "text-neutral-500" : "text-primary"
                         )}>
                             {form.watch('interests').length} / 3 ausgewählt
                         </p>
+                        
+                        <label className="flex items-center space-x-3 mt-6 cursor-pointer justify-center">
+                          <input 
+                            type="checkbox" 
+                            checked={allowSuggestions} 
+                            onChange={(e) => setAllowSuggestions(e.target.checked)}
+                            className="w-5 h-5 rounded border-neutral-700 text-primary focus:ring-primary bg-neutral-800"
+                          />
+                          <span className="text-sm text-neutral-300">Basierend auf meinen Interessen Vorschläge machen</span>
+                        </label>
                    </div>
                 </div>
               )}
