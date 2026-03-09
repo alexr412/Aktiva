@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -18,9 +17,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signUp, signOut, auth } from '@/lib/firebase/auth';
+import { signUp, signOut } from '@/lib/firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Mail, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Mail, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -97,13 +96,8 @@ export default function SignupPage() {
     }
 
     try {
-      // 1. Account erstellen (signUp erledigt Auth, Profil-Doc & Verifizierungs-Email)
       await signUp(values.name, values.email, values.password);
-      
-      // 2. Sofortige Session-Trennung erzwingen
       await signOut();
-      
-      // 3. Status auf Erfolg setzen
       setIsRegistered(true);
       
       toast({
@@ -204,7 +198,7 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel className="font-bold text-neutral-700 dark:text-neutral-300">Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="name@beispiel.de" {...field} className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" />
+                      <Input placeholder="name@beispiel.de" {...field} autoComplete="email" className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -223,6 +217,7 @@ export default function SignupPage() {
                           type={showPassword ? "text" : "password"} 
                           placeholder="••••••••" 
                           {...field} 
+                          autoComplete="new-password"
                           className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold pr-10"
                           onChange={(e) => {
                               field.onChange(e);
@@ -275,6 +270,7 @@ export default function SignupPage() {
                           type={showConfirmPassword ? "text" : "password"} 
                           placeholder="••••••••" 
                           {...field} 
+                          autoComplete="new-password"
                           className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold pr-10" 
                         />
                         <button
