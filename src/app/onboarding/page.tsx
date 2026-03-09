@@ -48,7 +48,7 @@ const bioTemplates = [
 ];
 
 export default function OnboardingPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -77,6 +77,16 @@ export default function OnboardingPage() {
       router.replace('/login');
     }
   }, [user, authLoading, router]);
+
+  // Terminierung des Auto-Redirects
+  useEffect(() => {
+    if (userProfile?.onboardingCompleted && step < 4) {
+      return; 
+    }
+    if (userProfile?.onboardingCompleted && !isSubmitting) {
+      router.push('/');
+    }
+  }, [userProfile, step, isSubmitting, router]);
 
   const handleNext = async () => {
     const fieldsToValidate = onboardingSteps.find(s => s.id === step)?.fields as (keyof ProfileFormData)[] | undefined;
@@ -210,12 +220,17 @@ export default function OnboardingPage() {
                   <CardDescription className="text-center font-medium">Erzähl uns ein wenig über dich.</CardDescription>
                   <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-neutral-500">Geburtsdatum</label>
-                    <Input 
-                        {...form.register('birthDate')} 
+                    <div className="relative group">
+                      <input 
                         type="date" 
-                        className="h-12 rounded-xl bg-neutral-800 border-none font-bold text-neutral-200 focus:ring-2 focus:ring-primary scheme-dark" 
+                        {...form.register('birthDate')}
+                        className="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 text-white 
+                                   appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary
+                                   [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert 
+                                   [&::-webkit-calendar-picker-indicator]:cursor-pointer font-bold"
                         style={{ colorScheme: 'dark' }}
-                    />
+                      />
+                    </div>
                     {form.formState.errors.birthDate && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.birthDate.message}</p>}
                   </div>
                   <div className="space-y-2">
@@ -226,15 +241,14 @@ export default function OnboardingPage() {
                             placeholder="z.B. Berlin" 
                             className="h-12 rounded-xl bg-neutral-800 border-none font-bold text-neutral-200 flex-1" 
                         />
-                        <Button 
+                        <button 
                             type="button" 
-                            size="icon" 
                             onClick={detectLocation} 
                             disabled={isLocating}
-                            className="h-12 w-12 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-primary shrink-0"
+                            className="h-12 w-12 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-primary shrink-0 flex items-center justify-center transition-colors disabled:opacity-50"
                         >
                             {isLocating ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapPin className="h-5 w-5" />}
-                        </Button>
+                        </button>
                     </div>
                     {form.formState.errors.location && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.location.message}</p>}
                   </div>
@@ -278,27 +292,27 @@ export default function OnboardingPage() {
                         control={form.control}
                         name="interests"
                         render={({ field }) => (
-                            <div className="flex flex-wrap gap-2 justify-center max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar flex flex-wrap gap-2 justify-center">
                                 {availableTabs.map((interest) => (
-                                    <Badge
+                                    <button
                                         key={interest.id}
-                                        variant={field.value.includes(interest.label) ? 'default' : 'secondary'}
+                                        type="button"
                                         onClick={() => {
                                             const newValue = field.value.includes(interest.label)
-                                                ? field.value.filter((i) => i !== interest.label)
+                                                ? field.value.filter((i: string) => i !== interest.label)
                                                 : [...field.value, interest.label];
                                             field.onChange(newValue);
                                         }}
                                         className={cn(
-                                            "cursor-pointer text-xs py-2 px-4 rounded-full font-bold transition-all border-none select-none",
+                                            "flex items-center space-x-2 px-4 py-2 rounded-full border transition-all select-none",
                                             field.value.includes(interest.label) 
-                                                ? "bg-primary text-white scale-105 shadow-lg shadow-primary/20" 
-                                                : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
+                                                ? "bg-primary border-primary text-neutral-900 shadow-lg shadow-primary/20 scale-105" 
+                                                : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:border-neutral-500"
                                         )}
                                     >
-                                        <interest.icon className="w-3.5 h-3.5 mr-2" />
-                                        {interest.label}
-                                    </Badge>
+                                        <interest.icon className="w-4 h-4" />
+                                        <span className="text-sm font-bold">{interest.label}</span>
+                                    </button>
                                 ))}
                             </div>
                         )}
