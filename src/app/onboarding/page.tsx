@@ -77,9 +77,10 @@ export default function OnboardingPage() {
     }
   }, [user, authLoading, router]);
 
-  // Terminierung des Auto-Redirects
+  // TERMINIERUNG DES AUTO-REDIRECTS (Routing-Lock)
   useEffect(() => {
-    // Verhindert den Redirect, solange das Onboarding im Frontend noch nicht finalisiert wurde
+    // LOCK: Nur wenn wir explizit in Schritt 5 sind (Abschluss),
+    // erlauben wir die Weiterleitung durch Profil-Änderungen im Hintergrund.
     if (step < 5) return; 
 
     if (userProfile?.onboardingCompleted && !isSubmitting) {
@@ -187,7 +188,9 @@ export default function OnboardingPage() {
       });
 
       toast({ title: "Profil bereit!", description: "Willkommen bei Aktvia." });
-      setStep(5); // Finalisiert den State für den Redirect-Sperriegel
+      
+      // Status-Sperre lösen und erst dann weiterleiten
+      setStep(5); 
       router.push('/');
     } catch (error: any) {
       console.error(error);
@@ -206,12 +209,12 @@ export default function OnboardingPage() {
         <Card className="w-full max-w-md bg-neutral-900 border-neutral-800 shadow-2xl rounded-3xl overflow-hidden">
           <CardHeader className="bg-primary/5 pb-8 border-b border-neutral-800">
             <div className="space-y-3 mb-4">
-              <Progress value={(step / onboardingSteps.length) * 100} className="h-1.5 bg-neutral-800" />
+              <Progress value={(Math.min(step, 4) / onboardingSteps.length) * 100} className="h-1.5 bg-neutral-800" />
               <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500 text-center">
-                Schritt {step} von {onboardingSteps.length}
+                Schritt {Math.min(step, 4)} von {onboardingSteps.length}
               </p>
             </div>
-            <CardTitle className="text-center text-2xl font-black tracking-tight">{onboardingSteps[step - 1]?.title || 'Fertig'}</CardTitle>
+            <CardTitle className="text-center text-2xl font-black tracking-tight">{onboardingSteps[Math.min(step, 4) - 1]?.title || 'Fertig'}</CardTitle>
           </CardHeader>
           <CardContent className="pt-8 px-6">
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
