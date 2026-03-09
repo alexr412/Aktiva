@@ -17,23 +17,34 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, ArrowLeft, Loader2 } from 'lucide-react';
+import { Camera, ArrowLeft, Loader2, MapPin, Sparkles, X, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+
+const forbiddenWords = ['sex', 'porn', 'fuck', 'bitch', 'schlampe', 'fotze', 'hurensohn', 'wichser', 'nazi', 'hitler', 'admin', 'support'];
 
 const profileSchema = z.object({
-  age: z.number().min(13, "You must be at least 13 years old.").max(120, "Please enter a valid age."),
-  location: z.string().min(2, "Location is required."),
-  bio: z.string().max(150, "Bio must be 150 characters or less.").optional(),
-  interests: z.array(z.string()).min(1, "Select at least one interest."),
+  birthDate: z.string().min(1, "Bitte gib dein Geburtsdatum an."),
+  location: z.string().min(2, "Standort ist erforderlich."),
+  bio: z.string().max(150, "Die Bio darf maximal 150 Zeichen lang sein.").optional(),
+  interests: z.array(z.string()).min(3, "Bitte wähle mindestens 3 Interessen aus."),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 const onboardingSteps = [
-  { id: 1, title: "About You", fields: ['age', 'location'] },
-  { id: 2, title: "Your Bio", fields: ['bio'] },
-  { id: 3, title: "Your Interests", fields: ['interests'] },
-  { id: 4, title: "Profile Picture" },
+  { id: 1, title: "Über dich", fields: ['birthDate', 'location'] },
+  { id: 2, title: "Deine Bio", fields: ['bio'] },
+  { id: 3, title: "Deine Interessen", fields: ['interests'] },
+  { id: 4, title: "Profilbild" },
+];
+
+const bioTemplates = [
+  "Ich liebe es, neue Orte zu entdecken und Museen zu besuchen.",
+  "Immer auf der Suche nach dem besten Kaffee der Stadt!",
+  "Sport und Natur sind meine Leidenschaft.",
+  "Kulturinteressiert und immer offen für neue Bekanntschaften.",
+  "Lass uns gemeinsam die Highlights der Stadt erkunden!"
 ];
 
 export default function OnboardingPage() {
@@ -43,6 +54,7 @@ export default function OnboardingPage() {
   
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(user?.photoURL || null);
 
@@ -51,8 +63,13 @@ export default function OnboardingPage() {
     defaultValues: {
       interests: [],
       bio: '',
+      location: '',
+      birthDate: '',
     },
   });
+
+  const bioValue = form.watch('bio') || '';
+  const hasProfanityInBio = forbiddenWords.some(word => bioValue.toLowerCase().includes(word));
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -63,6 +80,12 @@ export default function OnboardingPage() {
   const handleNext = async () => {
     const fieldsToValidate = onboardingSteps.find(s => s.id === step)?.fields as (keyof ProfileFormData)[] | undefined;
     const isValid = await form.trigger(fieldsToValidate);
+    
+    if (step === 2 && hasProfanityInBio) {
+        toast({ variant: 'destructive', title: 'Unzulässige Sprache', description: 'Deine Bio enthält Begriffe, die nicht erlaubt sind.' });
+        return;
+    }
+
     if (isValid) {
       setStep(prev => prev + 1);
     }
@@ -70,20 +93,53 @@ export default function OnboardingPage() {
 
   const handleBack = () => setStep(prev => prev - 1);
   
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+        toast({ variant: 'destructive', title: 'Fehler', description: 'Geolocation wird von deinem Browser nicht unterstützt.' });
+        return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+            const data = await response.json();
+            const city = data.address.city || data.address.town || data.address.village || data.address.suburb;
+            if (city) {
+                form.setValue('location', city);
+                toast({ title: 'Standort erkannt', description: `Wir haben dich in ${city} lokalisiert.` });
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsLocating(false);
+        }
+    }, (err) => {
+        toast({ variant: 'destructive', title: 'Standortfehler', description: 'Zugriff verweigert oder Zeitüberschreitung.' });
+        setIsLocating(false);
+    });
+  };
+
+  const generateBio = () => {
+    const random = bioTemplates[Math.floor(Math.random() * bioTemplates.length)];
+    form.setValue('bio', random);
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-       if (file.size > 5242880) { // 5MB
-            toast({ variant: 'destructive', title: 'File too large', description: 'Please select an image smaller than 5MB.' });
-            return;
-        }
-        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-            toast({ variant: 'destructive', title: 'Invalid file type', description: 'Please select a JPG, PNG, or WEBP image.' });
+       if (file.size > 5242880) {
+            toast({ variant: 'destructive', title: 'Datei zu groß', description: 'Bitte wähle ein Bild unter 5MB.' });
             return;
         }
       setProfileImage(file);
       setPreviewImage(URL.createObjectURL(file));
     }
+  };
+
+  const removeImage = () => {
+    setProfileImage(null);
+    setPreviewImage(null);
   };
 
   const onSubmit = async (data: ProfileFormData) => {
@@ -94,129 +150,217 @@ export default function OnboardingPage() {
         await uploadProfileImage(user.uid, profileImage);
       }
       
-      // Map interests to likedTags for relevance scoring
-      // interests in the form are the labels, we need to map them back to the query tags
       const likedTags = availableTabs
         .filter(tab => data.interests.includes(tab.label))
         .flatMap(tab => tab.query);
 
+      // Alter berechnen aus Geburtsdatum
+      const birth = new Date(data.birthDate);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+          age--;
+      }
+
       await updateUserProfile(user.uid, {
-        ...data,
+        age,
+        location: data.location,
+        bio: data.bio,
+        interests: data.interests,
         likedTags,
         dislikedTags: [],
         onboardingCompleted: true,
       });
 
-      toast({ title: "Profile complete!", description: "Welcome to Aktvia." });
-      router.push('/explore');
+      toast({ title: "Profil bereit!", description: "Willkommen bei Aktvia." });
+      router.push('/');
     } catch (error: any) {
       console.error(error);
-      toast({ variant: 'destructive', title: 'Error', description: error.message || "Failed to update profile." });
+      toast({ variant: 'destructive', title: 'Fehler', description: error.message || "Profil-Update fehlgeschlagen." });
       setIsSubmitting(false);
     }
   };
 
   if (authLoading || !user) {
-    return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    return <div className="flex h-screen w-full items-center justify-center bg-neutral-950"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
-  const interestOptions = availableTabs.map(c => c.label);
-
   return (
-    <div className="flex min-h-dvh w-full flex-col bg-secondary">
+    <div className="flex min-h-dvh w-full flex-col bg-neutral-950 text-neutral-200">
       <div className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <div className="space-y-2 mb-4">
-              <Progress value={(step / onboardingSteps.length) * 100} className="w-full" />
-              <p className="text-sm text-muted-foreground text-center">
-                Step {step} of {onboardingSteps.length}
+        <Card className="w-full max-w-md bg-neutral-900 border-neutral-800 shadow-2xl rounded-3xl overflow-hidden">
+          <CardHeader className="bg-primary/5 pb-8 border-b border-neutral-800">
+            <div className="space-y-3 mb-4">
+              <Progress value={(step / onboardingSteps.length) * 100} className="h-1.5 bg-neutral-800" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500 text-center">
+                Schritt {step} von {onboardingSteps.length}
               </p>
             </div>
-            <CardTitle className="text-center text-2xl font-bold">{onboardingSteps[step - 1].title}</CardTitle>
+            <CardTitle className="text-center text-2xl font-black tracking-tight">{onboardingSteps[step - 1].title}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-8 px-6">
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {step === 1 && (
-                <div className="space-y-4">
-                  <CardDescription className="text-center">Tell us a bit about yourself.</CardDescription>
-                  <div>
-                    <Input {...form.register('age', { valueAsNumber: true })} type="number" placeholder="Your Age" />
-                    {form.formState.errors.age && <p className="text-destructive text-sm mt-1">{form.formState.errors.age.message}</p>}
+                <div className="space-y-5">
+                  <CardDescription className="text-center font-medium">Erzähl uns ein wenig über dich.</CardDescription>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-neutral-500">Geburtsdatum</label>
+                    <Input 
+                        {...form.register('birthDate')} 
+                        type="date" 
+                        className="h-12 rounded-xl bg-neutral-800 border-none font-bold text-neutral-200 focus:ring-2 focus:ring-primary" 
+                    />
+                    {form.formState.errors.birthDate && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.birthDate.message}</p>}
                   </div>
-                  <div>
-                    <Input {...form.register('location')} placeholder="Your Location (e.g., City, Country)" />
-                    {form.formState.errors.location && <p className="text-destructive text-sm mt-1">{form.formState.errors.location.message}</p>}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-neutral-500">Wohnort</label>
+                    <div className="flex gap-2">
+                        <Input 
+                            {...form.register('location')} 
+                            placeholder="z.B. Berlin" 
+                            className="h-12 rounded-xl bg-neutral-800 border-none font-bold text-neutral-200 flex-1" 
+                        />
+                        <Button 
+                            type="button" 
+                            size="icon" 
+                            onClick={detectLocation} 
+                            disabled={isLocating}
+                            className="h-12 w-12 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-primary shrink-0"
+                        >
+                            {isLocating ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapPin className="h-5 w-5" />}
+                        </Button>
+                    </div>
+                    {form.formState.errors.location && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.location.message}</p>}
                   </div>
                 </div>
               )}
+
               {step === 2 && (
-                <div className="space-y-4">
-                  <CardDescription className="text-center">A short bio helps others get to know you.</CardDescription>
-                  <Textarea {...form.register('bio')} placeholder="Write something about yourself..." maxLength={150} />
-                  {form.formState.errors.bio && <p className="text-destructive text-sm mt-1">{form.formState.errors.bio.message}</p>}
+                <div className="space-y-5">
+                  <CardDescription className="text-center font-medium">Eine kurze Bio hilft anderen, dich kennenzulernen.</CardDescription>
+                  <div className="relative">
+                    <Textarea 
+                        {...form.register('bio')} 
+                        placeholder="Schreib etwas über dich..." 
+                        maxLength={150} 
+                        className={cn(
+                            "min-h-[120px] rounded-2xl bg-neutral-800 border-none font-bold text-neutral-200 focus:ring-2 focus:ring-primary",
+                            hasProfanityInBio && "ring-2 ring-red-500"
+                        )}
+                    />
+                    <div className="absolute bottom-3 right-3 text-[10px] font-bold text-neutral-500">
+                        {bioValue.length}/150
+                    </div>
+                  </div>
+                  {hasProfanityInBio && <p className="text-red-500 text-[10px] font-bold uppercase">Unzulässige Begriffe erkannt.</p>}
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={generateBio} 
+                    className="w-full h-12 rounded-xl border-dashed border-neutral-700 hover:bg-neutral-800 font-bold gap-2"
+                  >
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    Bio-Vorschlag generieren
+                  </Button>
                 </div>
               )}
+
               {step === 3 && (
-                <div className="space-y-4">
-                   <CardDescription className="text-center">What do you enjoy doing?</CardDescription>
+                <div className="space-y-5">
+                   <CardDescription className="text-center font-medium">Was unternimmst du gerne?</CardDescription>
                     <Controller
                         control={form.control}
                         name="interests"
                         render={({ field }) => (
-                            <div className="flex flex-wrap gap-2 justify-center">
-                                {interestOptions.map((interest) => (
+                            <div className="flex flex-wrap gap-2 justify-center max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                {availableTabs.map((interest) => (
                                     <Badge
-                                        key={interest}
-                                        variant={field.value.includes(interest) ? 'default' : 'secondary'}
+                                        key={interest.id}
+                                        variant={field.value.includes(interest.label) ? 'default' : 'secondary'}
                                         onClick={() => {
-                                            const newValue = field.value.includes(interest)
-                                                ? field.value.filter((i) => i !== interest)
-                                                : [...field.value, interest];
+                                            const newValue = field.value.includes(interest.label)
+                                                ? field.value.filter((i) => i !== interest.label)
+                                                : [...field.value, interest.label];
                                             field.onChange(newValue);
                                         }}
-                                        className="cursor-pointer text-base py-1 px-3"
+                                        className={cn(
+                                            "cursor-pointer text-xs py-2 px-4 rounded-full font-bold transition-all border-none select-none",
+                                            field.value.includes(interest.label) 
+                                                ? "bg-primary text-white scale-105 shadow-lg shadow-primary/20" 
+                                                : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
+                                        )}
                                     >
-                                        {interest}
+                                        <interest.icon className="w-3.5 h-3.5 mr-2" />
+                                        {interest.label}
                                     </Badge>
                                 ))}
                             </div>
                         )}
                     />
-                   {form.formState.errors.interests && <p className="text-destructive text-sm mt-1 text-center">{form.formState.errors.interests.message}</p>}
-                </div>
-              )}
-              {step === 4 && (
-                <div className="space-y-4 flex flex-col items-center">
-                  <CardDescription className="text-center">Add a profile picture so others can recognize you.</CardDescription>
-                   <div className="relative">
-                        <Avatar className="w-32 h-32 text-4xl">
-                            <AvatarImage src={previewImage || ''} />
-                            <AvatarFallback>{user.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <label htmlFor="profile-picture" className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/90">
-                           <Camera className="w-5 h-5"/>
-                           <Input id="profile-picture" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageChange}/>
-                        </label>
+                   <div className="text-center">
+                        <p className={cn(
+                            "text-[10px] font-black uppercase tracking-widest",
+                            form.watch('interests').length < 3 ? "text-neutral-500" : "text-primary"
+                        )}>
+                            {form.watch('interests').length} / 3 ausgewählt
+                        </p>
                    </div>
-                   <Button type="button" variant="link" onClick={() => handleNext()}>Skip for now</Button>
                 </div>
               )}
 
-              <div className="flex gap-4 pt-4">
+              {step === 4 && (
+                <div className="space-y-6 flex flex-col items-center">
+                  <CardDescription className="text-center font-medium">Lade ein Bild hoch, damit man dich erkennt.</CardDescription>
+                   <div className="relative group">
+                        <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-neutral-800 bg-neutral-800 shadow-xl">
+                            {previewImage ? (
+                                <img src={previewImage} alt="Vorschau" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-4xl font-black text-neutral-600 bg-neutral-800">
+                                    {user.displayName?.charAt(0).toUpperCase()}
+                                </div>
+                            )}
+                        </div>
+                        
+                        {previewImage ? (
+                            <button 
+                                type="button"
+                                onClick={removeImage}
+                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-colors"
+                            >
+                                <X size={14} strokeWidth={3} />
+                            </button>
+                        ) : (
+                            <label htmlFor="profile-picture" className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2.5 cursor-pointer hover:scale-110 transition-transform shadow-xl">
+                                <Camera className="w-5 h-5"/>
+                                <Input id="profile-picture" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageChange}/>
+                            </label>
+                        )}
+                   </div>
+                   <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Maximale Dateigröße: 5MB</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-6">
                 {step > 1 && (
-                  <Button type="button" variant="outline" onClick={handleBack} className="w-full">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                  <Button type="button" variant="ghost" onClick={handleBack} className="w-full h-14 rounded-2xl font-black text-neutral-500 hover:text-neutral-200">
+                    <ArrowLeft className="mr-2 h-5 w-5" /> Zurück
                   </Button>
                 )}
                 {step < onboardingSteps.length ? (
-                  <Button type="button" onClick={handleNext} className="w-full">
-                    Next
+                  <Button 
+                    type="button" 
+                    onClick={handleNext} 
+                    disabled={step === 3 && form.watch('interests').length < 3}
+                    className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-primary/20"
+                  >
+                    Weiter
                   </Button>
                 ) : (
-                  <Button type="submit" disabled={isSubmitting} className="w-full">
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Finish
+                  <Button type="submit" disabled={isSubmitting} className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-primary/20">
+                    {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
+                    Abschließen
                   </Button>
                 )}
               </div>
