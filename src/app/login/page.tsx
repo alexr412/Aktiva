@@ -16,12 +16,12 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signIn } from '@/lib/firebase/auth';
+import { signIn, signOut } from '@/lib/firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
-  email: z.string().email({ message: 'Invalid email address.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  email: z.string().email({ message: 'Ungültige E-Mail-Adresse.' }),
+  password: z.string().min(6, { message: 'Das Passwort muss mindestens 6 Zeichen lang sein.' }),
 });
 
 export default function LoginPage() {
@@ -38,40 +38,65 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await signIn(values.email, values.password);
+      const user = await signIn(values.email, values.password);
+
+      // Zwingende Verifikations-Prüfung unmittelbar nach dem Auth-Call
+      if (!user.emailVerified) {
+        await signOut(); // Session sofort terminieren
+        toast({
+          variant: 'destructive',
+          title: 'Zugriff verweigert',
+          description: 'Bitte bestätige zuerst deine E-Mail-Adresse über den zugesandten Link.',
+        });
+        return; // Funktionsausführung abbrechen
+      }
+
       toast({
-        title: 'Login Successful',
-        description: "Welcome back!",
+        title: 'Login erfolgreich',
+        description: "Willkommen zurück!",
       });
       router.push('/profile');
     } catch (error: any) {
       console.error(error);
+      let errorMessage = 'Ein unerwarteter Fehler ist aufgetreten.';
+      
+      // Nutzerspezifische Fehlermeldungen für bessere UX
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = 'E-Mail oder Passwort ist falsch.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Zu viele Fehlversuche. Bitte versuche es später erneut.';
+      }
+
       toast({
         variant: 'destructive',
-        title: 'Login Failed',
-        description: error.message || 'An unexpected error occurred.',
+        title: 'Login fehlgeschlagen',
+        description: errorMessage,
       });
     }
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-          <CardDescription>Enter your credentials to access your account.</CardDescription>
+    <div className="flex min-h-full items-center justify-center p-4 bg-secondary/30">
+      <Card className="w-full max-w-md border-none shadow-xl rounded-3xl overflow-hidden">
+        <CardHeader className="bg-primary/5 pb-8">
+          <CardTitle className="text-3xl font-black tracking-tight text-center">Anmelden</CardTitle>
+          <CardDescription className="text-center font-medium">Schön, dass du wieder da bist!</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-8">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="font-bold text-neutral-700 dark:text-neutral-300">Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="name@example.com" {...field} />
+                      <Input 
+                        placeholder="name@beispiel.de" 
+                        {...field} 
+                        className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -82,23 +107,32 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel className="font-bold text-neutral-700 dark:text-neutral-300">Passwort</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••" 
+                        {...field} 
+                        className="h-12 rounded-xl bg-neutral-50 dark:bg-neutral-800 border-none font-bold" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full h-12 text-base" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Signing In...' : 'Sign In'}
+              <Button 
+                type="submit" 
+                className="w-full h-14 text-base font-black rounded-2xl shadow-lg shadow-primary/20 transition-transform active:scale-95 mt-4" 
+                disabled={form.formState.isSubmitting}
+              >
+                {form.formState.isSubmitting ? 'Wird angemeldet...' : 'Anmelden'}
               </Button>
             </form>
           </Form>
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="underline">
-              Sign up
+          <div className="mt-8 text-center text-sm font-bold text-neutral-500">
+            Du hast noch kein Konto?{' '}
+            <Link href="/signup" className="text-primary hover:underline">
+              Registrieren
             </Link>
           </div>
         </CardContent>
