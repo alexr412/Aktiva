@@ -18,7 +18,6 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, ArrowLeft, Loader2, MapPin, Sparkles, X, Check } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 const forbiddenWords = ['sex', 'porn', 'fuck', 'bitch', 'schlampe', 'fotze', 'hurensohn', 'wichser', 'nazi', 'hitler', 'admin', 'support'];
@@ -80,9 +79,9 @@ export default function OnboardingPage() {
 
   // Terminierung des Auto-Redirects
   useEffect(() => {
-    if (userProfile?.onboardingCompleted && step < 4) {
-      return; 
-    }
+    // Verhindert den Redirect, solange das Onboarding im Frontend noch nicht finalisiert wurde
+    if (step < 5) return; 
+
     if (userProfile?.onboardingCompleted && !isSubmitting) {
       router.push('/');
     }
@@ -188,6 +187,7 @@ export default function OnboardingPage() {
       });
 
       toast({ title: "Profil bereit!", description: "Willkommen bei Aktvia." });
+      setStep(5); // Finalisiert den State für den Redirect-Sperriegel
       router.push('/');
     } catch (error: any) {
       console.error(error);
@@ -211,7 +211,7 @@ export default function OnboardingPage() {
                 Schritt {step} von {onboardingSteps.length}
               </p>
             </div>
-            <CardTitle className="text-center text-2xl font-black tracking-tight">{onboardingSteps[step - 1].title}</CardTitle>
+            <CardTitle className="text-center text-2xl font-black tracking-tight">{onboardingSteps[step - 1]?.title || 'Fertig'}</CardTitle>
           </CardHeader>
           <CardContent className="pt-8 px-6">
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -372,7 +372,7 @@ export default function OnboardingPage() {
               )}
 
               <div className="flex gap-3 pt-6">
-                {step > 1 && (
+                {step > 1 && step < 5 && (
                   <Button type="button" variant="ghost" onClick={handleBack} className="w-full h-14 rounded-2xl font-black text-neutral-500 hover:text-neutral-200">
                     <ArrowLeft className="mr-2 h-5 w-5" /> Zurück
                   </Button>
@@ -386,12 +386,12 @@ export default function OnboardingPage() {
                   >
                     Weiter
                   </Button>
-                ) : (
+                ) : step === 4 ? (
                   <Button type="submit" disabled={isSubmitting} className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-primary/20">
                     {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
                     Abschließen
                   </Button>
-                )}
+                ) : null}
               </div>
             </form>
           </CardContent>
