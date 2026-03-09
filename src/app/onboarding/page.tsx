@@ -16,7 +16,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, ArrowLeft, Loader2, MapPin, Sparkles, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -57,6 +56,9 @@ export default function OnboardingPage() {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(user?.photoURL || null);
   const [allowSuggestions, setAllowSuggestions] = useState(true);
+  
+  // Flag um zu tracken, ob wir gerade aktiv das Formular abschließen
+  const [isFinishing, setIsFinishing] = useState(false);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -77,16 +79,15 @@ export default function OnboardingPage() {
     }
   }, [user, authLoading, router]);
 
-  // TERMINIERUNG DES AUTO-REDIRECTS (Routing-Lock)
+  // HARTER REDIRECT-SCHUTZ
   useEffect(() => {
-    // LOCK: Nur wenn wir explizit in Schritt 5 sind (Abschluss),
-    // erlauben wir die Weiterleitung durch Profil-Änderungen im Hintergrund.
-    if (step < 5) return; 
-
-    if (userProfile?.onboardingCompleted && !isSubmitting) {
-      router.push('/');
+    // Wenn wir nicht laden, ein User existiert, das Profil in der DB sagt "fertig"
+    // UND wir nicht gerade selbst dabei sind (isFinishing), das Onboarding abzuschließen:
+    if (!authLoading && user && userProfile?.onboardingCompleted && !isFinishing) {
+        // Dann zwingen wir ihn auf die Startseite.
+        router.replace('/');
     }
-  }, [userProfile, step, isSubmitting, router]);
+  }, [user, userProfile, authLoading, isFinishing, router]);
 
   const handleNext = async () => {
     const fieldsToValidate = onboardingSteps.find(s => s.id === step)?.fields as (keyof ProfileFormData)[] | undefined;
@@ -144,9 +145,9 @@ export default function OnboardingPage() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
        if (file.size > 5242880) {
-            toast({ variant: 'destructive', title: 'Datei zu groß', description: 'Bitte wähle ein Bild unter 5MB.' });
-            return;
-        }
+           toast({ variant: 'destructive', title: 'Datei zu groß', description: 'Bitte wähle ein Bild unter 5MB.' });
+           return;
+       }
       setProfileImage(file);
       setPreviewImage(URL.createObjectURL(file));
     }
@@ -160,6 +161,8 @@ export default function OnboardingPage() {
   const onSubmit = async (data: ProfileFormData) => {
     if (!user) return;
     setIsSubmitting(true);
+    setIsFinishing(true); // Sperre aktivieren: Verhindert, dass der useEffect uns weg-redirected
+    
     try {
       if (profileImage) {
         await uploadProfileImage(user.uid, profileImage);
@@ -177,6 +180,7 @@ export default function OnboardingPage() {
           age--;
       }
 
+      // Speichern der Daten inkl. Präferenz für Vorschläge
       await updateUserProfile(user.uid, {
         age,
         location: data.location,
@@ -189,17 +193,16 @@ export default function OnboardingPage() {
 
       toast({ title: "Profil bereit!", description: "Willkommen bei Aktvia." });
       
-      // Status-Sperre lösen und erst dann weiterleiten
-      setStep(5); 
       router.push('/');
     } catch (error: any) {
       console.error(error);
       toast({ variant: 'destructive', title: 'Fehler', description: error.message || "Profil-Update fehlgeschlagen." });
       setIsSubmitting(false);
+      setIsFinishing(false); // Sperre bei Fehler wieder aufheben
     }
   };
 
-  if (authLoading || !user) {
+  if (authLoading || !user || isFinishing) {
     return <div className="flex h-screen w-full items-center justify-center bg-neutral-950"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
@@ -267,7 +270,7 @@ export default function OnboardingPage() {
                         placeholder="Schreib etwas über dich..." 
                         maxLength={150} 
                         className={cn(
-                            "min-h-[120px] rounded-2xl bg-neutral-800 border-none font-bold text-neutral-200 focus:ring-2 focus:ring-primary",
+                            "min-h-[120px] rounded-2xl bg-neutral-800 border-none font-bold text-neutral-200 focus:ring-2 focus:ring-primary resize-none",
                             hasProfanityInBio && "ring-2 ring-red-500"
                         )}
                     />
@@ -295,7 +298,7 @@ export default function OnboardingPage() {
                         control={form.control}
                         name="interests"
                         render={({ field }) => (
-                            <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar flex flex-wrap gap-2 justify-center">
+                            <div className="max-h-[300px] overflow-y-auto flex flex-wrap gap-2 justify-center scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                 {availableTabs.map((interest) => (
                                     <button
                                         key={interest.id}
@@ -310,7 +313,7 @@ export default function OnboardingPage() {
                                             "flex items-center space-x-2 px-4 py-2 rounded-full border transition-all select-none",
                                             field.value.includes(interest.label) 
                                                 ? "bg-primary border-primary text-neutral-900 shadow-lg shadow-primary/20 scale-105" 
-                                                : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:border-neutral-500"
+                                                : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:bg-neutral-700"
                                         )}
                                     >
                                         <interest.icon className="w-4 h-4" />
@@ -328,14 +331,14 @@ export default function OnboardingPage() {
                             {form.watch('interests').length} / 3 ausgewählt
                         </p>
                         
-                        <label className="flex items-center space-x-3 mt-6 cursor-pointer justify-center">
+                        <label className="flex items-center space-x-3 mt-6 cursor-pointer justify-center group">
                           <input 
                             type="checkbox" 
                             checked={allowSuggestions} 
                             onChange={(e) => setAllowSuggestions(e.target.checked)}
-                            className="w-5 h-5 rounded border-neutral-700 text-primary focus:ring-primary bg-neutral-800"
+                            className="w-5 h-5 rounded border-neutral-700 text-primary focus:ring-primary bg-neutral-800 transition-colors cursor-pointer"
                           />
-                          <span className="text-sm text-neutral-300">Basierend auf meinen Interessen Vorschläge machen</span>
+                          <span className="text-sm text-neutral-400 group-hover:text-neutral-300 font-medium transition-colors">Basierend auf meinen Interessen Vorschläge machen</span>
                         </label>
                    </div>
                 </div>
@@ -350,7 +353,7 @@ export default function OnboardingPage() {
                                 <img src={previewImage} alt="Vorschau" className="w-full h-full object-cover" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-4xl font-black text-neutral-600 bg-neutral-800">
-                                    {user.displayName?.charAt(0).toUpperCase()}
+                                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : '?'}
                                 </div>
                             )}
                         </div>
@@ -364,9 +367,9 @@ export default function OnboardingPage() {
                                 <X size={14} strokeWidth={3} />
                             </button>
                         ) : (
-                            <label htmlFor="profile-picture" className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2.5 cursor-pointer hover:scale-110 transition-transform shadow-xl">
+                            <label htmlFor="profile-picture" className="absolute bottom-0 right-0 bg-primary text-neutral-950 rounded-full p-2.5 cursor-pointer hover:scale-110 transition-transform shadow-xl">
                                 <Camera className="w-5 h-5"/>
-                                <Input id="profile-picture" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageChange}/>
+                                <input id="profile-picture" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageChange}/>
                             </label>
                         )}
                    </div>
@@ -376,7 +379,7 @@ export default function OnboardingPage() {
 
               <div className="flex gap-3 pt-6">
                 {step > 1 && step < 5 && (
-                  <Button type="button" variant="ghost" onClick={handleBack} className="w-full h-14 rounded-2xl font-black text-neutral-500 hover:text-neutral-200">
+                  <Button type="button" variant="ghost" onClick={handleBack} className="w-full h-14 rounded-2xl font-black text-neutral-500 hover:text-neutral-200 bg-neutral-800 hover:bg-neutral-700">
                     <ArrowLeft className="mr-2 h-5 w-5" /> Zurück
                   </Button>
                 )}
@@ -391,7 +394,7 @@ export default function OnboardingPage() {
                   </Button>
                 ) : step === 4 ? (
                   <Button type="submit" disabled={isSubmitting} className="w-full h-14 rounded-2xl font-black text-base shadow-xl shadow-primary/20">
-                    {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                     Abschließen
                   </Button>
                 ) : null}
