@@ -28,6 +28,9 @@ import { useToast } from '@/hooks/use-toast';
 import { availableTabs } from './category-filters-data';
 import { cn } from '@/lib/utils';
 
+// Re-export für Onboarding und andere Konsumenten
+export { availableTabs };
+
 export type CategoryTab = {
   id: string;
   label: string;
