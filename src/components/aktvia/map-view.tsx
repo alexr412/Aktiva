@@ -40,10 +40,12 @@ export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
   return (
     <div className="h-full w-full z-0 bg-neutral-950">
       <MapContainer 
+        key={center.toString()} // HMR Fix: Zwingt zum Neu-Initialisieren bei Positionsänderung
         center={center} 
         zoom={13} 
         scrollWheelZoom={true} 
         className="h-full w-full"
+        style={{ height: '100%', width: '100%' }} // Zwingend erforderlich für korrektes Rendering
       >
         {/* CartoDB Dark Matter Tiles für konsistenten Dark Mode */}
         <TileLayer
