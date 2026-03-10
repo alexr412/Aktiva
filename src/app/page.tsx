@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { createActivity, joinActivity } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { collection, query, where, getDocs, Timestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, Timestamp, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { ActivityListItem } from "@/components/aktvia/activity-list-item";
 import { Input } from '@/components/ui/input';
@@ -66,7 +66,7 @@ export default function Home() {
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
 
-  // Fixer Suchradius von 5km, da der Slider entfernt wurde
+  // Fixer Suchradius von 5km
   const searchRadiusKm = 5;
 
   const { toast } = useToast();
@@ -205,15 +205,17 @@ export default function Home() {
     }
   }, [planningState]);
   
+  // Echtzeit-Überwachung aller Aktivitäten für den Raum-Indikator
   useEffect(() => {
-    const fetchAllUpcomingActivities = async () => {
-        if (!db) return;
-        const activitiesQuery = query(collection(db, "activities"), where("activityDate", ">=", Timestamp.now()));
-        const querySnapshot = await getDocs(activitiesQuery);
-        const activitiesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
+    if (!db) return;
+    const activitiesQuery = query(collection(db, "activities"), where("activityDate", ">=", Timestamp.now()));
+    
+    const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
+        const activitiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
         setAllUpcomingActivities(activitiesData);
-    };
-    fetchAllUpcomingActivities();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {

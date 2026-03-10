@@ -5,12 +5,10 @@ import { Card } from '@/components/ui/card';
 import type { Place } from '@/lib/types';
 import {
   Plus,
-  MessageSquare,
   Navigation,
   Bookmark,
-  Sparkles,
-  Loader2,
   Users,
+  Loader2,
 } from 'lucide-react';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
@@ -37,7 +35,7 @@ type PlaceCardProps = {
 export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     if (!place) return null;
 
-    const { user, userProfile } = useAuth();
+    const { user } = useAuth();
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
     
@@ -111,15 +109,16 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             
             <div className="flex flex-wrap items-center gap-2 mt-2">
                 {place.distance !== undefined && (
-                    <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-400 font-bold uppercase tracking-wider">
+                    <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-400 font-bold uppercase tracking-wider whitespace-nowrap">
                         <Navigation className="h-3 w-3"/>
                         <span>{formatDistance(place.distance)} entfernt</span>
                     </div>
                 )}
                 
+                {/* Korrigierter und stabilisierter Raum-Indikator */}
                 {place.activityCount !== undefined && place.activityCount > 0 && (
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 flex items-center gap-1 px-2 h-5 text-[9px] font-black uppercase tracking-tight">
-                        <Users className="h-2.5 w-2.5" />
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 flex items-center gap-1 px-2 h-5 text-[10px] font-black uppercase tracking-tight whitespace-nowrap">
+                        <Users className="h-3 w-3" />
                         <span>Raum aktiv</span>
                     </Badge>
                 )}
