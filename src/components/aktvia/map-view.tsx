@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -28,8 +27,10 @@ export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
     <div className={`h-full w-full z-0 overflow-hidden relative transition-colors duration-300 ${isDark ? 'bg-neutral-950' : 'bg-white'}`}>
       <Map 
         provider={dynamicTiler} 
-        center={center} 
+        center={center} // Fixiert den Viewport dauerhaft auf die Nutzer-Koordinaten
         defaultZoom={13}
+        minZoom={12} // Maximaler Raus-Zoom
+        maxZoom={18} // Maximaler Rein-Zoom
         mouseEvents={true}
         touchEvents={true}
       >

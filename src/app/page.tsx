@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -105,7 +104,7 @@ export default function Home() {
 
   const rawPlaces = useMemo(() => {
     if (!data) return [];
-    const combinedSoftVetoList = [...BASE_SOFT_VETO];
+    const combined SoftVetoList = [...BASE_SOFT_VETO];
     
     const mapped = data.flatMap(page => {
       const features = page.features || [];
@@ -422,12 +421,6 @@ export default function Home() {
                 </Select>
               )}
             </div>
-            {!isCommunityCategory && !isFavoritesCategory && (
-              <div className="flex flex-col gap-2.5 mt-1 px-1">
-                <div className="flex justify-between items-center text-[10px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest"><span>Suchradius</span><span className="text-primary">{searchRadiusKm} km</span></div>
-                <input type="range" min="1" max="50" step="1" value={searchRadiusKm} onChange={(e) => setSearchRadiusKm(Number(e.target.value))} className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-primary" />
-              </div>
-            )}
           </div>
         </header>
         <div className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden'}`}>{renderContent()}</div>
