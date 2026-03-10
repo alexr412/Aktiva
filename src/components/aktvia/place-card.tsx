@@ -10,6 +10,7 @@ import {
   Bookmark,
   Sparkles,
   Loader2,
+  Users,
 } from 'lucide-react';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,7 @@ import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatTags } from '@/lib/tag-parser';
+import { Badge } from '@/components/ui/badge';
 
 const formatDistance = (distanceInMeters?: number) => {
     if (distanceInMeters === undefined) return null;
@@ -106,23 +108,26 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         <div className="flex-1 min-w-0">
             <h3 className="text-lg font-extrabold text-[#0f172a] dark:text-neutral-200 truncate leading-tight">{place.name}</h3>
             <p className="text-xs text-[#64748b] dark:text-neutral-400 truncate mt-1">{place.address}</p>
-            {place.distance !== undefined && (
-                <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-400 mt-2 font-bold uppercase tracking-wider">
-                    <Navigation className="h-3 w-3"/>
-                    <span>{formatDistance(place.distance)} entfernt</span>
-                </div>
-            )}
+            
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+                {place.distance !== undefined && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-400 font-bold uppercase tracking-wider">
+                        <Navigation className="h-3 w-3"/>
+                        <span>{formatDistance(place.distance)} entfernt</span>
+                    </div>
+                )}
+                
+                {place.activityCount !== undefined && place.activityCount > 0 && (
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 flex items-center gap-1 px-2 h-5 text-[9px] font-black uppercase tracking-tight">
+                        <Users className="h-2.5 w-2.5" />
+                        <span>Raum aktiv</span>
+                    </Badge>
+                )}
+            </div>
         </div>
       </div>
 
       <div className="mt-4 flex-1 flex flex-col justify-end">
-        {place.activityCount !== undefined && place.activityCount > 0 && (
-          <div className="mb-3 inline-flex items-center gap-2 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary self-start">
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span>{place.activityCount} Aktivität{place.activityCount > 1 ? 'en' : ''}</span>
-          </div>
-        )}
-        
         <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mb-4">
           {processedTags.map((tag, index) => (
             <span key={index} className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-neutral-100 dark:bg-neutral-700 dark:border dark:border-neutral-600 text-neutral-700 dark:text-neutral-300">
