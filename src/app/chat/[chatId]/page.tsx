@@ -156,10 +156,10 @@ export default function ChatRoomPage() {
           });
         }
       } else {
+        // Chat document doesn't exist anymore - silent redirect back to overview
         setLoading(false);
         setChat(null);
-        toast({ title: "Chat not found", description: "This chat may have been deleted.", variant: 'destructive'});
-        router.push('/chat');
+        router.replace('/chat');
       }
     });
 
@@ -230,14 +230,7 @@ export default function ChatRoomPage() {
   }
 
   if (!chat && !loading) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 bg-muted/30 p-6 text-center">
-        <div className="bg-background p-8 rounded-3xl shadow-sm space-y-4 max-w-sm w-full">
-          <p className="text-muted-foreground font-semibold">Dieser Chat ist nicht mehr verfügbar.</p>
-          <Button onClick={() => router.push('/chat')} className="w-full rounded-full">Zurück zur Übersicht</Button>
-        </div>
-      </div>
-    );
+    return null; // The redirect in useEffect handles this
   }
 
   return (
