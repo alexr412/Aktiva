@@ -64,8 +64,10 @@ export default function Home() {
   const [cityName, setCityName] = useState<string>("Locating...");
   const [sortBy, setSortBy] = useState("recommended");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
-  const [searchRadiusKm, setSearchRadiusKm] = useState<number>(5);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
+
+  // Fixer Suchradius von 5km, da der Slider entfernt wurde
+  const searchRadiusKm = 5;
 
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
@@ -104,7 +106,7 @@ export default function Home() {
 
   const rawPlaces = useMemo(() => {
     if (!data) return [];
-    const combined SoftVetoList = [...BASE_SOFT_VETO];
+    const combinedSoftVetoList = [...BASE_SOFT_VETO];
     
     const mapped = data.flatMap(page => {
       const features = page.features || [];
@@ -172,7 +174,6 @@ export default function Home() {
     handleCategoryChange(['all'], 'All');
     setSearchQuery('');
     setSortBy('recommended');
-    setSearchRadiusKm(5);
   };
 
   useEffect(() => {
@@ -194,12 +195,12 @@ export default function Home() {
           setUserLocation(location);
           if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
         }, () => {
-          setUserLocation({ lat: 53.5451, lng: 8.5746 });
+          setUserLocation({ lat: 53.5395, lng: 8.5809 });
           setCityName("Bremerhaven");
         }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
-      setUserLocation({ lat: 53.5451, lng: 8.5746 });
+      setUserLocation({ lat: 53.5395, lng: 8.5809 });
       setCityName("Bremerhaven");
     }
   }, [planningState]);
