@@ -47,6 +47,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Whitelist für öffentliche Routen
+  const publicRoutes = ['/login', '/signup', '/onboarding'];
+  const isPublicRoute = publicRoutes.includes(pathname);
+
   useEffect(() => {
     if (!auth || !db) {
         setLoading(false);
@@ -85,6 +89,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         setUserProfile(null);
         setLoading(false);
+        
+        // Zwingt Gäste auf die Login-Seite, wenn sie versuchen eine geschützte URL aufzurufen
+        if (!isPublicRoute) {
+            router.replace('/login');
+        }
       }
     });
 
@@ -92,7 +101,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       unsubscribeAuth();
       if (unsubscribeDoc) unsubscribeDoc();
     };
-  }, [router, pathname]);
+  }, [router, pathname, isPublicRoute]);
 
   // Proximity Radar: Standort-Update bei App-Nutzung (Vordergrund)
   useEffect(() => {
@@ -123,18 +132,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return <NotConfigured />;
   }
   
+  // Standard-Ladezustand während der Initialisierung
   if (loading) {
       return (
-          <div className="flex h-screen w-full items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin" />
+          <div className="flex h-screen w-full items-center justify-center bg-background">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
       )
   }
 
+  // Render Lock: Blockiert das Rendern geschützter Seiten für Gäste, bis der Redirect greift
+  if (!user && !isPublicRoute) {
+      return (
+          <div className="flex h-screen w-full items-center justify-center bg-background">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+      );
+  }
+
+  // Zusätzliche Sperre für Onboarding-Pflicht
   if (user && userProfile && !userProfile.onboardingCompleted && pathname !== '/onboarding') {
       return (
-          <div className="flex h-screen w-full items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin" />
+          <div className="flex h-screen w-full items-center justify-center bg-background">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
       )
   }
