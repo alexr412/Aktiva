@@ -4,14 +4,7 @@
 import React from 'react';
 import { Map, Marker } from 'pigeon-maps';
 import type { Place } from '@/lib/types';
-
-/**
- * Kachel-Provider: CartoDB Dark Matter für nahtlosen Dark Mode.
- * Pigeon-Maps nutzt diese Funktion, um die Kacheln für die entsprechenden Koordinaten zu laden.
- */
-const darkTiler = (x: number, y: number, z: number) => {
-  return `https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/${z}/${x}/${y}.png`;
-};
+import { useTheme } from '@/contexts/theme-context';
 
 type MapViewProps = {
   places: Place[];
@@ -20,13 +13,21 @@ type MapViewProps = {
 };
 
 export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
-  // Pigeon-Maps erwartet Koordinaten als Array [lat, lng]
+  const { mode } = useTheme();
+  const isDark = mode === 'dark';
+
+  // Dynamischer Kachel-Provider basierend auf dem aktiven Theme
+  const dynamicTiler = (x: number, y: number, z: number) => {
+    const style = isDark ? 'dark_all' : 'light_all';
+    return `https://cartodb-basemaps-a.global.ssl.fastly.net/${style}/${z}/${x}/${y}.png`;
+  };
+
   const center: [number, number] = [userLocation.lat, userLocation.lng];
 
   return (
-    <div className="h-full w-full bg-neutral-950 z-0 overflow-hidden relative">
+    <div className={`h-full w-full z-0 overflow-hidden relative transition-colors duration-300 ${isDark ? 'bg-neutral-950' : 'bg-white'}`}>
       <Map 
-        provider={darkTiler} 
+        provider={dynamicTiler} 
         center={center} 
         defaultZoom={13}
         mouseEvents={true}
@@ -36,7 +37,7 @@ export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
         <Marker 
           width={40} 
           anchor={center} 
-          color="hsl(150 60% 45%)" // Entspricht --primary
+          color="hsl(150 60% 45%)" 
         />
 
         {/* Marker für alle gefundenen Orte (Blau) */}

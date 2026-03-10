@@ -9,7 +9,7 @@ import { PlaceDetails } from '@/components/aktvia/place-details';
 import { PlaceCard } from '@/components/aktvia/place-card';
 import type { Place, Activity, GeoapifyFeature, UserPreferences } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2 } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -30,7 +30,7 @@ import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES, calculateRelevanceScore } from '@/lib/geoapify';
 import { cn } from '@/lib/utils';
 
-// Dynamic import for MapView to avoid SSR issues with Leaflet
+// Dynamic import for MapView to avoid SSR issues
 const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod => mod.MapView), { 
   ssr: false,
   loading: () => <div className="flex h-full w-full items-center justify-center bg-muted"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -274,6 +274,14 @@ export default function Home() {
     } catch (error: any) { throw error; }
   };
 
+  const handleMapToggle = () => {
+    if (!userProfile?.isPremium) {
+      setIsPremiumUpsellOpen(true);
+      return;
+    }
+    setViewMode('map');
+  };
+
   const renderContent = () => {
     if (isLoadingInitialData) {
       return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}</div>;
@@ -341,7 +349,17 @@ export default function Home() {
     if (viewMode === 'map') {
         if (!userLocation) return <div className="flex h-full w-full items-center justify-center"><MapPin className="h-8 w-8 animate-bounce text-primary" /></div>;
         if (!userProfile?.isPremium) {
-            return <div className="flex flex-col items-center justify-center p-10 h-[calc(100%-80px)] text-center space-y-6"><div className="bg-white dark:bg-neutral-800 p-8 rounded-full shadow-xl relative"><Lock className="h-12 w-12 text-neutral-400" /></div><h2 className="text-2xl font-black text-[#0f172a] dark:text-neutral-200">Kartenansicht gesperrt</h2><Button onClick={() => setIsPremiumUpsellOpen(true)} className="rounded-2xl px-10 h-14 font-black">Premium freischalten</Button></div>;
+            return (
+              <div className="flex flex-col items-center justify-center p-10 h-[calc(100%-80px)] text-center space-y-6">
+                <div className="bg-white dark:bg-neutral-800 p-8 rounded-full shadow-xl relative">
+                  <Lock className="h-12 w-12 text-neutral-400" />
+                </div>
+                <h2 className="text-2xl font-black text-[#0f172a] dark:text-neutral-200">Kartenansicht gesperrt</h2>
+                <Button onClick={() => setIsPremiumUpsellOpen(true)} className="rounded-2xl px-10 h-14 font-black">
+                  Premium freischalten
+                </Button>
+              </div>
+            );
         }
         const placesForMap = isFavoritesCategory ? (favorites as Place[]) : places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
         return <MapView places={placesForMap} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />;
@@ -364,8 +382,23 @@ export default function Home() {
                 <div className="flex items-center gap-3">
                     <NotificationBell />
                     <div className="flex items-center gap-1 rounded-2xl bg-neutral-50 dark:bg-neutral-800 p-1.5">
-                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className={cn("h-9 w-9 rounded-xl", viewMode === 'list' ? "bg-white dark:bg-neutral-700 text-primary" : "text-neutral-500")} onClick={() => setViewMode('list')}><List className="h-5 w-5" /></Button>
-                        <Button variant={viewMode === 'map' ? 'secondary' : 'ghost'} size="icon" className={cn("h-9 w-9 rounded-xl relative", viewMode === 'map' ? "bg-white dark:bg-neutral-700 text-primary" : "text-neutral-500")} onClick={() => { if (!userProfile?.isPremium) { setIsPremiumUpsellOpen(true); return; } setViewMode('map'); }}><MapIcon className="h-5 w-5" /></Button>
+                        <Button 
+                          variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
+                          size="icon" 
+                          className={cn("h-9 w-9 rounded-xl", viewMode === 'list' ? "bg-white dark:bg-neutral-700 text-primary" : "text-neutral-500")} 
+                          onClick={() => setViewMode('list')}
+                        >
+                          <List className="h-5 w-5" />
+                        </Button>
+                        <Button 
+                          variant={viewMode === 'map' ? 'secondary' : 'ghost'} 
+                          size="icon" 
+                          className={cn("h-9 w-9 rounded-xl relative", viewMode === 'map' ? "bg-white dark:bg-neutral-700 text-primary" : "text-neutral-500")} 
+                          onClick={handleMapToggle}
+                        >
+                          <MapIcon className="h-5 w-5" />
+                          {!userProfile?.isPremium && <Lock className="absolute -top-1 -right-1 h-3 w-3 text-amber-500 fill-amber-500" />}
+                        </Button>
                     </div>
                     <Button variant="default" size="icon" className="h-10 w-10 rounded-2xl" onClick={handleOpenCustomActivityModal}><Plus className="h-6 w-6" strokeWidth={3} /></Button>
                 </div>
@@ -399,14 +432,54 @@ export default function Home() {
         </header>
         <div className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden'}`}>{renderContent()}</div>
       </div>
+
       <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
         <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden rounded-3xl border-none dark:bg-neutral-900">
           <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
           {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
         </DialogContent>
       </Dialog>
+
       <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
       <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
+
+      {/* Premium Upsell Dialog */}
+      <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500" />
+          <DialogHeader className="pt-6">
+            <div className="mx-auto bg-amber-100 dark:bg-amber-900/30 p-4 rounded-full w-fit mb-4">
+              <Crown className="h-10 w-10 text-amber-500" />
+            </div>
+            <DialogTitle className="text-2xl font-black text-center">Premium-Funktion</DialogTitle>
+            <DialogDescription className="text-center text-base font-medium px-2 pt-2">
+              Die interaktive Kartenansicht ist ein exklusives Feature für Premium-Mitglieder. Schalte Premium frei, um alle Orte in deiner Umgebung visuell zu entdecken.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl space-y-3">
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" strokeWidth={3} />
+                <span className="font-bold text-sm">Vollständige interaktive Karte</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" strokeWidth={3} />
+                <span className="font-bold text-sm">Keine Werbung mehr</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-green-500" strokeWidth={3} />
+                <span className="font-bold text-sm">Eigene Akzentfarben wählen</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex flex-col gap-3 sm:gap-0">
+            <Button variant="ghost" onClick={() => setIsPremiumUpsellOpen(false)} className="rounded-xl font-bold h-12">Abbrechen</Button>
+            <Button onClick={() => setIsPremiumUpsellOpen(false)} className="rounded-xl font-black h-12 bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20">
+              Upgrade freischalten
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
