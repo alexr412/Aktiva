@@ -55,7 +55,7 @@ export default function LoginPage() {
         title: 'Login erfolgreich',
         description: "Willkommen zurück!",
       });
-      router.push('/profile');
+      router.push('/');
     } catch (error: any) {
       console.error(error);
       let errorMessage = 'Ein unerwarteter Fehler ist aufgetreten.';
