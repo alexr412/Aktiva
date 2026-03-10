@@ -7,8 +7,8 @@ import type { Place } from '@/lib/types';
 import { useEffect, useState } from 'react';
 
 /**
- * Fix für defekte Leaflet-Icons in Next.js Umgebungen.
- * Nutzt statische CDN-Pfade, um Pfad-Konflikte während des SSR zu vermeiden.
+ * Fix for broken Leaflet icons in Next.js environments.
+ * Uses static CDN paths to avoid path conflicts during SSR/Build.
  */
 const customIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -27,13 +27,13 @@ type MapViewProps = {
 };
 
 /**
- * Sub-Komponente zur Steuerung der Kamera.
- * Verhindert das vollständige Neu-Initialisieren des MapContainers.
+ * Sub-component to control map camera.
+ * Prevents full re-initialization of MapContainer when coordinates change.
  */
 function ChangeView({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => {
-    if (center) {
+    if (center && map) {
       map.setView(center, map.getZoom());
     }
   }, [center, map]);
@@ -44,13 +44,25 @@ export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    // Small delay to ensure any previous map instances are fully unmounted
+    // This fixes the "Map container is already initialized" error in Fast Refresh/Strict Mode
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+    }, 50);
+    
+    return () => {
+      clearTimeout(timer);
+      setIsMounted(false);
+    };
   }, []);
 
   if (!isMounted || !userLocation) {
     return (
       <div className="h-full w-full bg-neutral-950 flex items-center justify-center text-muted-foreground">
-        Lade Karte...
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-bold uppercase tracking-widest">Initializing Map...</span>
+        </div>
       </div>
     );
   }
@@ -60,19 +72,20 @@ export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
   return (
     <div className="h-full w-full z-0 bg-neutral-950 overflow-hidden relative">
       <MapContainer 
+        key="main-leaflet-map" // Stable key to prevent re-initialization on prop changes
         center={center} 
         zoom={13} 
         scrollWheelZoom={true} 
         className="h-full w-full"
         style={{ height: '100%', width: '100%' }}
       >
-        {/* CartoDB Dark Matter Tiles für konsistenten Dark Mode */}
+        {/* CartoDB Dark Matter Tiles for consistent Dark Mode */}
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
         
-        {/* Verarbeitet Updates der Position ohne Remount des Containers */}
+        {/* Handles camera updates smoothly */}
         <ChangeView center={center} />
         
         {places.map((place) => {
@@ -90,7 +103,7 @@ export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
               <Popup className="dark-popup">
                 <div className="p-1 min-w-[150px]">
                   <h3 className="font-bold text-sm text-neutral-900">{place.name}</h3>
-                  <p className="text-xs text-neutral-600 mb-2">{place.address}</p>
+                  <p className="text-xs text-neutral-600 mb-2 truncate">{place.address}</p>
                   <button 
                     onClick={() => onPlaceSelect(place)}
                     className="w-full py-1.5 bg-primary text-white rounded-md text-xs font-bold hover:opacity-90 transition-colors"
