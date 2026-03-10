@@ -4,11 +4,11 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { Place } from '@/lib/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 /**
- * Fix für defekte Leaflet-Icons in Next.js Umgebungen.
- * Verwendet statische CDN-Pfade, um Pfadkonflikte beim SSR/Build zu vermeiden.
+ * Fix for broken Leaflet icons in Next.js environments.
+ * Uses static CDN paths to avoid path conflicts during SSR/Build.
  */
 const customIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -27,8 +27,8 @@ type MapViewProps = {
 };
 
 /**
- * Sub-Komponente zur Steuerung der Kartenkamera.
- * Ermöglicht sanftes Schwenken bei Koordinatenänderungen ohne Neu-Initialisierung des Containers.
+ * Sub-component to control the map camera.
+ * Allows smooth panning on coordinate changes without re-initializing the container.
  */
 function ChangeView({ center }: { center: [number, number] }) {
   const map = useMap();
@@ -43,9 +43,13 @@ function ChangeView({ center }: { center: [number, number] }) {
 export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
   const [isMounted, setIsMounted] = useState(false);
 
+  // Generate a unique ID for this specific component instance.
+  // This forces React to create a completely new DOM node if the component is remounted,
+  // effectively bypassing the "Map container is already initialized" error.
+  const mapInstanceKey = useMemo(() => `map-instance-${Math.random().toString(36).substr(2, 9)}`, []);
+
   useEffect(() => {
-    // Mount-Lock: Karte erst nach dem ersten Client-Render freigeben.
-    // Dies umgeht race conditions im Strict Mode und Fast Refresh.
+    // Mount-Lock: Only allow map rendering after the first client-side paint.
     setIsMounted(true);
     
     return () => {
@@ -69,20 +73,20 @@ export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
   return (
     <div className="h-full w-full z-0 bg-neutral-950 overflow-hidden relative">
       <MapContainer 
-        key="main-leaflet-map-v2" // Stabiler Key zur Vermeidung von Container-Konflikten
+        key={mapInstanceKey} 
         center={center} 
         zoom={13} 
         scrollWheelZoom={true} 
         className="h-full w-full"
         style={{ height: '100%', width: '100%' }}
       >
-        {/* CartoDB Dark Matter Tiles für konsistenten Dark Mode */}
+        {/* CartoDB Dark Matter Tiles for consistent Dark Mode */}
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
         
-        {/* Schwenkt die Kamera bei Positions-Updates */}
+        {/* Puts the camera on position updates */}
         <ChangeView center={center} />
         
         {places.map((place) => {
