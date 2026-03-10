@@ -1,9 +1,21 @@
+
 'use client';
 
-import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
-import { GOOGLE_MAPS_API_KEY } from '@/lib/config';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 import type { Place } from '@/lib/types';
-import { useMemo } from 'react';
+import { useEffect } from 'react';
+
+// Fix for default marker icons in Leaflet with Next.js
+const DefaultIcon = L.icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 type MapViewProps = {
   places: Place[];
@@ -11,54 +23,54 @@ type MapViewProps = {
   onPlaceSelect: (place: Place) => void;
 };
 
-export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
-  const position = useMemo(() => userLocation, [userLocation]);
+function ChangeView({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center);
+  }, [center, map]);
+  return null;
+}
 
-  if (!GOOGLE_MAPS_API_KEY) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-muted">
-        <p className="text-destructive-foreground bg-destructive p-4 rounded-md">
-          Google Maps API Key is missing.
-        </p>
-      </div>
-    );
-  }
+export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
+  const center: [number, number] = [userLocation.lat, userLocation.lng];
 
   return (
-    <div className="h-full w-full">
-      <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
-        <Map
-          defaultCenter={position}
-          defaultZoom={13}
-          gestureHandling={'greedy'}
-          disableDefaultUI={true}
-          mapId="aktvia-map"
-        >
-          {places.map((place) => (
-            <AdvancedMarker
-              key={place.id}
-              position={{ lat: place.lat, lng: place.lon }}
-              onClick={() => onPlaceSelect(place)}
-              zIndex={place.isSponsored ? 1000 : 1}
-            >
-              {place.isSponsored ? (
-                <Pin
-                  background={'#FFD700'} // Gold
-                  borderColor={'#DAA520'}
-                  glyphColor={'#8B4513'}
-                  scale={1.2}
-                />
-              ) : (
-                <Pin
-                  background={'hsl(var(--primary))'}
-                  borderColor={'hsl(var(--primary))'}
-                  glyphColor={'#fff'}
-                />
-              )}
-            </AdvancedMarker>
-          ))}
-        </Map>
-      </APIProvider>
+    <div className="h-full w-full z-0">
+      <MapContainer 
+        center={center} 
+        zoom={13} 
+        scrollWheelZoom={true} 
+        className="h-full w-full"
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <ChangeView center={center} />
+        
+        {places.map((place) => (
+          <Marker 
+            key={place.id} 
+            position={[place.lat, place.lon]}
+            eventHandlers={{
+              click: () => onPlaceSelect(place),
+            }}
+          >
+            <Popup>
+              <div className="p-1">
+                <h3 className="font-bold text-sm">{place.name}</h3>
+                <p className="text-xs text-muted-foreground">{place.address}</p>
+                <button 
+                  onClick={() => onPlaceSelect(place)}
+                  className="mt-2 text-xs font-bold text-primary hover:underline"
+                >
+                  Details anzeigen
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
     </div>
   );
 }
