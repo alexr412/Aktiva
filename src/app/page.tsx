@@ -28,6 +28,7 @@ import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES, calculateRelevanceScore } from '@/lib/geoapify';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // Dynamic import for MapView to avoid SSR issues
 const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod => mod.MapView), { 
@@ -36,12 +37,16 @@ const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod =>
 });
 
 const CardSkeleton = () => (
-    <div className="w-full overflow-hidden rounded-2xl bg-white dark:bg-neutral-800 shadow-sm p-4">
+    <div className="w-full overflow-hidden rounded-3xl bg-white shadow-sm p-4">
         <div className="flex gap-4">
-          <Skeleton className="h-20 w-20 rounded-2xl shrink-0" />
+          <Skeleton className="h-24 w-24 rounded-2xl shrink-0" />
           <div className="flex-1 space-y-2 py-1">
-              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-6 w-3/4" />
               <Skeleton className="h-4 w-1/2" />
+              <div className="flex gap-2 pt-2">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
           </div>
         </div>
     </div>
@@ -61,7 +66,7 @@ export default function Home() {
   const [allUpcomingActivities, setAllUpcomingActivities] = useState<Activity[]>([]);
   const [placeMetrics, setPlaceMetrics] = useState<Record<string, {upvotes: number, downvotes: number}>>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [cityName, setCityName] = useState<string>("Locating...");
+  const [cityName, setCityName] = useState<string>("Wird geladen...");
   const [sortBy, setSortBy] = useState("recommended");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
@@ -181,8 +186,8 @@ export default function Home() {
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
         const data = await response.json();
-        setCityName(data.address.city || data.address.town || data.address.village || "Unknown location");
-      } catch (error) { setCityName("Unknown location"); }
+        setCityName(data.address.city || data.address.town || data.address.village || "Unbekannter Ort");
+      } catch (error) { setCityName("Unbekannter Ort"); }
     };
     if (planningState.isPlanning && planningState.destination) {
       setUserLocation(planningState.destination);
@@ -370,24 +375,34 @@ export default function Home() {
 
   return (
     <>
-      <div className="flex h-full w-full flex-col">
+      <div className="flex h-full w-full flex-col bg-secondary/30">
         <header className="flex-none w-full border-b border-neutral-100 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/90 backdrop-blur-md z-20">
           <div className="flex flex-col gap-4 px-4 py-5 sm:px-6 max-w-7xl mx-auto w-full">
              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-black tracking-tight text-[#0f172a] dark:text-neutral-200">Entdecken</h1>
-                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400 mt-1.5 font-bold text-sm">
-                    <MapPin className="h-4 w-4" />
-                    <span>{cityName}</span>
-                  </button>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-12 w-12 border-2 border-primary/20">
+                    <AvatarImage src={userProfile?.photoURL || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                      {userProfile?.displayName?.charAt(0) || 'E'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h1 className="text-xl font-black tracking-tight text-[#0f172a] dark:text-neutral-200">
+                      Hey {userProfile?.displayName?.split(' ')[0] || 'Entdecker'} 👋
+                    </h1>
+                    <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1 text-neutral-500 dark:text-neutral-400 font-bold text-xs uppercase tracking-wide">
+                      <MapPin className="h-3 w-3" />
+                      <span>{cityName}</span>
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <NotificationBell />
-                    <div className="flex items-center gap-1 rounded-2xl bg-neutral-50 dark:bg-neutral-800 p-1.5">
+                    <div className="flex items-center gap-1 rounded-2xl bg-neutral-50 dark:bg-neutral-800 p-1">
                         <Button 
                           variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
                           size="icon" 
-                          className={cn("h-9 w-9 rounded-xl", viewMode === 'list' ? "bg-white dark:bg-neutral-700 text-primary" : "text-neutral-500")} 
+                          className={cn("h-9 w-9 rounded-xl", viewMode === 'list' ? "bg-white dark:bg-neutral-700 text-primary shadow-sm" : "text-neutral-500")} 
                           onClick={() => setViewMode('list')}
                         >
                           <List className="h-5 w-5" />
@@ -395,23 +410,29 @@ export default function Home() {
                         <Button 
                           variant={viewMode === 'map' ? 'secondary' : 'ghost'} 
                           size="icon" 
-                          className={cn("h-9 w-9 rounded-xl relative", viewMode === 'map' ? "bg-white dark:bg-neutral-700 text-primary" : "text-neutral-500")} 
+                          className={cn("h-9 w-9 rounded-xl relative", viewMode === 'map' ? "bg-white dark:bg-neutral-700 text-primary shadow-sm" : "text-neutral-500")} 
                           onClick={handleMapToggle}
                         >
                           <MapIcon className="h-5 w-5" />
                           {!userProfile?.isPremium && <Lock className="absolute -top-1 -right-1 h-3 w-3 text-amber-500 fill-amber-500" />}
                         </Button>
                     </div>
-                    <Button variant="default" size="icon" className="h-10 w-10 rounded-2xl" onClick={handleOpenCustomActivityModal}><Plus className="h-6 w-6" strokeWidth={3} /></Button>
+                    <Button variant="default" size="icon" className="h-10 w-10 rounded-2xl shadow-lg shadow-primary/20" onClick={handleOpenCustomActivityModal}><Plus className="h-6 w-6" strokeWidth={3} /></Button>
                 </div>
             </div>
+            
+            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400 -mt-1">
+              Was möchtest du heute in {cityName} erleben?
+            </p>
+
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
-            <div className="mt-2 flex w-full items-center gap-3">
+            
+            <div className="mt-1 flex w-full items-center gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
                 <Input
                     type="search"
-                    placeholder="Suchen..."
+                    placeholder="Suchen nach Orten..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full rounded-2xl bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none pl-12 h-12 text-sm font-bold dark:placeholder-neutral-500 focus-visible:ring-0"
@@ -419,7 +440,7 @@ export default function Home() {
               </div>
               {!isFavoritesCategory && (
                 <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-[160px] rounded-2xl h-12 bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none focus:ring-0 font-bold text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-[140px] rounded-2xl h-12 bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none focus:ring-0 font-bold text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-2xl border-none shadow-2xl font-bold dark:bg-neutral-800 dark:text-neutral-200"><SelectItem value="recommended">Empfohlen</SelectItem><SelectItem value="rating">Bewertung</SelectItem><SelectItem value="popular">Beliebt</SelectItem><SelectItem value="newest">Neueste</SelectItem></SelectContent>
                 </Select>
               )}

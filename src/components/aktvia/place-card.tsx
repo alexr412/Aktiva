@@ -9,6 +9,9 @@ import {
   Bookmark,
   Users,
   Loader2,
+  MapPin,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
@@ -19,11 +22,12 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatTags } from '@/lib/tag-parser';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 const formatDistance = (distanceInMeters?: number) => {
     if (distanceInMeters === undefined) return null;
-    if (distanceInMeters < 1000) return `${Math.round(distanceInMeters)} m`;
-    return `${(distanceInMeters / 1000).toFixed(1)} km`;
+    if (distanceInMeters < 1000) return `${Math.round(distanceInMeters)}m`;
+    return `${(distanceInMeters / 1000).toFixed(1)}km`;
 };
 
 type PlaceCardProps = {
@@ -95,85 +99,104 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     <Card
       onClick={onClick}
       className={cn(
-        "cursor-pointer group overflow-hidden rounded-2xl bg-white dark:bg-neutral-800 dark:border-neutral-700 shadow-sm hover:shadow-md transition-all duration-300 border-none flex flex-col relative p-4"
+        "cursor-pointer group overflow-hidden rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-sm hover:shadow-xl transition-all duration-500 flex flex-row relative p-0"
       )}
     >
-      <div className="flex items-start gap-4">
-        <div className={cn("relative flex flex-shrink-0 items-center justify-center w-20 h-20 rounded-2xl", primaryStyle.bgClass, "dark:bg-neutral-700/50")}>
-            <PrimaryIcon className="h-10 w-10" style={{ color: primaryStyle.color }} />
-        </div>
-
-        <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-extrabold text-[#0f172a] dark:text-neutral-200 truncate leading-tight">{place.name}</h3>
-            <p className="text-xs text-[#64748b] dark:text-neutral-400 truncate mt-1">{place.address}</p>
-            
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-                {place.distance !== undefined && (
-                    <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-400 font-bold uppercase tracking-wider whitespace-nowrap">
-                        <Navigation className="h-3 w-3"/>
-                        <span>{formatDistance(place.distance)} entfernt</span>
-                    </div>
-                )}
-                
-                {/* Korrigierter und stabilisierter Raum-Indikator */}
-                {place.activityCount !== undefined && place.activityCount > 0 && (
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 flex items-center gap-1 px-2 h-5 text-[10px] font-black uppercase tracking-tight whitespace-nowrap">
-                        <Users className="h-3 w-3" />
-                        <span>Raum aktiv</span>
-                    </Badge>
-                )}
+      {/* Linker Medien-Bereich mit dynamischem Gradient */}
+      <div className={cn(
+        "w-28 sm:w-32 flex-shrink-0 flex items-center justify-center relative transition-transform duration-500 group-hover:scale-105",
+        primaryStyle.bgClass.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-400 to-').concat(primaryStyle.color === '#ef4444' ? 'red-500' : 'violet-500')
+      )}
+      style={{ backgroundColor: primaryStyle.color + '20' }}
+      >
+        <PrimaryIcon className="text-white/90 h-12 w-12 drop-shadow-md" />
+        
+        {/* Raum-Indikator Badge auf dem Bild */}
+        {place.activityCount !== undefined && place.activityCount > 0 && (
+            <div className="absolute top-2 left-2 bg-primary text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md shadow-lg animate-pulse">
+                Aktiv
             </div>
-        </div>
+        )}
       </div>
 
-      <div className="mt-4 flex-1 flex flex-col justify-end">
-        <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mb-4">
-          {processedTags.map((tag, index) => (
-            <span key={index} className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-neutral-100 dark:bg-neutral-700 dark:border dark:border-neutral-600 text-neutral-700 dark:text-neutral-300">
-              {tag}
-            </span>
-          ))}
+      {/* Rechter Content-Bereich */}
+      <div className="p-4 flex flex-col justify-between w-full min-w-0">
+        <div>
+          <div className="flex justify-between items-start gap-2 mb-1">
+            <h3 className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight flex-1">
+              {place.name}
+            </h3>
+            {place.distance !== undefined && (
+              <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap pt-1">
+                {formatDistance(place.distance)}
+              </span>
+            )}
+          </div>
+          
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate mb-3 flex items-center font-medium">
+            <MapPin className="h-3 w-3 mr-1 text-primary/60" /> {place.address}
+          </p>
+          
+          {/* Bunte Tags (Pastell) */}
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {processedTags.slice(0, 2).map((tag, index) => (
+              <Badge 
+                key={index} 
+                variant="secondary" 
+                className={cn(
+                  "rounded-full text-[9px] font-black uppercase tracking-tight px-2 py-0.5 border-none",
+                  index === 0 ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+                )}
+              >
+                {tag}
+              </Badge>
+            ))}
+            {processedTags.length > 2 && (
+              <span className="text-[9px] font-bold text-neutral-400 self-center">+{processedTags.length - 2}</span>
+            )}
+          </div>
         </div>
 
-        <div className="card-footer-actions flex justify-between items-center w-full pt-3 border-t border-neutral-50 dark:border-neutral-700/50">
-          <div className="voting-controls flex gap-2 items-center">
+        {/* Footer-Aktionen */}
+        <div className="flex justify-between items-center mt-auto pt-3 border-t border-neutral-50 dark:border-neutral-700/50">
+          {/* Voting Pill */}
+          <div className="flex items-center bg-neutral-100 dark:bg-neutral-700/50 rounded-full p-0.5">
             <button 
-              onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')} 
-              className="dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:border-neutral-600 dark:text-neutral-200"
-              style={{ 
-                padding: '6px 14px', border: '1px solid', borderRadius: '10px', fontWeight: '800', fontSize: '14px', transition: 'all 0.2s', cursor: 'pointer',
-                background: userVote === 'up' ? '#22c55e' : 'inherit', color: userVote === 'up' ? '#ffffff' : 'inherit', borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0',
-              }}
+              onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
+              className={cn(
+                "h-7 w-8 rounded-full flex items-center justify-center transition-all",
+                userVote === 'up' ? "bg-white text-green-500 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+              )}
             >
-              {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
+              {isVoting ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
             </button>
             <button 
-              onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')} 
-              className="dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:border-neutral-600 dark:text-neutral-200"
-              style={{ 
-                padding: '6px 14px', border: '1px solid', borderRadius: '10px', fontWeight: '800', fontSize: '14px', transition: 'all 0.2s', cursor: 'pointer',
-                background: userVote === 'down' ? '#ef4444' : 'inherit', color: userVote === 'down' ? '#ffffff' : 'inherit', borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0',
-              }}
+              onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
+              className={cn(
+                "h-7 w-8 rounded-full flex items-center justify-center transition-all",
+                userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+              )}
             >
-              {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}
+              {isVoting ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowDown className="h-4 w-4" />}
             </button>
           </div>
 
-          <div className="flex gap-2">
-            <button 
-                className="bookmark-button dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:border-neutral-600 dark:text-neutral-200"
-                onClick={handleBookmarkToggle}
-                style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'inherit', cursor: 'pointer' }}
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleBookmarkToggle}
+              className="h-9 w-9 rounded-full text-neutral-400 hover:text-primary hover:bg-primary/5"
             >
-                <Bookmark className={cn("h-4 w-4", isFavorite && "fill-current text-primary")} />
-            </button>
-            <button 
-                className="add-button"
-                onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
-                style={{ padding: '10px', borderRadius: '12px', border: 'none', background: 'hsl(var(--primary))', color: '#ffffff', cursor: 'pointer' }}
+              <Bookmark className={cn("h-5 w-5", isFavorite && "fill-primary text-primary")} />
+            </Button>
+            <Button 
+              size="icon" 
+              onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
+              className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-transform active:scale-90"
             >
-                <Plus className="h-4 w-4" strokeWidth={3} />
-            </button>
+              <Plus className="h-5 w-5" strokeWidth={3} />
+            </Button>
           </div>
         </div>
       </div>
