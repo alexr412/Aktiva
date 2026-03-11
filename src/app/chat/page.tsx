@@ -15,28 +15,29 @@ import { Button } from '@/components/ui/button';
 import { Users, UserPlus } from 'lucide-react';
 import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { cn } from '@/lib/utils';
 
 const ChatListItemSkeleton = () => (
-    <div className="flex items-center gap-4 p-4">
-        <Skeleton className="h-12 w-12 rounded-full" />
+    <div className="bg-white rounded-2xl p-4 mb-3 shadow-sm flex items-center gap-4 border border-slate-100/50">
+        <Skeleton className="h-14 w-14 rounded-full shrink-0" />
         <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-3 w-3/4" />
         </div>
     </div>
 );
 
 const EmptyState = () => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
-    <div className="bg-primary/10 p-4 rounded-full">
-      <Users className="h-10 w-10 text-primary" />
+  <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full">
+    <div className="bg-primary/10 p-6 rounded-[2.5rem]">
+      <Users className="h-12 w-12 text-primary" />
     </div>
-    <h2 className="text-xl font-semibold">No Chats Yet</h2>
-    <p className="text-muted-foreground">
-      Join an activity or add a friend to start chatting.
+    <h2 className="text-xl font-black text-slate-900">Noch keine Chats</h2>
+    <p className="text-slate-500 font-medium max-w-xs">
+      Tritt einer Aktivität bei oder füge Freunde hinzu, um loszulegen.
     </p>
-    <Button asChild>
-      <Link href="/">Find an Activity</Link>
+    <Button asChild className="rounded-2xl h-12 px-8 font-black shadow-lg shadow-primary/20">
+      <Link href="/">Aktivitäten finden</Link>
     </Button>
   </div>
 );
@@ -100,10 +101,22 @@ export default function ChatPage() {
     return () => unsubscribe();
   }, [user, userProfile, authLoading, router]);
 
+  const getGradient = (chatId: string) => {
+    const gradients = [
+      'from-teal-400 to-emerald-500',
+      'from-indigo-400 to-cyan-400',
+      'from-orange-400 to-pink-500',
+      'from-blue-400 to-indigo-500',
+      'from-purple-400 to-pink-400'
+    ];
+    const index = (chatId.charCodeAt(0) + chatId.charCodeAt(chatId.length - 1)) % gradients.length;
+    return gradients[index];
+  };
+
   const renderContent = () => {
     if (loading || authLoading) {
       return (
-        <div>
+        <div className="p-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <ChatListItemSkeleton key={i} />
           ))}
@@ -116,13 +129,13 @@ export default function ChatPage() {
     }
 
     return (
-      <ul className="divide-y divide-border">
+      <div className="p-4 pb-24">
         {chats.map((chat) => {
           const isDM = !chat.activityId;
           let otherUser: { displayName: string | null; photoURL: string | null; } | undefined;
           let chatName = chat.placeName;
           let avatarUrl: string | undefined;
-          let avatarFallback = chat.placeName?.charAt(0).toUpperCase();
+          let avatarFallback = chat.placeName?.charAt(0).toUpperCase() || 'C';
 
           if (isDM && user) {
               const otherUserId = chat.participantIds.find(id => id !== user.uid);
@@ -130,7 +143,7 @@ export default function ChatPage() {
                   otherUser = chat.participantDetails[otherUserId];
                   chatName = otherUser?.displayName || 'Chat';
                   avatarUrl = otherUser?.photoURL || undefined;
-                  avatarFallback = otherUser?.displayName?.charAt(0).toUpperCase();
+                  avatarFallback = otherUser?.displayName?.charAt(0).toUpperCase() || 'U';
               }
           }
 
@@ -138,56 +151,84 @@ export default function ChatPage() {
           const hasUnread = unreadCount > 0;
 
           return (
-            <li key={chat.id}>
-              <Link href={`/chat/${chat.id}`} className="block p-4 transition-colors hover:bg-muted/50">
-                <div className="flex items-start gap-4">
-                  <Avatar className="h-12 w-12">
-                    {avatarUrl && <AvatarImage src={avatarUrl} />}
-                    <AvatarFallback className={isDM ? '' : 'bg-primary/10 text-xl font-bold text-primary'}>
-                      {avatarFallback}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex justify-between items-center mb-0.5">
-                      <p className="truncate font-semibold text-base">{chatName}</p>
-                       {chat.lastMessage?.sentAt && (
-                        <time className={`shrink-0 text-xs ${hasUnread ? 'text-green-500 font-bold' : 'text-muted-foreground'}`}>
-                          {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: true, includeSeconds: true }).replace('about ', '')}
-                        </time>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                        <p className={`truncate text-sm ${hasUnread ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
-                        {chat.lastMessage ? (
-                            <>
-                            <span className="font-medium">{chat.lastMessage.senderName?.split(' ')[0]}:</span> {chat.lastMessage.text}
-                            </>
-                        ) : 'No messages yet.'}
-                        </p>
-                        {hasUnread && (
-                            <div className="bg-green-500 text-white text-[10px] font-bold min-w-[18px] h-4 rounded-full flex items-center justify-center px-1.5 shrink-0 shadow-sm">
-                                {unreadCount > 99 ? '99+' : unreadCount}
-                            </div>
-                        )}
-                    </div>
-                  </div>
+            <Link 
+              key={chat.id} 
+              href={`/chat/${chat.id}`} 
+              className={cn(
+                "bg-white rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-4 border border-slate-100/50",
+                hasUnread && "border-primary/20 bg-primary/[0.02]"
+              )}
+            >
+              {/* Avatar Container */}
+              <div className={cn(
+                "h-14 w-14 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden",
+                !avatarUrl && `bg-gradient-to-br ${getGradient(chat.id)}`
+              )}>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={chatName || ''} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-white font-black text-lg">{avatarFallback}</span>
+                )}
+              </div>
+
+              {/* Text Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-baseline mb-0.5">
+                  <h3 className={cn(
+                    "text-base font-black text-slate-900 truncate pr-2",
+                    hasUnread && "text-primary"
+                  )}>
+                    {chatName}
+                  </h3>
+                  {chat.lastMessage?.sentAt && (
+                    <time className={cn(
+                      "shrink-0 text-[10px] font-bold uppercase tracking-wider",
+                      hasUnread ? "text-primary" : "text-slate-400"
+                    )}>
+                      {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: false }).replace('about ', '')}
+                    </time>
+                  )}
                 </div>
-              </Link>
-            </li>
+                
+                <div className="flex items-center justify-between gap-2">
+                  <p className={cn(
+                    "truncate text-sm font-medium",
+                    hasUnread ? "text-slate-700" : "text-slate-500"
+                  )}>
+                    {chat.lastMessage ? (
+                      <>
+                        <span className="font-bold">{chat.lastMessage.senderName?.split(' ')[0]}:</span> {chat.lastMessage.text}
+                      </>
+                    ) : 'Noch keine Nachrichten.'}
+                  </p>
+                  
+                  {hasUnread && (
+                    <div className="bg-primary text-white text-[10px] font-black min-w-[20px] h-5 rounded-full flex items-center justify-center px-1.5 shrink-0 shadow-lg shadow-primary/20">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Link>
           )
         })}
-      </ul>
+      </div>
     );
   };
 
   return (
     <>
-      <div className="flex h-full flex-col">
-          <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
-            <div className="px-4 flex h-16 items-center justify-between">
-              <h1 className="text-2xl font-bold tracking-tight">Chats</h1>
+      <div className="flex h-full flex-col bg-slate-50">
+          <header className="sticky top-0 z-10 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md shrink-0">
+            <div className="px-4 flex h-16 items-center justify-between max-w-7xl mx-auto w-full">
+              <h1 className="text-2xl font-black tracking-tight text-slate-900">Chats</h1>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => setShowAddFriendDialog(true)}>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-10 w-10 rounded-2xl bg-slate-100/50 hover:bg-slate-100 text-slate-600" 
+                  onClick={() => setShowAddFriendDialog(true)}
+                >
                     <UserPlus className="h-5 w-5" />
                     <span className="sr-only">Freund hinzufügen</span>
                 </Button>
