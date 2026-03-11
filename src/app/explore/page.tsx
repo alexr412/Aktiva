@@ -19,7 +19,7 @@ import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { ProximityRadarView } from '@/components/aktvia/proximity-radar-view';
 
 const CardSkeleton = () => (
-  <div className="w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-3xl shadow-xl border border-border overflow-hidden flex flex-col items-center justify-center">
+  <div className="w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-[2.5rem] shadow-xl border-none overflow-hidden flex flex-col items-center justify-center">
     <Skeleton className="h-full w-full" />
   </div>
 );
@@ -30,12 +30,12 @@ const AdCard = () => (
       <Sparkles className="h-12 w-12 text-primary animate-pulse" />
     </div>
     <h2 className="text-2xl font-bold text-primary mb-2">Gesponserter Partner</h2>
-    <p className="text-muted-foreground mb-8">Entdecke exklusive Angebote unserer Partner in deiner Region.</p>
-    <Button className="rounded-full h-12 px-8 font-bold gap-2">
+    <p className="text-muted-foreground mb-8 text-sm font-medium">Entdecke exklusive Angebote unserer Partner in deiner Region.</p>
+    <Button className="rounded-full h-14 px-8 font-black gap-2 shadow-lg shadow-primary/20">
       <ExternalLink className="h-4 w-4" />
       Mehr erfahren
     </Button>
-    <span className="mt-4 text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Anzeige</span>
+    <span className="mt-6 text-[10px] uppercase tracking-widest text-neutral-400 font-black">Anzeige</span>
   </div>
 );
 
@@ -75,15 +75,15 @@ export default function ExplorePage() {
     };
 
     const EmptyState = () => (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center h-full">
-            <div className="bg-primary/10 p-4 rounded-full">
-                <Compass className="h-10 w-10 text-primary" />
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full">
+            <div className="bg-primary/10 p-6 rounded-[2.5rem]">
+                <Compass className="h-12 w-12 text-primary" />
             </div>
-            <h2 className="text-xl font-semibold">Keine Aktivitäten gefunden</h2>
-            <p className="text-muted-foreground">
+            <h2 className="text-xl font-black text-[#0f172a]">Keine Aktivitäten gefunden</h2>
+            <p className="text-neutral-500 font-medium max-w-xs">
                 Passe deine Filter an oder schau später wieder vorbei.
             </p>
-            <Button onClick={resetFilters} variant="outline">
+            <Button onClick={resetFilters} variant="outline" className="rounded-2xl h-12 font-bold px-6 border-neutral-200 mt-2">
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Filter zurücksetzen
             </Button>
@@ -102,8 +102,8 @@ export default function ExplorePage() {
                 (error) => {
                     console.error('Geolocation error:', error);
                     toast({
-                        title: 'Location Error',
-                        description: 'Could not get your location. Distance filter is disabled.',
+                        title: 'Standortfehler',
+                        description: 'Konnte deinen Standort nicht ermitteln.',
                     });
                 }
             );
@@ -128,7 +128,7 @@ export default function ExplorePage() {
             setIsLoading(false);
         }, (error) => {
             console.error("Error fetching activities: ", error);
-            toast({ title: "Error", description: "Could not load upcoming activities.", variant: 'destructive'});
+            toast({ title: "Fehler", description: "Aktivitäten konnten nicht geladen werden.", variant: 'destructive'});
             setIsLoading(false);
         });
 
@@ -188,20 +188,20 @@ export default function ExplorePage() {
 
         if (direction === 'right') {
              if (!user) {
-                toast({ title: 'Login Required', description: 'You must be logged in to join an activity.' });
+                toast({ title: 'Login erforderlich', description: 'Du musst angemeldet sein.' });
                 router.push('/login');
                 animationControls.start({ x: 0, rotate: 0, opacity: 1, transition: { duration: 0.4 }});
                 return;
             }
              joinActivity(topCardId, user)
                 .then(() => {
-                    toast({ title: 'Activity Joined!', description: 'You can now find it in your chats.' });
+                    toast({ title: 'Aktivität beigetreten!', description: 'Du findest sie jetzt in deinen Chats.' });
                     setTimeout(removeCard, 200);
                     setLastSwipedCard(null);
                 })
                 .catch((error) => {
                     console.error(error);
-                    toast({ title: 'Error', description: error.message || 'Failed to join activity.', variant: 'destructive' });
+                    toast({ title: 'Fehler', description: error.message || 'Beitritt fehlgeschlagen.', variant: 'destructive' });
                     animationControls.start({ x: 0, rotate: 0, opacity: 1, transition: { duration: 0.4 }});
                 });
         } else {
@@ -237,22 +237,21 @@ export default function ExplorePage() {
     };
     
     const renderDate = (activity: Activity) => {
-        if (!activity.activityDate) return "No date";
+        if (!activity.activityDate) return "Kein Datum";
         if (activity.activityEndDate) {
-            return `${format(activity.activityDate.toDate(), "eee, MMM d")} - ${format(activity.activityEndDate.toDate(), "eee, MMM d")}`;
+            return `${format(activity.activityDate.toDate(), "eee, d. MMM")} - ${format(activity.activityEndDate.toDate(), "eee, d. MMM")}`;
         }
         if (activity.isTimeFlexible) {
-            return `${format(activity.activityDate.toDate(), "eee, MMM d")} (Flexible Time)`;
+            return `${format(activity.activityDate.toDate(), "eee, d. MMM")} (Flexible Zeit)`;
         }
-        return format(activity.activityDate.toDate(), "eee, MMM d 'at' p");
+        return format(activity.activityDate.toDate(), "eee, d. MMM 'um' p");
     };
 
     return (
-        <div className="flex h-full flex-col bg-secondary">
-            <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm shrink-0">
-              <div className="px-4 py-4 space-y-4">
+        <div className="flex h-full flex-col bg-secondary/30">
+            <header className="sticky top-0 z-10 w-full border-b border-neutral-100 bg-white/80 backdrop-blur-md shrink-0 px-4 py-5 space-y-4">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold tracking-tight">Explore Activities</h1>
+                    <h1 className="text-2xl font-black tracking-tight text-[#0f172a]">Aktivitäten</h1>
                     <NotificationBell />
                 </div>
                 <div className="space-y-4">
@@ -262,22 +261,22 @@ export default function ExplorePage() {
                           onValueChange={(value) => setRadiusKm(value === 'all' ? null : Number(value))}
                           disabled={!userLocation}
                       >
-                          <SelectTrigger className="w-full rounded-full h-10 bg-muted border-none focus:ring-0">
-                              <SelectValue placeholder="Filter by distance..." />
+                          <SelectTrigger className="w-full rounded-2xl h-12 bg-neutral-50 border-none focus:ring-0 font-bold text-neutral-600">
+                              <SelectValue placeholder="In der Umgebung..." />
                           </SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="all">Any Distance</SelectItem>
-                              <SelectItem value="5">Under 5 km</SelectItem>
-                              <SelectItem value="10">Under 10 km</SelectItem>
-                              <SelectItem value="25">Under 25 km</SelectItem>
-                              <SelectItem value="50">Under 50 km</SelectItem>
+                          <SelectContent className="rounded-2xl border-none shadow-xl font-bold">
+                              <SelectItem value="all">Überall</SelectItem>
+                              <SelectItem value="5">Bis 5 km</SelectItem>
+                              <SelectItem value="10">Bis 10 km</SelectItem>
+                              <SelectItem value="25">Bis 25 km</SelectItem>
+                              <SelectItem value="50">Bis 50 km</SelectItem>
                           </SelectContent>
                       </Select>
                   </div>
                 </div>
-              </div>
               <ProximityRadarView />
             </header>
+            
             <main className="flex-1 flex flex-col min-h-0">
                 {isLoading && (
                     <div className="flex-1 flex items-center justify-center">
@@ -301,7 +300,7 @@ export default function ExplorePage() {
                                 return (
                                     <motion.div
                                         key={card.id || index}
-                                        className="absolute w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-3xl shadow-xl border border-border overflow-hidden flex flex-col"
+                                        className="absolute w-full max-w-sm h-[70vh] max-h-[600px] bg-white rounded-[2.5rem] shadow-xl border-none overflow-hidden flex flex-col"
                                         style={{
                                             zIndex: index,
                                         }}
@@ -320,25 +319,31 @@ export default function ExplorePage() {
                                           <AdCard />
                                         ) : (
                                           <>
-                                            <div className="flex-1 bg-muted flex items-center justify-center relative">
-                                                {card.isCustomActivity ? <Home className="h-24 w-24 text-muted-foreground/30"/> : <MapPin className="h-24 w-24 text-muted-foreground/30"/>}
-                                                <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-black/60 to-transparent p-4 flex flex-col justify-end">
-                                                    <h2 className="text-2xl font-bold text-white shadow-lg">{card.placeName}</h2>
-                                                    <p className="text-sm text-white/90 font-medium shadow-md">{card.placeAddress}</p>
+                                            <div className="flex-1 bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 flex items-center justify-center relative">
+                                                {card.isCustomActivity ? (
+                                                  <Home className="h-24 w-24 text-white/30 drop-shadow-lg"/>
+                                                ) : (
+                                                  <MapPin className="h-24 w-24 text-white/30 drop-shadow-lg"/>
+                                                )}
+                                                <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent p-6 flex flex-col justify-end">
+                                                    <h2 className="text-2xl font-black text-white shadow-lg leading-tight mb-1">{card.placeName}</h2>
+                                                    <p className="text-sm text-white/80 font-bold shadow-md truncate">{card.placeAddress}</p>
                                                 </div>
                                             </div>
-                                            <div className="p-6 flex flex-col gap-4">
-                                                <div className="flex items-center gap-3 bg-muted p-3 rounded-xl">
-                                                    <Calendar className="h-5 w-5 text-primary"/>
-                                                    <span className="font-semibold text-sm">{renderDate(card)}</span>
+                                            <div className="p-6 flex flex-col gap-3">
+                                                <div className="flex items-center gap-3 bg-emerald-50 text-emerald-700 p-4 rounded-2xl transition-colors">
+                                                    <Calendar className="h-5 w-5 opacity-70"/>
+                                                    <span className="font-black text-sm">{renderDate(card)}</span>
                                                 </div>
-                                                <div className="flex items-center gap-3 bg-muted p-3 rounded-xl">
-                                                    <Users className="h-5 w-5 text-primary"/>
-                                                    <span className="font-semibold text-sm">{card.participantIds.length} Participants &bull; by {card.creatorName}</span>
+                                                <div className="flex items-center gap-3 bg-blue-50 text-blue-700 p-4 rounded-2xl transition-colors">
+                                                    <Users className="h-5 w-5 opacity-70"/>
+                                                    <span className="font-black text-sm">
+                                                      {card.participantIds.length} Teilnehmer &bull; von {card.creatorName?.split(' ')[0]}
+                                                    </span>
                                                 </div>
                                                 
-                                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
-                                                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded">
+                                                <div className="flex items-center justify-between mt-3 pt-4 border-t border-neutral-50">
+                                                    <div className="rounded-full bg-orange-50 text-orange-600 font-black px-4 py-1.5 text-[10px] uppercase tracking-wider border-none">
                                                         {card.isCustomActivity ? "Community" : "Location"}
                                                     </div>
                                                 </div>
@@ -349,21 +354,33 @@ export default function ExplorePage() {
                                 );
                             })}
                         </div>
-                        <div className="shrink-0 flex items-center justify-center gap-8 pt-4 pb-24 z-20">
-                            <Button onClick={() => handleSwipe('left')} variant="outline" size="icon" className="h-20 w-20 rounded-full shadow-lg border-2 border-destructive/50 hover:bg-destructive/10">
-                                <X className="h-10 w-10 text-destructive"/>
+                        
+                        {/* Haptische Action-Row */}
+                        <div className="shrink-0 flex items-center justify-center gap-6 pt-4 pb-24 z-20">
+                            <Button 
+                              onClick={() => handleSwipe('left')} 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-16 w-16 rounded-full bg-red-50 border-none shadow-sm text-red-500 hover:bg-red-100 hover:scale-105 active:scale-90 transition-all"
+                            >
+                                <X className="h-8 w-8 stroke-[2.5]"/>
                             </Button>
                              <Button 
                                 onClick={handleUndo} 
                                 variant="outline" 
                                 size="icon" 
-                                className="h-16 w-16 rounded-full shadow-md border-2 border-gray-400/50 hover:bg-gray-400/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="h-12 w-12 rounded-full bg-slate-50 border-none shadow-sm text-slate-500 hover:bg-slate-100 hover:scale-105 active:scale-90 transition-all disabled:opacity-30"
                                 disabled={!lastSwipedCard}
                             >
-                                <RotateCcw className="h-8 w-8 text-gray-500"/>
+                                <RotateCcw className="h-5 w-5 stroke-[2.5]"/>
                             </Button>
-                             <Button onClick={() => handleSwipe('right')} variant="outline" size="icon" className="h-20 w-20 rounded-full shadow-lg border-2 border-primary/50 hover:bg-primary/10">
-                                <Heart className="h-10 w-10 text-primary"/>
+                             <Button 
+                              onClick={() => handleSwipe('right')} 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-16 w-16 rounded-full bg-emerald-50 border-none shadow-sm text-emerald-500 hover:bg-emerald-100 hover:scale-105 active:scale-90 transition-all"
+                            >
+                                <Heart className="h-8 w-8 stroke-[2.5] fill-emerald-500/10"/>
                             </Button>
                         </div>
                     </>
