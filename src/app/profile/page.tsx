@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/compone
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import FriendList from '@/components/profile/FriendList';
+import { cn } from '@/lib/utils';
 
 
 function generateFriendCode(length = 8) {
@@ -312,10 +313,10 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex gap-4 w-full max-w-xs">
-                    <Button asChild className="flex-1 h-12 text-base">
+                    <Button asChild className="flex-1 h-12 text-base rounded-2xl">
                         <Link href="/login">Login</Link>
                     </Button>
-                    <Button asChild variant="outline" className="flex-1 h-12 text-base">
+                    <Button asChild variant="outline" className="flex-1 h-12 text-base rounded-2xl">
                         <Link href="/signup">Sign Up</Link>
                     </Button>
                 </div>
@@ -326,10 +327,10 @@ export default function ProfilePage() {
     const TabButton = ({ tabName, label }: { tabName: string, label: string }) => (
         <button
             onClick={() => setActiveTab(tabName)}
-            className={`transition-colors duration-200 text-sm pb-2 ${
+            className={`transition-colors duration-200 text-sm pb-3 font-bold ${
                 activeTab === tabName
-                ? 'border-b-2 border-primary text-primary font-bold'
-                : 'text-muted-foreground border-b-2 border-transparent'
+                ? 'border-b-4 border-primary text-primary'
+                : 'text-neutral-400 border-b-4 border-transparent'
             }`}
         >
             {label}
@@ -344,13 +345,13 @@ export default function ProfilePage() {
 
     return (
         <>
-            <div className="relative flex flex-col h-full bg-background overflow-y-auto pb-20">
+            <div className="relative flex flex-col h-full bg-secondary/30 overflow-y-auto pb-20">
                 <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                     <NotificationBell />
                     <Button asChild
                         variant="ghost"
                         size="icon"
-                        className="text-muted-foreground"
+                        className="text-neutral-400 h-9 w-9 rounded-full bg-white/50 backdrop-blur-sm shadow-sm"
                     >
                         <Link href="/settings">
                             <Settings className="h-5 w-5" />
@@ -361,111 +362,130 @@ export default function ProfilePage() {
                         variant="ghost"
                         size="icon"
                         onClick={handleSignOut}
-                        className="text-muted-foreground"
+                        className="text-neutral-400 h-9 w-9 rounded-full bg-white/50 backdrop-blur-sm shadow-sm"
                     >
                         <LogOut className="h-5 w-5" />
                         <span className="sr-only">Sign Out</span>
                     </Button>
                 </div>
                 
-                <div className="max-w-4xl mx-auto w-full">
-                    <div className="p-6 flex flex-col items-center justify-center text-center space-y-4 pt-16">
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleImageUpload} 
-                            className="hidden" 
-                            accept="image/jpeg,image/png,image/webp" 
-                        />
-                        <div 
-                            onClick={() => fileInputRef.current?.click()}
-                            className="relative group cursor-pointer"
-                        >
-                            <Avatar className="h-24 w-24 border-2 border-primary/20">
-                                <AvatarImage src={photoUrlToDisplay} alt="Profil" />
-                                <AvatarFallback className="text-3xl bg-muted">
-                                    {displayName.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white">
-                                <Edit className="h-6 w-6" />
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col items-center">
-                            <div className="flex items-center gap-2">
-                              <h1 className="text-2xl font-bold">
-                                  {displayName}
-                                  {userData?.age && `, ${userData.age}`}
-                              </h1>
-                              {/* Fundraising: Supporter Badge */}
-                              {userData?.isDonator && (
-                                <ShieldCheck className="h-6 w-6 text-primary fill-primary/10" strokeWidth={2.5} />
-                              )}
-                            </div>
+                <div className="max-w-4xl mx-auto w-full px-4 pt-12">
+                    {/* Soft-UI Profile Card */}
+                    <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] shadow-sm p-8 mb-8 flex flex-col items-center relative overflow-hidden text-center border-none">
+                        {/* Decorative Background */}
+                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-primary/10 via-blue-500/5 to-purple-500/10" />
+                        
+                        <div className="relative z-10 flex flex-col items-center w-full">
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                onChange={handleImageUpload} 
+                                className="hidden" 
+                                accept="image/jpeg,image/png,image/webp" 
+                            />
                             <div 
-                                onClick={userData?.friendCode ? handleCopyCode : undefined}
-                                onKeyDown={(e) => userData?.friendCode && (e.key === 'Enter' || e.key === ' ') ? handleCopyCode() : undefined}
-                                role={userData?.friendCode ? "button" : undefined}
-                                tabIndex={userData?.friendCode ? 0 : -1}
-                                className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground transition-colors hover:bg-muted"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="relative group cursor-pointer mb-6"
                             >
-                                {userData?.friendCode ? (
-                                    <>
-                                        <span>{userData.friendCode}</span>
-                                        <Copy className="h-4 w-4 text-muted-foreground" />
-                                    </>
-                                ) : (
-                                    <span className='text-muted-foreground'>Generating...</span>
-                                )}
+                                <div className="p-1 bg-white rounded-full shadow-lg">
+                                    <Avatar className="h-28 w-28 border-4 border-white">
+                                        <AvatarImage src={photoUrlToDisplay} alt="Profil" />
+                                        <AvatarFallback className="text-4xl bg-secondary text-primary font-black">
+                                            {displayName.charAt(0).toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </div>
+                                <div className="absolute bottom-0 right-0 h-9 w-9 rounded-full bg-primary text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                                    <Edit className="h-4 w-4" />
+                                </div>
                             </div>
-                            {userData?.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
+
+                            <div className="flex flex-col items-center gap-1 mb-4">
+                                <div className="flex items-center gap-2">
+                                  <h1 className="text-3xl font-black tracking-tight text-[#0f172a] dark:text-neutral-200">
+                                      {displayName}
+                                      {userData?.age && <span className="text-neutral-400 ml-2">, {userData.age}</span>}
+                                  </h1>
+                                  {userData?.isDonator && (
+                                    <ShieldCheck className="h-6 w-6 text-primary fill-primary/10" strokeWidth={2.5} />
+                                  )}
+                                </div>
+                                
+                                <div className="flex flex-wrap justify-center gap-2 mt-2">
+                                    <div 
+                                        onClick={userData?.friendCode ? handleCopyCode : undefined}
+                                        className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary/10 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-primary transition-all hover:bg-primary/20 active:scale-95"
+                                    >
+                                        <span>{userData?.friendCode || 'Generating...'}</span>
+                                        <Copy className="h-3.5 w-3.5" />
+                                    </div>
+                                    {userData?.location && (
+                                        <div className="inline-flex items-center gap-1.5 rounded-xl bg-secondary px-4 py-1.5 text-xs font-bold text-neutral-500">
+                                            <Compass className="h-3.5 w-3.5" />
+                                            <span>{userData.location}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {userData?.bio && (
+                                <p className="text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed max-w-sm mb-6">
+                                    {userData.bio}
+                                </p>
+                            )}
+
+                            <Button 
+                                variant="secondary" 
+                                className="rounded-full px-10 h-12 bg-neutral-100 hover:bg-neutral-200 text-[#0f172a] font-black border-none transition-transform active:scale-95" 
+                                onClick={() => router.push('/profile/edit')}
+                            >
+                                Profil bearbeiten
+                            </Button>
                         </div>
                     </div>
                     
-                    {userData?.bio && (
-                        <div className="px-6 text-center max-w-lg mx-auto">
-                            <p className="text-foreground/80">{userData.bio}</p>
-                        </div>
-                    )}
-
-
-                    <div className="px-6 mt-6 max-sm mx-auto">
-                        <Button variant="outline" className="w-full" onClick={() => router.push('/profile/edit')}>Edit Profile</Button>
-                    </div>
-                    
-                    {loadingRequests && userProfile?.friendRequestsReceived && userProfile.friendRequestsReceived.length > 0 &&(
-                        <div className="p-6"><Skeleton className="h-10 w-full" /></div>
-                    )}
-
+                    {/* Friend Requests Section (Soft-UI) */}
                     {!loadingRequests && visibleRequestProfiles.length > 0 && (
-                        <div className="p-6 space-y-4 border-b">
-                            <h2 className="font-bold text-lg">Friend Requests</h2>
-                            <ul className="space-y-3">
+                        <div className="mb-8 space-y-4">
+                            <h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200 ml-4">Anfragen</h2>
+                            <div className="grid grid-cols-1 gap-3">
                                 {visibleRequestProfiles.map(profile => (
-                                    <li key={profile.uid} className="flex items-center gap-3 p-2 -mx-2 rounded-lg bg-secondary">
-                                        <Avatar>
+                                    <div key={profile.uid} className="flex items-center gap-4 p-4 rounded-3xl bg-white dark:bg-neutral-900 shadow-sm border-none animate-in fade-in slide-in-from-top-2">
+                                        <Avatar className="h-12 w-12">
                                             <AvatarImage src={profile.photoURL || undefined} />
-                                            <AvatarFallback>{profile.displayName?.charAt(0)}</AvatarFallback>
+                                            <AvatarFallback className="bg-primary/10 text-primary font-bold">{profile.displayName?.charAt(0)}</AvatarFallback>
                                         </Avatar>
-                                        <span className="flex-1 font-medium truncate">{profile.displayName}</span>
-                                        <Button size="icon" variant="outline" onClick={() => handleAcceptRequest(profile.uid)}><UserCheck className="h-4 w-4 text-green-500"/></Button>
-                                        <Button size="icon" variant="outline" onClick={() => handleDeclineRequest(profile.uid)}><X className="h-4 w-4 text-red-500"/></Button>
-                                    </li>
+                                        <span className="flex-1 font-black text-[#0f172a] dark:text-neutral-200 truncate">{profile.displayName}</span>
+                                        <div className="flex gap-2">
+                                            <Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl bg-green-50 text-green-600 hover:bg-green-100" onClick={() => handleAcceptRequest(profile.uid)}><UserCheck className="h-5 w-5"/></Button>
+                                            <Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl bg-red-50 text-red-600 hover:bg-red-100" onClick={() => handleDeclineRequest(profile.uid)}><X className="h-5 w-5"/></Button>
+                                        </div>
+                                    </div>
                                 ))}
-                            </ul>
+                            </div>
                         </div>
                     )}
                     
-                    <div className="p-6 space-y-4">
-                         <h2 className="font-bold text-lg">Interests</h2>
-                        <div className="flex flex-wrap gap-2 items-center">
-                            {userData?.interests?.map(tag => (
-                                 <Badge key={tag} variant="secondary" className="text-base py-1 px-3">
+                    {/* Interests Section */}
+                    <div className="mb-8 space-y-4">
+                        <h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200 ml-4">Interessen</h2>
+                        <div className="flex flex-wrap gap-2 px-2">
+                            {userData?.interests?.map((tag, idx) => (
+                                 <Badge 
+                                    key={tag} 
+                                    variant="secondary" 
+                                    className={cn(
+                                        "text-xs font-black uppercase tracking-tight py-2 px-4 rounded-2xl border-none shadow-sm",
+                                        idx % 3 === 0 ? "bg-blue-50 text-blue-600" : idx % 3 === 1 ? "bg-orange-50 text-orange-600" : "bg-emerald-50 text-emerald-600"
+                                    )}
+                                >
                                     {tag}
                                 </Badge>
                             ))}
-                            <button onClick={() => router.push('/profile/edit')} className="border border-dashed border-gray-400 text-gray-500 rounded-full px-4 py-1 text-sm hover:bg-muted/50 transition-colors">
+                            <button 
+                                onClick={() => router.push('/profile/edit')} 
+                                className="border-2 border-dashed border-neutral-200 text-neutral-400 rounded-2xl px-4 py-1.5 text-xs font-bold hover:bg-white hover:border-primary/50 hover:text-primary transition-all active:scale-95"
+                            >
                                 + Hinzufügen
                             </button>
                         </div>
@@ -473,61 +493,59 @@ export default function ProfilePage() {
 
                     <FriendList friendIds={userData?.friends || []} />
                     
-                    <div className="w-full border-b mt-8">
-                        <nav className="flex justify-around items-center font-medium px-6">
+                    <div className="w-full mt-12 mb-6">
+                        <nav className="flex justify-around items-center px-4 border-b border-neutral-100 dark:border-neutral-800">
                             <TabButton tabName="activities" label="Aktivitäten" />
                             <TabButton tabName="favorites" label="Favoriten" />
                             <TabButton tabName="reviews" label="Reviews" />
                         </nav>
                     </div>
 
-                    <div className="flex-1">
+                    <div className="flex-1 pb-12">
                         {activeTab === 'activities' && (
-                            <div className="pt-4">
+                            <div className="space-y-4">
                                 {loadingActivities ? (
-                                     <div className="divide-y divide-border">
-                                        <ActivityListItemSkeleton />
+                                     <div className="space-y-4 px-2">
                                         <ActivityListItemSkeleton />
                                         <ActivityListItemSkeleton />
                                     </div>
                                 ) : visibleActivities.length > 0 ? (
-                                    <ul className="divide-y divide-border">
+                                    <div className="space-y-2">
                                         {visibleActivities.map(activity => (
-                                            <li key={activity.id}>
-                                                <ActivityListItem
-                                                    activity={activity}
-                                                    user={user}
-                                                    onJoin={handleJoin}
-                                                />
-                                            </li>
+                                            <ActivityListItem
+                                                key={activity.id}
+                                                activity={activity}
+                                                user={user}
+                                                onJoin={handleJoin}
+                                            />
                                         ))}
-                                    </ul>
+                                    </div>
                                 ) : (
-                                    <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
-                                        <p className="text-muted-foreground">Noch keine Aktivitäten erstellt.</p>
-                                        <Button onClick={() => router.push('/explore')}>
-                                            <Compass className="mr-2 h-4 w-4" />
-                                            Aktivitäten entdecken
+                                    <div className="text-center p-12 flex flex-col items-center justify-center gap-4 bg-white/50 rounded-[2rem] border-2 border-dashed border-neutral-200">
+                                        <p className="text-neutral-500 font-bold">Noch keine Aktivitäten erstellt.</p>
+                                        <Button onClick={() => router.push('/explore')} className="rounded-2xl h-12 px-8 font-black">
+                                            <Compass className="mr-2 h-5 w-5" />
+                                            Entdecken
                                         </Button>
                                     </div>
                                 )}
                             </div>
                         )}
                          {activeTab === 'favorites' && (
-                            <div className="pt-4">
+                            <div className="px-2">
                                 {favorites.length === 0 ? (
-                                    <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
-                                         <div className="bg-primary/10 p-4 rounded-full">
-                                            <Bookmark className="h-8 w-8 text-primary" />
+                                    <div className="text-center p-12 flex flex-col items-center justify-center gap-4 bg-white/50 rounded-[2rem] border-2 border-dashed border-neutral-200">
+                                         <div className="bg-primary/10 p-6 rounded-3xl">
+                                            <Bookmark className="h-10 w-10 text-primary" />
                                         </div>
-                                        <p className="text-muted-foreground">Noch keine Favoriten gespeichert.</p>
-                                         <Button onClick={() => router.push('/')}>
-                                            <Compass className="mr-2 h-4 w-4" />
-                                            Orte entdecken
+                                        <p className="text-neutral-500 font-bold">Noch keine Favoriten gespeichert.</p>
+                                         <Button onClick={() => router.push('/')} className="rounded-2xl h-12 px-8 font-black">
+                                            <Compass className="mr-2 h-5 w-5" />
+                                            Orte finden
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {favorites.map(fav => (
                                             <PlaceCard
                                                 key={fav.id}
@@ -541,8 +559,8 @@ export default function ProfilePage() {
                             </div>
                          )}
                          {activeTab === 'reviews' && (
-                             <div className="text-center text-muted-foreground p-10">
-                                <p>Reviews are not yet implemented.</p>
+                             <div className="text-center text-neutral-400 font-bold p-12 bg-white/50 rounded-[2rem] border-2 border-dashed border-neutral-200">
+                                <p>Reviews folgen in Kürze.</p>
                             </div>
                          )}
                     </div>
@@ -551,7 +569,7 @@ export default function ProfilePage() {
 
             <div className="fixed inset-0 pointer-events-none">
                 <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
-                    <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden pointer-events-auto">
+                    <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden pointer-events-auto rounded-[2.5rem] border-none shadow-2xl">
                         <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
                         <DialogDescription className="sr-only">Profil Ort Details</DialogDescription>
                         {selectedPlace && <PlaceDetails place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
@@ -572,15 +590,12 @@ export default function ProfilePage() {
 }
 
 const ActivityListItemSkeleton = () => (
-    <div className="p-4 border-b">
-        <div className="flex items-center gap-4">
-            <Skeleton className="h-10 w-10 rounded-lg" />
-            <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
-                <Skeleton className="h-3 w-1/4" />
-            </div>
-            <Skeleton className="h-8 w-8 rounded-full" />
+    <div className="p-5 rounded-3xl bg-white shadow-sm flex items-center gap-4">
+        <Skeleton className="h-16 w-16 rounded-2xl shrink-0" />
+        <div className="flex-1 space-y-2">
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
         </div>
+        <Skeleton className="h-10 w-10 rounded-xl" />
     </div>
 );

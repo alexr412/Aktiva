@@ -8,7 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
-import { MapPin } from "lucide-react";
+import { MapPin, Compass } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface FriendListProps {
   friendIds: string[];
@@ -51,7 +52,6 @@ export default function FriendList({ friendIds }: FriendListProps) {
   }, [friendIds]);
 
   const getProximityLabel = (friend: UserProfile) => {
-    // Bilaterale Prüfung & Zeitstempel-Validierung (max 24h)
     if (!currentUser?.proximitySettings?.enabled || !friend.proximitySettings?.enabled) return null;
     if (!currentUser.lastLocation || !friend.lastLocation?.updatedAt) return null;
 
@@ -75,11 +75,11 @@ export default function FriendList({ friendIds }: FriendListProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 mt-8 w-full px-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Skeleton className="h-20 rounded-xl" />
-          <Skeleton className="h-20 rounded-xl" />
+      <div className="space-y-4 mb-12 w-full px-2">
+        <Skeleton className="h-8 w-48 ml-4 mb-2" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Skeleton className="h-24 rounded-[2rem]" />
+          <Skeleton className="h-24 rounded-[2rem]" />
         </div>
       </div>
     );
@@ -87,8 +87,8 @@ export default function FriendList({ friendIds }: FriendListProps) {
 
   if (friends.length === 0) {
     return (
-      <div className="px-6 mt-8">
-        <div className="text-sm text-muted-foreground border border-dashed border-border p-8 rounded-xl text-center">
+      <div className="px-2 mb-12">
+        <div className="text-neutral-400 font-bold border-2 border-dashed border-neutral-200 p-12 rounded-[2rem] text-center bg-white/50">
           Noch keine Freunde hinzugefügt.
         </div>
       </div>
@@ -96,27 +96,33 @@ export default function FriendList({ friendIds }: FriendListProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4 mt-8 w-full px-6">
-      <h3 className="font-bold text-xl border-b border-border pb-2">Freunde ({friends.length})</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="flex flex-col gap-4 mb-12 w-full px-2">
+      <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200 ml-4 flex items-center gap-2">
+        Freunde <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-lg text-xs">{friends.length}</span>
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {friends.map(friend => {
           const proximity = getProximityLabel(friend);
           return (
             <Link href={`/profile/${friend.uid}`} key={friend.uid} className="block group">
-              <Card className="flex items-center gap-4 p-4 border border-border rounded-xl bg-card group-hover:bg-secondary/50 transition-colors cursor-pointer shadow-sm">
-                <Avatar className="h-12 w-12 border border-primary/10">
-                  <AvatarImage src={friend.photoURL || undefined} />
-                  <AvatarFallback>{friend.displayName?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
-                </Avatar>
+              <Card className="flex items-center gap-4 p-4 border-none rounded-[2rem] bg-white dark:bg-neutral-900 group-hover:shadow-md transition-all cursor-pointer shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-primary/20 group-hover:bg-primary transition-colors" />
+                <div className="p-1 bg-secondary rounded-full">
+                    <Avatar className="h-14 w-14 border-2 border-white">
+                      <AvatarImage src={friend.photoURL || undefined} />
+                      <AvatarFallback className="bg-primary/5 text-primary font-black">{friend.displayName?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
+                    </Avatar>
+                </div>
                 <div className="flex flex-col overflow-hidden">
-                  <span className="font-bold truncate">{friend.displayName || "Unbekannter Nutzer"}</span>
+                  <span className="font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight">{friend.displayName || "Unbekannter Nutzer"}</span>
                   {proximity ? (
-                    <span className="text-[10px] text-green-600 font-bold flex items-center gap-1 mt-0.5 uppercase tracking-tighter">
+                    <span className="text-[9px] text-green-600 font-black flex items-center gap-1 mt-1 uppercase tracking-wider">
                       <MapPin className="h-3 w-3" />
                       {proximity}
                     </span>
                   ) : (
-                    <span className="text-xs text-muted-foreground truncate">
+                    <span className="text-[10px] text-neutral-400 font-bold truncate flex items-center gap-1 mt-1">
+                      <Compass className="h-3 w-3" />
                       {friend.location || "Kein Standort"}
                     </span>
                   )}

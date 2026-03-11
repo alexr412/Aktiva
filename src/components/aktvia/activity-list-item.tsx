@@ -5,7 +5,7 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus } from 'lucide-react';
+import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { EntityMoreOptions } from '../common/EntityMoreOptions';
 import { cn } from '@/lib/utils';
@@ -61,32 +61,44 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
     return (
         <div className={cn(
-          "p-5 relative group transition-all rounded-2xl bg-white dark:bg-neutral-800 shadow-sm border-none dark:border dark:border-neutral-700 mb-4",
-          activity.isBoosted && "ring-2 ring-orange-500/20"
+          "p-5 relative group transition-all rounded-[2rem] bg-white dark:bg-neutral-800 shadow-sm border-none dark:border dark:border-neutral-700 mb-4",
+          activity.isBoosted && "ring-4 ring-orange-500/10"
         )}>
             <div className="flex items-start gap-4">
-                <div className={cn("flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0", primaryStyle.bgClass, "dark:bg-neutral-700/50")}>
-                    <PrimaryIcon className="h-8 w-8" style={{ color: primaryStyle.color }} />
+                <div className={cn(
+                    "flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0 transition-transform group-hover:scale-105", 
+                    primaryStyle.bgClass.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-400 to-').concat(primaryStyle.color === '#ef4444' ? 'red-500' : 'violet-500')
+                )}>
+                    <PrimaryIcon className="h-8 w-8 text-white drop-shadow-sm" />
                 </div>
                 
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                        <p className="text-lg font-extrabold text-[#0f172a] dark:text-neutral-200 truncate leading-tight">{activity.placeName}</p>
+                        <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight">{activity.placeName}</p>
                         {activity.isBoosted && (
-                          <Badge variant="default" className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1 h-5 px-1.5 text-[9px] font-black">
+                          <Badge variant="default" className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1 h-5 px-2 text-[9px] font-black rounded-full">
                             <Flame className="h-2.5 w-2.5" />
                             <span>HOT</span>
                           </Badge>
                         )}
                     </div>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate mt-1.5 flex items-center gap-1.5 font-medium">
-                        <Users className="h-3.5 w-3.5"/>
-                        <span>{activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; von {activity.creatorName}</span>
-                    </p>
+                    
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1 font-bold uppercase tracking-wider">
+                            <Users className="h-3 w-3 text-primary/60"/>
+                            <span>{activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; von {activity.creatorName?.split(' ')[0]}</span>
+                        </p>
+                        {activity.placeAddress && (
+                            <p className="text-[11px] text-neutral-400 flex items-center gap-1 font-medium truncate max-w-[150px]">
+                                <MapPin className="h-3 w-3" />
+                                {activity.placeAddress}
+                            </p>
+                        )}
+                    </div>
 
                     <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mt-3">
-                      {processedTags.map((tag, index) => (
-                        <span key={index} className="inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold tracking-tight bg-neutral-100 dark:bg-neutral-700 dark:border dark:border-neutral-600 text-neutral-700 dark:text-neutral-300">
+                      {processedTags.slice(0, 3).map((tag, index) => (
+                        <span key={index} className="inline-flex items-center rounded-xl px-3 py-1 text-[9px] font-black uppercase tracking-tight bg-secondary/50 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300">
                           {tag}
                         </span>
                       ))}
@@ -95,24 +107,22 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
             </div>
 
             <div className="card-footer-actions flex justify-between items-center w-full mt-5 pt-4 border-t border-neutral-50 dark:border-neutral-700/50">
-              <div className="voting-controls flex gap-2 items-center">
+              <div className="voting-controls flex gap-1.5 items-center bg-secondary/30 rounded-full p-1">
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'up' ? 'none' : 'up'); }} 
-                  className="dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:border-neutral-600 dark:text-neutral-200"
-                  style={{ 
-                    padding: '6px 14px', border: '1px solid', borderRadius: '10px', fontWeight: '800', fontSize: '14px', transition: 'all 0.2s', cursor: 'pointer',
-                    background: userVote === 'up' ? '#22c55e' : 'inherit', color: userVote === 'up' ? '#ffffff' : 'inherit', borderColor: userVote === 'up' ? '#22c55e' : '#e2e8f0',
-                  }}
+                  className={cn(
+                    "h-8 px-4 rounded-full font-black text-sm transition-all active:scale-90",
+                    userVote === 'up' ? "bg-white text-green-500 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+                  )}
                 >
                   {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'down' ? 'none' : 'down'); }} 
-                  className="dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:border-neutral-600 dark:text-neutral-200"
-                  style={{ 
-                    padding: '6px 14px', border: '1px solid', borderRadius: '10px', fontWeight: '800', fontSize: '14px', transition: 'all 0.2s', cursor: 'pointer',
-                    background: userVote === 'down' ? '#ef4444' : 'inherit', color: userVote === 'down' ? '#ffffff' : 'inherit', borderColor: userVote === 'down' ? '#ef4444' : '#e2e8f0',
-                  }}
+                  className={cn(
+                    "h-8 px-4 rounded-full font-black text-sm transition-all active:scale-90",
+                    userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+                  )}
                 >
                   {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}
                 </button>
@@ -120,13 +130,24 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
               <div className="flex gap-2">
                 {isParticipant ? (
-                  <button className="dark:bg-neutral-700 dark:hover:bg-neutral-600 dark:border-neutral-600" onClick={(e) => { e.stopPropagation(); handleViewChatClick(activity.id!); }} style={{ padding: '10px', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'inherit' }}>
-                    <MessageSquare className="h-4 w-4 text-primary" />
-                  </button>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={(e) => { e.stopPropagation(); handleViewChatClick(activity.id!); }} 
+                    className="h-10 rounded-2xl bg-white shadow-sm border-neutral-100 hover:bg-neutral-50 text-primary font-bold gap-2 px-4"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    <span>Chat</span>
+                  </Button>
                 ) : (
-                  <button className="add-button" onClick={(e) => { e.stopPropagation(); handleJoinClick(activity.id!); }} disabled={isJoining} style={{ padding: '10px', borderRadius: '12px', border: 'none', background: 'hsl(var(--primary))', color: '#ffffff', cursor: 'pointer' }}>
-                    {isJoining ? <Loader2 className="animate-spin h-4 w-4" /> : <Plus className="h-4 w-4" strokeWidth={3} />}
-                  </button>
+                  <Button 
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); handleJoinClick(activity.id!); }} 
+                    disabled={isJoining || isFull}
+                    className="h-10 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black px-6 shadow-lg shadow-primary/20 transition-transform active:scale-95"
+                  >
+                    {isJoining ? <Loader2 className="animate-spin h-4 w-4" /> : (isFull ? 'Voll' : 'Beitreten')}
+                  </Button>
                 )}
               </div>
             </div>
