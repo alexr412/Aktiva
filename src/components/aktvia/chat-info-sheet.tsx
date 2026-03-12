@@ -73,18 +73,31 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
   const handleLeaveOrDelete = async () => {
     if (!chat?.id || !user?.uid) return;
     
-    onOpenChange(false);
-    router.push('/chat');
-    
-    try {
-      if (isOnlyParticipant) {
-        await deleteActivity(chat.id);
-      } else {
-        await leaveActivity(chat.id, user.uid);
-      }
-    } catch (error: any) {
-      console.error('Delete/Leave operation failed:', error);
+    // 1. Zwingender Fokus-Abwurf zur Verhinderung des Radix-Locks (Pointer-Events: none)
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
     }
+
+    // Modal sofort schließen
+    onOpenChange(false);
+    
+    // 2. Entkopplung vom aktuellen Event-Loop-Zyklus (100ms Microtask Puffer)
+    // Erlaubt Radix UI das DOM (aria-hidden, pointer-events) zurückzusetzen, 
+    // bevor die Route gewechselt und die Komponente zerstört wird.
+    setTimeout(async () => {
+      setIsActing(true);
+      try {
+        if (isOnlyParticipant) {
+          await deleteActivity(chat.id);
+        } else {
+          await leaveActivity(chat.id, user.uid);
+        }
+        router.replace('/chat');
+      } catch (error: any) {
+        console.error('Delete/Leave operation failed:', error);
+        setIsActing(false);
+      }
+    }, 100);
   };
   
   const handleVote = async () => {
