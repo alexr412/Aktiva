@@ -15,7 +15,7 @@ export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
   const { mode } = useTheme();
   const isDark = mode === 'dark';
   
-  // State für Zoom-Metrik - Startet jetzt bei 16
+  // State für Zoom-Metrik - Startet bei 16
   const [zoomLevel, setZoomLevel] = useState(16);
 
   // Dynamischer Kachel-Provider basierend auf dem aktiven Theme
@@ -38,8 +38,8 @@ export function MapView({ places, userLocation, onPlaceSelect }: MapViewProps) {
       <Map 
         provider={dynamicTiler} 
         center={center} // Fixiert den Viewport dauerhaft auf die Nutzer-Koordinaten
-        defaultZoom={16} // Startet jetzt bei Zoom 16
-        minZoom={15} // Striktere Begrenzung für Rauszoomen (View-Lock)
+        defaultZoom={16} // Startet bei Zoom 16
+        minZoom={10} // Erlaubt weiteres Rauszoomen (jetzt bis Level 10)
         maxZoom={18} // Maximaler Rein-Zoom
         mouseEvents={true}
         touchEvents={true}
