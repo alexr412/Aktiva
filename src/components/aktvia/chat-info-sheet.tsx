@@ -73,7 +73,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
   const handleLeaveOrDelete = async () => {
     if (!chat?.id || !user?.uid) return;
     
-    // 1. Zwingender Fokus-Abwurf zur Verhinderung des Radix-Locks (Pointer-Events: none)
+    // 1. Fokus-Abwurf erzwingen
     if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -81,8 +81,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
     // Modal sofort schließen (Startet die Exit-Animation)
     onOpenChange(false);
     
-    // 2. Entkopplung mit erhöhtem Puffer (400ms)
-    // Gibt Radix UI Zeit, die Exit-Animation (300ms) zu beenden
+    // 2. Entkopplung mit Puffer (400ms) für Radix Exit-Animation
     setTimeout(async () => {
       // 3. Manueller Fail-Safe: DOM Locks entfernen
       if (typeof document !== 'undefined') {
@@ -101,7 +100,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
         // 4. Weiterleitung nach dem Cleanup
         router.replace('/chat');
       } catch (error: any) {
-        console.error('Delete/Leave operation failed:', error);
+        console.error('Operation failed:', error);
         setIsActing(false);
       }
     }, 400); 
@@ -125,7 +124,6 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
       <SheetContent className="flex flex-col p-0 sm:max-w-md border-none rounded-l-[2.5rem] overflow-hidden">
         <ScrollArea className="flex-1">
           <div className="p-8">
-            {/* Header Redesign */}
             <div className="flex flex-col items-center text-center pb-8 border-b border-slate-100 mb-8">
               <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-400 to-cyan-400 mb-6 flex items-center justify-center shadow-xl transform rotate-3">
                 <MapPin className="text-white h-10 w-10 drop-shadow-md" />
@@ -145,7 +143,6 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
               </div>
             </div>
 
-            {/* Member List */}
             <div className="space-y-6">
               <div className="flex items-center justify-between px-2">
                 <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Mitglieder</h3>
@@ -218,7 +215,19 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                   <AlertDialogCancel className="rounded-xl font-bold h-11 border-none bg-slate-100">Abbrechen</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleLeaveOrDelete} disabled={isActing} className='bg-red-500 hover:bg-red-600 text-white rounded-xl font-black h-11 border-none shadow-lg shadow-red-200'>
+                  <AlertDialogAction 
+                    disabled={isActing} 
+                    className='bg-red-500 hover:bg-red-600 text-white rounded-xl font-black h-11 border-none shadow-lg shadow-red-200'
+                    onPointerDown={(e) => {
+                      // Abfangen des Events vor Radix Fokus-Management
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.currentTarget) {
+                        e.currentTarget.blur();
+                      }
+                      handleLeaveOrDelete();
+                    }}
+                  >
                     {isActing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {isOnlyParticipant ? 'Endgültig löschen' : 'Jetzt verlassen'}
                   </AlertDialogAction>
