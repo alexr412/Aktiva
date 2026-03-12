@@ -78,13 +78,18 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
       document.activeElement.blur();
     }
 
-    // Modal sofort schließen
+    // Modal sofort schließen (Startet die Exit-Animation)
     onOpenChange(false);
     
-    // 2. Entkopplung vom aktuellen Event-Loop-Zyklus (100ms Microtask Puffer)
-    // Erlaubt Radix UI das DOM (aria-hidden, pointer-events) zurückzusetzen, 
-    // bevor die Route gewechselt und die Komponente zerstört wird.
+    // 2. Entkopplung mit erhöhtem Puffer (400ms)
+    // Gibt Radix UI Zeit, die Exit-Animation (300ms) zu beenden
     setTimeout(async () => {
+      // 3. Manueller Fail-Safe: DOM Locks entfernen
+      if (typeof document !== 'undefined') {
+        document.body.style.pointerEvents = 'auto';
+        document.body.removeAttribute('data-scroll-locked');
+      }
+
       setIsActing(true);
       try {
         if (isOnlyParticipant) {
@@ -92,12 +97,14 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
         } else {
           await leaveActivity(chat.id, user.uid);
         }
+        
+        // 4. Weiterleitung nach dem Cleanup
         router.replace('/chat');
       } catch (error: any) {
         console.error('Delete/Leave operation failed:', error);
         setIsActing(false);
       }
-    }, 100);
+    }, 400); 
   };
   
   const handleVote = async () => {
