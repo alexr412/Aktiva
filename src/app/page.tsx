@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -178,7 +179,8 @@ export default function Home() {
   }, [rawPlaces, allUpcomingActivities, placeMetrics]);
 
   const isLoadingInitialData = isLoading;
-  const isFetchingMore = isValidating && !isLoadingInitialData;
+  // Nur anzeigen, wenn wir wirklich aktiv eine neue Seite laden (SWR Infinite Pattern)
+  const isFetchingMore = size > 0 && data && typeof data[size - 1] === 'undefined';
   const isEmpty = !data || data.length === 0 || !(data[0]?.features?.length > 0);
   const hasMore = !isEmpty && data && (data[data.length - 1]?.features?.length === PLACES_PER_PAGE);
 
