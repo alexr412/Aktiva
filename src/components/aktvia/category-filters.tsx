@@ -40,7 +40,7 @@ export type CategoryTab = {
 };
 
 export const coreTabs: CategoryTab[] = [
-  { id: "All", label: "Alle", query: ["tourism", "entertainment", "heritage"], icon: Layers, isSystem: true },
+  { id: "All", label: "AKTIV", query: ["tourism", "entertainment", "heritage"], icon: Layers, isSystem: true },
   { id: "Highlights", label: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true },
   { id: "Favorites", label: "Favoriten", query: ["favorites"], icon: Bookmark, isSystem: true },
   { id: "Community", label: "Community", query: ["user_event"], icon: Users, isSystem: true },
@@ -105,13 +105,22 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
     <>
       <div className="flex md:flex-wrap overflow-x-auto md:overflow-visible gap-2 pb-2 -mx-4 px-4 md:px-0 md:mx-0 hide-scrollbar items-center w-full">
         {displayedTabs.map((tab) => {
-          const isActive = JSON.stringify(activeCategory) === JSON.stringify(tab.query);
+          const isActive = JSON.stringify(activeCategory) === JSON.stringify(tab.query) || 
+                          (tab.id === "All" && activeCategory.includes('all'));
           return (
             <Button
               key={tab.id}
               variant={isActive ? 'default' : 'outline'}
               size="sm"
-              onClick={() => onCategoryChange(tab.query, tab.id)}
+              onClick={() => {
+                if (isActive && tab.id !== "All") {
+                  // Toggle Logic: If already active and not the default tab, go back to AKTIV (All)
+                  const allTab = coreTabs.find(t => t.id === "All")!;
+                  onCategoryChange(allTab.query, allTab.id);
+                } else {
+                  onCategoryChange(tab.query, tab.id);
+                }
+              }}
               className={cn(
                 "flex-shrink-0 flex items-center gap-2 rounded-full h-9 font-bold border-none transition-all",
                 isActive ? "bg-primary text-white" : "bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 dark:border-neutral-700"
