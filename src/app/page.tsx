@@ -122,7 +122,7 @@ export default function Home() {
     const combinedSoftVetoList = [...BASE_SOFT_VETO];
     
     const mapped = data.flatMap(page => {
-      const features = page.features || [];
+      const features = page?.features || [];
       const safeFeatures = features.filter((feature: any) => {
         const isStolperstein = feature.properties?.datasource?.raw?.memorial === 'stolperstein';
         if (isStolperstein) return false;
@@ -179,7 +179,6 @@ export default function Home() {
   }, [rawPlaces, allUpcomingActivities, placeMetrics]);
 
   const isLoadingInitialData = isLoading;
-  // Nur anzeigen, wenn wir wirklich aktiv eine neue Seite laden (SWR Infinite Pattern)
   const isFetchingMore = size > 0 && data && typeof data[size - 1] === 'undefined';
   const isEmpty = !data || data.length === 0 || !(data[0]?.features?.length > 0);
   const hasMore = !isEmpty && data && (data[data.length - 1]?.features?.length === PLACES_PER_PAGE);
@@ -402,7 +401,16 @@ export default function Home() {
                 return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div ref={index === sorted.length - 1 ? lastElementRef : null} key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
             }
         };
-        return <div className="max-w-7xl mx-auto w-full">{renderList()}{isFetchingMore && <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><CardSkeleton /></div>}</div>;
+        return (
+          <div className="max-w-7xl mx-auto w-full">
+            {renderList()}
+            {isFetchingMore && hasMore && (
+              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <CardSkeleton />
+              </div>
+            )}
+          </div>
+        );
     }
 
     if (viewMode === 'map') {
