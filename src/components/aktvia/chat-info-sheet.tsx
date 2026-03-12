@@ -34,8 +34,6 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Trash2, Users, Calendar, CheckCircle, MapPin, ChevronRight } from 'lucide-react';
 import type { Chat, Activity } from '@/lib/types';
-import { Separator } from '../ui/separator';
-import { Skeleton } from '../ui/skeleton';
 
 interface ChatInfoSheetProps {
   chat: Chat | null;
@@ -78,17 +76,12 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
       document.activeElement.blur();
     }
 
-    // Modal sofort schließen (Startet die Exit-Animation)
+    // 2. Sheet SOFORT im UI schließen (Animation startet)
     onOpenChange(false);
     
-    // 2. Entkopplung mit Puffer (400ms) für Radix Exit-Animation
+    // 3. Firebase-Löschung um 500ms verzögern
+    // Dies gibt Radix Zeit, die Exit-Animation zu beenden und DOM-Locks (aria-hidden) zu entfernen
     setTimeout(async () => {
-      // 3. Manueller Fail-Safe: DOM Locks entfernen
-      if (typeof document !== 'undefined') {
-        document.body.style.pointerEvents = 'auto';
-        document.body.removeAttribute('data-scroll-locked');
-      }
-
       setIsActing(true);
       try {
         if (isOnlyParticipant) {
@@ -103,7 +96,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
         console.error('Operation failed:', error);
         setIsActing(false);
       }
-    }, 400); 
+    }, 500); 
   };
   
   const handleVote = async () => {
@@ -122,6 +115,12 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex flex-col p-0 sm:max-w-md border-none rounded-l-[2.5rem] overflow-hidden">
+        {/* Versteckter Header für Accessibility (Radix Warning Fix) */}
+        <SheetHeader className="sr-only">
+          <SheetTitle>Chat Info</SheetTitle>
+          <SheetDescription>Chat Einstellungen und Löschoptionen für {chat.placeName}</SheetDescription>
+        </SheetHeader>
+
         <ScrollArea className="flex-1">
           <div className="p-8">
             <div className="flex flex-col items-center text-center pb-8 border-b border-slate-100 mb-8">
@@ -129,9 +128,9 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                 <MapPin className="text-white h-10 w-10 drop-shadow-md" />
               </div>
               
-              <SheetTitle className="text-2xl font-black text-slate-900 mb-4 tracking-tight leading-tight">
+              <h2 className="text-2xl font-black text-slate-900 mb-4 tracking-tight leading-tight">
                 {chat.placeName}
-              </SheetTitle>
+              </h2>
               
               <div className="flex flex-wrap justify-center gap-2">
                 <span className="bg-blue-50 text-blue-700 rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
@@ -218,15 +217,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                   <AlertDialogAction 
                     disabled={isActing} 
                     className='bg-red-500 hover:bg-red-600 text-white rounded-xl font-black h-11 border-none shadow-lg shadow-red-200'
-                    onPointerDown={(e) => {
-                      // Abfangen des Events vor Radix Fokus-Management
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (e.currentTarget) {
-                        e.currentTarget.blur();
-                      }
-                      handleLeaveOrDelete();
-                    }}
+                    onClick={handleLeaveOrDelete}
                   >
                     {isActing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {isOnlyParticipant ? 'Endgültig löschen' : 'Jetzt verlassen'}
