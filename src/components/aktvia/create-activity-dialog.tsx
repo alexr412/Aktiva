@@ -56,7 +56,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedRange, setSelectedRange] = useState<{ from?: Date; to?: Date }>({});
   const [selectedTime, setSelectedTime] = useState<string>('18:00');
-  const [isTimeFlexible, setIsTimeFlexible] = useState(false);
+  const [isTimeFlexible, setIsTimeFlexible] = useState(true);
   const [isDateFlexible, setIsDateFlexible] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState('');
   
@@ -75,7 +75,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
       setSelectedRange({});
       setCurrentMonthDate(today);
       setSelectedTime('18:00');
-      setIsTimeFlexible(false);
+      setIsTimeFlexible(true);
       setIsDateFlexible(false);
       setMaxParticipants('');
       setIsBoosted(false);
@@ -281,7 +281,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                 type="number"
                 value={maxParticipants}
                 onChange={(e) => setMaxParticipants(e.target.value)}
-                placeholder="Unbegrenzt"
+                placeholder="Unbezgrenzt"
                 className="w-full h-12 text-lg text-center rounded-xl"
                 min="1"
               />
