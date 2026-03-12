@@ -178,10 +178,20 @@ export default function Home() {
     }));
   }, [rawPlaces, allUpcomingActivities, placeMetrics]);
 
-  const isLoadingInitialData = isLoading;
-  const isFetchingMore = size > 0 && data && typeof data[size - 1] === 'undefined';
+  // STRIKTE TRENNUNG UND HARTE EVALUIERUNG DER LADEZUSTÄNDE
+  const isLoadingInitialData = isLoading && !data;
+  const isFetchingMore = isValidating && size > 1 && data && data.length < size;
+  
+  const hasMore = useMemo(() => {
+    if (!data || data.length === 0) return false;
+    const lastPage = data[data.length - 1];
+    // Sicherheits-Check: Falls die Seite noch lädt (SWR füllt das Array auf)
+    if (!lastPage || !lastPage.features) return true; 
+    // HARTE EVALUIERUNG: Nur wenn das Limit exakt erreicht wurde, gibt es mehr Daten
+    return lastPage.features.length === PLACES_PER_PAGE;
+  }, [data]);
+
   const isEmpty = !data || data.length === 0 || !(data[0]?.features?.length > 0);
-  const hasMore = !isEmpty && data && (data[data.length - 1]?.features?.length === PLACES_PER_PAGE);
 
   const resetFilters = () => {
     handleCategoryChange([], '');
@@ -404,6 +414,7 @@ export default function Home() {
         return (
           <div className="max-w-7xl mx-auto w-full">
             {renderList()}
+            {/* Zwingender Pagination-Skeleton: Nur bei aktivem Fetch und vorhandenen Daten */}
             {isFetchingMore && hasMore && (
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <CardSkeleton />
