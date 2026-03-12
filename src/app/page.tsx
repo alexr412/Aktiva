@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { createActivity, joinActivity } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { collection, query, where, getDocs, Timestamp, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { ActivityListItem } from "@/components/aktvia/activity-list-item";
 import { Input } from '@/components/ui/input';
@@ -95,8 +95,6 @@ export default function Home() {
     if (!userLocation) return null;
     if (previousPageData && (!previousPageData.features || previousPageData.features.length === 0)) return null;
 
-    // Wenn kein Filter aktiv ist oder der "Aktiv" Filter (frontend-filtering) gewählt wurde, 
-    // laden wir ein Standard-Set an Orten.
     let categoriesToFetch: string[] = (activeCategory.length === 0 || activeCategory.includes('has_activities')) 
       ? ["tourism", "entertainment", "heritage"] 
       : activeCategory;
@@ -111,6 +109,12 @@ export default function Home() {
     revalidateFirstPage: false,
     dedupingInterval: 60000,
   });
+
+  // SWR State Matrix
+  const isLoadingInitialData = !data && !error;
+  const isLoadingMore = isLoadingInitialData || (size > 0 && data && typeof data[size - 1] === "undefined");
+  const isEmpty = data?.[0]?.features?.length === 0;
+  const isReachingEnd = isEmpty || (data && data[data.length - 1]?.features?.length < PLACES_PER_PAGE);
 
   const userPrefs: UserPreferences = useMemo(() => ({
     likedTags: userProfile?.likedTags || [],
@@ -178,21 +182,6 @@ export default function Home() {
     }));
   }, [rawPlaces, allUpcomingActivities, placeMetrics]);
 
-  // STRIKTE TRENNUNG UND HARTE EVALUIERUNG DER LADEZUSTÄNDE
-  const isLoadingInitialData = isLoading && !data;
-  const isFetchingMore = isValidating && size > 1 && data && data.length < size;
-  
-  const hasMore = useMemo(() => {
-    if (!data || data.length === 0) return false;
-    const lastPage = data[data.length - 1];
-    // Sicherheits-Check: Falls die Seite noch lädt (SWR füllt das Array auf)
-    if (!lastPage || !lastPage.features) return true; 
-    // HARTE EVALUIERUNG: Nur wenn das Limit exakt erreicht wurde, gibt es mehr Daten
-    return lastPage.features.length === PLACES_PER_PAGE;
-  }, [data]);
-
-  const isEmpty = !data || data.length === 0 || !(data[0]?.features?.length > 0);
-
   const resetFilters = () => {
     handleCategoryChange([], '');
     setSearchQuery('');
@@ -228,7 +217,6 @@ export default function Home() {
     }
   }, [planningState]);
   
-  // Echtzeit-Überwachung der Aktivitäten mit Query-Splitting
   useEffect(() => {
     if (!db) return;
 
@@ -236,7 +224,6 @@ export default function Home() {
         const collectionRef = collection(db, "activities");
         const constraints: any[] = [];
 
-        // PFAD-SPLITTING: Wir verzichten auf orderBy in der DB, um zusammengesetzte Indizes zu vermeiden.
         if (isCommunityCategory) {
             constraints.push(where('isCustomActivity', '==', true));
         } else {
@@ -248,7 +235,6 @@ export default function Home() {
         const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
             const activitiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
             
-            // Clientseitige Sortierung nach activityDate (ASC), um fehlende Indizes zu vermeiden
             activitiesData.sort((a, b) => {
                 const timeA = a.activityDate?.toMillis() || 0;
                 const timeB = b.activityDate?.toMillis() || 0;
@@ -257,7 +243,6 @@ export default function Home() {
 
             setAllUpcomingActivities(activitiesData);
         }, (error) => {
-            // Aggressives Error-Logging für Index-Tracing
             console.error("CRITICAL FIRESTORE ERROR (Check for Index links):", error.message);
         });
 
@@ -287,11 +272,15 @@ export default function Home() {
 
   const observer = useRef<IntersectionObserver>();
   const lastElementRef = useCallback(node => {
-    if (isFetchingMore || !hasMore) return;
+    if (isLoadingMore || isReachingEnd) return;
     if (observer.current) observer.current.disconnect();
-    observer.current = new IntersectionObserver(entries => { if (entries[0].isIntersecting && hasMore) setSize(size + 1); });
+    observer.current = new IntersectionObserver(entries => { 
+      if (entries[0].isIntersecting && !isLoadingMore && !isReachingEnd) {
+        setSize(size + 1);
+      } 
+    });
     if (node) observer.current.observe(node);
-  }, [isFetchingMore, hasMore, setSize, size]);
+  }, [isLoadingMore, isReachingEnd, setSize, size]);
 
   const handleCategoryChange = (categoryId: string[], tabId: string) => {
     setSearchQuery('');
@@ -370,7 +359,7 @@ export default function Home() {
             if (isAktivCategory) {
                 const filtered = places.filter(place => (place.activityCount || 0) > 0 && place.name.toLowerCase().includes(searchQuery.toLowerCase()));
                 const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : (sortBy === 'popular' ? (b.activityCount || 0) - (a.activityCount || 0) : 0))));
-                if (sorted.length === 0 && !isFetchingMore) {
+                if (sorted.length === 0 && !isLoadingMore) {
                     return (
                         <div className="flex h-full w-full items-center justify-center p-10 text-center">
                             <div className="space-y-4">
@@ -392,7 +381,7 @@ export default function Home() {
                     return up >= 1 && up > down && matchesSearch;
                 });
                 const sorted = filtered.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
-                if (sorted.length === 0 && !isFetchingMore) {
+                if (sorted.length === 0 && !isLoadingMore) {
                     return (
                         <div className="flex h-full w-full items-center justify-center p-10 text-center">
                             <div className="space-y-4">
@@ -407,15 +396,15 @@ export default function Home() {
             } else {
                 const filtered = places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
                 const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : (sortBy === 'popular' ? (b.activityCount || 0) - (a.activityCount || 0) : 0))));
-                if (sorted.length === 0 && !isFetchingMore) return <EmptySearchState />;
+                if (sorted.length === 0 && !isLoadingMore) return <EmptySearchState />;
                 return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div ref={index === sorted.length - 1 ? lastElementRef : null} key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
             }
         };
         return (
           <div className="max-w-7xl mx-auto w-full">
             {renderList()}
-            {/* Zwingender Pagination-Skeleton: Nur bei aktivem Fetch und vorhandenen Daten */}
-            {isFetchingMore && hasMore && (
+            
+            {isLoadingMore && !isReachingEnd && (
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <CardSkeleton />
               </div>
