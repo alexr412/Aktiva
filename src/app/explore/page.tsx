@@ -114,25 +114,42 @@ export default function ExplorePage() {
     useEffect(() => {
         if (!db || !user) return;
 
-        // Abfrage aller Aktivitäten ohne zeitliche Einschränkung
-        const activitiesQuery = query(
-            collection(db, 'activities'),
-            orderBy('activityDate', 'asc')
-        );
+        setIsLoading(true);
 
-        const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-            const fetchedActivities = snapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() } as Activity))
-                .filter(act => !act.participantIds.includes(user.uid));
-            setAllCards(fetchedActivities);
-            setIsLoading(false);
-        }, (error) => {
-            console.error("Error fetching activities: ", error);
-            toast({ title: "Fehler", description: "Aktivitäten konnten nicht geladen werden.", variant: 'destructive'});
-            setIsLoading(false);
-        });
+        try {
+            // Puffer-Injektion (Grace Period): Events bis zu 4 Stunden nach Startzeit anzeigen
+            const expirationThreshold = new Date();
+            expirationThreshold.setHours(expirationThreshold.getHours() - 4);
+            const thresholdTimestamp = Timestamp.fromDate(expirationThreshold);
 
-        return () => unsubscribe();
+            const activitiesQuery = query(
+                collection(db, 'activities'),
+                where('activityDate', '>=', thresholdTimestamp),
+                orderBy('activityDate', 'asc')
+            );
+
+            const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
+                const fetchedActivities = snapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() } as Activity))
+                    .filter(act => !act.participantIds.includes(user.uid));
+                setAllCards(fetchedActivities);
+                setIsLoading(false);
+            }, (error) => {
+                // Aggressives Error-Logging (Index-Tracing)
+                console.error("CRITICAL FIRESTORE ERROR (Check for Index links):", error.message);
+                toast({ 
+                    title: "Fehler", 
+                    description: "Aktivitäten konnten nicht geladen werden. Bitte versuche es später erneut.", 
+                    variant: 'destructive'
+                });
+                setIsLoading(false);
+            });
+
+            return () => unsubscribe();
+        } catch (err: any) {
+            console.error("Activities listener setup failed:", err.message);
+            setIsLoading(false);
+        }
     }, [toast, user]);
     
     const visibleCards = useMemo(() => {

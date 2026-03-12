@@ -213,21 +213,34 @@ export default function Home() {
     }
   }, [planningState]);
   
-  // Echtzeit-Überwachung aller Aktivitäten ohne zeitliche Filterung
+  // Echtzeit-Überwachung aller Aktivitäten mit 4-Stunden-Puffer
   useEffect(() => {
     if (!db) return;
 
-    const activitiesQuery = query(
-      collection(db, "activities"),
-      orderBy("activityDate", "asc")
-    );
-    
-    const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-        const activitiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
-        setAllUpcomingActivities(activitiesData);
-    });
+    try {
+        // Puffer-Injektion: Events bis zu 4 Stunden nach Startzeit anzeigen
+        const expirationThreshold = new Date();
+        expirationThreshold.setHours(expirationThreshold.getHours() - 4);
+        const thresholdTimestamp = Timestamp.fromDate(expirationThreshold);
 
-    return () => unsubscribe();
+        const activitiesQuery = query(
+          collection(db, "activities"),
+          where('activityDate', '>=', thresholdTimestamp),
+          orderBy("activityDate", "asc")
+        );
+        
+        const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
+            const activitiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
+            setAllUpcomingActivities(activitiesData);
+        }, (error) => {
+            // Aggressives Error-Logging für Index-Tracing
+            console.error("CRITICAL FIRESTORE ERROR (Check for Index links):", error.message);
+        });
+
+        return () => unsubscribe();
+    } catch (err: any) {
+        console.error("Activities global listener setup failed:", err.message);
+    }
   }, []);
 
   useEffect(() => {
