@@ -121,23 +121,14 @@ export default function ExplorePage() {
             const collectionRef = collection(db, 'activities');
             const constraints: any[] = [];
 
-            // PFAD-SPLITTING: Trennung von Event-Logik (Community) und Raum-Logik (Location)
             const isCommunityMode = activeCategory.includes('user_event');
 
+            // PFAD-SPLITTING: Wir verzichten auf orderBy in der DB, um zusammengesetzte Indizes zu vermeiden.
             if (isCommunityMode) {
-                // PFAD B: Community-Events mit Zeit-Puffer (4h)
-                const expirationThreshold = new Date();
-                expirationThreshold.setHours(expirationThreshold.getHours() - 4);
-                const thresholdTimestamp = Timestamp.fromDate(expirationThreshold);
-                
                 constraints.push(where('isCustomActivity', '==', true));
-                constraints.push(where('activityDate', '>=', thresholdTimestamp));
             } else {
-                // PFAD A/C: Location-basiert oder Alles. Zeige alle aktiven Räume ohne Zeitlimit.
                 constraints.push(where('status', '==', 'active'));
             }
-
-            constraints.push(orderBy('activityDate', 'asc'));
 
             const activitiesQuery = query(collectionRef, ...constraints);
 
@@ -145,6 +136,14 @@ export default function ExplorePage() {
                 const fetchedActivities = snapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() } as Activity))
                     .filter(act => !act.participantIds.includes(user.uid));
+                
+                // Clientseitige Sortierung nach activityDate (ASC)
+                fetchedActivities.sort((a, b) => {
+                    const timeA = a.activityDate?.toMillis() || 0;
+                    const timeB = b.activityDate?.toMillis() || 0;
+                    return timeA - timeB;
+                });
+
                 setAllCards(fetchedActivities);
                 setIsLoading(false);
             }, (error) => {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db } from './client';
@@ -439,12 +440,18 @@ export async function fetchUserActivities(userId: string) {
 
   const q = query(
     collection(db, 'activities'),
-    where('participantIds', 'array-contains', userId),
-    orderBy('activityDate', 'desc')
+    where('participantIds', 'array-contains', userId)
   );
 
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const activities = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
+  
+  // Clientseitige Sortierung nach activityDate (DESC)
+  return activities.sort((a, b) => {
+    const timeA = a.activityDate?.toMillis() || 0;
+    const timeB = b.activityDate?.toMillis() || 0;
+    return timeB - timeA;
+  });
 }
 
 

@@ -222,27 +222,25 @@ export default function Home() {
         const collectionRef = collection(db, "activities");
         const constraints: any[] = [];
 
-        // PFAD-SPLITTING: Trennung von Event-Logik (Community) und Raum-Logik (AKTIV)
+        // PFAD-SPLITTING: Wir verzichten auf orderBy in der DB, um zusammengesetzte Indizes zu vermeiden.
         if (isCommunityCategory) {
-            // PFAD B: Community-Event Logik mit temporalem Filter (4h Puffer)
-            const expirationThreshold = new Date();
-            expirationThreshold.setHours(expirationThreshold.getHours() - 4);
-            const thresholdTimestamp = Timestamp.fromDate(expirationThreshold);
-            
             constraints.push(where('isCustomActivity', '==', true));
-            constraints.push(where('activityDate', '>=', thresholdTimestamp));
         } else {
-            // PFAD A/C: Standard-Pfad für Badges und AKTIV-Filter
-            // Nur aktive Räume anzeigen, kein strikter Zeitfilter für statische Orte
             constraints.push(where('status', '==', 'active'));
         }
-
-        constraints.push(orderBy("activityDate", "asc"));
 
         const activitiesQuery = query(collectionRef, ...constraints);
         
         const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
             const activitiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
+            
+            // Clientseitige Sortierung nach activityDate (ASC), um fehlende Indizes zu vermeiden
+            activitiesData.sort((a, b) => {
+                const timeA = a.activityDate?.toMillis() || 0;
+                const timeB = b.activityDate?.toMillis() || 0;
+                return timeA - timeB;
+            });
+
             setAllUpcomingActivities(activitiesData);
         }, (error) => {
             // Aggressives Error-Logging für Index-Tracing
@@ -253,7 +251,7 @@ export default function Home() {
     } catch (err: any) {
         console.error("Activities dynamic listener setup failed:", err.message);
     }
-  }, [isCommunityCategory, isAktivCategory]); // Re-run wenn der Modus wechselt
+  }, [isCommunityCategory, isAktivCategory]);
 
   useEffect(() => {
     if (!db || rawPlaces.length === 0) return;
