@@ -22,18 +22,18 @@ import { ReviewDialog } from '@/components/reviews/ReviewDialog';
 
 const DateSeparator = ({ date }: { date: Date }) => {
   const formatDate = (d: Date) => {
-    if (isToday(d)) return 'Today';
-    if (isYesterday(d)) return 'Yesterday';
-    return format(d, 'MMMM d, yyyy');
+    if (isToday(d)) return 'Heute';
+    if (isYesterday(d)) return 'Gestern';
+    return format(d, 'd. MMMM yyyy');
   };
 
   return (
-    <div className="relative my-4">
+    <div className="relative my-6">
       <div className="absolute inset-0 flex items-center">
-        <span className="w-full border-t" />
+        <span className="w-full border-t border-slate-200" />
       </div>
-      <div className="relative flex justify-center text-xs uppercase">
-        <span className="bg-muted/30 px-2 text-muted-foreground font-semibold">
+      <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black">
+        <span className="bg-slate-50 px-3 text-slate-400">
           {formatDate(date)}
         </span>
       </div>
@@ -55,10 +55,10 @@ const MessageBubble = ({
   showSenderName: boolean;
 }) => {
   const bubbleClasses = isOwnMessage
-    ? 'bg-primary text-primary-foreground rounded-l-xl rounded-t-xl'
-    : 'bg-card text-card-foreground border shadow-sm rounded-r-xl rounded-t-xl';
+    ? 'bg-primary text-white rounded-2xl rounded-tr-none shadow-sm'
+    : 'bg-white text-slate-800 rounded-2xl rounded-tl-none shadow-sm border border-slate-100';
 
-  const wrapperClasses = `flex items-start gap-3 ${
+  const wrapperClasses = `flex items-start gap-2 ${
     isOwnMessage ? 'justify-end' : ''
   } ${isFirstInGroup ? 'mt-4' : 'mt-1'}`;
 
@@ -70,7 +70,7 @@ const MessageBubble = ({
             <Link href={`/profile/${message.senderId}`} className="hover:opacity-80 transition-opacity">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={message.senderPhotoURL || undefined} />
-                <AvatarFallback>{message.senderName?.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="text-[10px]">{message.senderName?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
             </Link>
           )}
@@ -78,13 +78,15 @@ const MessageBubble = ({
       )}
       <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
         {showSenderName && (
-          <p className="text-xs text-muted-foreground ml-2 mb-0.5">{message.senderName}</p>
+          <p className="text-[10px] font-black uppercase text-slate-400 ml-1 mb-1 tracking-tight">{message.senderName}</p>
         )}
-        <div className={`relative max-w-xs md:max-w-md px-4 py-2 ${bubbleClasses}`}>
-          <p className="text-sm pb-1 pr-12 break-words">{message.text}</p>
-          <span className="absolute bottom-1.5 right-3 text-xs opacity-70">
-            {message.sentAt ? format(message.sentAt.toDate(), 'p') : '...'}
-          </span>
+        <div className={`relative max-w-[85%] md:max-w-md px-4 py-2.5 ${bubbleClasses}`}>
+          <p className="text-sm leading-relaxed break-words">{message.text}</p>
+          <div className="flex justify-end mt-1">
+            <span className="text-[9px] opacity-60 font-bold uppercase">
+              {message.sentAt ? format(message.sentAt.toDate(), 'p') : '...'}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -100,7 +102,7 @@ export default function ChatRoomPage() {
   const [loading, setLoading] = useState(true);
   const [isInfoSheetOpen, setInfoSheetOpen] = useState(false);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
-  const [hasReviewed, setHasReviewed] = useState(true); // Default to true to prevent flash
+  const [hasReviewed, setHasReviewed] = useState(true);
   
   const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string } | null>(null);
   const [isDirectMessage, setIsDirectMessage] = useState(false);
@@ -129,7 +131,6 @@ export default function ChatRoomPage() {
         setIsDirectMessage(isDM);
 
         if (isDM) {
-          // It's a Direct Message
           const otherUserId = chatData.participantIds.find(id => id !== user.uid);
           if (otherUserId && chatData.participantDetails) {
             setOtherUser({ ...chatData.participantDetails[otherUserId], uid: otherUserId });
@@ -137,7 +138,6 @@ export default function ChatRoomPage() {
           setActivity(null);
           if (activityUnsubscribe) activityUnsubscribe();
         } else {
-          // It's an Activity Chat
           setOtherUser(null);
           if (activityUnsubscribe) activityUnsubscribe();
           
@@ -149,14 +149,12 @@ export default function ChatRoomPage() {
                   if (activityData.status === 'completed' && activityData.id) {
                       checkIfUserReviewed(activityData.id, user.uid).then(setHasReviewed);
                   }
-
               } else {
                 setActivity(null);
               }
           });
         }
       } else {
-        // Chat document doesn't exist anymore - silent redirect back to overview
         setLoading(false);
         setChat(null);
         router.replace('/chat');
@@ -170,7 +168,7 @@ export default function ChatRoomPage() {
       setLoading(false);
     }, (error) => {
       console.error("Error fetching messages:", error);
-      toast({ title: "Error", description: "Could not load messages.", variant: 'destructive'});
+      toast({ title: "Fehler", description: "Nachrichten konnten nicht geladen werden.", variant: 'destructive'});
       setLoading(false);
     });
 
@@ -209,55 +207,58 @@ export default function ChatRoomPage() {
     } catch (error) {
       console.error(error);
       setNewMessage(currentMessage);
-      toast({ title: "Error", description: "Could not send message.", variant: 'destructive'});
+      toast({ title: "Fehler", description: "Nachricht konnte nicht gesendet werden.", variant: 'destructive'});
     }
   };
 
   if (loading || authLoading) {
     return (
-      <div className="flex flex-col h-full bg-muted/30">
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur-sm">
+      <div className="flex flex-col h-full bg-slate-50">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-white/80 px-4 backdrop-blur-sm shadow-sm">
           <Skeleton className="h-8 w-8 rounded-full" />
-          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-6 w-32 rounded-xl" />
         </header>
         <div className="flex-1 p-4 space-y-4">
-          <Skeleton className="h-12 w-3/4" />
-          <Skeleton className="h-12 w-1/2 self-end" />
-          <Skeleton className="h-16 w-2/3" />
+          <Skeleton className="h-12 w-3/4 rounded-2xl" />
+          <Skeleton className="h-12 w-1/2 self-end rounded-2xl" />
+          <Skeleton className="h-16 w-2/3 rounded-2xl" />
         </div>
       </div>
     );
   }
 
-  if (!chat && !loading) {
-    return null; // The redirect in useEffect handles this
-  }
+  if (!chat && !loading) return null;
 
   return (
     <>
-      <div className="flex flex-col h-full bg-muted/30">
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background/90 px-2 backdrop-blur-sm sm:px-4">
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()}>
-            <ArrowLeft />
+      <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-white/90 px-2 backdrop-blur-md shadow-sm">
+          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500" onClick={() => router.back()}>
+            <ArrowLeft className="h-5 w-5" />
           </Button>
           
           <div className="flex items-center gap-3 flex-1 truncate">
             {isDirectMessage && otherUser ? (
-                <Link href={`/profile/${otherUser.uid}`} className="flex items-center gap-3 truncate hover:opacity-80 transition-opacity cursor-pointer">
-                    <Avatar className="h-9 w-9">
+                <Link href={`/profile/${otherUser.uid}`} className="flex items-center gap-2.5 truncate hover:opacity-80 transition-opacity cursor-pointer">
+                    <Avatar className="h-9 w-9 shadow-sm border border-white">
                         <AvatarImage src={otherUser.photoURL || undefined} />
-                        <AvatarFallback>{otherUser.displayName?.charAt(0)}</AvatarFallback>
+                        <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">{otherUser.displayName?.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <h2 className="font-bold truncate">{otherUser.displayName}</h2>
+                    <h2 className="font-black text-slate-900 truncate tracking-tight">{otherUser.displayName}</h2>
                 </Link>
             ) : (
-                <h2 className="font-bold truncate ml-2">{chat?.placeName}</h2>
+                <div className="flex items-center gap-2.5 truncate">
+                  <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-primary font-black text-xs uppercase">{chat?.placeName?.charAt(0)}</span>
+                  </div>
+                  <h2 className="font-black text-slate-900 truncate tracking-tight">{chat?.placeName}</h2>
+                </div>
             )}
           </div>
 
           {!isDirectMessage && (
-              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setInfoSheetOpen(true)}>
-                <MoreVertical />
+              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500" onClick={() => setInfoSheetOpen(true)}>
+                <MoreVertical className="h-5 w-5" />
                 <span className='sr-only'>Chat Info</span>
               </Button>
           )}
@@ -267,8 +268,8 @@ export default function ChatRoomPage() {
           <CompletionBanner activity={activity} currentUser={user} participantDetails={chat.participantDetails} />
         )}
 
-        <div className="flex-1 overflow-y-auto p-4 pb-40">
-          <div className="flex flex-col">
+        <div className="flex-1 overflow-y-auto p-4 pb-32">
+          <div className="flex flex-col max-w-3xl mx-auto">
             {messages.map((message, index) => {
               const prevMessage = messages[index - 1];
               const nextMessage = messages[index + 1];
@@ -299,25 +300,25 @@ export default function ChatRoomPage() {
         </div>
       </div>
 
-      <footer className="fixed bottom-[72px] left-0 right-0 z-10 mx-auto w-full max-w-3xl border-t bg-background/95 backdrop-blur-sm">
-        <div className="p-2 sm:p-4">
-          <form onSubmit={handleSendMessage} className="relative">
+      <footer className="fixed bottom-[72px] left-0 right-0 z-10 mx-auto w-full max-w-3xl bg-white shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.05)] border-t border-slate-100">
+        <div className="p-3 sm:p-4">
+          <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
             <Input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Message"
+              placeholder="Nachricht schreiben..."
               autoComplete="off"
-              className="w-full rounded-full bg-muted pr-12 h-12 text-base"
+              className="w-full rounded-full bg-slate-50 border-slate-200 pr-12 h-12 text-sm font-medium focus-visible:ring-primary/20"
               disabled={activity?.status === 'completed'}
             />
             <Button
               type="submit"
               size="icon"
               disabled={!newMessage.trim() || activity?.status === 'completed'}
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full"
+              className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 flex-shrink-0 transition-transform active:scale-95"
             >
-              <Send className="h-5 w-5" />
-              <span className="sr-only">Send message</span>
+              <Send className="h-4 w-4" />
+              <span className="sr-only">Senden</span>
             </Button>
           </form>
         </div>
