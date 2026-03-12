@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -10,12 +11,15 @@ import * as z from 'zod';
 import { availableTabs } from '@/components/aktvia/category-filters';
 import { updateUserProfile } from '@/lib/firebase/firestore';
 import { uploadProfileImage } from '@/lib/firebase/storage';
+import Cropper from 'react-easy-crop';
+import { getCroppedImg } from '@/lib/image-utils';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Camera, ArrowLeft, Loader2, MapPin, Sparkles, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -53,10 +57,17 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
-  const [profileImage, setProfileImage] = useState<File | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(user?.photoURL || null);
-  const [allowSuggestions, setAllowSuggestions] = useState(true);
   
+  // Cropper State
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(user?.photoURL || null);
+  const [finalImageFile, setFinalImageFile] = useState<File | null>(null);
+
+  const [allowSuggestions, setAllowSuggestions] = useState(true);
   const [isFinishing, setIsFinishing] = useState(false);
 
   const form = useForm<ProfileFormData>({
@@ -74,52 +85,31 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      console.log("[AUTH] Kein User gefunden, leite zum Login.");
       router.replace('/login');
     }
   }, [user, authLoading, router]);
 
-  // HARTER REDIRECT-SCHUTZ MIT TELEMETRIE
   useEffect(() => {
-    console.log("[EFFECT] Redirect-Check getriggert.", { 
-        authLoading, 
-        hasUser: !!user, 
-        onboardingCompleted: userProfile?.onboardingCompleted, 
-        isFinishing, 
-        currentStep: step 
-    });
-
     if (!authLoading && user && userProfile?.onboardingCompleted && !isFinishing) {
-        console.warn("[REDIRECT] Bedingung erfüllt. Zwinge Weiterleitung auf '/'");
         router.replace('/');
     }
   }, [user, userProfile, authLoading, isFinishing, router, step]);
 
   const handleNext = async () => {
-    console.log(`[ACTION] handleNext geklickt. Aktueller Step: ${step}`);
-    
     const fieldsToValidate = onboardingSteps.find(s => s.id === step)?.fields as (keyof ProfileFormData)[] | undefined;
-    console.log(`[VALIDATION] Prüfe Felder:`, fieldsToValidate);
-    
     const isValid = await form.trigger(fieldsToValidate);
-    console.log(`[VALIDATION] Ergebnis: ${isValid}`);
     
     if (step === 2 && hasProfanityInBio) {
-        console.log("[BLOCK] Profanity in Bio detektiert.");
         toast({ variant: 'destructive', title: 'Unzulässige Sprache', description: 'Deine Bio enthält Begriffe, die nicht erlaubt sind.' });
         return;
     }
 
     if (step === 3 && form.watch('interests').length < 3) {
-        console.log(`[BLOCK] Zu wenige Interessen. Aktuell: ${form.watch('interests').length}`);
         return;
     }
 
     if (isValid) {
-      console.log(`[STATE] Wechsle von Step ${step} auf Step ${step + 1}`);
       setStep(prev => prev + 1);
-    } else {
-      console.log("[VALIDATION] Fehlgeschlagen. Fehler:", form.formState.errors);
     }
   };
 
@@ -164,31 +154,51 @@ export default function OnboardingPage() {
            toast({ variant: 'destructive', title: 'Datei zu groß', description: 'Bitte wähle ein Bild unter 5MB.' });
            return;
        }
-      setProfileImage(file);
-      setPreviewImage(URL.createObjectURL(file));
+       const reader = new FileReader();
+       reader.addEventListener('load', () => {
+           setImageToCrop(reader.result as string);
+           setIsCropModalOpen(true);
+       });
+       reader.readAsDataURL(file);
+    }
+  };
+
+  const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleSaveCroppedImage = async () => {
+    if (!imageToCrop || !croppedAreaPixels) return;
+
+    try {
+        const croppedImageBlob = await getCroppedImg(imageToCrop, croppedAreaPixels);
+        const croppedFile = new File([croppedImageBlob], 'profile.jpg', { type: 'image/jpeg' });
+        
+        setFinalImageFile(croppedFile);
+        setPreviewImage(URL.createObjectURL(croppedImageBlob));
+        setIsCropModalOpen(false);
+        setImageToCrop(null);
+    } catch (error: any) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Verarbeitung fehlgeschlagen', description: 'Bild konnte nicht zugeschnitten werden.' });
     }
   };
 
   const removeImage = () => {
-    setProfileImage(null);
+    setFinalImageFile(null);
     setPreviewImage(null);
   };
 
   const onSubmit = async (data: ProfileFormData) => {
-    console.log("[SUBMIT] Formular-Submit ausgelöst. Aktueller Step:", step);
-    if (step !== 4) {
-        console.warn("[SUBMIT-BLOCK] Submit auf falschem Step ausgelöst! Abbruch.");
-        return;
-    }
-    
+    if (step !== 4) return;
     if (!user) return;
+    
     setIsSubmitting(true);
     setIsFinishing(true); 
-    console.log("[SUBMIT] Sperre aktiviert, starte Datenbank-Schreibvorgang...", data);
     
     try {
-      if (profileImage) {
-        await uploadProfileImage(user.uid, profileImage);
+      if (finalImageFile) {
+        await uploadProfileImage(user.uid, finalImageFile);
       }
       
       const likedTags = availableTabs
@@ -213,9 +223,7 @@ export default function OnboardingPage() {
         onboardingCompleted: true,
       });
 
-      console.log("[SUBMIT] Datenbank-Update erfolgreich.");
       toast({ title: "Profil bereit!", description: "Willkommen bei Aktvia." });
-      
       router.push('/');
     } catch (error: any) {
       console.error("[SUBMIT-ERROR]", error);
@@ -430,6 +438,48 @@ export default function OnboardingPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal für Bildzuschnitt */}
+      <Dialog open={isCropModalOpen} onOpenChange={(open) => !open && setIsCropModalOpen(false)}>
+          <DialogContent className="sm:max-w-md bg-neutral-900 border-neutral-800 text-neutral-200 rounded-3xl p-6 overflow-hidden">
+              <DialogHeader>
+                  <DialogTitle className="text-xl font-black">Bild zuschneiden</DialogTitle>
+                  <DialogDescription className="font-medium text-neutral-400">Wähle den perfekten Ausschnitt.</DialogDescription>
+              </DialogHeader>
+              
+              <div className="relative h-64 w-full bg-black rounded-2xl overflow-hidden mt-4">
+                  {imageToCrop && (
+                      <Cropper
+                          image={imageToCrop}
+                          crop={crop}
+                          zoom={zoom}
+                          aspect={1}
+                          cropShape="round"
+                          showGrid={false}
+                          onCropChange={setCrop}
+                          onCropComplete={onCropComplete}
+                          onZoomChange={setZoom}
+                      />
+                  )}
+              </div>
+
+              <DialogFooter className="mt-6 flex gap-2">
+                  <Button 
+                      variant="ghost" 
+                      className="rounded-xl font-bold hover:bg-neutral-800" 
+                      onClick={() => { setIsCropModalOpen(false); setImageToCrop(null); }}
+                  >
+                      Abbrechen
+                  </Button>
+                  <Button 
+                      onClick={handleSaveCroppedImage} 
+                      className="bg-primary text-neutral-950 hover:bg-primary/90 rounded-xl font-black flex-1"
+                  >
+                      Anwenden
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
@@ -11,17 +12,19 @@ import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useFavorites } from '@/contexts/favorites-context';
+import Cropper from 'react-easy-crop';
+import { getCroppedImg } from '@/lib/image-utils';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { PlaceCard } from '@/components/aktvia/place-card';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import FriendList from '@/components/profile/FriendList';
@@ -55,12 +58,20 @@ export default function ProfilePage() {
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const [activityModalPlace, setActivityModalPlace] = useState<Place | null>(null);
 
+    // Cropper State
+    const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+    const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+    const [isUploading, setIsUploading] = useState(false);
+
     useEffect(() => {
         if (user) {
             if (userProfile) {
                 setUserData(userProfile);
             } else {
-                 getDoc(doc(db, "users", user.uid)).then(snap => {
+                 getDoc(doc(db!, "users", user.uid)).then(snap => {
                     if (snap.exists()) {
                         setUserData(snap.data() as UserProfile);
                     }
@@ -126,26 +137,46 @@ export default function ProfilePage() {
     }, [user, userData, toast]);
 
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !user?.uid) return;
+        if (!file) return;
 
-        if (file.size > 5242880) { // 5MB
-            toast({ variant: 'destructive', title: 'File too large', description: 'Please select an image smaller than 5MB.' });
-            return;
-        }
-        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-            toast({ variant: 'destructive', title: 'Invalid file type', description: 'Please select a JPG, PNG, or WEBP image.' });
+        if (file.size > 5242880) {
+            toast({ variant: 'destructive', title: 'Datei zu groß', description: 'Bitte wähle ein Bild unter 5MB.' });
             return;
         }
 
+        const reader = new FileReader();
+        reader.addEventListener('load', () => {
+            setImageToCrop(reader.result as string);
+            setIsCropModalOpen(true);
+        });
+        reader.readAsDataURL(file);
+    };
+
+    const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    }, []);
+
+    const handleSaveCroppedImage = async () => {
+        if (!imageToCrop || !croppedAreaPixels || !user?.uid) return;
+
+        setIsUploading(true);
         try {
-          const photoURL = await uploadProfileImage(user.uid, file);
-          setUserData((prev: UserProfile | null) => (prev ? { ...prev, photoURL } : { photoURL } as UserProfile));
-          toast({ title: "Profile picture updated!" });
+            const croppedImageBlob = await getCroppedImg(imageToCrop, croppedAreaPixels);
+            const croppedFile = new File([croppedImageBlob], 'profile.jpg', { type: 'image/jpeg' });
+            
+            const photoURL = await uploadProfileImage(user.uid, croppedFile);
+            setUserData((prev: UserProfile | null) => (prev ? { ...prev, photoURL } : { photoURL } as UserProfile));
+            
+            setIsCropModalOpen(false);
+            setImageToCrop(null);
+            toast({ title: "Profilbild aktualisiert!" });
         } catch (error: any) {
-          console.error(error);
-          toast({ variant: 'destructive', title: 'Upload failed', description: error.message });
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Upload fehlgeschlagen', description: error.message });
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -379,7 +410,7 @@ export default function ProfilePage() {
                             <input 
                                 type="file" 
                                 ref={fileInputRef} 
-                                onChange={handleImageUpload} 
+                                onChange={handleFileChange} 
                                 className="hidden" 
                                 accept="image/jpeg,image/png,image/webp" 
                             />
@@ -566,6 +597,51 @@ export default function ProfilePage() {
                     </div>
                 </div>
             </div>
+
+            {/* Modal für Bildzuschnitt */}
+            <Dialog open={isCropModalOpen} onOpenChange={(open) => !open && !isUploading && setIsCropModalOpen(false)}>
+                <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 overflow-hidden">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black">Bild zuschneiden</DialogTitle>
+                        <DialogDescription className="font-medium">Wähle den perfekten Ausschnitt für dein Profilbild.</DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="relative h-64 w-full bg-slate-900 rounded-2xl overflow-hidden mt-4">
+                        {imageToCrop && (
+                            <Cropper
+                                image={imageToCrop}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={1}
+                                cropShape="round"
+                                showGrid={false}
+                                onCropChange={setCrop}
+                                onCropComplete={onCropComplete}
+                                onZoomChange={setZoom}
+                            />
+                        )}
+                    </div>
+
+                    <DialogFooter className="mt-6 flex gap-2">
+                        <Button 
+                            variant="ghost" 
+                            className="rounded-xl font-bold" 
+                            onClick={() => { setIsCropModalOpen(false); setImageToCrop(null); }}
+                            disabled={isUploading}
+                        >
+                            Abbrechen
+                        </Button>
+                        <Button 
+                            onClick={handleSaveCroppedImage} 
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex-1 shadow-lg shadow-emerald-100"
+                            disabled={isUploading}
+                        >
+                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                            Bild speichern
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <div className="fixed inset-0 pointer-events-none">
                 <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
