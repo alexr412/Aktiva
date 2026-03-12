@@ -8,6 +8,7 @@ import { leaveActivity, deleteActivity, voteToCompleteActivity } from '@/lib/fir
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 import {
   Sheet,
