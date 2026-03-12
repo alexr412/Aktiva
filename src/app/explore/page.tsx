@@ -114,9 +114,13 @@ export default function ExplorePage() {
     useEffect(() => {
         if (!db || !user) return;
 
+        // Implementierung der Grace Period: Aktivitäten bis zu 4 Stunden nach Start anzeigen
+        const expirationThreshold = new Date();
+        expirationThreshold.setHours(expirationThreshold.getHours() - 4);
+
         const activitiesQuery = query(
             collection(db, 'activities'),
-            where('activityDate', '>=', Timestamp.now()),
+            where('activityDate', '>=', Timestamp.fromDate(expirationThreshold)),
             orderBy('activityDate', 'asc')
         );
 

@@ -52,7 +52,7 @@ const CardSkeleton = () => (
     </div>
 );
 
-const PLACES_PER_PAGE = 300;
+const PLACES_PER_PAGE = 50;
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function Home() {
@@ -71,8 +71,8 @@ export default function Home() {
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
 
-  // Fixer Suchradius von 5km
-  const searchRadiusKm = 5;
+  // Fixer Suchradius von 15km für bessere Abdeckung
+  const searchRadiusKm = 15;
 
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
@@ -210,10 +210,18 @@ export default function Home() {
     }
   }, [planningState]);
   
-  // Echtzeit-Überwachung aller Aktivitäten für den Raum-Indikator
+  // Echtzeit-Überwachung aller Aktivitäten für den Feed & Raum-Indikator
   useEffect(() => {
     if (!db) return;
-    const activitiesQuery = query(collection(db, "activities"), where("activityDate", ">=", Timestamp.now()));
+
+    // Implementierung der Grace Period: Aktivitäten bis zu 4 Stunden nach Start anzeigen
+    const expirationThreshold = new Date();
+    expirationThreshold.setHours(expirationThreshold.getHours() - 4);
+
+    const activitiesQuery = query(
+      collection(db, "activities"), 
+      where("activityDate", ">=", Timestamp.fromDate(expirationThreshold))
+    );
     
     const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
         const activitiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
