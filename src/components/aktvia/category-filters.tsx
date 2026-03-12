@@ -11,6 +11,7 @@ import {
   Plus,
   Check,
   Loader2,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -40,7 +41,7 @@ export type CategoryTab = {
 };
 
 export const coreTabs: CategoryTab[] = [
-  { id: "All", label: "AKTIV", query: ["tourism", "entertainment", "heritage"], icon: Layers, isSystem: true },
+  { id: "Aktiv", label: "AKTIV", query: ["has_activities"], icon: MessageSquare, isSystem: true },
   { id: "Highlights", label: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true },
   { id: "Favorites", label: "Favoriten", query: ["favorites"], icon: Bookmark, isSystem: true },
   { id: "Community", label: "Community", query: ["user_event"], icon: Users, isSystem: true },
@@ -59,6 +60,11 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
   const [localActiveTabs, setLocalActiveTabs] = useState<string[]>([]);
   const [draftTabs, setDraftTabs] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Finde den aktuell aktiven Tab-ID basierend auf dem query-State
+  // Wir nutzen dafür ein useEffect oder leiten es direkt ab
+  const activeTabId = coreTabs.find(t => JSON.stringify(t.query) === JSON.stringify(activeCategory))?.id || 
+                    availableTabs.find(t => JSON.stringify(t.query) === JSON.stringify(activeCategory))?.id || "";
 
   useEffect(() => {
     if (userProfile?.activeTabs) {
@@ -105,25 +111,23 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
     <>
       <div className="flex md:flex-wrap overflow-x-auto md:overflow-visible gap-2 pb-2 -mx-4 px-4 md:px-0 md:mx-0 hide-scrollbar items-center w-full">
         {displayedTabs.map((tab) => {
-          const isActive = JSON.stringify(activeCategory) === JSON.stringify(tab.query) || 
-                          (tab.id === "All" && activeCategory.includes('all'));
+          const isActive = activeTabId === tab.id;
           return (
             <Button
               key={tab.id}
               variant={isActive ? 'default' : 'outline'}
               size="sm"
               onClick={() => {
-                if (isActive && tab.id !== "All") {
-                  // Toggle Logic: If already active and not the default tab, go back to AKTIV (All)
-                  const allTab = coreTabs.find(t => t.id === "All")!;
-                  onCategoryChange(allTab.query, allTab.id);
+                if (isActive) {
+                  // Toggle-Off: Wenn bereits aktiv, Filter entfernen (Alle anzeigen)
+                  onCategoryChange([], "");
                 } else {
                   onCategoryChange(tab.query, tab.id);
                 }
               }}
               className={cn(
                 "flex-shrink-0 flex items-center gap-2 rounded-full h-9 font-bold border-none transition-all",
-                isActive ? "bg-primary text-white" : "bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 dark:border-neutral-700"
+                isActive ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 dark:border-neutral-700"
               )}
             >
               <tab.icon className="h-4 w-4" />

@@ -8,7 +8,7 @@ import { PlaceDetails } from '@/components/aktvia/place-details';
 import { PlaceCard } from '@/components/aktvia/place-card';
 import type { Place, Activity, GeoapifyFeature, UserPreferences } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -59,8 +59,8 @@ export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
-  const [activeTabId, setActiveTabId] = useState<string>("All");
+  const [activeCategory, setActiveCategory] = useState<string[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string>("");
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [customActivities, setCustomActivities] = useState<Activity[]>([]);
   const [allUpcomingActivities, setAllUpcomingActivities] = useState<Activity[]>([]);
@@ -83,13 +83,16 @@ export default function Home() {
   const isCommunityCategory = activeTabId === "Community";
   const isFavoritesCategory = activeTabId === "Favorites";
   const isHighlightsCategory = activeTabId === "Highlights";
+  const isAktivCategory = activeTabId === "Aktiv";
 
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (isCommunityCategory || isFavoritesCategory) return null;
     if (!userLocation) return null;
     if (previousPageData && (!previousPageData.features || previousPageData.features.length === 0)) return null;
 
-    let categoriesToFetch: string[] = (activeCategory.includes('all') || activeCategory.length === 0) 
+    // Wenn kein Filter aktiv ist oder der "Aktiv" Filter (frontend-filtering) gewählt wurde, 
+    // laden wir ein Standard-Set an Orten.
+    let categoriesToFetch: string[] = (activeCategory.length === 0 || activeCategory.includes('has_activities')) 
       ? ["tourism", "entertainment", "heritage"] 
       : activeCategory;
 
@@ -176,7 +179,7 @@ export default function Home() {
   const hasMore = !isEmpty && data && (data[data.length - 1]?.features?.length === PLACES_PER_PAGE);
 
   const resetFilters = () => {
-    handleCategoryChange(['all'], 'All');
+    handleCategoryChange([], '');
     setSearchQuery('');
     setSortBy('recommended');
   };
@@ -327,6 +330,23 @@ export default function Home() {
                 return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((activity) => <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />)}</div>;
             }
             
+            if (isAktivCategory) {
+                const filtered = places.filter(place => (place.activityCount || 0) > 0 && place.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : (sortBy === 'popular' ? (b.activityCount || 0) - (a.activityCount || 0) : 0))));
+                if (sorted.length === 0 && !isFetchingMore) {
+                    return (
+                        <div className="flex h-full w-full items-center justify-center p-10 text-center">
+                            <div className="space-y-4">
+                                <div className="bg-primary/10 p-6 rounded-3xl inline-block"><MessageSquare className="h-12 w-12 text-primary" /></div>
+                                <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">Keine aktiven Räume</h3>
+                                <p className="text-[#64748b] dark:text-neutral-400 font-medium max-w-xs mx-auto">Hier erscheinen Orte, an denen bereits Aktivitäten geplant sind.</p>
+                            </div>
+                        </div>
+                    );
+                }
+                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div ref={index === sorted.length - 1 ? lastElementRef : null} key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
+            }
+
             if (isHighlightsCategory) {
                 const filtered = places.filter(place => {
                     const up = place.upvotes || 0;
@@ -372,7 +392,11 @@ export default function Home() {
               </div>
             );
         }
-        const placesForMap = isFavoritesCategory ? (favorites as Place[]) : places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        const placesForMap = isFavoritesCategory 
+            ? (favorites as Place[]) 
+            : (isAktivCategory 
+                ? places.filter(place => (place.activityCount || 0) > 0 && place.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                : places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase())));
         return <MapView places={placesForMap} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />;
     }
   };
