@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -117,16 +118,28 @@ export default function ExplorePage() {
         setIsLoading(true);
 
         try {
-            // Puffer-Injektion (Grace Period): Events bis zu 4 Stunden nach Startzeit anzeigen
-            const expirationThreshold = new Date();
-            expirationThreshold.setHours(expirationThreshold.getHours() - 4);
-            const thresholdTimestamp = Timestamp.fromDate(expirationThreshold);
+            const collectionRef = collection(db, 'activities');
+            const constraints: any[] = [];
 
-            const activitiesQuery = query(
-                collection(db, 'activities'),
-                where('activityDate', '>=', thresholdTimestamp),
-                orderBy('activityDate', 'asc')
-            );
+            // PFAD-SPLITTING: Trennung von Event-Logik (Community) und Raum-Logik (Location)
+            const isCommunityMode = activeCategory.includes('user_event');
+
+            if (isCommunityMode) {
+                // PFAD B: Community-Events mit Zeit-Puffer (4h)
+                const expirationThreshold = new Date();
+                expirationThreshold.setHours(expirationThreshold.getHours() - 4);
+                const thresholdTimestamp = Timestamp.fromDate(expirationThreshold);
+                
+                constraints.push(where('isCustomActivity', '==', true));
+                constraints.push(where('activityDate', '>=', thresholdTimestamp));
+            } else {
+                // PFAD A/C: Location-basiert oder Alles. Zeige alle aktiven Räume ohne Zeitlimit.
+                constraints.push(where('status', '==', 'active'));
+            }
+
+            constraints.push(orderBy('activityDate', 'asc'));
+
+            const activitiesQuery = query(collectionRef, ...constraints);
 
             const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
                 const fetchedActivities = snapshot.docs
@@ -135,7 +148,7 @@ export default function ExplorePage() {
                 setAllCards(fetchedActivities);
                 setIsLoading(false);
             }, (error) => {
-                // Aggressives Error-Logging (Index-Tracing)
+                // Aggressives Error-Logging für Index-Tracing
                 console.error("CRITICAL FIRESTORE ERROR (Check for Index links):", error.message);
                 toast({ 
                     title: "Fehler", 
@@ -147,10 +160,10 @@ export default function ExplorePage() {
 
             return () => unsubscribe();
         } catch (err: any) {
-            console.error("Activities listener setup failed:", err.message);
+            console.error("Activities dynamic listener setup failed:", err.message);
             setIsLoading(false);
         }
-    }, [toast, user]);
+    }, [toast, user, activeCategory]);
     
     const visibleCards = useMemo(() => {
         let filtered = allCards;

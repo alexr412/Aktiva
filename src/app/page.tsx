@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -213,21 +214,32 @@ export default function Home() {
     }
   }, [planningState]);
   
-  // Echtzeit-Überwachung aller Aktivitäten mit 4-Stunden-Puffer
+  // Echtzeit-Überwachung der Aktivitäten mit Query-Splitting
   useEffect(() => {
     if (!db) return;
 
     try {
-        // Puffer-Injektion: Events bis zu 4 Stunden nach Startzeit anzeigen
-        const expirationThreshold = new Date();
-        expirationThreshold.setHours(expirationThreshold.getHours() - 4);
-        const thresholdTimestamp = Timestamp.fromDate(expirationThreshold);
+        const collectionRef = collection(db, "activities");
+        const constraints: any[] = [];
 
-        const activitiesQuery = query(
-          collection(db, "activities"),
-          where('activityDate', '>=', thresholdTimestamp),
-          orderBy("activityDate", "asc")
-        );
+        // PFAD-SPLITTING: Trennung von Event-Logik (Community) und Raum-Logik (AKTIV)
+        if (isCommunityCategory) {
+            // PFAD B: Community-Event Logik mit temporalem Filter (4h Puffer)
+            const expirationThreshold = new Date();
+            expirationThreshold.setHours(expirationThreshold.getHours() - 4);
+            const thresholdTimestamp = Timestamp.fromDate(expirationThreshold);
+            
+            constraints.push(where('isCustomActivity', '==', true));
+            constraints.push(where('activityDate', '>=', thresholdTimestamp));
+        } else {
+            // PFAD A/C: Standard-Pfad für Badges und AKTIV-Filter
+            // Nur aktive Räume anzeigen, kein strikter Zeitfilter für statische Orte
+            constraints.push(where('status', '==', 'active'));
+        }
+
+        constraints.push(orderBy("activityDate", "asc"));
+
+        const activitiesQuery = query(collectionRef, ...constraints);
         
         const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
             const activitiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
@@ -239,9 +251,9 @@ export default function Home() {
 
         return () => unsubscribe();
     } catch (err: any) {
-        console.error("Activities global listener setup failed:", err.message);
+        console.error("Activities dynamic listener setup failed:", err.message);
     }
-  }, []);
+  }, [isCommunityCategory, isAktivCategory]); // Re-run wenn der Modus wechselt
 
   useEffect(() => {
     if (!db || rawPlaces.length === 0) return;
