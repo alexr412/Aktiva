@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { createActivity, joinActivity } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { collection, query, where, getDocs, Timestamp, onSnapshot } from "firebase/firestore";
+import { collection, query, where, getDocs, Timestamp, onSnapshot, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { ActivityListItem } from "@/components/aktvia/activity-list-item";
 import { Input } from '@/components/ui/input';
@@ -210,17 +210,13 @@ export default function Home() {
     }
   }, [planningState]);
   
-  // Echtzeit-Überwachung aller Aktivitäten für den Feed & Raum-Indikator
+  // Echtzeit-Überwachung aller Aktivitäten ohne zeitliche Filterung
   useEffect(() => {
     if (!db) return;
 
-    // Implementierung der Grace Period: Aktivitäten bis zu 4 Stunden nach Start anzeigen
-    const expirationThreshold = new Date();
-    expirationThreshold.setHours(expirationThreshold.getHours() - 4);
-
     const activitiesQuery = query(
-      collection(db, "activities"), 
-      where("activityDate", ">=", Timestamp.fromDate(expirationThreshold))
+      collection(db, "activities"),
+      orderBy("activityDate", "asc")
     );
     
     const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
