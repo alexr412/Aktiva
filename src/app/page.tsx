@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -38,18 +37,8 @@ const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod =>
 });
 
 const CardSkeleton = () => (
-    <div className="w-full overflow-hidden rounded-3xl bg-white shadow-sm p-4">
-        <div className="flex gap-4">
-          <Skeleton className="h-24 w-24 rounded-2xl shrink-0" />
-          <div className="flex-1 space-y-2 py-1">
-              <Skeleton className="h-6 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-              <div className="flex gap-2 pt-2">
-                <Skeleton className="h-5 w-16 rounded-full" />
-                <Skeleton className="h-5 w-16 rounded-full" />
-              </div>
-          </div>
-        </div>
+    <div className="w-full overflow-hidden rounded-3xl bg-white shadow-sm p-10 text-center font-bold text-neutral-400">
+        hier ist eine leere karte
     </div>
 );
 
