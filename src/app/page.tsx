@@ -37,8 +37,22 @@ const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod =>
 });
 
 const CardSkeleton = () => (
-    <div className="w-full overflow-hidden rounded-3xl bg-white shadow-sm p-10 text-center font-bold text-neutral-400">
-        hier ist eine leere karte
+    <div className="w-full overflow-hidden rounded-3xl bg-white shadow-sm flex flex-row p-0 border border-slate-100/50">
+        <Skeleton className="w-28 sm:w-32 h-32 rounded-none" />
+        <div className="p-4 flex flex-col justify-between flex-1 gap-3">
+            <div className="space-y-2">
+                <Skeleton className="h-5 w-3/4 rounded-lg" />
+                <Skeleton className="h-3 w-1/2 rounded-md" />
+            </div>
+            <div className="flex gap-2">
+                <Skeleton className="h-4 w-12 rounded-full" />
+                <Skeleton className="h-4 w-12 rounded-full" />
+            </div>
+            <div className="flex justify-between items-center pt-2">
+                <Skeleton className="h-8 w-16 rounded-full" />
+                <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+        </div>
     </div>
 );
 

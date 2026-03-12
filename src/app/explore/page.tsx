@@ -19,8 +19,15 @@ import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { ProximityRadarView } from '@/components/aktvia/proximity-radar-view';
 
 const CardSkeleton = () => (
-  <div className="w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-[2.5rem] shadow-xl border-none overflow-hidden flex flex-col items-center justify-center font-bold text-neutral-400">
-    hier ist eine leere karte
+  <div className="w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-[2.5rem] shadow-xl border-none overflow-hidden flex flex-col">
+    <Skeleton className="flex-1 rounded-none" />
+    <div className="p-6 space-y-4">
+        <Skeleton className="h-12 w-full rounded-2xl" />
+        <Skeleton className="h-12 w-full rounded-2xl" />
+        <div className="pt-4 flex justify-between">
+            <Skeleton className="h-6 w-24 rounded-full" />
+        </div>
+    </div>
   </div>
 );
 
