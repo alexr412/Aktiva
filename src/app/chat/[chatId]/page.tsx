@@ -47,17 +47,24 @@ const DateSeparator = ({ date }: { date: Date }) => {
 const MessageBubble = ({
   message,
   isOwnMessage,
-  senderDetails,
+  currentUserProfile,
+  participantDetails,
   isFirstInGroup,
 }: {
   message: Message;
   isOwnMessage: boolean;
-  senderDetails?: { isPremium?: boolean; isSupporter?: boolean };
+  currentUserProfile?: UserProfile | null;
+  participantDetails?: Chat['participantDetails'];
   isFirstInGroup: boolean;
 }) => {
-  // Strikte Abfrage der korrekten Schlüssel (inklusive Case-Fallback)
-  const userIsPremium = message.isPremium ?? (message as any).IsPremium ?? senderDetails?.isPremium ?? false;
-  const userIsSupporter = message.isSupporter ?? (message as any).IsSupporter ?? senderDetails?.isSupporter ?? false;
+  // Hard-Bypass für den eigenen Status, Fallback für Fremde
+  const badgePremium = isOwnMessage 
+    ? Boolean(currentUserProfile?.isPremium) 
+    : Boolean(message.isPremium || (message as any).IsPremium || participantDetails?.[message.senderId]?.isPremium);
+
+  const badgeSupporter = isOwnMessage 
+    ? Boolean(currentUserProfile?.isSupporter) 
+    : Boolean(message.isSupporter || (message as any).IsSupporter || participantDetails?.[message.senderId]?.isSupporter);
 
   return (
     <div className={cn(
@@ -74,15 +81,15 @@ const MessageBubble = ({
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               {isOwnMessage ? 'Du' : message.senderName}
             </span>
-            <UserBadge isPremium={userIsPremium} isSupporter={userIsSupporter} size="sm" />
+            <UserBadge isPremium={badgePremium} isSupporter={badgeSupporter} size="sm" />
           </div>
         )}
         
         <div className={cn(
-          "w-fit max-w-full min-w-0 px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-all shadow-sm",
+          "max-w-full px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-all inline-block shadow-sm",
           isOwnMessage 
-            ? "bg-primary text-white rounded-tr-sm" 
-            : "bg-white dark:bg-neutral-800 text-slate-800 dark:text-neutral-200 border border-slate-100 dark:border-neutral-700 rounded-tl-sm"
+            ? "self-end bg-primary text-white rounded-tr-sm" 
+            : "self-start bg-white dark:bg-neutral-800 text-slate-800 dark:text-neutral-200 border border-slate-100 dark:border-neutral-700 rounded-tl-sm"
         )}>
           {message.text}
           <div className="flex justify-end mt-1">
@@ -100,7 +107,7 @@ const MessageBubble = ({
 };
 
 export default function ChatRoomPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const [chat, setChat] = useState<Chat | null>(null);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -289,8 +296,6 @@ export default function ChatRoomPage() {
               const showDateSeparator = !prevMessage || !prevMessage.sentAt || !message.sentAt || !isSameDay(message.sentAt.toDate(), prevMessage.sentAt.toDate());
               const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId || showDateSeparator;
               
-              const senderDetails = chat?.participantDetails?.[message.senderId];
-
               return (
                 <div key={message.id} className="w-full">
                   {showDateSeparator && message.sentAt && <DateSeparator date={message.sentAt.toDate()} />}
@@ -298,7 +303,8 @@ export default function ChatRoomPage() {
                     message={message}
                     isOwnMessage={isOwnMessage}
                     isFirstInGroup={isFirstInGroup}
-                    senderDetails={senderDetails}
+                    currentUserProfile={userProfile}
+                    participantDetails={chat?.participantDetails}
                   />
                 </div>
               );
