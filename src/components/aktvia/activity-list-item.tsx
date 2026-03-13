@@ -36,13 +36,32 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const isOwnActivity = activity.creatorId === user?.uid;
     const userVote = user ? (activity.userVotes?.[user.uid] || 'none') : 'none';
     
+    const isPaidEvent = activity.isPaid && activity.price && activity.price > 0;
+
     const primaryStyle = getPrimaryIconData({ categories: activity.categories, name: activity.placeName });
     const PrimaryIcon = primaryStyle.icon;
 
-    const handleJoinClick = async (activityId: string) => {
+    const handleJoinClick = async (e: React.MouseEvent) => {
+        e.stopPropagation();
         if (isJoining || isParticipant || isFull) return; 
+
+        if (!user) {
+            router.push('/login');
+            return;
+        }
+
+        if (isPaidEvent) {
+            // Zahlungs-Gate: Umleitung zum Checkout
+            router.push(`/checkout/${activity.id}`);
+            return;
+        }
+
         setIsJoining(true);
-        try { await onJoin(activityId); } catch (error) { setIsJoining(false); }
+        try { 
+            await onJoin(activity.id!); 
+        } catch (error) { 
+            setIsJoining(false); 
+        }
     };
     
     const handleViewChatClick = (activityId: string) => { router.push(`/chat/${activityId}`); };
@@ -85,10 +104,10 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                         <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight flex-1">{activity.placeName}</p>
                         
                         {/* Micro-Ticketing Badge */}
-                        {activity.isPaid && activity.price && activity.price > 0 && (
+                        {isPaidEvent && (
                           <div className="ml-2 inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-black px-2 py-0.5 rounded-lg text-[10px] tracking-tight shrink-0">
                             <CreditCard className="h-2.5 w-2.5" />
-                            <span>{activity.price.toFixed(2)}€</span>
+                            <span>{activity.price!.toFixed(2)}€</span>
                           </div>
                         )}
                     </div>
@@ -152,11 +171,24 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 ) : (
                   <Button 
                     size="sm"
-                    onClick={(e) => { e.stopPropagation(); handleJoinClick(activity.id!); }} 
+                    onClick={handleJoinClick} 
                     disabled={isJoining || isFull}
-                    className="h-10 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black px-6 shadow-lg shadow-primary/20 transition-transform active:scale-95"
+                    className={cn(
+                        "h-10 rounded-2xl font-black px-6 shadow-lg transition-transform active:scale-95",
+                        isPaidEvent 
+                            ? "bg-slate-900 hover:bg-black text-white shadow-slate-200" 
+                            : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
+                    )}
                   >
-                    {isJoining ? <Loader2 className="animate-spin h-4 w-4" /> : (isFull ? 'Voll' : 'Beitreten')}
+                    {isJoining ? (
+                        <Loader2 className="animate-spin h-4 w-4" />
+                    ) : isFull ? (
+                        'Voll'
+                    ) : isPaidEvent ? (
+                        `Beitreten (€${activity.price!.toFixed(2)})`
+                    ) : (
+                        'Beitreten'
+                    )}
                   </Button>
                 )}
               </div>

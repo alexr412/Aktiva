@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -13,11 +12,12 @@ import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'fireba
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Compass, X, Heart, Home, MapPin, Calendar, Users, RotateCcw, ExternalLink, Sparkles } from 'lucide-react';
+import { Compass, X, Heart, Home, MapPin, Calendar, Users, RotateCcw, ExternalLink, Sparkles, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { ProximityRadarView } from '@/components/aktvia/proximity-radar-view';
+import { cn } from '@/lib/utils';
 
 const CardSkeleton = () => (
   <div className="w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-[2.5rem] shadow-xl border-none overflow-hidden flex flex-col">
@@ -229,6 +229,13 @@ export default function ExplorePage() {
                 animationControls.start({ x: 0, rotate: 0, opacity: 1, transition: { duration: 0.4 }});
                 return;
             }
+
+            // Payment Interception
+            if (topCard.isPaid && topCard.price && topCard.price > 0) {
+                router.push(`/checkout/${topCardId}`);
+                return;
+            }
+
              joinActivity(topCardId, user)
                 .then(() => {
                     toast({ title: 'Aktivität beigetreten!', description: 'Du findest sie jetzt in deinen Chats.' });
@@ -332,6 +339,7 @@ export default function ExplorePage() {
                             {cards.map((card, index) => {
                                 const isTopCard = index === cards.length - 1;
                                 const showAd = !userProfile?.isPremium && (index % 10 === 0 && index !== 0);
+                                const isPaidEvent = card.isPaid && card.price && card.price > 0;
 
                                 return (
                                     <motion.div
@@ -368,6 +376,14 @@ export default function ExplorePage() {
                                                     Featured
                                                   </div>
                                                 )}
+                                                
+                                                {isPaidEvent && (
+                                                  <div className="absolute top-6 right-6 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1 shadow-lg">
+                                                    <CreditCard className="h-3 w-3" />
+                                                    €{card.price!.toFixed(2)}
+                                                  </div>
+                                                )}
+
                                                 {card.isCustomActivity ? (
                                                   <Home className="h-24 w-24 text-white/30 drop-shadow-lg"/>
                                                 ) : (
@@ -425,9 +441,14 @@ export default function ExplorePage() {
                               onClick={() => handleSwipe('right')} 
                               variant="outline" 
                               size="icon" 
-                              className="h-16 w-16 rounded-full bg-emerald-50 border-none shadow-sm text-emerald-500 hover:bg-emerald-100 hover:scale-105 active:scale-90 transition-all"
+                              className={cn(
+                                "h-16 w-16 rounded-full border-none shadow-sm transition-all hover:scale-105 active:scale-90",
+                                cards[cards.length-1]?.isPaid 
+                                    ? "bg-slate-900 text-white hover:bg-black" 
+                                    : "bg-emerald-50 text-emerald-500 hover:bg-emerald-100"
+                              )}
                             >
-                                <Heart className="h-8 w-8 stroke-[2.5] fill-emerald-500/10"/>
+                                <Heart className={cn("h-8 w-8 stroke-[2.5]", !cards[cards.length-1]?.isPaid && "fill-emerald-500/10")}/>
                             </Button>
                         </div>
                     </>

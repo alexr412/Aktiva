@@ -320,6 +320,14 @@ export async function joinActivity(activityId: string, user: User) {
       }
 
       const activityData = activityDoc.data() as Activity;
+      
+      // ZWINGENDE BACKEND-SICHERUNG FÜR PAID-EVENTS
+      if (activityData.isPaid && activityData.creatorId !== user.uid) {
+        // Diese Funktion darf bei Paid-Events nur nach kryptografischer Zahlungsverifikation 
+        // oder durch einen Cloud Function Webhook aufgerufen werden.
+        throw "Sicherheits-Gate: Beitritt zu bezahltem Event nur nach Zahlungsnachweis möglich.";
+      }
+
       const userProfileData = userDoc.data() as UserProfile | undefined;
       
       if (activityData.participantIds.includes(user.uid)) {

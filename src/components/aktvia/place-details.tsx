@@ -19,6 +19,7 @@ import {
     Bookmark,
     Calendar,
     ExternalLink,
+    CreditCard,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -73,15 +74,27 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         return () => unsubscribe();
     }, [place.id]);
 
-    const handleJoin = async (activityId: string) => {
-        if (!user) { router.push('/login'); return; }
-        setJoiningActivityId(activityId);
+    const handleJoin = async (activity: Activity) => {
+        if (!user) { 
+            router.push('/login'); 
+            return; 
+        }
+
+        if (activity.isPaid && activity.price && activity.price > 0) {
+            // Payment Gate
+            router.push(`/checkout/${activity.id}`);
+            return;
+        }
+
+        setJoiningActivityId(activity.id!);
         try {
-            await joinActivity(activityId, user);
-            toast({ title: 'Success!' });
+            await joinActivity(activity.id!, user);
+            toast({ title: 'Erfolgreich beigetreten!' });
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: error.message });
-        } finally { setJoiningActivityId(null); }
+            toast({ variant: 'destructive', title: 'Fehler', description: error.message });
+        } finally { 
+            setJoiningActivityId(null); 
+        }
     };
 
     const handleVote = async (activityId: string, type: 'up' | 'down' | 'none') => {
@@ -155,17 +168,42 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                 {loadingActivities ? <Skeleton className="h-20 w-full rounded-2xl" /> : activities.length === 0 ? <p className="text-sm text-neutral-500">Keine Treffen geplant.</p> : activities.map(activity => {
                                     const isParticipant = activity.participantIds.includes(user?.uid || '---');
                                     const userVote = user ? (activity.userVotes?.[user.uid] || 'none') : 'none';
+                                    const isPaidEvent = activity.isPaid && activity.price && activity.price > 0;
+
                                     return (
                                         <Card key={activity.id} className="p-4 bg-neutral-50 dark:bg-neutral-800 border-none rounded-2xl">
                                             <div className="flex items-center justify-between gap-4">
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="font-extrabold dark:text-neutral-200 text-base truncate">{format(activity.activityDate.toDate(), 'eee, MMM d')}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-extrabold dark:text-neutral-200 text-base truncate">{format(activity.activityDate.toDate(), 'eee, MMM d')}</p>
+                                                        {isPaidEvent && (
+                                                            <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0 border-none">
+                                                                €{activity.price!.toFixed(2)}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                     <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400">{activity.participantIds.length} Teilnehmer</p>
                                                 </div>
                                                 {isParticipant ? (
                                                     <Button size="sm" variant="secondary" onClick={() => router.push(`/chat/${activity.id}`)} className="rounded-xl font-bold">Chat</Button>
                                                 ) : (
-                                                    <Button size="sm" onClick={() => handleJoin(activity.id!)} className="w-28 rounded-xl font-bold">Beitreten</Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        onClick={() => handleJoin(activity)} 
+                                                        disabled={joiningActivityId === activity.id}
+                                                        className={cn(
+                                                            "w-32 rounded-xl font-black",
+                                                            isPaidEvent ? "bg-slate-900 text-white" : ""
+                                                        )}
+                                                    >
+                                                        {joiningActivityId === activity.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : isPaidEvent ? (
+                                                            `Beitreten`
+                                                        ) : (
+                                                            'Beitreten'
+                                                        )}
+                                                    </Button>
                                                 )}
                                             </div>
                                             <div className="flex gap-2 items-center pt-3 border-t border-neutral-200/50 dark:border-neutral-700/50 mt-3">
