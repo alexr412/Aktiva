@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { createActivity, joinActivity } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
+import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { ActivityListItem } from "@/components/aktvia/activity-list-item";
 import { Input } from '@/components/ui/input';
@@ -57,7 +57,6 @@ const CardSkeleton = () => (
     </div>
 );
 
-// ZENTRALE KONSTANTE FÜR SYMMETRISCHE PAGINIERUNG
 const PLACES_PER_PAGE = 10;
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -69,9 +68,6 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState<string[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>("");
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const [customActivities, setCustomActivities] = useState<Activity[]>([]);
-  const [allUpcomingActivities, setAllUpcomingActivities] = useState<Activity[]>([]);
-  const [placeMetrics, setPlaceMetrics] = useState<Record<string, {upvotes: number, downvotes: number}>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [cityName, setCityName] = useState<string>("Wird geladen...");
   const [sortBy, setSortBy] = useState("recommended");
@@ -89,44 +85,101 @@ export default function Home() {
   const isHighlightsCategory = activeTabId === "Highlights";
   const isAktivCategory = activeTabId === "Aktiv";
 
-  const getKey = (pageIndex: number, previousPageData: any) => {
-    if (isCommunityCategory || isFavoritesCategory) return null;
-    if (!userLocation) return null;
-    if (previousPageData && (!previousPageData.features || previousPageData.features.length === 0)) return null;
+  // MULTI-SOURCE FETCHER (Geoapify vs Firestore)
+  const multiFetcher = async (key: any) => {
+    if (!key) return null;
+    const { type, pageIndex, cursorValue } = key;
 
+    if (type === 'geoapify') {
+      const { url } = key;
+      return fetcher(url);
+    }
+
+    if (type === 'activities') {
+      const constraints: any[] = [
+        where('isCustomActivity', '==', key.subType === 'community'),
+        orderBy('createdAt', 'desc'),
+        limit(PLACES_PER_PAGE)
+      ];
+      if (cursorValue) constraints.push(startAfter(cursorValue));
+      const q = query(collection(db!, 'activities'), ...constraints);
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    if (type === 'highlights') {
+      const constraints: any[] = [
+        where('upvotes', '>', 0),
+        orderBy('upvotes', 'desc'),
+        limit(PLACES_PER_PAGE)
+      ];
+      if (cursorValue !== null) constraints.push(startAfter(cursorValue));
+      const q = query(collection(db!, 'places'), ...constraints);
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    return null;
+  };
+
+  const getKey = (pageIndex: number, previousPageData: any) => {
+    if (isFavoritesCategory) return null;
+    
+    // Stop if we reached the end
+    if (previousPageData && (
+      (previousPageData.features && previousPageData.features.length === 0) ||
+      (Array.isArray(previousPageData) && previousPageData.length === 0)
+    )) return null;
+
+    if (isCommunityCategory || isAktivCategory) {
+      const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.createdAt;
+      return { type: 'activities', subType: isCommunityCategory ? 'community' : 'location', cursorValue: cursor, pageIndex };
+    }
+
+    if (isHighlightsCategory) {
+      const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.upvotes;
+      return { type: 'highlights', cursorValue: cursor, pageIndex };
+    }
+
+    // Default: Geoapify Places
+    if (!userLocation) return null;
     let categoriesToFetch: string[] = (activeCategory.length === 0 || activeCategory.includes('has_activities')) 
       ? ["tourism", "entertainment", "heritage"] 
       : activeCategory;
 
     const offset = pageIndex * PLACES_PER_PAGE;
     const radiusMeters = 15000;
+    const url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
     
-    return `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
+    return { type: 'geoapify', url, pageIndex };
   }
 
-  const { data, size, setSize, isLoading, isValidating, error } = useSWRInfinite(getKey, fetcher, {
+  const { data, size, setSize, isLoading, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {
     revalidateFirstPage: false,
     dedupingInterval: 60000,
   });
 
-  // STRIKTE SWR-ZUSTANDSMATRIX
   const isLoadingInitialData = !data && !error;
   const isFetchingNextPage = size > 0 && data && typeof data[size - 1] === "undefined";
-  const isEmpty = data?.[0]?.features?.length === 0;
+  const isEmpty = data?.[0]?.features ? data[0].features.length === 0 : (data?.[0]?.length === 0);
   
-  // ARCHITEKTUR-FIX 1: Harte Evaluierung des Listenendes (Gegen Waterfall)
-  const isReachingEnd = isEmpty || (data && data[data.length - 1]?.features?.length < PLACES_PER_PAGE);
+  const isReachingEnd = useMemo(() => {
+    if (isEmpty) return true;
+    if (!data || data.length === 0) return false;
+    const lastPage = data[data.length - 1];
+    if (isCommunityCategory || isAktivCategory || isHighlightsCategory) {
+      return lastPage && lastPage.length < PLACES_PER_PAGE;
+    }
+    return lastPage && lastPage.features?.length < PLACES_PER_PAGE;
+  }, [data, isEmpty, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
-  // DIAGNOSTIC LOGGING - Telemetrie
+  // DIAGNOSTIC LOGGING
   console.log({
     event: "RENDER_CYCLE",
-    size: size,
+    size,
     dataLength: data ? data.length : 0,
-    isValidating: isValidating,
-    isLoadingInitialData: isLoadingInitialData,
-    isFetchingNextPage: isFetchingNextPage,
-    isReachingEnd: isReachingEnd,
-    skeletonCondition: (isFetchingNextPage && !isReachingEnd)
+    isFetchingNextPage,
+    isReachingEnd
   });
 
   const userPrefs: UserPreferences = useMemo(() => ({
@@ -134,29 +187,17 @@ export default function Home() {
     dislikedTags: userProfile?.dislikedTags || []
   }), [userProfile]);
 
-  const rawPlaces = useMemo(() => {
-    if (!data) return [];
-    const combinedSoftVetoList = [...BASE_SOFT_VETO];
+  // Unified data mapping
+  const places = useMemo(() => {
+    if (!data || isCommunityCategory || isAktivCategory || isFavoritesCategory) return [];
     
-    const mapped = data.flatMap(page => {
-      const features = page?.features || [];
-      const safeFeatures = features.filter((feature: any) => {
-        const isStolperstein = feature.properties?.datasource?.raw?.memorial === 'stolperstein';
-        if (isStolperstein) return false;
+    if (isHighlightsCategory) {
+      return data.flat() as Place[];
+    }
 
-        const allTags: string[] = Array.isArray(feature.properties?.categories) ? feature.properties.categories : [feature.properties?.categories];
-        const violatesHardVeto = allTags.some(tag => BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`)));
-        if (violatesHardVeto) return false;
-        
-        const coreTags = allTags.filter(tag => !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) && (!tag.startsWith("building") || combinedSoftVetoList.includes(tag)));
-        const specificCoreTags = coreTags.filter(tag => !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`)));
-        if (specificCoreTags.length > 0) {
-          const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => combinedSoftVetoList.includes(specificTag));
-          if (isSolelyExcludedIdentity) return false;
-        }
-        return true; 
-      });
-      return safeFeatures.map((feature: GeoapifyFeature) => {
+    return data.flatMap(page => {
+      const features = page?.features || [];
+      return features.map((feature: GeoapifyFeature) => {
         const props = feature.properties;
         let rating;
         if (props.datasource?.raw?.rating) {
@@ -178,28 +219,28 @@ export default function Home() {
         } as Place;
       });
     });
+  }, [data, userPrefs, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory]);
 
-    const nsfwBlacklist = ['sex', 'erotik', 'porn', 'strip', 'swinger', 'bordell', 'peep'];
-    return mapped.filter(place => {
-      const placeName = (place.name || '').toLowerCase();
-      return !nsfwBlacklist.some(term => placeName.includes(term));
-    });
-  }, [data, userPrefs]);
-  
-  const places = useMemo(() => {
-    return rawPlaces.map(p => ({
-        ...p,
-        upvotes: placeMetrics[p.id]?.upvotes || 0,
-        downvotes: placeMetrics[p.id]?.downvotes || 0,
-        activityCount: allUpcomingActivities.filter(a => a.placeId === p.id).length
-    }));
-  }, [rawPlaces, allUpcomingActivities, placeMetrics]);
+  const observer = useRef<IntersectionObserver>();
+  const lastElementRef = useCallback(node => {
+    if (observer.current) observer.current.disconnect();
+    
+    const options = {
+      rootMargin: '0px 0px -50px 0px',
+      threshold: 1.0,
+    };
 
-  const resetFilters = () => {
-    handleCategoryChange([], '');
-    setSearchQuery('');
-    setSortBy('recommended');
-  };
+    observer.current = new IntersectionObserver(entries => { 
+      const target = entries[0];
+      if (target.isIntersecting && !isReachingEnd && !isFetchingNextPage && !isValidating) {
+        setTimeout(() => {
+          setSize(prev => prev + 1);
+        }, 500);
+      }
+    }, options);
+    
+    if (node) observer.current.observe(node);
+  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize]);
 
   useEffect(() => {
     const reverseGeocode = async (lat: number, lng: number) => {
@@ -229,88 +270,6 @@ export default function Home() {
       setCityName("Bremerhaven");
     }
   }, [planningState]);
-  
-  useEffect(() => {
-    if (!db) return;
-
-    try {
-        const collectionRef = collection(db, "activities");
-        const constraints: any[] = [];
-
-        if (isCommunityCategory) {
-            constraints.push(where('isCustomActivity', '==', true));
-        } else {
-            constraints.push(where('status', '==', 'active'));
-        }
-
-        const activitiesQuery = query(collectionRef, ...constraints);
-        
-        const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-            const activitiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
-            
-            activitiesData.sort((a, b) => {
-                const timeA = a.activityDate?.toMillis() || 0;
-                const timeB = b.activityDate?.toMillis() || 0;
-                return timeA - timeB;
-            });
-
-            setAllUpcomingActivities(activitiesData);
-        }, (error) => {
-            console.error("CRITICAL FIRESTORE ERROR (Check for Index links):", error.message);
-        });
-
-        return () => unsubscribe();
-    } catch (err: any) {
-        console.error("Activities dynamic listener setup failed:", err.message);
-    }
-  }, [isCommunityCategory, isAktivCategory]);
-
-  useEffect(() => {
-    if (!db || rawPlaces.length === 0) return;
-    const fetchMetrics = async () => {
-        const newMetrics: Record<string, any> = {};
-        const ids = rawPlaces.map(p => p.id);
-        for (let i = 0; i < ids.length; i += 30) {
-            const chunk = ids.slice(i, i + 30);
-            const q = query(collection(db, 'places'), where('__name__', 'in', chunk));
-            const snap = await getDocs(q);
-            snap.forEach(doc => { newMetrics[doc.id] = doc.data(); });
-        }
-        setPlaceMetrics(prev => ({...prev, ...newMetrics}));
-    };
-    fetchMetrics();
-  }, [rawPlaces]);
-
-  useEffect(() => { if (isCommunityCategory) setCustomActivities(allUpcomingActivities.filter(act => act.isCustomActivity)); }, [isCommunityCategory, allUpcomingActivities]);
-
-  // ARCHITEKTUR-FIX 2: Physische Bremse & Verschärfte Sichtbarkeit (Gegen Waterfall)
-  const observer = useRef<IntersectionObserver>();
-  const lastElementRef = useCallback(node => {
-    if (observer.current) observer.current.disconnect();
-    
-    const options = {
-      rootMargin: '0px 0px -50px 0px', // ARCHITEKTUR-FIX 3: Erst feuern, wenn 50px IM Bildschirm
-      threshold: 1.0, // Element muss voll sichtbar sein
-    };
-
-    observer.current = new IntersectionObserver(entries => { 
-      const target = entries[0];
-      
-      if (target.isIntersecting) {
-        console.log("OBSERVER TRIGGERED. Current limits:", { isReachingEnd, isFetchingNextPage, isValidating });
-
-        if (!isReachingEnd && !isFetchingNextPage && !isValidating) {
-          console.log("OBSERVER: Debouncing next page request (500ms)...");
-          // Physische Bremse: Warte 500ms bevor die size wirklich erhöht wird
-          setTimeout(() => {
-            setSize(prev => prev + 1);
-          }, 500);
-        }
-      }
-    }, options);
-    
-    if (node) observer.current.observe(node);
-  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize]);
 
   const handleCategoryChange = (categoryId: string[], tabId: string) => {
     setSearchQuery('');
@@ -366,7 +325,7 @@ export default function Home() {
             <div className="space-y-4">
                 <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">Keine Ergebnisse</h3>
                 <p className="text-[#64748b] dark:text-neutral-400 font-medium">Passe deine Suche oder die Filter an.</p>
-                <Button onClick={resetFilters} variant="outline" className="rounded-xl font-bold">Filter zurücksetzen</Button>
+                <Button onClick={() => handleCategoryChange([], '')} variant="outline" className="rounded-xl font-bold">Filter zurücksetzen</Button>
             </div>
         </div>
     );
@@ -387,107 +346,65 @@ export default function Home() {
                   </div>
                 );
             }
-            if (isCommunityCategory) {
-                const filtered = customActivities.filter(act => act.placeName.toLowerCase().includes(searchQuery.toLowerCase()));
-                const sorted = filtered.sort((a, b) => (a.isBoosted && !b.isBoosted ? -1 : (!a.isBoosted && b.isBoosted ? 1 : (sortBy === 'newest' ? (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0) : 0))));
-                if (sorted.length === 0) return searchQuery ? <EmptySearchState /> : <div className="flex h-full w-full items-center justify-center p-10 text-center font-bold text-[#64748b] dark:text-neutral-400">Keine Community-Aktivitäten.</div>;
+
+            if (isCommunityCategory || isAktivCategory) {
+                const list = data?.flat() || [];
+                const filtered = list.filter(item => item.placeName.toLowerCase().includes(searchQuery.toLowerCase()));
+                if (filtered.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
                 return (
                   <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {sorted.map((activity) => (
-                      <div key={activity.id} className="min-h-[180px] w-full">
-                        <ActivityListItem activity={activity} user={user} onJoin={handleJoin} />
+                    {filtered.map((item) => (
+                      <div key={item.id} className="min-h-[180px] w-full">
+                        {isCommunityCategory ? (
+                          <ActivityListItem activity={item as Activity} user={user} onJoin={handleJoin} />
+                        ) : (
+                          <PlaceCard 
+                            place={{
+                              id: item.placeId,
+                              name: item.placeName,
+                              address: item.placeAddress,
+                              categories: item.categories || [],
+                              lat: item.lat,
+                              lon: item.lon,
+                              activityCount: 1
+                            } as Place}
+                            onClick={() => handlePlaceSelect(item as any)} 
+                            onAddActivity={() => handleOpenActivityModal(item as any)} 
+                          />
+                        )}
                       </div>
                     ))}
                   </div>
                 );
             }
             
-            if (isAktivCategory) {
-                const filtered = places.filter(place => (place.activityCount || 0) > 0 && place.name.toLowerCase().includes(searchQuery.toLowerCase()));
-                const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : (sortBy === 'popular' ? (b.activityCount || 0) - (a.activityCount || 0) : 0))));
-                if (sorted.length === 0 && !isFetchingNextPage) {
-                    return (
-                        <div className="flex h-full w-full items-center justify-center p-10 text-center">
-                            <div className="space-y-4">
-                                <div className="bg-primary/10 p-6 rounded-3xl inline-block"><MessageSquare className="h-12 w-12 text-primary" /></div>
-                                <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">Keine aktiven Räume</h3>
-                                <p className="text-[#64748b] dark:text-neutral-400 font-medium max-w-xs mx-auto">Hier erscheinen Orte, an denen bereits Aktivitäten geplant sind.</p>
-                            </div>
-                        </div>
-                    );
-                }
-                return (
-                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {sorted.map((place) => (
-                      <div key={place.id} className="min-h-[180px] w-full">
-                        <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
-                      </div>
-                    ))}
+            const filtered = places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
+            const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : 0)));
+            if (sorted.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
+            
+            return (
+              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sorted.map((place) => (
+                  <div key={place.id} className="min-h-[180px] w-full">
+                    <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
                   </div>
-                );
-            }
-
-            if (isHighlightsCategory) {
-                const filtered = places.filter(place => {
-                    const up = place.upvotes || 0;
-                    const down = place.downvotes || 0;
-                    const matchesSearch = place.name.toLowerCase().includes(searchQuery.toLowerCase());
-                    return up >= 1 && up > down && matchesSearch;
-                });
-                const sorted = filtered.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
-                if (sorted.length === 0 && !isFetchingNextPage) {
-                    return (
-                        <div className="flex h-full w-full items-center justify-center p-10 text-center">
-                            <div className="space-y-4">
-                                <div className="bg-primary/10 p-6 rounded-3xl inline-block"><Sparkles className="h-12 w-12 text-primary" /></div>
-                                <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">Keine Highlights</h3>
-                                <p className="text-[#64748b] dark:text-neutral-400 font-medium max-w-xs mx-auto">Votings der Community bestimmen, was hier erscheint.</p>
-                            </div>
-                        </div>
-                    );
-                }
-                return (
-                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {sorted.map((place) => (
-                      <div key={place.id} className="min-h-[180px] w-full">
-                        <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
-                      </div>
-                    ))}
-                  </div>
-                );
-            } else {
-                const filtered = places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
-                const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : (sortBy === 'popular' ? (b.activityCount || 0) - (a.activityCount || 0) : 0))));
-                if (sorted.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
-                return (
-                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {sorted.map((place) => (
-                      <div key={place.id} className="min-h-[180px] w-full">
-                        <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
-                      </div>
-                    ))}
-                  </div>
-                );
-            }
+                ))}
+              </div>
+            );
         };
+
         return (
           <div className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col">
             {renderList()}
             
-            {/* LADE-INDIKATOR - Strikte Kondition */}
             {isFetchingNextPage && !isReachingEnd && (
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <CardSkeleton />
               </div>
             )}
 
-            {/* OBSERVER TRIGGER - Minimalistischer unsichtbarer Anker */}
             {!isReachingEnd && !isLoadingInitialData && (
-              <div 
-                ref={lastElementRef} 
-                className="h-1 w-full flex-shrink-0 bg-transparent" 
-                aria-hidden="true" 
-              />
+              <div ref={lastElementRef} className="h-1 w-full flex-shrink-0 bg-transparent" aria-hidden="true" />
             )}
           </div>
         );
@@ -508,12 +425,7 @@ export default function Home() {
               </div>
             );
         }
-        const placesForMap = isFavoritesCategory 
-            ? (favorites as Place[]) 
-            : (isAktivCategory 
-                ? places.filter(place => (place.activityCount || 0) > 0 && place.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                : places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase())));
-        return <MapView places={placesForMap} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />;
+        return <MapView places={places} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />;
     }
   };
 
@@ -565,10 +477,6 @@ export default function Home() {
                 </div>
             </div>
             
-            <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400 -mt-1">
-              Was möchtest du heute in {cityName} erleben?
-            </p>
-
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
             
             <div className="mt-1 flex w-full items-center gap-3">
@@ -585,7 +493,7 @@ export default function Home() {
               {!isFavoritesCategory && (
                 <Select value={sortBy} onValueChange={setSortBy}>
                     <SelectTrigger className="w-[140px] rounded-2xl h-12 bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none focus:ring-0 font-bold text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-2xl border-none shadow-2xl font-bold dark:bg-neutral-800 dark:text-neutral-200"><SelectItem value="recommended">Empfohlen</SelectItem><SelectItem value="rating">Bewertung</SelectItem><SelectItem value="popular">Beliebt</SelectItem><SelectItem value="newest">Newest</SelectItem></SelectContent>
+                    <SelectContent className="rounded-2xl border-none shadow-2xl font-bold dark:bg-neutral-800 dark:text-neutral-200"><SelectItem value="recommended">Empfohlen</SelectItem><SelectItem value="rating">Bewertung</SelectItem></SelectContent>
                 </Select>
               )}
             </div>
@@ -604,7 +512,6 @@ export default function Home() {
       <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
       <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
 
-      {/* Premium Upsell Dialog */}
       <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500" />
@@ -626,10 +533,6 @@ export default function Home() {
               <div className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-green-500" strokeWidth={3} />
                 <span className="font-bold text-sm">Keine Werbung mehr</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-green-500" strokeWidth={3} />
-                <span className="font-bold text-sm">Eigene Akzentfarben wählen</span>
               </div>
             </div>
           </div>
