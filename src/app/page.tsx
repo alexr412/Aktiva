@@ -38,7 +38,7 @@ const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod =>
 });
 
 const CardSkeleton = () => (
-    <div className="w-full overflow-hidden rounded-3xl bg-white shadow-sm flex flex-row p-0 border border-slate-100/50">
+    <div className="w-full overflow-hidden rounded-3xl bg-white shadow-sm flex flex-row p-0 border border-slate-100/50 min-h-[130px]">
         <Skeleton className="w-28 sm:w-32 h-32 rounded-none" />
         <div className="p-4 flex flex-col justify-between flex-1 gap-3">
             <div className="space-y-2">
@@ -57,7 +57,9 @@ const CardSkeleton = () => (
     </div>
 );
 
-const PLACES_PER_PAGE = 50;
+// ZENTRALE KONSTANTE FÜR SYMMETRISCHE PAGINIERUNG
+const PLACES_PER_PAGE = 10;
+
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function Home() {
@@ -107,12 +109,13 @@ export default function Home() {
     dedupingInterval: 60000,
   });
 
+  // STRIKTE SWR-ZUSTANDSMATRIX
   const isLoadingInitialData = !data && !error;
   const isFetchingNextPage = size > 0 && data && typeof data[size - 1] === "undefined";
   const isEmpty = data?.[0]?.features?.length === 0;
   const isReachingEnd = isEmpty || (data && data[data.length - 1]?.features?.length < PLACES_PER_PAGE);
 
-  // DIAGNOSTIC LOGGING - Render Cycle
+  // DIAGNOSTIC LOGGING - Telemetrie
   console.log({
     event: "RENDER_CYCLE",
     size: size,
@@ -120,8 +123,7 @@ export default function Home() {
     isValidating: isValidating,
     isLoadingInitialData: isLoadingInitialData,
     isFetchingNextPage: isFetchingNextPage,
-    isReachingEnd: isReachingEnd,
-    skeletonCondition: (isFetchingNextPage && !isReachingEnd)
+    isReachingEnd: isReachingEnd
   });
 
   const userPrefs: UserPreferences = useMemo(() => ({
@@ -278,6 +280,7 @@ export default function Home() {
 
   useEffect(() => { if (isCommunityCategory) setCustomActivities(allUpcomingActivities.filter(act => act.isCustomActivity)); }, [isCommunityCategory, allUpcomingActivities]);
 
+  // ISOLIERTER INTERSECTION OBSERVER TRIGGER
   const observer = useRef<IntersectionObserver>();
   const lastElementRef = useCallback(node => {
     if (observer.current) observer.current.disconnect();
@@ -285,20 +288,14 @@ export default function Home() {
       const target = entries[0];
       
       if (target.isIntersecting) {
-        console.log("OBSERVER TRIGGERED. Current limits:", {
-          isReachingEnd,
-          isFetchingNextPage,
-          isValidating
-        });
+        console.log("OBSERVER TRIGGERED. Current limits:", { isReachingEnd, isFetchingNextPage, isValidating });
 
         if (!isReachingEnd && !isFetchingNextPage && !isValidating) {
-          console.log("OBSERVER: Fetching next page (size + 1). New size will be:", size + 1);
+          console.log("OBSERVER: Fetching next page (size + 1).");
           setSize(size + 1);
-        } else {
-          console.log("OBSERVER: Blocked by State Matrix.");
         }
       }
-    });
+    }, { rootMargin: '0px' });
     if (node) observer.current.observe(node);
   }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, size]);
 
@@ -367,13 +364,29 @@ export default function Home() {
                 if (favorites.length === 0) {
                      return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200">Noch keine Favoriten</h2></div>;
                 }
-                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{favorites.map(place => <PlaceCard key={place.id} place={place as Place} onClick={() => handlePlaceSelect(place as Place)} onAddActivity={() => handleOpenActivityModal(place as Place)} />)}</div>;
+                return (
+                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {favorites.map(place => (
+                      <div key={place.id} className="min-h-[180px] w-full">
+                        <PlaceCard place={place as Place} onClick={() => handlePlaceSelect(place as Place)} onAddActivity={() => handleOpenActivityModal(place as Place)} />
+                      </div>
+                    ))}
+                  </div>
+                );
             }
             if (isCommunityCategory) {
                 const filtered = customActivities.filter(act => act.placeName.toLowerCase().includes(searchQuery.toLowerCase()));
                 const sorted = filtered.sort((a, b) => (a.isBoosted && !b.isBoosted ? -1 : (!a.isBoosted && b.isBoosted ? 1 : (sortBy === 'newest' ? (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0) : 0))));
                 if (sorted.length === 0) return searchQuery ? <EmptySearchState /> : <div className="flex h-full w-full items-center justify-center p-10 text-center font-bold text-[#64748b] dark:text-neutral-400">Keine Community-Aktivitäten.</div>;
-                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((activity) => <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />)}</div>;
+                return (
+                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {sorted.map((activity) => (
+                      <div key={activity.id} className="min-h-[180px] w-full">
+                        <ActivityListItem activity={activity} user={user} onJoin={handleJoin} />
+                      </div>
+                    ))}
+                  </div>
+                );
             }
             
             if (isAktivCategory) {
@@ -390,7 +403,15 @@ export default function Home() {
                         </div>
                     );
                 }
-                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
+                return (
+                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {sorted.map((place) => (
+                      <div key={place.id} className="min-h-[180px] w-full">
+                        <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
+                      </div>
+                    ))}
+                  </div>
+                );
             }
 
             if (isHighlightsCategory) {
@@ -412,30 +433,46 @@ export default function Home() {
                         </div>
                     );
                 }
-                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
+                return (
+                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {sorted.map((place) => (
+                      <div key={place.id} className="min-h-[180px] w-full">
+                        <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
+                      </div>
+                    ))}
+                  </div>
+                );
             } else {
                 const filtered = places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
                 const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : (sortBy === 'popular' ? (b.activityCount || 0) - (a.activityCount || 0) : 0))));
                 if (sorted.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
-                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
+                return (
+                  <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {sorted.map((place) => (
+                      <div key={place.id} className="min-h-[180px] w-full">
+                        <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
+                      </div>
+                    ))}
+                  </div>
+                );
             }
         };
         return (
           <div className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col">
             {renderList()}
             
-            {/* LADE-INDIKATOR */}
+            {/* LADE-INDIKATOR - Strikte Kondition */}
             {isFetchingNextPage && !isReachingEnd && (
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <CardSkeleton />
               </div>
             )}
 
-            {/* OBSERVER TRIGGER */}
+            {/* OBSERVER TRIGGER - Minimalistischer unsichtbarer Anker */}
             {!isReachingEnd && !isLoadingInitialData && (
               <div 
                 ref={lastElementRef} 
-                className="h-10 w-full mt-4" 
+                className="h-1 w-full flex-shrink-0 bg-transparent" 
                 aria-hidden="true" 
               />
             )}
