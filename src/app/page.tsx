@@ -113,6 +113,8 @@ export default function Home() {
   const isLoadingInitialData = !data && !error;
   const isFetchingNextPage = size > 0 && data && typeof data[size - 1] === "undefined";
   const isEmpty = data?.[0]?.features?.length === 0;
+  
+  // ARCHITEKTUR-FIX 1: Harte Evaluierung des Listenendes (Gegen Waterfall)
   const isReachingEnd = isEmpty || (data && data[data.length - 1]?.features?.length < PLACES_PER_PAGE);
 
   // DIAGNOSTIC LOGGING - Telemetrie
@@ -123,7 +125,8 @@ export default function Home() {
     isValidating: isValidating,
     isLoadingInitialData: isLoadingInitialData,
     isFetchingNextPage: isFetchingNextPage,
-    isReachingEnd: isReachingEnd
+    isReachingEnd: isReachingEnd,
+    skeletonCondition: (isFetchingNextPage && !isReachingEnd)
   });
 
   const userPrefs: UserPreferences = useMemo(() => ({
@@ -280,10 +283,16 @@ export default function Home() {
 
   useEffect(() => { if (isCommunityCategory) setCustomActivities(allUpcomingActivities.filter(act => act.isCustomActivity)); }, [isCommunityCategory, allUpcomingActivities]);
 
-  // ISOLIERTER INTERSECTION OBSERVER TRIGGER
+  // ARCHITEKTUR-FIX 2: Physische Bremse & Verschärfte Sichtbarkeit (Gegen Waterfall)
   const observer = useRef<IntersectionObserver>();
   const lastElementRef = useCallback(node => {
     if (observer.current) observer.current.disconnect();
+    
+    const options = {
+      rootMargin: '0px 0px -50px 0px', // ARCHITEKTUR-FIX 3: Erst feuern, wenn 50px IM Bildschirm
+      threshold: 1.0, // Element muss voll sichtbar sein
+    };
+
     observer.current = new IntersectionObserver(entries => { 
       const target = entries[0];
       
@@ -291,13 +300,17 @@ export default function Home() {
         console.log("OBSERVER TRIGGERED. Current limits:", { isReachingEnd, isFetchingNextPage, isValidating });
 
         if (!isReachingEnd && !isFetchingNextPage && !isValidating) {
-          console.log("OBSERVER: Fetching next page (size + 1).");
-          setSize(size + 1);
+          console.log("OBSERVER: Debouncing next page request (500ms)...");
+          // Physische Bremse: Warte 500ms bevor die size wirklich erhöht wird
+          setTimeout(() => {
+            setSize(prev => prev + 1);
+          }, 500);
         }
       }
-    }, { rootMargin: '0px' });
+    }, options);
+    
     if (node) observer.current.observe(node);
-  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, size]);
+  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize]);
 
   const handleCategoryChange = (categoryId: string[], tabId: string) => {
     setSearchQuery('');
