@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -467,13 +467,43 @@ export default function ProfilePage() {
                                 </p>
                             )}
 
-                            <Button 
-                                variant="secondary" 
-                                className="rounded-full px-10 h-12 bg-neutral-100 hover:bg-neutral-200 text-[#0f172a] font-black border-none transition-transform active:scale-95" 
-                                onClick={() => router.push('/profile/edit')}
-                            >
-                                Profil bearbeiten
-                            </Button>
+                            <div className="flex flex-col gap-6 w-full">
+                                <Button 
+                                    variant="secondary" 
+                                    className="rounded-full px-10 h-12 bg-neutral-100 hover:bg-neutral-200 text-[#0f172a] font-black border-none transition-transform active:scale-95 mx-auto w-fit" 
+                                    onClick={() => router.push('/profile/edit')}
+                                >
+                                    Profil bearbeiten
+                                </Button>
+
+                                {/* Metrik-Dashboard */}
+                                <div className="flex gap-3 w-full max-w-sm mx-auto">
+                                    {/* Token Dashboard */}
+                                    <div className="flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm">
+                                        <div className="flex items-center gap-1.5 text-amber-500 mb-1">
+                                            <Coins className="w-4 h-4" />
+                                            <span className="text-[10px] font-black uppercase tracking-wider">Tokens</span>
+                                        </div>
+                                        <span className="text-2xl font-black text-[#0f172a] dark:text-neutral-200">
+                                            {userData?.tokens || 0}
+                                        </span>
+                                    </div>
+
+                                    {/* Proof of Community Dashboard */}
+                                    <div className="flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm">
+                                        <div className="flex items-center gap-1.5 text-blue-500 mb-1">
+                                            <Unlock className="w-4 h-4" />
+                                            <span className="text-[10px] font-black uppercase tracking-wider">Host Level</span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-2xl font-black text-[#0f172a] dark:text-neutral-200">
+                                                {userData?.successfulFreeHosts || 0}
+                                            </span>
+                                            <span className="text-xs font-bold text-neutral-400">/ 5</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
