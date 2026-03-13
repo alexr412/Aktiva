@@ -61,12 +61,12 @@ export async function createUserProfileDocument(user: User) {
     friendRequestsReceived: [],
     friendCode: generateFriendCode(),
     hiddenEntityIds: [],
-    activeTabs: ['Gastronomy', 'Nature'],
+    activeTabs: ['Sights', 'Nature', 'Restaurants'],
     likedTags: [],
     dislikedTags: [],
     isPremium: false,
     isSupporter: false,
-    adTokens: 0,
+    tokens: 0,
     proximitySettings: {
       enabled: false,
       radiusKm: 5
@@ -126,12 +126,16 @@ export async function createActivity({
   const userRef = doc(db, 'users', user.uid);
   const userSnap = await getDoc(userRef);
   const userProfileData = userSnap.data() as UserProfile | undefined;
+  
+  if (isBoosted && (userProfileData?.tokens || 0) < 1) {
+    throw new Error('Insufficient tokens to boost activity.');
+  }
+
   const isUserPremium = userProfileData?.isPremium || false;
   const isUserSupporter = userProfileData?.isSupporter || false;
 
   let finalMaxParticipants = maxParticipants;
   if (!isUserPremium) {
-    // Kappung auf 4 für Standard-Nutzer
     if (!finalMaxParticipants || finalMaxParticipants > MAX_FREE_PARTICIPANTS) {
       finalMaxParticipants = MAX_FREE_PARTICIPANTS;
     }
@@ -160,6 +164,7 @@ export async function createActivity({
     status: 'active' as const,
     completionVotes: [],
     isBoosted: isBoosted,
+    boostedAt: isBoosted ? serverTimestamp() : null,
     upvotes: 0,
     downvotes: 0,
     userVotes: {},
@@ -192,10 +197,9 @@ export async function createActivity({
     }
   });
 
-  // If boosted, deduct token from user
   if (isBoosted) {
     batch.update(userRef, {
-      adTokens: increment(-1)
+      tokens: increment(-1)
     });
   }
 
@@ -204,9 +208,6 @@ export async function createActivity({
     return activityRef;
   } catch (error: any) {
     console.error('!!! Critical Error creating activity and chat: ', error);
-    if (error.message.includes('permission-denied') || error.message.includes('permission denied')) {
-        throw new Error('Database permission denied. Please check your Firestore security rules.');
-    }
     throw new Error(error.message || 'Could not create activity. Please try again later.');
   }
 }
@@ -753,6 +754,6 @@ export async function earnToken(userId: string) {
   if (!db) throw new Error('Firestore is not initialized.');
   const userRef = doc(db, 'users', userId);
   await updateDoc(userRef, {
-    adTokens: increment(1)
+    tokens: increment(1)
   });
 }

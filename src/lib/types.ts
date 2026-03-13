@@ -65,6 +65,7 @@ export interface Activity {
   };
   // Monetization fields
   isBoosted?: boolean;
+  boostedAt?: Timestamp | null;
   boostExpiresAt?: Timestamp;
   // RBAC & Voting fields
   upvotes?: number;
@@ -79,6 +80,8 @@ export interface Message {
   senderName: string | null;
   senderPhotoURL: string | null;
   sentAt: Timestamp;
+  isPremium?: boolean;
+  isSupporter?: boolean;
 }
 
 export interface Chat {
@@ -171,7 +174,7 @@ export interface UserProfile {
   // Monetization fields
   isPremium?: boolean;
   isSupporter?: boolean;
-  adTokens?: number;
+  tokens?: number;
   // RBAC fields
   isAdmin?: boolean;
 }

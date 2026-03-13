@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -71,6 +72,8 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
 
   const isCustom = !place;
   const isPremium = userProfile?.isPremium || false;
+  const availableTokens = userProfile?.tokens || 0;
+  const canBoost = availableTokens > 0;
 
   useEffect(() => {
     if (open) {
@@ -176,7 +179,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     (isCustom && !customLocationName.trim()) ||
     (isDateFlexible ? !selectedRange.from : !selectedDate) ||
     (!isTimeFlexible && !isDateFlexible && !selectedTime) ||
-    (isBoosted && (userProfile?.adTokens || 0) < 1);
+    (isBoosted && availableTokens < 1);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -342,7 +345,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                 </div>
                 <div className="flex items-center gap-2 bg-secondary px-3 py-1 rounded-full">
                   <Coins className="h-3.5 w-3.5 text-amber-500" />
-                  <span className="text-xs font-black">{userProfile?.adTokens || 0}</span>
+                  <span className="text-xs font-black">{availableTokens}</span>
                 </div>
              </div>
              
@@ -356,26 +359,31 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                     id="boost-toggle" 
                     checked={isBoosted} 
                     onCheckedChange={setIsBoosted}
-                    disabled={(userProfile?.adTokens || 0) < 1}
+                    disabled={!canBoost}
                   />
                 </div>
 
-                {(userProfile?.adTokens || 0) < 1 && (
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-12 rounded-xl font-black gap-2 border-orange-200 bg-white/50 hover:bg-orange-50 transition-all"
-                    onClick={handleEarnToken}
-                    disabled={isWatchingAd}
-                  >
-                    {isWatchingAd ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
-                    ) : (
-                      <>
-                        <PlayCircle className="h-5 w-5 text-orange-500" />
-                        <span>Token verdienen (Video Ad)</span>
-                      </>
-                    )}
-                  </Button>
+                {!canBoost ? (
+                  <div className="space-y-3">
+                    <p className="text-[10px] text-destructive font-black uppercase tracking-wider">Nicht genügend Tokens vorhanden.</p>
+                    <Button 
+                      variant="outline" 
+                      className="w-full h-12 rounded-xl font-black gap-2 border-orange-200 bg-white/50 hover:bg-orange-50 transition-all"
+                      onClick={handleEarnToken}
+                      disabled={isWatchingAd}
+                    >
+                      {isWatchingAd ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                      ) : (
+                        <>
+                          <PlayCircle className="h-5 w-5 text-orange-500" />
+                          <span>Token verdienen (Video Ad)</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-orange-600 font-bold uppercase">Booster bereit!</p>
                 )}
              </div>
           </div>
