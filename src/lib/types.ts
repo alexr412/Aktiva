@@ -59,6 +59,8 @@ export interface Activity {
       [uid: string]: {
           displayName: string | null;
           photoURL: string | null;
+          isPremium?: boolean;
+          isSupporter?: boolean;
       }
   };
   // Monetization fields
@@ -89,6 +91,8 @@ export interface Chat {
         [uid: string]: {
             displayName: string | null;
             photoURL: string | null;
+            isPremium?: boolean;
+            isSupporter?: boolean;
         }
     };
     lastMessage: {
@@ -166,7 +170,7 @@ export interface UserProfile {
   activeTabs?: string[];
   // Monetization fields
   isPremium?: boolean;
-  isDonator?: boolean;
+  isSupporter?: boolean;
   adTokens?: number;
   // RBAC fields
   isAdmin?: boolean;

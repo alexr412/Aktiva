@@ -65,7 +65,7 @@ export async function createUserProfileDocument(user: User) {
     likedTags: [],
     dislikedTags: [],
     isPremium: false,
-    isDonator: false,
+    isSupporter: false,
     adTokens: 0,
     proximitySettings: {
       enabled: false,
@@ -127,7 +127,7 @@ export async function createActivity({
   const userSnap = await getDoc(userRef);
   const userProfileData = userSnap.data() as UserProfile | undefined;
   const isUserPremium = userProfileData?.isPremium || false;
-  const isUserDonator = userProfileData?.isDonator || false;
+  const isUserSupporter = userProfileData?.isSupporter || false;
 
   let finalMaxParticipants = maxParticipants;
   if (!isUserPremium) {
@@ -184,7 +184,7 @@ export async function createActivity({
         displayName: user.displayName,
         photoURL: user.photoURL,
         isPremium: isUserPremium,
-        isDonator: isUserDonator
+        isSupporter: isUserSupporter
       },
     },
     unreadCount: {
@@ -329,7 +329,7 @@ export async function joinActivity(activityId: string, user: User) {
           displayName: user.displayName,
           photoURL: user.photoURL,
           isPremium: userProfileData?.isPremium || false,
-          isDonator: userProfileData?.isDonator || false
+          isSupporter: userProfileData?.isSupporter || false
         },
         [`unreadCount.${user.uid}`]: 0
       });
@@ -698,13 +698,13 @@ export async function getOrCreateDirectChat(user1Id: string, user2Id: string): P
           displayName: user1Profile.displayName,
           photoURL: user1Profile.photoURL,
           isPremium: user1Profile.isPremium || false,
-          isDonator: user1Profile.isDonator || false
+          isSupporter: user1Profile.isSupporter || false
         },
         [user2Id]: {
           displayName: user2Profile.displayName,
           photoURL: user2Profile.photoURL,
           isPremium: user2Profile.isPremium || false,
-          isDonator: user2Profile.isDonator || false
+          isSupporter: user2Profile.isSupporter || false
         }
       },
       lastMessage: null,

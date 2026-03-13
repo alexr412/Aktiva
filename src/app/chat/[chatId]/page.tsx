@@ -55,7 +55,7 @@ const MessageBubble = ({
   showAvatar: boolean;
   isFirstInGroup: boolean;
   showSenderName: boolean;
-  senderDetails?: { isPremium?: boolean; isDonator?: boolean };
+  senderDetails?: { isPremium?: boolean; isSupporter?: boolean };
 }) => {
   const bubbleClasses = isOwnMessage
     ? 'bg-primary text-white rounded-2xl rounded-tr-none shadow-sm'
@@ -83,7 +83,7 @@ const MessageBubble = ({
         {showSenderName && (
           <div className="flex items-center gap-1.5 ml-1 mb-1">
             <p className="text-[10px] font-black uppercase text-slate-400 tracking-tight">{message.senderName}</p>
-            <UserBadge isPremium={senderDetails?.isPremium} isDonator={senderDetails?.isDonator} size="sm" />
+            <UserBadge isPremium={senderDetails?.isPremium} isSupporter={senderDetails?.isSupporter} size="sm" />
           </div>
         )}
         <div className={`relative max-w-[85%] md:max-w-md px-4 py-2.5 ${bubbleClasses}`}>
@@ -110,7 +110,7 @@ export default function ChatRoomPage() {
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(true);
   
-  const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string; isPremium?: boolean; isDonator?: boolean } | null>(null);
+  const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string; isPremium?: boolean; isSupporter?: boolean } | null>(null);
   const [isDirectMessage, setIsDirectMessage] = useState(false);
   
   const router = useRouter();
@@ -252,7 +252,7 @@ export default function ChatRoomPage() {
                     </Avatar>
                     <div className="flex items-center gap-1.5 truncate">
                       <h2 className="font-black text-slate-900 truncate tracking-tight">{otherUser.displayName}</h2>
-                      <UserBadge isPremium={otherUser.isPremium} isDonator={otherUser.isDonator} size="sm" />
+                      <UserBadge isPremium={otherUser.isPremium} isSupporter={otherUser.isSupporter} size="sm" />
                     </div>
                 </Link>
             ) : (

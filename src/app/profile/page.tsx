@@ -436,7 +436,7 @@ export default function ProfilePage() {
                                   <h1 className="text-3xl font-black tracking-tight text-[#0f172a] dark:text-neutral-200">
                                       {displayName}
                                   </h1>
-                                  <UserBadge isPremium={userData?.isPremium} isDonator={userData?.isDonator} />
+                                  <UserBadge isPremium={userData?.isPremium} isSupporter={userData?.isSupporter} />
                                   {userData?.age && <span className="text-neutral-400 text-3xl font-black">, {userData.age}</span>}
                                 </div>
                                 

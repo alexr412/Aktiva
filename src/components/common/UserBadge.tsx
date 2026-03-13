@@ -11,13 +11,13 @@ import {
 
 interface UserBadgeProps {
   isPremium?: boolean;
-  isDonator?: boolean;
+  isSupporter?: boolean;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-export function UserBadge({ isPremium, isDonator, size = 'md', className }: UserBadgeProps) {
-  if (!isPremium && !isDonator) return null;
+export function UserBadge({ isPremium, isSupporter, size = 'md', className }: UserBadgeProps) {
+  if (!isPremium && !isSupporter) return null;
 
   const iconSize = {
     sm: 'h-3 w-3',
@@ -46,7 +46,7 @@ export function UserBadge({ isPremium, isDonator, size = 'md', className }: User
             </TooltipContent>
           </Tooltip>
         )}
-        {isDonator && (
+        {isSupporter && (
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center justify-center rounded-full bg-pink-100 p-1 text-pink-600 shadow-sm dark:bg-pink-900/30 dark:text-pink-400">
