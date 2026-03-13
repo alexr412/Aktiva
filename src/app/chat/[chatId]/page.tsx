@@ -19,6 +19,7 @@ import { ChatInfoSheet } from '@/components/aktvia/chat-info-sheet';
 import { ArrowLeft, Send, MoreVertical } from 'lucide-react';
 import { CompletionBanner } from '@/components/aktvia/CompletionBanner';
 import { ReviewDialog } from '@/components/reviews/ReviewDialog';
+import { UserBadge } from '@/components/common/UserBadge';
 
 const DateSeparator = ({ date }: { date: Date }) => {
   const formatDate = (d: Date) => {
@@ -47,12 +48,14 @@ const MessageBubble = ({
   showAvatar,
   isFirstInGroup,
   showSenderName,
+  senderDetails,
 }: {
   message: Message;
   isOwnMessage: boolean;
   showAvatar: boolean;
   isFirstInGroup: boolean;
   showSenderName: boolean;
+  senderDetails?: { isPremium?: boolean; isDonator?: boolean };
 }) => {
   const bubbleClasses = isOwnMessage
     ? 'bg-primary text-white rounded-2xl rounded-tr-none shadow-sm'
@@ -78,7 +81,10 @@ const MessageBubble = ({
       )}
       <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
         {showSenderName && (
-          <p className="text-[10px] font-black uppercase text-slate-400 ml-1 mb-1 tracking-tight">{message.senderName}</p>
+          <div className="flex items-center gap-1.5 ml-1 mb-1">
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-tight">{message.senderName}</p>
+            <UserBadge isPremium={senderDetails?.isPremium} isDonator={senderDetails?.isDonator} size="sm" />
+          </div>
         )}
         <div className={`relative max-w-[85%] md:max-w-md px-4 py-2.5 ${bubbleClasses}`}>
           <p className="text-sm leading-relaxed break-words">{message.text}</p>
@@ -104,7 +110,7 @@ export default function ChatRoomPage() {
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(true);
   
-  const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string } | null>(null);
+  const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string; isPremium?: boolean; isDonator?: boolean } | null>(null);
   const [isDirectMessage, setIsDirectMessage] = useState(false);
   
   const router = useRouter();
@@ -244,7 +250,10 @@ export default function ChatRoomPage() {
                         <AvatarImage src={otherUser.photoURL || undefined} />
                         <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">{otherUser.displayName?.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <h2 className="font-black text-slate-900 truncate tracking-tight">{otherUser.displayName}</h2>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <h2 className="font-black text-slate-900 truncate tracking-tight">{otherUser.displayName}</h2>
+                      <UserBadge isPremium={otherUser.isPremium} isDonator={otherUser.isDonator} size="sm" />
+                    </div>
                 </Link>
             ) : (
                 <div className="flex items-center gap-2.5 truncate">
@@ -281,6 +290,8 @@ export default function ChatRoomPage() {
 
               const showAvatar = !isOwnMessage && isLastInGroup;
               const showSenderName = !isOwnMessage && isFirstInGroup;
+              
+              const senderDetails = chat?.participantDetails?.[message.senderId];
 
               return (
                 <div key={message.id}>
@@ -291,6 +302,7 @@ export default function ChatRoomPage() {
                     showAvatar={showAvatar}
                     isFirstInGroup={isFirstInGroup}
                     showSenderName={showSenderName}
+                    senderDetails={senderDetails}
                   />
                 </div>
               );

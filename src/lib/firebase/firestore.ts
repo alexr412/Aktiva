@@ -127,6 +127,7 @@ export async function createActivity({
   const userSnap = await getDoc(userRef);
   const userProfileData = userSnap.data() as UserProfile | undefined;
   const isUserPremium = userProfileData?.isPremium || false;
+  const isUserDonator = userProfileData?.isDonator || false;
 
   let finalMaxParticipants = maxParticipants;
   if (!isUserPremium) {
@@ -182,6 +183,8 @@ export async function createActivity({
       [user.uid]: {
         displayName: user.displayName,
         photoURL: user.photoURL,
+        isPremium: isUserPremium,
+        isDonator: isUserDonator
       },
     },
     unreadCount: {
@@ -293,16 +296,19 @@ export async function joinActivity(activityId: string, user: User) {
 
   const activityRef = doc(db, 'activities', activityId);
   const chatRef = doc(db, 'chats', activityId);
+  const userRef = doc(db, 'users', user.uid);
 
   try {
     await runTransaction(db, async (transaction) => {
       const activityDoc = await transaction.get(activityRef);
+      const userDoc = await transaction.get(userRef);
 
       if (!activityDoc.exists()) {
         throw "Activity does not exist!";
       }
 
       const activityData = activityDoc.data() as Activity;
+      const userProfileData = userDoc.data() as UserProfile | undefined;
       
       if (activityData.participantIds.includes(user.uid)) {
         return;
@@ -322,6 +328,8 @@ export async function joinActivity(activityId: string, user: User) {
         [`participantDetails.${user.uid}`]: {
           displayName: user.displayName,
           photoURL: user.photoURL,
+          isPremium: userProfileData?.isPremium || false,
+          isDonator: userProfileData?.isDonator || false
         },
         [`unreadCount.${user.uid}`]: 0
       });
@@ -689,10 +697,14 @@ export async function getOrCreateDirectChat(user1Id: string, user2Id: string): P
         [user1Id]: {
           displayName: user1Profile.displayName,
           photoURL: user1Profile.photoURL,
+          isPremium: user1Profile.isPremium || false,
+          isDonator: user1Profile.isDonator || false
         },
         [user2Id]: {
           displayName: user2Profile.displayName,
           photoURL: user2Profile.photoURL,
+          isPremium: user2Profile.isPremium || false,
+          isDonator: user2Profile.isDonator || false
         }
       },
       lastMessage: null,

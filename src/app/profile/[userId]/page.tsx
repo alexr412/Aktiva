@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { EntityMoreOptions } from '@/components/common/EntityMoreOptions';
+import { UserBadge } from '@/components/common/UserBadge';
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371;
@@ -314,11 +315,14 @@ export default function ExternalUserProfilePage() {
                     </AvatarFallback>
                 </Avatar>
 
-                <div>
-                    <h1 className="text-2xl font-bold">
-                        {displayName}
-                        {userData.age && `, ${userData.age}`}
-                    </h1>
+                <div className="flex flex-col items-center">
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-2xl font-bold">
+                          {displayName}
+                          {userData.age && `, ${userData.age}`}
+                      </h1>
+                      <UserBadge isPremium={userData.isPremium} isDonator={userData.isDonator} />
+                    </div>
                     
                     {proximityLabel ? (
                         <div className="flex items-center justify-center gap-1.5 mt-1 text-green-600 font-bold text-xs uppercase tracking-wider">

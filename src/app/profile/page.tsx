@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -29,6 +28,7 @@ import { PlaceDetails } from '@/components/aktvia/place-details';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import FriendList from '@/components/profile/FriendList';
 import { cn } from '@/lib/utils';
+import { UserBadge } from '@/components/common/UserBadge';
 
 
 function generateFriendCode(length = 8) {
@@ -437,9 +437,7 @@ export default function ProfilePage() {
                                       {displayName}
                                       {userData?.age && <span className="text-neutral-400 ml-2">, {userData.age}</span>}
                                   </h1>
-                                  {userData?.isDonator && (
-                                    <ShieldCheck className="h-6 w-6 text-primary fill-primary/10" strokeWidth={2.5} />
-                                  )}
+                                  <UserBadge isPremium={userData?.isPremium} isDonator={userData?.isDonator} />
                                 </div>
                                 
                                 <div className="flex flex-wrap justify-center gap-2 mt-2">
