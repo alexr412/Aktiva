@@ -97,15 +97,25 @@ export default function Home() {
       }
 
       if (type === 'activities') {
+        // WORKAROUND: Um den composite index Fehler zu vermeiden, laden wir mehr Daten
+        // und filtern clientseitig nach dem Typ (Community vs. Location).
+        // Wir behalten das OrderBy für die Paginierung bei.
         const constraints: any[] = [
-          where('isCustomActivity', '==', key.subType === 'community'),
           orderBy('createdAt', 'desc'),
-          limit(PLACES_PER_PAGE)
+          limit(PLACES_PER_PAGE * 5) // Puffer für clientseitiges Filtern
         ];
         if (cursorValue) constraints.push(startAfter(cursorValue));
+        
         const q = query(collection(db!, 'activities'), ...constraints);
         const snap = await getDocs(q);
-        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const allFetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        const isCommunity = key.subType === 'community';
+        const filtered = allFetched.filter((act: any) => 
+          isCommunity ? act.isCustomActivity === true : act.isCustomActivity !== true
+        );
+
+        return filtered.slice(0, PLACES_PER_PAGE);
       }
 
       if (type === 'highlights') {
@@ -120,8 +130,7 @@ export default function Home() {
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       }
     } catch (error: any) {
-      // Aggressives Error-Logging für fehlende Indizes
-      console.error("🔥 CRITICAL FIRESTORE ERROR. Klicke den Link, um den Index zu erstellen:", error.message);
+      console.error("🔥 FIRESTORE ERROR:", error.message);
       throw error;
     }
 
@@ -181,18 +190,6 @@ export default function Home() {
     return Boolean(lastPage && lastPage.features?.length < PLACES_PER_PAGE);
   }, [data, isEmpty, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
-  // DIAGNOSTIC LOGGING - Render Cycle
-  console.log({
-    event: "RENDER_CYCLE",
-    size: size,
-    dataLength: data ? data.length : 0,
-    isValidating: isValidating,
-    isLoadingInitialData: isLoadingInitialData,
-    isFetchingNextPage: isFetchingNextPage,
-    isReachingEnd: isReachingEnd,
-    skeletonCondition: (isFetchingNextPage && !isReachingEnd)
-  });
-
   const userPrefs: UserPreferences = useMemo(() => ({
     likedTags: userProfile?.likedTags || [],
     dislikedTags: userProfile?.dislikedTags || []
@@ -237,30 +234,23 @@ export default function Home() {
     if (observer.current) observer.current.disconnect();
     
     const options = {
-      rootMargin: '0px 0px -50px 0px', // Löst erst aus, wenn das Element 50px IM Bildschirm ist
-      threshold: 1.0, // Element muss zu 100% sichtbar sein
+      rootMargin: '0px 0px -50px 0px', 
+      threshold: 1.0,
     };
 
     observer.current = new IntersectionObserver(entries => { 
       const target = entries[0];
-      
       if (target.isIntersecting) {
-        console.log("OBSERVER TRIGGERED. Current limits:", { isReachingEnd, isFetchingNextPage, isValidating });
-
         if (!isReachingEnd && !isFetchingNextPage && !isValidating) {
-          console.log("OBSERVER: Fetching next page (size + 1). New size will be:", size + 1);
-          // 500ms Debounce: Verhindert das "Maschinengewehr-Feuern" des Observers
           setTimeout(() => {
             setSize(prev => prev + 1);
           }, 500);
-        } else {
-          console.log("OBSERVER: Blocked by State Matrix.");
         }
       }
     }, options);
     
     if (node) observer.current.observe(node);
-  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, size]);
+  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize]);
 
   useEffect(() => {
     const reverseGeocode = async (lat: number, lng: number) => {
@@ -416,15 +406,11 @@ export default function Home() {
         return (
           <div className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col">
             {renderList()}
-            
-            {/* LADE-INDIKATOR (Nur sichtbar, wenn wirklich die nächste Seite geladen wird) */}
             {isFetchingNextPage && !isReachingEnd && (
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <CardSkeleton />
               </div>
             )}
-
-            {/* OBSERVER TRIGGER (Unsichtbares Element ganz am Ende) */}
             {!isReachingEnd && !isLoadingInitialData && (
               <div ref={lastElementRef} className="h-1 w-full flex-shrink-0 bg-transparent" aria-hidden="true" />
             )}
