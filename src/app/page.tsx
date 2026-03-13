@@ -27,7 +27,7 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES, calculateRelevanceScore } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, calculateRelevanceScore } from '@/lib/geoapify';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -88,35 +88,41 @@ export default function Home() {
   // MULTI-SOURCE FETCHER (Geoapify vs Firestore)
   const multiFetcher = async (key: any) => {
     if (!key) return null;
-    const { type, pageIndex, cursorValue } = key;
+    const { type, cursorValue } = key;
 
-    if (type === 'geoapify') {
-      const { url } = key;
-      return fetcher(url);
-    }
+    try {
+      if (type === 'geoapify') {
+        const { url } = key;
+        return fetcher(url);
+      }
 
-    if (type === 'activities') {
-      const constraints: any[] = [
-        where('isCustomActivity', '==', key.subType === 'community'),
-        orderBy('createdAt', 'desc'),
-        limit(PLACES_PER_PAGE)
-      ];
-      if (cursorValue) constraints.push(startAfter(cursorValue));
-      const q = query(collection(db!, 'activities'), ...constraints);
-      const snap = await getDocs(q);
-      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
+      if (type === 'activities') {
+        const constraints: any[] = [
+          where('isCustomActivity', '==', key.subType === 'community'),
+          orderBy('createdAt', 'desc'),
+          limit(PLACES_PER_PAGE)
+        ];
+        if (cursorValue) constraints.push(startAfter(cursorValue));
+        const q = query(collection(db!, 'activities'), ...constraints);
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      }
 
-    if (type === 'highlights') {
-      const constraints: any[] = [
-        where('upvotes', '>', 0),
-        orderBy('upvotes', 'desc'),
-        limit(PLACES_PER_PAGE)
-      ];
-      if (cursorValue !== null) constraints.push(startAfter(cursorValue));
-      const q = query(collection(db!, 'places'), ...constraints);
-      const snap = await getDocs(q);
-      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (type === 'highlights') {
+        const constraints: any[] = [
+          where('upvotes', '>', 0),
+          orderBy('upvotes', 'desc'),
+          limit(PLACES_PER_PAGE)
+        ];
+        if (cursorValue !== null) constraints.push(startAfter(cursorValue));
+        const q = query(collection(db!, 'places'), ...constraints);
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      }
+    } catch (error: any) {
+      // Aggressives Error-Logging für fehlende Indizes
+      console.error("🔥 CRITICAL FIRESTORE ERROR. Klicke den Link, um den Index zu erstellen:", error.message);
+      throw error;
     }
 
     return null;
@@ -154,32 +160,37 @@ export default function Home() {
     return { type: 'geoapify', url, pageIndex };
   }
 
-  const { data, size, setSize, isLoading, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {
+  const { data, size, setSize, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {
     revalidateFirstPage: false,
     dedupingInterval: 60000,
   });
 
   const isLoadingInitialData = !data && !error;
-  const isFetchingNextPage = size > 0 && data && typeof data[size - 1] === "undefined";
   const isEmpty = data?.[0]?.features ? data[0].features.length === 0 : (data?.[0]?.length === 0);
+  
+  // Zwingende Typ-Konvertierung zur Vermeidung von undefined-States
+  const isFetchingNextPage = Boolean(size > 0 && data && typeof data[size - 1] === "undefined");
   
   const isReachingEnd = useMemo(() => {
     if (isEmpty) return true;
     if (!data || data.length === 0) return false;
     const lastPage = data[data.length - 1];
     if (isCommunityCategory || isAktivCategory || isHighlightsCategory) {
-      return lastPage && lastPage.length < PLACES_PER_PAGE;
+      return Boolean(lastPage && lastPage.length < PLACES_PER_PAGE);
     }
-    return lastPage && lastPage.features?.length < PLACES_PER_PAGE;
+    return Boolean(lastPage && lastPage.features?.length < PLACES_PER_PAGE);
   }, [data, isEmpty, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
-  // DIAGNOSTIC LOGGING
+  // DIAGNOSTIC LOGGING - Render Cycle
   console.log({
     event: "RENDER_CYCLE",
-    size,
+    size: size,
     dataLength: data ? data.length : 0,
-    isFetchingNextPage,
-    isReachingEnd
+    isValidating: isValidating,
+    isLoadingInitialData: isLoadingInitialData,
+    isFetchingNextPage: isFetchingNextPage,
+    isReachingEnd: isReachingEnd,
+    skeletonCondition: (isFetchingNextPage && !isReachingEnd)
   });
 
   const userPrefs: UserPreferences = useMemo(() => ({
@@ -226,21 +237,30 @@ export default function Home() {
     if (observer.current) observer.current.disconnect();
     
     const options = {
-      rootMargin: '0px 0px -50px 0px',
-      threshold: 1.0,
+      rootMargin: '0px 0px -50px 0px', // Löst erst aus, wenn das Element 50px IM Bildschirm ist
+      threshold: 1.0, // Element muss zu 100% sichtbar sein
     };
 
     observer.current = new IntersectionObserver(entries => { 
       const target = entries[0];
-      if (target.isIntersecting && !isReachingEnd && !isFetchingNextPage && !isValidating) {
-        setTimeout(() => {
-          setSize(prev => prev + 1);
-        }, 500);
+      
+      if (target.isIntersecting) {
+        console.log("OBSERVER TRIGGERED. Current limits:", { isReachingEnd, isFetchingNextPage, isValidating });
+
+        if (!isReachingEnd && !isFetchingNextPage && !isValidating) {
+          console.log("OBSERVER: Fetching next page (size + 1). New size will be:", size + 1);
+          // 500ms Debounce: Verhindert das "Maschinengewehr-Feuern" des Observers
+          setTimeout(() => {
+            setSize(prev => prev + 1);
+          }, 500);
+        } else {
+          console.log("OBSERVER: Blocked by State Matrix.");
+        }
       }
     }, options);
     
     if (node) observer.current.observe(node);
-  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize]);
+  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, size]);
 
   useEffect(() => {
     const reverseGeocode = async (lat: number, lng: number) => {
@@ -397,12 +417,14 @@ export default function Home() {
           <div className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col">
             {renderList()}
             
+            {/* LADE-INDIKATOR (Nur sichtbar, wenn wirklich die nächste Seite geladen wird) */}
             {isFetchingNextPage && !isReachingEnd && (
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <CardSkeleton />
               </div>
             )}
 
+            {/* OBSERVER TRIGGER (Unsichtbares Element ganz am Ende) */}
             {!isReachingEnd && !isLoadingInitialData && (
               <div ref={lastElementRef} className="h-1 w-full flex-shrink-0 bg-transparent" aria-hidden="true" />
             )}
