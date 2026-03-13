@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -320,8 +321,8 @@ export default function ExternalUserProfilePage() {
                       <h1 className="text-2xl font-bold">
                           {displayName}
                       </h1>
-                      <UserBadge isPremium={userData.isPremium} isSupporter={userData.isSupporter} />
                       {userData.age && <span className="text-muted-foreground text-2xl font-bold">, {userData.age}</span>}
+                      <UserBadge isPremium={userData.isPremium} isSupporter={userData.isSupporter} />
                     </div>
                     
                     {proximityLabel ? (

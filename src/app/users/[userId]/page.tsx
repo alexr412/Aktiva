@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -34,6 +35,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { EntityMoreOptions } from '@/components/common/EntityMoreOptions';
+import { UserBadge } from '@/components/common/UserBadge';
 
 
 export default function UserProfilePage() {
@@ -282,11 +284,14 @@ export default function UserProfilePage() {
                     </AvatarFallback>
                 </Avatar>
 
-                <div>
-                    <h1 className="text-2xl font-bold">
-                        {displayName}
-                        {userData.age && `, ${userData.age}`}
-                    </h1>
+                <div className="flex flex-col items-center">
+                    <div className="flex items-center justify-center gap-2">
+                        <h1 className="text-2xl font-bold">
+                            {displayName}
+                        </h1>
+                        {userData.age && <span className="text-muted-foreground text-2xl font-bold">, {userData.age}</span>}
+                        <UserBadge isPremium={userData.isPremium} isSupporter={userData.isSupporter} />
+                    </div>
                     
                     {userData.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
                 </div>
