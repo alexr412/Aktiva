@@ -139,9 +139,14 @@ export default function ExplorePage() {
             const activitiesQuery = query(collectionRef, ...constraints);
 
             const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
+                // --- ARCHITEKTUR UPDATE: FEED FILTER FÜR EXPLORE ---
                 const fetchedActivities = snapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() } as Activity))
-                    .filter(act => !act.participantIds.includes(user.uid));
+                    .filter(act => 
+                      !act.participantIds.includes(user.uid) && 
+                      act.status !== 'completed' && 
+                      act.status !== 'cancelled'
+                    );
                 
                 // Clientseitige Sortierung: 1. Booster, 2. Erstellungsdatum (ASC für Feed-Logik)
                 fetchedActivities.sort((a, b) => {

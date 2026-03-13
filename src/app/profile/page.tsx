@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -27,6 +26,7 @@ import { PlaceCard } from '@/components/aktvia/place-card';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FriendList from '@/components/profile/FriendList';
 import { cn } from '@/lib/utils';
 import { UserBadge } from '@/components/common/UserBadge';
@@ -374,6 +374,10 @@ export default function ProfilePage() {
 
     const visibleRequestProfiles = requestProfiles.filter(p => !userProfile?.hiddenEntityIds?.includes(p.uid));
     const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
+    
+    // --- ARCHITEKTUR UPDATE: AKTIVITÄTEN ARCHIV ---
+    const pastActivities = visibleActivities.filter(a => a.status === 'completed');
+    const currentActivities = visibleActivities.filter(a => a.status !== 'completed' && a.status !== 'cancelled');
 
     return (
         <>
@@ -573,16 +577,51 @@ export default function ProfilePage() {
                                         <ActivityListItemSkeleton />
                                     </div>
                                 ) : visibleActivities.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {visibleActivities.map(activity => (
-                                            <ActivityListItem
-                                                key={activity.id}
-                                                activity={activity}
-                                                user={user}
-                                                onJoin={handleJoin}
-                                            />
-                                        ))}
-                                    </div>
+                                    <Tabs defaultValue="active" className="w-full">
+                                        <TabsList className="grid w-full grid-cols-2 bg-secondary/50 rounded-2xl p-1">
+                                            <TabsTrigger value="active" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm">
+                                                Aktiv ({currentActivities.length})
+                                            </TabsTrigger>
+                                            <TabsTrigger value="past" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm">
+                                                Vergangen ({pastActivities.length})
+                                            </TabsTrigger>
+                                        </TabsList>
+                                        
+                                        <TabsContent value="active" className="space-y-2 mt-4">
+                                            {currentActivities.length > 0 ? (
+                                                currentActivities.map(activity => (
+                                                    <ActivityListItem
+                                                        key={activity.id}
+                                                        activity={activity}
+                                                        user={user}
+                                                        onJoin={handleJoin}
+                                                    />
+                                                ))
+                                            ) : (
+                                                <div className="text-center p-8 bg-white/50 rounded-[2rem] border-2 border-dashed border-neutral-200">
+                                                    <p className="text-neutral-500 font-bold">Keine aktiven Aktivitäten.</p>
+                                                </div>
+                                            )}
+                                        </TabsContent>
+                                        
+                                        <TabsContent value="past" className="space-y-2 mt-4">
+                                            {pastActivities.length > 0 ? (
+                                                pastActivities.map(activity => (
+                                                    <div key={activity.id} className="opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
+                                                        <ActivityListItem
+                                                            activity={activity}
+                                                            user={user}
+                                                            onJoin={handleJoin}
+                                                        />
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center p-8 bg-white/50 rounded-[2rem] border-2 border-dashed border-neutral-200">
+                                                    <p className="text-neutral-500 font-bold">Noch keine vergangenen Aktivitäten.</p>
+                                                </div>
+                                            )}
+                                        </TabsContent>
+                                    </Tabs>
                                 ) : (
                                     <div className="text-center p-12 flex flex-col items-center justify-center gap-4 bg-white/50 rounded-[2rem] border-2 border-dashed border-neutral-200">
                                         <p className="text-neutral-500 font-bold">Noch keine Aktivitäten erstellt.</p>

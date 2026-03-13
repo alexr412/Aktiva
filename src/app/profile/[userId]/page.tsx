@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -35,6 +34,7 @@ import {
   MapPin,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EntityMoreOptions } from '@/components/common/EntityMoreOptions';
 import { UserBadge } from '@/components/common/UserBadge';
 import { cn } from '@/lib/utils';
@@ -294,6 +294,10 @@ export default function ExternalUserProfilePage() {
     const proximityLabel = getProximityLabel();
     
     const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
+    
+    // --- ARCHITEKTUR UPDATE: AKTIVITÄTEN ARCHIV ---
+    const pastActivities = visibleActivities.filter(a => a.status === 'completed');
+    const currentActivities = visibleActivities.filter(a => a.status !== 'completed' && a.status !== 'cancelled');
 
     return (
         <div className="flex flex-col h-full bg-background overflow-y-auto pb-20">
@@ -365,39 +369,74 @@ export default function ExternalUserProfilePage() {
             </div>
             }
             
-            <div className="w-full border-b mt-2">
-                <nav className="flex justify-around items-center font-medium px-6">
-                     <div className="transition-colors duration-200 text-sm pb-2 border-b-2 border-primary text-primary font-bold">
-                        Activities
-                    </div>
-                </nav>
-            </div>
+            <div className="w-full mt-2">
+                <Tabs defaultValue="active" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 rounded-none border-b bg-transparent h-12">
+                        <TabsTrigger 
+                            value="active" 
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-bold text-sm"
+                        >
+                            Active ({currentActivities.length})
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="past" 
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-bold text-sm"
+                        >
+                            Past ({pastActivities.length})
+                        </TabsTrigger>
+                    </TabsList>
 
-            <div className="flex-1">
-                <div className="pt-4">
-                    {loading ? (
-                         <div className="divide-y divide-border">
-                            <ActivityListItemSkeleton />
-                            <ActivityListItemSkeleton />
-                        </div>
-                    ) : visibleActivities.length > 0 ? (
-                        <ul className="divide-y divide-border">
-                            {visibleActivities.map(activity => (
-                                <li key={activity.id}>
-                                    <ActivityListItem
-                                        activity={activity}
-                                        user={currentUser}
-                                        onJoin={handleJoin}
-                                    />
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
-                            <p className="text-muted-foreground">This user has no public activities.</p>
-                        </div>
-                    )}
-                </div>
+                    <div className="flex-1">
+                        <TabsContent value="active" className="mt-0">
+                            <div className="pt-4">
+                                {loading ? (
+                                     <div className="divide-y divide-border">
+                                        <ActivityListItemSkeleton />
+                                        <ActivityListItemSkeleton />
+                                    </div>
+                                ) : currentActivities.length > 0 ? (
+                                    <ul className="divide-y divide-border">
+                                        {currentActivities.map(activity => (
+                                            <li key={activity.id}>
+                                                <ActivityListItem
+                                                    activity={activity}
+                                                    user={currentUser}
+                                                    onJoin={handleJoin}
+                                                />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
+                                        <p className="text-muted-foreground">No active activities found.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="past" className="mt-0">
+                            <div className="pt-4">
+                                {pastActivities.length > 0 ? (
+                                    <ul className="divide-y divide-border">
+                                        {pastActivities.map(activity => (
+                                            <li key={activity.id} className="opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
+                                                <ActivityListItem
+                                                    activity={activity}
+                                                    user={currentUser}
+                                                    onJoin={handleJoin}
+                                                />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
+                                        <p className="text-muted-foreground">No past activities found.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </TabsContent>
+                    </div>
+                </Tabs>
             </div>
         </div>
     );

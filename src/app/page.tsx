@@ -341,8 +341,15 @@ export default function Home() {
 
             if (isCommunityCategory || isAktivCategory) {
                 const list = data?.flat() || [];
+                
+                // --- ARCHITEKTUR UPDATE: FEED FILTER FÜR AKTIVE ENTITÄTEN ---
+                const activeActivities = list.filter((item: any) => 
+                  item.status !== 'completed' && 
+                  item.status !== 'cancelled'
+                );
+
                 // Client-Side Sortierung: 1. Booster, 2. Erstellungsdatum
-                const sortedList = [...list].sort((a, b) => {
+                const sortedList = [...activeActivities].sort((a, b) => {
                   if (a.isBoosted && !b.isBoosted) return -1;
                   if (!a.isBoosted && b.isBoosted) return 1;
                   const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
