@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -57,7 +56,7 @@ const MessageBubble = ({
   participantDetails?: Chat['participantDetails'];
   isFirstInGroup: boolean;
 }) => {
-  // Hard-Bypass für den eigenen Status, Fallback für Fremde
+  // Hard-Bypass für den eigenen Status, Fallback für Fremde (inklusive Nachricht-Level Flags)
   const badgePremium = isOwnMessage 
     ? Boolean(currentUserProfile?.isPremium) 
     : Boolean(message.isPremium || (message as any).IsPremium || participantDetails?.[message.senderId]?.isPremium);
@@ -77,12 +76,15 @@ const MessageBubble = ({
         isOwnMessage ? "items-end" : "items-start"
       )}>
         {isFirstInGroup && (
-          <div className="flex items-center gap-1 mb-1 mx-1">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+          <Link 
+            href={isOwnMessage ? '/profile' : `/profile/${message.senderId}`} 
+            className="flex items-center gap-1 mb-1 mx-1 hover:opacity-80 transition-opacity cursor-pointer group"
+          >
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider group-hover:underline">
               {isOwnMessage ? 'Du' : message.senderName}
             </span>
             <UserBadge isPremium={badgePremium} isSupporter={badgeSupporter} size="sm" />
-          </div>
+          </Link>
         )}
         
         <div className={cn(
@@ -216,7 +218,7 @@ export default function ChatRoomPage() {
     const currentMessage = newMessage;
     setNewMessage('');
     try {
-      await sendMessage(chatId, currentMessage, user);
+      await sendMessage(chatId, currentMessage, user, userProfile);
     } catch (error) {
       console.error(error);
       setNewMessage(currentMessage);

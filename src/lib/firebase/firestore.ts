@@ -346,7 +346,7 @@ export async function joinActivity(activityId: string, user: User) {
   }
 }
 
-export async function sendMessage(chatId: string, text: string, user: User) {
+export async function sendMessage(chatId: string, text: string, user: User, userProfile?: UserProfile | null) {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!text.trim()) return;
 
@@ -365,6 +365,8 @@ export async function sendMessage(chatId: string, text: string, user: User) {
     senderName: user.displayName,
     senderPhotoURL: user.photoURL,
     sentAt: serverTimestamp(),
+    isPremium: userProfile?.isPremium || false,
+    isSupporter: userProfile?.isSupporter || false,
   });
 
   const updates: any = {
