@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -129,7 +130,6 @@ export default function ExplorePage() {
 
             const isCommunityMode = activeCategory.includes('user_event');
 
-            // PFAD-SPLITTING: Wir verzichten auf orderBy in der DB, um zusammengesetzte Indizes zu vermeiden.
             if (isCommunityMode) {
                 constraints.push(where('isCustomActivity', '==', true));
             } else {
@@ -143,8 +143,10 @@ export default function ExplorePage() {
                     .map(doc => ({ id: doc.id, ...doc.data() } as Activity))
                     .filter(act => !act.participantIds.includes(user.uid));
                 
-                // Clientseitige Sortierung nach activityDate (ASC)
+                // Clientseitige Sortierung: 1. Booster, 2. Erstellungsdatum (ASC für Feed-Logik)
                 fetchedActivities.sort((a, b) => {
+                    if (a.isBoosted && !b.isBoosted) return -1;
+                    if (!a.isBoosted && b.isBoosted) return 1;
                     const timeA = a.activityDate?.toMillis() || 0;
                     const timeB = b.activityDate?.toMillis() || 0;
                     return timeA - timeB;
@@ -153,11 +155,10 @@ export default function ExplorePage() {
                 setAllCards(fetchedActivities);
                 setIsLoading(false);
             }, (error) => {
-                // Aggressives Error-Logging für Index-Tracing
-                console.error("CRITICAL FIRESTORE ERROR (Check for Index links):", error.message);
+                console.error("FIRESTORE ERROR:", error.message);
                 toast({ 
                     title: "Fehler", 
-                    description: "Aktivitäten konnten nicht geladen werden. Bitte versuche es später erneut.", 
+                    description: "Aktivitäten konnten nicht geladen werden.", 
                     variant: 'destructive'
                 });
                 setIsLoading(false);
@@ -165,7 +166,7 @@ export default function ExplorePage() {
 
             return () => unsubscribe();
         } catch (err: any) {
-            console.error("Activities dynamic listener setup failed:", err.message);
+            console.error("Activities listener failed:", err.message);
             setIsLoading(false);
         }
     }, [toast, user, activeCategory]);
@@ -335,7 +336,10 @@ export default function ExplorePage() {
                                 return (
                                     <motion.div
                                         key={card.id || index}
-                                        className="absolute w-full max-w-sm h-[70vh] max-h-[600px] bg-white rounded-[2.5rem] shadow-xl border-none overflow-hidden flex flex-col"
+                                        className={cn(
+                                          "absolute w-full max-w-sm h-[70vh] max-h-[600px] bg-white rounded-[2.5rem] shadow-xl border-none overflow-hidden flex flex-col",
+                                          card.isBoosted && "ring-4 ring-orange-500/20"
+                                        )}
                                         style={{
                                             zIndex: index,
                                         }}
@@ -354,7 +358,16 @@ export default function ExplorePage() {
                                           <AdCard />
                                         ) : (
                                           <>
-                                            <div className="flex-1 bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 flex items-center justify-center relative">
+                                            <div className={cn(
+                                              "flex-1 flex items-center justify-center relative",
+                                              card.isBoosted ? "bg-gradient-to-br from-orange-400 to-amber-500" : "bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400"
+                                            )}>
+                                                {card.isBoosted && (
+                                                  <div className="absolute top-6 left-6 bg-white/20 backdrop-blur-md text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1 shadow-lg">
+                                                    <Sparkles className="h-3 w-3" />
+                                                    Featured
+                                                  </div>
+                                                )}
                                                 {card.isCustomActivity ? (
                                                   <Home className="h-24 w-24 text-white/30 drop-shadow-lg"/>
                                                 ) : (
@@ -390,7 +403,6 @@ export default function ExplorePage() {
                             })}
                         </div>
                         
-                        {/* Haptische Action-Row */}
                         <div className="shrink-0 flex items-center justify-center gap-6 pt-4 pb-24 z-20">
                             <Button 
                               onClick={() => handleSwipe('left')} 

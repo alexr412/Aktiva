@@ -340,7 +340,16 @@ export default function Home() {
 
             if (isCommunityCategory || isAktivCategory) {
                 const list = data?.flat() || [];
-                const filtered = list.filter(item => item.placeName.toLowerCase().includes(searchQuery.toLowerCase()));
+                // Client-Side Sortierung: 1. Booster, 2. Erstellungsdatum
+                const sortedList = [...list].sort((a, b) => {
+                  if (a.isBoosted && !b.isBoosted) return -1;
+                  if (!a.isBoosted && b.isBoosted) return 1;
+                  const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+                  const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+                  return timeB - timeA;
+                });
+
+                const filtered = sortedList.filter(item => item.placeName.toLowerCase().includes(searchQuery.toLowerCase()));
                 if (filtered.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
                 return (
                   <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

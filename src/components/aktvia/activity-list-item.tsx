@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -63,8 +64,15 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     return (
         <div className={cn(
           "p-5 relative group transition-all rounded-[2rem] bg-white dark:bg-neutral-800 shadow-sm border-none dark:border dark:border-neutral-700 mb-4",
-          activity.isBoosted && "ring-4 ring-orange-500/10"
+          activity.isBoosted && "border-2 border-orange-400 bg-orange-50/10 dark:bg-orange-950/20 shadow-md ring-4 ring-orange-500/5"
         )}>
+            {/* Aktivitäts-Booster Badge */}
+            {activity.isBoosted && (
+              <div className="absolute -top-3 left-6 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg animate-in fade-in slide-in-from-top-1">
+                🔥 Highlight
+              </div>
+            )}
+
             <div className="flex items-start gap-4">
                 <div className={cn(
                     "flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0 transition-transform group-hover:scale-105", 
@@ -76,12 +84,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
                         <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight">{activity.placeName}</p>
-                        {activity.isBoosted && (
-                          <Badge variant="default" className="bg-orange-500 hover:bg-orange-600 text-white flex items-center gap-1 h-5 px-2 text-[9px] font-black rounded-full">
-                            <Flame className="h-2.5 w-2.5" />
-                            <span>HOT</span>
-                          </Badge>
-                        )}
                     </div>
                     
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
