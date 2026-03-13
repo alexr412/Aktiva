@@ -15,10 +15,13 @@ import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Us
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { earnToken } from '@/lib/firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 import {
   format,
   addMonths,
@@ -36,6 +39,8 @@ import {
   isWithinInterval,
 } from 'date-fns';
 import { de } from 'date-fns/locale';
+
+const MAX_FREE_PARTICIPANTS = 4;
 
 interface CreateActivityDialogProps {
   place: Place | null;
@@ -58,13 +63,14 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   const [selectedTime, setSelectedTime] = useState<string>('18:00');
   const [isTimeFlexible, setIsTimeFlexible] = useState(true);
   const [isDateFlexible, setIsDateFlexible] = useState(false);
-  const [maxParticipants, setMaxParticipants] = useState('');
+  const [maxParticipants, setMaxParticipants] = useState<number>(4);
   
   // Monetization: Boost
   const [isBoosted, setIsBoosted] = useState(false);
   const [isWatchingAd, setIsWatchingAd] = useState(false);
 
   const isCustom = !place;
+  const isPremium = userProfile?.isPremium || false;
 
   useEffect(() => {
     if (open) {
@@ -77,7 +83,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
       setSelectedTime('18:00');
       setIsTimeFlexible(true);
       setIsDateFlexible(false);
-      setMaxParticipants('');
+      setMaxParticipants(4);
       setIsBoosted(false);
     }
   }, [open]);
@@ -106,13 +112,12 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     }
 
     setIsCreating(true);
-    const numMaxParticipants = parseInt(maxParticipants, 10);
     const success = await onCreateActivity(
       finalDate, 
       endDate, 
       timeIsFlexible, 
       isCustom ? customLocationName : undefined, 
-      isNaN(numMaxParticipants) ? undefined : numMaxParticipants,
+      maxParticipants,
       isBoosted
     );
     if (!success) {
@@ -285,20 +290,47 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
             </div>
           </div>
 
-          {/* Sektion: Teilnehmerlimit */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 ml-1">
-              <Users className="h-3.5 w-3.5 text-muted-foreground" />
-              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Teilnehmerlimit (optional)</Label>
+          {/* Sektion: Teilnehmerlimit (Gated) */}
+          <div className="space-y-3 pt-4 border-t border-border/50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Teilnehmerlimit</Label>
+              </div>
+              {!isPremium && (
+                <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] font-black uppercase border-none">
+                  Premium für große Gruppen
+                </Badge>
+              )}
             </div>
-            <Input
-              type="number"
-              value={maxParticipants}
-              onChange={(e) => setMaxParticipants(e.target.value)}
-              placeholder="Unbegrenzt"
-              className="h-14 text-lg rounded-2xl border-none bg-secondary/50 font-bold focus-visible:ring-primary/20"
-              min="1"
-            />
+
+            <div className="flex items-center gap-6 bg-secondary/30 p-4 rounded-2xl">
+              <Slider 
+                value={[maxParticipants]} 
+                max={isPremium ? 50 : MAX_FREE_PARTICIPANTS} 
+                min={2} 
+                step={1}
+                onValueChange={(val) => setMaxParticipants(val[0])}
+                className="flex-1"
+              />
+              <div className="flex flex-col items-center justify-center min-w-[40px]">
+                <span className="text-2xl font-black text-primary leading-none">
+                  {maxParticipants}
+                </span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Pers.</span>
+              </div>
+            </div>
+
+            {!isPremium && maxParticipants >= MAX_FREE_PARTICIPANTS && (
+              <div className="bg-primary/5 border border-primary/10 rounded-xl p-3">
+                <p className="text-[11px] font-medium text-slate-600 leading-relaxed">
+                  Kostenlose Aktivitäten sind auf {MAX_FREE_PARTICIPANTS} Personen limitiert. 
+                  <Link href="/settings" className="text-primary font-black ml-1 hover:underline">
+                    Jetzt Premium sichern.
+                  </Link>
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Sektion: Booster */}

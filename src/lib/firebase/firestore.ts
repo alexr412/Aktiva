@@ -1,4 +1,3 @@
-
 'use client';
 
 import { db } from './client';
@@ -36,6 +35,8 @@ type CreateActivityPayload = {
   maxParticipants?: number;
   isBoosted?: boolean;
 };
+
+const MAX_FREE_PARTICIPANTS = 4;
 
 function generateFriendCode(length = 8) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -121,8 +122,21 @@ export async function createActivity({
     throw new Error('Either a place or a custom location name must be provided.');
   }
 
-  const batch = writeBatch(db);
+  // Backend Enforcement: Check user profile for premium status
+  const userRef = doc(db, 'users', user.uid);
+  const userSnap = await getDoc(userRef);
+  const userProfileData = userSnap.data() as UserProfile | undefined;
+  const isUserPremium = userProfileData?.isPremium || false;
 
+  let finalMaxParticipants = maxParticipants;
+  if (!isUserPremium) {
+    // Kappung auf 4 für Standard-Nutzer
+    if (!finalMaxParticipants || finalMaxParticipants > MAX_FREE_PARTICIPANTS) {
+      finalMaxParticipants = MAX_FREE_PARTICIPANTS;
+    }
+  }
+
+  const batch = writeBatch(db);
   const activityRef = doc(collection(db, 'activities'));
   
   const isCustomActivity = !place;
@@ -152,7 +166,7 @@ export async function createActivity({
     ...(place?.lat && { lat: place.lat }),
     ...(place?.lon && { lon: place.lon }),
     ...(endDate && { activityEndDate: Timestamp.fromDate(endDate) }),
-    ...(maxParticipants && maxParticipants > 0 && { maxParticipants }),
+    ...(finalMaxParticipants && finalMaxParticipants > 0 && { maxParticipants: finalMaxParticipants }),
   };
   batch.set(activityRef, activityData);
 
@@ -177,7 +191,6 @@ export async function createActivity({
 
   // If boosted, deduct token from user
   if (isBoosted) {
-    const userRef = doc(db, 'users', user.uid);
     batch.update(userRef, {
       adTokens: increment(-1)
     });
