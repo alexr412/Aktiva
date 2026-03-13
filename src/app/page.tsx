@@ -116,6 +116,18 @@ export default function Home() {
   const isEmpty = data?.[0]?.features?.length === 0;
   const isReachingEnd = isEmpty || (data && data[data.length - 1]?.features?.length < PLACES_PER_PAGE);
 
+  // DIAGNOSTIC LOGGING - Render Cycle
+  console.log({
+    event: "RENDER_CYCLE",
+    size: size,
+    dataLength: data ? data.length : 0,
+    isValidating: isValidating,
+    isLoadingInitialData: isLoadingInitialData,
+    isFetchingNextPage: isFetchingNextPage,
+    isReachingEnd: isReachingEnd,
+    skeletonCondition: (isFetchingNextPage && !isReachingEnd)
+  });
+
   const userPrefs: UserPreferences = useMemo(() => ({
     likedTags: userProfile?.likedTags || [],
     dislikedTags: userProfile?.dislikedTags || []
@@ -272,13 +284,24 @@ export default function Home() {
 
   const observer = useRef<IntersectionObserver>();
   const lastElementRef = useCallback(node => {
-    if (isFetchingNextPage || isReachingEnd || isValidating) return;
     if (observer.current) observer.current.disconnect();
     observer.current = new IntersectionObserver(entries => { 
       const target = entries[0];
-      if (target.isIntersecting && !isReachingEnd && !isFetchingNextPage && !isValidating) {
-        setSize(size + 1);
-      } 
+      
+      if (target.isIntersecting) {
+        console.log("OBSERVER TRIGGERED. Current limits:", {
+          isReachingEnd,
+          isFetchingNextPage,
+          isValidating
+        });
+
+        if (!isReachingEnd && !isFetchingNextPage && !isValidating) {
+          console.log("OBSERVER: Fetching next page (size + 1). New size will be:", size + 1);
+          setSize(size + 1);
+        } else {
+          console.log("OBSERVER: Blocked by State Matrix.");
+        }
+      }
     });
     if (node) observer.current.observe(node);
   }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, size]);
@@ -506,7 +529,7 @@ export default function Home() {
               {!isFavoritesCategory && (
                 <Select value={sortBy} onValueChange={setSortBy}>
                     <SelectTrigger className="w-[140px] rounded-2xl h-12 bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none focus:ring-0 font-bold text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-2xl border-none shadow-2xl font-bold dark:bg-neutral-800 dark:text-neutral-200"><SelectItem value="recommended">Empfohlen</SelectItem><SelectItem value="rating">Bewertung</SelectItem><SelectItem value="popular">Beliebt</SelectItem><SelectItem value="newest">Neueste</SelectItem></SelectContent>
+                    <SelectContent className="rounded-2xl border-none shadow-2xl font-bold dark:bg-neutral-800 dark:text-neutral-200"><SelectItem value="recommended">Empfohlen</SelectItem><SelectItem value="rating">Bewertung</SelectItem><SelectItem value="popular">Beliebt</SelectItem><SelectItem value="newest">Newest</SelectItem></SelectContent>
                 </Select>
               )}
             </div>
