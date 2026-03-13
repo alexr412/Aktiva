@@ -49,56 +49,39 @@ const MessageBubble = ({
   isOwnMessage,
   showAvatar,
   isFirstInGroup,
-  showSenderName,
   senderDetails,
 }: {
   message: Message;
   isOwnMessage: boolean;
   showAvatar: boolean;
   isFirstInGroup: boolean;
-  showSenderName: boolean;
   senderDetails?: { isPremium?: boolean; isSupporter?: boolean };
 }) => {
   const bubbleClasses = isOwnMessage
     ? 'bg-primary text-white rounded-2xl rounded-tr-none shadow-sm'
     : 'bg-white text-slate-800 rounded-2xl rounded-tl-none shadow-sm border border-slate-100';
 
-  const wrapperClasses = `flex items-start gap-2 ${
-    isOwnMessage ? 'justify-end' : ''
-  } ${isFirstInGroup ? 'mt-4' : 'mt-1'}`;
+  const wrapperClasses = `flex w-full px-2 mb-1 ${
+    isOwnMessage ? 'justify-end' : 'justify-start'
+  } ${isFirstInGroup ? 'mt-4' : 'mt-0.5'}`;
 
-  // Strikte Abfrage der korrekten Schlüssel (inklusive Case-Fallback und historischer Absicherung via participantDetails)
-  const userIsPremium = (message as any).isPremium ?? (message as any).IsPremium ?? senderDetails?.isPremium ?? false;
-  const userIsSupporter = (message as any).isSupporter ?? (message as any).IsSupporter ?? senderDetails?.isSupporter ?? false;
+  // Strikte Abfrage der korrekten Schlüssel (inklusive Case-Fallback)
+  const userIsPremium = message.isPremium ?? (message as any).IsPremium ?? senderDetails?.isPremium ?? false;
+  const userIsSupporter = message.isSupporter ?? (message as any).IsSupporter ?? senderDetails?.isSupporter ?? false;
 
   return (
     <div className={wrapperClasses}>
-      {!isOwnMessage && (
-        <div className="w-8 flex-shrink-0 self-end">
-          {showAvatar && (
-            <Link href={`/profile/${message.senderId}`} className="hover:opacity-80 transition-opacity">
-              <Avatar className={cn(
-                "h-8 w-8",
-                userIsPremium ? "ring-2 ring-amber-400 ring-offset-1" : (userIsSupporter ? "ring-2 ring-pink-400 ring-offset-1" : "")
-              )}>
-                <AvatarImage src={message.senderPhotoURL || undefined} />
-                <AvatarFallback className="text-[10px]">{message.senderName?.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-            </Link>
-          )}
-        </div>
-      )}
-      <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
-        {showSenderName && (
-          <div className="flex items-center gap-1 mb-1 ml-1">
-            <span className="text-xs font-semibold text-muted-foreground uppercase">
-              {message.senderName}
+      <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} max-w-[85%]`}>
+        {isFirstInGroup && (
+          <div className="flex items-center gap-1 mb-1 mx-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              {isOwnMessage ? 'Du' : message.senderName}
             </span>
-            <UserBadge isPremium={userIsPremium} isSupporter={userIsSupporter} />
+            <UserBadge isPremium={userIsPremium} isSupporter={userIsSupporter} size="sm" />
           </div>
         )}
-        <div className={`relative max-w-[85%] md:max-w-md px-4 py-2.5 ${bubbleClasses}`}>
-          <p className="text-sm leading-relaxed break-words">{message.text}</p>
+        <div className={`relative px-4 py-2.5 ${bubbleClasses}`}>
+          <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{message.text}</p>
           <div className="flex justify-end mt-1">
             <span className="text-[9px] opacity-60 font-bold uppercase">
               {message.sentAt ? format(message.sentAt.toDate(), 'p') : '...'}
@@ -303,7 +286,6 @@ export default function ChatRoomPage() {
               const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId || !nextMessage.sentAt || !message.sentAt || !isSameDay(message.sentAt.toDate(), nextMessage.sentAt.toDate());
 
               const showAvatar = !isOwnMessage && isLastInGroup;
-              const showSenderName = !isOwnMessage && isFirstInGroup;
               
               const senderDetails = chat?.participantDetails?.[message.senderId];
 
@@ -315,7 +297,6 @@ export default function ChatRoomPage() {
                     isOwnMessage={isOwnMessage}
                     showAvatar={showAvatar}
                     isFirstInGroup={isFirstInGroup}
-                    showSenderName={showSenderName}
                     senderDetails={senderDetails}
                   />
                 </div>
