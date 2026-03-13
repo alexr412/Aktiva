@@ -366,6 +366,69 @@ export async function joinActivity(activityId: string, user: User) {
   }
 }
 
+/**
+ * joinPaidActivity - Gesicherte Beitritts-Logik für kostenpflichtige Events.
+ * Erfordert einen Transaktions-Token (Mock) und erstellt einen Audit-Trail.
+ */
+export async function joinPaidActivity(activityId: string, user: User, transactionToken: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  if (!transactionToken) throw new Error("Transaktions-Token fehlt. Beitritt verweigert.");
+
+  const activityRef = doc(db, 'activities', activityId);
+  const chatRef = doc(db, 'chats', activityId);
+  const userRef = doc(db, 'users', user.uid);
+  const transactionLogRef = doc(collection(db, 'transactions'));
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const activityDoc = await transaction.get(activityRef);
+      const userDoc = await transaction.get(userRef);
+
+      if (!activityDoc.exists()) throw "Aktivität nicht gefunden.";
+      const activityData = activityDoc.data() as Activity;
+      const userProfileData = userDoc.data() as UserProfile | undefined;
+
+      if (activityData.participantIds.includes(user.uid)) return;
+      if (activityData.maxParticipants && activityData.participantIds.length >= activityData.maxParticipants) {
+        throw `Maximale Teilnehmerzahl von ${activityData.maxParticipants} erreicht.`;
+      }
+
+      // 1. User zur Aktivität hinzufügen
+      transaction.update(activityRef, {
+        participantIds: arrayUnion(user.uid),
+        lastInteractionAt: serverTimestamp(),
+      });
+
+      // 2. User zum Chat hinzufügen
+      transaction.update(chatRef, {
+        participantIds: arrayUnion(user.uid),
+        [`participantDetails.${user.uid}`]: {
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          isPremium: userProfileData?.isPremium || false,
+          isSupporter: userProfileData?.isSupporter || false
+        },
+        [`unreadCount.${user.uid}`]: 0
+      });
+
+      // 3. Transaktions-Audit Trail schreiben
+      transaction.set(transactionLogRef, {
+        activityId,
+        userId: user.uid,
+        userName: user.displayName,
+        amount: activityData.price || 0,
+        currency: 'EUR',
+        status: 'completed',
+        transactionToken,
+        createdAt: serverTimestamp(),
+      });
+    });
+  } catch (e: any) {
+    console.error("Join Paid Activity Transaction failed: ", e);
+    throw new Error(typeof e === 'string' ? e : "Zahlungsverifikation fehlgeschlagen.");
+  }
+}
+
 export async function sendMessage(chatId: string, text: string, user: User, userProfile?: UserProfile | null) {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!text.trim()) return;

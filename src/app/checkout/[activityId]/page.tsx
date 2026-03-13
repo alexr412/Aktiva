@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { joinPaidActivity } from '@/lib/firebase/firestore';
 import type { Activity } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -37,24 +38,37 @@ export default function CheckoutPage() {
     }, [activityId]);
 
     const handlePayment = async () => {
+        if (!user || !activity) return;
+        
         setIsProcessing(true);
         
-        // Simulation eines Stripe-Checkouts / Zahlungs-Vorgangs
-        setTimeout(() => {
-            setIsProcessing(false);
+        try {
+            // Simulation eines Stripe-Checkouts (Delay)
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Verifizierter Beitritt via Firestore
+            const mockTransactionId = "txn_sandbox_" + Date.now();
+            await joinPaidActivity(activity.id!, user, mockTransactionId);
+            
             setIsSuccess(true);
             toast({
                 title: "Zahlung erfolgreich!",
-                description: "Du wirst in Kürze zum Chat weitergeleitet.",
+                description: "Du wurdest zum Chat hinzugefügt.",
             });
 
-            // Hinweis: In einer echten App würde hier ein Cloud Function Webhook 
-            // den Nutzer sicher zur participantIds Liste hinzufügen.
-            // Für diesen Prototyp simulieren wir den Erfolg und leiten um.
             setTimeout(() => {
-                router.push(`/chat/${activityId}`);
+                router.replace(`/chat/${activity.id}`);
             }, 2000);
-        }, 2000);
+        } catch (error: any) {
+            console.error(error);
+            toast({
+                variant: 'destructive',
+                title: 'Zahlung fehlgeschlagen',
+                description: error.message || 'Ein technischer Fehler ist aufgetreten.',
+            });
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     if (loading) {
@@ -67,9 +81,9 @@ export default function CheckoutPage() {
 
     if (!activity) {
         return (
-            <div className="p-10 text-center">
+            <div className="p-10 text-center flex flex-col items-center justify-center h-full">
                 <h1 className="text-xl font-bold">Aktivität nicht gefunden.</h1>
-                <Button onClick={() => router.back()} className="mt-4">Zurück</Button>
+                <Button onClick={() => router.back()} className="mt-4 rounded-xl">Zurück</Button>
             </div>
         );
     }
@@ -82,7 +96,7 @@ export default function CheckoutPage() {
                         <CheckCircle2 className="h-12 w-12 text-emerald-600" />
                     </div>
                     <CardTitle className="text-2xl font-black mb-2">Zahlung bestätigt!</CardTitle>
-                    <CardDescription className="text-base font-medium">
+                    <CardDescription className="text-base font-medium text-emerald-800">
                         Vielen Dank für deine Buchung für <strong>{activity.placeName}</strong>. 
                         Du wirst jetzt zum Gruppenchat hinzugefügt.
                     </CardDescription>
@@ -96,8 +110,8 @@ export default function CheckoutPage() {
 
     return (
         <div className="flex h-screen w-full flex-col bg-slate-50 overflow-y-auto">
-            <header className="flex h-16 shrink-0 items-center px-4 bg-white border-b border-slate-100">
-                <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2">
+            <header className="flex h-16 shrink-0 items-center px-4 bg-white border-b border-slate-100 sticky top-0 z-10">
+                <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2 rounded-full">
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <h1 className="font-black text-lg">Checkout</h1>
@@ -110,14 +124,14 @@ export default function CheckoutPage() {
                             <CardTitle className="text-xl font-black">Zusammenfassung</CardTitle>
                             <CardDescription className="text-slate-400 font-medium">Aktivität bei {activity.placeName}</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-6 space-y-4">
+                        <CardContent className="p-6 space-y-4 bg-white">
                             <div className="flex justify-between items-center py-2 border-b border-slate-50">
                                 <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Teilnahmebeitrag</span>
-                                <span className="text-lg font-black">€{activity.price!.toFixed(2)}</span>
+                                <span className="text-lg font-black">€{activity.price?.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center py-2">
                                 <span className="text-slate-900 font-black">Gesamtbetrag</span>
-                                <span className="text-2xl font-black text-primary">€{activity.price!.toFixed(2)}</span>
+                                <span className="text-2xl font-black text-primary">€{activity.price?.toFixed(2)}</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -132,8 +146,8 @@ export default function CheckoutPage() {
                             <div className="grid grid-cols-1 gap-3">
                                 <button className="flex items-center justify-between p-4 rounded-2xl border-2 border-primary bg-primary/5 text-left">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-12 bg-slate-200 rounded flex items-center justify-center font-bold text-[10px]">VISA</div>
-                                        <span className="font-bold">•••• 4242</span>
+                                        <div className="h-8 w-12 bg-slate-200 rounded flex items-center justify-center font-bold text-[10px]">SANDBOX</div>
+                                        <span className="font-bold">Simulierte Zahlung</span>
                                     </div>
                                     <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
                                         <div className="h-2 w-2 rounded-full bg-white" />
@@ -145,7 +159,7 @@ export default function CheckoutPage() {
                         <div className="bg-slate-50 p-4 rounded-2xl flex items-start gap-3">
                             <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0" />
                             <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                                Deine Zahlung wird sicher verarbeitet. Der Betrag wird dem Host nach erfolgreichem Abschluss der Aktivität gutgeschrieben.
+                                Deine Zahlung wird in dieser Sandbox-Umgebung sicher simuliert. Bei echten Events wird der Betrag dem Host erst nach Abschluss gutgeschrieben.
                             </p>
                         </div>
 
@@ -160,7 +174,7 @@ export default function CheckoutPage() {
                                     Wird verarbeitet...
                                 </>
                             ) : (
-                                `Jetzt bezahlen (€${activity.price!.toFixed(2)})`
+                                `Jetzt bezahlen (€${activity.price?.toFixed(2)})`
                             )}
                         </Button>
                     </Card>
