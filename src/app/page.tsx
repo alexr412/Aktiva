@@ -112,7 +112,7 @@ export default function Home() {
 
   // SWR State Matrix
   const isLoadingInitialData = !data && !error;
-  const isLoadingMore = isLoadingInitialData || (size > 0 && data && typeof data[size - 1] === "undefined");
+  const isFetchingNextPage = size > 0 && data && typeof data[size - 1] === "undefined";
   const isEmpty = data?.[0]?.features?.length === 0;
   const isReachingEnd = isEmpty || (data && data[data.length - 1]?.features?.length < PLACES_PER_PAGE);
 
@@ -272,15 +272,16 @@ export default function Home() {
 
   const observer = useRef<IntersectionObserver>();
   const lastElementRef = useCallback(node => {
-    if (isLoadingMore || isReachingEnd) return;
+    if (isFetchingNextPage || isReachingEnd || isValidating) return;
     if (observer.current) observer.current.disconnect();
     observer.current = new IntersectionObserver(entries => { 
-      if (entries[0].isIntersecting && !isLoadingMore && !isReachingEnd) {
+      const target = entries[0];
+      if (target.isIntersecting && !isReachingEnd && !isFetchingNextPage && !isValidating) {
         setSize(size + 1);
       } 
     });
     if (node) observer.current.observe(node);
-  }, [isLoadingMore, isReachingEnd, setSize, size]);
+  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, size]);
 
   const handleCategoryChange = (categoryId: string[], tabId: string) => {
     setSearchQuery('');
@@ -359,7 +360,7 @@ export default function Home() {
             if (isAktivCategory) {
                 const filtered = places.filter(place => (place.activityCount || 0) > 0 && place.name.toLowerCase().includes(searchQuery.toLowerCase()));
                 const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : (sortBy === 'popular' ? (b.activityCount || 0) - (a.activityCount || 0) : 0))));
-                if (sorted.length === 0 && !isLoadingMore) {
+                if (sorted.length === 0 && !isFetchingNextPage) {
                     return (
                         <div className="flex h-full w-full items-center justify-center p-10 text-center">
                             <div className="space-y-4">
@@ -381,7 +382,7 @@ export default function Home() {
                     return up >= 1 && up > down && matchesSearch;
                 });
                 const sorted = filtered.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
-                if (sorted.length === 0 && !isLoadingMore) {
+                if (sorted.length === 0 && !isFetchingNextPage) {
                     return (
                         <div className="flex h-full w-full items-center justify-center p-10 text-center">
                             <div className="space-y-4">
@@ -396,7 +397,7 @@ export default function Home() {
             } else {
                 const filtered = places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
                 const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : (sortBy === 'popular' ? (b.activityCount || 0) - (a.activityCount || 0) : 0))));
-                if (sorted.length === 0 && !isLoadingMore) return <EmptySearchState />;
+                if (sorted.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
                 return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div ref={index === sorted.length - 1 ? lastElementRef : null} key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
             }
         };
@@ -404,7 +405,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto w-full">
             {renderList()}
             
-            {isLoadingMore && !isReachingEnd && (
+            {isFetchingNextPage && !isReachingEnd && (
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <CardSkeleton />
               </div>
