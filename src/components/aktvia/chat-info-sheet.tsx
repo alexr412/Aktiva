@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { leaveActivity, deleteActivity, voteToCompleteActivity } from '@/lib/firebase/firestore';
+import { leaveActivity, deleteActivity, voteToCompleteActivity, completeActivity } from '@/lib/firebase/firestore';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -32,7 +32,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Trash2, Users, Calendar, CheckCircle, MapPin, ChevronRight } from 'lucide-react';
+import { Loader2, Trash2, Users, Calendar, CheckCircle, MapPin, ChevronRight, CheckCircle2 } from 'lucide-react';
 import type { Chat, Activity } from '@/lib/types';
 
 interface ChatInfoSheetProps {
@@ -65,8 +65,12 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
   if (!chat || !user || !activity) return null;
 
   const isOnlyParticipant = chat.participantIds.length === 1;
+  const isHost = activity.creatorId === user.uid;
   const hasVoted = activity?.completionVotes?.includes(user.uid);
   const isCompleted = activity.status === 'completed';
+  
+  const activityDate = activity.activityDate?.toDate();
+  const isPastOrPresent = activityDate && activityDate <= new Date();
 
   const handleLeaveOrDelete = async () => {
     if (!chat?.id || !user?.uid) return;
@@ -110,6 +114,19 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
       } finally {
         setIsVoting(false);
       }
+  };
+
+  const handleCompleteActivity = async () => {
+    if (!activity?.id || !user?.uid) return;
+    setIsActing(true);
+    try {
+      await completeActivity(activity.id, user.uid, !!activity.isPaid);
+      toast({ title: "Aktivität erfolgreich abgeschlossen!" });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Fehler', description: error.message });
+    } finally {
+      setIsActing(false);
+    }
   };
 
   return (
@@ -181,7 +198,18 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
         </ScrollArea>
 
         <SheetFooter className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col gap-3">
-            {!isCompleted && (
+            {isHost && isPastOrPresent && !isCompleted && (
+              <Button 
+                onClick={handleCompleteActivity} 
+                disabled={isActing}
+                className="w-full h-12 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 transition-all gap-2 mb-2"
+              >
+                {isActing ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle2 className="h-4 w-4" />}
+                <span>Aktivität erfolgreich abschließen</span>
+              </Button>
+            )}
+
+            {!isCompleted && !isHost && (
                  <Button 
                   onClick={handleVote} 
                   disabled={isVoting || hasVoted} 
@@ -192,6 +220,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                     <span className={hasVoted ? "text-primary" : "text-slate-600"}>{hasVoted ? "Bestätigt" : "Treffen bestätigen"}</span>
                  </Button>
             )}
+            
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="w-full h-12 rounded-2xl font-black bg-red-50 text-red-600 hover:bg-red-100 border-none shadow-none transition-all gap-2">

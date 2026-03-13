@@ -53,7 +53,7 @@ export interface Activity {
   lastInteractionAt?: Timestamp;
   category?: string;
   categories?: string[];
-  status: 'active' | 'completed';
+  status: 'active' | 'open' | 'completed' | 'cancelled';
   completionVotes: string[];
   participantDetails: {
       [uid: string]: {

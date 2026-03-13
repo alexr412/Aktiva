@@ -694,6 +694,23 @@ export async function voteToCompleteActivity(activityId: string, userId: string)
   }
 }
 
+export async function completeActivity(activityId: string, userId: string, isPaid: boolean) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const batch = writeBatch(db);
+  const activityRef = doc(db, 'activities', activityId);
+  const userRef = doc(db, 'users', userId);
+
+  batch.update(activityRef, { status: 'completed' });
+
+  if (!isPaid) {
+    batch.update(userRef, {
+      successfulFreeHosts: increment(1)
+    });
+  }
+
+  await batch.commit();
+}
+
 export async function checkIfUserReviewed(activityId: string, reviewerId: string): Promise<boolean> {
     if (!db) throw new Error('Firestore is not initialized.');
     const reviewsQuery = query(
