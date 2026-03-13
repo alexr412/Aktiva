@@ -435,9 +435,9 @@ export default function ProfilePage() {
                                 <div className="flex items-center gap-2">
                                   <h1 className="text-3xl font-black tracking-tight text-[#0f172a] dark:text-neutral-200">
                                       {displayName}
-                                      {userData?.age && <span className="text-neutral-400 ml-2">, {userData.age}</span>}
                                   </h1>
                                   <UserBadge isPremium={userData?.isPremium} isDonator={userData?.isDonator} />
+                                  {userData?.age && <span className="text-neutral-400 text-3xl font-black">, {userData.age}</span>}
                                 </div>
                                 
                                 <div className="flex flex-wrap justify-center gap-2 mt-2">

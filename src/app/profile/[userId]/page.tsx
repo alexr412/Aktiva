@@ -319,9 +319,9 @@ export default function ExternalUserProfilePage() {
                     <div className="flex items-center gap-2">
                       <h1 className="text-2xl font-bold">
                           {displayName}
-                          {userData.age && `, ${userData.age}`}
                       </h1>
                       <UserBadge isPremium={userData.isPremium} isDonator={userData.isDonator} />
+                      {userData.age && <span className="text-muted-foreground text-2xl font-bold">, {userData.age}</span>}
                     </div>
                     
                     {proximityLabel ? (
