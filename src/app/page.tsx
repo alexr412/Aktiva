@@ -76,9 +76,6 @@ export default function Home() {
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
 
-  // Fixer Suchradius von 15km für bessere Abdeckung
-  const searchRadiusKm = 15;
-
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const router = useRouter();
@@ -100,7 +97,7 @@ export default function Home() {
       : activeCategory;
 
     const offset = pageIndex * PLACES_PER_PAGE;
-    const radiusMeters = searchRadiusKm * 1000;
+    const radiusMeters = 15000;
     
     return `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${PLACES_PER_PAGE}&offset=${offset}&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
   }
@@ -110,7 +107,6 @@ export default function Home() {
     dedupingInterval: 60000,
   });
 
-  // SWR State Matrix
   const isLoadingInitialData = !data && !error;
   const isFetchingNextPage = size > 0 && data && typeof data[size - 1] === "undefined";
   const isEmpty = data?.[0]?.features?.length === 0;
@@ -394,7 +390,7 @@ export default function Home() {
                         </div>
                     );
                 }
-                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div ref={index === sorted.length - 1 ? lastElementRef : null} key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
+                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
             }
 
             if (isHighlightsCategory) {
@@ -416,22 +412,32 @@ export default function Home() {
                         </div>
                     );
                 }
-                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div ref={index === sorted.length - 1 ? lastElementRef : null} key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
+                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
             } else {
                 const filtered = places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
                 const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : (sortBy === 'popular' ? (b.activityCount || 0) - (a.activityCount || 0) : 0))));
                 if (sorted.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
-                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div ref={index === sorted.length - 1 ? lastElementRef : null} key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
+                return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{sorted.map((place, index) => <div key={place.id}><PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} /></div>)}</div>;
             }
         };
         return (
-          <div className="max-w-7xl mx-auto w-full">
+          <div className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col">
             {renderList()}
             
+            {/* LADE-INDIKATOR */}
             {isFetchingNextPage && !isReachingEnd && (
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <CardSkeleton />
               </div>
+            )}
+
+            {/* OBSERVER TRIGGER */}
+            {!isReachingEnd && !isLoadingInitialData && (
+              <div 
+                ref={lastElementRef} 
+                className="h-10 w-full mt-4" 
+                aria-hidden="true" 
+              />
             )}
           </div>
         );
