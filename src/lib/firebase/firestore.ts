@@ -69,6 +69,7 @@ export async function createUserProfileDocument(user: User) {
     isPremium: false,
     isSupporter: false,
     tokens: 0,
+    successfulFreeHosts: 0,
     proximitySettings: {
       enabled: false,
       radiusKm: 5
@@ -126,13 +127,17 @@ export async function createActivity({
     throw new Error('Either a place or a custom location name must be provided.');
   }
 
-  // Backend Enforcement: Check user profile for premium status
+  // Backend Enforcement: Check user profile for premium status and monetization rights
   const userRef = doc(db, 'users', user.uid);
   const userSnap = await getDoc(userRef);
   const userProfileData = userSnap.data() as UserProfile | undefined;
   
   if (isBoosted && (userProfileData?.tokens || 0) < 1) {
     throw new Error('Insufficient tokens to boost activity.');
+  }
+
+  if (isPaid && (userProfileData?.successfulFreeHosts || 0) < 5) {
+    throw new Error('Proof of Community nicht erfüllt. Bezahlte Aktivitäten sind gesperrt.');
   }
 
   const isUserPremium = userProfileData?.isPremium || false;

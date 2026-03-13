@@ -11,7 +11,7 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import type { Place } from '@/lib/types';
-import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users, CreditCard } from 'lucide-react';
+import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users, CreditCard, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,7 @@ import { de } from 'date-fns/locale';
 
 const MAX_FREE_PARTICIPANTS = 4;
 const MAX_PRICE = 25;
+const REQUIRED_FREE_HOSTS = 5;
 
 interface CreateActivityDialogProps {
   place: Place | null;
@@ -88,6 +89,10 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   const availableTokens = userProfile?.tokens || 0;
   const canBoost = availableTokens > 0;
 
+  // Proof of Community logic
+  const currentFreeHosts = userProfile?.successfulFreeHosts || 0;
+  const canMonetize = currentFreeHosts >= REQUIRED_FREE_HOSTS;
+
   useEffect(() => {
     if (open) {
       setIsCreating(false);
@@ -127,6 +132,12 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     
     if(endDate) {
       endDate.setHours(23, 59, 59, 999);
+    }
+
+    // Backend Validation check (extra safety)
+    if (isPaid && !canMonetize) {
+      toast({ variant: 'destructive', title: 'Fehler', description: 'Proof of Community nicht erfüllt.' });
+      return;
     }
 
     setIsCreating(true);
@@ -359,7 +370,10 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4 text-muted-foreground" />
-                <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Teilnahmebeitrag</Label>
+                <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  Teilnahmebeitrag
+                  {!canMonetize && <Lock className="w-3 h-3 text-muted-foreground" />}
+                </Label>
               </div>
             </div>
 
@@ -375,10 +389,17 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                   setIsPaid(checked);
                   if (!checked) setPrice(0);
                 }} 
+                disabled={!canMonetize}
               />
             </div>
 
-            {isPaid && (
+            {!canMonetize && (
+              <p className="text-[10px] text-destructive font-black uppercase tracking-tight ml-1">
+                Freischaltung erst nach {REQUIRED_FREE_HOSTS} kostenlosen Aktivitäten (Stand: {currentFreeHosts}/{REQUIRED_FREE_HOSTS}).
+              </p>
+            )}
+
+            {isPaid && canMonetize && (
               <div className="flex items-center gap-3 mt-2 bg-secondary/30 p-4 rounded-2xl border border-dashed border-border transition-all animate-in fade-in slide-in-from-top-2">
                 <span className="text-2xl font-black text-primary">€</span>
                 <Input 

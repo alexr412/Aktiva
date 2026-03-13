@@ -178,6 +178,7 @@ export interface UserProfile {
   isPremium?: boolean;
   isSupporter?: boolean;
   tokens?: number;
+  successfulFreeHosts?: number;
   // RBAC fields
   isAdmin?: boolean;
 }
