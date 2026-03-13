@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -6,7 +5,7 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin } from 'lucide-react';
+import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EntityMoreOptions } from '../common/EntityMoreOptions';
@@ -82,8 +81,16 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 </div>
                 
                 <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                        <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight">{activity.placeName}</p>
+                    <div className="flex items-center justify-between mb-1">
+                        <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight flex-1">{activity.placeName}</p>
+                        
+                        {/* Micro-Ticketing Badge */}
+                        {activity.isPaid && activity.price && activity.price > 0 && (
+                          <div className="ml-2 inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-black px-2 py-0.5 rounded-lg text-[10px] tracking-tight shrink-0">
+                            <CreditCard className="h-2.5 w-2.5" />
+                            <span>{activity.price.toFixed(2)}€</span>
+                          </div>
+                        )}
                     </div>
                     
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

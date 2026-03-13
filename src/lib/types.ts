@@ -67,6 +67,9 @@ export interface Activity {
   isBoosted?: boolean;
   boostedAt?: Timestamp | null;
   boostExpiresAt?: Timestamp;
+  // Micro-Ticketing
+  isPaid?: boolean;
+  price?: number;
   // RBAC & Voting fields
   upvotes?: number;
   downvotes?: number;

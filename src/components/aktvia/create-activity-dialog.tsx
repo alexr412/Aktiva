@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,7 +11,7 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import type { Place } from '@/lib/types';
-import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users } from 'lucide-react';
+import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users, CreditCard } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -42,12 +41,22 @@ import {
 import { de } from 'date-fns/locale';
 
 const MAX_FREE_PARTICIPANTS = 4;
+const MAX_PRICE = 25;
 
 interface CreateActivityDialogProps {
   place: Place | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateActivity: (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean) => Promise<boolean>;
+  onCreateActivity: (
+    startDate: Date, 
+    endDate: Date | undefined, 
+    isTimeFlexible: boolean, 
+    customLocationName?: string, 
+    maxParticipants?: number, 
+    isBoosted?: boolean,
+    isPaid?: boolean,
+    price?: number
+  ) => Promise<boolean>;
 }
 
 export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivity }: CreateActivityDialogProps) {
@@ -70,6 +79,10 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   const [isBoosted, setIsBoosted] = useState(false);
   const [isWatchingAd, setIsWatchingAd] = useState(false);
 
+  // Micro-Ticketing
+  const [isPaid, setIsPaid] = useState(false);
+  const [price, setPrice] = useState<number>(0);
+
   const isCustom = !place;
   const isPremium = userProfile?.isPremium || false;
   const availableTokens = userProfile?.tokens || 0;
@@ -88,6 +101,8 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
       setIsDateFlexible(false);
       setMaxParticipants(4);
       setIsBoosted(false);
+      setIsPaid(false);
+      setPrice(0);
     }
   }, [open]);
 
@@ -121,7 +136,9 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
       timeIsFlexible, 
       isCustom ? customLocationName : undefined, 
       maxParticipants,
-      isBoosted
+      isBoosted,
+      isPaid,
+      price
     );
     if (!success) {
       setIsCreating(false);
@@ -179,7 +196,8 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     (isCustom && !customLocationName.trim()) ||
     (isDateFlexible ? !selectedRange.from : !selectedDate) ||
     (!isTimeFlexible && !isDateFlexible && !selectedTime) ||
-    (isBoosted && availableTokens < 1);
+    (isBoosted && availableTokens < 1) ||
+    (isPaid && (price <= 0 || price > MAX_PRICE));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -332,6 +350,52 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
                     Jetzt Premium sichern.
                   </Link>
                 </p>
+              </div>
+            )}
+          </div>
+
+          {/* Sektion: Teilnahmebeitrag (Micro-Ticketing) */}
+          <div className="space-y-3 pt-4 border-t border-border/50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Teilnahmebeitrag</Label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-2xl border border-border p-4 shadow-sm bg-card/50">
+              <div className="space-y-0.5">
+                <Label htmlFor="is-paid" className="text-base font-bold text-slate-900">Kostenpflichtig</Label>
+                <p className="text-xs text-muted-foreground font-medium">Beitrag pro Person (Max. {MAX_PRICE}€)</p>
+              </div>
+              <Switch 
+                id="is-paid" 
+                checked={isPaid} 
+                onCheckedChange={(checked) => {
+                  setIsPaid(checked);
+                  if (!checked) setPrice(0);
+                }} 
+              />
+            </div>
+
+            {isPaid && (
+              <div className="flex items-center gap-3 mt-2 bg-secondary/30 p-4 rounded-2xl border border-dashed border-border transition-all animate-in fade-in slide-in-from-top-2">
+                <span className="text-2xl font-black text-primary">€</span>
+                <Input 
+                  type="number" 
+                  min="1" 
+                  max={MAX_PRICE} 
+                  value={price || ''} 
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (val <= MAX_PRICE || isNaN(val)) setPrice(val || 0);
+                  }}
+                  className="text-2xl font-black w-32 h-14 bg-white border-none rounded-xl text-center focus-visible:ring-primary/20"
+                  placeholder="0.00"
+                />
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider ml-auto">
+                  Pro Person
+                </span>
               </div>
             )}
           </div>

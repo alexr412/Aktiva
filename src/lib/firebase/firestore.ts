@@ -34,6 +34,8 @@ type CreateActivityPayload = {
   isTimeFlexible?: boolean;
   maxParticipants?: number;
   isBoosted?: boolean;
+  isPaid?: boolean;
+  price?: number;
 };
 
 const MAX_FREE_PARTICIPANTS = 4;
@@ -114,6 +116,8 @@ export async function createActivity({
   isTimeFlexible,
   maxParticipants,
   isBoosted = false,
+  isPaid = false,
+  price = 0,
 }: CreateActivityPayload) {
   if (!db) {
     throw new Error('Firestore is not initialized.');
@@ -165,6 +169,8 @@ export async function createActivity({
     completionVotes: [],
     isBoosted: isBoosted,
     boostedAt: isBoosted ? serverTimestamp() : null,
+    isPaid: isPaid,
+    price: isPaid ? price : 0,
     upvotes: 0,
     downvotes: 0,
     userVotes: {},
