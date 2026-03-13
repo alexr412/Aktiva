@@ -67,9 +67,9 @@ const MessageBubble = ({
     isOwnMessage ? 'justify-end' : ''
   } ${isFirstInGroup ? 'mt-4' : 'mt-1'}`;
 
-  // Robust Status Fallback: Priority Chat Details -> Message Data -> False
-  const isPremium = senderDetails?.isPremium ?? false;
-  const isSupporter = senderDetails?.isSupporter ?? false;
+  // Strikte Abfrage der korrekten Schlüssel (inklusive Case-Fallback und historischer Absicherung via participantDetails)
+  const userIsPremium = (message as any).isPremium ?? (message as any).IsPremium ?? senderDetails?.isPremium ?? false;
+  const userIsSupporter = (message as any).isSupporter ?? (message as any).IsSupporter ?? senderDetails?.isSupporter ?? false;
 
   return (
     <div className={wrapperClasses}>
@@ -79,7 +79,7 @@ const MessageBubble = ({
             <Link href={`/profile/${message.senderId}`} className="hover:opacity-80 transition-opacity">
               <Avatar className={cn(
                 "h-8 w-8",
-                isPremium ? "ring-2 ring-amber-400 ring-offset-1" : (isSupporter ? "ring-2 ring-pink-400 ring-offset-1" : "")
+                userIsPremium ? "ring-2 ring-amber-400 ring-offset-1" : (userIsSupporter ? "ring-2 ring-pink-400 ring-offset-1" : "")
               )}>
                 <AvatarImage src={message.senderPhotoURL || undefined} />
                 <AvatarFallback className="text-[10px]">{message.senderName?.charAt(0).toUpperCase()}</AvatarFallback>
@@ -90,9 +90,11 @@ const MessageBubble = ({
       )}
       <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
         {showSenderName && (
-          <div className="flex items-center gap-1.5 ml-1 mb-1">
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-tight">{message.senderName}</p>
-            <UserBadge isPremium={isPremium} isSupporter={isSupporter} size="sm" />
+          <div className="flex items-center gap-1 mb-1 ml-1">
+            <span className="text-xs font-semibold text-muted-foreground uppercase">
+              {message.senderName}
+            </span>
+            <UserBadge isPremium={userIsPremium} isSupporter={userIsSupporter} />
           </div>
         )}
         <div className={`relative max-w-[85%] md:max-w-md px-4 py-2.5 ${bubbleClasses}`}>
