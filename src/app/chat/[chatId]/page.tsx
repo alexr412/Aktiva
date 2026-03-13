@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -20,6 +21,7 @@ import { ArrowLeft, Send, MoreVertical } from 'lucide-react';
 import { CompletionBanner } from '@/components/aktvia/CompletionBanner';
 import { ReviewDialog } from '@/components/reviews/ReviewDialog';
 import { UserBadge } from '@/components/common/UserBadge';
+import { cn } from '@/lib/utils';
 
 const DateSeparator = ({ date }: { date: Date }) => {
   const formatDate = (d: Date) => {
@@ -65,13 +67,20 @@ const MessageBubble = ({
     isOwnMessage ? 'justify-end' : ''
   } ${isFirstInGroup ? 'mt-4' : 'mt-1'}`;
 
+  // Robust Status Fallback: Priority Chat Details -> Message Data -> False
+  const isPremium = senderDetails?.isPremium ?? false;
+  const isSupporter = senderDetails?.isSupporter ?? false;
+
   return (
     <div className={wrapperClasses}>
       {!isOwnMessage && (
         <div className="w-8 flex-shrink-0 self-end">
           {showAvatar && (
             <Link href={`/profile/${message.senderId}`} className="hover:opacity-80 transition-opacity">
-              <Avatar className="h-8 w-8">
+              <Avatar className={cn(
+                "h-8 w-8",
+                isPremium ? "ring-2 ring-amber-400 ring-offset-1" : (isSupporter ? "ring-2 ring-pink-400 ring-offset-1" : "")
+              )}>
                 <AvatarImage src={message.senderPhotoURL || undefined} />
                 <AvatarFallback className="text-[10px]">{message.senderName?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
@@ -83,7 +92,7 @@ const MessageBubble = ({
         {showSenderName && (
           <div className="flex items-center gap-1.5 ml-1 mb-1">
             <p className="text-[10px] font-black uppercase text-slate-400 tracking-tight">{message.senderName}</p>
-            <UserBadge isPremium={senderDetails?.isPremium} isSupporter={senderDetails?.isSupporter} size="sm" />
+            <UserBadge isPremium={isPremium} isSupporter={isSupporter} size="sm" />
           </div>
         )}
         <div className={`relative max-w-[85%] md:max-w-md px-4 py-2.5 ${bubbleClasses}`}>
@@ -246,7 +255,10 @@ export default function ChatRoomPage() {
           <div className="flex items-center gap-3 flex-1 truncate">
             {isDirectMessage && otherUser ? (
                 <Link href={`/profile/${otherUser.uid}`} className="flex items-center gap-2.5 truncate hover:opacity-80 transition-opacity cursor-pointer">
-                    <Avatar className="h-9 w-9 shadow-sm border border-white">
+                    <Avatar className={cn(
+                      "h-9 w-9 shadow-sm border border-white",
+                      otherUser.isPremium ? "ring-2 ring-amber-400" : (otherUser.isSupporter ? "ring-2 ring-pink-400" : "")
+                    )}>
                         <AvatarImage src={otherUser.photoURL || undefined} />
                         <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">{otherUser.displayName?.charAt(0)}</AvatarFallback>
                     </Avatar>

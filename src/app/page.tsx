@@ -30,6 +30,7 @@ import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { GLOBAL_EXCLUDE_STRING, calculateRelevanceScore } from '@/lib/geoapify';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserBadge } from '@/components/common/UserBadge';
 
 // Dynamic import for MapView to avoid SSR issues
 const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod => mod.MapView), { 
@@ -97,12 +98,9 @@ export default function Home() {
       }
 
       if (type === 'activities') {
-        // WORKAROUND: Um den composite index Fehler zu vermeiden, laden wir mehr Daten
-        // und filtern clientseitig nach dem Typ (Community vs. Location).
-        // Wir behalten das OrderBy für die Paginierung bei.
         const constraints: any[] = [
           orderBy('createdAt', 'desc'),
-          limit(PLACES_PER_PAGE * 5) // Puffer für clientseitiges Filtern
+          limit(PLACES_PER_PAGE * 5)
         ];
         if (cursorValue) constraints.push(startAfter(cursorValue));
         
@@ -139,8 +137,6 @@ export default function Home() {
 
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (isFavoritesCategory) return null;
-    
-    // Stop if we reached the end
     if (previousPageData && (
       (previousPageData.features && previousPageData.features.length === 0) ||
       (Array.isArray(previousPageData) && previousPageData.length === 0)
@@ -156,7 +152,6 @@ export default function Home() {
       return { type: 'highlights', cursorValue: cursor, pageIndex };
     }
 
-    // Default: Geoapify Places
     if (!userLocation) return null;
     let categoriesToFetch: string[] = (activeCategory.length === 0 || activeCategory.includes('has_activities')) 
       ? ["tourism", "entertainment", "heritage"] 
@@ -176,8 +171,6 @@ export default function Home() {
 
   const isLoadingInitialData = !data && !error;
   const isEmpty = data?.[0]?.features ? data[0].features.length === 0 : (data?.[0]?.length === 0);
-  
-  // Zwingende Typ-Konvertierung zur Vermeidung von undefined-States
   const isFetchingNextPage = Boolean(size > 0 && data && typeof data[size - 1] === "undefined");
   
   const isReachingEnd = useMemo(() => {
@@ -195,13 +188,9 @@ export default function Home() {
     dislikedTags: userProfile?.dislikedTags || []
   }), [userProfile]);
 
-  // Unified data mapping
   const places = useMemo(() => {
     if (!data || isCommunityCategory || isAktivCategory || isFavoritesCategory) return [];
-    
-    if (isHighlightsCategory) {
-      return data.flat() as Place[];
-    }
+    if (isHighlightsCategory) return data.flat() as Place[];
 
     return data.flatMap(page => {
       const features = page?.features || [];
@@ -232,23 +221,15 @@ export default function Home() {
   const observer = useRef<IntersectionObserver>();
   const lastElementRef = useCallback(node => {
     if (observer.current) observer.current.disconnect();
-    
-    const options = {
-      rootMargin: '0px 0px -50px 0px', 
-      threshold: 1.0,
-    };
-
+    const options = { rootMargin: '0px 0px -50px 0px', threshold: 1.0 };
     observer.current = new IntersectionObserver(entries => { 
       const target = entries[0];
       if (target.isIntersecting) {
         if (!isReachingEnd && !isFetchingNextPage && !isValidating) {
-          setTimeout(() => {
-            setSize(prev => prev + 1);
-          }, 500);
+          setTimeout(() => { setSize(prev => prev + 1); }, 500);
         }
       }
     }, options);
-    
     if (node) observer.current.observe(node);
   }, [isFetchingNextPage, isReachingEnd, isValidating, setSize]);
 
@@ -444,16 +425,22 @@ export default function Home() {
           <div className="flex flex-col gap-4 px-4 py-5 sm:px-6 max-w-7xl mx-auto w-full">
              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 border-2 border-primary/20">
+                  <Avatar className={cn(
+                    "h-12 w-12 border-2",
+                    userProfile?.isPremium ? "border-amber-400" : (userProfile?.isSupporter ? "border-pink-400" : "border-primary/20")
+                  )}>
                     <AvatarImage src={userProfile?.photoURL || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary font-bold">
                       {userProfile?.displayName?.charAt(0) || 'E'}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h1 className="text-xl font-black tracking-tight text-[#0f172a] dark:text-neutral-200">
-                      Hey {userProfile?.displayName?.split(' ')[0] || 'Entdecker'} 👋
-                    </h1>
+                    <div className="flex items-center gap-1.5">
+                      <h1 className="text-xl font-black tracking-tight text-[#0f172a] dark:text-neutral-200">
+                        Hey {userProfile?.displayName?.split(' ')[0] || 'Entdecker'} 👋
+                      </h1>
+                      <UserBadge isPremium={userProfile?.isPremium} isSupporter={userProfile?.isSupporter} size="sm" />
+                    </div>
                     <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1 text-neutral-500 dark:text-neutral-400 font-bold text-xs uppercase tracking-wide">
                       <MapPin className="h-3 w-3" />
                       <span>{cityName}</span>

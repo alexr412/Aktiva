@@ -419,7 +419,10 @@ export default function ProfilePage() {
                                 onClick={() => fileInputRef.current?.click()}
                                 className="relative group cursor-pointer mb-6"
                             >
-                                <div className="p-1 bg-white rounded-full shadow-lg">
+                                <div className={cn(
+                                  "p-1 rounded-full shadow-lg transition-all",
+                                  userData?.isPremium ? "bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600" : (userData?.isSupporter ? "bg-pink-400" : "bg-white")
+                                )}>
                                     <Avatar className="h-28 w-28 border-4 border-white">
                                         <AvatarImage src={photoUrlToDisplay} alt="Profil" />
                                         <AvatarFallback className="text-4xl bg-secondary text-primary font-black">

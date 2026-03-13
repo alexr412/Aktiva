@@ -36,6 +36,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { EntityMoreOptions } from '@/components/common/EntityMoreOptions';
 import { UserBadge } from '@/components/common/UserBadge';
+import { cn } from '@/lib/utils';
 
 
 export default function UserProfilePage() {
@@ -277,12 +278,17 @@ export default function UserProfilePage() {
             </header>
 
             <div className="p-6 flex flex-col items-center justify-center text-center space-y-4">
-                <Avatar className="h-24 w-24 border-2 border-primary/20">
-                    <AvatarImage src={photoUrlToDisplay} alt="Profil" />
-                    <AvatarFallback className="text-3xl bg-muted">
-                        {displayName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                </Avatar>
+                <div className={cn(
+                  "p-1 rounded-full shadow-lg transition-all",
+                  userData.isPremium ? "bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600" : (userData.isSupporter ? "bg-pink-400" : "bg-transparent")
+                )}>
+                    <Avatar className="h-24 w-24 border-4 border-white">
+                        <AvatarImage src={photoUrlToDisplay} alt="Profil" />
+                        <AvatarFallback className="text-3xl bg-muted">
+                            {displayName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                    </Avatar>
+                </div>
 
                 <div className="flex flex-col items-center">
                     <div className="flex items-center justify-center gap-2">
