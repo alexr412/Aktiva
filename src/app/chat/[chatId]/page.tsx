@@ -47,31 +47,28 @@ const DateSeparator = ({ date }: { date: Date }) => {
 const MessageBubble = ({
   message,
   isOwnMessage,
-  showAvatar,
-  isFirstInGroup,
   senderDetails,
+  isFirstInGroup,
 }: {
   message: Message;
   isOwnMessage: boolean;
-  showAvatar: boolean;
-  isFirstInGroup: boolean;
   senderDetails?: { isPremium?: boolean; isSupporter?: boolean };
+  isFirstInGroup: boolean;
 }) => {
-  const bubbleClasses = isOwnMessage
-    ? 'bg-primary text-white rounded-2xl rounded-tr-none shadow-sm'
-    : 'bg-white text-slate-800 rounded-2xl rounded-tl-none shadow-sm border border-slate-100';
-
-  const wrapperClasses = `flex w-full px-2 mb-1 ${
-    isOwnMessage ? 'justify-end' : 'justify-start'
-  } ${isFirstInGroup ? 'mt-4' : 'mt-0.5'}`;
-
   // Strikte Abfrage der korrekten Schlüssel (inklusive Case-Fallback)
   const userIsPremium = message.isPremium ?? (message as any).IsPremium ?? senderDetails?.isPremium ?? false;
   const userIsSupporter = message.isSupporter ?? (message as any).IsSupporter ?? senderDetails?.isSupporter ?? false;
 
   return (
-    <div className={wrapperClasses}>
-      <div className={`flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'} max-w-[85%]`}>
+    <div className={cn(
+      "w-full flex px-4 mb-1",
+      isOwnMessage ? "justify-end" : "justify-start",
+      isFirstInGroup ? "mt-4" : "mt-0.5"
+    )}>
+      <div className={cn(
+        "flex flex-col max-w-[85%]",
+        isOwnMessage ? "items-end" : "items-start"
+      )}>
         {isFirstInGroup && (
           <div className="flex items-center gap-1 mb-1 mx-1">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -80,10 +77,19 @@ const MessageBubble = ({
             <UserBadge isPremium={userIsPremium} isSupporter={userIsSupporter} size="sm" />
           </div>
         )}
-        <div className={`relative px-4 py-2.5 ${bubbleClasses}`}>
-          <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{message.text}</p>
+        
+        <div className={cn(
+          "w-fit max-w-full px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-words [word-break:break-word] shadow-sm",
+          isOwnMessage 
+            ? "bg-primary text-white rounded-tr-sm" 
+            : "bg-white dark:bg-neutral-800 text-slate-800 dark:text-neutral-200 border border-slate-100 dark:border-neutral-700 rounded-tl-sm"
+        )}>
+          {message.text}
           <div className="flex justify-end mt-1">
-            <span className="text-[9px] opacity-60 font-bold uppercase">
+            <span className={cn(
+              "text-[9px] font-bold uppercase",
+              isOwnMessage ? "text-white/60" : "text-slate-400"
+            )}>
               {message.sentAt ? format(message.sentAt.toDate(), 'p') : '...'}
             </span>
           </div>
@@ -274,28 +280,23 @@ export default function ChatRoomPage() {
           <CompletionBanner activity={activity} currentUser={user} participantDetails={chat.participantDetails} />
         )}
 
-        <div className="flex-1 overflow-y-auto p-4 pb-32">
-          <div className="flex flex-col max-w-3xl mx-auto">
+        <div className="flex-1 overflow-y-auto pt-4 pb-32">
+          <div className="flex flex-col w-full max-w-3xl mx-auto">
             {messages.map((message, index) => {
               const prevMessage = messages[index - 1];
-              const nextMessage = messages[index + 1];
               const isOwnMessage = message.senderId === user?.uid;
               
               const showDateSeparator = !prevMessage || !prevMessage.sentAt || !message.sentAt || !isSameDay(message.sentAt.toDate(), prevMessage.sentAt.toDate());
               const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId || showDateSeparator;
-              const isLastInGroup = !nextMessage || nextMessage.senderId !== message.senderId || !nextMessage.sentAt || !message.sentAt || !isSameDay(message.sentAt.toDate(), nextMessage.sentAt.toDate());
-
-              const showAvatar = !isOwnMessage && isLastInGroup;
               
               const senderDetails = chat?.participantDetails?.[message.senderId];
 
               return (
-                <div key={message.id}>
+                <div key={message.id} className="w-full">
                   {showDateSeparator && message.sentAt && <DateSeparator date={message.sentAt.toDate()} />}
                   <MessageBubble
                     message={message}
                     isOwnMessage={isOwnMessage}
-                    showAvatar={showAvatar}
                     isFirstInGroup={isFirstInGroup}
                     senderDetails={senderDetails}
                   />
