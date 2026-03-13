@@ -79,7 +79,7 @@ const MessageBubble = ({
         )}
         
         <div className={cn(
-          "w-fit max-w-full px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-words [word-break:break-word] shadow-sm",
+          "w-fit max-w-full min-w-0 px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-all shadow-sm",
           isOwnMessage 
             ? "bg-primary text-white rounded-tr-sm" 
             : "bg-white dark:bg-neutral-800 text-slate-800 dark:text-neutral-200 border border-slate-100 dark:border-neutral-700 rounded-tl-sm"
