@@ -1,20 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown } from 'lucide-react';
+import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown, BarChart3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EntityMoreOptions } from '../common/EntityMoreOptions';
 import { cn } from '@/lib/utils';
-import { voteActivity } from '@/lib/firebase/firestore';
+import { voteActivity, trackActivityView } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatTags } from '@/lib/tag-parser';
+import Link from 'next/link';
 
 interface ActivityListItemProps {
     activity: Activity & { distance?: number | null };
@@ -29,6 +30,29 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const router = useRouter();
     const [isJoining, setIsJoining] = useState(false);
     const [isVoting, setIsVoting] = useState(false);
+    
+    const cardRef = useRef<HTMLDivElement>(null);
+    const hasTracked = useRef(false);
+
+    useEffect(() => {
+      if (!activity.id || !activity.isBoosted || hasTracked.current) return;
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && !hasTracked.current) {
+            trackActivityView(activity.id!);
+            hasTracked.current = true;
+          }
+        },
+        { threshold: 0.5 }
+      );
+
+      if (cardRef.current) {
+        observer.observe(cardRef.current);
+      }
+
+      return () => observer.disconnect();
+    }, [activity.id, activity.isBoosted]);
 
     if (!activity.id) return null;
 
@@ -82,15 +106,34 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const processedTags = formatTags(rawTags);
 
     return (
-        <div className={cn(
-          "p-5 relative group transition-all rounded-[2rem] bg-white dark:bg-neutral-800 shadow-sm border-none dark:border dark:border-neutral-700 mb-4",
-          activity.isBoosted && "border-2 border-orange-400 bg-orange-50/10 dark:bg-orange-950/20 shadow-md ring-4 ring-orange-500/5"
-        )}>
+        <div 
+          ref={cardRef}
+          className={cn(
+            "p-5 relative group transition-all rounded-[2rem] bg-white dark:bg-neutral-800 shadow-sm border-none dark:border dark:border-neutral-700 mb-4",
+            activity.isBoosted && "border-2 border-orange-400 bg-orange-50/10 dark:bg-orange-950/20 shadow-md ring-4 ring-orange-500/5"
+          )}
+        >
             {/* Aktivitäts-Booster Badge */}
             {activity.isBoosted && (
-              <div className="absolute -top-3 left-6 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg animate-in fade-in slide-in-from-top-1">
-                🔥 Highlight
+              <div className="absolute -top-3 left-6 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg animate-in fade-in slide-in-from-top-1 flex items-center gap-1.5">
+                <Flame className="h-3 w-3 animate-pulse" />
+                <span>Highlight</span>
               </div>
+            )}
+
+            {/* Insights Link für Hosts */}
+            {isOwnActivity && activity.isBoosted && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                asChild
+                className="absolute top-2 right-2 h-8 rounded-xl bg-orange-100 hover:bg-orange-200 text-orange-700 text-[10px] font-black uppercase"
+              >
+                <Link href={`/activities/${activity.id}/stats`}>
+                  <BarChart3 className="h-3 w-3 mr-1" />
+                  Insights
+                </Link>
+              </Button>
             )}
 
             <div className="flex items-start gap-4">

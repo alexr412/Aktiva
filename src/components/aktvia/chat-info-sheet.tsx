@@ -32,7 +32,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Trash2, Users, Calendar, CheckCircle, MapPin, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Loader2, Trash2, Users, Calendar, CheckCircle, MapPin, ChevronRight, CheckCircle2, BarChart3 } from 'lucide-react';
 import type { Chat, Activity } from '@/lib/types';
 
 interface ChatInfoSheetProps {
@@ -157,6 +157,19 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                   <Calendar className="h-3.5 w-3.5" /> {renderDate()}
                 </span>
               </div>
+
+              {isHost && activity.isBoosted && (
+                <Button 
+                  variant="outline" 
+                  asChild
+                  className="mt-6 rounded-2xl font-black border-orange-200 text-orange-600 hover:bg-orange-50 transition-all gap-2"
+                >
+                  <Link href={`/activities/${activity.id}/stats`}>
+                    <BarChart3 className="h-4 w-4" />
+                    <span>Boost Insights</span>
+                  </Link>
+                </Button>
+              )}
             </div>
 
             <div className="space-y-6">
@@ -204,7 +217,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                 disabled={isActing}
                 className="w-full h-12 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 transition-all gap-2 mb-2"
               >
-                {isActing ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle2 className="h-4 w-4" />}
+                {isActing ? <BarChart3 className="h-4 w-4 animate-spin"/> : <CheckCircle2 className="h-4 w-4" />}
                 <span>Aktivität erfolgreich abschließen</span>
               </Button>
             )}

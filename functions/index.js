@@ -65,6 +65,7 @@ exports.notifyNearbyUsers = onDocumentCreated("activities/{activityId}", async (
       },
       data: {
         activityId: event.params.activityId,
+        source: "push", // Modul 7 Tracking Flag
         click_action: "FLUTTER_NOTIFICATION_CLICK" 
       },
       tokens: tokens

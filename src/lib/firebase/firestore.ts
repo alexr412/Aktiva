@@ -182,6 +182,10 @@ export async function createActivity({
     upvotes: 0,
     downvotes: 0,
     userVotes: {},
+    stats: {
+      impressions: 0,
+      pushJoins: 0
+    },
     ...(place?.address && { placeAddress: place.address }),
     ...(place?.lat && { lat: place.lat }),
     ...(place?.lon && { lon: place.lon }),
@@ -305,7 +309,7 @@ export async function votePlace(placeId: string, userId: string, type: 'up' | 'd
   });
 }
 
-export async function joinActivity(activityId: string, user: User) {
+export async function joinActivity(activityId: string, user: User, source?: string | null) {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!user) throw new Error('User is not authenticated.');
 
@@ -338,10 +342,16 @@ export async function joinActivity(activityId: string, user: User) {
         throw `This activity has reached its maximum of ${activityData.maxParticipants} participants.`;
       }
       
-      transaction.update(activityRef, {
+      const updates: any = {
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
-      });
+      };
+
+      if (source === 'push') {
+        updates["stats.pushJoins"] = increment(1);
+      }
+
+      transaction.update(activityRef, updates);
 
       // Update previews (max 5) - Harden against duplicates
       const currentPreviews = activityData.participantsPreview || [];
@@ -378,7 +388,7 @@ export async function joinActivity(activityId: string, user: User) {
   }
 }
 
-export async function joinPaidActivity(activityId: string, user: User, transactionToken: string) {
+export async function joinPaidActivity(activityId: string, user: User, transactionToken: string, source?: string | null) {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!transactionToken) throw new Error("Transaktions-Token fehlt. Beitritt verweigert.");
 
@@ -401,10 +411,16 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
         throw `Maximale Teilnehmerzahl von ${activityData.maxParticipants} erreicht.`;
       }
 
-      transaction.update(activityRef, {
+      const updates: any = {
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
-      });
+      };
+
+      if (source === 'push') {
+        updates["stats.pushJoins"] = increment(1);
+      }
+
+      transaction.update(activityRef, updates);
 
       // Update previews (max 5) - Harden against duplicates
       const currentPreviews = activityData.participantsPreview || [];
@@ -891,4 +907,12 @@ export async function runMigrationParticipantsPreview() {
   }
   
   return processed;
+}
+
+export async function trackActivityView(activityId: string) {
+  if (!db) return;
+  const activityRef = doc(db, 'activities', activityId);
+  await updateDoc(activityRef, {
+    "stats.impressions": increment(1)
+  });
 }

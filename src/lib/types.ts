@@ -80,6 +80,11 @@ export interface Activity {
   upvotes?: number;
   downvotes?: number;
   userVotes?: Record<string, 'up' | 'down'>;
+  // Modul 7: Analytics
+  stats?: {
+    impressions?: number;
+    pushJoins?: number;
+  };
 }
 
 export interface Message {
