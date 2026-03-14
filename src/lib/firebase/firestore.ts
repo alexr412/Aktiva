@@ -164,7 +164,7 @@ export async function createActivity({
     creatorName: user.displayName,
     creatorPhotoURL: user.photoURL,
     participantIds: [user.uid],
-    participantPreviews: [
+    participantsPreview: [
       { uid: user.uid, displayName: user.displayName, photoURL: user.photoURL }
     ],
     createdAt: serverTimestamp() as Timestamp,
@@ -345,10 +345,10 @@ export async function joinActivity(activityId: string, user: User) {
       });
 
       // Update previews (max 5)
-      const currentPreviews = activityData.participantPreviews || [];
+      const currentPreviews = activityData.participantsPreview || [];
       if (currentPreviews.length < 5 && !currentPreviews.some(p => p.uid === user.uid)) {
         transaction.update(activityRef, {
-          participantPreviews: arrayUnion({
+          participantsPreview: arrayUnion({
             uid: user.uid,
             displayName: user.displayName,
             photoURL: user.photoURL
@@ -408,10 +408,10 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
       });
 
       // Update previews (max 5)
-      const currentPreviews = activityData.participantPreviews || [];
+      const currentPreviews = activityData.participantsPreview || [];
       if (currentPreviews.length < 5 && !currentPreviews.some(p => p.uid === user.uid)) {
         transaction.update(activityRef, {
-          participantPreviews: arrayUnion({
+          participantsPreview: arrayUnion({
             uid: user.uid,
             displayName: user.displayName,
             photoURL: user.photoURL

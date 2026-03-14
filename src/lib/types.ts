@@ -63,8 +63,8 @@ export interface Activity {
           isSupporter?: boolean;
       }
   };
-  // Modul 5: Premium Vorschau
-  participantPreviews?: {
+  // Modul 5: Premium Vorschau (Denormalisiert)
+  participantsPreview?: {
     uid: string;
     displayName: string | null;
     photoURL: string | null;

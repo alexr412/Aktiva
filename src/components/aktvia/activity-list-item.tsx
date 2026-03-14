@@ -39,7 +39,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     
     const isPaidEvent = activity.isPaid && activity.price && activity.price > 0;
     const isPremium = userProfile?.isPremium || false;
-    const previews = activity.participantPreviews || [];
+    const previewList = activity.participantsPreview || [];
 
     const primaryStyle = getPrimaryIconData({ categories: activity.categories, name: activity.placeName });
     const PrimaryIcon = primaryStyle.icon;
@@ -128,48 +128,47 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     </div>
 
                     {/* Premium Teilnehmer-Vorschau */}
-                    <div className="mt-4 flex items-center justify-between bg-slate-50/50 dark:bg-neutral-900/30 p-2 rounded-2xl border border-dashed border-slate-100 dark:border-neutral-700">
+                    <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-3">
                       <div className="flex items-center gap-2">
                         <div className="flex -space-x-2 overflow-hidden">
                           {isPremium ? (
                             <>
-                              {previews.slice(0, 4).map((p, i) => (
-                                <Avatar key={i} className="inline-block h-7 w-7 rounded-full ring-2 ring-white dark:ring-neutral-800 shadow-sm">
+                              {previewList.slice(0, 4).map((p) => (
+                                <Avatar key={p.uid} className="h-6 w-6 border-2 border-background shadow-sm">
                                   <AvatarImage src={p.photoURL || undefined} />
-                                  <AvatarFallback className="text-[10px] font-black bg-primary/10 text-primary">{p.displayName?.charAt(0)}</AvatarFallback>
+                                  <AvatarFallback className="text-[8px] font-black bg-primary/10 text-primary">{p.displayName?.charAt(0)}</AvatarFallback>
                                 </Avatar>
                               ))}
-                              {activity.participantIds.length > 4 && (
-                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 dark:bg-neutral-700 text-[10px] font-black ring-2 ring-white dark:ring-neutral-800 text-slate-500">
-                                  +{activity.participantIds.length - 4}
+                              {previewList.length > 4 && (
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-[8px] font-bold border-2 border-background text-foreground">
+                                  +{previewList.length - 4}
                                 </div>
                               )}
                             </>
                           ) : (
-                            <>
-                              {[1, 2, 3].map((i) => (
-                                <div key={i} className="h-7 w-7 rounded-full bg-slate-200 dark:bg-neutral-700 ring-2 ring-white dark:ring-neutral-800 border-2 border-dashed border-slate-300 dark:border-neutral-600 flex items-center justify-center">
-                                  <Users className="h-3 w-3 text-slate-400 opacity-50" />
-                                </div>
-                              ))}
-                            </>
+                            <div className="flex -space-x-2">
+                               {[1, 2, 3].map(i => (
+                                 <div key={i} className="h-6 w-6 rounded-full bg-muted/50 border-2 border-background border-dashed" />
+                               ))}
+                            </div>
                           )}
                         </div>
-                        
-                        {!isPremium ? (
-                          <div className="flex items-center gap-1.5 ml-1">
-                            <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                            <span className="text-[10px] text-slate-400 font-bold italic tracking-tight">
-                              Premium-Vorschau
-                            </span>
-                          </div>
-                        ) : (
-                           <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 ml-1" />
+
+                        {/* Premium Indikator */}
+                        {!isPremium && (
+                          <span className="text-[10px] text-muted-foreground font-medium italic flex items-center gap-1">
+                            <Crown className="w-3 h-3 text-amber-500" />
+                            Premium-Vorschau
+                          </span>
+                        )}
+                        {isPremium && previewList.length > 0 && (
+                           <Crown className="w-3 h-3 text-amber-500 opacity-50" />
                         )}
                       </div>
-
-                      <div className="flex items-center gap-1.5 px-2">
-                        <span className="text-[11px] font-black text-slate-600 dark:text-neutral-400 tracking-tighter">
+                      
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted/30 rounded-full">
+                        <Users className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-[10px] font-bold text-muted-foreground tracking-tight">
                           {activity.participantIds.length} / {activity.maxParticipants || '∞'}
                         </span>
                       </div>
