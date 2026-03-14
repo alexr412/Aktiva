@@ -1,4 +1,6 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onCall } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
@@ -65,7 +67,7 @@ exports.notifyNearbyUsers = onDocumentCreated("activities/{activityId}", async (
       },
       data: {
         activityId: event.params.activityId,
-        source: "push", // Modul 7 Tracking Flag
+        source: "push",
         click_action: "FLUTTER_NOTIFICATION_CLICK" 
       },
       tokens: tokens
@@ -80,4 +82,84 @@ exports.notifyNearbyUsers = onDocumentCreated("activities/{activityId}", async (
   }
 
   return null;
+});
+
+/**
+ * Kern-Logik für das Performance-Reporting (Wiederverwendbar)
+ */
+async function aggregateAndSendReports() {
+  const db = getFirestore();
+  const oneWeekAgo = admin.firestore.Timestamp.fromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+
+  const activitiesSnap = await db.collection("activities")
+    .where("status", "==", "completed")
+    .where("createdAt", ">=", oneWeekAgo)
+    .get();
+
+  if (activitiesSnap.empty) return { processed: 0 };
+
+  const hostStats = {};
+  activitiesSnap.forEach(doc => {
+    const data = doc.data();
+    const hostId = data.creatorId;
+    if (!hostId) return;
+
+    if (!hostStats[hostId]) {
+      hostStats[hostId] = { impressions: 0, pushJoins: 0, count: 0 };
+    }
+    hostStats[hostId].impressions += (data.stats?.impressions || 0);
+    hostStats[hostId].pushJoins += (data.stats?.pushJoins || 0);
+    hostStats[hostId].count += 1;
+  });
+
+  const messaging = admin.messaging();
+  let sentCount = 0;
+
+  for (const [hostId, stats] of Object.entries(hostStats)) {
+    const userDoc = await db.collection("users").doc(hostId).get();
+    const user = userDoc.data();
+
+    if (user && user.fcmToken) {
+      const message = {
+        token: user.fcmToken,
+        notification: {
+          title: "Dein Wochenbericht ist da 📊",
+          body: `Deine ${stats.count} Aktivitäten erreichten ${stats.impressions} Aufrufe und generierten ${stats.pushJoins} direkte Push-Beitritte.`,
+        },
+        data: { click_action: "FLUTTER_NOTIFICATION_CLICK" }
+      };
+      
+      try {
+        await messaging.send(message);
+        sentCount++;
+      } catch (err) {
+        console.error(`Failed to send report to host ${hostId}:`, err);
+      }
+    }
+  }
+
+  return { processed: activitiesSnap.size, sent: sentCount };
+}
+
+/**
+ * Scheduled Function: Jeden Sonntag um 20:00 Uhr
+ */
+exports.weeklyHostReport = onSchedule("every sunday 20:00", async (event) => {
+  console.log("Starting scheduled weekly report...");
+  const result = await aggregateAndSendReports();
+  console.log(`Weekly report finished. Processed ${result.processed} activities, sent ${result.sent} notifications.`);
+});
+
+/**
+ * HTTPS Callable: Manueller Trigger für Admin-Diagnostic
+ */
+exports.triggerWeeklyReportManual = onCall(async (request) => {
+  // RBAC: Nur Admins dürfen manuell triggern
+  const callerUid = request.auth.uid;
+  const callerDoc = await getFirestore().collection("users").doc(callerUid).get();
+  if (!callerDoc.exists || !callerDoc.data().isAdmin) {
+    throw new Error("Unauthorized access.");
+  }
+
+  return await aggregateAndSendReports();
 });

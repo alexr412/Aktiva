@@ -7,10 +7,12 @@ import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Search, Activity, MapPin, Lock, Database, CheckCircle2 } from 'lucide-react';
+import { Loader2, Search, Activity, MapPin, Lock, Database, CheckCircle2, FileBarChart, Send } from 'lucide-react';
 import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
 import { runMigrationParticipantsPreview } from '@/lib/firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { functions } from '@/lib/firebase/client';
+import { httpsCallable } from 'firebase/functions';
 
 export default function TestPage() {
   const { userProfile, loading: authLoading } = useAuth();
@@ -25,6 +27,7 @@ export default function TestPage() {
   
   // Migration State
   const [isMigrating, setIsMigrating] = useState(false);
+  const [isTriggeringReport, setIsTriggeringReport] = useState(false);
 
   // RBAC Route Guard: Only admins allowed
   useEffect(() => {
@@ -57,6 +60,28 @@ export default function TestPage() {
       });
     } finally {
       setIsMigrating(false);
+    }
+  };
+
+  const handleTriggerWeeklyReport = async () => {
+    if (!functions) return;
+    setIsTriggeringReport(true);
+    try {
+      const triggerReport = httpsCallable(functions, 'triggerWeeklyReportManual');
+      const result = await triggerReport();
+      const data = result.data as any;
+      toast({
+        title: "Wochenbericht gesendet",
+        description: `${data.sent} Berichte wurden an Hosts übermittelt (${data.processed} Aktivitäten analysiert).`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Reporting",
+        description: err.message,
+      });
+    } finally {
+      setIsTriggeringReport(false);
     }
   };
 
@@ -149,30 +174,57 @@ export default function TestPage() {
       </header>
 
       <div className="flex flex-col gap-4 p-6 border-b bg-muted/30 shrink-0">
-        {/* Database Maintenance Section */}
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                <Database className="h-5 w-5" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Database Maintenance Section */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                  <Database className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Teilnehmer-Migration</h3>
+                  <p className="text-xs text-muted-foreground">Synchronisiert Teilnehmer-Vorschauen.</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-sm">Teilnehmer-Migration</h3>
-                <p className="text-xs text-muted-foreground">Aktualisiert participantsPreview für Altdaten.</p>
+              <Button 
+                onClick={handleMigration} 
+                disabled={isMigrating}
+                variant="default"
+                size="sm"
+                className="font-bold gap-2"
+              >
+                {isMigrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Start
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* System Reporting Section */}
+          <Card className="border-orange-200 bg-orange-50/30">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+                  <FileBarChart className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Wochenbericht (Manual)</h3>
+                  <p className="text-xs text-muted-foreground">Triggered den CRON-Job sofort.</p>
+                </div>
               </div>
-            </div>
-            <Button 
-              onClick={handleMigration} 
-              disabled={isMigrating}
-              variant="default"
-              size="sm"
-              className="font-bold gap-2"
-            >
-              {isMigrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              {isMigrating ? "Migriere..." : "Migration starten"}
-            </Button>
-          </CardContent>
-        </Card>
+              <Button 
+                onClick={handleTriggerWeeklyReport} 
+                disabled={isTriggeringReport}
+                variant="outline"
+                size="sm"
+                className="font-bold gap-2 border-orange-200 text-orange-700 hover:bg-orange-100"
+              >
+                {isTriggeringReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Trigger
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="space-y-4 pt-2">
           <div className="relative">
