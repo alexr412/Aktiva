@@ -18,6 +18,7 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { ProximityRadarView } from '@/components/aktvia/proximity-radar-view';
 import { cn } from '@/lib/utils';
+import { calculateDistance } from '@/lib/geo-utils';
 
 const CardSkeleton = () => (
   <div className="w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-[2.5rem] shadow-xl border-none overflow-hidden flex flex-col">
@@ -46,22 +47,6 @@ const AdCard = () => (
     <span className="mt-6 text-[10px] uppercase tracking-widest text-neutral-400 font-black">Anzeige</span>
   </div>
 );
-
-function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-    const R = 6371; 
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * (Math.PI / 180)) *
-        Math.cos(lat2 * (Math.PI / 180)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const d = R * c; 
-    return d;
-}
-
 
 export default function ExplorePage() {
     const { user, userProfile } = useAuth();
@@ -148,10 +133,17 @@ export default function ExplorePage() {
                       act.status !== 'cancelled'
                     );
                 
-                // Clientseitige Sortierung: 1. Booster, 2. Erstellungsdatum (ASC für Feed-Logik)
+                // Clientseitige Sortierung: 1. Booster, 2. Distanz (Modul 6), 3. Erstellungsdatum
                 fetchedActivities.sort((a, b) => {
                     if (a.isBoosted && !b.isBoosted) return -1;
                     if (!a.isBoosted && b.isBoosted) return 1;
+                    
+                    if (userLocation && a.lat && a.lon && b.lat && b.lon) {
+                      const distA = calculateDistance(userLocation.lat, userLocation.lng, a.lat, a.lon);
+                      const distB = calculateDistance(userLocation.lat, userLocation.lng, b.lat, b.lon);
+                      return distA - distB;
+                    }
+
                     const timeA = a.activityDate?.toMillis() || 0;
                     const timeB = b.activityDate?.toMillis() || 0;
                     return timeA - timeB;
@@ -174,7 +166,7 @@ export default function ExplorePage() {
             console.error("Activities listener failed:", err.message);
             setIsLoading(false);
         }
-    }, [toast, user, activeCategory]);
+    }, [toast, user, activeCategory, userLocation]);
     
     const visibleCards = useMemo(() => {
         let filtered = allCards;
@@ -192,7 +184,7 @@ export default function ExplorePage() {
         if (radiusKm !== null && userLocation) {
             filtered = filtered.filter(activity => {
                 if (!activity.lat || !activity.lon) return false; 
-                const distance = getDistance(userLocation.lat, userLocation.lng, activity.lat, activity.lon);
+                const distance = calculateDistance(userLocation.lat, userLocation.lng, activity.lat, activity.lon);
                 return distance <= radiusKm;
             });
         }
@@ -345,6 +337,9 @@ export default function ExplorePage() {
                                 const isTopCard = index === cards.length - 1;
                                 const showAd = !userProfile?.isPremium && (index % 10 === 0 && index !== 0);
                                 const isPaidEvent = card.isPaid && card.price && card.price > 0;
+                                const distance = (userLocation && card.lat && card.lon) 
+                                  ? calculateDistance(userLocation.lat, userLocation.lng, card.lat, card.lon)
+                                  : null;
 
                                 return (
                                     <motion.div
@@ -382,6 +377,13 @@ export default function ExplorePage() {
                                                   </div>
                                                 )}
                                                 
+                                                {distance !== null && (
+                                                  <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-md text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1 shadow-lg border border-white/10">
+                                                    <MapPin className="h-2.5 w-2.5" />
+                                                    {distance < 1 ? '< 1 km' : `${distance.toFixed(1)} km`}
+                                                  </div>
+                                                )}
+
                                                 {isPaidEvent && (
                                                   <div className="absolute top-6 right-6 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1 shadow-lg">
                                                     <CreditCard className="h-3 w-3" />

@@ -30,6 +30,7 @@ import { GLOBAL_EXCLUDE_STRING, calculateRelevanceScore } from '@/lib/geoapify';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserBadge } from '@/components/common/UserBadge';
+import { calculateDistance } from '@/lib/geo-utils';
 
 // Dynamic import for MapView to avoid SSR issues
 const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod => mod.MapView), { 
@@ -61,6 +62,13 @@ const PLACES_PER_PAGE = 10;
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+const DISTANCE_FILTERS = [
+  { label: 'Alle', value: null },
+  { label: '< 5km', value: 5 },
+  { label: '< 10km', value: 10 },
+  { label: '< 25km', value: 25 },
+];
+
 export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
@@ -73,6 +81,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState("recommended");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
+  const [maxDistance, setMaxDistance] = useState<number | null>(null);
 
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
@@ -266,6 +275,7 @@ export default function Home() {
     setActiveCategory(categoryId);
     setActiveTabId(tabId);
     setSortBy('recommended');
+    setMaxDistance(null); // Reset distance filter on category change
   };
 
   const handlePlaceSelect = (place: Place) => setSelectedPlace(place);
@@ -317,7 +327,7 @@ export default function Home() {
             <div className="space-y-4">
                 <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">Keine Ergebnisse</h3>
                 <p className="text-[#64748b] dark:text-neutral-400 font-medium">Passe deine Suche oder die Filter an.</p>
-                <Button onClick={() => handleCategoryChange([], '')} variant="outline" className="rounded-xl font-bold">Filter zurücksetzen</Button>
+                <Button onClick={() => { handleCategoryChange([], ''); setMaxDistance(null); }} variant="outline" className="rounded-xl font-bold">Filter zurücksetzen</Button>
             </div>
         </div>
     );
@@ -348,23 +358,41 @@ export default function Home() {
                   item.status !== 'cancelled'
                 );
 
-                // Client-Side Sortierung: 1. Booster, 2. Erstellungsdatum
-                const sortedList = [...activeActivities].sort((a, b) => {
+                // --- MODUL 6: GEODATEN INJEKTION & DISTANZ-FILTER ---
+                const listWithDistance = activeActivities.map((item: any) => {
+                  const distance = (userLocation && item.lat && item.lon)
+                    ? calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lon)
+                    : null;
+                  return { ...item, distance };
+                });
+
+                let filtered = listWithDistance.filter(item => item.placeName.toLowerCase().includes(searchQuery.toLowerCase()));
+                
+                if (maxDistance !== null) {
+                  filtered = filtered.filter(item => item.distance !== null && item.distance <= maxDistance);
+                }
+
+                // Client-Side Sortierung: 1. Booster, 2. Distanz (Modul 6), 3. Erstellungsdatum
+                const sortedList = [...filtered].sort((a, b) => {
                   if (a.isBoosted && !b.isBoosted) return -1;
                   if (!a.isBoosted && b.isBoosted) return 1;
+                  
+                  if (a.distance !== null && b.distance !== null) {
+                    return a.distance - b.distance;
+                  }
+                  
                   const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
                   const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
                   return timeB - timeA;
                 });
 
-                const filtered = sortedList.filter(item => item.placeName.toLowerCase().includes(searchQuery.toLowerCase()));
-                if (filtered.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
+                if (sortedList.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
                 return (
                   <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filtered.map((item) => (
+                    {sortedList.map((item) => (
                       <div key={item.id} className="min-h-[180px] w-full">
                         {isCommunityCategory ? (
-                          <ActivityListItem activity={item as Activity} user={user} onJoin={handleJoin} />
+                          <ActivityListItem activity={item as any} user={user} onJoin={handleJoin} />
                         ) : (
                           <PlaceCard 
                             place={{
@@ -374,7 +402,8 @@ export default function Home() {
                               categories: item.categories || [],
                               lat: item.lat,
                               lon: item.lon,
-                              activityCount: 1
+                              activityCount: 1,
+                              distance: item.distance ? item.distance * 1000 : undefined // PlaceCard expects meters
                             } as Place}
                             onClick={() => handlePlaceSelect(item as any)} 
                             onAddActivity={() => handleOpenActivityModal(item as any)} 
@@ -491,6 +520,26 @@ export default function Home() {
             
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
             
+            {/* --- MODUL 6: DISTANZ-FILTER CHIPS --- */}
+            {(isAktivCategory || isCommunityCategory) && (
+              <div className="flex overflow-x-auto gap-2 pb-1 hide-scrollbar">
+                {DISTANCE_FILTERS.map((filter) => (
+                  <button
+                    key={filter.label}
+                    onClick={() => setMaxDistance(filter.value)}
+                    className={cn(
+                      "flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all",
+                      maxDistance === filter.value
+                        ? "bg-primary text-white shadow-md"
+                        : "bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400 hover:bg-slate-200"
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="mt-1 flex w-full items-center gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />

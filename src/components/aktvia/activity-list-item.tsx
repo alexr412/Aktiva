@@ -17,7 +17,7 @@ import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatTags } from '@/lib/tag-parser';
 
 interface ActivityListItemProps {
-    activity: Activity;
+    activity: Activity & { distance?: number | null };
     user: User | null;
     onJoin: (activityId: string) => Promise<void>;
 }
@@ -105,6 +105,14 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     <div className="flex items-center justify-between mb-1">
                         <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight flex-1">{activity.placeName}</p>
                         
+                        {/* Entfernungs-Badge (Modul 6) */}
+                        {activity.distance !== undefined && activity.distance !== null && (
+                          <div className="ml-2 inline-flex items-center gap-1 bg-slate-100 dark:bg-neutral-700 text-slate-600 dark:text-slate-300 font-bold px-2 py-0.5 rounded-lg text-[10px] tracking-tight shrink-0 border border-slate-200/50">
+                            <MapPin className="h-2.5 w-2.5 text-primary/70" />
+                            <span>{activity.distance < 1 ? '< 1 km' : `${activity.distance.toFixed(1)} km`}</span>
+                          </div>
+                        )}
+
                         {/* Micro-Ticketing Badge */}
                         {isPaidEvent && (
                           <div className="ml-2 inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-black px-2 py-0.5 rounded-lg text-[10px] tracking-tight shrink-0">
@@ -234,7 +242,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     ) : isFull ? (
                         'Voll'
                     ) : isPaidEvent ? (
-                        `Beitreten (€${activity.price!.toFixed(2)})`
+                        `Beitreten`
                     ) : (
                         'Beitreten'
                     )}
