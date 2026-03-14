@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin } from 'lucide-react';
+import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { sendPasswordReset, deleteAccount, signOut } from '@/lib/firebase/auth';
 import { deleteUserDocument, updateUserProfile } from '@/lib/firebase/firestore';
+import { requestAndGetFCMToken } from '@/lib/firebase/messaging';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,7 @@ type NotificationSettings = {
     friendRequests: boolean;
     activityInvites: boolean;
     chatMessages: boolean;
+    localHighlights: boolean;
 };
 
 export default function SettingsPage() {
@@ -45,6 +47,7 @@ export default function SettingsPage() {
         friendRequests: userProfile?.notificationSettings?.friendRequests ?? true,
         activityInvites: userProfile?.notificationSettings?.activityInvites ?? true,
         chatMessages: userProfile?.notificationSettings?.chatMessages ?? true,
+        localHighlights: userProfile?.notificationSettings?.localHighlights ?? false,
     });
 
     const handleNotificationChange = async (key: keyof NotificationSettings, value: boolean) => {
@@ -52,20 +55,32 @@ export default function SettingsPage() {
 
         const currentSettings = { ...notifications };
         const newSettings = { ...notifications, [key]: value };
-        setNotifications(newSettings); // Optimistic update
+        setNotifications(newSettings); 
 
         try {
+            let fcmToken = userProfile?.fcmToken;
+            
+            // Wenn Highlights aktiviert werden, Token anfordern
+            if (key === 'localHighlights' && value === true && !fcmToken) {
+                fcmToken = (await requestAndGetFCMToken()) || undefined;
+            }
+
             await updateUserProfile(user.uid, {
-                notificationSettings: newSettings
+                notificationSettings: newSettings,
+                ...(fcmToken && { fcmToken })
             });
+            
+            if (key === 'localHighlights' && value === true) {
+                toast({ title: "Highlights aktiviert", description: "Wir benachrichtigen dich bei Events in deiner Nähe." });
+            }
         } catch (error) {
             console.error("Failed to save notification settings", error);
             toast({
                 variant: 'destructive',
-                title: 'Error',
-                description: 'Could not save your settings.',
+                title: 'Fehler',
+                description: 'Einstellungen konnten nicht gespeichert werden.',
             });
-            setNotifications(currentSettings); // Revert on failure
+            setNotifications(currentSettings);
         }
     };
 
@@ -222,6 +237,66 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
+                    {/* Notifications Section */}
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                            <Bell className="h-5 w-5 text-primary" />
+                            <span>Benachrichtigungen</span>
+                        </h2>
+                        <div className="space-y-2 rounded-lg border bg-card p-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label htmlFor="local-highlights" className="font-medium flex items-center gap-2">
+                                      <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                                      Lokale Highlights
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">Infos zu Top-Aktivitäten im 2km Umkreis.</p>
+                                </div>
+                                <Switch
+                                    id="local-highlights"
+                                    checked={notifications.localHighlights}
+                                    onCheckedChange={(checked) => handleNotificationChange('localHighlights', checked)}
+                                />
+                            </div>
+                            <Separator className="my-4"/>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label htmlFor="friend-requests" className="font-medium">Freundesanfragen</Label>
+                                    <p className="text-sm text-muted-foreground">Bei neuen Anfragen informieren.</p>
+                                </div>
+                                <Switch
+                                    id="friend-requests"
+                                    checked={notifications.friendRequests}
+                                    onCheckedChange={(checked) => handleNotificationChange('friendRequests', checked)}
+                                />
+                            </div>
+                            <Separator className="my-4"/>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label htmlFor="activity-invites" className="font-medium">Einladungen</Label>
+                                    <p className="text-sm text-muted-foreground">Bei Einladungen zu Aktivitäten informieren.</p>
+                                </div>
+                                <Switch
+                                    id="activity-invites"
+                                    checked={notifications.activityInvites}
+                                    onCheckedChange={(checked) => handleNotificationChange('activityInvites', checked)}
+                                />
+                            </div>
+                             <Separator className="my-4"/>
+                             <div className="flex items-center justify-between">
+                                <div>
+                                    <Label htmlFor="chat-messages" className="font-medium">Chat-Nachrichten</Label>
+                                    <p className="text-sm text-muted-foreground">Bei neuen Nachrichten benachrichtigen.</p>
+                                </div>
+                                <Switch
+                                    id="chat-messages"
+                                    checked={notifications.chatMessages}
+                                    onCheckedChange={(checked) => handleNotificationChange('chatMessages', checked)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Account Section */}
                     <div className="space-y-4">
                         <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
@@ -250,51 +325,6 @@ export default function SettingsPage() {
                                 </div>
                                 <Globe className="h-5 w-5 text-muted-foreground" />
                             </button>
-                        </div>
-                    </div>
-
-                    {/* Notifications Section */}
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
-                            <Bell className="h-5 w-5 text-primary" />
-                            <span>Notifications</span>
-                        </h2>
-                        <div className="space-y-2 rounded-lg border bg-card p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Label htmlFor="friend-requests" className="font-medium">Friend Requests</Label>
-                                    <p className="text-sm text-muted-foreground">Notify me about new friend requests.</p>
-                                </div>
-                                <Switch
-                                    id="friend-requests"
-                                    checked={notifications.friendRequests}
-                                    onCheckedChange={(checked) => handleNotificationChange('friendRequests', checked)}
-                                />
-                            </div>
-                            <Separator className="my-4"/>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Label htmlFor="activity-invites" className="font-medium">Activity Invites</Label>
-                                    <p className="text-sm text-muted-foreground">Notify me when I'm invited to an activity.</p>
-                                </div>
-                                <Switch
-                                    id="activity-invites"
-                                    checked={notifications.activityInvites}
-                                    onCheckedChange={(checked) => handleNotificationChange('activityInvites', checked)}
-                                />
-                            </div>
-                             <Separator className="my-4"/>
-                             <div className="flex items-center justify-between">
-                                <div>
-                                    <Label htmlFor="chat-messages" className="font-medium">Chat Messages</Label>
-                                    <p className="text-sm text-muted-foreground">Notify me about new messages in chats.</p>
-                                </div>
-                                <Switch
-                                    id="chat-messages"
-                                    checked={notifications.chatMessages}
-                                    onCheckedChange={(checked) => handleNotificationChange('chatMessages', checked)}
-                                />
-                            </div>
                         </div>
                     </div>
 

@@ -165,6 +165,7 @@ export interface UserProfile {
     friendRequests: boolean;
     activityInvites: boolean;
     chatMessages: boolean;
+    localHighlights: boolean; // Modul 6.5
   };
   proximitySettings?: {
     enabled: boolean;
@@ -175,6 +176,7 @@ export interface UserProfile {
     lng: number;
     updatedAt: Timestamp;
   };
+  fcmToken?: string; // Modul 6.5
   verified?: boolean;
   onboardingCompleted: boolean;
   friendCode?: string;
@@ -207,7 +209,7 @@ export interface Notification {
         displayName: string | null;
         photoURL: string | null;
     };
-    type: 'friend_request' | 'activity_invite' | 'proximity_alert';
+    type: 'friend_request' | 'activity_invite' | 'proximity_alert' | 'local_highlight';
     isRead: boolean;
     createdAt: Timestamp;
     referenceId?: string;

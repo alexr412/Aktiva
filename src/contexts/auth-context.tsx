@@ -9,7 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
-import { updateUserLocation } from '@/lib/firebase/firestore';
+import { updateUserLocation, updateUserProfile } from '@/lib/firebase/firestore';
+import { requestAndGetFCMToken, onForegroundMessage } from '@/lib/firebase/messaging';
+import { toast } from '@/hooks/use-toast';
 
 export interface AuthContextType {
   user: User | null;
@@ -47,7 +49,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Whitelist für öffentliche Routen
   const publicRoutes = ['/login', '/signup', '/onboarding'];
   const isPublicRoute = publicRoutes.includes(pathname);
 
@@ -68,14 +69,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (authUser) {
         setUser(authUser);
         
-        // Etabliere Echtzeit-Stream zum Nutzerdokument
         const userRef = doc(db, 'users', authUser.uid);
         unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const profile = docSnap.data() as UserProfile;
             setUserProfile(profile);
 
-            // Onboarding-Check
             if (!profile.onboardingCompleted && pathname !== '/onboarding') {
               router.replace('/onboarding');
             }
@@ -90,7 +89,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserProfile(null);
         setLoading(false);
         
-        // Zwingt Gäste auf die Login-Seite, wenn sie versuchen eine geschützte URL aufzurufen
         if (!isPublicRoute) {
             router.replace('/login');
         }
@@ -103,7 +101,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [router, pathname, isPublicRoute]);
 
-  // Proximity Radar: Standort-Update bei App-Nutzung (Vordergrund)
+  // FCM Integration
+  useEffect(() => {
+    if (!user || !userProfile?.notificationSettings?.localHighlights) return;
+
+    const setupFCM = async () => {
+      const token = await requestAndGetFCMToken();
+      if (token && token !== userProfile.fcmToken) {
+        await updateUserProfile(user.uid, { fcmToken: token });
+      }
+    };
+
+    setupFCM();
+
+    const unsubscribeFCM = onForegroundMessage((payload) => {
+      toast({
+        title: payload.notification?.title || "Benachrichtigung",
+        description: payload.notification?.body,
+      });
+    });
+
+    return () => unsubscribeFCM?.();
+  }, [user, userProfile?.notificationSettings?.localHighlights, userProfile?.fcmToken]);
+
+  // Proximity Radar
   useEffect(() => {
     if (!user || !userProfile?.proximitySettings?.enabled) return;
 
@@ -120,10 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    // Update sofort beim Mount
     updateLocation();
-
-    // Update alle 15 Minuten, solange die App offen ist
     const interval = setInterval(updateLocation, 15 * 60 * 1000);
     return () => clearInterval(interval);
   }, [user, userProfile?.proximitySettings?.enabled]);
@@ -132,7 +150,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return <NotConfigured />;
   }
   
-  // Standard-Ladezustand während der Initialisierung
   if (loading) {
       return (
           <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -141,7 +158,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       )
   }
 
-  // Render Lock: Blockiert das Rendern geschützter Seiten für Gäste, bis der Redirect greift
   if (!user && !isPublicRoute) {
       return (
           <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -150,7 +166,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       );
   }
 
-  // Zusätzliche Sperre für Onboarding-Pflicht
   if (user && userProfile && !userProfile.onboardingCompleted && pathname !== '/onboarding') {
       return (
           <div className="flex h-screen w-full items-center justify-center bg-background">
