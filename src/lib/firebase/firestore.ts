@@ -21,6 +21,7 @@ import {
   updateDoc,
   limit,
   increment,
+  documentId,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, Activity, Chat } from '@/lib/types';
@@ -127,7 +128,6 @@ export async function createActivity({
     throw new Error('Either a place or a custom location name must be provided.');
   }
 
-  // Backend Enforcement: Check user profile for premium status and monetization rights
   const userRef = doc(db, 'users', user.uid);
   const userSnap = await getDoc(userRef);
   const userProfileData = userSnap.data() as UserProfile | undefined;
@@ -324,7 +324,6 @@ export async function joinActivity(activityId: string, user: User) {
 
       const activityData = activityDoc.data() as Activity;
       
-      // ZWINGENDE BACKEND-SICHERUNG FÜR PAID-EVENTS
       if (activityData.isPaid && activityData.creatorId !== user.uid) {
         throw "Sicherheits-Gate: Beitritt zu bezahltem Event nur nach Zahlungsnachweis möglich.";
       }
@@ -344,7 +343,7 @@ export async function joinActivity(activityId: string, user: User) {
         lastInteractionAt: serverTimestamp(),
       });
 
-      // Update previews (max 5)
+      // Update previews (max 5) - Harden against duplicates
       const currentPreviews = activityData.participantsPreview || [];
       if (currentPreviews.length < 5 && !currentPreviews.some(p => p.uid === user.uid)) {
         transaction.update(activityRef, {
@@ -407,7 +406,7 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
         lastInteractionAt: serverTimestamp(),
       });
 
-      // Update previews (max 5)
+      // Update previews (max 5) - Harden against duplicates
       const currentPreviews = activityData.participantsPreview || [];
       if (currentPreviews.length < 5 && !currentPreviews.some(p => p.uid === user.uid)) {
         transaction.update(activityRef, {
@@ -512,20 +511,27 @@ export async function leaveActivity(activityId: string, userId: string) {
   const activityRef = doc(db, 'activities', activityId);
   const chatRef = doc(db, 'chats', activityId);
   
-  const batch = writeBatch(db);
-
-  batch.update(activityRef, {
-    participantIds: arrayRemove(userId),
-  });
-
-  batch.update(chatRef, {
-    participantIds: arrayRemove(userId),
-    [`participantDetails.${userId}`]: deleteField(),
-    [`unreadCount.${userId}`]: deleteField(),
-  });
-
+  // Transition to transaction for safe state management (Preview removal)
   try {
-    await batch.commit();
+    await runTransaction(db, async (transaction) => {
+      const activitySnap = await transaction.get(activityRef);
+      if (!activitySnap.exists()) return;
+      const activityData = activitySnap.data() as Activity;
+
+      // Filter user from preview list
+      const updatedPreview = (activityData.participantsPreview || []).filter(p => p.uid !== userId);
+
+      transaction.update(activityRef, {
+        participantIds: arrayRemove(userId),
+        participantsPreview: updatedPreview
+      });
+
+      transaction.update(chatRef, {
+        participantIds: arrayRemove(userId),
+        [`participantDetails.${userId}`]: deleteField(),
+        [`unreadCount.${userId}`]: deleteField(),
+      });
+    });
   } catch (error) {
     console.error('Error leaving activity:', error);
     throw new Error('Could not leave activity.');
@@ -854,4 +860,35 @@ export async function earnToken(userId: string) {
   await updateDoc(userRef, {
     tokens: increment(1)
   });
+}
+
+/**
+ * MIGRATION SCRIPT: Befüllt das Feld participantsPreview für alle bestehenden Aktivitäten.
+ * Greift auf participantIds zurück und lädt die zugehörigen Profile.
+ */
+export async function runMigrationParticipantsPreview() {
+  if (!db) throw new Error("Firestore not initialized");
+  
+  const activitiesSnap = await getDocs(collection(db, "activities"));
+  let processed = 0;
+
+  for (const actDoc of activitiesSnap.docs) {
+    const data = actDoc.data() as Activity;
+    const pIds = data.participantIds?.slice(0, 5) || [];
+    
+    if (pIds.length > 0) {
+      // Chunked Profile Fetch (max 10 IDs per query)
+      const userSnap = await getDocs(query(collection(db, "users"), where(documentId(), "in", pIds)));
+      const preview = userSnap.docs.map(u => ({
+        uid: u.id,
+        displayName: u.data().displayName || "User",
+        photoURL: u.data().photoURL || null
+      }));
+      
+      await updateDoc(actDoc.ref, { participantsPreview: preview });
+      processed++;
+    }
+  }
+  
+  return processed;
 }

@@ -7,18 +7,24 @@ import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Search, Activity, MapPin, Lock } from 'lucide-react';
+import { Loader2, Search, Activity, MapPin, Lock, Database, CheckCircle2 } from 'lucide-react';
 import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
+import { runMigrationParticipantsPreview } from '@/lib/firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function TestPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   
   const [testCity, setTestCity] = useState<string>("Bremerhaven");
   const [testCategory, setTestCategory] = useState<string>("tourism,entertainment,heritage");
   const [coordinates, setCoordinates] = useState<{lat: number, lng: number}>({ lat: 53.5395845, lng: 8.5809341 });
   const [results, setResults] = useState<any[]>([]);
   const [isFetching, setIsFetching] = useState<boolean>(false);
+  
+  // Migration State
+  const [isMigrating, setIsMigrating] = useState(false);
 
   // RBAC Route Guard: Only admins allowed
   useEffect(() => {
@@ -34,6 +40,25 @@ export default function TestPage() {
   if (!userProfile?.isAdmin) {
     return null; // Will redirect via useEffect
   }
+
+  const handleMigration = async () => {
+    setIsMigrating(true);
+    try {
+      const count = await runMigrationParticipantsPreview();
+      toast({
+        title: "Migration abgeschlossen",
+        description: `${count} Aktivitäten wurden erfolgreich aktualisiert.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Migration fehlgeschlagen",
+        description: err.message,
+      });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   const resolveCoordinates = async (cityName: string) => {
     const geoUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(cityName)}&limit=1&apiKey=${GEOAPIFY_API_KEY}`;
@@ -69,7 +94,6 @@ export default function TestPage() {
       const combinedSoftVetoList = [...BASE_SOFT_VETO];
 
       const safeFeatures = rawFeatures.filter((feature: any) => {
-        // Deterministische Exklusion von Stolpersteinen über Rohdaten
         const isStolperstein = feature.properties?.datasource?.raw?.memorial === 'stolperstein';
         if (isStolperstein) return false;
 
@@ -125,7 +149,32 @@ export default function TestPage() {
       </header>
 
       <div className="flex flex-col gap-4 p-6 border-b bg-muted/30 shrink-0">
-        <div className="space-y-4">
+        {/* Database Maintenance Section */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                <Database className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm">Teilnehmer-Migration</h3>
+                <p className="text-xs text-muted-foreground">Aktualisiert participantsPreview für Altdaten.</p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleMigration} 
+              disabled={isMigrating}
+              variant="default"
+              size="sm"
+              className="font-bold gap-2"
+            >
+              {isMigrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              {isMigrating ? "Migriere..." : "Migration starten"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-4 pt-2">
           <div className="relative">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
