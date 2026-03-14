@@ -164,6 +164,9 @@ export async function createActivity({
     creatorName: user.displayName,
     creatorPhotoURL: user.photoURL,
     participantIds: [user.uid],
+    participantPreviews: [
+      { uid: user.uid, displayName: user.displayName, photoURL: user.photoURL }
+    ],
     createdAt: serverTimestamp() as Timestamp,
     isCustomActivity: isCustomActivity,
     isTimeFlexible: !!isTimeFlexible,
@@ -323,8 +326,6 @@ export async function joinActivity(activityId: string, user: User) {
       
       // ZWINGENDE BACKEND-SICHERUNG FÜR PAID-EVENTS
       if (activityData.isPaid && activityData.creatorId !== user.uid) {
-        // Diese Funktion darf bei Paid-Events nur nach kryptografischer Zahlungsverifikation 
-        // oder durch einen Cloud Function Webhook aufgerufen werden.
         throw "Sicherheits-Gate: Beitritt zu bezahltem Event nur nach Zahlungsnachweis möglich.";
       }
 
@@ -342,6 +343,18 @@ export async function joinActivity(activityId: string, user: User) {
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
       });
+
+      // Update previews (max 5)
+      const currentPreviews = activityData.participantPreviews || [];
+      if (currentPreviews.length < 5 && !currentPreviews.some(p => p.uid === user.uid)) {
+        transaction.update(activityRef, {
+          participantPreviews: arrayUnion({
+            uid: user.uid,
+            displayName: user.displayName,
+            photoURL: user.photoURL
+          })
+        });
+      }
 
       transaction.update(chatRef, {
         participantIds: arrayUnion(user.uid),
@@ -366,10 +379,6 @@ export async function joinActivity(activityId: string, user: User) {
   }
 }
 
-/**
- * joinPaidActivity - Gesicherte Beitritts-Logik für kostenpflichtige Events.
- * Erfordert einen Transaktions-Token (Mock) und erstellt einen Audit-Trail.
- */
 export async function joinPaidActivity(activityId: string, user: User, transactionToken: string) {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!transactionToken) throw new Error("Transaktions-Token fehlt. Beitritt verweigert.");
@@ -393,13 +402,23 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
         throw `Maximale Teilnehmerzahl von ${activityData.maxParticipants} erreicht.`;
       }
 
-      // 1. User zur Aktivität hinzufügen
       transaction.update(activityRef, {
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
       });
 
-      // 2. User zum Chat hinzufügen
+      // Update previews (max 5)
+      const currentPreviews = activityData.participantPreviews || [];
+      if (currentPreviews.length < 5 && !currentPreviews.some(p => p.uid === user.uid)) {
+        transaction.update(activityRef, {
+          participantPreviews: arrayUnion({
+            uid: user.uid,
+            displayName: user.displayName,
+            photoURL: user.photoURL
+          })
+        });
+      }
+
       transaction.update(chatRef, {
         participantIds: arrayUnion(user.uid),
         [`participantDetails.${user.uid}`]: {
@@ -411,7 +430,6 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
         [`unreadCount.${user.uid}`]: 0
       });
 
-      // 3. Transaktions-Audit Trail schreiben
       transaction.set(transactionLogRef, {
         activityId,
         userId: user.uid,
@@ -460,7 +478,6 @@ export async function sendMessage(chatId: string, text: string, user: User, user
     },
   };
 
-  // Increment unreadCount for all other participants
   chatData.participantIds.forEach(pid => {
     if (pid !== user.uid) {
       updates[`unreadCount.${pid}`] = increment(1);
@@ -552,7 +569,6 @@ export async function fetchUserActivities(userId: string) {
   const querySnapshot = await getDocs(q);
   const activities = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
   
-  // Clientseitige Sortierung nach activityDate (DESC)
   return activities.sort((a, b) => {
     const timeA = a.activityDate?.toMillis() || 0;
     const timeB = b.activityDate?.toMillis() || 0;
@@ -564,7 +580,6 @@ export async function fetchUserActivities(userId: string) {
 export async function sendFriendRequest(fromUserId: string, toUserId: string) {
     if (!db) throw new Error('Firestore is not initialized.');
     
-    // Selbst-Referenz-Sperre
     if (!fromUserId || fromUserId === toUserId) {
       console.error("Self-referential friend requests are prohibited.");
       return; 
@@ -581,11 +596,9 @@ export async function sendFriendRequest(fromUserId: string, toUserId: string) {
         }
         const fromUserProfile = fromUserSnap.data() as UserProfile;
 
-        // Update friend request arrays
         transaction.update(fromUserRef, { friendRequestsSent: arrayUnion(toUserId) });
         transaction.update(toUserRef, { friendRequestsReceived: arrayUnion(fromUserId) });
 
-        // Create notification
         transaction.set(notificationRef, {
             recipientId: toUserId,
             senderId: fromUserId,
@@ -617,18 +630,15 @@ export async function acceptFriendRequest(userId: string, requestingUserId: stri
     const requestingUserRef = doc(db, 'users', requestingUserId);
 
     await runTransaction(db, async (transaction) => {
-        // Remove from requests
         transaction.update(userRef, { friendRequestsReceived: arrayRemove(requestingUserId) });
         transaction.update(requestingUserRef, { friendRequestsSent: arrayRemove(userId) });
 
-        // Add to friends
         transaction.update(userRef, { friends: arrayUnion(requestingUserId) });
         transaction.update(requestingUserRef, { friends: arrayUnion(userId) });
     });
 }
 
 export async function declineFriendRequest(userId: string, decliningUserId: string) {
-    // This is the same logic as cancelling a request, just initiated by the receiver
     if (!db) throw new Error('Firestore is not initialized.');
     const userRef = doc(db, 'users', userId);
     const decliningUserRef = doc(db, 'users', decliningUserId);
@@ -653,9 +663,6 @@ export async function removeFriend(userId: string, friendId: string) {
 export async function deleteUserDocument(userId: string) {
   if (!db) throw new Error('Firestore is not initialized.');
   const userDocRef = doc(db, 'users', userId);
-  // Note: This is a simplified deletion. A production app should use a
-  // backend function to clean up all user-related data (e.g., remove from
-  // activities, chats, friend lists) for data integrity.
   await deleteDoc(userDocRef);
 }
 
@@ -747,14 +754,9 @@ export async function submitReviews(
     await batch.commit();
 }
 
-/**
- * findUserByFriendCode - Bereinigte Abfrage-Pipeline.
- * Limitiert ausschließlich auf den friendCode, um Selbstreferenz-Sperren auf API-Ebene zu vermeiden.
- */
 export async function findUserByFriendCode(friendCode: string): Promise<UserProfile | null> {
     if (!db) throw new Error('Firestore is not initialized.');
     
-    // Friend codes are stored in uppercase
     const userQuery = query(
         collection(db, 'users'), 
         where('friendCode', '==', friendCode.toUpperCase()),
@@ -784,7 +786,6 @@ export async function getOrCreateDirectChat(user1Id: string, user2Id: string): P
   const chatSnap = await getDoc(chatRef);
 
   if (!chatSnap.exists()) {
-    // Create the chat document if it doesn't exist
     const user1Profile = await getUserProfile(user1Id);
     const user2Profile = await getUserProfile(user2Id);
 
@@ -829,7 +830,6 @@ export async function submitReportAndHide(
   if (!db) throw new Error('Firestore is not initialized.');
   const batch = writeBatch(db);
 
-  // 1. Create a report document
   const reportRef = doc(collection(db, 'reports'));
   batch.set(reportRef, {
     reporterId,
@@ -840,7 +840,6 @@ export async function submitReportAndHide(
     createdAt: serverTimestamp(),
   });
 
-  // 2. Add entity to reporter's hidden list
   const userRef = doc(db, 'users', reporterId);
   batch.update(userRef, {
     hiddenEntityIds: arrayUnion(reportedEntityId),

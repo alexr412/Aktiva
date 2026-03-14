@@ -5,9 +5,10 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard } from 'lucide-react';
+import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EntityMoreOptions } from '../common/EntityMoreOptions';
 import { cn } from '@/lib/utils';
 import { voteActivity } from '@/lib/firebase/firestore';
@@ -37,6 +38,8 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const userVote = user ? (activity.userVotes?.[user.uid] || 'none') : 'none';
     
     const isPaidEvent = activity.isPaid && activity.price && activity.price > 0;
+    const isPremium = userProfile?.isPremium || false;
+    const previews = activity.participantPreviews || [];
 
     const primaryStyle = getPrimaryIconData({ categories: activity.categories, name: activity.placeName });
     const PrimaryIcon = primaryStyle.icon;
@@ -51,7 +54,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
         }
 
         if (isPaidEvent) {
-            // Zahlungs-Gate: Umleitung zum Checkout
             router.push(`/checkout/${activity.id}`);
             return;
         }
@@ -115,7 +117,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <p className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1 font-bold uppercase tracking-wider">
                             <Users className="h-3 w-3 text-primary/60"/>
-                            <span>{activity.participantIds.length} / {activity.maxParticipants || '∞'} &bull; von {activity.creatorName?.split(' ')[0]}</span>
+                            <span>von {activity.creatorName?.split(' ')[0]}</span>
                         </p>
                         {activity.placeAddress && (
                             <p className="text-[11px] text-neutral-400 flex items-center gap-1 font-medium truncate max-w-[150px]">
@@ -123,6 +125,54 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                                 {activity.placeAddress}
                             </p>
                         )}
+                    </div>
+
+                    {/* Premium Teilnehmer-Vorschau */}
+                    <div className="mt-4 flex items-center justify-between bg-slate-50/50 dark:bg-neutral-900/30 p-2 rounded-2xl border border-dashed border-slate-100 dark:border-neutral-700">
+                      <div className="flex items-center gap-2">
+                        <div className="flex -space-x-2 overflow-hidden">
+                          {isPremium ? (
+                            <>
+                              {previews.slice(0, 4).map((p, i) => (
+                                <Avatar key={i} className="inline-block h-7 w-7 rounded-full ring-2 ring-white dark:ring-neutral-800 shadow-sm">
+                                  <AvatarImage src={p.photoURL || undefined} />
+                                  <AvatarFallback className="text-[10px] font-black bg-primary/10 text-primary">{p.displayName?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                              ))}
+                              {activity.participantIds.length > 4 && (
+                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 dark:bg-neutral-700 text-[10px] font-black ring-2 ring-white dark:ring-neutral-800 text-slate-500">
+                                  +{activity.participantIds.length - 4}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              {[1, 2, 3].map((i) => (
+                                <div key={i} className="h-7 w-7 rounded-full bg-slate-200 dark:bg-neutral-700 ring-2 ring-white dark:ring-neutral-800 border-2 border-dashed border-slate-300 dark:border-neutral-600 flex items-center justify-center">
+                                  <Users className="h-3 w-3 text-slate-400 opacity-50" />
+                                </div>
+                              ))}
+                            </>
+                          )}
+                        </div>
+                        
+                        {!isPremium ? (
+                          <div className="flex items-center gap-1.5 ml-1">
+                            <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                            <span className="text-[10px] text-slate-400 font-bold italic tracking-tight">
+                              Premium-Vorschau
+                            </span>
+                          </div>
+                        ) : (
+                           <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-500 ml-1" />
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 px-2">
+                        <span className="text-[11px] font-black text-slate-600 dark:text-neutral-400 tracking-tighter">
+                          {activity.participantIds.length} / {activity.maxParticipants || '∞'}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mt-3">

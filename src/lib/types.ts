@@ -63,6 +63,12 @@ export interface Activity {
           isSupporter?: boolean;
       }
   };
+  // Modul 5: Premium Vorschau
+  participantPreviews?: {
+    uid: string;
+    displayName: string | null;
+    photoURL: string | null;
+  }[];
   // Monetization fields
   isBoosted?: boolean;
   boostedAt?: Timestamp | null;
