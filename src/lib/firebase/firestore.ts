@@ -183,6 +183,7 @@ export async function createActivity({
     upvotes: 0,
     downvotes: 0,
     userVotes: {},
+    reportCount: 0,
     stats: {
       impressions: 0,
       pushJoins: 0
@@ -873,6 +874,36 @@ export async function submitReportAndHide(
   const userRef = doc(db, 'users', reporterId);
   batch.update(userRef, {
     hiddenEntityIds: arrayUnion(reportedEntityId),
+  });
+
+  if (entityType === 'activity') {
+    const activityRef = doc(db, 'activities', reportedEntityId);
+    batch.update(activityRef, {
+      reportCount: increment(1)
+    });
+  }
+
+  await batch.commit();
+}
+
+export async function submitReport(activityId: string, reporterId: string, reason: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const batch = writeBatch(db);
+  
+  // 1. Audit-Log in separater Collection anlegen
+  const reportRef = doc(collection(db, 'reports'));
+  batch.set(reportRef, {
+    activityId,
+    reporterId,
+    reason,
+    createdAt: serverTimestamp(),
+    status: 'open'
+  });
+
+  // 2. Report-Counter der Aktivität inkrementieren
+  const activityRef = doc(db, 'activities', activityId);
+  batch.update(activityRef, {
+    reportCount: increment(1)
   });
 
   await batch.commit();

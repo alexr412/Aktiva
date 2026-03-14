@@ -85,6 +85,8 @@ export interface Activity {
     impressions?: number;
     pushJoins?: number;
   };
+  // Modul 9: Trust & Safety
+  reportCount?: number;
 }
 
 export interface Message {

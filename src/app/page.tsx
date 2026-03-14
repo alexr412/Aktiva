@@ -59,6 +59,7 @@ const CardSkeleton = () => (
 );
 
 const PLACES_PER_PAGE = 10;
+const QUARANTINE_THRESHOLD = 3;
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -352,14 +353,15 @@ export default function Home() {
             if (isCommunityCategory || isAktivCategory) {
                 const list = data?.flat() || [];
                 
-                // --- ARCHITEKTUR UPDATE: FEED FILTER FÜR AKTIVE ENTITÄTEN ---
-                const activeActivities = list.filter((item: any) => 
+                // --- ARCHITEKTUR UPDATE: FEED FILTER FÜR AKTIVE & SICHERE ENTITÄTEN ---
+                const safeActivities = list.filter((item: any) => 
                   item.status !== 'completed' && 
-                  item.status !== 'cancelled'
+                  item.status !== 'cancelled' &&
+                  (item.reportCount || 0) < QUARANTINE_THRESHOLD
                 );
 
                 // --- MODUL 6: GEODATEN INJEKTION & DISTANZ-FILTER ---
-                const listWithDistance = activeActivities.map((item: any) => {
+                const listWithDistance = safeActivities.map((item: any) => {
                   const distance = (userLocation && item.lat && item.lon)
                     ? calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lon)
                     : null;

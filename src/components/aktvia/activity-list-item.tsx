@@ -5,16 +5,17 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown, BarChart3 } from 'lucide-react';
+import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown, BarChart3, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EntityMoreOptions } from '../common/EntityMoreOptions';
 import { cn } from '@/lib/utils';
-import { voteActivity, trackActivityView } from '@/lib/firebase/firestore';
+import { voteActivity, trackActivityView, submitReport } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatTags } from '@/lib/tag-parser';
+import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
 interface ActivityListItemProps {
@@ -24,18 +25,18 @@ interface ActivityListItemProps {
 }
 
 export function ActivityListItem({ activity, user, onJoin }: ActivityListItemProps) {
-    if (!activity) return null;
-
     const { userProfile } = useAuth();
     const router = useRouter();
+    const { toast } = useToast();
     const [isJoining, setIsJoining] = useState(false);
     const [isVoting, setIsVoting] = useState(false);
+    const [isReporting, setIsReporting] = useState(false);
     
     const cardRef = useRef<HTMLDivElement>(null);
     const hasTracked = useRef(false);
 
     useEffect(() => {
-      if (!activity.id || !activity.isBoosted || hasTracked.current) return;
+      if (!activity || !activity.id || !activity.isBoosted || hasTracked.current) return;
 
       const observer = new IntersectionObserver(
         (entries) => {
@@ -52,9 +53,9 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
       }
 
       return () => observer.disconnect();
-    }, [activity.id, activity.isBoosted]);
+    }, [activity]);
 
-    if (!activity.id) return null;
+    if (!activity || !activity.id) return null;
 
     const isParticipant = activity.participantIds.includes(user?.uid || '---');
     const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
@@ -96,6 +97,31 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
         if (!user || isVoting) return;
         setIsVoting(true);
         try { await voteActivity(activityId, user.uid, type); } catch (error) { console.error("Voting failed:", error); } finally { setIsVoting(false); }
+    };
+
+    const handleReport = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      setIsReporting(true);
+      try {
+        await submitReport(activity.id!, user.uid, "Verstoß gegen Richtlinien");
+        toast({
+          title: "Meldung eingegangen",
+          description: "Vielen Dank. Wir prüfen den Inhalt umgehend.",
+        });
+      } catch (error) {
+        console.error("Meldevorgang fehlgeschlagen", error);
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: "Meldung konnte nicht gesendet werden.",
+        });
+      } finally {
+        setIsReporting(false);
+      }
     };
 
     const rawTags = (activity.categories || []).filter((tag: string) => 
@@ -234,6 +260,19 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     </div>
                 </div>
             </div>
+
+            {/* Modul 9: Melde-Trigger für externe Nutzer */}
+            {!isOwnActivity && (
+              <Button 
+                onClick={handleReport} 
+                disabled={isReporting}
+                variant="ghost"
+                className="w-full mt-4 h-10 rounded-2xl border border-dashed border-destructive/20 text-destructive hover:bg-destructive/5 text-[10px] font-black uppercase tracking-widest gap-2"
+              >
+                {isReporting ? <Loader2 className="h-3 w-3 animate-spin"/> : <AlertTriangle className="h-3 w-3" />}
+                {isReporting ? "Wird gemeldet..." : "Aktivität melden"}
+              </Button>
+            )}
 
             <div className="card-footer-actions flex justify-between items-center w-full mt-5 pt-4 border-t border-neutral-50 dark:border-neutral-700/50">
               <div className="voting-controls flex gap-1.5 items-center bg-secondary/30 rounded-full p-1">

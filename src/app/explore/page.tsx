@@ -20,6 +20,8 @@ import { ProximityRadarView } from '@/components/aktvia/proximity-radar-view';
 import { cn } from '@/lib/utils';
 import { calculateDistance } from '@/lib/geo-utils';
 
+const QUARANTINE_THRESHOLD = 3;
+
 const CardSkeleton = () => (
   <div className="w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-[2.5rem] shadow-xl border-none overflow-hidden flex flex-col">
     <Skeleton className="flex-1 rounded-none" />
@@ -124,13 +126,14 @@ export default function ExplorePage() {
             const activitiesQuery = query(collectionRef, ...constraints);
 
             const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-                // --- ARCHITEKTUR UPDATE: FEED FILTER FÜR EXPLORE ---
+                // --- ARCHITEKTUR UPDATE: FEED FILTER FÜR EXPLORE SICHERE ENTITÄTEN ---
                 const fetchedActivities = snapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() } as Activity))
                     .filter(act => 
                       !act.participantIds.includes(user.uid) && 
                       act.status !== 'completed' && 
-                      act.status !== 'cancelled'
+                      act.status !== 'cancelled' &&
+                      (act.reportCount || 0) < QUARANTINE_THRESHOLD
                     );
                 
                 // Clientseitige Sortierung: 1. Booster, 2. Distanz (Modul 6), 3. Erstellungsdatum
