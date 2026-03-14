@@ -192,6 +192,7 @@ export interface UserProfile {
   isSupporter?: boolean;
   tokens?: number;
   successfulFreeHosts?: number;
+  fiatBalance?: number; // Modul 8: Finanz-Clearing
   // RBAC fields
   isAdmin?: boolean;
 }

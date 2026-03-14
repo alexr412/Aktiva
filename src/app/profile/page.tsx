@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -472,13 +472,25 @@ export default function ProfilePage() {
                             )}
 
                             <div className="flex flex-col gap-6 w-full">
-                                <Button 
-                                    variant="secondary" 
-                                    className="rounded-full px-10 h-12 bg-neutral-100 hover:bg-neutral-200 text-[#0f172a] font-black border-none transition-transform active:scale-95 mx-auto w-fit" 
-                                    onClick={() => router.push('/profile/edit')}
-                                >
-                                    Profil bearbeiten
-                                </Button>
+                                <div className="flex flex-wrap justify-center gap-3">
+                                    <Button 
+                                        variant="secondary" 
+                                        className="rounded-full px-8 h-12 bg-neutral-100 hover:bg-neutral-200 text-[#0f172a] font-black border-none transition-transform active:scale-95" 
+                                        onClick={() => router.push('/profile/edit')}
+                                    >
+                                        Profil bearbeiten
+                                    </Button>
+                                    <Button 
+                                        asChild
+                                        variant="default" 
+                                        className="rounded-full px-8 h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-black border-none transition-transform active:scale-95 shadow-lg shadow-emerald-500/20"
+                                    >
+                                        <Link href="/wallet">
+                                            <Wallet className="w-4 h-4 mr-2" />
+                                            Mein Wallet (€{userData?.fiatBalance?.toFixed(2) || '0.00'})
+                                        </Link>
+                                    </Button>
+                                </div>
 
                                 {/* Metrik-Dashboard */}
                                 <div className="flex gap-3 w-full max-w-sm mx-auto">

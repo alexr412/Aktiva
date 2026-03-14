@@ -71,6 +71,7 @@ export async function createUserProfileDocument(user: User) {
     isSupporter: false,
     tokens: 0,
     successfulFreeHosts: 0,
+    fiatBalance: 0, // Modul 8
     proximitySettings: {
       enabled: false,
       radiusKm: 5
@@ -421,6 +422,13 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
       }
 
       transaction.update(activityRef, updates);
+
+      // --- MODUL 8: FINANZ-CLEARING (Host Gutschrift) ---
+      const netAmount = (activityData.price || 0) * 0.9; // 10% Gebühr
+      const hostRef = doc(db, 'users', activityData.creatorId);
+      transaction.update(hostRef, {
+        fiatBalance: increment(netAmount)
+      });
 
       // Update previews (max 5) - Harden against duplicates
       const currentPreviews = activityData.participantsPreview || [];
@@ -916,3 +924,28 @@ export async function trackActivityView(activityId: string) {
     "stats.impressions": increment(1)
   });
 }
+
+/**
+ * MODUL 8: AUSZAHLUNGSSYSTEM
+ */
+export const requestPayout = async (userId: string, currentBalance: number) => {
+  if (!db) throw new Error("Firestore not initialized");
+  if (currentBalance < 50) throw new Error("Auszahlungslimit von 50€ nicht erreicht.");
+
+  const batch = writeBatch(db);
+  
+  // 1. Hard-Reset des Ledgers
+  const userRef = doc(db, 'users', userId);
+  batch.update(userRef, { fiatBalance: 0 }); 
+  
+  // 2. Audit-Dokument für Administratoren/Stripe erstellen
+  const payoutRef = doc(collection(db, 'payoutRequests'));
+  batch.set(payoutRef, {
+    userId,
+    amount: currentBalance,
+    status: 'pending',
+    createdAt: serverTimestamp()
+  });
+
+  await batch.commit();
+};
