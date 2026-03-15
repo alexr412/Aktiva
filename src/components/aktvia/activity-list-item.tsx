@@ -57,8 +57,10 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
     if (!activity || !activity.id) return null;
 
-    const isParticipant = activity.participantIds.includes(user?.uid || '---');
-    const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
+    // --- ARCHITEKTUR UPDATE: ROBUSTE FALLBACKS FÜR METRIKEN ---
+    const participantIds = activity.participantIds || [];
+    const isParticipant = user ? participantIds.includes(user.uid) : false;
+    const isFull = activity.maxParticipants ? participantIds.length >= activity.maxParticipants : false;
     const isOwnActivity = activity.hostId === user?.uid;
     const userVote = user ? (activity.userVotes?.[user.uid] || 'none') : 'none';
     
@@ -66,7 +68,10 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const isPremium = userProfile?.isPremium || false;
     const previewList = activity.participantsPreview || [];
 
-    const primaryStyle = getPrimaryIconData({ categories: activity.categories, name: activity.placeName });
+    const primaryStyle = getPrimaryIconData({ 
+        categories: activity.categories || [], 
+        name: activity.placeName || "Aktivität" 
+    });
     const PrimaryIcon = primaryStyle.icon;
 
     const handleJoinClick = async (e: React.MouseEvent) => {
@@ -131,6 +136,8 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     );
     const processedTags = formatTags(rawTags);
 
+    const activityDate = activity.activityDate?.toDate();
+
     return (
         <div 
           ref={cardRef}
@@ -139,7 +146,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
             activity.isBoosted && "border-2 border-orange-400 bg-orange-50/10 dark:bg-orange-950/20 shadow-md ring-4 ring-orange-500/5"
           )}
         >
-            {/* Aktivitäts-Booster Badge */}
             {activity.isBoosted && (
               <div className="absolute -top-3 left-6 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg animate-in fade-in slide-in-from-top-1 flex items-center gap-1.5">
                 <Flame className="h-3 w-3 animate-pulse" />
@@ -147,7 +153,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
               </div>
             )}
 
-            {/* Insights Link für Hosts */}
             {isOwnActivity && activity.isBoosted && (
               <Button 
                 variant="ghost" 
@@ -172,9 +177,10 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between mb-1">
-                        <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight flex-1">{activity.placeName}</p>
+                        <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight flex-1">
+                            {activity.placeName || "Unbenanntes Treffen"}
+                        </p>
                         
-                        {/* Entfernungs-Badge (Modul 6) */}
                         {activity.distance !== undefined && activity.distance !== null && (
                           <div className="ml-2 inline-flex items-center gap-1 bg-slate-100 dark:bg-neutral-700 text-slate-600 dark:text-slate-300 font-bold px-2 py-0.5 rounded-lg text-[10px] tracking-tight shrink-0 border border-slate-200/50">
                             <MapPin className="h-2.5 w-2.5 text-primary/70" />
@@ -182,11 +188,10 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                           </div>
                         )}
 
-                        {/* Micro-Ticketing Badge */}
                         {isPaidEvent && (
                           <div className="ml-2 inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-black px-2 py-0.5 rounded-lg text-[10px] tracking-tight shrink-0">
                             <CreditCard className="h-2.5 w-2.5" />
-                            <span>{activity.price!.toFixed(2)}€</span>
+                            <span>{activity.price?.toFixed(2)}€</span>
                           </div>
                         )}
                     </div>
@@ -194,7 +199,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <p className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1 font-bold uppercase tracking-wider">
                             <Users className="h-3 w-3 text-primary/60"/>
-                            <span>von {activity.hostName?.split(' ')[0]}</span>
+                            <span>von {activity.hostName?.split(' ')[0] || "Entdecker"}</span>
                         </p>
                         {activity.placeAddress && (
                             <p className="text-[11px] text-neutral-400 flex items-center gap-1 font-medium truncate max-w-[150px]">
@@ -204,15 +209,18 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                         )}
                     </div>
 
-                    {/* Kategorie Badge (Modul 12) */}
                     <div className="mt-2 flex items-center gap-2">
                       <div className="flex items-center gap-1 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-100/50">
                         <Layers className="w-2.5 h-2.5" />
                         <span>{activity.category || 'Sonstiges'}</span>
                       </div>
+                      {activityDate && (
+                        <div className="text-[9px] font-bold text-slate-400 uppercase">
+                            {format(activityDate, 'eee, d. MMM')}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Premium Teilnehmer-Vorschau */}
                     <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-3">
                       <div className="flex items-center gap-2">
                         <div className="flex -space-x-2 overflow-hidden">
@@ -221,7 +229,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                               {previewList.slice(0, 4).map((p) => (
                                 <Avatar key={p.uid} className="h-6 w-6 border-2 border-background shadow-sm">
                                   <AvatarImage src={p.photoURL || undefined} />
-                                  <AvatarFallback className="text-[8px] font-black bg-primary/10 text-primary">{p.displayName?.charAt(0)}</AvatarFallback>
+                                  <AvatarFallback className="text-[8px] font-black bg-primary/10 text-primary">{p.displayName?.charAt(0) || "U"}</AvatarFallback>
                                 </Avatar>
                               ))}
                               {previewList.length > 4 && (
@@ -239,22 +247,18 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                           )}
                         </div>
 
-                        {/* Premium Indikator */}
                         {!isPremium && (
                           <span className="text-[10px] text-muted-foreground font-medium italic flex items-center gap-1">
                             <Crown className="w-3 h-3 text-amber-500" />
                             Premium-Vorschau
                           </span>
                         )}
-                        {isPremium && previewList.length > 0 && (
-                           <Crown className="w-3 h-3 text-amber-500 opacity-50" />
-                        )}
                       </div>
                       
                       <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted/30 rounded-full">
                         <Users className="w-3 h-3 text-muted-foreground" />
                         <span className="text-[10px] font-bold text-muted-foreground tracking-tight">
-                          {activity.participantIds.length} / {activity.maxParticipants || '∞'}
+                          {participantIds.length} / {activity.maxParticipants || '∞'}
                         </span>
                       </div>
                     </div>
@@ -269,7 +273,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 </div>
             </div>
 
-            {/* Modul 9: Melde-Trigger für externe Nutzer */}
             {!isOwnActivity && (
               <Button 
                 onClick={handleReport} 

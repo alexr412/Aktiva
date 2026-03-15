@@ -109,11 +109,18 @@ export default function Home() {
       }
 
       if (type === 'activities') {
+        // --- ARCHITEKTUR UPDATE: QUERY SIMPLIFIZIERUNG ZUR VERMEIDUNG VON INDEX-FEHLERN ---
         const constraints: any[] = [
-          orderBy('createdAt', 'desc'),
           limit(PLACES_PER_PAGE * 5)
         ];
-        if (cursorValue) constraints.push(startAfter(cursorValue));
+        
+        // Temporäre Deaktivierung von orderBy zur Vermeidung von Composite Index Anforderungen bei Filterung
+        // constraints.push(orderBy('createdAt', 'desc')); 
+        
+        if (cursorValue) {
+            // startAfter erfordert orderBy
+            // constraints.push(startAfter(cursorValue));
+        }
         
         const q = query(collection(db!, 'activities'), ...constraints);
         const snap = await getDocs(q);
@@ -139,7 +146,7 @@ export default function Home() {
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       }
     } catch (error: any) {
-      console.error("🔥 FIRESTORE ERROR:", error.message);
+      console.error("🔥 FIRESTORE QUERY ERROR:", error.message, "Key:", key);
       throw error;
     }
 
@@ -216,8 +223,8 @@ export default function Home() {
         const distance = props.distance || 0;
         return {
           id: props.place_id,
-          name: props.name || props.address_line1,
-          address: props.address_line2,
+          name: props.name || props.address_line1 || "Unbekannter Ort",
+          address: props.address_line2 || "Keine Adresse verfügbar",
           categories: cats,
           lat: props.lat,
           lon: props.lon,
@@ -357,11 +364,12 @@ export default function Home() {
                 const list = data?.flat() || [];
                 
                 // --- ARCHITEKTUR UPDATE: FEED FILTER FÜR AKTIVE & SICHERE ENTITÄTEN ---
-                const safeActivities = list.filter((item: any) => 
-                  item.status !== 'completed' && 
-                  item.status !== 'cancelled' &&
-                  (item.reportCount || 0) < QUARANTINE_THRESHOLD
-                );
+                const safeActivities = list.filter((item: any) => {
+                  if (!item) return false;
+                  return item.status !== 'completed' && 
+                         item.status !== 'cancelled' &&
+                         (item.reportCount || 0) < QUARANTINE_THRESHOLD;
+                });
 
                 // --- MODUL 12: SEMANTISCHE FILTERUNG ---
                 let semanticFiltered = safeActivities;
@@ -377,7 +385,10 @@ export default function Home() {
                   return { ...item, distance };
                 });
 
-                let filtered = listWithDistance.filter(item => item.placeName.toLowerCase().includes(searchQuery.toLowerCase()));
+                let filtered = listWithDistance.filter(item => {
+                    const name = item.placeName || "";
+                    return name.toLowerCase().includes(searchQuery.toLowerCase());
+                });
                 
                 if (maxDistance !== null) {
                   filtered = filtered.filter(item => item.distance !== null && item.distance <= maxDistance);
@@ -407,14 +418,14 @@ export default function Home() {
                         ) : (
                           <PlaceCard 
                             place={{
-                              id: item.placeId,
-                              name: item.placeName,
-                              address: item.placeAddress,
+                              id: item.placeId || "unknown",
+                              name: item.placeName || "Unbekannter Ort",
+                              address: item.placeAddress || "Keine Adresse",
                               categories: item.categories || [],
-                              lat: item.lat,
-                              lon: item.lon,
+                              lat: item.lat || 0,
+                              lon: item.lon || 0,
                               activityCount: 1,
-                              distance: item.distance ? item.distance * 1000 : undefined // PlaceCard expects meters
+                              distance: item.distance ? item.distance * 1000 : undefined 
                             } as Place}
                             onClick={() => handlePlaceSelect(item as any)} 
                             onAddActivity={() => handleOpenActivityModal(item as any)} 
@@ -426,7 +437,10 @@ export default function Home() {
                 );
             }
             
-            const filtered = places.filter(place => place.name.toLowerCase().includes(searchQuery.toLowerCase()));
+            const filtered = places.filter(place => {
+                const name = place.name || "";
+                return name.toLowerCase().includes(searchQuery.toLowerCase());
+            });
             const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : 0)));
             if (sorted.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
             

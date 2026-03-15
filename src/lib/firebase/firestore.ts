@@ -166,11 +166,11 @@ export async function createActivity({
   
   const activityData = {
     placeId: place?.id || "custom",
-    placeName: place?.name || customLocationName!,
+    placeName: place?.name || customLocationName || "Aktivität",
     activityDate: Timestamp.fromDate(startDate),
     hostId: user.uid,
-    hostName: user.displayName,
-    hostPhotoURL: user.photoURL,
+    hostName: user.displayName || "Anonymer Host",
+    hostPhotoURL: user.photoURL || null,
     participantIds: [user.uid],
     participantsPreview: [
       { uid: user.uid, displayName: user.displayName, photoURL: user.photoURL }
@@ -178,7 +178,7 @@ export async function createActivity({
     createdAt: serverTimestamp() as Timestamp,
     isCustomActivity: isCustomActivity,
     isTimeFlexible: !!isTimeFlexible,
-    category: category,
+    category: category || 'Sonstiges',
     categories: isCustomActivity ? ["user_event"] : placeCategories,
     lastInteractionAt: serverTimestamp() as Timestamp,
     status: 'active' as const,
@@ -198,8 +198,8 @@ export async function createActivity({
     },
     participantDetails: {
       [user.uid]: {
-        displayName: user.displayName,
-        photoURL: user.photoURL,
+        displayName: user.displayName || "Anonymer Host",
+        photoURL: user.photoURL || null,
         isPremium: isUserPremium,
         isSupporter: isUserSupporter,
         checkInStatus: 'pending'
@@ -211,13 +211,14 @@ export async function createActivity({
     ...(endDate && { activityEndDate: Timestamp.fromDate(endDate) }),
     ...(finalMaxParticipants && finalMaxParticipants > 0 && { maxParticipants: finalMaxParticipants }),
   };
+  
   batch.set(activityRef, activityData);
 
   const pRef = doc(db, 'activities', activityRef.id, 'participants', user.uid);
   batch.set(pRef, {
     uid: user.uid,
-    displayName: user.displayName,
-    photoURL: user.photoURL,
+    displayName: user.displayName || "Anonymer Host",
+    photoURL: user.photoURL || null,
     checkInStatus: 'pending',
     joinedAt: serverTimestamp()
   });
@@ -228,12 +229,12 @@ export async function createActivity({
     createdAt: serverTimestamp(),
     participantIds: [user.uid],
     lastMessage: null,
-    placeName: place?.name || customLocationName,
+    placeName: place?.name || customLocationName || "Aktivität",
     hostId: user.uid,
     participantDetails: {
       [user.uid]: {
-        displayName: user.displayName,
-        photoURL: user.photoURL,
+        displayName: user.displayName || "Anonymer Host",
+        photoURL: user.photoURL || null,
         isPremium: isUserPremium,
         isSupporter: isUserSupporter,
         checkInStatus: 'pending'
@@ -376,8 +377,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
         [`participantDetails.${user.uid}`]: {
-          displayName: user.displayName,
-          photoURL: user.photoURL,
+          displayName: user.displayName || "Unbekannter Teilnehmer",
+          photoURL: user.photoURL || null,
           isPremium: userProfileData?.isPremium || false,
           isSupporter: userProfileData?.isSupporter || false,
           checkInStatus: 'pending'
@@ -400,8 +401,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
 
       transaction.set(pRef, {
         uid: user.uid,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
+        displayName: user.displayName || "Unbekannter Teilnehmer",
+        photoURL: user.photoURL || null,
         checkInStatus: 'pending',
         joinedAt: serverTimestamp()
       });
@@ -411,8 +412,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
         transaction.update(activityRef, {
           participantsPreview: arrayUnion({
             uid: user.uid,
-            displayName: user.displayName,
-            photoURL: user.photoURL
+            displayName: user.displayName || "Unbekannter Teilnehmer",
+            photoURL: user.photoURL || null
           })
         });
       }
@@ -420,8 +421,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
       transaction.update(chatRef, {
         participantIds: arrayUnion(user.uid),
         [`participantDetails.${user.uid}`]: {
-          displayName: user.displayName,
-          photoURL: user.photoURL,
+          displayName: user.displayName || "Unbekannter Teilnehmer",
+          photoURL: user.photoURL || null,
           isPremium: userProfileData?.isPremium || false,
           isSupporter: userProfileData?.isSupporter || false,
           checkInStatus: 'pending'
@@ -469,8 +470,8 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
         [`participantDetails.${user.uid}`]: {
-          displayName: user.displayName,
-          photoURL: user.photoURL,
+          displayName: user.displayName || "Unbekannter Teilnehmer",
+          photoURL: user.photoURL || null,
           isPremium: userProfileData?.isPremium || false,
           isSupporter: userProfileData?.isSupporter || false,
           checkInStatus: 'pending'
@@ -499,8 +500,8 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
 
       transaction.set(pRef, {
         uid: user.uid,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
+        displayName: user.displayName || "Unbekannter Teilnehmer",
+        photoURL: user.photoURL || null,
         checkInStatus: 'pending',
         joinedAt: serverTimestamp()
       });
@@ -510,8 +511,8 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
         transaction.update(activityRef, {
           participantsPreview: arrayUnion({
             uid: user.uid,
-            displayName: user.displayName,
-            photoURL: user.photoURL
+            displayName: user.displayName || "Unbekannter Teilnehmer",
+            photoURL: user.photoURL || null
           })
         });
       }
@@ -519,8 +520,8 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
       transaction.update(chatRef, {
         participantIds: arrayUnion(user.uid),
         [`participantDetails.${user.uid}`]: {
-          displayName: user.displayName,
-          photoURL: user.photoURL,
+          displayName: user.displayName || "Unbekannter Teilnehmer",
+          photoURL: user.photoURL || null,
           isPremium: userProfileData?.isPremium || false,
           isSupporter: userProfileData?.isSupporter || false,
           checkInStatus: 'pending'
@@ -531,7 +532,7 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
       transaction.set(transactionLogRef, {
         activityId,
         userId: user.uid,
-        userName: user.displayName,
+        userName: user.displayName || "Unbekannter Nutzer",
         amount: activityData.price || 0,
         currency: 'EUR',
         status: 'completed',
@@ -561,8 +562,8 @@ export async function sendMessage(chatId: string, text: string, user: User, user
   batch.set(newMessageRef, {
     text: text.trim(),
     senderId: user.uid,
-    senderName: user.displayName,
-    senderPhotoURL: user.photoURL,
+    senderName: user.displayName || "Anonymer Nutzer",
+    senderPhotoURL: user.photoURL || null,
     sentAt: serverTimestamp(),
     isPremium: userProfile?.isPremium || false,
     isSupporter: userProfile?.isSupporter || false,
@@ -571,7 +572,7 @@ export async function sendMessage(chatId: string, text: string, user: User, user
   const updates: any = {
     lastMessage: {
       text: text.trim(),
-      senderName: user.displayName,
+      senderName: user.displayName || "Anonymer Nutzer",
       sentAt: serverTimestamp(),
     },
   };
@@ -716,8 +717,8 @@ export async function sendFriendRequest(fromUserId: string, toUserId: string) {
             recipientId: toUserId,
             senderId: fromUserId,
             senderProfile: {
-                displayName: fromUserProfile.displayName,
-                photoURL: fromUserProfile.photoURL
+                displayName: fromUserProfile.displayName || "Jemand",
+                photoURL: fromUserProfile.photoURL || null
             },
             type: 'friend_request',
             isRead: false,
@@ -845,10 +846,6 @@ export async function completeActivity(activityId: string, userId: string, isPai
   });
 }
 
-/**
- * MODUL 17: AUTOMATED REFUND PIPELINE
- * Storniert eine Aktivität und generiert Refund-Audit-Dokumente atomar.
- */
 export const cancelActivity = async (activityId: string, hostId: string) => {
   if (!db) throw new Error('Firestore is not initialized.');
   
@@ -865,11 +862,9 @@ export const cancelActivity = async (activityId: string, hostId: string) => {
     const participantsRef = collection(db, 'activities', activityId, 'participants');
     const participantsSnap = await getDocs(participantsRef);
     
-    // Wir zählen zahlende Teilnehmer (alle außer Host)
     const payingParticipantsCount = Math.max(0, participantsSnap.size - 1);
     const escrowDeduction = payingParticipantsCount * (activity.price * 0.9);
 
-    // 1. Host Escrow-Ledger bereinigen
     if (escrowDeduction > 0) {
       const hostRef = doc(db, 'users', hostId);
       batch.update(hostRef, {
@@ -877,14 +872,13 @@ export const cancelActivity = async (activityId: string, hostId: string) => {
       });
     }
 
-    // 2. Refund-Audit für jeden Teilnehmer generieren (außer Host)
     participantsSnap.forEach((pDoc) => {
       if (pDoc.id !== hostId) {
         const refundRef = doc(collection(db, 'refunds'));
         batch.set(refundRef, {
           activityId,
           userId: pDoc.id,
-          amount: activity.price, // Teilnehmer erhält 100% zurück
+          amount: activity.price, 
           status: 'pending',
           createdAt: serverTimestamp()
         });
@@ -1033,20 +1027,20 @@ export async function getOrCreateDirectChat(user1Id: string, user2Id: string): P
       createdAt: serverTimestamp(),
       participantDetails: {
         [user1Id]: {
-          displayName: user1Profile.displayName,
-          photoURL: user1Profile.photoURL,
+          displayName: user1Profile.displayName || "Nutzer 1",
+          photoURL: user1Profile.photoURL || null,
           isPremium: user1Profile.isPremium || false,
           isSupporter: user1Profile.isSupporter || false
         },
         [user2Id]: {
-          displayName: user2Profile.displayName,
-          photoURL: user2Profile.photoURL,
+          displayName: user2Profile.displayName || "Nutzer 2",
+          photoURL: user2Profile.photoURL || null,
           isPremium: user2Profile.isPremium || false,
           isSupporter: user2Profile.isSupporter || false
         }
       },
       lastMessage: null,
-      hostId: user1Id, // Set first user as default host for DMs if needed
+      hostId: user1Id, 
       unreadCount: {
         [user1Id]: 0,
         [user2Id]: 0
