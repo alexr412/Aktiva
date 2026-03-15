@@ -76,6 +76,7 @@ export async function createUserProfileDocument(user: User) {
     successfulReferrals: 0, // Modul 13
     averageRating: 0, // Modul 11
     ratingCount: 0, // Modul 11
+    kycStatus: 'unverified', // Modul 14
     proximitySettings: {
       enabled: false,
       radiusKm: 5

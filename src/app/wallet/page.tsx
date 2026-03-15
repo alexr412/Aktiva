@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { requestPayout } from '@/lib/firebase/firestore';
+import { submitKYCDocument } from '@/lib/firebase/storage';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Wallet, ArrowUpCircle, Info, Loader2, CheckCircle2, History, Banknote } from 'lucide-react';
+import { ArrowLeft, Wallet, ArrowUpCircle, Info, Loader2, CheckCircle2, History, Banknote, ShieldAlert, Upload, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -16,12 +17,15 @@ export default function WalletPage() {
     const { user, userProfile } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isUploadingKYC, setIsUploadingKYC] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
     const currentBalance = userProfile?.fiatBalance || 0;
-    const canWithdraw = currentBalance >= MIN_PAYOUT;
+    const kycStatus = userProfile?.kycStatus || 'unverified';
+    const canWithdraw = currentBalance >= MIN_PAYOUT && kycStatus === 'verified';
 
     const handlePayoutRequest = async () => {
         if (!user || !canWithdraw) return;
@@ -42,6 +46,26 @@ export default function WalletPage() {
             });
         } finally {
             setIsProcessing(false);
+        }
+    };
+
+    const handleKYCUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast({ variant: 'destructive', title: "Datei zu groß", description: "Das Dokument darf maximal 5MB groß sein." });
+            return;
+        }
+
+        setIsUploadingKYC(true);
+        try {
+            await submitKYCDocument(user.uid, file);
+            toast({ title: "Dokument hochgeladen", description: "Wir prüfen deine Identität nun." });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: "Upload fehlgeschlagen", description: err.message });
+        } finally {
+            setIsUploadingKYC(false);
         }
     };
 
@@ -75,6 +99,42 @@ export default function WalletPage() {
 
             <main className="flex-1 p-4 sm:p-8 flex flex-col items-center">
                 <div className="w-full max-w-md space-y-6">
+                    {/* KYC Indicator Section */}
+                    <div className={cn(
+                        "p-4 rounded-2xl border flex items-center gap-4",
+                        kycStatus === 'verified' ? "bg-emerald-50 border-emerald-100 text-emerald-700" :
+                        kycStatus === 'pending' ? "bg-blue-50 border-blue-100 text-blue-700" :
+                        "bg-amber-50 border-amber-100 text-amber-700"
+                    )}>
+                        <div className={cn(
+                            "p-2 rounded-xl bg-white shadow-sm",
+                            kycStatus === 'verified' ? "text-emerald-600" :
+                            kycStatus === 'pending' ? "text-blue-600" :
+                            "text-amber-600"
+                        )}>
+                            {kycStatus === 'verified' ? <ShieldCheck className="h-5 w-5" /> : 
+                             kycStatus === 'pending' ? <Loader2 className="h-5 w-5 animate-spin" /> : 
+                             <ShieldAlert className="h-5 w-5" />}
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Identitätsstatus</p>
+                            <p className="text-sm font-black uppercase">{kycStatus}</p>
+                        </div>
+                        {kycStatus === 'unverified' && (
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploadingKYC}
+                                className="rounded-xl font-black text-[10px] uppercase bg-white/50"
+                            >
+                                {isUploadingKYC ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
+                                Verifizieren
+                            </Button>
+                        )}
+                        <input type="file" ref={fileInputRef} onChange={handleKYCUpload} className="hidden" accept="image/*,.pdf" />
+                    </div>
+
                     {/* Balance Card */}
                     <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
                         <div className="relative z-10">
@@ -98,15 +158,28 @@ export default function WalletPage() {
                                     )}
                                 >
                                     {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowUpCircle className="h-5 w-5 mr-2" />}
-                                    Auszahlen
+                                    {canWithdraw ? 'Auszahlen' : kycStatus !== 'verified' ? 'KYC erforderlich' : `Minimum: €${MIN_PAYOUT}`}
                                 </Button>
                             </div>
                         </div>
                         <Banknote className="absolute -bottom-6 -right-6 h-40 w-40 text-white/5 rotate-12" />
                     </div>
 
+                    {/* KYC Warning Box */}
+                    {kycStatus !== 'verified' && (
+                        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-2xl flex items-start gap-3">
+                            <ShieldAlert className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-black text-destructive uppercase tracking-tight">Aktion erforderlich</p>
+                                <p className="text-[11px] text-destructive/80 font-medium leading-relaxed mt-1">
+                                    Aus regulatorischen Gründen ist für die Auszahlung von Fiat-Guthaben eine einmalige Identitätsprüfung (KYC) erforderlich. Bitte lade ein Foto deines Personalausweises hoch.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Progress to Payout */}
-                    {!canWithdraw && currentBalance > 0 && (
+                    {kycStatus === 'verified' && !canWithdraw && currentBalance > 0 && (
                         <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center text-sm font-bold text-slate-600">

@@ -4,6 +4,8 @@ import type { Timestamp } from 'firebase/firestore';
 
 export type ActivityCategory = 'Sport' | 'Tech' | 'Party' | 'Kultur' | 'Outdoor' | 'Gaming' | 'Networking' | 'Sonstiges';
 
+export type KYCStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
+
 export interface Place {
   id: string;
   name: string;
@@ -203,6 +205,8 @@ export interface UserProfile {
   // Modul 11: Reputation Engine
   averageRating?: number;
   ratingCount?: number;
+  // Modul 14: KYC
+  kycStatus?: KYCStatus;
   // RBAC fields
   isAdmin?: boolean;
 }
