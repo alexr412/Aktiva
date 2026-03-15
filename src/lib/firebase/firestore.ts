@@ -1,4 +1,3 @@
-
 'use client';
 
 import { db } from './client';
@@ -74,6 +73,7 @@ export async function createUserProfileDocument(user: User) {
     tokens: 0,
     successfulFreeHosts: 0,
     fiatBalance: 0, // Modul 8
+    escrowBalance: 0, // Modul 16
     successfulReferrals: 0, // Modul 13
     averageRating: 0, // Modul 11
     ratingCount: 0, // Modul 11
@@ -496,11 +496,11 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
 
       transaction.update(activityRef, updates);
 
-      // --- MODUL 8: FINANZ-CLEARING (Host Gutschrift) ---
+      // --- MODUL 16: ESCROW REROUTING ---
       const netAmount = (activityData.price || 0) * 0.9; // 10% Gebühr
       const hostRef = doc(db, 'users', activityData.creatorId);
       transaction.update(hostRef, {
-        fiatBalance: increment(netAmount)
+        escrowBalance: increment(netAmount)
       });
 
       // Modul 15: Scanner sub-collection
@@ -826,19 +826,35 @@ export async function voteToCompleteActivity(activityId: string, userId: string)
 
 export async function completeActivity(activityId: string, userId: string, isPaid: boolean) {
   if (!db) throw new Error('Firestore is not initialized.');
-  const batch = writeBatch(db);
+  
   const activityRef = doc(db, 'activities', activityId);
   const userRef = doc(db, 'users', userId);
 
-  batch.update(activityRef, { status: 'completed' });
+  await runTransaction(db, async (transaction) => {
+    const activitySnap = await transaction.get(activityRef);
+    if (!activitySnap.exists()) throw new Error("Activity not found.");
+    const activityData = activitySnap.data() as Activity;
 
-  if (!isPaid) {
-    batch.update(userRef, {
-      successfulFreeHosts: increment(1)
-    });
-  }
+    transaction.update(activityRef, { status: 'completed' });
 
-  await batch.commit();
+    if (!isPaid) {
+      transaction.update(userRef, {
+        successfulFreeHosts: increment(1)
+      });
+    } else if (activityData.price) {
+      // --- MODUL 16: ESCROW CLEARING ---
+      // We calculate how many paying participants there are (total minus creator)
+      const payingParticipantsCount = Math.max(0, (activityData.participantIds?.length || 1) - 1);
+      const releaseAmount = payingParticipantsCount * (activityData.price * 0.9);
+
+      if (releaseAmount > 0) {
+        transaction.update(userRef, {
+          escrowBalance: increment(-releaseAmount),
+          fiatBalance: increment(releaseAmount)
+        });
+      }
+    }
+  });
 }
 
 export async function checkIfUserReviewed(activityId: string, reviewerId: string): Promise<boolean> {

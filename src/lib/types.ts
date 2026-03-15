@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Timestamp } from 'firebase/firestore';
@@ -208,6 +207,7 @@ export interface UserProfile {
   tokens?: number;
   successfulFreeHosts?: number;
   fiatBalance?: number; // Modul 8: Finanz-Clearing
+  escrowBalance?: number; // Modul 16: Treuhand
   successfulReferrals?: number; // Modul 13
   // Modul 11: Reputation Engine
   averageRating?: number;

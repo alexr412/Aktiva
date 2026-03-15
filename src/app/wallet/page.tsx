@@ -7,7 +7,7 @@ import { requestPayout } from '@/lib/firebase/firestore';
 import { submitKYCDocument } from '@/lib/firebase/storage';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Wallet, ArrowUpCircle, Info, Loader2, CheckCircle2, History, Banknote, ShieldAlert, Upload, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Wallet, ArrowUpCircle, Info, Loader2, CheckCircle2, History, Banknote, ShieldAlert, Upload, ShieldCheck, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +24,7 @@ export default function WalletPage() {
     const [showSuccess, setShowSuccess] = useState(false);
 
     const currentBalance = userProfile?.fiatBalance || 0;
+    const escrowBalance = userProfile?.escrowBalance || 0;
     const kycStatus = userProfile?.kycStatus || 'unverified';
     const canWithdraw = currentBalance >= MIN_PAYOUT && kycStatus === 'verified';
 
@@ -145,8 +146,17 @@ export default function WalletPage() {
                             <div className="flex items-baseline gap-2">
                                 <span className="text-5xl font-black">€{currentBalance.toFixed(2)}</span>
                             </div>
+
+                            {/* Modul 16: Escrow Display */}
+                            <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10 flex justify-between items-center backdrop-blur-sm">
+                                <div className="flex items-center gap-2">
+                                    <Lock className="h-3.5 w-3.5 text-blue-400" />
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Ausstehend (Escrow)</span>
+                                </div>
+                                <span className="text-sm font-black text-blue-400">€{escrowBalance.toFixed(2)}</span>
+                            </div>
                             
-                            <div className="mt-10 flex gap-2">
+                            <div className="mt-8 flex gap-2">
                                 <Button 
                                     onClick={handlePayoutRequest} 
                                     disabled={!canWithdraw || isProcessing}
@@ -178,6 +188,19 @@ export default function WalletPage() {
                         </div>
                     )}
 
+                    {/* Modul 16: Escrow Info */}
+                    <div className="bg-blue-50 border border-blue-100 rounded-3xl p-6 flex items-start gap-4">
+                        <div className="bg-white p-2 rounded-xl shadow-sm shrink-0">
+                            <Lock className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                            <h4 className="font-black text-blue-900 text-sm mb-1">Über ausstehende Zahlungen</h4>
+                            <p className="text-xs text-blue-800/70 font-medium leading-relaxed">
+                                Einnahmen aus Ticketverkäufen werden in Treuhand (Escrow) gehalten, bis du die Aktivität erfolgreich abgeschlossen hast. Dies schützt Teilnehmer und sichert faire Rückerstattungen bei Absagen.
+                            </p>
+                        </div>
+                    </div>
+
                     {/* Progress to Payout */}
                     {kycStatus === 'verified' && !canWithdraw && currentBalance > 0 && (
                         <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
@@ -198,19 +221,6 @@ export default function WalletPage() {
                             </div>
                         </Card>
                     )}
-
-                    {/* Info Section */}
-                    <div className="bg-blue-50 border border-blue-100 rounded-3xl p-6 flex items-start gap-4">
-                        <div className="bg-white p-2 rounded-xl shadow-sm shrink-0">
-                            <Info className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div>
-                            <h4 className="font-black text-blue-900 text-sm mb-1">Hinweis zur Gebühr</h4>
-                            <p className="text-xs text-blue-800/70 font-medium leading-relaxed">
-                                Von jedem Ticketpreis werden automatisch 10% Plattformgebühr für die Serverwartung und Transaktionskosten abgezogen. Der im Wallet angezeigte Betrag ist bereits dein Netto-Gewinn.
-                            </p>
-                        </div>
-                    </div>
 
                     {/* Transaction History Placeholder */}
                     <div className="space-y-4 pt-4">
