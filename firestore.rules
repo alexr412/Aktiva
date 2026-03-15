@@ -3,6 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Hilfsfunktion zur Identifizierung von Administratoren
     function isAdmin() {
       return request.auth != null && (
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
@@ -11,8 +12,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId || isAdmin();
+      allow read: if true;
+      allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
     }
 
     match /activities/{activityId} {
@@ -25,27 +26,26 @@ service cloud.firestore {
       );
       allow delete: if request.auth != null && (resource.data.hostId == request.auth.uid || isAdmin());
       
-      match /participants/{userId} {
+      match /participants/{participantId} {
         allow read: if true;
-        allow write: if request.auth != null && (
-          request.auth.uid == userId || 
-          get(/databases/$(database)/documents/activities/$(activityId)).data.hostId == request.auth.uid ||
-          isAdmin()
-        );
+        allow write: if request.auth != null && (request.auth.uid == participantId || isAdmin());
       }
     }
 
     match /chats/{chatId} {
-       allow read, write: if request.auth != null;
-
-       match /messages/{messageId} {
-          allow read, write: if request.auth != null;
-       }
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if isAdmin();
+      
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null;
+      }
     }
 
     match /reviews/{reviewId} {
       allow read: if request.auth != null;
-      allow create: if request.auth.uid != null;
+      allow create: if request.auth != null;
       allow update, delete: if isAdmin();
     }
 
@@ -66,19 +66,19 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    match /payoutRequests/{reqId} {
-      allow read, update: if isAdmin();
+    match /payoutRequests/{requestId} {
       allow create: if request.auth != null;
+      allow read, update, delete: if isAdmin();
     }
 
     match /refunds/{refundId} {
-      allow read, update: if isAdmin();
       allow create: if request.auth != null;
+      allow read, update, delete: if isAdmin();
     }
     
-    match /kycRequests/{reqId} {
-      allow read, update: if isAdmin();
+    match /kycRequests/{requestId} {
       allow create: if request.auth != null;
+      allow read, update, delete: if isAdmin();
     }
   }
 }
