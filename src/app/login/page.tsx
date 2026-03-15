@@ -40,15 +40,17 @@ export default function LoginPage() {
     try {
       const user = await signIn(values.email, values.password);
 
-      // Zwingende Verifikations-Prüfung unmittelbar nach dem Auth-Call
+      // STRIKTE VERIFIKATIONS-SCHRANKE:
+      // Wir prüfen den Status unmittelbar nach dem Login.
       if (!user.emailVerified) {
-        await signOut(); // Session sofort terminieren
+        // Bei fehlender Verifizierung wird die Session sofort atomar terminiert.
+        await signOut(); 
         toast({
           variant: 'destructive',
           title: 'Zugriff verweigert',
-          description: 'Bitte bestätige zuerst deine E-Mail-Adresse über den zugesandten Link.',
+          description: 'Bitte bestätige zuerst deine E-Mail-Adresse über den zugesandten Link. Prüfe deinen Posteingang.',
         });
-        return; // Funktionsausführung abbrechen
+        return; 
       }
 
       toast({
