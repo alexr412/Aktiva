@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase/client';
 import { joinActivity } from '@/lib/firebase/firestore';
 import type { Activity } from '@/lib/types';
-import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -96,14 +96,10 @@ export default function ExplorePage() {
                 },
                 (error) => {
                     console.error('Geolocation error:', error);
-                    toast({
-                        title: 'Standortfehler',
-                        description: 'Konnte deinen Standort nicht ermitteln.',
-                    });
                 }
             );
         }
-    }, [toast]);
+    }, []);
 
 
     useEffect(() => {
@@ -126,7 +122,6 @@ export default function ExplorePage() {
             const activitiesQuery = query(collectionRef, ...constraints);
 
             const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-                // --- ARCHITEKTUR UPDATE: FEED FILTER FÜR EXPLORE SICHERE ENTITÄTEN ---
                 const fetchedActivities = snapshot.docs
                     .map(doc => ({ id: doc.id, ...doc.data() } as Activity))
                     .filter(act => 
@@ -136,7 +131,6 @@ export default function ExplorePage() {
                       (act.reportCount || 0) < QUARANTINE_THRESHOLD
                     );
                 
-                // Clientseitige Sortierung: 1. Booster, 2. Distanz (Modul 6), 3. Erstellungsdatum
                 fetchedActivities.sort((a, b) => {
                     if (a.isBoosted && !b.isBoosted) return -1;
                     if (!a.isBoosted && b.isBoosted) return 1;
@@ -156,11 +150,6 @@ export default function ExplorePage() {
                 setIsLoading(false);
             }, (error) => {
                 console.error("FIRESTORE ERROR:", error.message);
-                toast({ 
-                    title: "Fehler", 
-                    description: "Aktivitäten konnten nicht geladen werden.", 
-                    variant: 'destructive'
-                });
                 setIsLoading(false);
             });
 
@@ -169,7 +158,7 @@ export default function ExplorePage() {
             console.error("Activities listener failed:", err.message);
             setIsLoading(false);
         }
-    }, [toast, user, activeCategory, userLocation]);
+    }, [user, activeCategory, userLocation]);
     
     const visibleCards = useMemo(() => {
         let filtered = allCards;
@@ -224,13 +213,11 @@ export default function ExplorePage() {
 
         if (direction === 'right') {
              if (!user) {
-                toast({ title: 'Login erforderlich', description: 'Du musst angemeldet sein.' });
                 router.push('/login');
                 animationControls.start({ x: 0, rotate: 0, opacity: 1, transition: { duration: 0.4 }});
                 return;
             }
 
-            // Payment Interception
             if (topCard.isPaid && topCard.price && topCard.price > 0) {
                 router.push(`/checkout/${topCardId}`);
                 return;
@@ -264,7 +251,6 @@ export default function ExplorePage() {
         });
         
         setCards(prev => [...prev, lastSwipedCard]);
-        
         setLastSwipedCard(null);
     };
     
@@ -285,7 +271,7 @@ export default function ExplorePage() {
             return `${format(activity.activityDate.toDate(), "eee, d. MMM")} - ${format(activity.activityEndDate.toDate(), "eee, d. MMM")}`;
         }
         if (activity.isTimeFlexible) {
-            return `${format(activity.activityDate.toDate(), "eee, d. MMM")} (Flexible Zeit)`;
+            return `${format(activity.activityDate.toDate(), "eee, d. MMM")} (Flexibel)`;
         }
         return format(activity.activityDate.toDate(), "eee, d. MMM 'um' p");
     };
@@ -401,7 +387,7 @@ export default function ExplorePage() {
                                                 )}
                                                 <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent p-6 flex flex-col justify-end">
                                                     <h2 className="text-2xl font-black text-white shadow-lg leading-tight mb-1">{card.placeName}</h2>
-                                                    <p className="text-sm text-white/80 font-bold shadow-md truncate">{card.placeAddress}</p>
+                                                    <p className="text-sm text-white/80 font-bold shadow-md truncate">{card.placeAddress || 'Ort Details im Chat'}</p>
                                                 </div>
                                             </div>
                                             <div className="p-6 flex flex-col gap-3">
@@ -412,7 +398,7 @@ export default function ExplorePage() {
                                                 <div className="flex items-center gap-3 bg-blue-50 text-blue-700 p-4 rounded-2xl transition-colors">
                                                     <Users className="h-5 w-5 opacity-70"/>
                                                     <span className="font-black text-sm">
-                                                      {card.participantIds.length} Teilnehmer &bull; von {card.creatorName?.split(' ')[0]}
+                                                      {card.participantIds.length} Teilnehmer &bull; von {card.hostName?.split(' ')[0] || 'Entdecker'}
                                                     </span>
                                                 </div>
                                                 

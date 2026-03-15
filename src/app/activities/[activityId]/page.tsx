@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     
     return {
       title: `${activity.placeName} | Aktvia`,
-      description: `Wird veranstaltet von ${activity.creatorName}. Sei dabei am ${activity.activityDate?.toDate().toLocaleDateString('de-DE')}!`,
+      description: `Wird veranstaltet von ${activity.hostName || 'einem Entdecker'}. Sei dabei am ${activity.activityDate?.toDate().toLocaleDateString('de-DE')}!`,
       openGraph: {
         title: `Einladung: Treffen bei ${activity.placeName}`,
         description: `Join uns auf Aktvia für ein Event in der Kategorie ${activity.category || 'Sonstiges'}.`,
@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         siteName: 'Aktvia',
         images: [
           {
-            url: activity.creatorPhotoURL || 'https://picsum.photos/seed/aktvia/1200/630',
+            url: activity.hostPhotoURL || 'https://picsum.photos/seed/aktvia/1200/630',
             width: 1200,
             height: 630,
           },
