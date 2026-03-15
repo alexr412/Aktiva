@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,11 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { joinActivity } from '@/lib/firebase/firestore';
+import { joinActivity, cancelActivity } from '@/lib/firebase/firestore';
 import type { Activity } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star, MessageSquare, CreditCard, Camera } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star, MessageSquare, CreditCard, Camera, Ban, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +17,17 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { UserBadge } from '@/components/common/UserBadge';
 import { TicketQR } from '@/components/ticket-qr';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -35,6 +45,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     if (!activityId || !db) return;
@@ -71,6 +82,19 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
       toast({ variant: 'destructive', title: 'Fehler', description: error.message });
     } finally {
       setIsJoining(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!activity?.id || !user) return;
+    setIsCancelling(true);
+    try {
+      await cancelActivity(activity.id, user.uid);
+      toast({ title: "Aktivität storniert", description: "Alle Teilnehmer wurden über die Stornierung informiert." });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: "Fehler", description: error.message });
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -117,6 +141,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const isHost = user && activity.creatorId === user.uid;
   const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
   const checkInStatus = user ? activity.participantDetails?.[user.uid]?.checkInStatus : 'pending';
+  const isCancelled = activity.status === 'cancelled';
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 overflow-y-auto">
@@ -131,28 +156,70 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
       </header>
 
       <main className="flex-1 p-4 sm:p-8 max-w-2xl mx-auto w-full space-y-6 pb-24">
-        {/* Host Control Section (Modul 15) */}
-        {isHost && (
+        {/* Status Indicator */}
+        {isCancelled && (
+          <div className="bg-red-50 border-2 border-red-100 p-6 rounded-[2rem] flex flex-col items-center text-center gap-2 animate-in slide-in-from-top-4 duration-500">
+            <Ban className="h-10 w-10 text-red-500" />
+            <div>
+              <h3 className="text-lg font-black text-red-900 uppercase">Aktivität Storniert</h3>
+              <p className="text-sm font-medium text-red-700/70">Dieses Event findet nicht statt. Falls du ein Ticket gekauft hast, wird der Betrag automatisch rückerstattet.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Host Control Section */}
+        {isHost && !isCancelled && (
           <Card className="border-none shadow-sm rounded-[2rem] bg-slate-900 text-white overflow-hidden">
-            <CardContent className="p-6 flex items-center justify-between">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Host Panel</span>
-                <p className="font-bold text-sm">Ticketing & Einlass</p>
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">Host Panel</span>
+                  <p className="font-bold text-sm">Ticketing & Einlass</p>
+                </div>
+                <Button asChild className="rounded-xl font-black bg-primary hover:bg-primary/90 text-white gap-2">
+                  <Link href={`/activities/${activity.id}/scanner`}>
+                    <Camera className="h-4 w-4" />
+                    Scanner öffnen
+                  </Link>
+                </Button>
               </div>
-              <Button asChild className="rounded-xl font-black bg-primary hover:bg-primary/90 text-white gap-2">
-                <Link href={`/activities/${activity.id}/scanner`}>
-                  <Camera className="h-4 w-4" />
-                  Scanner öffnen
-                </Link>
-              </Button>
+              
+              <div className="pt-4 border-t border-white/10">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-white/5 rounded-xl font-bold gap-2">
+                      <Ban className="h-4 w-4" />
+                      Aktivität stornieren
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+                    <AlertDialogHeader>
+                      <div className="mx-auto bg-red-100 p-4 rounded-full w-fit mb-4">
+                        <AlertTriangle className="h-10 w-10 text-red-600" />
+                      </div>
+                      <AlertDialogTitle className="text-2xl font-black text-center">Unwiderruflich stornieren?</AlertDialogTitle>
+                      <AlertDialogDescription className="text-center text-base font-medium">
+                        Dies kann nicht rückgängig gemacht werden. {activity.isPaid && "Alle bezahlten Tickets werden automatisch zur Rückerstattung vorgemerkt und dein Treuhand-Guthaben wird entsprechend reduziert."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex flex-col gap-3 sm:gap-0 mt-6">
+                      <AlertDialogCancel className="rounded-xl font-bold h-12">Abbrechen</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleCancel} disabled={isCancelling} className="rounded-xl font-black h-12 bg-red-500 hover:bg-red-600 shadow-lg shadow-red-100">
+                        {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ja, Stornieren"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </CardContent>
           </Card>
         )}
 
         {/* Featured Hero Card */}
         <div className={cn(
-          "rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden",
-          activity.isBoosted ? "bg-gradient-to-br from-orange-400 to-amber-500" : "bg-slate-900"
+          "rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden transition-all duration-1000",
+          isCancelled ? "opacity-40 grayscale blur-[1px]" : "",
+          activity.isBoosted && !isCancelled ? "bg-gradient-to-br from-orange-400 to-amber-500" : "bg-slate-900"
         )}>
           <div className="relative z-10">
             <Badge className="bg-white/20 hover:bg-white/30 text-white border-none mb-4 px-3 py-1 font-black uppercase tracking-widest text-[10px]">
@@ -176,8 +243,8 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
           </div>
         </div>
 
-        {/* Participant Ticket Section (Modul 15) */}
-        {isParticipant && (
+        {/* Participant Ticket Section */}
+        {isParticipant && !isCancelled && (
           <Card className="border-none shadow-sm rounded-[2.5rem] bg-white overflow-hidden text-center p-8">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg font-black uppercase tracking-tight">Dein Ticket</CardTitle>
@@ -237,62 +304,37 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
           </Card>
         </div>
 
-        {/* Premium Preview Section */}
-        <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-400">Wer ist dabei?</CardTitle>
-            <Crown className="h-4 w-4 text-amber-500 opacity-50" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex -space-x-3 overflow-hidden p-2">
-              {userProfile?.isPremium ? (
-                activity.participantsPreview?.map((p) => (
-                  <Avatar key={p.uid} className="h-10 w-10 border-4 border-white shadow-sm hover:scale-110 transition-transform cursor-pointer" onClick={() => router.push(`/profile/${p.uid}`)}>
-                    <AvatarImage src={p.photoURL || undefined} />
-                    <AvatarFallback className="bg-primary/5 text-primary text-xs font-black">{p.displayName?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                ))
+        {/* Action Button */}
+        {!isCancelled && (
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100 z-20">
+            <div className="max-w-md mx-auto">
+              {isParticipant ? (
+                <Button onClick={() => router.push(`/chat/${activity.id}`)} className="w-full h-14 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20">
+                  <MessageSquare className="mr-2 h-5 w-5" />
+                  Zum Gruppenchat
+                </Button>
               ) : (
-                <div className="flex items-center gap-3">
-                  <div className="flex -space-x-3">
-                    {[1, 2, 3].map(i => <div key={i} className="h-10 w-10 rounded-full bg-slate-100 border-4 border-white border-dashed" />)}
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-bold italic">Premium für Details</span>
-                </div>
+                <Button 
+                  onClick={handleJoin} 
+                  disabled={isJoining || isFull}
+                  className={cn(
+                    "w-full h-14 rounded-2xl font-black text-lg transition-all shadow-xl",
+                    activity.isPaid 
+                      ? "bg-slate-900 hover:bg-black text-white shadow-slate-200" 
+                      : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
+                  )}
+                >
+                  {isJoining ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                    <>
+                      {activity.isPaid ? <CreditCard className="mr-2 h-5 w-5" /> : <Users className="mr-2 h-5 w-5" />}
+                      {isFull ? 'Aktivität ist voll' : activity.isPaid ? `Beitreten (€${activity.price?.toFixed(2)})` : 'Jetzt beitreten'}
+                    </>
+                  )}
+                </Button>
               )}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Action Button */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100 z-20">
-          <div className="max-w-md mx-auto">
-            {isParticipant ? (
-              <Button onClick={() => router.push(`/chat/${activity.id}`)} className="w-full h-14 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20">
-                <MessageSquare className="mr-2 h-5 w-5" />
-                Zum Gruppenchat
-              </Button>
-            ) : (
-              <Button 
-                onClick={handleJoin} 
-                disabled={isJoining || isFull}
-                className={cn(
-                  "w-full h-14 rounded-2xl font-black text-lg transition-all shadow-xl",
-                  activity.isPaid 
-                    ? "bg-slate-900 hover:bg-black text-white shadow-slate-200" 
-                    : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
-                )}
-              >
-                {isJoining ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                  <>
-                    {activity.isPaid ? <CreditCard className="mr-2 h-5 w-5" /> : <Users className="mr-2 h-5 w-5" />}
-                    {isFull ? 'Aktivität ist voll' : activity.isPaid ? `Beitreten (€${activity.price?.toFixed(2)})` : 'Jetzt beitreten'}
-                  </>
-                )}
-              </Button>
-            )}
           </div>
-        </div>
+        )}
       </main>
     </div>
   );

@@ -72,12 +72,12 @@ export async function createUserProfileDocument(user: User) {
     isSupporter: false,
     tokens: 0,
     successfulFreeHosts: 0,
-    fiatBalance: 0, // Modul 8
-    escrowBalance: 0, // Modul 16
-    successfulReferrals: 0, // Modul 13
-    averageRating: 0, // Modul 11
-    ratingCount: 0, // Modul 11
-    kycStatus: 'unverified', // Modul 14
+    fiatBalance: 0, 
+    escrowBalance: 0, 
+    successfulReferrals: 0, 
+    averageRating: 0, 
+    ratingCount: 0, 
+    kycStatus: 'unverified', 
     proximitySettings: {
       enabled: false,
       radiusKm: 5
@@ -213,7 +213,6 @@ export async function createActivity({
   };
   batch.set(activityRef, activityData);
 
-  // Sub-collection participant for scanner (Modul 15)
   const pRef = doc(db, 'activities', activityRef.id, 'participants', user.uid);
   batch.set(pRef, {
     uid: user.uid,
@@ -389,7 +388,6 @@ export async function joinActivity(activityId: string, user: User, source?: stri
         updates["stats.pushJoins"] = increment(1);
       }
 
-      // MODUL 13: Referral Tracking
       if (referralId && referralId !== user.uid) {
         updates["stats.referralJoins"] = increment(1);
         const referrerRef = doc(db, 'users', referralId);
@@ -400,7 +398,6 @@ export async function joinActivity(activityId: string, user: User, source?: stri
 
       transaction.update(activityRef, updates);
 
-      // Modul 15: Scanner sub-collection
       transaction.set(pRef, {
         uid: user.uid,
         displayName: user.displayName,
@@ -409,7 +406,6 @@ export async function joinActivity(activityId: string, user: User, source?: stri
         joinedAt: serverTimestamp()
       });
 
-      // Update previews (max 5) - Harden against duplicates
       const currentPreviews = activityData.participantsPreview || [];
       if (currentPreviews.length < 5 && !currentPreviews.some(p => p.uid === user.uid)) {
         transaction.update(activityRef, {
@@ -485,7 +481,6 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
         updates["stats.pushJoins"] = increment(1);
       }
 
-      // MODUL 13: Referral Tracking
       if (referralId && referralId !== user.uid) {
         updates["stats.referralJoins"] = increment(1);
         const referrerRef = doc(db, 'users', referralId);
@@ -496,14 +491,12 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
 
       transaction.update(activityRef, updates);
 
-      // --- MODUL 16: ESCROW REROUTING ---
-      const netAmount = (activityData.price || 0) * 0.9; // 10% Gebühr
+      const netAmount = (activityData.price || 0) * 0.9; 
       const hostRef = doc(db, 'users', activityData.creatorId);
       transaction.update(hostRef, {
         escrowBalance: increment(netAmount)
       });
 
-      // Modul 15: Scanner sub-collection
       transaction.set(pRef, {
         uid: user.uid,
         displayName: user.displayName,
@@ -512,7 +505,6 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
         joinedAt: serverTimestamp()
       });
 
-      // Update previews (max 5) - Harden against duplicates
       const currentPreviews = activityData.participantsPreview || [];
       if (currentPreviews.length < 5 && !currentPreviews.some(p => p.uid === user.uid)) {
         transaction.update(activityRef, {
@@ -619,14 +611,12 @@ export async function leaveActivity(activityId: string, userId: string) {
   const chatRef = doc(db, 'chats', activityId);
   const pRef = doc(db, 'activities', activityId, 'participants', userId);
   
-  // Transition to transaction for safe state management (Preview removal)
   try {
     await runTransaction(db, async (transaction) => {
       const activitySnap = await transaction.get(activityRef);
       if (!activitySnap.exists()) return;
       const activityData = activitySnap.data() as Activity;
 
-      // Filter user from preview list
       const updatedPreview = (activityData.participantsPreview || []).filter(p => p.uid !== userId);
 
       transaction.update(activityRef, {
@@ -842,8 +832,6 @@ export async function completeActivity(activityId: string, userId: string, isPai
         successfulFreeHosts: increment(1)
       });
     } else if (activityData.price) {
-      // --- MODUL 16: ESCROW CLEARING ---
-      // We calculate how many paying participants there are (total minus creator)
       const payingParticipantsCount = Math.max(0, (activityData.participantIds?.length || 1) - 1);
       const releaseAmount = payingParticipantsCount * (activityData.price * 0.9);
 
@@ -856,6 +844,61 @@ export async function completeActivity(activityId: string, userId: string, isPai
     }
   });
 }
+
+/**
+ * MODUL 17: AUTOMATED REFUND PIPELINE
+ * Storniert eine Aktivität und generiert Refund-Audit-Dokumente.
+ */
+export const cancelActivity = async (activityId: string, hostId: string) => {
+  if (!db) throw new Error('Firestore is not initialized.');
+  
+  const activityRef = doc(db, 'activities', activityId);
+  const hostRef = doc(db, 'users', hostId);
+
+  await runTransaction(db, async (transaction) => {
+    const activitySnap = await transaction.get(activityRef);
+    if (!activitySnap.exists()) throw new Error("Aktivität nicht gefunden.");
+    
+    const activity = activitySnap.data() as Activity;
+    if (activity.status === 'cancelled') return;
+
+    // 1. Status auf cancelled setzen
+    transaction.update(activityRef, { 
+      status: 'cancelled',
+      cancelledAt: serverTimestamp() 
+    });
+
+    // 2. Finanzielle Rückabwicklung bei bezahlten Events
+    if (activity.isPaid && activity.price && activity.price > 0) {
+      const participantsRef = collection(db, 'activities', activityId, 'participants');
+      const participantsSnap = await getDocs(participantsRef);
+      
+      // Teilnehmer ohne den Host zählen
+      const payingParticipantsCount = Math.max(0, participantsSnap.size - 1);
+      const escrowDeduction = payingParticipantsCount * (activity.price * 0.9);
+
+      if (escrowDeduction > 0) {
+        transaction.update(hostRef, {
+          escrowBalance: increment(-escrowDeduction)
+        });
+      }
+
+      // Refund-Dokumente für alle zahlenden Teilnehmer
+      participantsSnap.forEach((pDoc) => {
+        if (pDoc.id !== hostId) {
+          const refundRef = doc(collection(db, 'refunds'));
+          transaction.set(refundRef, {
+            activityId,
+            userId: pDoc.id,
+            amount: activity.price, 
+            status: 'pending',
+            createdAt: serverTimestamp()
+          });
+        }
+      });
+    }
+  });
+};
 
 export async function checkIfUserReviewed(activityId: string, reviewerId: string): Promise<boolean> {
     if (!db) throw new Error('Firestore is not initialized.');
@@ -893,10 +936,6 @@ export async function submitReviews(
     await batch.commit();
 }
 
-/**
- * MODUL 11: REPUTATION ENGINE
- * Atomare Bewertungs-Transaktion für Hosts.
- */
 export const submitHostRating = async (activityId: string, hostId: string, reviewerId: string, rating: number) => {
   if (!db) throw new Error('Firestore not initialized.');
   if (rating < 1 || rating > 5) throw new Error("Invalides Rating");
@@ -931,10 +970,6 @@ export const submitHostRating = async (activityId: string, hostId: string, revie
   });
 };
 
-/**
- * MODUL 15: QR-VALIDIERUNG
- * Verifiziert das Ticket und entwertet es atomar.
- */
 export const verifyTicket = async (activityId: string, scannedUserId: string) => {
   if (!db) throw new Error('Firestore not initialized.');
   
@@ -947,13 +982,11 @@ export const verifyTicket = async (activityId: string, scannedUserId: string) =>
     if (!pDoc.exists()) throw new Error("Teilnehmer existiert nicht im System.");
     if (pDoc.data().checkInStatus === 'scanned') throw new Error("Ticket wurde bereits entwertet.");
 
-    // Update sub-collection
     transaction.update(participantRef, {
       checkInStatus: 'scanned',
       checkInTime: serverTimestamp()
     });
 
-    // Sync back to main activity document for UI consistency
     transaction.update(activityRef, {
       [`participantDetails.${scannedUserId}.checkInStatus`]: 'scanned',
       [`participantDetails.${scannedUserId}.checkInTime`]: serverTimestamp()
@@ -1066,7 +1099,6 @@ export async function submitReport(activityId: string, reporterId: string, reaso
   if (!db) throw new Error('Firestore is not initialized.');
   const batch = writeBatch(db);
   
-  // 1. Audit-Log in separater Collection anlegen
   const reportRef = doc(collection(db, 'reports'));
   batch.set(reportRef, {
     activityId,
@@ -1076,7 +1108,6 @@ export async function submitReport(activityId: string, reporterId: string, reaso
     status: 'open'
   });
 
-  // 2. Report-Counter der Aktivität inkrementieren
   const activityRef = doc(db, 'activities', activityId);
   batch.update(activityRef, {
     reportCount: increment(1)
@@ -1093,10 +1124,6 @@ export async function earnToken(userId: string) {
   });
 }
 
-/**
- * MIGRATION SCRIPT: Befüllt das Feld participantsPreview für alle bestehenden Aktivitäten.
- * Greift auf participantIds zurück und lädt die zugehörigen Profile.
- */
 export async function runMigrationParticipantsPreview() {
   if (!db) throw new Error("Firestore not initialized");
   
@@ -1108,7 +1135,6 @@ export async function runMigrationParticipantsPreview() {
     const pIds = data.participantIds?.slice(0, 5) || [];
     
     if (pIds.length > 0) {
-      // Chunked Profile Fetch (max 10 IDs per query)
       const userSnap = await getDocs(query(collection(db, "users"), where(documentId(), "in", pIds)));
       const preview = userSnap.docs.map(u => ({
         uid: u.id,
@@ -1132,20 +1158,15 @@ export async function trackActivityView(activityId: string) {
   });
 }
 
-/**
- * MODUL 8: AUSZAHLUNGSSYSTEM
- */
 export const requestPayout = async (userId: string, currentBalance: number) => {
   if (!db) throw new Error("Firestore not initialized");
   if (currentBalance < 50) throw new Error("Auszahlungslimit von 50€ nicht erreicht.");
 
   const batch = writeBatch(db);
   
-  // 1. Hard-Reset des Ledgers
   const userRef = doc(db, 'users', userId);
   batch.update(userRef, { fiatBalance: 0 }); 
   
-  // 2. Audit-Dokument für Administratoren/Stripe erstellen
   const payoutRef = doc(collection(db, 'payoutRequests'));
   batch.set(payoutRef, {
     userId,

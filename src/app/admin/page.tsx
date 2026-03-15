@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertTriangle, Banknote, LayoutDashboard, ChevronRight } from "lucide-react";
+import { AlertTriangle, Banknote, LayoutDashboard, ChevronRight, RotateCcw } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminDashboardPage() {
@@ -12,9 +12,9 @@ export default function AdminDashboardPage() {
         <p className="text-slate-500 font-medium">Willkommen im Administrationsbereich von Aktvia.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Link href="/admin/reports">
-          <Card className="hover:shadow-lg transition-all border-none bg-white rounded-[2.5rem] p-4 group cursor-pointer shadow-sm">
+          <Card className="h-full hover:shadow-lg transition-all border-none bg-white rounded-[2.5rem] p-4 group cursor-pointer shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <div className="bg-red-100 p-3 rounded-2xl text-red-600 group-hover:scale-110 transition-transform">
                 <AlertTriangle className="h-6 w-6" />
@@ -29,7 +29,7 @@ export default function AdminDashboardPage() {
         </Link>
 
         <Link href="/admin/payouts">
-          <Card className="hover:shadow-lg transition-all border-none bg-white rounded-[2.5rem] p-4 group cursor-pointer shadow-sm">
+          <Card className="h-full hover:shadow-lg transition-all border-none bg-white rounded-[2.5rem] p-4 group cursor-pointer shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <div className="bg-blue-100 p-3 rounded-2xl text-blue-600 group-hover:scale-110 transition-transform">
                 <Banknote className="h-6 w-6" />
@@ -39,6 +39,21 @@ export default function AdminDashboardPage() {
             <CardContent>
               <CardTitle className="text-2xl font-black mb-1 text-slate-900">Auszahlungen</CardTitle>
               <CardDescription className="font-bold text-slate-400 uppercase text-[10px] tracking-widest">Finanz-Clearing & Treasury</CardDescription>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/admin/refunds">
+          <Card className="h-full hover:shadow-lg transition-all border-none bg-white rounded-[2.5rem] p-4 group cursor-pointer shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <div className="bg-orange-100 p-3 rounded-2xl text-orange-600 group-hover:scale-110 transition-transform">
+                <RotateCcw className="h-6 w-6" />
+              </div>
+              <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-primary transition-colors" />
+            </CardHeader>
+            <CardContent>
+              <CardTitle className="text-2xl font-black mb-1 text-slate-900">Rückzahlungen</CardTitle>
+              <CardDescription className="font-bold text-slate-400 uppercase text-[10px] tracking-widest">Automatisierte Stornos</CardDescription>
             </CardContent>
           </Card>
         </Link>

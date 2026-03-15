@@ -38,6 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: "/admin", label: "Dashboard" },
     { href: "/admin/reports", label: "Moderation" },
     { href: "/admin/payouts", label: "Auszahlungen" },
+    { href: "/admin/refunds", label: "Rückzahlungen" },
   ];
 
   return (
