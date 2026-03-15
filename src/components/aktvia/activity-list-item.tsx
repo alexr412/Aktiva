@@ -59,7 +59,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
     const isParticipant = activity.participantIds.includes(user?.uid || '---');
     const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
-    const isOwnActivity = activity.creatorId === user?.uid;
+    const isOwnActivity = activity.hostId === user?.uid;
     const userVote = user ? (activity.userVotes?.[user.uid] || 'none') : 'none';
     
     const isPaidEvent = activity.isPaid && activity.price && activity.price > 0;
@@ -194,7 +194,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <p className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1 font-bold uppercase tracking-wider">
                             <Users className="h-3 w-3 text-primary/60"/>
-                            <span>von {activity.creatorName?.split(' ')[0]}</span>
+                            <span>von {activity.hostName?.split(' ')[0]}</span>
                         </p>
                         {activity.placeAddress && (
                             <p className="text-[11px] text-neutral-400 flex items-center gap-1 font-medium truncate max-w-[150px]">

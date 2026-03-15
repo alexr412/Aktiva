@@ -138,7 +138,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   }
 
   const isParticipant = user ? activity.participantIds.includes(user.uid) : false;
-  const isHost = user && activity.creatorId === user.uid;
+  const isHost = user && activity.hostId === user.uid;
   const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
   const checkInStatus = user ? activity.participantDetails?.[user.uid]?.checkInStatus : 'pending';
   const isCancelled = activity.status === 'cancelled';
@@ -274,18 +274,18 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Avatar className="h-14 w-14 border-2 border-slate-100">
-                  <AvatarImage src={activity.creatorPhotoURL || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary font-black">{activity.creatorName?.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={activity.hostPhotoURL || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-black">{activity.hostName?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <p className="font-black text-slate-900">{activity.creatorName}</p>
-                    <UserBadge isPremium={activity.participantDetails?.[activity.creatorId]?.isPremium} />
+                    <p className="font-black text-slate-900">{activity.hostName}</p>
+                    <UserBadge isPremium={activity.participantDetails?.[activity.hostId]?.isPremium} />
                   </div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Host auf Aktvia</p>
                 </div>
               </div>
-              <Button variant="outline" onClick={() => router.push(`/profile/${activity.creatorId}`)} className="rounded-xl font-bold h-10">Profil</Button>
+              <Button variant="outline" onClick={() => router.push(`/profile/${activity.hostId}`)} className="rounded-xl font-bold h-10">Profil</Button>
             </div>
           </CardContent>
         </Card>

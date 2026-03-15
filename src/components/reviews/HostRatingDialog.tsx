@@ -33,7 +33,7 @@ export function HostRatingDialog({ open, onOpenChange, activity, currentUser, on
   const [rating, setRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const hostDetails = (activity.participantDetails || {})[activity.creatorId];
+  const hostDetails = (activity.participantDetails || {})[activity.hostId];
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -47,7 +47,7 @@ export function HostRatingDialog({ open, onOpenChange, activity, currentUser, on
     
     setIsSubmitting(true);
     try {
-        await submitHostRating(activity.id!, activity.creatorId, currentUser.uid, rating);
+        await submitHostRating(activity.id!, activity.hostId, currentUser.uid, rating);
         toast({
             title: 'Bewertung eingereicht!',
             description: `Vielen Dank für dein Feedback zu ${hostDetails?.displayName || 'dem Host'}.`,

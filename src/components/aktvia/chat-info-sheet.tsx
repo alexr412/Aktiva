@@ -65,7 +65,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
   if (!chat || !user || !activity) return null;
 
   const isOnlyParticipant = chat.participantIds.length === 1;
-  const isHost = activity.creatorId === user.uid;
+  const isHost = activity.hostId === user.uid;
   const hasVoted = activity?.completionVotes?.includes(user.uid);
   const isCompleted = activity.status === 'completed';
   
@@ -84,7 +84,6 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
     onOpenChange(false);
     
     // 3. Firebase-Löschung um 500ms verzögern
-    // Dies gibt Radix Zeit, die Exit-Animation zu beenden und DOM-Locks (aria-hidden) zu entfernen
     setTimeout(async () => {
       setIsActing(true);
       try {
@@ -195,7 +194,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                                 <span className="font-bold text-slate-900 truncate">
                                     {p.displayName}
                                 </span>
-                                {uid === chat.creatorId && (
+                                {uid === chat.hostId && (
                                   <span className="bg-emerald-50 text-emerald-600 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tight">Creator</span>
                                 )}
                               </div>

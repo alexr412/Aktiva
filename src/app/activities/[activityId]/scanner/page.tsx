@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -38,7 +37,7 @@ export default function ScannerPage() {
     const checkAuth = async () => {
       try {
         const activitySnap = await getDoc(doc(db, 'activities', activityId));
-        if (activitySnap.exists() && activitySnap.data().creatorId === user.uid) {
+        if (activitySnap.exists() && activitySnap.data().hostId === user.uid) {
           setIsAuthorized(true);
         } else {
           router.replace(`/activities/${activityId}`);

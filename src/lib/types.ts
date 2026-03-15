@@ -49,9 +49,9 @@ export interface Activity {
   activityDate: Timestamp;
   activityEndDate?: Timestamp;
   isTimeFlexible?: boolean;
-  creatorId: string;
-  creatorName: string | null;
-  creatorPhotoURL: string | null;
+  hostId: string;
+  hostName: string | null;
+  hostPhotoURL: string | null;
   participantIds: string[];
   maxParticipants?: number;
   createdAt: Timestamp;
@@ -114,7 +114,7 @@ export interface Chat {
     id: string;
     activityId?: string;
     placeName?: string;
-    creatorId?: string;
+    hostId?: string;
     participantIds: string[];
     participantDetails: {
         [uid: string]: {

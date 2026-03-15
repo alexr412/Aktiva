@@ -57,14 +57,13 @@ const MessageBubble = ({
   participantDetails?: Chat['participantDetails'];
   isFirstInGroup: boolean;
 }) => {
-  // Hard-Bypass für den eigenen Status, Fallback für Fremde (inklusive Nachricht-Level Flags)
   const badgePremium = isOwnMessage 
     ? Boolean(currentUserProfile?.isPremium) 
-    : Boolean(message.isPremium || (message as any).IsPremium || participantDetails?.[message.senderId]?.isPremium);
+    : Boolean(message.isPremium || participantDetails?.[message.senderId]?.isPremium);
 
   const badgeSupporter = isOwnMessage 
     ? Boolean(currentUserProfile?.isSupporter) 
-    : Boolean(message.isSupporter || (message as any).IsSupporter || participantDetails?.[message.senderId]?.isSupporter);
+    : Boolean(message.isSupporter || participantDetails?.[message.senderId]?.isSupporter);
 
   return (
     <div className={cn(
@@ -206,7 +205,7 @@ export default function ChatRoomPage() {
 
   useEffect(() => {
     if (activity?.status === 'completed' && !hasReviewed && user) {
-        const isHost = activity.creatorId === user.uid;
+        const isHost = activity.hostId === user.uid;
         if (!isHost) {
             setShowHostRatingDialog(true);
         } else {
@@ -376,7 +375,7 @@ export default function ChatRoomPage() {
             onRatingSubmitted={() => {
                 setHasReviewed(true);
                 // After rating the host, show the regular participant reviews
-                const otherParticipants = activity.participantIds.filter(id => id !== user.uid && id !== activity.creatorId);
+                const otherParticipants = activity.participantIds.filter(id => id !== user.uid && id !== activity.hostId);
                 if (otherParticipants.length > 0) {
                     setShowReviewDialog(true);
                 }

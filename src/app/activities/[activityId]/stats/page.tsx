@@ -27,8 +27,8 @@ export default function ActivityStatsPage() {
             if (docSnap.exists()) {
                 const data = { id: docSnap.id, ...docSnap.data() } as Activity;
                 
-                // RBAC: Nur der Ersteller darf Statistiken sehen
-                if (data.creatorId !== user.uid) {
+                // RBAC: Nur der Ersteller (Host) darf Statistiken sehen
+                if (data.hostId !== user.uid) {
                     router.replace('/');
                     return;
                 }

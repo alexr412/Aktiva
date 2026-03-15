@@ -168,9 +168,9 @@ export async function createActivity({
     placeId: place?.id || "custom",
     placeName: place?.name || customLocationName!,
     activityDate: Timestamp.fromDate(startDate),
-    creatorId: user.uid,
-    creatorName: user.displayName,
-    creatorPhotoURL: user.photoURL,
+    hostId: user.uid,
+    hostName: user.displayName,
+    hostPhotoURL: user.photoURL,
     participantIds: [user.uid],
     participantsPreview: [
       { uid: user.uid, displayName: user.displayName, photoURL: user.photoURL }
@@ -229,7 +229,7 @@ export async function createActivity({
     participantIds: [user.uid],
     lastMessage: null,
     placeName: place?.name || customLocationName,
-    creatorId: user.uid,
+    hostId: user.uid,
     participantDetails: {
       [user.uid]: {
         displayName: user.displayName,
@@ -358,7 +358,7 @@ export async function joinActivity(activityId: string, user: User, source?: stri
 
       const activityData = activityDoc.data() as Activity;
       
-      if (activityData.isPaid && activityData.creatorId !== user.uid) {
+      if (activityData.isPaid && activityData.hostId !== user.uid) {
         throw "Sicherheits-Gate: Beitritt zu bezahltem Event nur nach Zahlungsnachweis möglich.";
       }
 
@@ -492,7 +492,7 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
       transaction.update(activityRef, updates);
 
       const netAmount = (activityData.price || 0) * 0.9; 
-      const hostRef = doc(db, 'users', activityData.creatorId);
+      const hostRef = doc(db, 'users', activityData.hostId);
       transaction.update(hostRef, {
         escrowBalance: increment(netAmount)
       });
@@ -1051,6 +1051,7 @@ export async function getOrCreateDirectChat(user1Id: string, user2Id: string): P
         }
       },
       lastMessage: null,
+      hostId: user1Id, // Set first user as default host for DMs if needed
       unreadCount: {
         [user1Id]: 0,
         [user2Id]: 0
