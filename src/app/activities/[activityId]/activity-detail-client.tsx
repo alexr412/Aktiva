@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,14 +10,16 @@ import { joinActivity } from '@/lib/firebase/firestore';
 import type { Activity } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star, MessageSquare, CreditCard, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { UserBadge } from '@/components/common/UserBadge';
+import { TicketQR } from '@/components/ticket-qr';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 interface ActivityDetailClientProps {
   activityId: string;
@@ -111,7 +114,9 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   }
 
   const isParticipant = user ? activity.participantIds.includes(user.uid) : false;
+  const isHost = user && activity.creatorId === user.uid;
   const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
+  const checkInStatus = user ? activity.participantDetails?.[user.uid]?.checkInStatus : 'pending';
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 overflow-y-auto">
@@ -126,6 +131,24 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
       </header>
 
       <main className="flex-1 p-4 sm:p-8 max-w-2xl mx-auto w-full space-y-6 pb-24">
+        {/* Host Control Section (Modul 15) */}
+        {isHost && (
+          <Card className="border-none shadow-sm rounded-[2rem] bg-slate-900 text-white overflow-hidden">
+            <CardContent className="p-6 flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Host Panel</span>
+                <p className="font-bold text-sm">Ticketing & Einlass</p>
+              </div>
+              <Button asChild className="rounded-xl font-black bg-primary hover:bg-primary/90 text-white gap-2">
+                <Link href={`/activities/${activity.id}/scanner`}>
+                  <Camera className="h-4 w-4" />
+                  Scanner öffnen
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Featured Hero Card */}
         <div className={cn(
           "rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden",
@@ -152,6 +175,28 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
             </div>
           </div>
         </div>
+
+        {/* Participant Ticket Section (Modul 15) */}
+        {isParticipant && (
+          <Card className="border-none shadow-sm rounded-[2.5rem] bg-white overflow-hidden text-center p-8">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-black uppercase tracking-tight">Dein Ticket</CardTitle>
+              <CardDescription className="font-medium">Zeige diesen Code beim Einlass vor.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center">
+              <div className={cn("transition-opacity duration-500", checkInStatus === 'scanned' && "opacity-20 grayscale")}>
+                <TicketQR activityId={activityId} userId={user!.uid} />
+              </div>
+              
+              {checkInStatus === 'scanned' && (
+                <div className="mt-4 flex items-center gap-2 text-emerald-600 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100 animate-in fade-in zoom-in-95">
+                  <Star className="h-4 w-4 fill-emerald-600" />
+                  <span className="text-xs font-black uppercase tracking-widest">Eingetreten & Verifiziert</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Host Info */}
         <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">

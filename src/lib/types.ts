@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Timestamp } from 'firebase/firestore';
@@ -5,6 +6,8 @@ import type { Timestamp } from 'firebase/firestore';
 export type ActivityCategory = 'Sport' | 'Tech' | 'Party' | 'Kultur' | 'Outdoor' | 'Gaming' | 'Networking' | 'Sonstiges';
 
 export type KYCStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
+
+export type CheckInStatus = 'pending' | 'scanned';
 
 export interface Place {
   id: string;
@@ -66,6 +69,8 @@ export interface Activity {
           photoURL: string | null;
           isPremium?: boolean;
           isSupporter?: boolean;
+          checkInStatus?: CheckInStatus;
+          checkInTime?: Timestamp;
       }
   };
   // Modul 5: Premium Vorschau (Denormalisiert)
@@ -118,6 +123,8 @@ export interface Chat {
             photoURL: string | null;
             isPremium?: boolean;
             isSupporter?: boolean;
+            checkInStatus?: CheckInStatus;
+            checkInTime?: Timestamp;
         }
     };
     lastMessage: {

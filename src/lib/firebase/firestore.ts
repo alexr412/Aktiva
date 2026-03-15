@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db } from './client';
@@ -195,6 +196,15 @@ export async function createActivity({
       pushJoins: 0,
       referralJoins: 0
     },
+    participantDetails: {
+      [user.uid]: {
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        isPremium: isUserPremium,
+        isSupporter: isUserSupporter,
+        checkInStatus: 'pending'
+      },
+    },
     ...(place?.address && { placeAddress: place.address }),
     ...(place?.lat && { lat: place.lat }),
     ...(place?.lon && { lon: place.lon }),
@@ -202,6 +212,16 @@ export async function createActivity({
     ...(finalMaxParticipants && finalMaxParticipants > 0 && { maxParticipants: finalMaxParticipants }),
   };
   batch.set(activityRef, activityData);
+
+  // Sub-collection participant for scanner (Modul 15)
+  const pRef = doc(db, 'activities', activityRef.id, 'participants', user.uid);
+  batch.set(pRef, {
+    uid: user.uid,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    checkInStatus: 'pending',
+    joinedAt: serverTimestamp()
+  });
 
   const chatRef = doc(db, 'chats', activityRef.id);
   batch.set(chatRef, {
@@ -216,7 +236,8 @@ export async function createActivity({
         displayName: user.displayName,
         photoURL: user.photoURL,
         isPremium: isUserPremium,
-        isSupporter: isUserSupporter
+        isSupporter: isUserSupporter,
+        checkInStatus: 'pending'
       },
     },
     unreadCount: {
@@ -325,6 +346,7 @@ export async function joinActivity(activityId: string, user: User, source?: stri
   const activityRef = doc(db, 'activities', activityId);
   const chatRef = doc(db, 'chats', activityId);
   const userRef = doc(db, 'users', user.uid);
+  const pRef = doc(db, 'activities', activityId, 'participants', user.uid);
 
   try {
     await runTransaction(db, async (transaction) => {
@@ -354,6 +376,13 @@ export async function joinActivity(activityId: string, user: User, source?: stri
       const updates: any = {
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
+        [`participantDetails.${user.uid}`]: {
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          isPremium: userProfileData?.isPremium || false,
+          isSupporter: userProfileData?.isSupporter || false,
+          checkInStatus: 'pending'
+        },
       };
 
       if (source === 'push') {
@@ -370,6 +399,15 @@ export async function joinActivity(activityId: string, user: User, source?: stri
       }
 
       transaction.update(activityRef, updates);
+
+      // Modul 15: Scanner sub-collection
+      transaction.set(pRef, {
+        uid: user.uid,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp()
+      });
 
       // Update previews (max 5) - Harden against duplicates
       const currentPreviews = activityData.participantsPreview || [];
@@ -389,7 +427,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
           displayName: user.displayName,
           photoURL: user.photoURL,
           isPremium: userProfileData?.isPremium || false,
-          isSupporter: userProfileData?.isSupporter || false
+          isSupporter: userProfileData?.isSupporter || false,
+          checkInStatus: 'pending'
         },
         [`unreadCount.${user.uid}`]: 0
       });
@@ -413,6 +452,7 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
   const activityRef = doc(db, 'activities', activityId);
   const chatRef = doc(db, 'chats', activityId);
   const userRef = doc(db, 'users', user.uid);
+  const pRef = doc(db, 'activities', activityId, 'participants', user.uid);
   const transactionLogRef = doc(collection(db, 'transactions'));
 
   try {
@@ -432,6 +472,13 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
       const updates: any = {
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
+        [`participantDetails.${user.uid}`]: {
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          isPremium: userProfileData?.isPremium || false,
+          isSupporter: userProfileData?.isSupporter || false,
+          checkInStatus: 'pending'
+        },
       };
 
       if (source === 'push') {
@@ -456,6 +503,15 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
         fiatBalance: increment(netAmount)
       });
 
+      // Modul 15: Scanner sub-collection
+      transaction.set(pRef, {
+        uid: user.uid,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp()
+      });
+
       // Update previews (max 5) - Harden against duplicates
       const currentPreviews = activityData.participantsPreview || [];
       if (currentPreviews.length < 5 && !currentPreviews.some(p => p.uid === user.uid)) {
@@ -474,7 +530,8 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
           displayName: user.displayName,
           photoURL: user.photoURL,
           isPremium: userProfileData?.isPremium || false,
-          isSupporter: userProfileData?.isSupporter || false
+          isSupporter: userProfileData?.isSupporter || false,
+          checkInStatus: 'pending'
         },
         [`unreadCount.${user.uid}`]: 0
       });
@@ -560,6 +617,7 @@ export async function leaveActivity(activityId: string, userId: string) {
 
   const activityRef = doc(db, 'activities', activityId);
   const chatRef = doc(db, 'chats', activityId);
+  const pRef = doc(db, 'activities', activityId, 'participants', userId);
   
   // Transition to transaction for safe state management (Preview removal)
   try {
@@ -573,8 +631,11 @@ export async function leaveActivity(activityId: string, userId: string) {
 
       transaction.update(activityRef, {
         participantIds: arrayRemove(userId),
-        participantsPreview: updatedPreview
+        participantsPreview: updatedPreview,
+        [`participantDetails.${userId}`]: deleteField(),
       });
+
+      transaction.delete(pRef);
 
       transaction.update(chatRef, {
         participantIds: arrayRemove(userId),
@@ -597,9 +658,15 @@ export async function deleteActivity(activityId: string) {
   const activityRef = doc(db, 'activities', activityId);
   const chatRef = doc(db, 'chats', activityId);
   const messagesRef = collection(db, 'chats', activityId, 'messages');
+  const participantsRef = collection(db, 'activities', activityId, 'participants');
 
   const messagesSnapshot = await getDocs(messagesRef);
   messagesSnapshot.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+
+  const participantsSnapshot = await getDocs(participantsRef);
+  participantsSnapshot.forEach(doc => {
     batch.delete(doc.ref);
   });
 
@@ -844,6 +911,36 @@ export const submitHostRating = async (activityId: string, hostId: string, revie
       rating,
       createdAt: serverTimestamp(),
       type: 'host_rating'
+    });
+  });
+};
+
+/**
+ * MODUL 15: QR-VALIDIERUNG
+ * Verifiziert das Ticket und entwertet es atomar.
+ */
+export const verifyTicket = async (activityId: string, scannedUserId: string) => {
+  if (!db) throw new Error('Firestore not initialized.');
+  
+  const activityRef = doc(db, 'activities', activityId);
+  const participantRef = doc(db, 'activities', activityId, 'participants', scannedUserId);
+
+  await runTransaction(db, async (transaction) => {
+    const pDoc = await transaction.get(participantRef);
+    
+    if (!pDoc.exists()) throw new Error("Teilnehmer existiert nicht im System.");
+    if (pDoc.data().checkInStatus === 'scanned') throw new Error("Ticket wurde bereits entwertet.");
+
+    // Update sub-collection
+    transaction.update(participantRef, {
+      checkInStatus: 'scanned',
+      checkInTime: serverTimestamp()
+    });
+
+    // Sync back to main activity document for UI consistency
+    transaction.update(activityRef, {
+      [`participantDetails.${scannedUserId}.checkInStatus`]: 'scanned',
+      [`participantDetails.${scannedUserId}.checkInTime`]: serverTimestamp()
     });
   });
 };
