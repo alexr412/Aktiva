@@ -132,8 +132,13 @@ export async function createActivity({
   if (!db) {
     throw new Error('Firestore is not initialized.');
   }
-  if (!place && !customLocationName) {
-    throw new Error('Either a place or a custom location name must be provided.');
+  
+  // --- PAYLOAD VERIFIZIERUNG: PLACE-ID EXTRAKTION ---
+  const isCustomActivity = !place;
+  const placeIdValue = isCustomActivity ? "custom" : (place?.id || "unknown");
+  
+  if (!isCustomActivity && placeIdValue === "unknown") {
+      throw new Error("Fehler: Orts-Identifikator konnte nicht aus dem Objekt extrahiert werden.");
   }
 
   const userRef = doc(db, 'users', user.uid);
@@ -161,11 +166,10 @@ export async function createActivity({
   const batch = writeBatch(db);
   const activityRef = doc(collection(db, 'activities'));
   
-  const isCustomActivity = !place;
   const placeCategories = place?.categories ? (Array.isArray(place.categories) ? place.categories : [place.categories]) : [];
   
   const activityData = {
-    placeId: place?.id || "custom",
+    placeId: placeIdValue,
     placeName: place?.name || customLocationName || "Aktivität",
     activityDate: Timestamp.fromDate(startDate),
     hostId: user.uid,

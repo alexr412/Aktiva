@@ -66,12 +66,26 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
     useEffect(() => {
         if (!db || !place.id) return;
         setLoadingActivities(true);
-        const activitiesQuery = query(collection(db, 'activities'), where('placeId', '==', place.id));
+        
+        // --- QUERY KORREKTUR: EXAKTE PLACE-ID RELATION ---
+        const activitiesQuery = query(
+            collection(db, 'activities'), 
+            where('placeId', '==', place.id)
+        );
+
         const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
             const fetchedActivities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
             setActivities(fetchedActivities);
             setLoadingActivities(false);
+        }, (error) => {
+            // --- ERROR LOGGING FÜR ENTWICKLER-DIAGNOSE (INDEX CHECK) ---
+            console.error("🔥 FIRESTORE QUERY ERROR (PlaceDetails):", error.message, {
+                placeId: place.id,
+                path: 'activities'
+            });
+            setLoadingActivities(false);
         });
+
         return () => unsubscribe();
     }, [place.id]);
 
