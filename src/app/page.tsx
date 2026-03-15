@@ -109,18 +109,9 @@ export default function Home() {
       }
 
       if (type === 'activities') {
-        // --- ARCHITEKTUR UPDATE: QUERY SIMPLIFIZIERUNG ZUR VERMEIDUNG VON INDEX-FEHLERN ---
         const constraints: any[] = [
           limit(PLACES_PER_PAGE * 5)
         ];
-        
-        // Temporäre Deaktivierung von orderBy zur Vermeidung von Composite Index Anforderungen bei Filterung
-        // constraints.push(orderBy('createdAt', 'desc')); 
-        
-        if (cursorValue) {
-            // startAfter erfordert orderBy
-            // constraints.push(startAfter(cursorValue));
-        }
         
         const q = query(collection(db!, 'activities'), ...constraints);
         const snap = await getDocs(q);
@@ -363,7 +354,6 @@ export default function Home() {
             if (isCommunityCategory || isAktivCategory) {
                 const list = data?.flat() || [];
                 
-                // --- ARCHITEKTUR UPDATE: FEED FILTER FÜR AKTIVE & SICHERE ENTITÄTEN ---
                 const safeActivities = list.filter((item: any) => {
                   if (!item) return false;
                   return item.status !== 'completed' && 
@@ -371,13 +361,11 @@ export default function Home() {
                          (item.reportCount || 0) < QUARANTINE_THRESHOLD;
                 });
 
-                // --- MODUL 12: SEMANTISCHE FILTERUNG ---
                 let semanticFiltered = safeActivities;
                 if (activityCategoryFilter !== 'Alle') {
                   semanticFiltered = semanticFiltered.filter((item: any) => item.category === activityCategoryFilter);
                 }
 
-                // --- MODUL 6: GEODATEN INJEKTION & DISTANZ-FILTER ---
                 const listWithDistance = semanticFiltered.map((item: any) => {
                   const distance = (userLocation && item.lat && item.lon)
                     ? calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lon)
@@ -394,7 +382,6 @@ export default function Home() {
                   filtered = filtered.filter(item => item.distance !== null && item.distance <= maxDistance);
                 }
 
-                // Client-Side Sortierung: 1. Booster, 2. Distanz (Modul 6), 3. Erstellungsdatum
                 const sortedList = [...filtered].sort((a, b) => {
                   if (a.isBoosted && !b.isBoosted) return -1;
                   if (!a.isBoosted && b.isBoosted) return 1;
@@ -411,28 +398,34 @@ export default function Home() {
                 if (sortedList.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
                 return (
                   <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {sortedList.map((item) => (
-                      <div key={item.id} className="min-h-[180px] w-full">
-                        {isCommunityCategory ? (
-                          <ActivityListItem activity={item as any} user={user} onJoin={handleJoin} />
-                        ) : (
-                          <PlaceCard 
-                            place={{
-                              id: item.placeId || "unknown",
-                              name: item.placeName || "Unbekannter Ort",
-                              address: item.placeAddress || "Keine Adresse",
-                              categories: item.categories || [],
-                              lat: item.lat || 0,
-                              lon: item.lon || 0,
-                              activityCount: 1,
-                              distance: item.distance ? item.distance * 1000 : undefined 
-                            } as Place}
-                            onClick={() => handlePlaceSelect(item as any)} 
-                            onAddActivity={() => handleOpenActivityModal(item as any)} 
-                          />
-                        )}
-                      </div>
-                    ))}
+                    {sortedList.map((item) => {
+                      // --- ARCHITEKTUR FIX: PLACE OBJEKT REKONSTRUKTION FÜR DETAIL-VIEW ---
+                      // Dies verhindert den Zirkelschluss, bei dem die Activity-ID als Place-ID genutzt wird.
+                      const itemPlace: Place = {
+                        id: item.placeId || "unknown",
+                        name: item.placeName || "Unbekannter Ort",
+                        address: item.placeAddress || "Keine Adresse",
+                        categories: item.categories || [],
+                        lat: item.lat || 0,
+                        lon: item.lon || 0,
+                        activityCount: 1,
+                        distance: item.distance ? item.distance * 1000 : undefined 
+                      };
+
+                      return (
+                        <div key={item.id} className="min-h-[180px] w-full">
+                          {isCommunityCategory ? (
+                            <ActivityListItem activity={item as any} user={user} onJoin={handleJoin} />
+                          ) : (
+                            <PlaceCard 
+                              place={itemPlace}
+                              onClick={() => handlePlaceSelect(itemPlace)} 
+                              onAddActivity={() => handleOpenActivityModal(itemPlace)} 
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
             }
@@ -545,7 +538,6 @@ export default function Home() {
             
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
             
-            {/* --- MODUL 12: AKTIVITÄTS-KATEGORIEN FILTER --- */}
             {(isAktivCategory || isCommunityCategory) && (
               <div className="flex overflow-x-auto gap-2 pb-1 hide-scrollbar">
                 {ACTIVITY_CATEGORIES.map((cat) => (
@@ -565,7 +557,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* --- MODUL 6: DISTANZ-FILTER CHIPS --- */}
             {(isAktivCategory || isCommunityCategory) && (
               <div className="flex overflow-x-auto gap-2 pb-1 hide-scrollbar">
                 {DISTANCE_FILTERS.map((filter) => (

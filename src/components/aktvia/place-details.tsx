@@ -67,22 +67,21 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         if (!db || !place.id) return;
         setLoadingActivities(true);
         
-        // --- DIAGNOSE OUTPUT FÜR ID-MISMATCH PRÜFUNG ---
+        // --- DIAGNOSE OUTPUT FÜR ID-VERIFIZIERUNG ---
+        // Stellt sicher, dass wir nach der placeId (Geo-Identifikator) suchen und nicht nach einer Activity-Dokument-ID.
         console.log("EXECUTE QUERY FOR PLACE ID:", place.id);
         
-        // --- QUERY: REINE RELATION OHNE ZEITLICHE FILTERUNG ---
         const activitiesQuery = query(
             collection(db, 'activities'), 
             where('placeId', '==', place.id)
         );
 
         const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-            // --- ROHE STATE-ZUWEISUNG OHNE MODIFIKATION ---
+            // Rohe State-Zuweisung ohne maskierende Zeit-Filter
             const fetchedActivities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
             setActivities(fetchedActivities);
             setLoadingActivities(false);
         }, (error) => {
-            // --- ERROR LOGGING FÜR ENTWICKLER-DIAGNOSE (INDEX CHECK) ---
             console.error("🔥 FIRESTORE QUERY ERROR (PlaceDetails):", error.message, {
                 placeId: place.id,
                 path: 'activities'
