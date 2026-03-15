@@ -229,8 +229,9 @@ export interface Report {
   reportedEntityId: string;
   entityType: 'activity' | 'user';
   reason: string;
-  status: 'pending' | 'resolved';
+  status: 'pending' | 'resolved' | 'resolved_deleted' | 'rejected' | 'open';
   createdAt: Timestamp;
+  resolvedAt?: Timestamp;
 }
 
 export interface Destination {
