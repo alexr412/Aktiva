@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signIn, signOut } from '@/lib/firebase/auth';
+import { sendEmailVerification } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
@@ -40,17 +41,17 @@ export default function LoginPage() {
     try {
       const user = await signIn(values.email, values.password);
 
-      // STRIKTE VERIFIKATIONS-SCHRANKE:
+      // STRIKTE VERIFIKATIONS-SCHRANKE mit automatischem Neuversand:
       // Wir prüfen den Status unmittelbar nach dem Login.
       if (!user.emailVerified) {
-        // Bei fehlender Verifizierung wird die Session sofort atomar terminiert.
+        // 1. Verifizierungs-E-Mail explizit anfordern
+        await sendEmailVerification(user);
+        
+        // 2. Session sofort atomar terminieren
         await signOut(); 
-        toast({
-          variant: 'destructive',
-          title: 'Zugriff verweigert',
-          description: 'Bitte bestätige zuerst deine E-Mail-Adresse über den zugesandten Link. Prüfe deinen Posteingang.',
-        });
-        return; 
+        
+        // 3. Fehler werfen für Catch-Block Integration
+        throw new Error("Zugriff verweigert: Ein neuer Bestätigungs-Link wurde an deine E-Mail-Adresse gesendet. Bitte prüfe deinen Posteingang und Spam-Ordner.");
       }
 
       toast({
@@ -67,6 +68,9 @@ export default function LoginPage() {
         errorMessage = 'E-Mail oder Passwort ist falsch.';
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Zu viele Fehlversuche. Bitte versuche es später erneut.';
+      } else if (error.message && error.message.includes("Zugriff verweigert")) {
+        // Nutze die Nachricht aus dem manuell geworfenen Error
+        errorMessage = error.message;
       }
 
       toast({
