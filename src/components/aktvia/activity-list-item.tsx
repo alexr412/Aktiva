@@ -5,7 +5,7 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown, BarChart3, AlertTriangle } from 'lucide-react';
+import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown, BarChart3, AlertTriangle, Layers } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -202,6 +202,14 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                                 {activity.placeAddress}
                             </p>
                         )}
+                    </div>
+
+                    {/* Kategorie Badge (Modul 12) */}
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex items-center gap-1 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-100/50">
+                        <Layers className="w-2.5 h-2.5" />
+                        <span>{activity.category || 'Sonstiges'}</span>
+                      </div>
                     </div>
 
                     {/* Premium Teilnehmer-Vorschau */}

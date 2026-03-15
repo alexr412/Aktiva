@@ -24,7 +24,7 @@ import {
   documentId,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
-import type { Place, UserProfile, Activity, Chat } from '@/lib/types';
+import type { Place, UserProfile, Activity, Chat, ActivityCategory } from '@/lib/types';
 
 type CreateActivityPayload = {
   place?: Place;
@@ -37,6 +37,7 @@ type CreateActivityPayload = {
   isBoosted?: boolean;
   isPaid?: boolean;
   price?: number;
+  category: ActivityCategory;
 };
 
 const MAX_FREE_PARTICIPANTS = 4;
@@ -123,6 +124,7 @@ export async function createActivity({
   isBoosted = false,
   isPaid = false,
   price = 0,
+  category,
 }: CreateActivityPayload) {
   if (!db) {
     throw new Error('Firestore is not initialized.');
@@ -173,7 +175,7 @@ export async function createActivity({
     createdAt: serverTimestamp() as Timestamp,
     isCustomActivity: isCustomActivity,
     isTimeFlexible: !!isTimeFlexible,
-    category: isCustomActivity ? "community" : (place?.categories[0].split('.')[0] || "other"),
+    category: category,
     categories: isCustomActivity ? ["user_event"] : placeCategories,
     lastInteractionAt: serverTimestamp() as Timestamp,
     status: 'active' as const,

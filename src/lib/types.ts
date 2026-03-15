@@ -2,6 +2,8 @@
 
 import type { Timestamp } from 'firebase/firestore';
 
+export type ActivityCategory = 'Sport' | 'Tech' | 'Party' | 'Kultur' | 'Outdoor' | 'Gaming' | 'Networking' | 'Sonstiges';
+
 export interface Place {
   id: string;
   name: string;
@@ -51,8 +53,9 @@ export interface Activity {
   createdAt: Timestamp;
   isCustomActivity?: boolean;
   lastInteractionAt?: Timestamp;
-  category?: string;
+  category?: ActivityCategory;
   categories?: string[];
+  tags?: string[];
   status: 'active' | 'open' | 'completed' | 'cancelled';
   completionVotes: string[];
   participantDetails: {

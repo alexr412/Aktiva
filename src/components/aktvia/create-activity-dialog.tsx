@@ -10,13 +10,20 @@ import {
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet';
-import type { Place } from '@/lib/types';
+import type { Place, ActivityCategory } from '@/lib/types';
 import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users, CreditCard, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { earnToken } from '@/lib/firebase/firestore';
@@ -43,6 +50,7 @@ import { de } from 'date-fns/locale';
 const MAX_FREE_PARTICIPANTS = 4;
 const MAX_PRICE = 25;
 const REQUIRED_FREE_HOSTS = 5;
+const ACTIVITY_CATEGORIES: ActivityCategory[] = ['Sport', 'Tech', 'Party', 'Kultur', 'Outdoor', 'Gaming', 'Networking', 'Sonstiges'];
 
 interface CreateActivityDialogProps {
   place: Place | null;
@@ -56,7 +64,8 @@ interface CreateActivityDialogProps {
     maxParticipants?: number, 
     isBoosted?: boolean,
     isPaid?: boolean,
-    price?: number
+    price?: number,
+    category?: ActivityCategory
   ) => Promise<boolean>;
 }
 
@@ -75,6 +84,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
   const [isTimeFlexible, setIsTimeFlexible] = useState(true);
   const [isDateFlexible, setIsDateFlexible] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState<number>(4);
+  const [category, setCategory] = useState<ActivityCategory | undefined>(undefined);
   
   // Monetization: Boost
   const [isBoosted, setIsBoosted] = useState(false);
@@ -105,6 +115,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
       setIsTimeFlexible(true);
       setIsDateFlexible(false);
       setMaxParticipants(4);
+      setCategory(undefined);
       setIsBoosted(false);
       setIsPaid(false);
       setPrice(0);
@@ -116,6 +127,10 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     const isSingleDay = !isDateFlexible && selectedDate;
 
     if (!isRange && !isSingleDay) return;
+    if (!category) {
+      toast({ variant: 'destructive', title: 'Kategorie fehlt', description: 'Bitte wähle eine Kategorie für deine Aktivität.' });
+      return;
+    }
 
     let startDate = isRange ? selectedRange.from! : selectedDate;
     let endDate = isRange ? selectedRange.to : undefined;
@@ -149,7 +164,8 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
       maxParticipants,
       isBoosted,
       isPaid,
-      price
+      price,
+      category
     );
     if (!success) {
       setIsCreating(false);
@@ -207,6 +223,7 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
     (isCustom && !customLocationName.trim()) ||
     (isDateFlexible ? !selectedRange.from : !selectedDate) ||
     (!isTimeFlexible && !isDateFlexible && !selectedTime) ||
+    !category ||
     (isBoosted && availableTokens < 1) ||
     (isPaid && (price <= 0 || price > MAX_PRICE));
 
@@ -240,6 +257,21 @@ export function CreateActivityDialog({ place, open, onOpenChange, onCreateActivi
               />
             </div>
           )}
+
+          {/* Sektion: Kategorie (Modul 12) */}
+          <div className="space-y-2">
+            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Kategorie</Label>
+            <Select onValueChange={(value) => setCategory(value as ActivityCategory)}>
+              <SelectTrigger className="h-14 rounded-2xl border-none bg-secondary/50 font-bold focus:ring-primary/20">
+                <SelectValue placeholder="Kategorie wählen..." />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-none shadow-xl">
+                {ACTIVITY_CATEGORIES.map(cat => (
+                  <SelectItem key={cat} value={cat} className="font-bold py-3">{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           
           {/* Sektion: Datum & Flexibilität */}
           <div className="space-y-4">

@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { PlaceCard } from '@/components/aktvia/place-card';
-import type { Place, Activity, GeoapifyFeature, UserPreferences } from '@/lib/types';
+import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -60,6 +60,7 @@ const CardSkeleton = () => (
 
 const PLACES_PER_PAGE = 10;
 const QUARANTINE_THRESHOLD = 3;
+const ACTIVITY_CATEGORIES: (ActivityCategory | 'Alle')[] = ['Alle', 'Sport', 'Tech', 'Party', 'Kultur', 'Outdoor', 'Gaming', 'Networking', 'Sonstiges'];
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -83,6 +84,7 @@ export default function Home() {
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
   const [maxDistance, setMaxDistance] = useState<number | null>(null);
+  const [activityCategoryFilter, setActivityCategoryFilter] = useState<ActivityCategory | 'Alle'>('Alle');
 
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
@@ -276,7 +278,8 @@ export default function Home() {
     setActiveCategory(categoryId);
     setActiveTabId(tabId);
     setSortBy('recommended');
-    setMaxDistance(null); // Reset distance filter on category change
+    setMaxDistance(null); 
+    setActivityCategoryFilter('Alle'); // Reset activity filter on main category change
   };
 
   const handlePlaceSelect = (place: Place) => setSelectedPlace(place);
@@ -284,13 +287,13 @@ export default function Home() {
   const handleOpenActivityModal = (place: Place) => { if (!user) { router.push('/login'); return; } setActivityModalPlace(place); };
   const handleOpenCustomActivityModal = () => { if (!user) { router.push('/login'); return; } setActivityModalPlace('custom'); };
 
-  const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number): Promise<boolean> => {
+  const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory): Promise<boolean> => {
     if (!user) return false;
     try {
       const isCustom = activityModalPlace === 'custom';
       const payload = isCustom 
-        ? { customLocationName: customLocationName!, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price } 
-        : { place: activityModalPlace as Place, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price };
+        ? { customLocationName: customLocationName!, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price, category: category! } 
+        : { place: activityModalPlace as Place, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price, category: category! };
       const newActivityRef = await createActivity(payload);
       setActivityModalPlace(null);
       router.push(`/chat/${newActivityRef.id}`);
@@ -328,7 +331,7 @@ export default function Home() {
             <div className="space-y-4">
                 <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">Keine Ergebnisse</h3>
                 <p className="text-[#64748b] dark:text-neutral-400 font-medium">Passe deine Suche oder die Filter an.</p>
-                <Button onClick={() => { handleCategoryChange([], ''); setMaxDistance(null); }} variant="outline" className="rounded-xl font-bold">Filter zurücksetzen</Button>
+                <Button onClick={() => { handleCategoryChange([], ''); setMaxDistance(null); setActivityCategoryFilter('Alle'); }} variant="outline" className="rounded-xl font-bold">Filter zurücksetzen</Button>
             </div>
         </div>
     );
@@ -360,8 +363,14 @@ export default function Home() {
                   (item.reportCount || 0) < QUARANTINE_THRESHOLD
                 );
 
+                // --- MODUL 12: SEMANTISCHE FILTERUNG ---
+                let semanticFiltered = safeActivities;
+                if (activityCategoryFilter !== 'Alle') {
+                  semanticFiltered = semanticFiltered.filter((item: any) => item.category === activityCategoryFilter);
+                }
+
                 // --- MODUL 6: GEODATEN INJEKTION & DISTANZ-FILTER ---
-                const listWithDistance = safeActivities.map((item: any) => {
+                const listWithDistance = semanticFiltered.map((item: any) => {
                   const distance = (userLocation && item.lat && item.lon)
                     ? calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lon)
                     : null;
@@ -522,6 +531,26 @@ export default function Home() {
             
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
             
+            {/* --- MODUL 12: AKTIVITÄTS-KATEGORIEN FILTER --- */}
+            {(isAktivCategory || isCommunityCategory) && (
+              <div className="flex overflow-x-auto gap-2 pb-1 hide-scrollbar">
+                {ACTIVITY_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActivityCategoryFilter(cat)}
+                    className={cn(
+                      "flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all",
+                      activityCategoryFilter === cat
+                        ? "bg-slate-900 text-white shadow-md"
+                        : "bg-white dark:bg-neutral-800 text-slate-500 dark:text-neutral-400 border border-slate-100 dark:border-neutral-700 hover:bg-slate-50"
+                    )}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* --- MODUL 6: DISTANZ-FILTER CHIPS --- */}
             {(isAktivCategory || isCommunityCategory) && (
               <div className="flex overflow-x-auto gap-2 pb-1 hide-scrollbar">
