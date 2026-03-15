@@ -195,6 +195,9 @@ export interface UserProfile {
   tokens?: number;
   successfulFreeHosts?: number;
   fiatBalance?: number; // Modul 8: Finanz-Clearing
+  // Modul 11: Reputation Engine
+  averageRating?: number;
+  ratingCount?: number;
   // RBAC fields
   isAdmin?: boolean;
 }

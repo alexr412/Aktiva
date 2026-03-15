@@ -72,6 +72,8 @@ export async function createUserProfileDocument(user: User) {
     tokens: 0,
     successfulFreeHosts: 0,
     fiatBalance: 0, // Modul 8
+    averageRating: 0, // Modul 11
+    ratingCount: 0, // Modul 11
     proximitySettings: {
       enabled: false,
       radiusKm: 5
@@ -784,6 +786,44 @@ export async function submitReviews(
 
     await batch.commit();
 }
+
+/**
+ * MODUL 11: REPUTATION ENGINE
+ * Atomare Bewertungs-Transaktion für Hosts.
+ */
+export const submitHostRating = async (activityId: string, hostId: string, reviewerId: string, rating: number) => {
+  if (!db) throw new Error('Firestore not initialized.');
+  if (rating < 1 || rating > 5) throw new Error("Invalides Rating");
+
+  const hostRef = doc(db, 'users', hostId);
+  const reviewRef = doc(collection(db, 'reviews'));
+
+  await runTransaction(db, async (transaction) => {
+    const hostDoc = await transaction.get(hostRef);
+    if (!hostDoc.exists()) throw new Error("Host nicht gefunden");
+
+    const currentData = hostDoc.data() as UserProfile;
+    const currentRating = currentData.averageRating || 0;
+    const currentCount = currentData.ratingCount || 0;
+
+    const newCount = currentCount + 1;
+    const newRating = ((currentRating * currentCount) + rating) / newCount;
+
+    transaction.update(hostRef, {
+      averageRating: newRating,
+      ratingCount: newCount
+    });
+
+    transaction.set(reviewRef, {
+      activityId,
+      hostId,
+      reviewerId,
+      rating,
+      createdAt: serverTimestamp(),
+      type: 'host_rating'
+    });
+  });
+};
 
 export async function findUserByFriendCode(friendCode: string): Promise<UserProfile | null> {
     if (!db) throw new Error('Firestore is not initialized.');

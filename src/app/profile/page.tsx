@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -447,6 +447,15 @@ export default function ProfilePage() {
                                   {userData?.age && <span className="text-neutral-400 text-3xl font-black">, {userData.age}</span>}
                                   <UserBadge isPremium={userData?.isPremium} isSupporter={userData?.isSupporter} />
                                 </div>
+
+                                {/* MODUL 11: REPUTATION DISPLAY */}
+                                {userData?.ratingCount && userData.ratingCount > 0 ? (
+                                  <div className="flex items-center gap-1.5 mt-1 bg-amber-50 px-3 py-1 rounded-full border border-amber-100 animate-in fade-in zoom-in-95">
+                                    <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                                    <span className="font-black text-amber-700 text-sm">{userData.averageRating?.toFixed(1)}</span>
+                                    <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-tighter">({userData.ratingCount} Reviews)</span>
+                                  </div>
+                                ) : null}
                                 
                                 <div className="flex flex-wrap justify-center gap-2 mt-2">
                                     <div 

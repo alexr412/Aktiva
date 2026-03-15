@@ -19,6 +19,7 @@ import { ChatInfoSheet } from '@/components/aktvia/chat-info-sheet';
 import { ArrowLeft, Send, MoreVertical } from 'lucide-react';
 import { CompletionBanner } from '@/components/aktvia/CompletionBanner';
 import { ReviewDialog } from '@/components/reviews/ReviewDialog';
+import { HostRatingDialog } from '@/components/reviews/HostRatingDialog';
 import { UserBadge } from '@/components/common/UserBadge';
 import { cn } from '@/lib/utils';
 
@@ -117,6 +118,7 @@ export default function ChatRoomPage() {
   const [loading, setLoading] = useState(true);
   const [isInfoSheetOpen, setInfoSheetOpen] = useState(false);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [showHostRatingDialog, setShowHostRatingDialog] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(true);
   
   const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string; isPremium?: boolean; isSupporter?: boolean } | null>(null);
@@ -204,9 +206,14 @@ export default function ChatRoomPage() {
 
   useEffect(() => {
     if (activity?.status === 'completed' && !hasReviewed && user) {
-        const otherParticipants = activity.participantIds.filter(id => id !== user.uid);
-        if (otherParticipants.length > 0) {
-            setShowReviewDialog(true);
+        const isHost = activity.creatorId === user.uid;
+        if (!isHost) {
+            setShowHostRatingDialog(true);
+        } else {
+            const otherParticipants = activity.participantIds.filter(id => id !== user.uid);
+            if (otherParticipants.length > 0) {
+                setShowReviewDialog(true);
+            }
         }
     }
   }, [activity, hasReviewed, user]);
@@ -357,6 +364,23 @@ export default function ChatRoomPage() {
             currentUser={user}
             onReviewSubmitted={() => setHasReviewed(true)}
             participantDetails={chat.participantDetails}
+        />
+      )}
+
+      {!isDirectMessage && activity && user && chat && (
+        <HostRatingDialog 
+            open={showHostRatingDialog}
+            onOpenChange={setShowHostRatingDialog}
+            activity={activity}
+            currentUser={user}
+            onRatingSubmitted={() => {
+                setHasReviewed(true);
+                // After rating the host, show the regular participant reviews
+                const otherParticipants = activity.participantIds.filter(id => id !== user.uid && id !== activity.creatorId);
+                if (otherParticipants.length > 0) {
+                    setShowReviewDialog(true);
+                }
+            }}
         />
       )}
     </>

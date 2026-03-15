@@ -32,6 +32,7 @@ import {
   X,
   MessageSquare,
   MapPin,
+  Star,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -334,6 +335,15 @@ export default function ExternalUserProfilePage() {
                       {userData.age && <span className="text-muted-foreground text-2xl font-bold">, {userData.age}</span>}
                       <UserBadge isPremium={userData.isPremium} isSupporter={userData.isSupporter} />
                     </div>
+
+                    {/* MODUL 11: REPUTATION DISPLAY */}
+                    {userData.ratingCount && userData.ratingCount > 0 ? (
+                      <div className="flex items-center justify-center gap-1.5 mt-1 bg-amber-50 px-3 py-1 rounded-full border border-amber-100">
+                        <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                        <span className="font-black text-amber-700 text-sm">{userData.averageRating?.toFixed(1)}</span>
+                        <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-tighter">({userData.ratingCount} Reviews)</span>
+                      </div>
+                    ) : null}
                     
                     {proximityLabel ? (
                         <div className="flex items-center justify-center gap-1.5 mt-1 text-green-600 font-bold text-xs uppercase tracking-wider">
