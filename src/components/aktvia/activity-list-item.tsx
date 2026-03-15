@@ -266,8 +266,8 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
               <Button 
                 onClick={handleReport} 
                 disabled={isReporting}
-                variant="ghost"
-                className="w-full mt-4 h-10 rounded-2xl border border-dashed border-destructive/20 text-destructive hover:bg-destructive/5 text-[10px] font-black uppercase tracking-widest gap-2"
+                variant="outline"
+                className="w-full mt-4 border-destructive text-destructive hover:bg-destructive/10 font-bold h-12 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2"
               >
                 {isReporting ? <Loader2 className="h-3 w-3 animate-spin"/> : <AlertTriangle className="h-3 w-3" />}
                 {isReporting ? "Wird gemeldet..." : "Aktivität melden"}
