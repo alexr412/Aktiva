@@ -67,13 +67,17 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         if (!db || !place.id) return;
         setLoadingActivities(true);
         
-        // --- QUERY KORREKTUR: EXAKTE PLACE-ID RELATION ---
+        // --- DIAGNOSE OUTPUT FÜR ID-MISMATCH PRÜFUNG ---
+        console.log("EXECUTE QUERY FOR PLACE ID:", place.id);
+        
+        // --- QUERY: REINE RELATION OHNE ZEITLICHE FILTERUNG ---
         const activitiesQuery = query(
             collection(db, 'activities'), 
             where('placeId', '==', place.id)
         );
 
         const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
+            // --- ROHE STATE-ZUWEISUNG OHNE MODIFIKATION ---
             const fetchedActivities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
             setActivities(fetchedActivities);
             setLoadingActivities(false);
@@ -96,7 +100,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         }
 
         if (activity.isPaid && activity.price && activity.price > 0) {
-            // Payment Gate
             router.push(`/checkout/${activity.id}`);
             return;
         }
