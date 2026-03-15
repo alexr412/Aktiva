@@ -847,57 +847,52 @@ export async function completeActivity(activityId: string, userId: string, isPai
 
 /**
  * MODUL 17: AUTOMATED REFUND PIPELINE
- * Storniert eine Aktivität und generiert Refund-Audit-Dokumente.
+ * Storniert eine Aktivität und generiert Refund-Audit-Dokumente atomar.
  */
 export const cancelActivity = async (activityId: string, hostId: string) => {
   if (!db) throw new Error('Firestore is not initialized.');
   
   const activityRef = doc(db, 'activities', activityId);
-  const hostRef = doc(db, 'users', hostId);
+  const activitySnap = await getDoc(activityRef);
+  
+  if (!activitySnap.exists()) throw new Error("Aktivität nicht gefunden.");
+  const activity = activitySnap.data() as Activity;
 
-  await runTransaction(db, async (transaction) => {
-    const activitySnap = await transaction.get(activityRef);
-    if (!activitySnap.exists()) throw new Error("Aktivität nicht gefunden.");
+  const batch = writeBatch(db);
+  batch.update(activityRef, { status: 'cancelled', updatedAt: serverTimestamp() });
+
+  if (activity.isPaid && activity.price && activity.price > 0) {
+    const participantsRef = collection(db, 'activities', activityId, 'participants');
+    const participantsSnap = await getDocs(participantsRef);
     
-    const activity = activitySnap.data() as Activity;
-    if (activity.status === 'cancelled') return;
+    // Wir zählen zahlende Teilnehmer (alle außer Host)
+    const payingParticipantsCount = Math.max(0, participantsSnap.size - 1);
+    const escrowDeduction = payingParticipantsCount * (activity.price * 0.9);
 
-    // 1. Status auf cancelled setzen
-    transaction.update(activityRef, { 
-      status: 'cancelled',
-      cancelledAt: serverTimestamp() 
-    });
-
-    // 2. Finanzielle Rückabwicklung bei bezahlten Events
-    if (activity.isPaid && activity.price && activity.price > 0) {
-      const participantsRef = collection(db, 'activities', activityId, 'participants');
-      const participantsSnap = await getDocs(participantsRef);
-      
-      // Teilnehmer ohne den Host zählen
-      const payingParticipantsCount = Math.max(0, participantsSnap.size - 1);
-      const escrowDeduction = payingParticipantsCount * (activity.price * 0.9);
-
-      if (escrowDeduction > 0) {
-        transaction.update(hostRef, {
-          escrowBalance: increment(-escrowDeduction)
-        });
-      }
-
-      // Refund-Dokumente für alle zahlenden Teilnehmer
-      participantsSnap.forEach((pDoc) => {
-        if (pDoc.id !== hostId) {
-          const refundRef = doc(collection(db, 'refunds'));
-          transaction.set(refundRef, {
-            activityId,
-            userId: pDoc.id,
-            amount: activity.price, 
-            status: 'pending',
-            createdAt: serverTimestamp()
-          });
-        }
+    // 1. Host Escrow-Ledger bereinigen
+    if (escrowDeduction > 0) {
+      const hostRef = doc(db, 'users', hostId);
+      batch.update(hostRef, {
+        escrowBalance: increment(-escrowDeduction)
       });
     }
-  });
+
+    // 2. Refund-Audit für jeden Teilnehmer generieren (außer Host)
+    participantsSnap.forEach((pDoc) => {
+      if (pDoc.id !== hostId) {
+        const refundRef = doc(collection(db, 'refunds'));
+        batch.set(refundRef, {
+          activityId,
+          userId: pDoc.id,
+          amount: activity.price, // Teilnehmer erhält 100% zurück
+          status: 'pending',
+          createdAt: serverTimestamp()
+        });
+      }
+    });
+  }
+
+  await batch.commit();
 };
 
 export async function checkIfUserReviewed(activityId: string, reviewerId: string): Promise<boolean> {

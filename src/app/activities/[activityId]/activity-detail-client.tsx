@@ -142,6 +142,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
   const checkInStatus = user ? activity.participantDetails?.[user.uid]?.checkInStatus : 'pending';
   const isCancelled = activity.status === 'cancelled';
+  const isActive = activity.status === 'active';
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 overflow-y-auto">
@@ -168,7 +169,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         )}
 
         {/* Host Control Section */}
-        {isHost && !isCancelled && (
+        {isHost && isActive && (
           <Card className="border-none shadow-sm rounded-[2rem] bg-slate-900 text-white overflow-hidden">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center justify-between">
