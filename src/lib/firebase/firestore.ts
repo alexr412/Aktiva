@@ -73,6 +73,7 @@ export async function createUserProfileDocument(user: User) {
     tokens: 0,
     successfulFreeHosts: 0,
     fiatBalance: 0, // Modul 8
+    successfulReferrals: 0, // Modul 13
     averageRating: 0, // Modul 11
     ratingCount: 0, // Modul 11
     proximitySettings: {
@@ -190,7 +191,8 @@ export async function createActivity({
     reportCount: 0,
     stats: {
       impressions: 0,
-      pushJoins: 0
+      pushJoins: 0,
+      referralJoins: 0
     },
     ...(place?.address && { placeAddress: place.address }),
     ...(place?.lat && { lat: place.lat }),
@@ -315,7 +317,7 @@ export async function votePlace(placeId: string, userId: string, type: 'up' | 'd
   });
 }
 
-export async function joinActivity(activityId: string, user: User, source?: string | null) {
+export async function joinActivity(activityId: string, user: User, source?: string | null, referralId?: string | null) {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!user) throw new Error('User is not authenticated.');
 
@@ -357,6 +359,15 @@ export async function joinActivity(activityId: string, user: User, source?: stri
         updates["stats.pushJoins"] = increment(1);
       }
 
+      // MODUL 13: Referral Tracking
+      if (referralId && referralId !== user.uid) {
+        updates["stats.referralJoins"] = increment(1);
+        const referrerRef = doc(db, 'users', referralId);
+        transaction.update(referrerRef, {
+          successfulReferrals: increment(1)
+        });
+      }
+
       transaction.update(activityRef, updates);
 
       // Update previews (max 5) - Harden against duplicates
@@ -394,7 +405,7 @@ export async function joinActivity(activityId: string, user: User, source?: stri
   }
 }
 
-export async function joinPaidActivity(activityId: string, user: User, transactionToken: string, source?: string | null) {
+export async function joinPaidActivity(activityId: string, user: User, transactionToken: string, source?: string | null, referralId?: string | null) {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!transactionToken) throw new Error("Transaktions-Token fehlt. Beitritt verweigert.");
 
@@ -424,6 +435,15 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
 
       if (source === 'push') {
         updates["stats.pushJoins"] = increment(1);
+      }
+
+      // MODUL 13: Referral Tracking
+      if (referralId && referralId !== user.uid) {
+        updates["stats.referralJoins"] = increment(1);
+        const referrerRef = doc(db, 'users', referralId);
+        transaction.update(referrerRef, {
+          successfulReferrals: increment(1)
+        });
       }
 
       transaction.update(activityRef, updates);

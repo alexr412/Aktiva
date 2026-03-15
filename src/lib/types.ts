@@ -87,6 +87,7 @@ export interface Activity {
   stats?: {
     impressions?: number;
     pushJoins?: number;
+    referralJoins?: number; // Modul 13
   };
   // Modul 9: Trust & Safety
   reportCount?: number;
@@ -198,6 +199,7 @@ export interface UserProfile {
   tokens?: number;
   successfulFreeHosts?: number;
   fiatBalance?: number; // Modul 8: Finanz-Clearing
+  successfulReferrals?: number; // Modul 13
   // Modul 11: Reputation Engine
   averageRating?: number;
   ratingCount?: number;

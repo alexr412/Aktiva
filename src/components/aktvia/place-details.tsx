@@ -20,6 +20,7 @@ import {
     Calendar,
     ExternalLink,
     CreditCard,
+    Share2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -97,6 +98,26 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         }
     };
 
+    const handleShareActivity = async (activity: Activity) => {
+        const shareUrl = `${window.location.origin}/activities/${activity.id}?ref=${user?.uid || 'guest'}`;
+        const shareData = {
+            title: `Aktivität bei ${activity.placeName}`,
+            text: `Schau dir diese Aktivität bei "${activity.placeName}" auf Aktvia an! Sei dabei!`,
+            url: shareUrl,
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (error) {
+                console.error("Fehler beim Teilen", error);
+            }
+        } else {
+            navigator.clipboard.writeText(shareUrl);
+            toast({ title: "Link kopiert", description: "Der Link wurde in die Zwischenablage kopiert." });
+        }
+    };
+
     const handleVote = async (activityId: string, type: 'up' | 'down' | 'none') => {
         if (!user || isVoting) return;
         setIsVoting(true);
@@ -160,9 +181,11 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                         <Separator className="opacity-50 dark:border-neutral-800" />
 
                         <div className="flex flex-col">
-                            <h2 className="text-xl font-black dark:text-neutral-200 mb-4 flex items-center gap-2">
-                                <Users className="h-5 w-5 text-primary" />
-                                <span>Aktivitäten vor Ort</span>
+                            <h2 className="text-xl font-black dark:text-neutral-200 mb-4 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Users className="h-5 w-5 text-primary" />
+                                    <span>Aktivitäten vor Ort</span>
+                                </div>
                             </h2>
                             <div className="space-y-3">
                                 {loadingActivities ? <Skeleton className="h-20 w-full rounded-2xl" /> : activities.length === 0 ? <p className="text-sm text-neutral-500">Keine Treffen geplant.</p> : activities.map(activity => {
@@ -184,27 +207,32 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                     </div>
                                                     <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400">{activity.participantIds.length} Teilnehmer</p>
                                                 </div>
-                                                {isParticipant ? (
-                                                    <Button size="sm" variant="secondary" onClick={() => router.push(`/chat/${activity.id}`)} className="rounded-xl font-bold">Chat</Button>
-                                                ) : (
-                                                    <Button 
-                                                        size="sm" 
-                                                        onClick={() => handleJoin(activity)} 
-                                                        disabled={joiningActivityId === activity.id}
-                                                        className={cn(
-                                                            "w-32 rounded-xl font-black",
-                                                            isPaidEvent ? "bg-slate-900 text-white" : ""
-                                                        )}
-                                                    >
-                                                        {joiningActivityId === activity.id ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                        ) : isPaidEvent ? (
-                                                            `Beitreten`
-                                                        ) : (
-                                                            'Beitreten'
-                                                        )}
+                                                <div className="flex items-center gap-2">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleShareActivity(activity)} className="rounded-full text-slate-400 hover:text-primary">
+                                                        <Share2 className="h-4 w-4" />
                                                     </Button>
-                                                )}
+                                                    {isParticipant ? (
+                                                        <Button size="sm" variant="secondary" onClick={() => router.push(`/chat/${activity.id}`)} className="rounded-xl font-bold">Chat</Button>
+                                                    ) : (
+                                                        <Button 
+                                                            size="sm" 
+                                                            onClick={() => handleJoin(activity)} 
+                                                            disabled={joiningActivityId === activity.id}
+                                                            className={cn(
+                                                                "w-24 sm:w-32 rounded-xl font-black",
+                                                                isPaidEvent ? "bg-slate-900 text-white" : ""
+                                                            )}
+                                                        >
+                                                            {joiningActivityId === activity.id ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                            ) : isPaidEvent ? (
+                                                                `Beitreten`
+                                                            ) : (
+                                                                'Beitreten'
+                                                            )}
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div className="flex gap-2 items-center pt-3 border-t border-neutral-200/50 dark:border-neutral-700/50 mt-3">
                                                 <button onClick={() => handleVote(activity.id!, userVote === 'up' ? 'none' : 'up')} className="dark:text-neutral-200" style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'up' ? '#22c55e' : 'inherit', cursor: 'pointer' }}>↑</button>
