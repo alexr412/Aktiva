@@ -133,7 +133,6 @@ export async function createActivity({
     throw new Error('Firestore is not initialized.');
   }
   
-  // --- PAYLOAD VERIFIZIERUNG: PLACE-ID EXTRAKTION ---
   const isCustomActivity = !place;
   const placeIdValue = isCustomActivity ? "custom" : (place?.id || "unknown");
   
@@ -206,7 +205,8 @@ export async function createActivity({
         photoURL: user.photoURL || null,
         isPremium: isUserPremium,
         isSupporter: isUserSupporter,
-        checkInStatus: 'pending'
+        checkInStatus: 'pending',
+        hasReviewed: false
       },
     },
     ...(place?.address && { placeAddress: place.address }),
@@ -224,7 +224,8 @@ export async function createActivity({
     displayName: user.displayName || "Anonymer Host",
     photoURL: user.photoURL || null,
     checkInStatus: 'pending',
-    joinedAt: serverTimestamp()
+    joinedAt: serverTimestamp(),
+    hasReviewed: false
   });
 
   const chatRef = doc(db, 'chats', activityRef.id);
@@ -385,7 +386,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
           photoURL: user.photoURL || null,
           isPremium: userProfileData?.isPremium || false,
           isSupporter: userProfileData?.isSupporter || false,
-          checkInStatus: 'pending'
+          checkInStatus: 'pending',
+          hasReviewed: false
         },
       };
 
@@ -408,7 +410,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
         displayName: user.displayName || "Unbekannter Teilnehmer",
         photoURL: user.photoURL || null,
         checkInStatus: 'pending',
-        joinedAt: serverTimestamp()
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
       });
 
       const currentPreviews = activityData.participantsPreview || [];
@@ -478,7 +481,8 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
           photoURL: user.photoURL || null,
           isPremium: userProfileData?.isPremium || false,
           isSupporter: userProfileData?.isSupporter || false,
-          checkInStatus: 'pending'
+          checkInStatus: 'pending',
+          hasReviewed: false
         },
       };
 
@@ -507,7 +511,8 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
         displayName: user.displayName || "Unbekannter Teilnehmer",
         photoURL: user.photoURL || null,
         checkInStatus: 'pending',
-        joinedAt: serverTimestamp()
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
       });
 
       const currentPreviews = activityData.participantsPreview || [];
@@ -886,35 +891,40 @@ export const cancelActivity = async (activityId: string, hostId: string) => {
 
 export async function checkIfUserReviewed(activityId: string, reviewerId: string): Promise<boolean> {
     if (!db) throw new Error('Firestore is not initialized.');
-    const reviewsQuery = query(
-        collection(db, 'reviews'),
-        where('activityId', '==', activityId),
-        where('reviewerId', '==', reviewerId)
-    );
-    const snapshot = await getDocs(reviewsQuery);
-    return !snapshot.empty;
+    const pRef = doc(db, 'activities', activityId, 'participants', reviewerId);
+    const pSnap = await getDoc(pRef);
+    return pSnap.exists() && pSnap.data().hasReviewed === true;
 }
 
-export async function submitReviews(
-    activityId: string,
-    reviewerId: string,
-    otherParticipantIds: string[],
-    rating: number,
-    text?: string,
-) {
+export async function submitMultiReview(activityId: string, reviewerId: string, reviews: any[]) {
     if (!db) throw new Error('Firestore is not initialized.');
     const batch = writeBatch(db);
 
-    otherParticipantIds.forEach(targetUserId => {
+    reviews.forEach(review => {
         const reviewRef = doc(collection(db, 'reviews'));
         batch.set(reviewRef, {
+            ...review,
             activityId,
             reviewerId,
-            targetUserId,
-            rating,
-            text: text || '',
             createdAt: serverTimestamp()
         });
+
+        if (review.targetType === 'user') {
+            const userRef = doc(db, 'users', review.targetId);
+            batch.update(userRef, { 
+              ratingCount: increment(1)
+              // Note: Idealerweise würde hier auch das averageRating neu berechnet, 
+              // für den Prototyp fokussieren wir auf den reviewCount.
+            });
+        }
+    });
+
+    const pRef = doc(db, 'activities', activityId, 'participants', reviewerId);
+    batch.update(pRef, { hasReviewed: true });
+
+    const activityRef = doc(db, 'activities', activityId);
+    batch.update(activityRef, {
+      [`participantDetails.${reviewerId}.hasReviewed`]: true
     });
 
     await batch.commit();

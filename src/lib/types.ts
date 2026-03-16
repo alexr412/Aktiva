@@ -69,6 +69,7 @@ export interface Activity {
           isSupporter?: boolean;
           checkInStatus?: CheckInStatus;
           checkInTime?: Timestamp;
+          hasReviewed?: boolean;
       }
   };
   participantsPreview?: {
@@ -206,11 +207,11 @@ export interface Review {
   id?: string;
   activityId: string;
   reviewerId: string;
-  targetUserId: string;
+  targetId: string;
+  targetType: 'user' | 'activity';
   rating: number;
-  text?: string;
+  comment?: string;
   createdAt: Timestamp;
-  type?: 'host_rating';
 }
 
 export interface Report {

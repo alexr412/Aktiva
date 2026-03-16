@@ -18,8 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ChatInfoSheet } from '@/components/aktvia/chat-info-sheet';
 import { ArrowLeft, Send, MoreVertical } from 'lucide-react';
 import { CompletionBanner } from '@/components/aktvia/CompletionBanner';
-import { ReviewDialog } from '@/components/reviews/ReviewDialog';
-import { HostRatingDialog } from '@/components/reviews/HostRatingDialog';
+import { MultiPeerReviewDialog } from '@/components/aktvia/multi-peer-review-dialog';
 import { UserBadge } from '@/components/common/UserBadge';
 import { cn } from '@/lib/utils';
 
@@ -116,8 +115,7 @@ export default function ChatRoomPage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [isInfoSheetOpen, setInfoSheetOpen] = useState(false);
-  const [showReviewDialog, setShowReviewDialog] = useState(false);
-  const [showHostRatingDialog, setShowHostRatingDialog] = useState(false);
+  const [showMultiReviewDialog, setShowMultiReviewDialog] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(true);
   
   const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string; isPremium?: boolean; isSupporter?: boolean } | null>(null);
@@ -205,15 +203,7 @@ export default function ChatRoomPage() {
 
   useEffect(() => {
     if (activity?.status === 'completed' && !hasReviewed && user) {
-        const isHost = activity.hostId === user.uid;
-        if (!isHost) {
-            setShowHostRatingDialog(true);
-        } else {
-            const otherParticipants = activity.participantIds.filter(id => id !== user.uid);
-            if (otherParticipants.length > 0) {
-                setShowReviewDialog(true);
-            }
-        }
+        setShowMultiReviewDialog(true);
     }
   }, [activity, hasReviewed, user]);
 
@@ -355,31 +345,13 @@ export default function ChatRoomPage() {
         />
       )}
       
-      {!isDirectMessage && activity && user && chat && (
-        <ReviewDialog 
-            open={showReviewDialog}
-            onOpenChange={setShowReviewDialog}
+      {!isDirectMessage && activity && user && (
+        <MultiPeerReviewDialog 
+            open={showMultiReviewDialog}
+            onOpenChange={setShowMultiReviewDialog}
             activity={activity}
             currentUser={user}
             onReviewSubmitted={() => setHasReviewed(true)}
-            participantDetails={chat.participantDetails}
-        />
-      )}
-
-      {!isDirectMessage && activity && user && chat && (
-        <HostRatingDialog 
-            open={showHostRatingDialog}
-            onOpenChange={setShowHostRatingDialog}
-            activity={activity}
-            currentUser={user}
-            onRatingSubmitted={() => {
-                setHasReviewed(true);
-                // After rating the host, show the regular participant reviews
-                const otherParticipants = activity.participantIds.filter(id => id !== user.uid && id !== activity.hostId);
-                if (otherParticipants.length > 0) {
-                    setShowReviewDialog(true);
-                }
-            }}
         />
       )}
     </>
