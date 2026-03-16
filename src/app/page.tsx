@@ -400,7 +400,6 @@ export default function Home() {
                   <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {sortedList.map((item) => {
                       // --- ARCHITEKTUR FIX: PLACE OBJEKT REKONSTRUKTION FÜR DETAIL-VIEW ---
-                      // Dies verhindert den Zirkelschluss, bei dem die Activity-ID als Place-ID genutzt wird.
                       const itemPlace: Place = {
                         id: item.placeId || "unknown",
                         name: item.placeName || "Unbekannter Ort",
@@ -602,6 +601,7 @@ export default function Home() {
       <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
         <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden rounded-3xl border-none dark:bg-neutral-900">
           <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
+          <DialogDescription className="sr-only">Details zum ausgewählten Ort</DialogDescription>
           {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
         </DialogContent>
       </Dialog>

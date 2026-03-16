@@ -851,45 +851,36 @@ export async function completeActivity(activityId: string, userId: string, isPai
 }
 
 export const cancelActivity = async (activityId: string, hostId: string) => {
-  if (!db) throw new Error('Firestore is not initialized.');
-  
+  if (!db) throw new Error('Firestore not initialized.');
   const activityRef = doc(db, 'activities', activityId);
   const activitySnap = await getDoc(activityRef);
-  
   if (!activitySnap.exists()) throw new Error("Aktivität nicht gefunden.");
-  const activity = activitySnap.data() as Activity;
+  const activity = activitySnap.data();
 
   const batch = writeBatch(db);
   batch.update(activityRef, { status: 'cancelled', updatedAt: serverTimestamp() });
 
-  if (activity.isPaid && activity.price && activity.price > 0) {
+  if (activity.isPaid && activity.price > 0) {
     const participantsRef = collection(db, 'activities', activityId, 'participants');
     const participantsSnap = await getDocs(participantsRef);
-    
-    const payingParticipantsCount = Math.max(0, participantsSnap.size - 1);
-    const escrowDeduction = payingParticipantsCount * (activity.price * 0.9);
+    const totalParticipants = participantsSnap.size;
+    const escrowDeduction = totalParticipants * (activity.price * 0.9);
 
     if (escrowDeduction > 0) {
-      const hostRef = doc(db, 'users', hostId);
-      batch.update(hostRef, {
-        escrowBalance: increment(-escrowDeduction)
-      });
+      batch.update(doc(db, 'users', hostId), { escrowBalance: increment(-escrowDeduction) });
     }
 
     participantsSnap.forEach((pDoc) => {
-      if (pDoc.id !== hostId) {
-        const refundRef = doc(collection(db, 'refunds'));
-        batch.set(refundRef, {
-          activityId,
-          userId: pDoc.id,
-          amount: activity.price, 
-          status: 'pending',
-          createdAt: serverTimestamp()
-        });
-      }
+      const refundRef = doc(collection(db, 'refunds'));
+      batch.set(refundRef, {
+        activityId,
+        userId: pDoc.id,
+        amount: activity.price,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
     });
   }
-
   await batch.commit();
 };
 
