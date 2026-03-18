@@ -49,7 +49,11 @@ export function ThemeSelector() {
                     {themes.map((t) => (
                         <button 
                             key={t.name} 
-                            onClick={() => setTheme(t.name)} 
+                            onClick={() => {
+                                // MODUL 19: TRIGGER LOGGING
+                                console.log("THEME TRIGGER: Farbauswahl geklickt ->", t.name);
+                                setTheme(t.name);
+                            }} 
                             className={cn(
                                 'h-10 w-10 rounded-full border-2 transition-all flex items-center justify-center',
                                 theme === t.name ? 'border-primary scale-110 ring-2 ring-ring ring-offset-2' : 'border-transparent hover:scale-105'
