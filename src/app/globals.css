@@ -32,43 +32,6 @@
     --ring: 150 60% 45%;
   }
 
-  /* Dynamic Theme Overrides */
-  .theme-mint {
-    --primary: 150 60% 45%;
-    --primary-foreground: 0 0% 100%;
-    --ring: 150 60% 45%;
-  }
-  .theme-violet {
-    --primary: 259 92% 67%;
-    --primary-foreground: 0 0% 100%;
-    --ring: 259 92% 67%;
-  }
-  .theme-blue {
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --ring: 217 91% 60%;
-  }
-  .theme-yellow {
-    --primary: 45 93% 47%;
-    --primary-foreground: 0 0% 100%;
-    --ring: 45 93% 47%;
-  }
-  .theme-orange {
-    --primary: 25 95% 53%;
-    --primary-foreground: 0 0% 100%;
-    --ring: 25 95% 53%;
-  }
-  .theme-green {
-    --primary: 142 76% 36%;
-    --primary-foreground: 0 0% 100%;
-    --ring: 142 76% 36%;
-  }
-  .theme-red {
-    --primary: 0 72% 51%;
-    --primary-foreground: 0 0% 100%;
-    --ring: 0 72% 51%;
-  }
-
   .dark {
     --background: 0 0% 7%;
     --foreground: 0 0% 98%;
@@ -86,6 +49,97 @@
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
+    
+    /* Default dark primary fallback */
+    --primary: 150 60% 45%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 150 60% 45%;
+  }
+
+  /* --- DYNAMIC THEME OVERRIDES WITH HIGH SPECIFICITY --- */
+
+  /* Theme: Mint (Default) */
+  .theme-mint {
+    --primary: 150 60% 45%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 150 60% 45%;
+  }
+  .dark.theme-mint {
+    --primary: 150 60% 45%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 150 60% 45%;
+  }
+
+  /* Theme: Violet */
+  .theme-violet {
+    --primary: 259 92% 67%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 259 92% 67%;
+  }
+  .dark.theme-violet {
+    --primary: 259 92% 67%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 259 92% 67%;
+  }
+
+  /* Theme: Blue */
+  .theme-blue {
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 217 91% 60%;
+  }
+  .dark.theme-blue {
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 217 91% 60%;
+  }
+
+  /* Theme: Yellow */
+  .theme-yellow {
+    --primary: 45 93% 47%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 45 93% 47%;
+  }
+  .dark.theme-yellow {
+    --primary: 45 93% 47%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 45 93% 47%;
+  }
+
+  /* Theme: Orange */
+  .theme-orange {
+    --primary: 25 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 25 95% 53%;
+  }
+  .dark.theme-orange {
+    --primary: 25 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 25 95% 53%;
+  }
+
+  /* Theme: Green */
+  .theme-green {
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 142 76% 36%;
+  }
+  .dark.theme-green {
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 142 76% 36%;
+  }
+
+  /* Theme: Red */
+  .theme-red {
+    --primary: 0 72% 51%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 0 72% 51%;
+  }
+  .dark.theme-red {
+    --primary: 0 72% 51%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 0 72% 51%;
   }
 }
 
