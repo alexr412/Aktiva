@@ -6,7 +6,7 @@ import { auth, db } from '@/lib/firebase/client';
 import { onAuthStateChanged } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Ban } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 import { updateUserLocation, updateUserProfile } from '@/lib/firebase/firestore';
@@ -39,6 +39,20 @@ const NotConfigured = () => (
             </CardContent>
         </Card>
     </div>
+);
+
+const BannedScreen = () => (
+  <div className="flex h-screen w-full flex-col items-center justify-center p-6 bg-slate-900 text-white text-center">
+    <div className="bg-red-500 p-6 rounded-full mb-8 shadow-2xl shadow-red-500/20 animate-pulse">
+      <Ban className="h-16 w-16" />
+    </div>
+    <h1 className="text-4xl font-black mb-4 uppercase tracking-tighter">Account Suspended</h1>
+    <p className="max-w-md text-slate-400 font-medium leading-relaxed">
+      Dein Account wurde aufgrund von wiederholten Verstößen gegen unsere Community-Richtlinien permanent gesperrt. 
+      <br /><br />
+      Falls du glaubst, dass dies ein Fehler ist, kontaktiere bitte unseren Support unter <strong className="text-white">support@aktvia.app</strong>.
+    </p>
+  </div>
 );
 
 
@@ -156,6 +170,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
       )
+  }
+
+  if (userProfile?.isBanned) {
+    return <BannedScreen />;
   }
 
   if (!user && !isPublicRoute) {

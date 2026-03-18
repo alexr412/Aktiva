@@ -82,7 +82,9 @@ export async function createUserProfileDocument(user: User) {
       enabled: false,
       radiusKm: 5
     },
-    isAdmin: false
+    isAdmin: false,
+    role: 'user',
+    isBanned: false
   };
   await setDoc(userDocRef, userProfile);
 }
@@ -1241,3 +1243,20 @@ export const requestPayout = async (userId: string, currentBalance: number) => {
 
   await batch.commit();
 };
+
+export async function processRefund(refundId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const refundRef = doc(db, 'refunds', refundId);
+  await updateDoc(refundRef, {
+    status: 'completed',
+    processedAt: serverTimestamp()
+  });
+}
+
+export async function banUser(userId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, {
+    isBanned: true
+  });
+}

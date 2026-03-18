@@ -203,6 +203,8 @@ export interface UserProfile {
   ratingCount?: number;
   kycStatus?: KYCStatus;
   isAdmin?: boolean;
+  role?: 'user' | 'admin';
+  isBanned?: boolean;
 }
 
 export interface Review {
@@ -214,6 +216,16 @@ export interface Review {
   rating: number;
   comment?: string;
   createdAt: Timestamp;
+}
+
+export interface Refund {
+  id: string;
+  activityId: string;
+  userId: string;
+  amount: number;
+  status: 'pending' | 'completed';
+  createdAt: Timestamp;
+  processedAt?: Timestamp;
 }
 
 export interface Report {
