@@ -47,21 +47,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex h-screen flex-col bg-slate-50 overflow-hidden">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b bg-white px-6 shadow-sm z-20">
+      <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b pb-4 pt-4 px-4 sm:px-6 bg-white shrink-0 z-20">
         <div className="flex items-center gap-3">
           <div className="bg-red-500 p-1.5 rounded-lg text-white">
             <ShieldAlert className="h-5 w-5" />
           </div>
-          <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase">System Control Center</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight whitespace-nowrap text-slate-900">
+            System Control Center
+          </h1>
         </div>
-        <nav className="flex gap-6">
+        
+        <nav className="flex items-center gap-4 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 text-sm font-medium text-muted-foreground hide-scrollbar">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "text-[10px] font-black uppercase tracking-[0.2em] transition-colors",
-                pathname === item.href ? "text-primary" : "text-slate-400 hover:text-slate-600"
+                "transition-colors hover:text-primary whitespace-nowrap px-1",
+                pathname === item.href ? "text-primary font-bold border-b-2 border-primary" : ""
               )}
             >
               {item.label}
@@ -69,7 +72,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </nav>
       </header>
-      <main className="flex-1 overflow-y-auto p-6 sm:p-10 pb-32">
+      
+      <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 pb-24">
         <div className="max-w-6xl mx-auto">
           {children}
         </div>
