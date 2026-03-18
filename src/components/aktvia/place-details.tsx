@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { joinActivity, voteActivity } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { format } from 'date-fns';
 
 import {
@@ -47,9 +47,13 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
     const { user, userProfile } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
+    
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loadingActivities, setLoadingActivities] = useState(true);
     const [joiningActivityId, setJoiningActivityId] = useState<string|null>(null);
+    
+    const [placeMeta, setPlaceMeta] = useState({ avgRating: 0, reviewCount: 0 });
+    const [loadingMeta, setLoadingMeta] = useState(true);
     
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
@@ -62,11 +66,25 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         }
     };
 
+    // Metadata Listener für persistente Orts-Reputation
+    useEffect(() => {
+        if (!db || !place.id) return;
+        const unsub = onSnapshot(doc(db, 'places', place.id), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                setPlaceMeta({
+                    avgRating: data.avgRating || 0,
+                    reviewCount: data.reviewCount || 0
+                });
+            }
+            setLoadingMeta(false);
+        });
+        return () => unsub();
+    }, [place.id]);
+
     useEffect(() => {
         if (!db || !place.id) return;
         setLoadingActivities(true);
-        
-        console.log("EXECUTE QUERY FOR PLACE ID:", place.id);
         
         const activitiesQuery = query(
             collection(db, 'activities'), 
@@ -127,13 +145,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         }
     };
 
-    // --- MODUL 18: DYNAMISCHE ORTS-AGGREGATION ---
-    const ratedActivities = activities.filter(a => a.avgRating !== undefined && (a.reviewCount || 0) > 0);
-    const totalReviews = ratedActivities.reduce((sum, a) => sum + (a.reviewCount || 0), 0);
-    const averagePlaceRating = totalReviews > 0 
-      ? ratedActivities.reduce((sum, a) => sum + ((a.avgRating || 0) * (a.reviewCount || 0)), 0) / totalReviews 
-      : 0;
-
     const processedTags = formatTags(place.categories || []);
 
     return (
@@ -164,12 +175,12 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                     <div className="flex flex-col gap-8">
                         <div className="grid grid-cols-2 gap-4">
                             <Card className="p-4 bg-neutral-50 dark:bg-neutral-800 border-none text-center shadow-none flex flex-col items-center justify-center">
-                                {/* MODUL 18: Dynamisches Orts-Rating */}
+                                {/* MODUL 18: Persistentes Orts-Rating */}
                                 <div className="flex items-center justify-center gap-1.5">
                                     <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
-                                    {totalReviews > 0 ? (
+                                    {!loadingMeta && placeMeta.reviewCount > 0 ? (
                                         <span className="font-black text-xl dark:text-neutral-200">
-                                            {averagePlaceRating.toFixed(1)} <span className="text-[10px] opacity-50">({totalReviews})</span>
+                                            {placeMeta.avgRating.toFixed(1)} <span className="text-[10px] opacity-50">({placeMeta.reviewCount})</span>
                                         </span>
                                     ) : (
                                         <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">Neu</span>

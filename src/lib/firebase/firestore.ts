@@ -899,9 +899,9 @@ export async function checkIfUserReviewed(activityId: string, reviewerId: string
 }
 
 /**
- * MODUL 18: Multi-Peer Review Engine (v2).
- * Verarbeitet Bewertungen für Aktivität und Teilnehmer atomar in einer Transaktion.
- * Kaskadiert Aktivitäts-Ratings nun auch zum globalen Ort (places collection).
+ * MODUL 18: Persistent Multi-Peer Review Engine (v3).
+ * Berechnet atomar Durchschnittswerte für User, Aktivität UND permanenten Ort (places collection).
+ * Entkoppelt die Orts-Reputation von flüchtigen Aktivitäts-Dokumenten.
  */
 export async function submitMultiReview(activityId: string, reviewerId: string, reviews: any[]) {
     if (!db) throw new Error('Firestore is not initialized.');
@@ -915,17 +915,16 @@ export async function submitMultiReview(activityId: string, reviewerId: string, 
             if (!activitySnap.exists()) throw new Error("Aktivität nicht gefunden.");
             const activityData = activitySnap.data() as Activity;
 
-            // Optional: Orts-Referenz vorbereiten (falls Aktivität ortsgebunden ist)
-            const placeRef = activityData.placeId && activityData.placeId !== 'custom' 
-                ? doc(db!, 'places', activityData.placeId) 
-                : null;
+            // Permanenten Ort-Anker vorbereiten
+            const placeId = activityData.placeId;
+            const placeRef = placeId && placeId !== 'custom' ? doc(db!, 'places', placeId) : null;
 
+            // Alle Ziel-Snapshots atomar abrufen
             const targetRefs = reviews.map(r => ({
                 ref: r.targetType === 'user' ? doc(db!, 'users', r.targetId) : activityRef,
                 review: r
             }));
 
-            // Alle Ziel-Snapshots abrufen
             const targetSnaps = await Promise.all(targetRefs.map(entry => {
                 if (entry.ref.id === activityId && entry.review.targetType === 'activity') {
                     return Promise.resolve(activitySnap);
@@ -933,7 +932,7 @@ export async function submitMultiReview(activityId: string, reviewerId: string, 
                 return transaction.get(entry.ref);
             }));
 
-            // Falls ein Place-Dokument existiert, dessen Snapshot ebenfalls laden
+            // Falls ein Place-Dokument existiert, dessen Snapshot ebenfalls laden (für persistente Aggregation)
             const placeSnap = placeRef ? await transaction.get(placeRef) : null;
 
             // REVIEWS VERARBEITEN
@@ -970,7 +969,7 @@ export async function submitMultiReview(activityId: string, reviewerId: string, 
                             reviewCount: newCount
                         });
 
-                        // --- MODUL 18: KASKADIERUNG ZUM ORT ---
+                        // --- MODUL 18: PERSISTENTE KASKADIERUNG ZUM ORT ---
                         if (placeRef) {
                             const pData = placeSnap?.exists() ? placeSnap.data() : { avgRating: 0, reviewCount: 0 };
                             const pCount = pData.reviewCount || 0;
@@ -979,6 +978,7 @@ export async function submitMultiReview(activityId: string, reviewerId: string, 
                             const newPCount = pCount + 1;
                             const newPAvg = ((pAvg * pCount) + review.rating) / newPCount;
                             
+                            // Nutze set mit merge, falls der Ort noch nie bewertet wurde
                             transaction.set(placeRef, {
                                 avgRating: newPAvg,
                                 reviewCount: newPCount
