@@ -100,6 +100,9 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
   const currentFreeHosts = userProfile?.successfulFreeHosts || 0;
   const canMonetize = currentFreeHosts >= REQUIRED_FREE_HOSTS;
 
+  // Kontext-Entscheidung
+  const isSpecificPlaceMode = !!initialPlace;
+
   useEffect(() => {
     if (open) {
       setIsCreating(false);
@@ -184,12 +187,15 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
       endDate.setHours(23, 59, 59, 999);
     }
 
+    // Automatische Titel-Zuweisung bei festen Orten
+    const finalTitle = isSpecificPlaceMode ? (selectedLocation?.name || 'Aktivität') : activityTitle;
+
     setIsCreating(true);
     const success = await onCreateActivity(
       finalDate, 
       endDate, 
       timeIsFlexible, 
-      activityTitle,
+      finalTitle,
       maxParticipants,
       isBoosted,
       isPaid,
@@ -224,10 +230,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
     end: endOfWeek(lastDayOfMonth, { weekStartsOn: 1 }),
   });
 
-  const isCreateDisabled = isCreating || !selectedLocation || !activityTitle.trim() || (isDateFlexible ? !selectedRange.from : !selectedDate);
-
-  // Kontext-Entscheidung
-  const isSpecificPlaceMode = !!initialPlace;
+  const isCreateDisabled = isCreating || !selectedLocation || (!isSpecificPlaceMode && !activityTitle.trim()) || (isDateFlexible ? !selectedRange.from : !selectedDate);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -255,21 +258,22 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-8">
           {/* Sektion 1: Name & Ort */}
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Was hast du vor?</Label>
-              <Input
-                value={activityTitle}
-                onChange={(e) => setActivityTitle(e.target.value)}
-                placeholder="z.B. Street-Photography oder Yoga"
-                className="h-14 text-lg rounded-2xl border-none bg-secondary/50 font-bold focus-visible:ring-primary/20"
-              />
-            </div>
+            {!isSpecificPlaceMode && (
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Was hast du vor?</Label>
+                <Input
+                  value={activityTitle}
+                  onChange={(e) => setActivityTitle(e.target.value)}
+                  placeholder="z.B. Street-Photography oder Yoga"
+                  className="h-14 text-lg rounded-2xl border-none bg-secondary/50 font-bold focus-visible:ring-primary/20"
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Wo treffen wir uns?</Label>
               
               {isSpecificPlaceMode ? (
-                /* STRENGER ORTS-MODUS: Statische Anzeige, nicht löschbar */
                 <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 rounded-2xl p-4 flex items-center justify-between">
                   <div className="flex items-start gap-3">
                     <div className="bg-primary/10 p-2 rounded-xl">
@@ -282,7 +286,6 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                   </div>
                 </div>
               ) : (
-                /* COMMUNITY-MODUS: Hybride Suche/Standort */
                 !selectedLocation ? (
                   <div className="space-y-3">
                     <div className="relative">
