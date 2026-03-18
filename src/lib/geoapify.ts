@@ -131,3 +131,55 @@ export async function fetchNearbyPlaces(
     return [];
   }
 }
+
+/**
+ * Wandelt Koordinaten in eine lesbare Adresse um (Reverse Geocoding).
+ */
+export async function reverseGeocode(lat: number, lon: number): Promise<Place | null> {
+  const url = `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${GEOAPIFY_API_KEY}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.features && data.features.length > 0) {
+      const props = data.features[0].properties;
+      return {
+        id: props.place_id,
+        name: props.name || props.address_line1,
+        address: props.address_line2,
+        categories: props.categories || [],
+        lat: props.lat,
+        lon: props.lon,
+      } as Place;
+    }
+  } catch (error) {
+    console.error("Reverse Geocode failed:", error);
+  }
+  return null;
+}
+
+/**
+ * Sucht nach Orten basierend auf Texteingabe (Autocomplete).
+ */
+export async function autocompletePlaces(text: string): Promise<Place[]> {
+  if (!text || text.length < 3) return [];
+  const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(text)}&limit=5&apiKey=${GEOAPIFY_API_KEY}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (data.features) {
+      return data.features.map((f: any) => ({
+        id: f.properties.place_id,
+        name: f.properties.name || f.properties.address_line1,
+        address: f.properties.address_line2,
+        categories: f.properties.categories || [],
+        lat: f.properties.lat,
+        lon: f.properties.lon,
+      } as Place));
+    }
+  } catch (error) {
+    console.error("Autocomplete failed:", error);
+  }
+  return [];
+}
