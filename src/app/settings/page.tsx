@@ -237,61 +237,6 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    {/* MODUL 19: Creator Status Program */}
-                    <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
-                            <UserCheck className="h-5 w-5 text-primary" />
-                            <span>Creator Programm</span>
-                        </h2>
-                        <Card className="border-none shadow-sm overflow-hidden bg-white rounded-2xl">
-                          <CardContent className="p-6 space-y-6">
-                            <div className="space-y-1">
-                              <p className="font-bold">Monetarisierung & Wallet</p>
-                              <p className="text-xs text-muted-foreground">Schalte Creator-Features frei, um bezahlte Events zu hosten.</p>
-                            </div>
-
-                            {userProfile?.isCreator ? (
-                              <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center gap-3">
-                                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                                <span className="font-black text-emerald-700 text-sm">Du bist verifizierter Creator!</span>
-                              </div>
-                            ) : hasApplication ? (
-                              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center gap-3">
-                                <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
-                                <span className="font-black text-blue-700 text-sm">Prüfung läuft...</span>
-                              </div>
-                            ) : (
-                              <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", activitiesCount >= REQUIRED_ACTIVITIES ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-slate-100")}>
-                                    <Activity className={cn("h-4 w-4", activitiesCount >= REQUIRED_ACTIVITIES ? "text-primary" : "text-slate-400")} />
-                                    <span className="text-xl font-black">{activitiesCount} / {REQUIRED_ACTIVITIES}</span>
-                                    <span className="text-[8px] font-bold uppercase text-slate-400">Aktivitäten</span>
-                                  </div>
-                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-slate-100")}>
-                                    <Star className={cn("h-4 w-4", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "text-amber-500 fill-amber-500" : "text-slate-400")} />
-                                    <span className="text-xl font-black">{userProfile?.averageRating?.toFixed(1) || '0.0'} / {REQUIRED_RATING}</span>
-                                    <span className="text-[8px] font-bold uppercase text-slate-400">Rating</span>
-                                  </div>
-                                </div>
-
-                                <Button 
-                                  onClick={handleApplyCreator} 
-                                  disabled={!canApply || isApplying}
-                                  className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-slate-900 hover:bg-black"
-                                >
-                                  {isApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Als Creator bewerben"}
-                                </Button>
-                                
-                                {!canApply && (
-                                  <p className="text-[10px] text-center text-slate-400 font-medium">Erfülle beide Anforderungen, um dich zu bewerben.</p>
-                                )}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                    </div>
-
                     {/* Friends Radar Section */}
                     <div className="space-y-4">
                         <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
@@ -442,6 +387,61 @@ export default function SettingsPage() {
                                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
                             </button>
                         </div>
+                    </div>
+
+                    {/* MODUL 19: Creator Status Program */}
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                            <UserCheck className="h-5 w-5 text-primary" />
+                            <span>Creator Programm</span>
+                        </h2>
+                        <Card className="border-none shadow-sm overflow-hidden bg-white rounded-2xl">
+                          <CardContent className="p-6 space-y-6">
+                            <div className="space-y-1">
+                              <p className="font-bold">Monetarisierung & Wallet</p>
+                              <p className="text-xs text-muted-foreground">Schalte Creator-Features frei, um bezahlte Events zu hosten.</p>
+                            </div>
+
+                            {userProfile?.isCreator ? (
+                              <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center gap-3">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                                <span className="font-black text-emerald-700 text-sm">Du bist verifizierter Creator!</span>
+                              </div>
+                            ) : hasApplication ? (
+                              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center gap-3">
+                                <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                                <span className="font-black text-blue-700 text-sm">Prüfung läuft...</span>
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", activitiesCount >= REQUIRED_ACTIVITIES ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-slate-100")}>
+                                    <Activity className={cn("h-4 w-4", activitiesCount >= REQUIRED_ACTIVITIES ? "text-primary" : "text-slate-400")} />
+                                    <span className="text-xl font-black">{activitiesCount} / {REQUIRED_ACTIVITIES}</span>
+                                    <span className="text-[8px] font-bold uppercase text-slate-400">Aktivitäten</span>
+                                  </div>
+                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-slate-100")}>
+                                    <Star className={cn("h-4 w-4", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "text-amber-500 fill-amber-500" : "text-slate-400")} />
+                                    <span className="text-xl font-black">{userProfile?.averageRating?.toFixed(1) || '0.0'} / {REQUIRED_RATING}</span>
+                                    <span className="text-[8px] font-bold uppercase text-slate-400">Rating</span>
+                                  </div>
+                                </div>
+
+                                <Button 
+                                  onClick={handleApplyCreator} 
+                                  disabled={!canApply || isApplying}
+                                  className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-slate-900 hover:bg-black"
+                                >
+                                  {isApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Als Creator bewerben"}
+                                </Button>
+                                
+                                {!canApply && (
+                                  <p className="text-[10px] text-center text-slate-400 font-medium">Erfülle beide Anforderungen, um dich zu bewerben.</p>
+                                )}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
                     </div>
 
                     {/* Appearance Section */}
