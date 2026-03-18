@@ -60,7 +60,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const isParticipant = user ? participantIds.includes(user.uid) : false;
     const isFull = activity.maxParticipants ? participantIds.length >= activity.maxParticipants : false;
     const isOwnActivity = activity.hostId === user?.uid;
-    const userVote = user ? (activity.userVotes?.[user.uid] || 'none') : 'none';
     
     const isPaidEvent = activity.isPaid && activity.price && activity.price > 0;
     const isPremium = userProfile?.isPremium || false;
@@ -96,12 +95,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     
     const handleViewChatClick = (activityId: string) => { router.push(`/chat/${activityId}`); };
 
-    const handleVote = async (activityId: string, type: 'up' | 'down' | 'none') => {
-        if (!user || isVoting) return;
-        setIsVoting(true);
-        try { await voteActivity(activityId, user.uid, type); } catch (error) { console.error("Voting failed:", error); } finally { setIsVoting(false); }
-    };
-
     const handleReport = async (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!user) {
@@ -127,14 +120,11 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
       }
     };
 
-    const rawTags = (activity.categories || []).filter((tag: string) => 
-      !tag.startsWith('wheelchair') && 
-      !tag.startsWith('fee') && 
-      !tag.startsWith('no_fee')
-    );
-    const processedTags = formatTags(rawTags);
-
     const activityDate = activity.activityDate?.toDate();
+
+    // MODUL 18: Rating Fallback Logic
+    const rating = activity.avgRating || 0;
+    const reviewCount = activity.reviewCount || 0;
 
     return (
         <div 
@@ -179,16 +169,17 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                             {activity.placeName || "Treffen"}
                         </p>
                         
-                        {activity.avgRating ? (
-                          <div className="ml-2 flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100">
-                            <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
-                            <span className="text-[10px] font-black text-amber-700">{activity.avgRating.toFixed(1)}</span>
-                          </div>
-                        ) : (
-                          <div className="ml-2 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">
-                            <span className="text-[8px] font-black uppercase text-slate-400">NEU</span>
-                          </div>
-                        )}
+                        {/* MODUL 18: Enhanced Rating Display with Fallback */}
+                        <div className="ml-2 flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-lg border border-amber-100 dark:border-amber-800">
+                          <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
+                          {reviewCount > 0 ? (
+                            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400">
+                              {rating.toFixed(1)} <span className="opacity-50">({reviewCount})</span>
+                            </span>
+                          ) : (
+                            <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-500">Neu</span>
+                          )}
+                        </div>
                     </div>
                     
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">

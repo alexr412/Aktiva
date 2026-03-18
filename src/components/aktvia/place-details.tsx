@@ -50,7 +50,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loadingActivities, setLoadingActivities] = useState(true);
     const [joiningActivityId, setJoiningActivityId] = useState<string|null>(null);
-    const [isVoting, setIsVoting] = useState(false);
     
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
@@ -157,22 +156,21 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
 
                     <div className="flex flex-col gap-8">
                         <div className="grid grid-cols-2 gap-4">
-                            <Card className="p-4 bg-neutral-50 dark:bg-neutral-800 border-none text-center shadow-none">
-                                {place.rating ? (
-                                    <>
-                                        <div className="flex items-center justify-center gap-1.5">
-                                            <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
-                                            <span className="font-black text-xl dark:text-neutral-200">{place.rating.toFixed(1)}</span>
-                                        </div>
-                                        <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">Rating</span>
-                                    </>
-                                ) : (
-                                    <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400">No Rating</span>
-                                )}
+                            <Card className="p-4 bg-neutral-50 dark:bg-neutral-800 border-none text-center shadow-none flex flex-col items-center justify-center">
+                                {/* MODUL 18: Place Rating Fallback */}
+                                <div className="flex items-center justify-center gap-1.5">
+                                    <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
+                                    {place.rating ? (
+                                        <span className="font-black text-xl dark:text-neutral-200">{place.rating.toFixed(1)}</span>
+                                    ) : (
+                                        <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">Neu</span>
+                                    )}
+                                </div>
+                                <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mt-1">Rating</span>
                             </Card>
                             <Card className="p-4 bg-neutral-50 dark:bg-neutral-800 border-none text-center shadow-none">
                                 <div className="flex flex-wrap gap-1 justify-center">
-                                    {processedTags.map((tag, index) => (
+                                    {processedTags.slice(0, 3).map((tag, index) => (
                                         <Badge key={index} variant="outline" className="bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-[9px] font-bold border-none">
                                             {tag}
                                         </Badge>
@@ -195,21 +193,30 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                 {loadingActivities ? <Skeleton className="h-20 w-full rounded-2xl" /> : activities.length === 0 ? <p className="text-sm text-neutral-500">Keine Treffen geplant.</p> : activities.map(activity => {
                                     const isParticipant = activity.participantIds.includes(user?.uid || '---');
                                     const isPaidEvent = activity.isPaid && activity.price && activity.price > 0;
+                                    
+                                    // MODUL 18: Activity Rating Logic
+                                    const actRating = activity.avgRating || 0;
+                                    const actReviewCount = activity.reviewCount || 0;
 
                                     return (
                                         <Card key={activity.id} className="p-4 bg-neutral-50 dark:bg-neutral-800 border-none rounded-2xl">
                                             <div className="flex items-center justify-between gap-4">
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 mb-1">
                                                         <p className="font-extrabold dark:text-neutral-200 text-base truncate">{format(activity.activityDate.toDate(), 'eee, MMM d')}</p>
-                                                        {activity.avgRating ? (
-                                                          <div className="flex items-center gap-1 bg-amber-100 px-1.5 py-0.5 rounded-md">
-                                                            <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
-                                                            <span className="text-[10px] font-black text-amber-700">{activity.avgRating.toFixed(1)}</span>
-                                                          </div>
-                                                        ) : (
-                                                          <span className="text-[8px] font-black text-slate-400 uppercase">Neu</span>
-                                                        )}
+                                                        
+                                                        {/* Activity Rating Block */}
+                                                        <div className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                                                          <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                                                          {actReviewCount > 0 ? (
+                                                            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400">
+                                                              {actRating.toFixed(1)} <span className="opacity-50">({actReviewCount})</span>
+                                                            </span>
+                                                          ) : (
+                                                            <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-500">Neu</span>
+                                                          )}
+                                                        </div>
+
                                                         {isPaidEvent && (
                                                             <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0 border-none">
                                                                 €{activity.price!.toFixed(2)}
