@@ -66,20 +66,6 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // MODUL 19: DIAGNOSTIC LOGGING
-  useEffect(() => {
-    const root = document.documentElement;
-    console.log("THEME MUTATION: Aktuelle Klassen am HTML-Root ->", root.className);
-    
-    // Verzögerte Prüfung der CSS-Berechnung durch den Browser
-    const timeoutId = setTimeout(() => {
-      const computedPrimary = getComputedStyle(root).getPropertyValue('--primary').trim();
-      console.log("THEME COMPUTED: Aufgelöster HSL-Wert für --primary ->", computedPrimary);
-    }, 50);
-
-    return () => clearTimeout(timeoutId);
-  }, [theme]);
-
   const applyThemeClass = (newTheme: Theme) => {
     const root = document.documentElement;
     // Alte Theme-Klassen entfernen
