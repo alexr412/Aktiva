@@ -42,7 +42,6 @@ import {
 import { de } from 'date-fns/locale';
 
 const MAX_FREE_PARTICIPANTS = 4;
-const MAX_PRICE = 25;
 const REQUIRED_FREE_HOSTS = 5;
 
 interface CreateActivityDialogProps {
@@ -190,7 +189,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
       finalDate, 
       endDate, 
       timeIsFlexible, 
-      activityTitle, // Titel der Aktivität
+      activityTitle,
       maxParticipants,
       isBoosted,
       isPaid,
@@ -227,6 +226,9 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
 
   const isCreateDisabled = isCreating || !selectedLocation || !activityTitle.trim() || (isDateFlexible ? !selectedRange.from : !selectedDate);
 
+  // Kontext-Entscheidung
+  const isSpecificPlaceMode = !!initialPlace;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-[2.5rem] p-0 sm:max-w-md mx-auto h-[92vh] flex flex-col bg-background border-none shadow-2xl overflow-hidden">
@@ -234,11 +236,19 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
         
         <SheetHeader className="pt-10 px-6 pb-2 text-center items-center shrink-0">
           <div className="bg-primary/10 p-3 rounded-2xl mb-3">
-            <Navigation className="h-6 w-6 text-primary" />
+            {isSpecificPlaceMode ? (
+              <Clock className="h-6 w-6 text-primary" />
+            ) : (
+              <Navigation className="h-6 w-6 text-primary" />
+            )}
           </div>
-          <SheetTitle className="text-2xl font-black tracking-tight">Community Aktivität</SheetTitle>
+          <SheetTitle className="text-2xl font-black tracking-tight">
+            {isSpecificPlaceMode ? 'Aktivität planen' : 'Community Aktivität'}
+          </SheetTitle>
           <SheetDescription className="text-sm font-medium text-muted-foreground px-4">
-            Erstelle ein Event an einem Ort deiner Wahl.
+            {isSpecificPlaceMode 
+              ? `Plane ein Treffen bei ${initialPlace?.name}` 
+              : 'Erstelle ein Event an einem Ort deiner Wahl.'}
           </SheetDescription>
         </SheetHeader>
         
@@ -257,62 +267,79 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
 
             <div className="space-y-2">
               <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Wo treffen wir uns?</Label>
-              {!selectedLocation ? (
-                <div className="space-y-3">
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      placeholder="Ort oder Adresse suchen..."
-                      className="h-14 pl-12 rounded-2xl border-none bg-secondary/50 font-bold"
-                    />
-                    {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
-                  </div>
-
-                  {searchResults.length > 0 && (
-                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden divide-y divide-slate-50">
-                      {searchResults.map((res) => (
-                        <button
-                          key={res.id}
-                          onClick={() => { setSelectedLocation(res); setSearchResults([]); }}
-                          className="w-full p-4 text-left hover:bg-slate-50 transition-colors flex items-start gap-3"
-                        >
-                          <MapPin className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-bold text-sm text-slate-900">{res.name}</p>
-                            <p className="text-xs text-slate-500">{res.address}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <Button 
-                    variant="outline" 
-                    onClick={handleGetCurrentLocation}
-                    disabled={isLocating}
-                    className="w-full h-14 rounded-2xl font-black gap-2 border-dashed border-2"
-                  >
-                    {isLocating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Navigation className="h-5 w-5" />}
-                    Meinen Standort nutzen
-                  </Button>
-                </div>
-              ) : (
-                <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-center justify-between animate-in zoom-in-95 duration-300">
+              
+              {isSpecificPlaceMode ? (
+                /* STRENGER ORTS-MODUS: Statische Anzeige, nicht löschbar */
+                <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 rounded-2xl p-4 flex items-center justify-between">
                   <div className="flex items-start gap-3">
                     <div className="bg-primary/10 p-2 rounded-xl">
                       <MapPin className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-black text-sm text-slate-900 leading-tight">{selectedLocation.name}</p>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">{selectedLocation.address}</p>
+                      <p className="font-black text-sm text-slate-900 dark:text-neutral-200 leading-tight">{selectedLocation?.name}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">{selectedLocation?.address}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setSelectedLocation(null)} className="rounded-full text-slate-400">
-                    <X className="h-5 w-5" />
-                  </Button>
                 </div>
+              ) : (
+                /* COMMUNITY-MODUS: Hybride Suche/Standort */
+                !selectedLocation ? (
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input
+                        value={searchQuery}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        placeholder="Ort oder Adresse suchen..."
+                        className="h-14 pl-12 rounded-2xl border-none bg-secondary/50 font-bold"
+                      />
+                      {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
+                    </div>
+
+                    {searchResults.length > 0 && (
+                      <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden divide-y divide-slate-50">
+                        {searchResults.map((res) => (
+                          <button
+                            key={res.id}
+                            onClick={() => { setSelectedLocation(res); setSearchResults([]); }}
+                            className="w-full p-4 text-left hover:bg-slate-50 transition-colors flex items-start gap-3"
+                          >
+                            <MapPin className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-bold text-sm text-slate-900">{res.name}</p>
+                              <p className="text-xs text-slate-500">{res.address}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <Button 
+                      variant="outline" 
+                      onClick={handleGetCurrentLocation}
+                      disabled={isLocating}
+                      className="w-full h-14 rounded-2xl font-black gap-2 border-dashed border-2"
+                    >
+                      {isLocating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Navigation className="h-5 w-5" />}
+                      Meinen Standort nutzen
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-center justify-between animate-in zoom-in-95 duration-300">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-primary/10 p-2 rounded-xl">
+                        <MapPin className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-black text-sm text-slate-900 leading-tight">{selectedLocation.name}</p>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">{selectedLocation.address}</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => setSelectedLocation(null)} className="rounded-full text-slate-400">
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
+                )
               )}
             </div>
           </div>
