@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { cn } from "@/lib/utils";
 
 type NotificationSettings = {
     friendRequests: boolean;
