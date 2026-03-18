@@ -33,18 +33,19 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setThemeState] = useState<Theme>('mint');
   const [mode, setMode] = useState<Mode>('light');
 
+  // Initialisierung beim Mounten
   useEffect(() => {
-    // Theme initialization
+    // Theme Initialisierung
     try {
       const storedTheme = localStorage.getItem('app-theme') as Theme | null;
       const initialTheme = storedTheme && themes.some(t => t.name === storedTheme) ? storedTheme : 'mint';
       setThemeState(initialTheme);
-      document.documentElement.setAttribute('data-theme', initialTheme);
+      applyThemeClass(initialTheme);
     } catch (e) {
-      document.documentElement.setAttribute('data-theme', 'mint');
+      applyThemeClass('mint');
     }
 
-    // Mode initialization
+    // Mode Initialisierung
     try {
       const storedMode = localStorage.getItem('app-mode') as Mode | null;
       if (storedMode) {
@@ -61,19 +62,30 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (e) {
-      // localStorage not available
+      // localStorage nicht verfügbar
     }
-
   }, []);
+
+  const applyThemeClass = (newTheme: Theme) => {
+    const root = document.documentElement;
+    // Alte Theme-Klassen entfernen
+    root.classList.forEach(className => {
+      if (className.startsWith('theme-')) {
+        root.classList.remove(className);
+      }
+    });
+    // Neue Klasse hinzufügen
+    root.classList.add(`theme-${newTheme}`);
+  };
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     try {
       localStorage.setItem('app-theme', newTheme);
     } catch (e) {
-      // localStorage is not available.
+      // ignore
     }
-    document.documentElement.setAttribute('data-theme', newTheme);
+    applyThemeClass(newTheme);
   };
 
   const toggleMode = () => {
@@ -82,7 +94,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     try {
       localStorage.setItem('app-mode', newMode);
     } catch (e) {
-      // localStorage not available
+      // ignore
     }
     if (newMode === 'dark') {
       document.documentElement.classList.add('dark');
