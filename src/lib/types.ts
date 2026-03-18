@@ -194,6 +194,7 @@ export interface UserProfile {
   activeTabs?: string[];
   isPremium?: boolean;
   isSupporter?: boolean;
+  isCreator?: boolean;
   tokens?: number;
   successfulFreeHosts?: number;
   fiatBalance?: number;
@@ -238,6 +239,16 @@ export interface Report {
   status: 'pending' | 'resolved' | 'resolved_deleted' | 'rejected' | 'open';
   createdAt: Timestamp;
   resolvedAt?: Timestamp;
+}
+
+export interface CreatorApplication {
+  id: string;
+  userId: string;
+  userDisplayName: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Timestamp;
+  averageRating: number;
+  activitiesCount: number;
 }
 
 export interface Destination {

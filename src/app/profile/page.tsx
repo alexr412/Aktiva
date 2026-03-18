@@ -387,21 +387,27 @@ export default function ProfilePage() {
                             <div className="flex flex-col gap-6 w-full mt-2">
                                 <div className="flex flex-wrap justify-center gap-3">
                                     <Button variant="secondary" className="rounded-full px-8 h-12 bg-neutral-100 hover:bg-neutral-200 font-black" onClick={() => router.push('/profile/edit')}>Bearbeiten</Button>
-                                    <Button asChild variant="default" className="rounded-full px-8 h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-black shadow-lg shadow-emerald-500/20">
-                                        <Link href="/wallet"><Wallet className="w-4 h-4 mr-2" /> Wallet (€{userData?.fiatBalance?.toFixed(2) || '0.00'})</Link>
-                                    </Button>
+                                    
+                                    {/* MODUL 19: GATED CREATOR FEATURES */}
+                                    {userData?.isCreator && (
+                                      <Button asChild variant="default" className="rounded-full px-8 h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-black shadow-lg shadow-emerald-500/20">
+                                          <Link href="/wallet"><Wallet className="w-4 h-4 mr-2" /> Wallet (€{userData?.fiatBalance?.toFixed(2) || '0.00'})</Link>
+                                      </Button>
+                                    )}
                                 </div>
 
-                                <div className="flex gap-3 w-full max-w-sm mx-auto">
-                                    <div className="flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border border-neutral-100 bg-white shadow-sm">
-                                        <div className="flex items-center gap-1.5 text-amber-500 mb-1"><Coins className="w-4 h-4" /><span className="text-[10px] font-black uppercase">Tokens</span></div>
-                                        <span className="text-2xl font-black text-[#0f172a]">{userData?.tokens || 0}</span>
-                                    </div>
-                                    <div className="flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border border-neutral-100 bg-white shadow-sm">
-                                        <div className="flex items-center gap-1.5 text-blue-500 mb-1"><Unlock className="w-4 h-4" /><span className="text-[10px] font-black uppercase">Level</span></div>
-                                        <div className="flex items-baseline gap-1"><span className="text-2xl font-black text-[#0f172a]">{userData?.successfulFreeHosts || 0}</span><span className="text-xs font-bold text-neutral-400">/ 5</span></div>
-                                    </div>
-                                </div>
+                                {userData?.isCreator && (
+                                  <div className="flex gap-3 w-full max-w-sm mx-auto">
+                                      <div className="flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border border-neutral-100 bg-white shadow-sm">
+                                          <div className="flex items-center gap-1.5 text-amber-500 mb-1"><Coins className="w-4 h-4" /><span className="text-[10px] font-black uppercase">Tokens</span></div>
+                                          <span className="text-2xl font-black text-[#0f172a]">{userData?.tokens || 0}</span>
+                                      </div>
+                                      <div className="flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border border-neutral-100 bg-white shadow-sm">
+                                          <div className="flex items-center gap-1.5 text-blue-500 mb-1"><Unlock className="w-4 h-4" /><span className="text-[10px] font-black uppercase">Level</span></div>
+                                          <div className="flex items-baseline gap-1"><span className="text-2xl font-black text-[#0f172a]">{userData?.successfulFreeHosts || 0}</span><span className="text-xs font-bold text-neutral-400">/ 5</span></div>
+                                      </div>
+                                  </div>
+                                )}
                             </div>
                         </div>
                     </div>

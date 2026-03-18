@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles } from 'lucide-react';
+import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -11,8 +11,10 @@ import { Slider } from '@/components/ui/slider';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { sendPasswordReset, deleteAccount, signOut } from '@/lib/firebase/auth';
-import { deleteUserDocument, updateUserProfile } from '@/lib/firebase/firestore';
+import { deleteUserDocument, updateUserProfile, submitCreatorApplication } from '@/lib/firebase/firestore';
 import { requestAndGetFCMToken } from '@/lib/firebase/messaging';
+import { db } from '@/lib/firebase/client';
+import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +28,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 type NotificationSettings = {
     friendRequests: boolean;
@@ -33,6 +37,9 @@ type NotificationSettings = {
     chatMessages: boolean;
     localHighlights: boolean;
 };
+
+const REQUIRED_ACTIVITIES = 20;
+const REQUIRED_RATING = 4.4;
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -42,6 +49,11 @@ export default function SettingsPage() {
     const [isSendingReset, setIsSendingReset] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    
+    // Creator Stats
+    const [activitiesCount, setActivitiesCount] = useState(0);
+    const [isApplying, setIsApplying] = useState(false);
+    const [hasApplication, setHasApplication] = useState(false);
 
     const [notifications, setNotifications] = useState<NotificationSettings>({
         friendRequests: userProfile?.notificationSettings?.friendRequests ?? true,
@@ -49,6 +61,22 @@ export default function SettingsPage() {
         chatMessages: userProfile?.notificationSettings?.chatMessages ?? true,
         localHighlights: userProfile?.notificationSettings?.localHighlights ?? false,
     });
+
+    useEffect(() => {
+      if (!user || !db) return;
+
+      const fetchStats = async () => {
+        const q = query(collection(db, 'activities'), where('hostId', '==', user.uid));
+        const snap = await getDocs(q);
+        setActivitiesCount(snap.size);
+
+        const appQ = query(collection(db, 'creator_applications'), where('userId', '==', user.uid), where('status', '==', 'pending'));
+        const appSnap = await getDocs(appQ);
+        setHasApplication(!appSnap.empty);
+      };
+
+      fetchStats();
+    }, [user]);
 
     const handleNotificationChange = async (key: keyof NotificationSettings, value: boolean) => {
         if (!user?.uid) return;
@@ -115,6 +143,20 @@ export default function SettingsPage() {
       }
     };
 
+    const handleApplyCreator = async () => {
+      if (!user || !userProfile) return;
+      setIsApplying(true);
+      try {
+        await submitCreatorApplication(user.uid, userProfile.displayName, userProfile.averageRating || 0, activitiesCount);
+        setHasApplication(true);
+        toast({ title: "Bewerbung gesendet!", description: "Wir prüfen dein Profil innerhalb von 48 Stunden." });
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: "Fehler", description: err.message });
+      } finally {
+        setIsApplying(false);
+      }
+    };
+
     const handlePasswordReset = async () => {
         if (!user?.email) {
             toast({ variant: 'destructive', title: 'Error', description: 'No email address found for your account.' });
@@ -164,6 +206,7 @@ export default function SettingsPage() {
         }
     };
 
+    const canApply = activitiesCount >= REQUIRED_ACTIVITIES && (userProfile?.averageRating || 0) >= REQUIRED_RATING;
 
     return (
         <div className="flex flex-col h-full bg-secondary">
@@ -191,6 +234,61 @@ export default function SettingsPage() {
                                 <ChevronRight className="h-5 w-5 text-red-500" />
                             </button>
                         </div>
+                    </div>
+
+                    {/* MODUL 19: Creator Status Program */}
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                            <UserCheck className="h-5 w-5 text-primary" />
+                            <span>Creator Programm</span>
+                        </h2>
+                        <Card className="border-none shadow-sm overflow-hidden bg-white rounded-2xl">
+                          <CardContent className="p-6 space-y-6">
+                            <div className="space-y-1">
+                              <p className="font-bold">Monetarisierung & Wallet</p>
+                              <p className="text-xs text-muted-foreground">Schalte Creator-Features frei, um bezahlte Events zu hosten.</p>
+                            </div>
+
+                            {userProfile?.isCreator ? (
+                              <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center gap-3">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                                <span className="font-black text-emerald-700 text-sm">Du bist verifizierter Creator!</span>
+                              </div>
+                            ) : hasApplication ? (
+                              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center gap-3">
+                                <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                                <span className="font-black text-blue-700 text-sm">Prüfung läuft...</span>
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", activitiesCount >= REQUIRED_ACTIVITIES ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-slate-100")}>
+                                    <Activity className={cn("h-4 w-4", activitiesCount >= REQUIRED_ACTIVITIES ? "text-primary" : "text-slate-400")} />
+                                    <span className="text-xl font-black">{activitiesCount} / {REQUIRED_ACTIVITIES}</span>
+                                    <span className="text-[8px] font-bold uppercase text-slate-400">Aktivitäten</span>
+                                  </div>
+                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-slate-100")}>
+                                    <Star className={cn("h-4 w-4", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "text-amber-500 fill-amber-500" : "text-slate-400")} />
+                                    <span className="text-xl font-black">{userProfile?.averageRating?.toFixed(1) || '0.0'} / {REQUIRED_RATING}</span>
+                                    <span className="text-[8px] font-bold uppercase text-slate-400">Rating</span>
+                                  </div>
+                                </div>
+
+                                <Button 
+                                  onClick={handleApplyCreator} 
+                                  disabled={!canApply || isApplying}
+                                  className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-slate-900 hover:bg-black"
+                                >
+                                  {isApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Als Creator bewerben"}
+                                </Button>
+                                
+                                {!canApply && (
+                                  <p className="text-[10px] text-center text-slate-400 font-medium">Erfülle beide Anforderungen, um dich zu bewerben.</p>
+                                )}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
                     </div>
 
                     {/* Friends Radar Section */}

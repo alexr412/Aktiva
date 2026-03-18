@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { processRefund, banUser } from '@/lib/firebase/firestore';
-import type { UserProfile, Refund } from '@/lib/types';
+import { processRefund, banUser, approveCreator } from '@/lib/firebase/firestore';
+import type { UserProfile, Refund, CreatorApplication } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { RotateCcw, Loader2, Ban, ShieldAlert, TrendingDown } from "lucide-react";
+import { RotateCcw, Loader2, Ban, ShieldAlert, TrendingDown, UserCheck, Star, Activity } from "lucide-react";
 
 export default function AdminDashboardPage() {
   const { userProfile, loading: authLoading } = useAuth();
@@ -23,6 +23,7 @@ export default function AdminDashboardPage() {
 
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [flaggedUsers, setFlaggedUsers] = useState<UserProfile[]>([]);
+  const [creatorApps, setCreatorApps] = useState<CreatorApplication[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,9 +48,15 @@ export default function AdminDashboardPage() {
       setFlaggedUsers(filtered);
     });
 
+    const qApps = query(collection(db, 'creator_applications'), where('status', '==', 'pending'));
+    const unsubApps = onSnapshot(qApps, (snap) => {
+      setCreatorApps(snap.docs.map(d => ({ id: d.id, ...d.data() } as CreatorApplication)));
+    });
+
     return () => {
       unsubRefunds();
       unsubUsers();
+      unsubApps();
     };
   }, [userProfile, authLoading, router]);
 
@@ -79,6 +86,18 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleApproveCreator = async (appId: string, userId: string) => {
+    setActionLoading(appId);
+    try {
+      await approveCreator(appId, userId);
+      toast({ title: "Nutzer zum Creator befördert!" });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Fehler", description: err.message });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (authLoading || !userProfile || userProfile.role !== 'admin') {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -94,8 +113,62 @@ export default function AdminDashboardPage() {
           Dashboard
           <Badge className="bg-red-500 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1">Admin Mode</Badge>
         </h2>
-        <p className="text-slate-500 font-medium">Zentrale Steuerung der Refund-Pipeline und Community-Moderation.</p>
+        <p className="text-slate-500 font-medium">Zentrale Steuerung der Plattform-Integrität und Monetarisierung.</p>
       </header>
+
+      {/* Creator Applications Section */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 text-primary">
+          <UserCheck className="h-5 w-5" />
+          <h3 className="font-black text-lg uppercase tracking-tight">Creator-Bewerbungen</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {creatorApps.length === 0 ? (
+            <Card className="col-span-full border-dashed border-2 border-slate-200 p-8 text-center rounded-3xl">
+              <p className="text-slate-400 font-bold">Keine offenen Bewerbungen.</p>
+            </Card>
+          ) : (
+            creatorApps.map((app) => (
+              <Card key={app.id} className="border-none shadow-md rounded-[2.5rem] bg-white overflow-hidden">
+                <CardHeader className="pb-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-xl font-black text-slate-900">{app.userDisplayName}</CardTitle>
+                      <CardDescription className="text-[10px] font-bold uppercase text-slate-400 mt-1">ID: {app.userId.slice(0,8)}...</CardDescription>
+                    </div>
+                    <Badge className="bg-blue-50 text-blue-600 font-black text-[10px] uppercase">Pending</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 p-3 rounded-2xl text-center">
+                      <div className="flex items-center justify-center gap-1 text-amber-500 mb-1">
+                        <Star className="h-3 w-3 fill-amber-500" />
+                        <span className="text-[10px] font-black uppercase">Rating</span>
+                      </div>
+                      <span className="text-xl font-black">{app.averageRating.toFixed(1)}</span>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-2xl text-center">
+                      <div className="flex items-center justify-center gap-1 text-primary mb-1">
+                        <Activity className="h-3 w-3" />
+                        <span className="text-[10px] font-black uppercase">Events</span>
+                      </div>
+                      <span className="text-xl font-black">{app.activitiesCount}</span>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => handleApproveCreator(app.id, app.userId)}
+                    disabled={actionLoading === app.id}
+                    className="w-full h-12 rounded-2xl font-black uppercase tracking-widest bg-slate-900 shadow-xl shadow-slate-200"
+                  >
+                    {actionLoading === app.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve Creator"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      </section>
 
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-blue-600">
@@ -196,7 +269,7 @@ export default function AdminDashboardPage() {
           <ShieldAlert className="h-5 w-5 text-amber-600" />
         </div>
         <p className="text-xs text-amber-800/70 font-medium leading-relaxed italic">
-          Admin-Compliance: Das Sperren eines Nutzers erfolgt permanent. Rückzahlungen sollten erst bestätigt werden, wenn die externe Transaktion verifiziert wurde.
+          Admin-Compliance: Das Sperren eines Nutzers erfolgt permanent. Rückzahlungen sollten erst bestätigt werden, wenn die externe Transaktion verifiziert wurde. Creator-Bewerbungen setzen hohe Aktivität und Reputation voraus.
         </p>
       </div>
     </div>
