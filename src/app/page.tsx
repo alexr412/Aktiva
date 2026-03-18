@@ -434,11 +434,15 @@ export default function Home() {
                 return name.toLowerCase().includes(searchQuery.toLowerCase());
             });
             const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : 0)));
-            if (sorted.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
+            
+            // ARCHITEKTUR FIX: Deduplizierung von Orten zur Vermeidung von React Key-Kollisionen
+            const uniqueSorted = Array.from(new Map(sorted.map(place => [place.id, place])).values());
+
+            if (uniqueSorted.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
             
             return (
               <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sorted.map((place) => (
+                {uniqueSorted.map((place) => (
                   <div key={place.id} className="min-h-[180px] w-full">
                     <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
                   </div>
