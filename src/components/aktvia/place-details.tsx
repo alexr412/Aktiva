@@ -67,8 +67,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         if (!db || !place.id) return;
         setLoadingActivities(true);
         
-        // --- DIAGNOSE OUTPUT FÜR ID-VERIFIZIERUNG ---
-        // Stellt sicher, dass wir nach der placeId (Geo-Identifikator) suchen und nicht nach einer Activity-Dokument-ID.
         console.log("EXECUTE QUERY FOR PLACE ID:", place.id);
         
         const activitiesQuery = query(
@@ -77,15 +75,11 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         );
 
         const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-            // Rohe State-Zuweisung ohne maskierende Zeit-Filter
             const fetchedActivities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
             setActivities(fetchedActivities);
             setLoadingActivities(false);
         }, (error) => {
-            console.error("🔥 FIRESTORE QUERY ERROR (PlaceDetails):", error.message, {
-                placeId: place.id,
-                path: 'activities'
-            });
+            console.error("🔥 FIRESTORE QUERY ERROR (PlaceDetails):", error.message);
             setLoadingActivities(false);
         });
 
@@ -132,12 +126,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
             navigator.clipboard.writeText(shareUrl);
             toast({ title: "Link kopiert", description: "Der Link wurde in die Zwischenablage kopiert." });
         }
-    };
-
-    const handleVote = async (activityId: string, type: 'up' | 'down' | 'none') => {
-        if (!user || isVoting) return;
-        setIsVoting(true);
-        try { await voteActivity(activityId, user.uid, type); } catch (error) { console.error("Voting failed:", error); } finally { setIsVoting(false); }
     };
 
     const processedTags = formatTags(place.categories || []);
@@ -206,7 +194,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                             <div className="space-y-3">
                                 {loadingActivities ? <Skeleton className="h-20 w-full rounded-2xl" /> : activities.length === 0 ? <p className="text-sm text-neutral-500">Keine Treffen geplant.</p> : activities.map(activity => {
                                     const isParticipant = activity.participantIds.includes(user?.uid || '---');
-                                    const userVote = user ? (activity.userVotes?.[user.uid] || 'none') : 'none';
                                     const isPaidEvent = activity.isPaid && activity.price && activity.price > 0;
 
                                     return (
@@ -215,6 +202,14 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-2">
                                                         <p className="font-extrabold dark:text-neutral-200 text-base truncate">{format(activity.activityDate.toDate(), 'eee, MMM d')}</p>
+                                                        {activity.avgRating ? (
+                                                          <div className="flex items-center gap-1 bg-amber-100 px-1.5 py-0.5 rounded-md">
+                                                            <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                                                            <span className="text-[10px] font-black text-amber-700">{activity.avgRating.toFixed(1)}</span>
+                                                          </div>
+                                                        ) : (
+                                                          <span className="text-[8px] font-black text-slate-400 uppercase">Neu</span>
+                                                        )}
                                                         {isPaidEvent && (
                                                             <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0 border-none">
                                                                 €{activity.price!.toFixed(2)}
@@ -249,10 +244,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                         </Button>
                                                     )}
                                                 </div>
-                                            </div>
-                                            <div className="flex gap-2 items-center pt-3 border-t border-neutral-200/50 dark:border-neutral-700/50 mt-3">
-                                                <button onClick={() => handleVote(activity.id!, userVote === 'up' ? 'none' : 'up')} className="dark:text-neutral-200" style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'up' ? '#22c55e' : 'inherit', cursor: 'pointer' }}>↑</button>
-                                                <button onClick={() => handleVote(activity.id!, userVote === 'down' ? 'none' : 'down')} className="dark:text-neutral-200" style={{ padding: '4px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px', fontWeight: '800', background: userVote === 'down' ? '#ef4444' : 'inherit', cursor: 'pointer' }}>↓</button>
                                             </div>
                                         </Card>
                                     );

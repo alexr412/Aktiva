@@ -194,6 +194,8 @@ export async function createActivity({
     downvotes: 0,
     userVotes: {},
     reportCount: 0,
+    avgRating: 0,
+    reviewCount: 0,
     stats: {
       impressions: 0,
       pushJoins: 0,
@@ -900,7 +902,7 @@ export async function submitMultiReview(activityId: string, reviewerId: string, 
     if (!db) throw new Error('Firestore is not initialized.');
     const batch = writeBatch(db);
 
-    reviews.forEach(review => {
+    for (const review of reviews) {
         const reviewRef = doc(collection(db, 'reviews'));
         batch.set(reviewRef, {
             ...review,
@@ -909,15 +911,38 @@ export async function submitMultiReview(activityId: string, reviewerId: string, 
             createdAt: serverTimestamp()
         });
 
-        if (review.targetType === 'user') {
-            const userRef = doc(db, 'users', review.targetId);
-            batch.update(userRef, { 
-              ratingCount: increment(1)
-              // Note: Idealerweise würde hier auch das averageRating neu berechnet, 
-              // für den Prototyp fokussieren wir auf den reviewCount.
+        // aggregation logic
+        const targetRef = review.targetType === 'user' 
+          ? doc(db, 'users', review.targetId) 
+          : doc(db, 'activities', review.targetId);
+
+        const targetSnap = await getDoc(targetRef);
+        if (targetSnap.exists()) {
+          const data = targetSnap.data();
+          const currentCount = review.targetType === 'user' 
+            ? (data.ratingCount || 0) 
+            : (data.reviewCount || 0);
+          const currentAvg = review.targetType === 'user' 
+            ? (data.averageRating || 0) 
+            : (data.avgRating || 0);
+
+          const oldTotal = currentAvg * currentCount;
+          const newCount = currentCount + 1;
+          const newAvg = (oldTotal + review.rating) / newCount;
+          
+          if (review.targetType === 'user') {
+            batch.update(targetRef, {
+              averageRating: newAvg,
+              ratingCount: newCount
             });
+          } else {
+            batch.update(targetRef, {
+              avgRating: newAvg,
+              reviewCount: newCount
+            });
+          }
         }
-    });
+    }
 
     const pRef = doc(db, 'activities', activityId, 'participants', reviewerId);
     batch.update(pRef, { hasReviewed: true });

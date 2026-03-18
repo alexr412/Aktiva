@@ -85,6 +85,8 @@ export interface Activity {
   downvotes?: number;
   userVotes?: Record<string, 'up' | 'down'>;
   reportCount?: number;
+  avgRating?: number;
+  reviewCount?: number;
   stats?: {
     impressions?: number;
     pushJoins?: number;

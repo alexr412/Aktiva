@@ -5,11 +5,10 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown, BarChart3, AlertTriangle, Layers } from 'lucide-react';
+import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown, BarChart3, AlertTriangle, Layers, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { EntityMoreOptions } from '../common/EntityMoreOptions';
 import { cn } from '@/lib/utils';
 import { voteActivity, trackActivityView, submitReport } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
@@ -57,7 +56,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
     if (!activity || !activity.id) return null;
 
-    // --- ARCHITEKTUR UPDATE: ROBUSTE FALLBACKS FÜR METRIKEN ---
     const participantIds = activity.participantIds || [];
     const isParticipant = user ? participantIds.includes(user.uid) : false;
     const isFull = activity.maxParticipants ? participantIds.length >= activity.maxParticipants : false;
@@ -178,38 +176,38 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between mb-1">
                         <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight flex-1">
-                            {activity.placeName || "Unbenanntes Treffen"}
+                            {activity.placeName || "Treffen"}
                         </p>
                         
+                        {activity.avgRating ? (
+                          <div className="ml-2 flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100">
+                            <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                            <span className="text-[10px] font-black text-amber-700">{activity.avgRating.toFixed(1)}</span>
+                          </div>
+                        ) : (
+                          <div className="ml-2 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">
+                            <span className="text-[8px] font-black uppercase text-slate-400">NEU</span>
+                          </div>
+                        )}
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                         {activity.distance !== undefined && activity.distance !== null && (
-                          <div className="ml-2 inline-flex items-center gap-1 bg-slate-100 dark:bg-neutral-700 text-slate-600 dark:text-slate-300 font-bold px-2 py-0.5 rounded-lg text-[10px] tracking-tight shrink-0 border border-slate-200/50">
-                            <MapPin className="h-2.5 w-2.5 text-primary/70" />
+                          <div className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold text-[10px] tracking-tight">
+                            <MapPin className="h-2.5 w-2.5" />
                             <span>{activity.distance < 1 ? '< 1 km' : `${activity.distance.toFixed(1)} km`}</span>
                           </div>
                         )}
 
                         {isPaidEvent && (
-                          <div className="ml-2 inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-black px-2 py-0.5 rounded-lg text-[10px] tracking-tight shrink-0">
+                          <div className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-black text-[10px] tracking-tight">
                             <CreditCard className="h-2.5 w-2.5" />
                             <span>{activity.price?.toFixed(2)}€</span>
                           </div>
                         )}
                     </div>
-                    
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <p className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1 font-bold uppercase tracking-wider">
-                            <Users className="h-3 w-3 text-primary/60"/>
-                            <span>von {activity.hostName?.split(' ')[0] || "Entdecker"}</span>
-                        </p>
-                        {activity.placeAddress && (
-                            <p className="text-[11px] text-neutral-400 flex items-center gap-1 font-medium truncate max-w-[150px]">
-                                <MapPin className="h-3 w-3" />
-                                {activity.placeAddress}
-                            </p>
-                        )}
-                    </div>
 
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-3 flex items-center gap-2">
                       <div className="flex items-center gap-1 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-100/50">
                         <Layers className="w-2.5 h-2.5" />
                         <span>{activity.category || 'Sonstiges'}</span>
@@ -250,7 +248,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                         {!isPremium && (
                           <span className="text-[10px] text-muted-foreground font-medium italic flex items-center gap-1">
                             <Crown className="w-3 h-3 text-amber-500" />
-                            Premium-Vorschau
+                            Preview
                           </span>
                         )}
                       </div>
@@ -262,49 +260,15 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                         </span>
                       </div>
                     </div>
-
-                    <div className="flex w-full flex-wrap items-center gap-1.5 overflow-hidden mt-3">
-                      {processedTags.slice(0, 3).map((tag, index) => (
-                        <span key={index} className="inline-flex items-center rounded-xl px-3 py-1 text-[9px] font-black uppercase tracking-tight bg-secondary/50 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
                 </div>
             </div>
 
-            {!isOwnActivity && (
-              <Button 
-                onClick={handleReport} 
-                disabled={isReporting}
-                variant="outline"
-                className="w-full mt-4 border-destructive text-destructive hover:bg-destructive/10 font-bold h-12 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2"
-              >
-                {isReporting ? <Loader2 className="h-3 w-3 animate-spin"/> : <AlertTriangle className="h-3 w-3" />}
-                {isReporting ? "Wird gemeldet..." : "Aktivität melden"}
-              </Button>
-            )}
-
             <div className="card-footer-actions flex justify-between items-center w-full mt-5 pt-4 border-t border-neutral-50 dark:border-neutral-700/50">
-              <div className="voting-controls flex gap-1.5 items-center bg-secondary/30 rounded-full p-1">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'up' ? 'none' : 'up'); }} 
-                  className={cn(
-                    "h-8 px-4 rounded-full font-black text-sm transition-all active:scale-90",
-                    userVote === 'up' ? "bg-white text-green-500 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
-                  )}
-                >
-                  {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↑'}
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleVote(activity.id!, userVote === 'down' ? 'none' : 'down'); }} 
-                  className={cn(
-                    "h-8 px-4 rounded-full font-black text-sm transition-all active:scale-90",
-                    userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
-                  )}
-                >
-                  {isVoting ? <Loader2 className="animate-spin h-4 w-4" /> : '↓'}
-                </button>
+              <div className="flex items-center gap-3">
+                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                    <Users className="h-3 w-3 text-primary/60"/>
+                    <span>Host: {activity.hostName?.split(' ')[0] || "Entdecker"}</span>
+                </p>
               </div>
 
               <div className="flex gap-2">
