@@ -12,6 +12,7 @@ import {
   MapPin,
   ArrowUp,
   ArrowDown,
+  Star,
 } from 'lucide-react';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
@@ -47,24 +48,32 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const PrimaryIcon = primaryStyle.icon;
     
     const [isVoting, setIsVoting] = useState(false);
-    const [localVotes, setLocalVotes] = useState({ upvotes: 0, downvotes: 0, userVotes: {} as Record<string, 'up' | 'down'> });
+    const [placeMeta, setPlaceMeta] = useState({ 
+        upvotes: 0, 
+        downvotes: 0, 
+        userVotes: {} as Record<string, 'up' | 'down'>,
+        avgRating: 0,
+        reviewCount: 0
+    });
 
     useEffect(() => {
         if (!db || !place.id) return;
         const unsub = onSnapshot(doc(db, 'places', place.id), (doc) => {
             if (doc.exists()) {
                 const data = doc.data();
-                setLocalVotes({
+                setPlaceMeta({
                     upvotes: data.upvotes || 0,
                     downvotes: data.downvotes || 0,
-                    userVotes: data.userVotes || {}
+                    userVotes: data.userVotes || {},
+                    avgRating: data.avgRating || 0,
+                    reviewCount: data.reviewCount || 0
                 });
             }
         });
         return () => unsub();
     }, [place.id]);
 
-    const userVote = user ? (localVotes.userVotes?.[user.uid] || 'none') : 'none';
+    const userVote = user ? (placeMeta.userVotes?.[user.uid] || 'none') : 'none';
 
     const handleBookmarkToggle = (e: React.MouseEvent) => {
         e.stopPropagation(); 
@@ -102,7 +111,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         "cursor-pointer group overflow-hidden rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-sm hover:shadow-xl transition-all duration-500 flex flex-row relative p-0"
       )}
     >
-      {/* Linker Medien-Bereich mit dynamischem Gradient */}
+      {/* Linker Medien-Bereich */}
       <div className={cn(
         "w-28 sm:w-32 flex-shrink-0 flex items-center justify-center relative transition-transform duration-500 group-hover:scale-105",
         primaryStyle.bgClass.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-400 to-').concat(primaryStyle.color === '#ef4444' ? 'red-500' : 'violet-500')
@@ -111,7 +120,6 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
       >
         <PrimaryIcon className="text-white/90 h-12 w-12 drop-shadow-md" />
         
-        {/* Raum-Indikator Badge auf dem Bild */}
         {place.activityCount !== undefined && place.activityCount > 0 && (
             <div className="absolute top-2 left-2 bg-primary text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md shadow-lg animate-pulse">
                 Aktiv
@@ -133,11 +141,22 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             )}
           </div>
           
-          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate mb-3 flex items-center font-medium">
-            <MapPin className="h-3 w-3 mr-1 text-primary/60" /> {place.address}
-          </p>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-md border border-amber-100 dark:border-amber-800">
+              <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+              {placeMeta.reviewCount > 0 ? (
+                <span className="text-[9px] font-black text-amber-700 dark:text-amber-400">
+                  {placeMeta.avgRating.toFixed(1)} <span className="opacity-50">({placeMeta.reviewCount})</span>
+                </span>
+              ) : (
+                <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-500">Neu</span>
+              )}
+            </div>
+            <p className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate font-medium">
+              {place.address}
+            </p>
+          </div>
           
-          {/* Bunte Tags (Pastell) */}
           <div className="flex flex-wrap gap-1.5 mb-4">
             {processedTags.slice(0, 2).map((tag, index) => (
               <Badge 
@@ -151,15 +170,11 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                 {tag}
               </Badge>
             ))}
-            {processedTags.length > 2 && (
-              <span className="text-[9px] font-bold text-neutral-400 self-center">+{processedTags.length - 2}</span>
-            )}
           </div>
         </div>
 
         {/* Footer-Aktionen */}
         <div className="flex justify-between items-center mt-auto pt-3 border-t border-neutral-50 dark:border-neutral-700/50">
-          {/* Voting Pill */}
           <div className="flex items-center bg-neutral-100 dark:bg-neutral-700/50 rounded-full p-0.5">
             <button 
               onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}

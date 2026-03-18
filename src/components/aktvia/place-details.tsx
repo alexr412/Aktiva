@@ -127,6 +127,13 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
         }
     };
 
+    // --- MODUL 18: DYNAMISCHE ORTS-AGGREGATION ---
+    const ratedActivities = activities.filter(a => a.avgRating !== undefined && (a.reviewCount || 0) > 0);
+    const totalReviews = ratedActivities.reduce((sum, a) => sum + (a.reviewCount || 0), 0);
+    const averagePlaceRating = totalReviews > 0 
+      ? ratedActivities.reduce((sum, a) => sum + ((a.avgRating || 0) * (a.reviewCount || 0)), 0) / totalReviews 
+      : 0;
+
     const processedTags = formatTags(place.categories || []);
 
     return (
@@ -157,16 +164,18 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                     <div className="flex flex-col gap-8">
                         <div className="grid grid-cols-2 gap-4">
                             <Card className="p-4 bg-neutral-50 dark:bg-neutral-800 border-none text-center shadow-none flex flex-col items-center justify-center">
-                                {/* MODUL 18: Place Rating Fallback */}
+                                {/* MODUL 18: Dynamisches Orts-Rating */}
                                 <div className="flex items-center justify-center gap-1.5">
                                     <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
-                                    {place.rating ? (
-                                        <span className="font-black text-xl dark:text-neutral-200">{place.rating.toFixed(1)}</span>
+                                    {totalReviews > 0 ? (
+                                        <span className="font-black text-xl dark:text-neutral-200">
+                                            {averagePlaceRating.toFixed(1)} <span className="text-[10px] opacity-50">({totalReviews})</span>
+                                        </span>
                                     ) : (
                                         <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">Neu</span>
                                     )}
                                 </div>
-                                <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mt-1">Rating</span>
+                                <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest mt-1">Community Rating</span>
                             </Card>
                             <Card className="p-4 bg-neutral-50 dark:bg-neutral-800 border-none text-center shadow-none">
                                 <div className="flex flex-wrap gap-1 justify-center">
@@ -194,7 +203,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                     const isParticipant = activity.participantIds.includes(user?.uid || '---');
                                     const isPaidEvent = activity.isPaid && activity.price && activity.price > 0;
                                     
-                                    // MODUL 18: Activity Rating Logic
                                     const actRating = activity.avgRating || 0;
                                     const actReviewCount = activity.reviewCount || 0;
 
@@ -205,7 +213,6 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <p className="font-extrabold dark:text-neutral-200 text-base truncate">{format(activity.activityDate.toDate(), 'eee, MMM d')}</p>
                                                         
-                                                        {/* Activity Rating Block */}
                                                         <div className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
                                                           <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
                                                           {actReviewCount > 0 ? (

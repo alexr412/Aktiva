@@ -899,43 +899,48 @@ export async function checkIfUserReviewed(activityId: string, reviewerId: string
 }
 
 /**
- * MODUL 18: Multi-Peer Review Engine.
+ * MODUL 18: Multi-Peer Review Engine (v2).
  * Verarbeitet Bewertungen für Aktivität und Teilnehmer atomar in einer Transaktion.
+ * Kaskadiert Aktivitäts-Ratings nun auch zum globalen Ort (places collection).
  */
 export async function submitMultiReview(activityId: string, reviewerId: string, reviews: any[]) {
     if (!db) throw new Error('Firestore is not initialized.');
 
     try {
         await runTransaction(db, async (transaction) => {
-            // 1. Dokumenten-Referenzen vorbereiten
             const activityRef = doc(db!, 'activities', activityId);
             const participantRef = doc(db!, 'activities', activityId, 'participants', reviewerId);
             
-            // Relevante Ziel-Referenzen identifizieren
+            const activitySnap = await transaction.get(activityRef);
+            if (!activitySnap.exists()) throw new Error("Aktivität nicht gefunden.");
+            const activityData = activitySnap.data() as Activity;
+
+            // Optional: Orts-Referenz vorbereiten (falls Aktivität ortsgebunden ist)
+            const placeRef = activityData.placeId && activityData.placeId !== 'custom' 
+                ? doc(db!, 'places', activityData.placeId) 
+                : null;
+
             const targetRefs = reviews.map(r => ({
                 ref: r.targetType === 'user' ? doc(db!, 'users', r.targetId) : activityRef,
                 review: r
             }));
 
-            // 2. Alle aktuellen Zustände LESEN (Wichtig für atomare Aggregation)
-            const activitySnap = await transaction.get(activityRef);
-            if (!activitySnap.exists()) throw new Error("Aktivität nicht gefunden.");
-
-            // Alle Ziel-Snapshots (Users & Activity) abrufen
+            // Alle Ziel-Snapshots abrufen
             const targetSnaps = await Promise.all(targetRefs.map(entry => {
-                // Wenn das Ziel die Activity selbst ist, nutzen wir den bereits geladenen Snap
                 if (entry.ref.id === activityId && entry.review.targetType === 'activity') {
                     return Promise.resolve(activitySnap);
                 }
                 return transaction.get(entry.ref);
             }));
 
-            // 3. BERECHNUNG UND SCHREIBEN
+            // Falls ein Place-Dokument existiert, dessen Snapshot ebenfalls laden
+            const placeSnap = placeRef ? await transaction.get(placeRef) : null;
+
+            // REVIEWS VERARBEITEN
             targetRefs.forEach((entry, index) => {
                 const snap = targetSnaps[index];
                 const review = entry.review;
                 
-                // Individuelles Review Dokument anlegen
                 const reviewRef = doc(collection(db!, 'reviews'));
                 transaction.set(reviewRef, {
                     ...review,
@@ -944,7 +949,6 @@ export async function submitMultiReview(activityId: string, reviewerId: string, 
                     createdAt: serverTimestamp()
                 });
 
-                // Aggregation berechnen und Ziel-Dokument aktualisieren
                 if (snap.exists()) {
                     const data = snap.data();
                     const isUser = review.targetType === 'user';
@@ -965,11 +969,25 @@ export async function submitMultiReview(activityId: string, reviewerId: string, 
                             avgRating: newAvg,
                             reviewCount: newCount
                         });
+
+                        // --- MODUL 18: KASKADIERUNG ZUM ORT ---
+                        if (placeRef) {
+                            const pData = placeSnap?.exists() ? placeSnap.data() : { avgRating: 0, reviewCount: 0 };
+                            const pCount = pData.reviewCount || 0;
+                            const pAvg = pData.avgRating || 0;
+                            
+                            const newPCount = pCount + 1;
+                            const newPAvg = ((pAvg * pCount) + review.rating) / newPCount;
+                            
+                            transaction.set(placeRef, {
+                                avgRating: newPAvg,
+                                reviewCount: newPCount
+                            }, { merge: true });
+                        }
                     }
                 }
             });
 
-            // 4. Status-Flags beim Reviewer setzen, um doppelte Bewertungen zu verhindern
             transaction.update(participantRef, { hasReviewed: true });
             transaction.update(activityRef, {
                 [`participantDetails.${reviewerId}.hasReviewed`]: true
