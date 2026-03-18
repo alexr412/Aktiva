@@ -86,7 +86,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userRef = doc(db, 'users', authUser.uid);
         unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
-            const profile = docSnap.data() as UserProfile;
+            const data = docSnap.data();
+            // Explizite Zuweisung wichtiger Felder zur Vermeidung von State-Verlust
+            const profile: UserProfile = {
+              uid: docSnap.id,
+              ...data,
+              role: data.role || (data.isAdmin ? 'admin' : 'user'), // Fallback-Logik
+              isAdmin: data.role === 'admin' || !!data.isAdmin,
+              isBanned: !!data.isBanned
+            } as UserProfile;
+            
             setUserProfile(profile);
 
             if (!profile.onboardingCompleted && pathname !== '/onboarding') {
