@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { processRefund, banUser, approveCreator } from '@/lib/firebase/firestore';
-import type { UserProfile, Refund, CreatorApplication } from '@/lib/types';
+import { processRefund, banUser, approveCreator, resolveModerationTask } from '@/lib/firebase/firestore';
+import type { UserProfile, Refund, CreatorApplication, Report } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { RotateCcw, Loader2, Ban, ShieldAlert, TrendingDown, UserCheck, Star, Activity } from "lucide-react";
+import { RotateCcw, Loader2, Ban, ShieldAlert, TrendingDown, UserCheck, Star, Activity, ShieldCheck, Check } from "lucide-react";
 
 export default function AdminDashboardPage() {
   const { userProfile, loading: authLoading } = useAuth();
@@ -24,6 +24,7 @@ export default function AdminDashboardPage() {
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [flaggedUsers, setFlaggedUsers] = useState<UserProfile[]>([]);
   const [creatorApps, setCreatorApps] = useState<CreatorApplication[]>([]);
+  const [moderationTasks, setModerationTasks] = useState<Report[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -53,10 +54,16 @@ export default function AdminDashboardPage() {
       setCreatorApps(snap.docs.map(d => ({ id: d.id, ...d.data() } as CreatorApplication)));
     });
 
+    const qMod = query(collection(db, 'reports'), where('status', '==', 'moderation_review'));
+    const unsubMod = onSnapshot(qMod, (snap) => {
+      setModerationTasks(snap.docs.map(d => ({ id: d.id, ...d.data() } as Report)));
+    });
+
     return () => {
       unsubRefunds();
       unsubUsers();
       unsubApps();
+      unsubMod();
     };
   }, [userProfile, authLoading, router]);
 
@@ -98,6 +105,18 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleResolveMod = async (reportId: string, activityId: string, action: 'keep' | 'blacklist') => {
+    setActionLoading(reportId);
+    try {
+      await resolveModerationTask(reportId, activityId, action);
+      toast({ title: action === 'keep' ? "Aktivität freigegeben" : "Aktivität auf Blacklist gesetzt" });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Fehler", description: err.message });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (authLoading || !userProfile || userProfile.role !== 'admin') {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -115,6 +134,52 @@ export default function AdminDashboardPage() {
         </h2>
         <p className="text-slate-500 font-medium">Zentrale Steuerung der Plattform-Integrität und Monetarisierung.</p>
       </header>
+
+      {/* MODUL 18: Automated Moderation Queue */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 text-orange-600">
+          <ShieldAlert className="h-5 w-5" />
+          <h3 className="font-black text-lg uppercase tracking-tight">Moderation Queue (Balance Engine)</h3>
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+          {moderationTasks.length === 0 ? (
+            <Card className="border-dashed border-2 border-slate-200 p-8 text-center rounded-3xl">
+              <p className="text-slate-400 font-bold">Keine kritischen Aktivitäten zur Prüfung.</p>
+            </Card>
+          ) : (
+            moderationTasks.map((task) => (
+              <Card key={task.id} className="border-none shadow-md rounded-3xl bg-white overflow-hidden">
+                <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="flex-1">
+                    <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 mb-2">Automated Trigger</Badge>
+                    <h4 className="font-black text-slate-900">Aktivitäts-ID: {task.reportedEntityId}</h4>
+                    <p className="text-xs text-slate-500 mt-1">Grund: {task.reason}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => handleResolveMod(task.id!, task.reportedEntityId!, 'keep')}
+                      disabled={actionLoading === task.id}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black"
+                    >
+                      {actionLoading === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                      Keep
+                    </Button>
+                    <Button 
+                      onClick={() => handleResolveMod(task.id!, task.reportedEntityId!, 'blacklist')}
+                      disabled={actionLoading === task.id}
+                      variant="destructive"
+                      className="rounded-xl font-black"
+                    >
+                      {actionLoading === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4 mr-2" />}
+                      Blacklist
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      </section>
 
       {/* Creator Applications Section */}
       <section className="space-y-4">

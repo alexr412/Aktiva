@@ -26,6 +26,7 @@ export interface Place {
   upvotes?: number;
   downvotes?: number;
   userVotes?: Record<string, 'up' | 'down'>;
+  globalScore?: number;
 }
 
 export interface FavoritePlace {
@@ -59,7 +60,7 @@ export interface Activity {
   category?: ActivityCategory;
   categories?: string[];
   tags?: string[];
-  status: 'active' | 'open' | 'completed' | 'cancelled';
+  status: 'active' | 'open' | 'completed' | 'cancelled' | 'blacklisted';
   completionVotes: string[];
   participantDetails: {
       [uid: string]: {
@@ -84,6 +85,8 @@ export interface Activity {
   upvotes?: number;
   downvotes?: number;
   userVotes?: Record<string, 'up' | 'down'>;
+  globalScore?: number;
+  isVerified?: boolean;
   reportCount?: number;
   avgRating?: number;
   reviewCount?: number;
@@ -166,6 +169,7 @@ export interface UserProfile {
   interests?: string[];
   likedTags: string[];
   dislikedTags: string[];
+  categoryAffinities?: Record<string, number>;
   friends?: string[];
   friendRequestsSent?: string[];
   friendRequestsReceived?: string[];
@@ -236,7 +240,7 @@ export interface Report {
   reportedEntityId?: string;
   entityType?: 'activity' | 'user';
   reason: string;
-  status: 'pending' | 'resolved' | 'resolved_deleted' | 'rejected' | 'open';
+  status: 'pending' | 'resolved' | 'resolved_deleted' | 'rejected' | 'open' | 'moderation_review';
   createdAt: Timestamp;
   resolvedAt?: Timestamp;
 }

@@ -41,6 +41,7 @@ type CreateActivityPayload = {
 };
 
 const MAX_FREE_PARTICIPANTS = 4;
+const SMOOTHING_FACTOR = 5;
 
 function generateFriendCode(length = 8) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -68,6 +69,7 @@ export async function createUserProfileDocument(user: User) {
     activeTabs: ['Sights', 'Nature', 'Restaurants'],
     likedTags: [],
     dislikedTags: [],
+    categoryAffinities: {},
     isPremium: false,
     isSupporter: false,
     isCreator: false,
@@ -196,6 +198,7 @@ export async function createActivity({
     upvotes: 0,
     downvotes: 0,
     userVotes: {},
+    globalScore: 0,
     reportCount: 0,
     avgRating: 0,
     reviewCount: 0,
@@ -270,16 +273,21 @@ export async function createActivity({
   }
 }
 
+/**
+ * MODUL 18: The Balance Engine Core logic for Activities.
+ * Berechnet globalScore ($S_coll$) und Category-Affinity ($V_user$).
+ */
 export async function voteActivity(activityId: string, userId: string, type: 'up' | 'down' | 'none') {
   if (!db) throw new Error('Firestore is not initialized.');
   const activityRef = doc(db, 'activities', activityId);
+  const userRef = doc(db, 'users', userId);
 
   await runTransaction(db, async (transaction) => {
     const activitySnap = await transaction.get(activityRef);
     if (!activitySnap.exists()) throw new Error("Activity not found.");
 
-    const data = activitySnap.data() as Activity;
-    const userVotes = data.userVotes || {};
+    const activityData = activitySnap.data() as Activity;
+    const userVotes = activityData.userVotes || {};
     const previousVote = userVotes[userId];
 
     if (previousVote === type) return;
@@ -300,14 +308,55 @@ export async function voteActivity(activityId: string, userId: string, type: 'up
       delete userVotes[userId];
     }
 
+    const newU = (activityData.upvotes || 0) + upvoteChange;
+    const newD = (activityData.downvotes || 0) + downvoteChange;
+    
+    // Formel: S_coll = (U - D) / (U + D + alpha)
+    const globalScore = (newU - newD) / (newU + newD + SMOOTHING_FACTOR);
+
+    // ADMIN TRIGGER LOGIK
+    // Bedingung: U+D > 10 UND D / (U+1) > 2.0
+    if ((newU + newD) > 10 && (newD / (newU + 1)) > 2.0 && !activityData.isVerified) {
+      const reportRef = doc(collection(db!, 'reports'));
+      transaction.set(reportRef, {
+        reportedEntityId: activityId,
+        entityType: 'activity',
+        reason: 'Automated Moderation Trigger: Critical Vote Ratio',
+        status: 'moderation_review',
+        createdAt: serverTimestamp()
+      });
+    }
+
     transaction.update(activityRef, {
-      upvotes: increment(upvoteChange),
-      downvotes: increment(downvoteChange),
-      userVotes: userVotes
+      upvotes: newU,
+      downvotes: newD,
+      userVotes: userVotes,
+      globalScore: globalScore
     });
+
+    // V_user Logik: Category Affinity Update
+    const cat = activityData.category || 'Sonstiges';
+    let affinityChange = 0;
+    
+    // Vorheriges rückgängig machen
+    if (previousVote === 'up') affinityChange -= 1;
+    if (previousVote === 'down') affinityChange += 2; // Da Downvote -2 wiegt
+
+    // Neues hinzufügen
+    if (type === 'up') affinityChange += 1;
+    if (type === 'down') affinityChange -= 2;
+
+    if (affinityChange !== 0) {
+      transaction.update(userRef, {
+        [`categoryAffinities.${cat}`]: increment(affinityChange)
+      });
+    }
   });
 }
 
+/**
+ * MODUL 18: The Balance Engine Core logic for Places.
+ */
 export async function votePlace(placeId: string, userId: string, type: 'up' | 'down' | 'none') {
   if (!db) throw new Error('Firestore is not initialized.');
   const placeRef = doc(db, 'places', placeId);
@@ -341,10 +390,15 @@ export async function votePlace(placeId: string, userId: string, type: 'up' | 'd
       delete userVotes[userId];
     }
 
+    const newU = (data.upvotes || 0) + upvoteChange;
+    const newD = (data.downvotes || 0) + downvoteChange;
+    const globalScore = (newU - newD) / (newU + newD + SMOOTHING_FACTOR);
+
     transaction.set(placeRef, {
-      upvotes: increment(upvoteChange),
-      downvotes: increment(downvoteChange),
-      userVotes: userVotes
+      upvotes: newU,
+      downvotes: newD,
+      userVotes: userVotes,
+      globalScore: globalScore
     }, { merge: true });
   });
 }
@@ -1282,5 +1336,30 @@ export async function approveCreator(applicationId: string, userId: string) {
   batch.update(doc(db, 'users', userId), { isCreator: true });
   batch.update(doc(db, 'creator_applications', applicationId), { status: 'approved' });
   
+  await batch.commit();
+}
+
+/**
+ * MODUL 18: Admin Moderation Resolver.
+ * Erlaubt das Freischalten (Keep) oder Blacklisten einer Aktivität.
+ */
+export async function resolveModerationTask(reportId: string, activityId: string, action: 'keep' | 'blacklist') {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const batch = writeBatch(db);
+  const activityRef = doc(db, 'activities', activityId);
+  const reportRef = doc(db, 'reports', reportId);
+
+  if (action === 'keep') {
+    batch.update(activityRef, { isVerified: true });
+  } else {
+    batch.update(activityRef, { status: 'blacklisted' });
+  }
+
+  batch.update(reportRef, {
+    status: 'resolved',
+    resolvedAt: serverTimestamp(),
+    moderatorAction: action
+  });
+
   await batch.commit();
 }

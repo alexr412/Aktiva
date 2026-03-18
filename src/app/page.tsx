@@ -358,6 +358,7 @@ export default function Home() {
                   if (!item) return false;
                   return item.status !== 'completed' && 
                          item.status !== 'cancelled' &&
+                         item.status !== 'blacklisted' &&
                          (item.reportCount || 0) < QUARANTINE_THRESHOLD;
                 });
 
@@ -382,10 +383,25 @@ export default function Home() {
                   filtered = filtered.filter(item => item.distance !== null && item.distance <= maxDistance);
                 }
 
+                /**
+                 * MODUL 18: HYBRID RANK INDEX (HRI) SORTIERUNG
+                 * HRI = (w1 * S_coll) + (w2 * V_user[cat])
+                 */
                 const sortedList = [...filtered].sort((a, b) => {
                   if (a.isBoosted && !b.isBoosted) return -1;
                   if (!a.isBoosted && b.isBoosted) return 1;
                   
+                  const collectiveWeight = 1.0;
+                  const personalWeight = 0.5;
+
+                  const affA = userProfile?.categoryAffinities?.[a.category || ''] || 0;
+                  const affB = userProfile?.categoryAffinities?.[b.category || ''] || 0;
+
+                  const hriA = (collectiveWeight * (a.globalScore || 0)) + (personalWeight * affA);
+                  const hriB = (collectiveWeight * (b.globalScore || 0)) + (personalWeight * affB);
+
+                  if (hriA !== hriB) return hriB - hriA;
+
                   if (a.distance !== null && b.distance !== null) {
                     return a.distance - b.distance;
                   }
@@ -399,7 +415,6 @@ export default function Home() {
                 return (
                   <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {sortedList.map((item) => {
-                      // --- ARCHITEKTUR FIX: PLACE OBJEKT REKONSTRUKTION FÜR DETAIL-VIEW ---
                       const itemPlace: Place = {
                         id: item.placeId || "unknown",
                         name: item.placeName || "Unbekannter Ort",
@@ -435,7 +450,6 @@ export default function Home() {
             });
             const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : 0)));
             
-            // ARCHITEKTUR FIX: Deduplizierung von Orten zur Vermeidung von React Key-Kollisionen
             const uniqueSorted = Array.from(new Map(sorted.map(place => [place.id, place])).values());
 
             if (uniqueSorted.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
