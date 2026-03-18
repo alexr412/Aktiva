@@ -15,7 +15,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!loading) {
-      console.log("ADMIN LAYOUT GUARD: Rolle ->", userProfile?.role);
       // Wir prüfen primär auf 'role', sekundär auf 'isAdmin' für Abwärtskompatibilität
       if (!userProfile || (userProfile.role !== 'admin' && !userProfile.isAdmin)) {
         router.replace("/");

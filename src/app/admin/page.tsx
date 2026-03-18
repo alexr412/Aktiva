@@ -26,13 +26,8 @@ export default function AdminDashboardPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    // MODUL 19 DIAGNOSE
     if (!authLoading) {
-      console.log("ADMIN GUARD: Vollständiges User-Objekt ->", userProfile);
-      console.log("ADMIN GUARD: Extrahierte Rolle ->", userProfile?.role);
-
       if (!userProfile || userProfile.role !== 'admin') {
-        console.warn("ADMIN GUARD: Zugriff verweigert. Redirect zu /");
         router.replace('/');
         return;
       }
