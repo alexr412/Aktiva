@@ -130,6 +130,7 @@ export interface Chat {
         sentAt: Timestamp;
     } | null;
     createdAt: Timestamp;
+    lastActivityAt?: Timestamp;
     unreadCount?: { [userId: string]: number };
 }
 

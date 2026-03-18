@@ -163,3 +163,40 @@ exports.triggerWeeklyReportManual = onCall(async (request) => {
 
   return await aggregateAndSendReports();
 });
+
+/**
+ * MODUL 20: Automatisiertes Hygiene-System.
+ * Löscht inaktive Chats (> 365 Tage) inklusive Nachrichten.
+ */
+exports.chatRetentionPolicy = onSchedule("every 24 hours", async (event) => {
+  const db = getFirestore();
+  const thresholdDate = new Date();
+  thresholdDate.setFullYear(thresholdDate.getFullYear() - 1);
+  const thresholdTimestamp = admin.firestore.Timestamp.fromDate(thresholdDate);
+
+  const chatsSnap = await db.collection("chats")
+    .where("lastActivityAt", "<", thresholdTimestamp)
+    .get();
+
+  if (chatsSnap.empty) return null;
+
+  for (const chatDoc of chatsSnap.docs) {
+    const batch = db.batch();
+    
+    // Nachrichten löschen
+    const messagesSnap = await chatDoc.ref.collection("messages").get();
+    messagesSnap.forEach(m => batch.delete(m.ref));
+    
+    // Chat-Dokument löschen
+    batch.delete(chatDoc.ref);
+    
+    try {
+      await batch.commit();
+      console.log(`Chat ${chatDoc.id} deleted due to inactivity.`);
+    } catch (err) {
+      console.error(`Failed to delete chat ${chatDoc.id}:`, err);
+    }
+  }
+
+  return null;
+});

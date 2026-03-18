@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/client';
-import { sendMessage, checkIfUserReviewed, markChatAsRead } from '@/lib/firebase/firestore';
+import { sendMessage, checkIfUserReviewed, markChatAsRead, deleteActivity } from '@/lib/firebase/firestore';
 import type { Message, Chat, Activity, UserProfile } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
@@ -16,11 +16,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChatInfoSheet } from '@/components/aktvia/chat-info-sheet';
-import { ArrowLeft, Send, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Loader2 } from 'lucide-react';
 import { CompletionBanner } from '@/components/aktvia/CompletionBanner';
 import { MultiPeerReviewDialog } from '@/components/aktvia/multi-peer-review-dialog';
 import { UserBadge } from '@/components/common/UserBadge';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const DateSeparator = ({ date }: { date: Date }) => {
   const formatDate = (d: Date) => {
@@ -116,6 +126,8 @@ export default function ChatRoomPage() {
   const [loading, setLoading] = useState(true);
   const [isInfoSheetOpen, setInfoSheetOpen] = useState(false);
   const [showMultiReviewDialog, setShowMultiReviewDialog] = useState(false);
+  const [showCleanupDialog, setShowCleanupDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(true);
   
   const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string; isPremium?: boolean; isSupporter?: boolean } | null>(null);
@@ -219,6 +231,19 @@ export default function ChatRoomPage() {
       console.error(error);
       setNewMessage(currentMessage);
       toast({ title: "Fehler", description: "Nachricht konnte nicht gesendet werden.", variant: 'destructive'});
+    }
+  };
+
+  const handleCleanup = async () => {
+    if (!chatId) return;
+    setIsDeleting(true);
+    try {
+      await deleteActivity(chatId);
+      toast({ title: "Chat entfernt", description: "Vielen Dank für dein Feedback." });
+      router.push('/');
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: "Fehler beim Löschen", description: error.message });
+      setIsDeleting(false);
     }
   };
 
@@ -351,9 +376,34 @@ export default function ChatRoomPage() {
             onOpenChange={setShowMultiReviewDialog}
             activity={activity}
             currentUser={user}
-            onReviewSubmitted={() => setHasReviewed(true)}
+            onReviewSubmitted={() => {
+                setHasReviewed(true);
+                setShowCleanupDialog(true);
+            }}
         />
       )}
+
+      {/* MODUL 20: Post-Review Cleanup AlertDialog */}
+      <AlertDialog open={showCleanupDialog} onOpenChange={setShowCleanupDialog}>
+        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-black text-center">Treffen beendet</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base font-medium">
+              Möchtest du den zugehörigen Chat jetzt aus deiner Liste entfernen?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col gap-3 sm:gap-0 mt-6">
+            <AlertDialogCancel className="rounded-xl font-bold h-12">Später</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleCleanup} 
+              disabled={isDeleting}
+              className="rounded-xl font-black h-12 bg-slate-900 hover:bg-black shadow-xl"
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ja, jetzt entfernen"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

@@ -240,6 +240,7 @@ export async function createActivity({
   batch.set(chatRef, {
     activityId: activityRef.id,
     createdAt: serverTimestamp(),
+    lastActivityAt: serverTimestamp(),
     participantIds: [user.uid],
     lastMessage: null,
     placeName: place?.name || customLocationName || "Aktivität",
@@ -643,6 +644,7 @@ export async function sendMessage(chatId: string, text: string, user: User, user
       senderName: user.displayName || "Anonymer Nutzer",
       sentAt: serverTimestamp(),
     },
+    lastActivityAt: serverTimestamp(),
   };
 
   chatData.participantIds.forEach(pid => {
@@ -1156,6 +1158,7 @@ export async function getOrCreateDirectChat(user1Id: string, user2Id: string): P
     await setDoc(chatRef, {
       participantIds: [user1Id, user2Id],
       createdAt: serverTimestamp(),
+      lastActivityAt: serverTimestamp(),
       participantDetails: {
         [user1Id]: {
           displayName: user1Profile.displayName || "Nutzer 1",
