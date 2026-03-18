@@ -95,13 +95,16 @@ export default function FriendList({ friendIds }: FriendListProps) {
     );
   }
 
+  // Architektur-Fix: Deduplizierung zur Vermeidung von React Key-Kollisionen
+  const uniqueFriends = Array.from(new Map(friends.map(f => [f.uid, f])).values());
+
   return (
     <div className="flex flex-col gap-4 mb-12 w-full px-2">
       <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200 ml-4 flex items-center gap-2">
-        Freunde <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-lg text-xs">{friends.length}</span>
+        Freunde <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-lg text-xs">{uniqueFriends.length}</span>
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {friends.map(friend => {
+        {uniqueFriends.map(friend => {
           const proximity = getProximityLabel(friend);
           return (
             <Link href={`/profile/${friend.uid}`} key={friend.uid} className="block group">
