@@ -898,61 +898,87 @@ export async function checkIfUserReviewed(activityId: string, reviewerId: string
     return pSnap.exists() && pSnap.data().hasReviewed === true;
 }
 
+/**
+ * MODUL 18: Multi-Peer Review Engine.
+ * Verarbeitet Bewertungen für Aktivität und Teilnehmer atomar in einer Transaktion.
+ */
 export async function submitMultiReview(activityId: string, reviewerId: string, reviews: any[]) {
     if (!db) throw new Error('Firestore is not initialized.');
-    const batch = writeBatch(db);
 
-    for (const review of reviews) {
-        const reviewRef = doc(collection(db, 'reviews'));
-        batch.set(reviewRef, {
-            ...review,
-            activityId,
-            reviewerId,
-            createdAt: serverTimestamp()
+    try {
+        await runTransaction(db, async (transaction) => {
+            // 1. Dokumenten-Referenzen vorbereiten
+            const activityRef = doc(db!, 'activities', activityId);
+            const participantRef = doc(db!, 'activities', activityId, 'participants', reviewerId);
+            
+            // Relevante Ziel-Referenzen identifizieren
+            const targetRefs = reviews.map(r => ({
+                ref: r.targetType === 'user' ? doc(db!, 'users', r.targetId) : activityRef,
+                review: r
+            }));
+
+            // 2. Alle aktuellen Zustände LESEN (Wichtig für atomare Aggregation)
+            const activitySnap = await transaction.get(activityRef);
+            if (!activitySnap.exists()) throw new Error("Aktivität nicht gefunden.");
+
+            // Alle Ziel-Snapshots (Users & Activity) abrufen
+            const targetSnaps = await Promise.all(targetRefs.map(entry => {
+                // Wenn das Ziel die Activity selbst ist, nutzen wir den bereits geladenen Snap
+                if (entry.ref.id === activityId && entry.review.targetType === 'activity') {
+                    return Promise.resolve(activitySnap);
+                }
+                return transaction.get(entry.ref);
+            }));
+
+            // 3. BERECHNUNG UND SCHREIBEN
+            targetRefs.forEach((entry, index) => {
+                const snap = targetSnaps[index];
+                const review = entry.review;
+                
+                // Individuelles Review Dokument anlegen
+                const reviewRef = doc(collection(db!, 'reviews'));
+                transaction.set(reviewRef, {
+                    ...review,
+                    activityId,
+                    reviewerId,
+                    createdAt: serverTimestamp()
+                });
+
+                // Aggregation berechnen und Ziel-Dokument aktualisieren
+                if (snap.exists()) {
+                    const data = snap.data();
+                    const isUser = review.targetType === 'user';
+                    
+                    const currentCount = isUser ? (data.ratingCount || 0) : (data.reviewCount || 0);
+                    const currentAvg = isUser ? (data.averageRating || 0) : (data.avgRating || 0);
+                    
+                    const newCount = currentCount + 1;
+                    const newAvg = ((currentAvg * currentCount) + review.rating) / newCount;
+                    
+                    if (isUser) {
+                        transaction.update(entry.ref, {
+                            averageRating: newAvg,
+                            ratingCount: newCount
+                        });
+                    } else {
+                        transaction.update(entry.ref, {
+                            avgRating: newAvg,
+                            reviewCount: newCount
+                        });
+                    }
+                }
+            });
+
+            // 4. Status-Flags beim Reviewer setzen, um doppelte Bewertungen zu verhindern
+            transaction.update(participantRef, { hasReviewed: true });
+            transaction.update(activityRef, {
+                [`participantDetails.${reviewerId}.hasReviewed`]: true
+            });
         });
-
-        // aggregation logic
-        const targetRef = review.targetType === 'user' 
-          ? doc(db, 'users', review.targetId) 
-          : doc(db, 'activities', review.targetId);
-
-        const targetSnap = await getDoc(targetRef);
-        if (targetSnap.exists()) {
-          const data = targetSnap.data();
-          const currentCount = review.targetType === 'user' 
-            ? (data.ratingCount || 0) 
-            : (data.reviewCount || 0);
-          const currentAvg = review.targetType === 'user' 
-            ? (data.averageRating || 0) 
-            : (data.avgRating || 0);
-
-          const oldTotal = currentAvg * currentCount;
-          const newCount = currentCount + 1;
-          const newAvg = (oldTotal + review.rating) / newCount;
-          
-          if (review.targetType === 'user') {
-            batch.update(targetRef, {
-              averageRating: newAvg,
-              ratingCount: newCount
-            });
-          } else {
-            batch.update(targetRef, {
-              avgRating: newAvg,
-              reviewCount: newCount
-            });
-          }
-        }
+    } catch (error) {
+        console.error("Critical: Multi-Review Transaction failed", error);
+        throw error;
     }
-
-    const pRef = doc(db, 'activities', activityId, 'participants', reviewerId);
-    batch.update(pRef, { hasReviewed: true });
-
-    const activityRef = doc(db, 'activities', activityId);
-    batch.update(activityRef, {
-      [`participantDetails.${reviewerId}.hasReviewed`]: true
-    });
-
-    await batch.commit();
 }
 
 export const submitHostRating = async (activityId: string, hostId: string, reviewerId: string, rating: number) => {
