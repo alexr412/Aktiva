@@ -222,6 +222,7 @@ export default function Home() {
           rating: rating,
           distance: distance,
           relevanceScore: calculateRelevanceScore(cats, distance, userPrefs),
+          openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null
         } as Place;
       });
     });
@@ -423,7 +424,8 @@ export default function Home() {
                         lat: item.lat || 0,
                         lon: item.lon || 0,
                         activityCount: 1,
-                        distance: item.distance ? item.distance * 1000 : undefined 
+                        distance: item.distance ? item.distance * 1000 : undefined,
+                        openingHours: item.openingHours || null
                       };
 
                       return (

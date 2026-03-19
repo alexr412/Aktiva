@@ -13,6 +13,7 @@ import {
   ArrowUp,
   ArrowDown,
   Star,
+  Clock,
 } from 'lucide-react';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
@@ -141,20 +142,29 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             )}
           </div>
           
-          <div className="flex items-center gap-2 mb-2">
-            <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-md border border-amber-100 dark:border-amber-800">
-              <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
-              {placeMeta.reviewCount > 0 ? (
-                <span className="text-[9px] font-black text-amber-700 dark:text-amber-400">
-                  {placeMeta.avgRating.toFixed(1)} <span className="opacity-50">({placeMeta.reviewCount})</span>
-                </span>
-              ) : (
-                <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-500">Neu</span>
-              )}
+          <div className="flex flex-col gap-0.5 mb-2">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-md border border-amber-100 dark:border-amber-800">
+                <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                {placeMeta.reviewCount > 0 ? (
+                  <span className="text-[9px] font-black text-amber-700 dark:text-amber-400">
+                    {placeMeta.avgRating.toFixed(1)} <span className="opacity-50">({placeMeta.reviewCount})</span>
+                  </span>
+                ) : (
+                  <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-500">Neu</span>
+                )}
+              </div>
+              <p className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate font-medium">
+                {place.address}
+              </p>
             </div>
-            <p className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate font-medium">
-              {place.address}
-            </p>
+            
+            {place.openingHours && (
+              <div className="flex items-center gap-1 mt-1 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight">
+                <Clock className="h-2.5 w-2.5" />
+                <span className="truncate max-w-[180px]">{place.openingHours}</span>
+              </div>
+            )}
           </div>
           
           <div className="flex flex-wrap gap-1.5 mb-4">

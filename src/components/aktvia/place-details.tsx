@@ -21,6 +21,7 @@ import {
     ExternalLink,
     CreditCard,
     Share2,
+    Clock,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -162,8 +163,15 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                             <PrimaryIcon className="h-12 w-12 md:h-16 md:w-16" style={{ color: primaryStyle.color }} />
                         </div>
                         <h1 className="text-2xl md:text-3xl font-black text-[#0f172a] dark:text-neutral-200 text-center mb-2">{place.name}</h1>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center mb-6 font-medium">{place.address}</p>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center mb-2 font-medium">{place.address}</p>
                         
+                        {place.openingHours && (
+                          <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider mb-6 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-full border border-emerald-100 dark:border-emerald-800">
+                            <Clock className="w-4 h-4" />
+                            <span>{place.openingHours}</span>
+                          </div>
+                        )}
+
                         <div className="w-full flex flex-col gap-3">
                             <Button variant="outline" className="w-full h-12 rounded-xl font-bold dark:border-neutral-700 dark:hover:bg-neutral-800" onClick={handleBookmarkToggle}>
                                 <Bookmark className={cn("h-5 w-5", isFavorite && "fill-primary text-primary")} />
