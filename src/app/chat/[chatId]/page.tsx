@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/client';
-import { sendMessage, checkIfUserReviewed, markChatAsRead, deleteActivity } from '@/lib/firebase/firestore';
+import { sendMessage, checkIfUserReviewed, markChatAsRead, leaveActivity } from '@/lib/firebase/firestore';
 import type { Message, Chat, Activity, UserProfile } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
@@ -235,14 +235,15 @@ export default function ChatRoomPage() {
   };
 
   const handleCleanup = async () => {
-    if (!chatId) return;
+    if (!chatId || !user) return;
     setIsDeleting(true);
     try {
-      await deleteActivity(chatId);
+      // ARCHITEKTUR-FIX: Nur den aktuellen Nutzer lokal entfernen, statt global zu löschen
+      await leaveActivity(chatId, user.uid);
       toast({ title: "Chat entfernt", description: "Vielen Dank für dein Feedback." });
       router.push('/');
     } catch (error: any) {
-      toast({ variant: 'destructive', title: "Fehler beim Löschen", description: error.message });
+      toast({ variant: 'destructive', title: "Fehler beim Entfernen", description: error.message });
       setIsDeleting(false);
     }
   };
