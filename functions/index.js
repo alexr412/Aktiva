@@ -200,3 +200,40 @@ exports.chatRetentionPolicy = onSchedule("every 24 hours", async (event) => {
 
   return null;
 });
+
+/**
+ * MODUL 19: Automatisierte Creator-Status Validierung.
+ * Prüft Reputations-Metriken und setzt den Status atomar.
+ */
+exports.validateCreatorStatus = onSchedule("every 12 hours", async (event) => {
+  const db = getFirestore();
+  // Suche nach Nutzern, die noch keine Creator sind
+  const usersSnap = await db.collection("users").where("isCreator", "==", false).get();
+
+  if (usersSnap.empty) return null;
+
+  for (const userDoc of usersSnap.docs) {
+    const userData = userDoc.data();
+    const userId = userDoc.id;
+
+    // 1. Abgeschlossene Aktivitäten zählen
+    const activitiesSnap = await db.collection("activities")
+      .where("hostId", "==", userId)
+      .where("status", "==", "completed")
+      .get();
+    
+    const activitiesCount = activitiesSnap.size;
+    const avgRating = userData.averageRating || 0;
+
+    // 2. Schwellenwert-Prüfung: Min. 20 Events & 4.4 Sterne Reputation
+    if (activitiesCount >= 20 && avgRating >= 4.4) {
+      await userDoc.ref.update({
+        isCreator: true,
+        creatorApprovedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      console.log(`User ${userId} promoted to Creator status automatically based on metrics.`);
+    }
+  }
+
+  return null;
+});
