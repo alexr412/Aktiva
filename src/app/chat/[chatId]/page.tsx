@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/client';
-import { sendMessage, checkIfUserReviewed, markChatAsRead, leaveActivity } from '@/lib/firebase/firestore';
+import { sendMessage, checkIfUserReviewed, markChatAsRead, removeUserFromChat } from '@/lib/firebase/firestore';
 import type { Message, Chat, Activity, UserProfile } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
@@ -234,12 +234,16 @@ export default function ChatRoomPage() {
     }
   };
 
+  /**
+   * MODUL 20 ARCHITEKTUR-UPDATE:
+   * removeUserFromChat entfernt den Nutzer NUR aus dem Chat-Kontext.
+   * Der Attendance-Record in der Aktivität bleibt für Reviews erhalten.
+   */
   const handleCleanup = async () => {
     if (!chatId || !user) return;
     setIsDeleting(true);
     try {
-      // ARCHITEKTUR-FIX: Nur den aktuellen Nutzer lokal entfernen, statt global zu löschen
-      await leaveActivity(chatId, user.uid);
+      await removeUserFromChat(chatId, user.uid);
       toast({ title: "Chat entfernt", description: "Vielen Dank für dein Feedback." });
       router.push('/');
     } catch (error: any) {

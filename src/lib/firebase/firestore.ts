@@ -710,6 +710,25 @@ export async function leaveActivity(activityId: string, userId: string) {
   }
 }
 
+/**
+ * MODUL 20: Lokales Entfernen eines Nutzers aus dem Chat (Post-Review Cleanup).
+ * Behält den permanenten Attendance-Record in der Aktivität bei.
+ */
+export async function removeUserFromChat(chatId: string, userId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const chatRef = doc(db, 'chats', chatId);
+  try {
+    await updateDoc(chatRef, {
+      participantIds: arrayRemove(userId),
+      [`participantDetails.${userId}`]: deleteField(),
+      [`unreadCount.${userId}`]: deleteField(),
+    });
+  } catch (error) {
+    console.error('Error removing user from chat:', error);
+    throw new Error('Could not remove user from chat.');
+  }
+}
+
 
 export async function deleteActivity(activityId: string) {
   if (!db) throw new Error('Firestore is not initialized.');
