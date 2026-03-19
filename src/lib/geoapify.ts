@@ -124,6 +124,7 @@ export async function fetchNearbyPlaces(
         lon: props.lon,
         rating: rating,
         distance: props.distance,
+        openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null
       } as Place;
     });
   } catch (error) {
@@ -150,6 +151,7 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place | 
         categories: props.categories || [],
         lat: props.lat,
         lon: props.lon,
+        openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null
       } as Place;
     }
   } catch (error) {
@@ -176,6 +178,7 @@ export async function autocompletePlaces(text: string): Promise<Place[]> {
         categories: f.properties.categories || [],
         lat: f.properties.lat,
         lon: f.properties.lon,
+        openingHours: f.properties.opening_hours || f.properties.datasource?.raw?.opening_hours || null
       } as Place));
     }
   } catch (error) {

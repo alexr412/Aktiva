@@ -27,6 +27,7 @@ export interface Place {
   downvotes?: number;
   userVotes?: Record<string, 'up' | 'down'>;
   globalScore?: number;
+  openingHours?: string | null;
 }
 
 export interface FavoritePlace {
@@ -36,6 +37,7 @@ export interface FavoritePlace {
   categories: string[];
   lat: number;
   lon: number;
+  openingHours?: string | null;
 }
 
 export interface Activity {
@@ -144,11 +146,13 @@ export interface GeoapifyFeature {
     lon: number;
     place_id: string;
     distance?: number;
+    opening_hours?: string;
     datasource: {
       raw: {
         rating?: string;
         ['building:part']?: string;
         memorial?: string;
+        opening_hours?: string;
       };
     };
   };

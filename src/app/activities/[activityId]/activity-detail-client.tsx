@@ -6,10 +6,10 @@ import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { joinActivity, cancelActivity } from '@/lib/firebase/firestore';
-import type { Activity } from '@/lib/types';
+import type { Activity, Place } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star, MessageSquare, CreditCard, Camera, Ban, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star, MessageSquare, CreditCard, Camera, Ban, AlertTriangle, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const { toast } = useToast();
 
   const [activity, setActivity] = useState<Activity | null>(null);
+  const [place, setPlace] = useState<Place | null>(null);
   const [loading, setLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -52,7 +53,17 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
     const unsubscribe = onSnapshot(doc(db, 'activities', activityId), (docSnap) => {
       if (docSnap.exists()) {
-        setActivity({ id: docSnap.id, ...docSnap.data() } as Activity);
+        const data = { id: docSnap.id, ...docSnap.data() } as Activity;
+        setActivity(data);
+        
+        // Listener für den zugehörigen Ort (für Opening Hours etc.)
+        if (data.placeId && data.placeId !== 'custom') {
+          onSnapshot(doc(db, 'places', data.placeId), (pSnap) => {
+            if (pSnap.exists()) {
+              setPlace({ id: pSnap.id, ...pSnap.data() } as Place);
+            }
+          });
+        }
       }
       setLoading(false);
     });
@@ -143,6 +154,9 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const checkInStatus = user ? activity.participantDetails?.[user.uid]?.checkInStatus : 'pending';
   const isCancelled = activity.status === 'cancelled';
   const isActive = activity.status === 'active';
+
+  // Formatierung der Opening Hours
+  const openingHours = place?.openingHours || activity.participantDetails?.[activity.hostId]?.isCreator ? 'Datenabfrage läuft...' : null;
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 overflow-y-auto">
@@ -243,6 +257,30 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
             </div>
           </div>
         </div>
+
+        {/* Opening Hours Info Section */}
+        {place?.openingHours && (
+          <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2 text-slate-400">
+                <Clock className="h-4 w-4" />
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest">Betriebszeiten des Ortes</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-slate-50 rounded-2xl p-4">
+                <p className="text-sm font-bold text-slate-700 leading-relaxed">
+                  {place.openingHours.split(';').map((segment, idx) => (
+                    <span key={idx} className="block">{segment.trim()}</span>
+                  ))}
+                </p>
+                <p className="text-[9px] font-medium text-slate-400 mt-3 uppercase tracking-tighter italic">
+                  * Angaben ohne Gewähr. Daten stammen von OpenStreetMap via Geoapify.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Participant Ticket Section */}
         {isParticipant && !isCancelled && (

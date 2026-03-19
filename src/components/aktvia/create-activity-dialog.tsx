@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -11,7 +11,7 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import type { Place, ActivityCategory } from '@/lib/types';
-import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users, CreditCard, Lock, MapPin, Search, Navigation, X, Check } from 'lucide-react';
+import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users, CreditCard, Lock, MapPin, Search, Navigation, X, Check, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -154,6 +154,45 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
       toast({ variant: 'destructive', title: 'GPS Fehler', description: 'Standort konnte nicht ermittelt werden.' });
     });
   };
+
+  /**
+   * Validierungs-Logik für Opening Hours
+   */
+  const openingHoursWarning = useMemo(() => {
+    if (!selectedLocation?.openingHours || isTimeFlexible) return null;
+
+    const [hours, minutes] = selectedTime.split(':').map(Number);
+    const selectedDayIdx = selectedDate.getDay(); // 0=Sun, 1=Mon...
+    const dayMap: Record<number, string> = { 0: 'Su', 1: 'Mo', 2: 'Tu', 3: 'We', 4: 'Th', 5: 'Fr', 6: 'Sa' };
+    const currentDayCode = dayMap[selectedDayIdx];
+
+    const ohStr = selectedLocation.openingHours.toLowerCase();
+    
+    // Einfache Heuristik: Prüfe ob der Wochentag im OSM String vorkommt
+    // Und prüfe grob ob die Zeit im Intervall liegt (sehr vereinfacht für MVP)
+    const segments = ohStr.split(';');
+    const relevantSegment = segments.find(s => s.includes(currentDayCode.toLowerCase()) || s.includes('mo-su') || s.includes('mo-fr') && selectedDayIdx >= 1 && selectedDayIdx <= 5);
+
+    if (relevantSegment) {
+      const timeMatch = relevantSegment.match(/(\d{2}:\d{2})-(\d{2}:\d{2})/);
+      if (timeMatch) {
+        const [startH, startM] = timeMatch[1].split(':').map(Number);
+        const [endH, endM] = timeMatch[2].split(':').map(Number);
+        
+        const currentVal = hours * 60 + minutes;
+        const startVal = startH * 60 + startM;
+        const endVal = endH * 60 + endM;
+
+        if (currentVal < startVal || currentVal > endVal) {
+          return `Der Ort hat laut Daten am ${format(selectedDate, 'EEEE', { locale: de })} von ${timeMatch[1]} bis ${timeMatch[2]} Uhr geöffnet. Deine Zeit liegt evtl. außerhalb.`;
+        }
+      }
+    } else if (ohStr.includes('closed') && ohStr.includes(currentDayCode.toLowerCase())) {
+      return `Der Ort ist am ${format(selectedDate, 'EEEE', { locale: de })} voraussichtlich geschlossen.`;
+    }
+
+    return null;
+  }, [selectedLocation, selectedDate, selectedTime, isTimeFlexible]);
 
   const handleCreate = async () => {
     if (!selectedLocation) return;
@@ -401,6 +440,40 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                 })}
               </div>
             </div>
+
+            {!isDateFlexible && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between rounded-2xl border border-border p-4 shadow-sm bg-card/50">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="time-flexible" className="text-base font-bold">Zeitlich flexibel</Label>
+                    <p className="text-xs text-muted-foreground font-medium">Uhrzeit wird im Chat besprochen</p>
+                  </div>
+                  <Switch id="time-flexible" checked={isTimeFlexible} onCheckedChange={setIsTimeFlexible} />
+                </div>
+
+                {!isTimeFlexible && (
+                  <div className="animate-in slide-in-from-top-2 duration-300">
+                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1 mb-2 block">Uhrzeit wählen</Label>
+                    <Input
+                      type="time"
+                      value={selectedTime}
+                      onChange={(e) => setSelectedTime(e.target.value)}
+                      className="h-14 rounded-2xl border-none bg-secondary/50 font-black text-lg focus-visible:ring-primary/20"
+                    />
+                    
+                    {/* MODUL: Opening Hours Warning */}
+                    {openingHoursWarning && (
+                      <div className="mt-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3 animate-in fade-in zoom-in-95 duration-500">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
+                          {openingHoursWarning}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Sektion 3: Gating (Participants & Payment) */}
