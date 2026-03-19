@@ -22,7 +22,7 @@ import { votePlace } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { getPrimaryIconData } from '@/lib/tag-config';
-import { formatTags } from '@/lib/tag-parser';
+import { formatTags, formatOpeningHours } from '@/lib/tag-parser';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
@@ -160,9 +160,9 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             </div>
             
             {place.openingHours && (
-              <div className="flex items-center gap-1 mt-1 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight">
-                <Clock className="h-2.5 w-2.5" />
-                <span className="truncate max-w-[180px]">{place.openingHours}</span>
+              <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground truncate">
+                <Clock className="h-3 w-3 shrink-0" />
+                <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
               </div>
             )}
           </div>

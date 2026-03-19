@@ -34,7 +34,7 @@ import { AiRecommendation } from './ai-recommendation';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
-import { formatTags } from '@/lib/tag-parser';
+import { formatTags, formatOpeningHours } from '@/lib/tag-parser';
 
 type PlaceDetailsProps = {
     place: Place;
@@ -163,12 +163,14 @@ export function PlaceDetails({ place, onClose }: PlaceDetailsProps) {
                             <PrimaryIcon className="h-12 w-12 md:h-16 md:w-16" style={{ color: primaryStyle.color }} />
                         </div>
                         <h1 className="text-2xl md:text-3xl font-black text-[#0f172a] dark:text-neutral-200 text-center mb-2">{place.name}</h1>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center mb-2 font-medium">{place.address}</p>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400 text-center font-medium">{place.address}</p>
                         
                         {place.openingHours && (
-                          <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider mb-6 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-full border border-emerald-100 dark:border-emerald-800">
-                            <Clock className="w-4 h-4" />
-                            <span>{place.openingHours}</span>
+                          <div className="flex items-start justify-center gap-2 text-sm text-muted-foreground mt-3 mb-6">
+                            <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+                            <span className="text-center leading-snug">
+                              {formatOpeningHours(place.openingHours)}
+                            </span>
                           </div>
                         )}
 

@@ -1,12 +1,10 @@
 'use client';
 
 /**
- * @fileOverview Utility zur Bereinigung und Formatierung von Kategorien-Tags.
+ * @fileOverview Utility zur Bereinigung und Formatierung von Kategorien-Tags und Öffnungszeiten.
  * 
- * - Filtert Tags basierend auf einer Whitelist an validen Root-Kategorien.
- * - Eliminiert hierarchische Redundanzen (z.B. löscht 'tourism', wenn 'tourism.sights' existiert).
- * - Übersetzt Kern-Kategorien über eine erweiterte Lokalisierungs-Matrix ins Deutsche.
- * - Formatiert Fallbacks (Letzter Teil des Pfads, Kapitalisierung, Unterstriche zu Leerzeichen).
+ * - formatTags: Filtert und lokalisiert Kategorien aus Geoapify/OSM.
+ * - formatOpeningHours: Wandelt OSM-Format-Strings in lesbare deutsche Texte um.
  */
 
 export const formatTags = (tags: string[]): string[] => {
@@ -27,7 +25,6 @@ export const formatTags = (tags: string[]): string[] => {
   });
 
   // 2. Hierarchische Redundanzen filtern
-  // Ein Tag bleibt nur, wenn kein anderer Tag existiert, der mit "dieserTag." beginnt.
   const specificTags = cleanedTags.filter(tag1 => {
     return !cleanedTags.some(tag2 => tag2 !== tag1 && tag2.startsWith(tag1 + '.'));
   });
@@ -60,14 +57,39 @@ export const formatTags = (tags: string[]): string[] => {
     'building.entertainment': 'Unterhaltungsstätte'
   };
 
-  // 4. Transformation und Fallback
   return specificTags.map(tag => {
     if (tagDictionary[tag]) {
       return tagDictionary[tag];
     }
-    // Fallback: Extrahiere String nach dem letzten Punkt, ersetze Unterstriche, kapitalisiere
     const parts = tag.split('.');
     const lastPart = parts[parts.length - 1];
     return lastPart.charAt(0).toUpperCase() + lastPart.slice(1).replace(/_/g, ' ');
   });
+};
+
+/**
+ * Formatiert den rohen OSM Opening Hours String in ein lesbares Format.
+ */
+export const formatOpeningHours = (raw?: string | null): string => {
+  if (!raw) return '';
+  
+  // 1. Semikolons durch Trennpunkte ersetzen
+  let formatted = raw.replace(/;/g, ' • ');
+  
+  // 2. Wochentage lokalisieren
+  const dayMap: Record<string, string> = {
+    'Mo': 'Mo', 'Tu': 'Di', 'We': 'Mi', 'Th': 'Do', 'Fr': 'Fr', 'Sa': 'Sa', 'Su': 'So',
+    'PH': 'Feiertage', '24/7': '24/7'
+  };
+  
+  Object.entries(dayMap).forEach(([en, de]) => {
+    const regex = new RegExp(`\\b${en}\\b`, 'g');
+    formatted = formatted.replace(regex, de);
+  });
+
+  // 3. Schlüsselbegriffe bereinigen
+  formatted = formatted.replace(/\boff\b/gi, 'geschlossen');
+  formatted = formatted.replace(/\bopen\b/gi, 'geöffnet');
+
+  return formatted;
 };
