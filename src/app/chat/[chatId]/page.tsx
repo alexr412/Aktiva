@@ -42,10 +42,10 @@ const DateSeparator = ({ date }: { date: Date }) => {
   return (
     <div className="relative my-6">
       <div className="absolute inset-0 flex items-center">
-        <span className="w-full border-t border-slate-200" />
+        <span className="w-full border-t border-slate-200 dark:border-neutral-800" />
       </div>
       <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black">
-        <span className="bg-slate-50 px-3 text-slate-400">
+        <span className="bg-slate-50 dark:bg-black/95 px-3 text-slate-400">
           {formatDate(date)}
         </span>
       </div>
@@ -99,14 +99,14 @@ const MessageBubble = ({
         <div className={cn(
           "max-w-full px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-all inline-block shadow-sm",
           isOwnMessage 
-            ? "self-end bg-primary text-white rounded-tr-sm" 
-            : "self-start bg-white dark:bg-neutral-800 text-slate-800 dark:text-neutral-200 border border-slate-100 dark:border-neutral-700 rounded-tl-sm"
+            ? "self-end bg-primary text-primary-foreground rounded-tr-sm" 
+            : "self-start bg-slate-100 dark:bg-neutral-800 text-slate-900 dark:text-neutral-100 border border-slate-100 dark:border-neutral-700 rounded-tl-sm"
         )}>
           {message.text}
           <div className="flex justify-end mt-1">
             <span className={cn(
               "text-[9px] font-bold uppercase",
-              isOwnMessage ? "text-white/60" : "text-slate-400"
+              isOwnMessage ? "text-primary-foreground/60" : "text-muted-foreground"
             )}>
               {message.sentAt ? format(message.sentAt.toDate(), 'p') : '...'}
             </span>
@@ -254,8 +254,8 @@ export default function ChatRoomPage() {
 
   if (loading || authLoading) {
     return (
-      <div className="flex flex-col h-full bg-slate-50">
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-white/80 px-4 backdrop-blur-sm shadow-sm">
+      <div className="flex flex-col h-full bg-slate-50 dark:bg-neutral-950">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-white/80 dark:bg-neutral-900/80 px-4 backdrop-blur-sm shadow-sm">
           <Skeleton className="h-8 w-8 rounded-full" />
           <Skeleton className="h-6 w-32 rounded-xl" />
         </header>
@@ -272,9 +272,9 @@ export default function ChatRoomPage() {
 
   return (
     <>
-      <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-white/90 px-2 backdrop-blur-md shadow-sm">
-          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500" onClick={() => router.back()}>
+      <div className="flex flex-col h-full bg-slate-50 dark:bg-black/95 overflow-hidden">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-white/90 dark:bg-neutral-900/90 px-2 backdrop-blur-md shadow-sm">
+          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500 dark:text-neutral-400" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           
@@ -282,14 +282,14 @@ export default function ChatRoomPage() {
             {isDirectMessage && otherUser ? (
                 <Link href={`/profile/${otherUser.uid}`} className="flex items-center gap-2.5 truncate hover:opacity-80 transition-opacity cursor-pointer">
                     <Avatar className={cn(
-                      "h-9 w-9 shadow-sm border border-white",
+                      "h-9 w-9 shadow-sm border border-white dark:border-neutral-800",
                       otherUser.isPremium ? "ring-2 ring-amber-400" : (otherUser.isSupporter ? "ring-2 ring-pink-400" : "")
                     )}>
                         <AvatarImage src={otherUser.photoURL || undefined} />
                         <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">{otherUser.displayName?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex items-center gap-1.5 truncate">
-                      <h2 className="font-black text-slate-900 truncate tracking-tight">{otherUser.displayName}</h2>
+                      <h2 className="font-black text-slate-900 dark:text-neutral-100 truncate tracking-tight">{otherUser.displayName}</h2>
                       <UserBadge isPremium={otherUser.isPremium} isSupporter={otherUser.isSupporter} size="sm" />
                     </div>
                 </Link>
@@ -298,13 +298,13 @@ export default function ChatRoomPage() {
                   <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <span className="text-primary font-black text-xs uppercase">{chat?.placeName?.charAt(0)}</span>
                   </div>
-                  <h2 className="font-black text-slate-900 truncate tracking-tight">{chat?.placeName}</h2>
+                  <h2 className="font-black text-slate-900 dark:text-neutral-100 truncate tracking-tight">{chat?.placeName}</h2>
                 </div>
             )}
           </div>
 
           {!isDirectMessage && (
-              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500" onClick={() => setInfoSheetOpen(true)}>
+              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500 dark:text-neutral-400" onClick={() => setInfoSheetOpen(true)}>
                 <MoreVertical className="h-5 w-5" />
                 <span className='sr-only'>Chat Info</span>
               </Button>
@@ -342,7 +342,7 @@ export default function ChatRoomPage() {
         </div>
       </div>
 
-      <footer className="fixed bottom-[72px] left-0 right-0 z-10 mx-auto w-full max-w-3xl bg-white shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.05)] border-t border-slate-100">
+      <footer className="fixed bottom-[72px] left-0 right-0 z-10 mx-auto w-full max-w-3xl bg-white dark:bg-neutral-900 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.05)] border-t border-slate-200 dark:border-neutral-800 transition-colors">
         <div className="p-3 sm:p-4">
           <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
             <Input
@@ -350,14 +350,14 @@ export default function ChatRoomPage() {
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Nachricht schreiben..."
               autoComplete="off"
-              className="w-full rounded-full bg-slate-50 border-slate-200 pr-12 h-12 text-sm font-medium focus-visible:ring-primary/20"
+              className="w-full rounded-full bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 pr-12 h-12 text-sm font-medium focus-visible:ring-primary/20 text-foreground"
               disabled={activity?.status === 'completed'}
             />
             <Button
               type="submit"
               size="icon"
               disabled={!newMessage.trim() || activity?.status === 'completed'}
-              className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20 flex-shrink-0 transition-transform active:scale-95"
+              className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 flex-shrink-0 transition-transform active:scale-95"
             >
               <Send className="h-4 w-4" />
               <span className="sr-only">Senden</span>
@@ -390,19 +390,19 @@ export default function ChatRoomPage() {
 
       {/* MODUL 20: Post-Review Cleanup AlertDialog */}
       <AlertDialog open={showCleanupDialog} onOpenChange={setShowCleanupDialog}>
-        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl dark:bg-neutral-900">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-black text-center">Treffen beendet</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-base font-medium">
+            <AlertDialogTitle className="text-2xl font-black text-center dark:text-neutral-100">Treffen beendet</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-base font-medium dark:text-neutral-400">
               Möchtest du den zugehörigen Chat jetzt aus deiner Liste entfernen?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-col gap-3 sm:gap-0 mt-6">
-            <AlertDialogCancel className="rounded-xl font-bold h-12">Später</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl font-bold h-12 dark:bg-neutral-800 dark:text-neutral-300">Später</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleCleanup} 
               disabled={isDeleting}
-              className="rounded-xl font-black h-12 bg-slate-900 hover:bg-black shadow-xl"
+              className="rounded-xl font-black h-12 bg-slate-900 dark:bg-primary hover:bg-black dark:hover:bg-primary/90 shadow-xl"
             >
               {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ja, jetzt entfernen"}
             </AlertDialogAction>

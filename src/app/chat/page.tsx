@@ -18,7 +18,7 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { cn } from '@/lib/utils';
 
 const ChatListItemSkeleton = () => (
-    <div className="bg-white rounded-2xl p-4 mb-3 shadow-sm flex items-center gap-4 border border-slate-100/50">
+    <div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 mb-3 shadow-sm flex items-center gap-4 border border-slate-100/50 dark:border-neutral-800">
         <Skeleton className="h-14 w-14 rounded-full shrink-0" />
         <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-1/3" />
@@ -32,8 +32,8 @@ const EmptyState = () => (
     <div className="bg-primary/10 p-6 rounded-[2.5rem]">
       <Users className="h-12 w-12 text-primary" />
     </div>
-    <h2 className="text-xl font-black text-slate-900">Noch keine Chats</h2>
-    <p className="text-slate-500 font-medium max-w-xs">
+    <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100">Noch keine Chats</h2>
+    <p className="text-slate-500 dark:text-neutral-400 font-medium max-w-xs">
       Tritt einer Aktivität bei oder füge Freunde hinzu, um loszulegen.
     </p>
     <Button asChild className="rounded-2xl h-12 px-8 font-black shadow-lg shadow-primary/20">
@@ -155,8 +155,8 @@ export default function ChatPage() {
               key={chat.id} 
               href={`/chat/${chat.id}`} 
               className={cn(
-                "bg-white rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-4 border border-slate-100/50",
-                hasUnread && "border-primary/20 bg-primary/[0.02]"
+                "bg-white dark:bg-neutral-900 rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-4 border border-slate-100/50 dark:border-neutral-800",
+                hasUnread && "border-primary/20 bg-primary/[0.02] dark:bg-primary/[0.05]"
               )}
             >
               {/* Avatar Container */}
@@ -175,7 +175,7 @@ export default function ChatPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline mb-0.5">
                   <h3 className={cn(
-                    "text-base font-black text-slate-900 truncate pr-2",
+                    "text-base font-black text-slate-900 dark:text-neutral-100 truncate pr-2",
                     hasUnread && "text-primary"
                   )}>
                     {chatName}
@@ -183,7 +183,7 @@ export default function ChatPage() {
                   {chat.lastMessage?.sentAt && (
                     <time className={cn(
                       "shrink-0 text-[10px] font-bold uppercase tracking-wider",
-                      hasUnread ? "text-primary" : "text-slate-400"
+                      hasUnread ? "text-primary" : "text-muted-foreground"
                     )}>
                       {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: false }).replace('about ', '')}
                     </time>
@@ -193,7 +193,7 @@ export default function ChatPage() {
                 <div className="flex items-center justify-between gap-2">
                   <p className={cn(
                     "truncate text-sm font-medium",
-                    hasUnread ? "text-slate-700" : "text-slate-500"
+                    hasUnread ? "text-slate-700 dark:text-slate-300" : "text-muted-foreground"
                   )}>
                     {chat.lastMessage ? (
                       <>
@@ -218,15 +218,15 @@ export default function ChatPage() {
 
   return (
     <>
-      <div className="flex h-full flex-col bg-slate-50">
-          <header className="sticky top-0 z-10 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md shrink-0">
+      <div className="flex h-full flex-col bg-slate-50 dark:bg-neutral-950">
+          <header className="sticky top-0 z-10 w-full border-b border-slate-100 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shrink-0">
             <div className="px-4 flex h-16 items-center justify-between max-w-7xl mx-auto w-full">
-              <h1 className="text-2xl font-black tracking-tight text-slate-900">Chats</h1>
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-neutral-100">Chats</h1>
               <div className="flex items-center gap-2">
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-10 w-10 rounded-2xl bg-slate-100/50 hover:bg-slate-100 text-slate-600" 
+                  className="h-10 w-10 rounded-2xl bg-slate-100/50 dark:bg-neutral-800/50 hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-600 dark:text-neutral-400" 
                   onClick={() => setShowAddFriendDialog(true)}
                 >
                     <UserPlus className="h-5 w-5" />

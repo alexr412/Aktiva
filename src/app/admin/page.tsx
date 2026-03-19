@@ -29,13 +29,13 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!userProfile || userProfile.role !== 'admin') {
+      if (!userProfile || (userProfile.role !== 'admin' && !userProfile.isAdmin)) {
         router.replace('/');
         return;
       }
     }
 
-    if (!db || !userProfile || userProfile.role !== 'admin') return;
+    if (!db || !userProfile || (userProfile.role !== 'admin' && !userProfile.isAdmin)) return;
 
     const qRefunds = query(collection(db, 'refunds'), where('status', '==', 'pending'));
     const unsubRefunds = onSnapshot(qRefunds, (snap) => {
@@ -117,7 +117,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  if (authLoading || !userProfile || userProfile.role !== 'admin') {
+  if (authLoading || !userProfile || (userProfile.role !== 'admin' && !userProfile.isAdmin)) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -128,11 +128,11 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
       <header className="flex flex-col gap-2">
-        <h2 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+        <h2 className="text-4xl font-black text-slate-900 dark:text-neutral-100 tracking-tight flex items-center gap-3">
           Dashboard
           <Badge className="bg-red-500 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1">Admin Mode</Badge>
         </h2>
-        <p className="text-slate-500 font-medium">Zentrale Steuerung der Plattform-Integrität und Monetarisierung.</p>
+        <p className="text-slate-500 dark:text-neutral-400 font-medium">Zentrale Steuerung der Plattform-Integrität und Monetarisierung.</p>
       </header>
 
       {/* MODUL 18: Automated Moderation Queue */}
@@ -143,17 +143,17 @@ export default function AdminDashboardPage() {
         </div>
         <div className="grid grid-cols-1 gap-4">
           {moderationTasks.length === 0 ? (
-            <Card className="border-dashed border-2 border-slate-200 p-8 text-center rounded-3xl">
-              <p className="text-slate-400 font-bold">Keine kritischen Aktivitäten zur Prüfung.</p>
+            <Card className="border-dashed border-2 border-slate-200 dark:border-neutral-800 p-8 text-center rounded-3xl bg-transparent">
+              <p className="text-slate-400 dark:text-neutral-500 font-bold">Keine kritischen Aktivitäten zur Prüfung.</p>
             </Card>
           ) : (
             moderationTasks.map((task) => (
-              <Card key={task.id} className="border-none shadow-md rounded-3xl bg-white overflow-hidden">
+              <Card key={task.id} className="border-none shadow-md rounded-3xl bg-white dark:bg-neutral-900 overflow-hidden">
                 <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="flex-1">
-                    <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 mb-2">Automated Trigger</Badge>
-                    <h4 className="font-black text-slate-900">Aktivitäts-ID: {task.reportedEntityId}</h4>
-                    <p className="text-xs text-slate-500 mt-1">Grund: {task.reason}</p>
+                    <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 dark:bg-orange-950/30 mb-2">Automated Trigger</Badge>
+                    <h4 className="font-black text-slate-900 dark:text-neutral-100">Aktivitäts-ID: {task.reportedEntityId}</h4>
+                    <p className="text-xs text-slate-500 dark:text-neutral-400 mt-1">Grund: {task.reason}</p>
                   </div>
                   <div className="flex gap-2">
                     <Button 
@@ -189,42 +189,42 @@ export default function AdminDashboardPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {creatorApps.length === 0 ? (
-            <Card className="col-span-full border-dashed border-2 border-slate-200 p-8 text-center rounded-3xl">
-              <p className="text-slate-400 font-bold">Keine offenen Bewerbungen.</p>
+            <Card className="col-span-full border-dashed border-2 border-slate-200 dark:border-neutral-800 p-8 text-center rounded-3xl bg-transparent">
+              <p className="text-slate-400 dark:text-neutral-500 font-bold">Keine offenen Bewerbungen.</p>
             </Card>
           ) : (
             creatorApps.map((app) => (
-              <Card key={app.id} className="border-none shadow-md rounded-[2.5rem] bg-white overflow-hidden">
+              <Card key={app.id} className="border-none shadow-md rounded-[2.5rem] bg-white dark:bg-neutral-900 overflow-hidden">
                 <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-xl font-black text-slate-900">{app.userDisplayName}</CardTitle>
-                      <CardDescription className="text-[10px] font-bold uppercase text-slate-400 mt-1">ID: {app.userId.slice(0,8)}...</CardDescription>
+                      <CardTitle className="text-xl font-black text-slate-900 dark:text-neutral-100">{app.userDisplayName}</CardTitle>
+                      <CardDescription className="text-[10px] font-bold uppercase text-slate-400 dark:text-neutral-500 mt-1">ID: {app.userId.slice(0,8)}...</CardDescription>
                     </div>
-                    <Badge className="bg-blue-50 text-blue-600 font-black text-[10px] uppercase">Pending</Badge>
+                    <Badge className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-black text-[10px] uppercase">Pending</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 p-3 rounded-2xl text-center">
+                    <div className="bg-slate-50 dark:bg-neutral-800/50 p-3 rounded-2xl text-center">
                       <div className="flex items-center justify-center gap-1 text-amber-500 mb-1">
                         <Star className="h-3 w-3 fill-amber-500" />
                         <span className="text-[10px] font-black uppercase">Rating</span>
                       </div>
-                      <span className="text-xl font-black">{app.averageRating.toFixed(1)}</span>
+                      <span className="text-xl font-black text-foreground">{app.averageRating.toFixed(1)}</span>
                     </div>
-                    <div className="bg-slate-50 p-3 rounded-2xl text-center">
+                    <div className="bg-slate-50 dark:bg-neutral-800/50 p-3 rounded-2xl text-center">
                       <div className="flex items-center justify-center gap-1 text-primary mb-1">
                         <Activity className="h-3 w-3" />
                         <span className="text-[10px] font-black uppercase">Events</span>
                       </div>
-                      <span className="text-xl font-black">{app.activitiesCount}</span>
+                      <span className="text-xl font-black text-foreground">{app.activitiesCount}</span>
                     </div>
                   </div>
                   <Button 
                     onClick={() => handleApproveCreator(app.id, app.userId)}
                     disabled={actionLoading === app.id}
-                    className="w-full h-12 rounded-2xl font-black uppercase tracking-widest bg-slate-900 shadow-xl shadow-slate-200"
+                    className="w-full h-12 rounded-2xl font-black uppercase tracking-widest bg-slate-900 dark:bg-neutral-800 text-white shadow-xl shadow-slate-200 dark:shadow-none"
                   >
                     {actionLoading === app.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve Creator"}
                   </Button>
@@ -240,36 +240,36 @@ export default function AdminDashboardPage() {
           <RotateCcw className="h-5 w-5" />
           <h3 className="font-black text-lg uppercase tracking-tight">Refund-Pipeline</h3>
         </div>
-        <Card className="border-none shadow-md rounded-[2rem] overflow-hidden bg-white">
+        <Card className="border-none shadow-md rounded-[2rem] overflow-hidden bg-white dark:bg-neutral-900">
           <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow className="border-slate-100">
-                  <TableHead className="font-black text-[10px] uppercase text-slate-400 p-6">Refund-ID</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase text-slate-400">Activity-ID</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase text-slate-400">User-ID</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase text-slate-400">Amount</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase text-slate-400 text-right pr-6">Aktion</TableHead>
+              <TableHeader className="bg-slate-50 dark:bg-neutral-800/50">
+                <TableRow className="border-slate-100 dark:border-neutral-800">
+                  <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500 p-6">Refund-ID</TableHead>
+                  <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500">Activity-ID</TableHead>
+                  <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500">User-ID</TableHead>
+                  <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500">Amount</TableHead>
+                  <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500 text-right pr-6">Aktion</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {refunds.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center text-slate-400 font-bold italic">Keine ausstehenden Rückzahlungen.</TableCell>
+                    <TableCell colSpan={5} className="h-32 text-center text-slate-400 dark:text-neutral-500 font-bold italic">Keine ausstehenden Rückzahlungen.</TableCell>
                   </TableRow>
                 ) : (
                   refunds.map((refund) => (
-                    <TableRow key={refund.id} className="border-slate-50">
-                      <TableCell className="font-mono text-[10px] text-slate-500 p-6">{refund.id}</TableCell>
-                      <TableCell className="font-mono text-[10px] text-slate-500">{refund.activityId}</TableCell>
-                      <TableCell className="font-mono text-[10px] text-slate-500">{refund.userId}</TableCell>
-                      <TableCell className="font-black text-slate-900">€{refund.amount.toFixed(2)}</TableCell>
+                    <TableRow key={refund.id} className="border-slate-50 dark:border-neutral-800">
+                      <TableCell className="font-mono text-[10px] text-slate-500 dark:text-neutral-400 p-6">{refund.id}</TableCell>
+                      <TableCell className="font-mono text-[10px] text-slate-500 dark:text-neutral-400">{refund.activityId}</TableCell>
+                      <TableCell className="font-mono text-[10px] text-slate-500 dark:text-neutral-400">{refund.userId}</TableCell>
+                      <TableCell className="font-black text-slate-900 dark:text-neutral-100">€{refund.amount.toFixed(2)}</TableCell>
                       <TableCell className="text-right pr-6">
                         <Button 
                           onClick={() => handleProcessRefund(refund.id)}
                           disabled={actionLoading === refund.id}
                           size="sm"
-                          className="rounded-xl font-black text-[10px] uppercase tracking-widest bg-slate-900"
+                          className="rounded-xl font-black text-[10px] uppercase tracking-widest bg-slate-900 dark:bg-neutral-800 text-white"
                         >
                           {actionLoading === refund.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Verarbeiten"}
                         </Button>
@@ -290,28 +290,28 @@ export default function AdminDashboardPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {flaggedUsers.map((u) => (
-            <Card key={u.uid} className="border-none shadow-md rounded-[2.5rem] bg-white overflow-hidden">
+            <Card key={u.uid} className="border-none shadow-md rounded-[2.5rem] bg-white dark:bg-neutral-900 overflow-hidden">
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12 border-2 border-slate-100">
+                  <Avatar className="h-12 w-12 border-2 border-slate-100 dark:border-neutral-800">
                     <AvatarImage src={u.photoURL || undefined} />
-                    <AvatarFallback className="font-black bg-red-50 text-red-500">{u.displayName?.charAt(0)}</AvatarFallback>
+                    <AvatarFallback className="font-black bg-red-50 dark:bg-red-950/30 text-red-500">{u.displayName?.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <CardTitle className="text-lg font-black text-slate-900 truncate">{u.displayName}</CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase text-slate-400">UID: {u.uid.slice(0,8)}...</CardDescription>
+                    <CardTitle className="text-lg font-black text-slate-900 dark:text-neutral-100 truncate">{u.displayName}</CardTitle>
+                    <CardDescription className="text-[10px] font-bold uppercase text-slate-400 dark:text-neutral-500">UID: {u.uid.slice(0,8)}...</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl">
-                  <div className="text-center flex-1 border-r border-slate-200">
-                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Rating</p>
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-neutral-800/50 p-4 rounded-2xl">
+                  <div className="text-center flex-1 border-r border-slate-200 dark:border-neutral-700">
+                    <p className="text-[10px] font-black uppercase text-slate-400 dark:text-neutral-500 mb-1">Rating</p>
                     <p className="text-2xl font-black text-red-600">{u.averageRating?.toFixed(1)}</p>
                   </div>
                   <div className="text-center flex-1">
-                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Reviews</p>
-                    <p className="text-2xl font-black text-slate-900">{u.ratingCount}</p>
+                    <p className="text-[10px] font-black uppercase text-slate-400 dark:text-neutral-500 mb-1">Reviews</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-neutral-100">{u.ratingCount}</p>
                   </div>
                 </div>
                 <Button 
@@ -329,11 +329,11 @@ export default function AdminDashboardPage() {
         </div>
       </section>
 
-      <div className="bg-amber-50 border border-amber-100 p-6 rounded-[2rem] flex items-start gap-4">
-        <div className="bg-white p-2 rounded-xl shadow-sm shrink-0">
+      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 p-6 rounded-[2rem] flex items-start gap-4">
+        <div className="bg-white dark:bg-neutral-800 p-2 rounded-xl shadow-sm shrink-0">
           <ShieldAlert className="h-5 w-5 text-amber-600" />
         </div>
-        <p className="text-xs text-amber-800/70 font-medium leading-relaxed italic">
+        <p className="text-xs text-amber-800/70 dark:text-amber-400 font-medium leading-relaxed italic">
           Admin-Compliance: Das Sperren eines Nutzers erfolgt permanent. Rückzahlungen sollten erst bestätigt werden, wenn die externe Transaktion verifiziert wurde. Creator-Bewerbungen setzen hohe Aktivität und Reputation voraus.
         </p>
       </div>
