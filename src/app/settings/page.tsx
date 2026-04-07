@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2, ShieldBan } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -14,7 +14,7 @@ import { sendPasswordReset, deleteAccount, signOut } from '@/lib/firebase/auth';
 import { deleteUserDocument, updateUserProfile, submitCreatorApplication } from '@/lib/firebase/firestore';
 import { requestAndGetFCMToken } from '@/lib/firebase/messaging';
 import { db } from '@/lib/firebase/client';
-import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, arrayUnion, arrayRemove } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +67,7 @@ export default function SettingsPage() {
       if (!user || !db) return;
 
       const fetchStats = async () => {
+        if (!db) return;
         const q = query(collection(db, 'activities'), where('hostId', '==', user.uid));
         const snap = await getDocs(q);
         setActivitiesCount(snap.size);
@@ -206,6 +207,8 @@ export default function SettingsPage() {
             });
         }
     };
+
+
 
     const canApply = activitiesCount >= REQUIRED_ACTIVITIES && (userProfile?.averageRating || 0) >= REQUIRED_RATING;
 

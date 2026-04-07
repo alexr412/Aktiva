@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 export function ThemeSelector() {
     const { theme, setTheme, mode, toggleMode } = useTheme();
     const { userProfile } = useAuth();
-    const isPremium = userProfile?.isPremium || false;
+    const isAdmin = userProfile?.role === 'admin';
+    const isPremium = userProfile?.isPremium || isAdmin;
 
     return (
         <div className="rounded-lg border bg-card p-4">

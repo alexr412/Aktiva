@@ -31,7 +31,7 @@ export const availableTabs = [
     query: [
       "tourism.sights", "heritage", "building.historic", 
       "man_made.lighthouse", "man_made.windmill", "man_made.watermill",
-      "heritage.ruins", "tourism.sights.castle", "tourism.sights.fortress", 
+      "tourism.sights.castle", "tourism.sights.fort", 
       "tourism.sights.archaeological_site"
     ], 
     icon: Landmark 

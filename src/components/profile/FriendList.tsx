@@ -95,8 +95,15 @@ export default function FriendList({ friendIds }: FriendListProps) {
     );
   }
 
-  // Architektur-Fix: Deduplizierung zur Vermeidung von React Key-Kollisionen
-  const uniqueFriends = Array.from(new Map(friends.map(f => [f.uid, f])).values());
+  // Architektur-Fix: Robuste Deduplizierung zur Vermeidung von React Key-Kollisionen
+  // Filtert ungültige Profile und nutzt eine Map für eindeutige UIDs
+  const uniqueFriends = Array.from(
+    new Map(
+      friends
+        .filter(f => f && (f.uid || (f as any).id))
+        .map(f => [f.uid || (f as any).id, f])
+    ).values()
+  );
 
   return (
     <div className="flex flex-col gap-4 mb-12 w-full px-2">
@@ -104,10 +111,12 @@ export default function FriendList({ friendIds }: FriendListProps) {
         Freunde <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-lg text-xs">{uniqueFriends.length}</span>
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {uniqueFriends.map(friend => {
+        {uniqueFriends.map((friend, index) => {
           const proximity = getProximityLabel(friend);
+          const friendKey = friend.uid || (friend as any).id || `fallback-${index}`;
+          
           return (
-            <Link href={`/profile/${friend.uid}`} key={friend.uid} className="block group">
+            <Link href={`/profile/${friend.uid || (friend as any).id}`} key={friendKey} className="block group">
               <Card className="flex items-center gap-4 p-4 border-none rounded-[2rem] bg-white dark:bg-neutral-900 group-hover:shadow-md transition-all cursor-pointer shadow-sm relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-primary/20 group-hover:bg-primary transition-colors" />
                 <div className="p-1 bg-secondary rounded-full">

@@ -23,6 +23,7 @@ import {
   increment,
   documentId,
 } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, Activity, Chat, ActivityCategory } from '@/lib/types';
 
@@ -81,11 +82,14 @@ export async function createUserProfileDocument(user: User) {
     averageRating: 0, 
     ratingCount: 0, 
     kycStatus: 'unverified', 
+    blacklist: {
+      soft: [],
+      hard: []
+    },
     proximitySettings: {
       enabled: false,
       radiusKm: 5
     },
-    isAdmin: false,
     role: 'user',
     isBanned: false
   };
@@ -278,133 +282,165 @@ export async function createActivity({
  * MODUL 18: The Balance Engine Core logic for Activities.
  * Berechnet globalScore ($S_coll$) und Category-Affinity ($V_user$).
  */
-export async function voteActivity(activityId: string, userId: string, type: 'up' | 'down' | 'none') {
+export async function castActivityVote(activityId: string, userId: string, type: 'up' | 'down' | 'superboost', userRole?: string): Promise<number> {
   if (!db) throw new Error('Firestore is not initialized.');
   const activityRef = doc(db, 'activities', activityId);
-  const userRef = doc(db, 'users', userId);
 
-  await runTransaction(db, async (transaction) => {
+  return await runTransaction(db, async (transaction) => {
     const activitySnap = await transaction.get(activityRef);
     if (!activitySnap.exists()) throw new Error("Activity not found.");
 
     const activityData = activitySnap.data() as Activity;
     const userVotes = activityData.userVotes || {};
     const previousVote = userVotes[userId];
+    const isAdmin = userRole === 'admin';
+    const weight = isAdmin ? 10 : 1;
 
-    if (previousVote === type) return;
+    let scoreAdjustment = 0;
 
-    let upvoteChange = 0;
-    let downvoteChange = 0;
+    // 1. Handle Toggle-Off (Identical Click)
+    if (previousVote === type) {
+      if (type === 'up') scoreAdjustment = -weight;
+      else if (type === 'down') scoreAdjustment = weight;
+      else if (type === 'superboost') scoreAdjustment = -10; // Superboost is always 10
 
-    if (previousVote === 'up') upvoteChange -= 1;
-    if (previousVote === 'down') downvoteChange -= 1;
-
-    if (type === 'up') {
-      upvoteChange += 1;
-      userVotes[userId] = 'up';
-    } else if (type === 'down') {
-      downvoteChange += 1;
-      userVotes[userId] = 'down';
-    } else {
-      delete userVotes[userId];
+      const finalScore = (activityData.communityScore || 0) + scoreAdjustment;
+      transaction.update(activityRef, {
+        [`userVotes.${userId}`]: deleteField(),
+        communityScore: finalScore,
+        updatedAt: serverTimestamp()
+      });
+      return finalScore;
     }
 
-    const newU = (activityData.upvotes || 0) + upvoteChange;
-    const newD = (activityData.downvotes || 0) + downvoteChange;
-    
-    // Formel: S_coll = (U - D) / (U + D + alpha)
-    const globalScore = (newU - newD) / (newU + newD + SMOOTHING_FACTOR);
+    // 2. Handle Vote Change or New Vote
+    // Revert previous
+    if (previousVote === 'up') scoreAdjustment -= weight;
+    else if (previousVote === 'down') scoreAdjustment += weight;
+    else if (previousVote === 'superboost') scoreAdjustment -= 10;
 
-    // ADMIN TRIGGER LOGIK
-    // Bedingung: U+D > 10 UND D / (U+1) > 2.0
-    if ((newU + newD) > 10 && (newD / (newU + 1)) > 2.0 && !activityData.isVerified) {
+    // Apply new
+    if (type === 'up') scoreAdjustment += weight;
+    else if (type === 'down') scoreAdjustment -= weight;
+    else if (type === 'superboost') {
+      if (!isAdmin) throw new Error("Nur Administratoren können den Super-Boost nutzen.");
+      scoreAdjustment += 10;
+    }
+
+    const newCommunityScore = (activityData.communityScore || 0) + scoreAdjustment;
+
+    transaction.update(activityRef, {
+      communityScore: newCommunityScore,
+      [`userVotes.${userId}`]: type,
+      updatedAt: serverTimestamp()
+    });
+
+    // ADMIN TRIGGER LOGIK (Beibehalten für automatische Moderation)
+    if (newCommunityScore <= -5 && !activityData.isVerified) {
       const reportRef = doc(collection(db!, 'reports'));
       transaction.set(reportRef, {
         reportedEntityId: activityId,
         entityType: 'activity',
-        reason: 'Automated Moderation Trigger: Critical Vote Ratio',
+        reason: 'Automated Moderation Trigger: Critical Community Score',
         status: 'moderation_review',
         createdAt: serverTimestamp()
       });
     }
-
-    transaction.update(activityRef, {
-      upvotes: newU,
-      downvotes: newD,
-      userVotes: userVotes,
-      globalScore: globalScore
-    });
-
-    // V_user Logik: Category Affinity Update
-    const cat = activityData.category || 'Sonstiges';
-    let affinityChange = 0;
-    
-    // Vorheriges rückgängig machen
-    if (previousVote === 'up') affinityChange -= 1;
-    if (previousVote === 'down') affinityChange += 2; // Da Downvote -2 wiegt
-
-    // Neues hinzufügen
-    if (type === 'up') affinityChange += 1;
-    if (type === 'down') affinityChange -= 2;
-
-    if (affinityChange !== 0) {
-      transaction.update(userRef, {
-        [`categoryAffinities.${cat}`]: increment(affinityChange)
-      });
-    }
+    return newCommunityScore;
   });
 }
 
 /**
  * MODUL 18: The Balance Engine Core logic for Places.
  */
-export async function votePlace(placeId: string, userId: string, type: 'up' | 'down' | 'none') {
+export async function votePlace(placeId: string, userId: string, type: 'up' | 'down' | 'superboost' | 'none', userRole?: string): Promise<number> {
   if (!db) throw new Error('Firestore is not initialized.');
   const placeRef = doc(db, 'places', placeId);
 
-  await runTransaction(db, async (transaction) => {
+  return await runTransaction(db, async (transaction) => {
     const placeSnap = await transaction.get(placeRef);
     
-    let data: any = { upvotes: 0, downvotes: 0, userVotes: {} };
+    let data: any = { upvotes: 0, downvotes: 0, communityScore: 0, userVotes: {} };
     if (placeSnap.exists()) {
       data = placeSnap.data();
     }
 
     const userVotes = data.userVotes || {};
     const previousVote = userVotes[userId];
+    const isAdmin = userRole === 'admin';
+    const weight = isAdmin ? 10 : 1;
 
-    if (previousVote === type) return;
+    if (previousVote === type) {
+      // Toggle Off
+      let scoreCorrection = 0;
+      let uChange = 0;
+      let dChange = 0;
+
+      if (type === 'up') { scoreCorrection = -weight; uChange = -1; }
+      else if (type === 'down') { scoreCorrection = weight; dChange = -1; }
+      else if (type === 'superboost') { scoreCorrection = -10; }
+
+      const finalScore = (data.communityScore || 0) + scoreCorrection;
+      transaction.update(placeRef, {
+        [`userVotes.${userId}`]: deleteField(),
+        communityScore: finalScore,
+        upvotes: increment(uChange),
+        downvotes: increment(dChange)
+      });
+      return finalScore;
+    }
 
     let upvoteChange = 0;
     let downvoteChange = 0;
+    let scoreAdjustment = 0;
 
-    if (previousVote === 'up') upvoteChange -= 1;
-    if (previousVote === 'down') downvoteChange -= 1;
+    // Revert previous
+    if (previousVote === 'up') { upvoteChange -= 1; scoreAdjustment -= weight; }
+    else if (previousVote === 'down') { downvoteChange -= 1; scoreAdjustment += weight; }
+    else if (previousVote === 'superboost') { scoreAdjustment -= 10; }
 
+    // Apply new
     if (type === 'up') {
       upvoteChange += 1;
-      userVotes[userId] = 'up';
+      scoreAdjustment += weight;
     } else if (type === 'down') {
       downvoteChange += 1;
-      userVotes[userId] = 'down';
-    } else {
-      delete userVotes[userId];
+      scoreAdjustment -= weight;
+    } else if (type === 'superboost') {
+      if (!isAdmin) throw new Error("Nur Administratoren können den Super-Boost nutzen.");
+      scoreAdjustment += 10;
     }
 
     const newU = (data.upvotes || 0) + upvoteChange;
     const newD = (data.downvotes || 0) + downvoteChange;
     const globalScore = (newU - newD) / (newU + newD + SMOOTHING_FACTOR);
+    const finalScore = (data.communityScore || 0) + scoreAdjustment;
 
-    transaction.set(placeRef, {
+    const updates: any = {
       upvotes: newU,
       downvotes: newD,
-      userVotes: userVotes,
+      communityScore: finalScore,
       globalScore: globalScore
-    }, { merge: true });
+    };
+
+    if (placeSnap.exists()) {
+      if (type === 'none') {
+        updates[`userVotes.${userId}`] = deleteField();
+      } else {
+        updates[`userVotes.${userId}`] = type;
+      }
+      transaction.update(placeRef, updates);
+    } else {
+      if (type !== 'none') {
+        updates.userVotes = { [userId]: type };
+        transaction.set(placeRef, updates);
+      }
+    }
+    return finalScore;
   });
 }
 
-export async function joinActivity(activityId: string, user: User, source?: string | null, referralId?: string | null) {
+export async function joinActivity(activityId: string, user: User, source?: string | null, referralId?: string | null): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!user) throw new Error('User is not authenticated.');
 
@@ -509,7 +545,7 @@ export async function joinActivity(activityId: string, user: User, source?: stri
   }
 }
 
-export async function joinPaidActivity(activityId: string, user: User, transactionToken: string, source?: string | null, referralId?: string | null) {
+export async function joinPaidActivity(activityId: string, user: User, transactionToken: string, source?: string | null, referralId?: string | null): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!transactionToken) throw new Error("Transaktions-Token fehlt. Beitritt verweigert.");
 
@@ -561,7 +597,7 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
       transaction.update(activityRef, updates);
 
       const netAmount = (activityData.price || 0) * 0.9; 
-      const hostRef = doc(db, 'users', activityData.hostId);
+      const hostRef = doc(db!, 'users', activityData.hostId);
       transaction.update(hostRef, {
         escrowBalance: increment(netAmount)
       });
@@ -615,7 +651,7 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
   }
 }
 
-export async function sendMessage(chatId: string, text: string, user: User, userProfile?: UserProfile | null) {
+export async function sendMessage(chatId: string, text: string, user: User, userProfile?: UserProfile | null): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!text.trim()) return;
 
@@ -663,7 +699,7 @@ export async function sendMessage(chatId: string, text: string, user: User, user
   }
 }
 
-export async function markChatAsRead(chatId: string, userId: string) {
+export async function markChatAsRead(chatId: string, userId: string): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   const chatRef = doc(db, 'chats', chatId);
   try {
@@ -675,7 +711,7 @@ export async function markChatAsRead(chatId: string, userId: string) {
   }
 }
 
-export async function leaveActivity(activityId: string, userId: string) {
+export async function leaveActivity(activityId: string, userId: string): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
 
   const activityRef = doc(db, 'activities', activityId);
@@ -714,7 +750,7 @@ export async function leaveActivity(activityId: string, userId: string) {
  * MODUL 20: Lokales Entfernen eines Nutzers aus dem Chat (Post-Review Cleanup).
  * Behält den permanenten Attendance-Record in der Aktivität bei.
  */
-export async function removeUserFromChat(chatId: string, userId: string) {
+export async function removeUserFromChat(chatId: string, userId: string): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   const chatRef = doc(db, 'chats', chatId);
   try {
@@ -730,7 +766,7 @@ export async function removeUserFromChat(chatId: string, userId: string) {
 }
 
 
-export async function deleteActivity(activityId: string) {
+export async function deleteActivity(activityId: string): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
 
   const batch = writeBatch(db);
@@ -761,7 +797,7 @@ export async function deleteActivity(activityId: string) {
   }
 }
 
-export async function fetchUserActivities(userId: string) {
+export async function fetchUserActivities(userId: string): Promise<Activity[]> {
   if (!db) throw new Error('Firestore is not initialized.');
 
   const q = query(
@@ -780,7 +816,7 @@ export async function fetchUserActivities(userId: string) {
 }
 
 
-export async function sendFriendRequest(fromUserId: string, toUserId: string) {
+export async function sendFriendRequest(fromUserId: string, toUserId: string): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized.');
     
     if (!fromUserId || fromUserId === toUserId) {
@@ -798,7 +834,7 @@ export async function sendFriendRequest(fromUserId: string, toUserId: string) {
             throw new Error("Sender's user profile does not exist.");
         }
         const fromUserProfile = fromUserSnap.data() as UserProfile;
-
+        
         transaction.update(fromUserRef, { friendRequestsSent: arrayUnion(toUserId) });
         transaction.update(toUserRef, { friendRequestsReceived: arrayUnion(fromUserId) });
 
@@ -816,7 +852,7 @@ export async function sendFriendRequest(fromUserId: string, toUserId: string) {
     });
 }
 
-export async function cancelFriendRequest(fromUserId: string, toUserId: string) {
+export async function cancelFriendRequest(fromUserId: string, toUserId: string): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized.');
     const fromUserRef = doc(db, 'users', fromUserId);
     const toUserRef = doc(db, 'users', toUserId);
@@ -827,7 +863,7 @@ export async function cancelFriendRequest(fromUserId: string, toUserId: string) 
     });
 }
 
-export async function acceptFriendRequest(userId: string, requestingUserId: string) {
+export async function acceptFriendRequest(userId: string, requestingUserId: string): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized.');
     const userRef = doc(db, 'users', userId);
     const requestingUserRef = doc(db, 'users', requestingUserId);
@@ -841,7 +877,7 @@ export async function acceptFriendRequest(userId: string, requestingUserId: stri
     });
 }
 
-export async function declineFriendRequest(userId: string, decliningUserId: string) {
+export async function declineFriendRequest(userId: string, decliningUserId: string): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized.');
     const userRef = doc(db, 'users', userId);
     const decliningUserRef = doc(db, 'users', decliningUserId);
@@ -852,7 +888,7 @@ export async function declineFriendRequest(userId: string, decliningUserId: stri
     });
 }
 
-export async function removeFriend(userId: string, friendId: string) {
+export async function removeFriend(userId: string, friendId: string): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   const userRef = doc(db, 'users', userId);
   const friendRef = doc(db, 'users', friendId);
@@ -863,13 +899,13 @@ export async function removeFriend(userId: string, friendId: string) {
   });
 }
 
-export async function deleteUserDocument(userId: string) {
+export async function deleteUserDocument(userId: string): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   const userDocRef = doc(db, 'users', userId);
   await deleteDoc(userDocRef);
 }
 
-export async function voteToCompleteActivity(activityId: string, userId: string) {
+export async function voteToCompleteActivity(activityId: string, userId: string): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   const activityRef = doc(db, 'activities', activityId);
 
@@ -904,7 +940,7 @@ export async function voteToCompleteActivity(activityId: string, userId: string)
   }
 }
 
-export async function completeActivity(activityId: string, userId: string, isPaid: boolean) {
+export async function completeActivity(activityId: string, userId: string, isPaid: boolean): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   
   const activityRef = doc(db, 'activities', activityId);
@@ -935,7 +971,7 @@ export async function completeActivity(activityId: string, userId: string, isPai
   });
 }
 
-export const cancelActivity = async (activityId: string, hostId: string) => {
+export const cancelActivity = async (activityId: string, hostId: string): Promise<void> => {
   if (!db) throw new Error('Firestore not initialized.');
   const activityRef = doc(db, 'activities', activityId);
   const activitySnap = await getDoc(activityRef);
@@ -981,7 +1017,7 @@ export async function checkIfUserReviewed(activityId: string, reviewerId: string
  * Berechnet atomar Durchschnittswerte für User, Aktivität UND permanenten Ort (places collection).
  * Entkoppelt die Orts-Reputation von flüchtigen Aktivitäts-Dokumenten.
  */
-export async function submitMultiReview(activityId: string, reviewerId: string, reviews: any[]) {
+export async function submitMultiReview(activityId: string, reviewerId: string, reviews: any[]): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized.');
 
     try {
@@ -1077,7 +1113,7 @@ export async function submitMultiReview(activityId: string, reviewerId: string, 
     }
 }
 
-export const submitHostRating = async (activityId: string, hostId: string, reviewerId: string, rating: number) => {
+export const submitHostRating = async (activityId: string, hostId: string, reviewerId: string, rating: number): Promise<void> => {
   if (!db) throw new Error('Firestore not initialized.');
   if (rating < 1 || rating > 5) throw new Error("Invalides Rating");
 
@@ -1384,4 +1420,17 @@ export async function resolveModerationTask(reportId: string, activityId: string
   });
 
   await batch.commit();
+}
+
+export async function searchActivitiesBySemanticVector(queryText: string, hardBlacklist: string[] = []): Promise<Activity[]> {
+  if (!db) throw new Error('Firestore is not initialized.');
+  
+  const functions = getFunctions();
+  const getSearchVector = httpsCallable<{queryText: string}, {results: Activity[]}>(functions, 'getSearchVector');
+  const response = await getSearchVector({ queryText });
+  const results = response.data.results || [];
+  
+  if (hardBlacklist.length === 0) return results;
+  
+  return results.filter(act => !act.category || !hardBlacklist.includes(act.category));
 }

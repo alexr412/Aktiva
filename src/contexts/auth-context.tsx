@@ -7,7 +7,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Loader2, Ban } from 'lucide-react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, deleteField } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 import { updateUserLocation, updateUserProfile } from '@/lib/firebase/firestore';
 import { requestAndGetFCMToken, onForegroundMessage } from '@/lib/firebase/messaging';
@@ -87,12 +87,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
+            
+            // Lazy Migration: Remove legacy isAdmin field and ensure role is set
+            if ('isAdmin' in data) {
+              const legacyValue = data.isAdmin;
+              const currentRole = data.role;
+              const targetRole = currentRole || (legacyValue ? 'admin' : 'user');
+              
+              updateDoc(userRef, {
+                isAdmin: deleteField(),
+                role: targetRole
+              }).catch(err => console.error("Lazy migration failed:", err));
+            }
+
             // Explizite Zuweisung wichtiger Felder zur Vermeidung von State-Verlust
             const profile: UserProfile = {
               uid: docSnap.id,
               ...data,
-              role: data.role || (data.isAdmin ? 'admin' : 'user'), // Fallback-Logik
-              isAdmin: data.role === 'admin' || !!data.isAdmin,
+              role: data.role || 'user', // Fallback-Logik
               isBanned: !!data.isBanned
             } as UserProfile;
             

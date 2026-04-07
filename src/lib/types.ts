@@ -85,9 +85,10 @@ export interface Activity {
   isPaid?: boolean;
   price?: number;
   upvotes?: number;
-  downvotes?: number;
-  userVotes?: Record<string, 'up' | 'down'>;
+  userVotes?: Record<string, 'up' | 'down' | 'superboost'>;
   globalScore?: number;
+  communityScore: number;
+  votedUserIds?: string[];
   isVerified?: boolean;
   reportCount?: number;
   avgRating?: number;
@@ -212,7 +213,10 @@ export interface UserProfile {
   averageRating?: number;
   ratingCount?: number;
   kycStatus?: KYCStatus;
-  isAdmin?: boolean;
+  blacklist?: {
+    soft: string[];
+    hard: string[];
+  };
   role?: 'user' | 'admin';
   isBanned?: boolean;
 }

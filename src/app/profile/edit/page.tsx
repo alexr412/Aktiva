@@ -12,6 +12,8 @@ import { uploadProfileImage } from '@/lib/firebase/storage';
 import type { UserProfile } from '@/lib/types';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/image-utils';
+import { UserPreferenceSlider } from '@/components/profile/user-preference-slider';
+import { availableTabs } from '@/components/aktvia/category-filters-data';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +26,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, Di
 import { Loader2, ArrowLeft, UserCircle, MapPin, Sparkles, Camera, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type FormData = Omit<UserProfile, 'uid' | 'email' | 'onboardingCompleted' | 'photoURL' | 'interests'>;
+type FormData = Omit<UserProfile, 'uid' | 'email' | 'onboardingCompleted' | 'photoURL'>;
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -41,7 +43,9 @@ export default function EditProfilePage() {
     bio: '',
     pronouns: '',
     gender: '',
-    socialBattery: ''
+    socialBattery: '',
+    interests: [],
+    categoryAffinities: {}
   });
 
   // Cropper State
@@ -71,7 +75,9 @@ export default function EditProfilePage() {
           bio: profile.bio || '',
           pronouns: profile.pronouns || '',
           gender: profile.gender || '',
-          socialBattery: profile.socialBattery || ''
+          socialBattery: profile.socialBattery || '',
+          interests: profile.interests || [],
+          categoryAffinities: profile.categoryAffinities || {}
         });
       }
       setIsLoading(false);
@@ -130,6 +136,16 @@ export default function EditProfilePage() {
   const handleSelectChange = (name: keyof FormData, value: string) => {
     setFormData({ ...formData, [name]: value === 'not-specified' ? '' : value });
   };
+  
+  const handleAffinityChange = (tagId: string, newValue: number) => {
+    setFormData(prev => ({
+      ...prev,
+      categoryAffinities: {
+        ...(prev.categoryAffinities || {}),
+        [tagId]: newValue
+      }
+    }));
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +160,8 @@ export default function EditProfilePage() {
           bio: formData.bio,
           pronouns: formData.pronouns,
           gender: formData.gender,
-          socialBattery: formData.socialBattery
+          socialBattery: formData.socialBattery,
+          categoryAffinities: formData.categoryAffinities
         };
         
         await setDoc(doc(db!, "users", user.uid), updateData, { merge: true });
@@ -313,6 +330,30 @@ export default function EditProfilePage() {
                 />
                 <p className="text-[10px] text-neutral-400 text-right font-black">{(formData.bio || '').length}/150</p>
               </div>
+            </CardContent>
+          </Card>
+          
+          {/* Categories & Interests Section */}
+          <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden mt-6">
+            <CardHeader className="bg-emerald-500/5 pb-8">
+              <div className="flex items-center gap-3 mb-2">
+                <Sparkles className="h-6 w-6 text-emerald-500" />
+                <CardTitle className="text-2xl font-black">Interessen-Gewichtung</CardTitle>
+              </div>
+              <CardDescription className="text-base font-medium">
+                Bestimme hier, wie sehr dir bestimmte Kategorien gefallen. Dies beeinflusst direkt deinen Feed-Algorithmus.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {availableTabs.map((tab) => (
+                <UserPreferenceSlider
+                  key={tab.id}
+                  label={tab.label}
+                  tagKey={tab.id}
+                  initialValue={formData.categoryAffinities?.[tab.id]}
+                  onChange={handleAffinityChange}
+                />
+              ))}
             </CardContent>
           </Card>
           

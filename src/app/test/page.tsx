@@ -31,7 +31,7 @@ export default function TestPage() {
 
   // RBAC Route Guard: Only admins allowed
   useEffect(() => {
-    if (!authLoading && (!userProfile || userProfile.isAdmin !== true)) {
+    if (!authLoading && (!userProfile || userProfile.role !== 'admin')) {
       router.replace('/');
     }
   }, [userProfile, authLoading, router]);
@@ -40,7 +40,7 @@ export default function TestPage() {
     return <div className="flex h-dvh items-center justify-center"><Loader2 className="animate-spin" /></div>;
   }
 
-  if (!userProfile?.isAdmin) {
+  if (userProfile?.role !== 'admin') {
     return null; // Will redirect via useEffect
   }
 

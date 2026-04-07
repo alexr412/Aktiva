@@ -41,7 +41,7 @@ type PlaceCardProps = {
 export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     if (!place) return null;
 
-    const { user } = useAuth();
+    const { user, userProfile } = useAuth();
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
     
@@ -98,7 +98,8 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         }
     };
 
-    const rawTags = (place.categories || []).filter((tag: string) => 
+    const categories = place.categories || [];
+    const rawTags = categories.filter((tag: string) => 
       !tag.startsWith('wheelchair') && 
       !tag.startsWith('fee') && 
       !tag.startsWith('no_fee')
@@ -168,18 +169,29 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
           </div>
           
           <div className="flex flex-wrap gap-1.5 mb-4">
-            {processedTags.slice(0, 2).map((tag, index) => (
-              <Badge 
-                key={index} 
-                variant="secondary" 
-                className={cn(
-                  "rounded-full text-[9px] font-black uppercase tracking-tight px-2 py-0.5 border-none",
-                  index === 0 ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
-                )}
-              >
-                {tag}
-              </Badge>
-            ))}
+            {userProfile?.role === 'admin' ? (
+              rawTags.map((tag: string, idx: number) => (
+                <span 
+                  key={`${tag}-${idx}`} 
+                  className="px-2 py-0.5 text-[8px] font-mono bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 rounded-md border border-neutral-200 dark:border-neutral-700 whitespace-nowrap"
+                >
+                  {tag}
+                </span>
+              ))
+            ) : (
+              processedTags.slice(0, 2).map((tag, index) => (
+                <Badge 
+                  key={index} 
+                  variant="secondary" 
+                  className={cn(
+                    "rounded-full text-[9px] font-black uppercase tracking-tight px-2 py-0.5 border-none",
+                    index === 0 ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+                  )}
+                >
+                  {tag}
+                </Badge>
+              ))
+            )}
           </div>
         </div>
 

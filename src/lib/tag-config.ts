@@ -28,7 +28,8 @@ export interface TagStyle {
  * Löst visuelle Prioritäten deterministisch nach einer definierten Kaskade auf.
  */
 export const getPrimaryIconData = (place: any): TagStyle => {
-  const tags = place.categories || place.tags || [];
+  const rawTags = place.categories || place.category || place.tags || [];
+  const tags = Array.isArray(rawTags) ? rawTags.filter(Boolean) : (typeof rawTags === 'string' ? [rawTags] : []);
   const name = (place.name || '').toLowerCase();
   const n = name;
 

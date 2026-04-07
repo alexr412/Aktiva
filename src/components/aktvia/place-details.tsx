@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { joinActivity, voteActivity } from '@/lib/firebase/firestore';
+import { joinActivity } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { format } from 'date-fns';

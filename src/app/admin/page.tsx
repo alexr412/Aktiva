@@ -29,13 +29,13 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!userProfile || (userProfile.role !== 'admin' && !userProfile.isAdmin)) {
+      if (!userProfile || userProfile.role !== 'admin') {
         router.replace('/');
         return;
       }
     }
 
-    if (!db || !userProfile || (userProfile.role !== 'admin' && !userProfile.isAdmin)) return;
+    if (!db || !userProfile || userProfile.role !== 'admin') return;
 
     const qRefunds = query(collection(db, 'refunds'), where('status', '==', 'pending'));
     const unsubRefunds = onSnapshot(qRefunds, (snap) => {
@@ -117,7 +117,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  if (authLoading || !userProfile || (userProfile.role !== 'admin' && !userProfile.isAdmin)) {
+  if (authLoading || !userProfile || userProfile.role !== 'admin') {
     return (
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

@@ -15,8 +15,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!loading) {
-      // Wir prüfen primär auf 'role', sekundär auf 'isAdmin' für Abwärtskompatibilität
-      if (!userProfile || (userProfile.role !== 'admin' && !userProfile.isAdmin)) {
+      // Wir prüfen auf 'role'
+      if (!userProfile || userProfile.role !== 'admin') {
         router.replace("/");
       }
     }
@@ -34,7 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   // Finaler Guard vor dem Rendering
-  if (!userProfile || (userProfile.role !== 'admin' && !userProfile.isAdmin)) {
+  if (!userProfile || userProfile.role !== 'admin') {
     return null;
   }
 

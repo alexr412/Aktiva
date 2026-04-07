@@ -10,10 +10,10 @@ const getFirestore = admin.firestore;
  * Berechnet die Haversine-Entfernung in km.
  */
 function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; 
+  const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a = 
+  const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
@@ -25,13 +25,13 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
  */
 exports.notifyNearbyUsers = onDocumentCreated("activities/{activityId}", async (event) => {
   const activity = event.data.data();
-  
+
   // Nur für geboostete Aktivitäten feuern
   if (!activity.isBoosted) return null;
 
   const activityLat = activity.lat;
   const activityLon = activity.lon;
-  
+
   if (!activityLat || !activityLon) {
     console.warn("Activity location missing for boost notification.");
     return null;
@@ -43,11 +43,11 @@ exports.notifyNearbyUsers = onDocumentCreated("activities/{activityId}", async (
   const usersSnap = await getFirestore().collection("users")
     .where("fcmToken", "!=", null)
     .get();
-  
+
   const tokens = [];
   usersSnap.forEach(doc => {
     const user = doc.data();
-    
+
     // Check Opt-In: localHighlights muss aktiv sein
     if (!user.notificationSettings?.localHighlights) return;
 
@@ -68,7 +68,7 @@ exports.notifyNearbyUsers = onDocumentCreated("activities/{activityId}", async (
       data: {
         activityId: event.params.activityId,
         source: "push",
-        click_action: "FLUTTER_NOTIFICATION_CLICK" 
+        click_action: "FLUTTER_NOTIFICATION_CLICK"
       },
       tokens: tokens
     };
@@ -128,7 +128,7 @@ async function aggregateAndSendReports() {
         },
         data: { click_action: "FLUTTER_NOTIFICATION_CLICK" }
       };
-      
+
       try {
         await messaging.send(message);
         sentCount++;
@@ -182,14 +182,14 @@ exports.chatRetentionPolicy = onSchedule("every 24 hours", async (event) => {
 
   for (const chatDoc of chatsSnap.docs) {
     const batch = db.batch();
-    
+
     // Nachrichten löschen
     const messagesSnap = await chatDoc.ref.collection("messages").get();
     messagesSnap.forEach(m => batch.delete(m.ref));
-    
+
     // Chat-Dokument löschen
     batch.delete(chatDoc.ref);
-    
+
     try {
       await batch.commit();
       console.log(`Chat ${chatDoc.id} deleted due to inactivity.`);
@@ -221,7 +221,7 @@ exports.validateCreatorStatus = onSchedule("every 12 hours", async (event) => {
       .where("hostId", "==", userId)
       .where("status", "==", "completed")
       .get();
-    
+
     const activitiesCount = activitiesSnap.size;
     const avgRating = userData.averageRating || 0;
 
@@ -237,3 +237,17 @@ exports.validateCreatorStatus = onSchedule("every 12 hours", async (event) => {
 
   return null;
 });
+
+// Semantic Vector Search Embeddings
+const embeddings = require('./lib/embeddings');
+exports.generateActivityEmbeddingOnCreate = embeddings.onActivityCreated;
+exports.generateActivityEmbeddingOnUpdate = embeddings.onActivityUpdated;
+exports.getSearchVector = embeddings.getSearchVector;
+
+// User Profile Fan-Out Sync
+const users = require('./lib/users');
+exports.syncUserProfileUpdates = users.syncUserProfileUpdates;
+
+// Telemetry Aggregation & Data Retention
+const aggregation = require('./lib/aggregation');
+exports.telemetryAggregationWorker = aggregation.telemetryAggregationWorker;
