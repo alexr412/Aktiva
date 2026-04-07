@@ -52,6 +52,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const [placeMeta, setPlaceMeta] = useState({ 
         upvotes: 0, 
         downvotes: 0, 
+        communityScore: 0,
         userVotes: {} as Record<string, 'up' | 'down'>,
         avgRating: 0,
         reviewCount: 0
@@ -65,6 +66,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                 setPlaceMeta({
                     upvotes: data.upvotes || 0,
                     downvotes: data.downvotes || 0,
+                    communityScore: data.communityScore || 0,
                     userVotes: data.userVotes || {},
                     avgRating: data.avgRating || 0,
                     reviewCount: data.reviewCount || 0
@@ -90,7 +92,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         if (!user || isVoting) return;
         setIsVoting(true);
         try {
-            await votePlace(place.id, user.uid, type);
+            await votePlace(place.id, user.uid, type, userProfile?.role);
         } catch (error) {
             console.error("Voting failed:", error);
         } finally {
@@ -215,7 +217,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
               {isVoting ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
             </button>
             <span className="text-xs font-black min-w-[20px] text-center text-neutral-600 dark:text-neutral-300">
-              {placeMeta.upvotes - placeMeta.downvotes > 0 ? `+${placeMeta.upvotes - placeMeta.downvotes}` : placeMeta.upvotes - placeMeta.downvotes}
+              {Math.round(placeMeta.communityScore || 0) > 0 ? `+${Math.round(placeMeta.communityScore || 0)}` : Math.round(placeMeta.communityScore || 0)}
             </span>
             <button 
               onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}

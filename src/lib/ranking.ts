@@ -9,52 +9,54 @@ const tagRules: { pattern: RegExp; score: number }[] = [
   // --- High-Tier (90 Punkte) ---
   { pattern: /^tourism\.attraction(\..*)?$/, score: 10 }, // 90
   { pattern: /^tourism\.sights(\..*)?$/, score: 10 }, // 90
-  { pattern: /^entertainment\.museum$/, score: 90 },
-  { pattern: /^entertainment\.planetarium$/, score: 90 },
-  { pattern: /^entertainment\.aquarium$/, score: 90 },
+  { pattern: /^entertainment\.museum$/, score: 80 },
+  { pattern: /^entertainment\.planetarium$/, score: 80 },
+  { pattern: /^entertainment\.aquarium$/, score: 80 },
   { pattern: /^tourism(\.sights)?\.zoo$/, score: 10 },
-  { pattern: /^entertainment\.theme_park$/, score: 90 },
-  { pattern: /^entertainment\.water_park$/, score: 90 },
-  { pattern: /^leisure\.water_park$/, score: 90 }, // Alias coverage
-  { pattern: /^entertainment\.escape_game$/, score: 90 },
-  { pattern: /^entertainment\.activity_park(\..*)?$/, score: 90 },
-  { pattern: /^entertainment\.cinema$/, score: 90 },
-  { pattern: /^entertainment\.bowling_alley$/, score: 90 },
-  { pattern: /^leisure\.bowling_alley$/, score: 90 }, // Alias coverage
-  { pattern: /^entertainment\.miniature_golf$/, score: 90 },
+  { pattern: /^entertainment\.theme_park$/, score: 80 },
+  { pattern: /^entertainment\.water_park$/, score: 80 },
+  { pattern: /^leisure\.water_park$/, score: 80 }, // Alias coverage
+  { pattern: /^entertainment\.escape_game$/, score: 80 },
+  { pattern: /^entertainment\.activity_park(\..*)?$/, score: 80 },
+  { pattern: /^entertainment\.cinema$/, score: 80 },
+  { pattern: /^entertainment\.bowling_alley$/, score: 80 },
+  { pattern: /^leisure\.bowling_alley$/, score: 80 }, // Alias coverage
+  { pattern: /^entertainment\.miniature_golf$/, score: 80 },
   { pattern: /^leisure\.miniature_golf$/, score: 90 }, // Alias coverage
-  { pattern: /^adult\.nightclub$/, score: 90 },
-  { pattern: /^catering\.pub$/, score: 90 },
-  { pattern: /^catering\.bar$/, score: 90 },
-  { pattern: /^catering\.biergarten$/, score: 90 },
-  { pattern: /^sport\.stadium$/, score: 90 },
-  { pattern: /^leisure\.stadium$/, score: 90 }, // Alias coverage
-  { pattern: /^building\.tourism$/, score: 90 },
-  { pattern: /^entertainment\.zoo$/, score: 90 },
+  { pattern: /^adult\.nightclub$/, score: 80 },
+  { pattern: /^catering\.pub$/, score: 80 },
+  { pattern: /^catering\.bar$/, score: 80 },
+  { pattern: /^catering\.biergarten$/, score: 80 },
+  { pattern: /^sport\.stadium$/, score: 80 },
+  { pattern: /^leisure\.stadium$/, score: 80 }, // Alias coverage
+  { pattern: /^building\.tourism$/, score: 80 },
+  { pattern: /^entertainment\.zoo$/, score: 80 },
   { pattern: /^entertainment(\..*)?$/, score: 75 },
   { pattern: /^building\.entertainment$/, score: 70 },
 
 
 
   // --- Mid-Tier (60 Punkte) ---
-  { pattern: /^leisure\.park(\..*)?$/, score: 60 },
-  { pattern: /^leisure\.nature_reserve$/, score: 60 },
-  { pattern: /^leisure\.garden$/, score: 60 },
+  { pattern: /^leisure\.park(\..*)?$/, score: 55 },
+  { pattern: /^leisure\.nature_reserve$/, score: 45 },
+  { pattern: /^leisure\.garden$/, score: 45 },
   { pattern: /^beach(\..*)?$/, score: 60 },
-  { pattern: /^leisure\.beach$/, score: 60 }, // Alias coverage
+  { pattern: /^leisure\.beach$/, score: 45 }, // Alias coverage
   { pattern: /^sport(\..*)?$/, score: 60 }, // Will match if not stadium (already matched above)
   { pattern: /^entertainment\.culture(\..*)?$/, score: 60 },
-  { pattern: /^camping(\..*)?$/, score: 60 },
-  { pattern: /^tourism\.camping$/, score: 60 }, // Alias coverage
+  { pattern: /^camping(\..*)?$/, score: 40 },
+  { pattern: /^tourism\.camping$/, score: 40 }, // Alias coverage
   { pattern: /^leisure\.spa(\..*)?$/, score: 60 },
   { pattern: /^building\.historic$/, score: 10 }, //60
-  { pattern: /^man_made\.tower$/, score: 60 },
-  { pattern: /^man_made\.lighthouse$/, score: 60 },
-  { pattern: /^man_made\.bridge$/, score: 60 },
-  { pattern: /^education\.library$/, score: 60 },
-  { pattern: /^education\.university$/, score: 60 },
+  { pattern: /^man_made\.tower$/, score: 30 },
+  { pattern: /^man_made\.lighthouse$/, score: 30 },
+  { pattern: /^man_made\.bridge$/, score: 30 },
+  { pattern: /^education\.library$/, score: 65 },
+  { pattern: /^education\.university$/, score: 65 },
   { pattern: /^catering\.cafe(\..*)?$/, score: 60 },
   { pattern: /^catering\.ice_cream$/, score: 60 },
+  { pattern: /^commercial\.shopping_mall$/, score: 50 },
+  { pattern: /^building\.commercial$/, score: 50 },
 
   // --- Low-Tier (20 Punkte) ---
   { pattern: /^national_park$/, score: 20 },
@@ -64,7 +66,7 @@ const tagRules: { pattern: RegExp; score: number }[] = [
   { pattern: /^catering(\..*)?$/, score: 20 }, // Generic catering
   { pattern: /^catering\.fast_food$/, score: 20 },
   { pattern: /^commercial(\..*)?$/, score: 20 },
-  { pattern: /^leisure\.playground$/, score: 20 },
+  { pattern: /^leisure\.playground$/, score: 10 },
   { pattern: /^leisure\.picnic(\..*)?$/, score: 20 },
   { pattern: /^natural\.forest$/, score: 20 },
   { pattern: /^natural\.sand$/, score: 20 },
