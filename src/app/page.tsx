@@ -81,12 +81,21 @@ export default function Home() {
   const [activeTabId, setActiveTabId] = useState<string>("");
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [cityName, setCityName] = useState<string>("Wird geladen...");
   const [sortBy, setSortBy] = useState("recommended");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
   const [maxDistance, setMaxDistance] = useState<number | null>(10);
   const [activityCategoryFilter, setActivityCategoryFilter] = useState<ActivityCategory | 'Alle'>('Alle');
+  const [visibleCount, setVisibleCount] = useState(25);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
@@ -111,7 +120,7 @@ export default function Home() {
       }
 
       if (type === 'activities') {
-        const queryLimit = key.pageIndex === 0 ? 25 : 10;
+        const queryLimit = key.pageIndex === 0 ? 150 : 10;
         const constraints: any[] = [
           limit(queryLimit * 5)
         ];
@@ -167,11 +176,12 @@ export default function Home() {
 
     if (!userLocation) return null;
     let categoriesToFetch: string[] = (activeCategory.length === 0 || activeCategory.includes('has_activities'))
-      ? ["tourism", "entertainment", "heritage"]
+      ? ["entertainment", "leisure", "catering", "tourism.attraction"]
       : activeCategory;
 
-    const queryLimit = pageIndex === 0 ? 25 : 10;
-    const offset = pageIndex === 0 ? 0 : 25 + (pageIndex - 1) * 10;
+    // Fetch 300 initially for a massive algorithmic search pool, UI renders 25 initially
+    const queryLimit = pageIndex === 0 ? 300 : 50;
+    const offset = pageIndex === 0 ? 0 : 300 + (pageIndex - 1) * 50;
     const radiusMeters = maxDistance ? maxDistance * 1000 : 100000;
     const url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
 
@@ -181,6 +191,7 @@ export default function Home() {
   const { data, size, setSize, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {
     revalidateFirstPage: false,
     dedupingInterval: 60000,
+    keepPreviousData: true,
   });
 
   const isLoadingInitialData = !data && !error;
@@ -245,20 +256,32 @@ export default function Home() {
     });
   }, [data, userPrefs, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory]);
 
-  const observer = useRef<IntersectionObserver>();
-  const lastElementRef = useCallback(node => {
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastElementRef = useCallback((node: any) => {
     if (observer.current) observer.current.disconnect();
     const options = { rootMargin: '0px 0px -50px 0px', threshold: 1.0 };
     observer.current = new IntersectionObserver(entries => {
       const target = entries[0];
       if (target.isIntersecting) {
         if (!isReachingEnd && !isFetchingNextPage && !isValidating) {
-          setTimeout(() => { setSize(prev => prev + 1); }, 500);
+          setTimeout(() => { 
+            if (!isFavoritesCategory && !isCommunityCategory && !isAktivCategory && !isHighlightsCategory) {
+              const totalFetched = data ? data.flat().length : 0;
+              if (visibleCount < totalFetched) {
+                setVisibleCount(prev => prev + 25);
+              } else {
+                setSize(prev => prev + 1);
+                setVisibleCount(prev => prev + 25);
+              }
+            } else {
+              setSize(prev => prev + 1);
+            }
+          }, 500);
         }
       }
     }, options);
     if (node) observer.current.observe(node);
-  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize]);
+  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, data, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
   useEffect(() => {
     const reverseGeocode = async (lat: number, lng: number) => {
@@ -295,8 +318,13 @@ export default function Home() {
     setActiveTabId(tabId);
     setSortBy('recommended');
     setMaxDistance(null);
-    setActivityCategoryFilter('Alle'); // Reset activity filter on main category change
+    setActivityCategoryFilter('Alle');
+    setVisibleCount(25);
   };
+
+  useEffect(() => {
+    setVisibleCount(25);
+  }, [debouncedSearchQuery]);
 
   const handlePlaceSelect = (place: Place) => setSelectedPlace(place);
   const handleDialogClose = () => setSelectedPlace(null);
@@ -401,10 +429,6 @@ export default function Home() {
             filtered = filtered.filter(item => item.distance !== null && item.distance <= maxDistance);
           }
 
-          /**
-           * MODUL 18: HYBRID RANK INDEX (HRI) SORTIERUNG
-           * HRI = (w1 * S_coll) + (w2 * V_user[cat])
-           */
           const sortedList = [...filtered].sort((a, b) => {
             if (a.isBoosted && !b.isBoosted) return -1;
             if (!a.isBoosted && b.isBoosted) return 1;
@@ -464,18 +488,32 @@ export default function Home() {
         }
 
         const filtered = places.filter(place => {
+          if (!debouncedSearchQuery) return true;
           const name = place.name || "";
-          return name.toLowerCase().includes(searchQuery.toLowerCase());
+          return name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
         });
         const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : 0)));
 
         const uniqueSorted = Array.from(new Map(sorted.map(place => [place.id, place])).values());
 
-        if (uniqueSorted.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
+        if (uniqueSorted.length === 0) {
+          if (isValidating) {
+            return (
+              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
+              </div>
+            );
+          }
+          if (!isFetchingNextPage) return <EmptySearchState />;
+        }
+
+        const paginatedSorted = uniqueSorted.slice(0, visibleCount);
 
         return (
           <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {uniqueSorted.map((place) => (
+            {paginatedSorted.map((place) => (
               <div key={place.id} className="min-h-[180px] w-full">
                 <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
               </div>
@@ -492,7 +530,7 @@ export default function Home() {
               <CardSkeleton />
             </div>
           )}
-          {!isReachingEnd && !isLoadingInitialData && (
+          {!isReachingEnd && !isLoadingInitialData && !debouncedSearchQuery && (
             <div ref={lastElementRef} className="h-1 w-full flex-shrink-0 bg-transparent" aria-hidden="true" />
           )}
         </div>
@@ -523,31 +561,29 @@ export default function Home() {
       <div className="flex h-full w-full flex-col bg-secondary/30">
         <header className="flex-none w-full border-b border-neutral-100 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/90 backdrop-blur-md z-20">
           <div className="flex flex-col gap-4 px-4 py-5 sm:px-6 max-w-7xl mx-auto w-full">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar className={cn(
-                  "h-12 w-12 border-2",
-                  userProfile?.isPremium ? "border-amber-400" : (userProfile?.isSupporter ? "border-pink-400" : "border-primary/20")
-                )}>
-                  <AvatarImage src={userProfile?.photoURL || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                    {userProfile?.displayName?.charAt(0) || 'E'}
+            <div className="flex items-center justify-between mt-3 px-1">
+              <div className="flex items-center gap-3 animate-in slide-in-from-left-4 fade-in duration-500">
+                <Avatar className="h-10 w-10 border-2 border-white dark:border-neutral-800 shadow-sm">
+                  <AvatarImage src={userProfile?.photoURL || user?.photoURL || undefined} alt="Avatar" />
+                  <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-black">
+                    {userProfile?.displayName ? userProfile.displayName.charAt(0) : 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">
                     <h1 className="text-xl font-black tracking-tight text-[#0f172a] dark:text-neutral-200">
                       Hey {userProfile?.displayName?.split(' ')[0] || 'Entdecker'} 👋
                     </h1>
                     <UserBadge isPremium={userProfile?.isPremium} isSupporter={userProfile?.isSupporter} size="sm" />
                   </div>
-                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1 text-neutral-500 dark:text-neutral-400 font-bold text-xs uppercase tracking-wide">
+                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1 text-neutral-500 dark:text-neutral-400 font-bold text-xs uppercase tracking-wide mt-0.5">
                     <MapPin className="h-3 w-3" />
                     <span>{cityName}</span>
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+
+              <div className="flex items-center gap-3 animate-in slide-in-from-right-4 fade-in duration-500">
                 <NotificationBell />
                 <div className="flex items-center gap-1 rounded-2xl bg-neutral-50 dark:bg-neutral-800 p-1">
                   <Button
@@ -568,7 +604,6 @@ export default function Home() {
                     {!userProfile?.isPremium && <Lock className="absolute -top-1 -right-1 h-3 w-3 text-amber-500 fill-amber-500" />}
                   </Button>
                 </div>
-                <Button variant="default" size="icon" className="h-10 w-10 rounded-2xl shadow-lg shadow-primary/20" onClick={handleOpenCustomActivityModal}><Plus className="h-6 w-6" strokeWidth={3} /></Button>
               </div>
             </div>
 
@@ -593,44 +628,60 @@ export default function Home() {
               </div>
             )}
 
-            <div className="flex flex-col gap-2 px-1 pb-2 pt-2">
-              <div className="flex justify-between items-center px-1">
-                <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Suchradius</span>
-                <span className="text-[10px] font-black text-primary">{maxDistance ? `${maxDistance} km` : 'Unbegrenzt'}</span>
-              </div>
-              <div className="px-1">
-                <Slider 
-                  value={[maxDistance || 100]} 
-                  max={100} 
-                  min={1}
-                  step={1} 
-                  onValueChange={(val) => setMaxDistance(val[0] === 100 ? null : val[0])}
-                  className="w-full"
-                />
-              </div>
-            </div>
-
-            <div className="mt-1 flex w-full items-center gap-3">
-              <div className="relative flex-1">
+            <div className="flex flex-col md:flex-row md:items-end gap-3 mt-2 px-1">
+              <div className="flex relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
                 <Input
                   type="search"
                   placeholder="Suchen nach Orten..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-2xl bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none pl-12 h-12 text-sm font-bold dark:placeholder-neutral-500 focus-visible:ring-0"
+                  className="w-full pl-11 h-14 rounded-2xl border-none bg-white font-medium shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-800 dark:text-neutral-100"
                 />
               </div>
-              {!isFavoritesCategory && (
+
+              <div className="flex flex-col gap-2 w-full md:w-64 flex-shrink-0 bg-white dark:bg-neutral-800 px-4 py-2.5 rounded-2xl shadow-sm h-14 justify-center">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Suchradius</span>
+                  <span className="text-[10px] font-black text-primary">{maxDistance || 100} km</span>
+                </div>
+                <Slider
+                  value={[maxDistance || 100]}
+                  max={100}
+                  min={1}
+                  step={1}
+                  onValueChange={(val) => setMaxDistance(val[0])}
+                  className="w-full"
+                />
+              </div>
+
+              {!isAktivCategory && !isCommunityCategory && !isFavoritesCategory && (
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-[140px] rounded-2xl h-12 bg-neutral-50 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700 border-none focus:ring-0 font-bold text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-2xl border-none shadow-2xl font-bold dark:bg-neutral-800 dark:text-neutral-200"><SelectItem value="recommended">Empfohlen</SelectItem><SelectItem value="rating">Bewertung</SelectItem></SelectContent>
+                  <SelectTrigger className="w-full md:w-[150px] h-14 rounded-2xl border-none bg-white font-bold shadow-sm dark:bg-neutral-800">
+                    <SelectValue placeholder="Sortierung" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl font-medium dark:bg-neutral-800">
+                    <SelectItem value="recommended">Empfohlen</SelectItem>
+                    <SelectItem value="rating">Top Bewertung</SelectItem>
+                  </SelectContent>
                 </Select>
               )}
             </div>
           </div>
         </header>
         <div className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden'}`}>{renderContent()}</div>
+      </div>
+
+      {/* Floating Action Button (FAB) */}
+      <div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500">
+        <Button
+          variant="default"
+          size="icon"
+          className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 transition-transform hover:scale-105 active:scale-95"
+          onClick={handleOpenCustomActivityModal}
+        >
+          <Plus className="h-7 w-7" strokeWidth={3} />
+        </Button>
       </div>
 
       <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>

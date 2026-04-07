@@ -109,7 +109,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
 
   return (
     <>
-      <div className="flex md:flex-wrap overflow-x-auto md:overflow-visible gap-2 pb-2 -mx-4 px-4 md:px-0 md:mx-0 hide-scrollbar items-center w-full">
+      <div className="flex overflow-x-auto gap-2 pb-3 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-center w-full">
         {displayedTabs.map((tab) => {
           const isActive = activeTabId === tab.id;
           return (

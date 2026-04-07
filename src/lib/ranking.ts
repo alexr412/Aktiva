@@ -32,6 +32,8 @@ const tagRules: { pattern: RegExp; score: number }[] = [
   { pattern: /^building\.tourism$/, score: 90 },
   { pattern: /^entertainment\.zoo$/, score: 90 },
   { pattern: /^entertainment(\..*)?$/, score: 75 },
+  { pattern: /^building\.entertainment$/, score: 70 },
+
 
 
   // --- Mid-Tier (60 Punkte) ---
@@ -60,18 +62,20 @@ const tagRules: { pattern: RegExp; score: number }[] = [
   { pattern: /^natural\.mountain(\..*)?$/, score: 20 },
   { pattern: /^natural\.water(\..*)?$/, score: 20 },
   { pattern: /^catering(\..*)?$/, score: 20 }, // Generic catering
+  { pattern: /^catering\.fast_food$/, score: 20 },
   { pattern: /^commercial(\..*)?$/, score: 20 },
   { pattern: /^leisure\.playground$/, score: 20 },
   { pattern: /^leisure\.picnic(\..*)?$/, score: 20 },
   { pattern: /^natural\.forest$/, score: 20 },
   { pattern: /^natural\.sand$/, score: 20 },
-  { pattern: /^building(\..*)?$/, score: 20 }, // Generic building
-  { pattern: /^production(\..*)?$/, score: 20 },
-  { pattern: /^education(\..*)?$/, score: 20 },
   { pattern: /^religion\.place_of_worship$/, score: -120 },
   { pattern: /^building\.place_of_worship$/, score: -120 },
   { pattern: /^building\.historic$/, score: -120 },
-  { pattern: /^accommodation\.hotel$/, score: -120 }
+  { pattern: /^accommodation\.hotel$/, score: -120 },
+
+  { pattern: /^building(\..*)?$/, score: 20 }, // Generic building (MUSS IMMER UNTER DEN SPEZIFISCHEN SEIN)
+  { pattern: /^production(\..*)?$/, score: 20 },
+  { pattern: /^education(\..*)?$/, score: 20 }
 
 ];
 
@@ -107,20 +111,17 @@ export function calculateRelevance(
 
   if (categories.length === 0) return 0;
 
-  const userInterests = userProfile?.likedTags || userProfile?.interests || [];
   const affinities = userProfile?.categoryAffinities || {};
 
   // 1. Individuelle Tag-Gewichtung (T_i' = T_i * w_i)
   const weightedScores = categories.map(cat => {
     const T_i = getTagScore(cat);
-    if (T_i === 0) return 0; // Fallback überspringen um Logik nicht zu verschmutzen
+    if (T_i === 0) return 0;
 
-    // Fallback: 1.0 ist neutral. Wenn gemagte Tags, dann 1.5. Wenn explizite Affinity (-5 bis +5) gesetzt, nutze diese.
+    // Standardwert bei fehlender Affinität ist w_i = 1 (Statischen Boost eliminieren)
     let w_i = 1.0;
     if (affinities[cat] !== undefined) {
       w_i = affinities[cat];
-    } else if (userInterests.includes(cat)) {
-      w_i = 1.5;
     }
 
     return T_i * w_i;
@@ -128,19 +129,16 @@ export function calculateRelevance(
 
   if (weightedScores.length === 0) return 0;
 
-  // 2. Durchschnittsberechnung (Nutzer-Korrektur)
-  const sum = weightedScores.reduce((acc, curr) => acc + curr, 0);
-  const T_weighted = sum / weightedScores.length;
+  // 2. Durchschnitts-Berechnung (Average-Modell)
+  const scoreSum = weightedScores.reduce((sum, val) => sum + val, 0);
+  const T_weighted = scoreSum / weightedScores.length;
 
-  // 3. Logarithmische Dämpfung (Soft-Cap)
-  // T_final = sgn(T_weighted) * 100 * log10(1 + |T_weighted| / 100)
-  const T_final = Math.sign(T_weighted) * 100 * Math.log10(1 + (Math.abs(T_weighted) / 100));
+  // 3. Logarithmische Dämpfungsfunktion (Soft-Cap)
+  const T_final = Math.sign(T_weighted) * 100 * Math.log10(1 + (Math.abs(T_weighted) / 20));
 
-  // 4. Basis-Relevanz (Distanz & Stochastik)
-  // S = (T_final + epsilon) * e^(-lambda * D)
-  const lambda = COLD_START_LAMBDA > 0 ? COLD_START_LAMBDA : 0.5; // Fallback auf 0.5, falls in config 0 ist
+  // 4. Finale Kalkulation
+  const lambda = COLD_START_LAMBDA > 0 ? COLD_START_LAMBDA : 0.5; // Nutze den Konfigwert Lambda
   const epsilon = (Math.random() * 2 - 1) * EPSILON_TOLERANCE;
-
   const S = (T_final + epsilon) * Math.exp(-lambda * distanceKm);
 
   // 5. Voting Integration (Finale Priorität)
@@ -157,13 +155,13 @@ export function calculateRelevance(
  * Dieser Konfigurationsparameter ist leicht modifizierbar für die iterative
  * Kalibrierung von Qualität vs. Entfernung.
  */
-export const COLD_START_LAMBDA = 0.05; //0.5
+export const COLD_START_LAMBDA = 0.01;
 
 /**
  * Toleranzkorridor für die stochastische Injektion (Rauschvariable).
  * Verhindert deterministische Startbedingungen für symmetrische Datenerhebung.
  */
-export const EPSILON_TOLERANCE = 0.0; //2.0
+export const EPSILON_TOLERANCE = 0.0;
 
 /**
  * Berechnet den Cold-Start Score einer einzelnen Entität gemäß der Exponentialfunktion und Rauschvariable.

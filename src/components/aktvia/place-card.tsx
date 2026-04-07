@@ -136,11 +136,18 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             <h3 className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight flex-1">
               {place.name}
             </h3>
-            {place.distance !== undefined && (
-              <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap pt-1">
-                {formatDistance(place.distance)}
-              </span>
-            )}
+            <div className="flex flex-col items-end shrink-0">
+              {place.distance !== undefined && (
+                <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap pt-1">
+                  {formatDistance(place.distance)}
+                </span>
+              )}
+              {place.relevanceScore !== undefined && (
+                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/50 mt-1 whitespace-nowrap shadow-sm">
+                  ★ {place.relevanceScore.toFixed(1)} PTS
+                </span>
+              )}
+            </div>
           </div>
           
           <div className="flex flex-col gap-0.5 mb-2">
@@ -207,6 +214,9 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             >
               {isVoting ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
             </button>
+            <span className="text-xs font-black min-w-[20px] text-center text-neutral-600 dark:text-neutral-300">
+              {placeMeta.upvotes - placeMeta.downvotes > 0 ? `+${placeMeta.upvotes - placeMeta.downvotes}` : placeMeta.upvotes - placeMeta.downvotes}
+            </span>
             <button 
               onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
               className={cn(
