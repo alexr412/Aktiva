@@ -9,7 +9,7 @@ const tagRules: { pattern: RegExp; score: number }[] = [
   // --- High-Tier (90 Punkte) ---
   { pattern: /^tourism\.attraction(\..*)?$/, score: 10 }, // 90
   { pattern: /^tourism\.sights(\..*)?$/, score: 10 }, // 90
-  { pattern: /^entertainment\.museum$/, score: 80 },
+  { pattern: /^entertainment\.museum$/, score: 70 },
   { pattern: /^entertainment\.planetarium$/, score: 80 },
   { pattern: /^entertainment\.aquarium$/, score: 80 },
   { pattern: /^tourism(\.sights)?\.zoo$/, score: 10 },
@@ -20,15 +20,12 @@ const tagRules: { pattern: RegExp; score: number }[] = [
   { pattern: /^entertainment\.activity_park(\..*)?$/, score: 80 },
   { pattern: /^entertainment\.cinema$/, score: 80 },
   { pattern: /^entertainment\.bowling_alley$/, score: 80 },
-  { pattern: /^leisure\.bowling_alley$/, score: 80 }, // Alias coverage
   { pattern: /^entertainment\.miniature_golf$/, score: 80 },
-  { pattern: /^leisure\.miniature_golf$/, score: 90 }, // Alias coverage
   { pattern: /^adult\.nightclub$/, score: 80 },
   { pattern: /^catering\.pub$/, score: 80 },
   { pattern: /^catering\.bar$/, score: 80 },
   { pattern: /^catering\.biergarten$/, score: 80 },
   { pattern: /^sport\.stadium$/, score: 80 },
-  { pattern: /^leisure\.stadium$/, score: 80 }, // Alias coverage
   { pattern: /^building\.tourism$/, score: 80 },
   { pattern: /^entertainment\.zoo$/, score: 80 },
   { pattern: /^entertainment(\..*)?$/, score: 75 },
@@ -157,13 +154,13 @@ export function calculateRelevance(
  * Dieser Konfigurationsparameter ist leicht modifizierbar für die iterative
  * Kalibrierung von Qualität vs. Entfernung.
  */
-export const COLD_START_LAMBDA = 0.01;
+export const COLD_START_LAMBDA = 0.005;
 
 /**
  * Toleranzkorridor für die stochastische Injektion (Rauschvariable).
  * Verhindert deterministische Startbedingungen für symmetrische Datenerhebung.
  */
-export const EPSILON_TOLERANCE = 0.0;
+export const EPSILON_TOLERANCE = 0.7;
 
 /**
  * Berechnet den Cold-Start Score einer einzelnen Entität gemäß der Exponentialfunktion und Rauschvariable.

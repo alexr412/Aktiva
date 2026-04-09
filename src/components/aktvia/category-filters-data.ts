@@ -40,8 +40,8 @@ export const availableTabs = [
     id: "Religion", 
     label: "Religion & Glaube", 
     query: [
-      "religion.place_of_worship", "tourism.sights.place_of_worship", 
-      "building.place_of_worship", "religion.monastery"
+      "religion.place_of_worship", "tourism.sights.place_of_worship",
+      "tourism.sights.monastery"
     ], 
     icon: Church 
   },
@@ -57,7 +57,7 @@ export const availableTabs = [
     query: [
       "tourism.attraction", "entertainment.theme_park", 
       "tourism.attraction.viewpoint", "entertainment.planetarium", 
-      "man_made.fountain"
+      "tourism.attraction.fountain"
     ], 
     icon: Ticket 
   },
@@ -151,7 +151,7 @@ export const availableTabs = [
   { 
     id: "Education", 
     label: "Bildung", 
-    query: ["education.library", "building.university", "education.university", "building.college"], 
+    query: ["education.library", "building.university", "education.university", "building.college", "education.college"], 
     icon: BookOpen 
   },
   { 

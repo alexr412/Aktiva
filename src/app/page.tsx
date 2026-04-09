@@ -64,7 +64,15 @@ const PLACES_PER_PAGE = 10;
 const QUARANTINE_THRESHOLD = 3;
 const ACTIVITY_CATEGORIES: (ActivityCategory | 'Alle')[] = ['Alle', 'Sport', 'Tech', 'Party', 'Kultur', 'Outdoor', 'Gaming', 'Networking', 'Sonstiges'];
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const error = new Error(`Geoapify API error: ${res.status}`);
+    (error as any).status = res.status;
+    throw error;
+  }
+  return res.json();
+};
 
 const DISTANCE_FILTERS = [
   { label: 'Alle', value: null },
@@ -157,6 +165,10 @@ export default function Home() {
     return null;
   };
 
+  // Hard cap: Geoapify rejects offset values that are too high (400 Bad Request).
+  // limit=500 is the documented max; we keep offset + limit <= 500 to stay safe.
+  const GEOAPIFY_MAX_OFFSET = 500;
+
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (isFavoritesCategory) return null;
     if (previousPageData && (
@@ -182,8 +194,12 @@ export default function Home() {
     // Fetch 300 initially for a massive algorithmic search pool, UI renders 25 initially
     const queryLimit = pageIndex === 0 ? 300 : 50;
     const offset = pageIndex === 0 ? 0 : 300 + (pageIndex - 1) * 50;
+
+    // Stop pagination if offset exceeds Geoapify's hard limit
+    if (offset >= GEOAPIFY_MAX_OFFSET) return null;
+
     const radiusMeters = maxDistance ? maxDistance * 1000 : 100000;
-    const url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
+    const url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
     return { type: 'geoapify', url, pageIndex };
   }
@@ -199,15 +215,22 @@ export default function Home() {
   const isFetchingNextPage = Boolean(size > 0 && data && typeof data[size - 1] === "undefined");
 
   const isReachingEnd = useMemo(() => {
+    if (error) return true; // STOPS THE INFINITE 400 ERROR FIRESTORM LOOP!
     if (isEmpty) return true;
     if (!data || data.length === 0) return false;
     const lastPage = data[data.length - 1];
-    const expectedLimit = (data.length - 1) === 0 ? 25 : 10;
+    
+    // Geoapify pagination logic: Page 0 fetches 300, Page > 0 fetches 50
+    const expectedLimit = (data.length - 1) === 0 ? 300 : 50; 
+    
     if (isCommunityCategory || isAktivCategory || isHighlightsCategory) {
-      return Boolean(lastPage && lastPage.length < expectedLimit);
+      // Firebase fallback limits (150 and 10)
+      const fbLimit = (data.length - 1) === 0 ? 150 : 10;
+      return Boolean(lastPage && lastPage.length < fbLimit);
     }
+    
     return Boolean(lastPage && lastPage.features?.length < expectedLimit);
-  }, [data, isEmpty, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
+  }, [data, isEmpty, error, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
   const userPrefs: UserPreferences = useMemo(() => ({
     likedTags: userProfile?.likedTags || [],
@@ -257,27 +280,31 @@ export default function Home() {
   }, [data, userPrefs, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory]);
 
   const observer = useRef<IntersectionObserver | null>(null);
+  const isLoadingMore = useRef(false);
   const lastElementRef = useCallback((node: any) => {
     if (observer.current) observer.current.disconnect();
+    // Early-exit: don't observe if we know there's nothing left
+    if (isReachingEnd || isFetchingNextPage || isValidating) {
+      return;
+    }
     const options = { rootMargin: '0px 0px -50px 0px', threshold: 1.0 };
     observer.current = new IntersectionObserver(entries => {
       const target = entries[0];
-      if (target.isIntersecting) {
-        if (!isReachingEnd && !isFetchingNextPage && !isValidating) {
-          setTimeout(() => { 
-            if (!isFavoritesCategory && !isCommunityCategory && !isAktivCategory && !isHighlightsCategory) {
-              const totalFetched = data ? data.flat().length : 0;
-              if (visibleCount < totalFetched) {
-                setVisibleCount(prev => prev + 25);
-              } else {
-                setSize(prev => prev + 1);
-                setVisibleCount(prev => prev + 25);
-              }
-            } else {
-              setSize(prev => prev + 1);
-            }
-          }, 500);
+      if (target.isIntersecting && !isLoadingMore.current) {
+        isLoadingMore.current = true;
+        if (!isFavoritesCategory && !isCommunityCategory && !isAktivCategory && !isHighlightsCategory) {
+          const totalFetched = data ? data.flat().length : 0;
+          if (visibleCount < totalFetched) {
+            setVisibleCount(prev => prev + 25);
+          } else {
+            setSize(prev => prev + 1);
+            setVisibleCount(prev => prev + 25);
+          }
+        } else {
+          setSize(prev => prev + 1);
         }
+        // Reset guard after a short delay so the next intersection can fire
+        setTimeout(() => { isLoadingMore.current = false; }, 1000);
       }
     }, options);
     if (node) observer.current.observe(node);
@@ -317,7 +344,6 @@ export default function Home() {
     setActiveCategory(categoryId);
     setActiveTabId(tabId);
     setSortBy('recommended');
-    setMaxDistance(null);
     setActivityCategoryFilter('Alle');
     setVisibleCount(25);
   };
@@ -375,7 +401,7 @@ export default function Home() {
         <div className="space-y-4">
           <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">Keine Ergebnisse</h3>
           <p className="text-[#64748b] dark:text-neutral-400 font-medium">Passe deine Suche oder die Filter an.</p>
-          <Button onClick={() => { handleCategoryChange([], ''); setMaxDistance(null); setActivityCategoryFilter('Alle'); }} variant="outline" className="rounded-xl font-bold">Filter zurücksetzen</Button>
+          <Button onClick={() => { handleCategoryChange([], ''); setMaxDistance(10); setActivityCategoryFilter('Alle'); }} variant="outline" className="rounded-xl font-bold">Filter zurücksetzen</Button>
         </div>
       </div>
     );
