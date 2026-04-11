@@ -563,11 +563,14 @@ export const CONDITION_PREFIXES = [
 
 export const GLOBAL_EXCLUDE_STRING = [...BASE_HARD_VETO].slice(0, 10).join(',');
 
-const BLACKLIST_REGEX = /sex|porn|adult|fetish|escort|nudity|brothel|gaming_centre|erotic/i;
+const BLACKLIST_REGEX = /sex|porn|fetish|escort|nudity|brothel|gaming_centre|erotic/i;
 
 export const isSanitized = (text: string, tags: string[]): boolean => {
   if (BLACKLIST_REGEX.test(text)) return false;
-  return !tags.some(tag => BLACKLIST_REGEX.test(tag));
+  return !tags.some(tag => {
+    if (tag === 'adult.nightclub' || tag.startsWith('adult.nightclub.')) return false;
+    return BLACKLIST_REGEX.test(tag);
+  });
 };
 
 export const applyFilters = (
@@ -664,7 +667,7 @@ export async function fetchNearbyPlaces(
   // Synchronisierung: Wir fügen 'building' und 'education' zur API-Anfrage hinzu,
   // da wir diese in der BASE_WHITELIST erlauben (z.B. für das Klimahaus).
   let targetCategories: string[] = categories.length === 0 || categories.includes('all')
-    ? ["tourism", "entertainment", "heritage", "building", "education"]
+    ? ["tourism", "entertainment", "heritage", "building", "education", "adult.nightclub", "catering"]
     : categories.slice(0, 10);
   const fetchUrl = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 

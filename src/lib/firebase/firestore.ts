@@ -263,6 +263,14 @@ export async function createActivity({
     }
   });
 
+  if (!isCustomActivity && placeIdValue !== "unknown") {
+    const placeRef = doc(db, 'places', placeIdValue);
+    batch.set(placeRef, { 
+      activityCount: increment(1),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }
+
   if (isBoosted) {
     batch.update(userRef, {
       tokens: increment(-1)
@@ -769,18 +777,24 @@ export async function removeUserFromChat(chatId: string, userId: string): Promis
 export async function deleteActivity(activityId: string): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
 
-  const batch = writeBatch(db);
-
   const activityRef = doc(db, 'activities', activityId);
   const chatRef = doc(db, 'chats', activityId);
   const messagesRef = collection(db, 'chats', activityId, 'messages');
   const participantsRef = collection(db, 'activities', activityId, 'participants');
 
+  const activitySnap = await getDoc(activityRef);
+  if (!activitySnap.exists()) return; // Already deleted or doesn't exist
+
+  const activityData = activitySnap.data() as Activity;
+  const batch = writeBatch(db);
+
+  // Messages löschen
   const messagesSnapshot = await getDocs(messagesRef);
   messagesSnapshot.forEach(doc => {
     batch.delete(doc.ref);
   });
 
+  // Teilnehmer löschen
   const participantsSnapshot = await getDocs(participantsRef);
   participantsSnapshot.forEach(doc => {
     batch.delete(doc.ref);
@@ -788,6 +802,14 @@ export async function deleteActivity(activityId: string): Promise<void> {
 
   batch.delete(chatRef);
   batch.delete(activityRef);
+
+  // Orts-Anker deinkrementieren falls vorhanden
+  if (activityData.placeId && activityData.placeId !== 'custom' && (activityData.status === 'active' || activityData.status === 'open')) {
+    const placeRef = doc(db, 'places', activityData.placeId);
+    batch.set(placeRef, { 
+      activityCount: increment(-1) 
+    }, { merge: true });
+  }
 
   try {
     await batch.commit();
@@ -932,6 +954,12 @@ export async function voteToCompleteActivity(activityId: string, userId: string)
         transaction.update(activityRef, {
           status: 'completed'
         });
+
+        // Orts-Anker deinkrementieren
+        if (activityData.placeId && activityData.placeId !== 'custom') {
+            const placeRef = doc(db!, 'places', activityData.placeId);
+            transaction.set(placeRef, { activityCount: increment(-1) }, { merge: true });
+        }
       }
     });
   } catch (error: any) {
@@ -952,6 +980,12 @@ export async function completeActivity(activityId: string, userId: string, isPai
     const activityData = activitySnap.data() as Activity;
 
     transaction.update(activityRef, { status: 'completed' });
+
+    // Orts-Anker deinkrementieren
+    if (activityData.placeId && activityData.placeId !== 'custom') {
+        const placeRef = doc(db!, 'places', activityData.placeId);
+        transaction.set(placeRef, { activityCount: increment(-1) }, { merge: true });
+    }
 
     if (!isPaid) {
       transaction.update(userRef, {
@@ -980,6 +1014,12 @@ export const cancelActivity = async (activityId: string, hostId: string): Promis
 
   const batch = writeBatch(db);
   batch.update(activityRef, { status: 'cancelled', updatedAt: serverTimestamp() });
+
+  // Orts-Anker deinkrementieren falls die Aktivität noch aktiv war
+  if (activity.placeId && activity.placeId !== 'custom' && (activity.status === 'active' || activity.status === 'open')) {
+    const placeRef = doc(db, 'places', activity.placeId);
+    batch.set(placeRef, { activityCount: increment(-1) }, { merge: true });
+  }
 
   if (activity.isPaid && activity.price > 0) {
     const participantsRef = collection(db, 'activities', activityId, 'participants');
@@ -1410,6 +1450,14 @@ export async function resolveModerationTask(reportId: string, activityId: string
   if (action === 'keep') {
     batch.update(activityRef, { isVerified: true });
   } else {
+    const actSnap = await getDoc(activityRef);
+    if (actSnap.exists()) {
+        const actData = actSnap.data();
+        if (actData.placeId && actData.placeId !== 'custom' && (actData.status === 'active' || actData.status === 'open')) {
+            const placeRef = doc(db, 'places', actData.placeId);
+            batch.set(placeRef, { activityCount: increment(-1) }, { merge: true });
+        }
+    }
     batch.update(activityRef, { status: 'blacklisted' });
   }
 

@@ -9,25 +9,23 @@ const tagRules: { pattern: RegExp; score: number }[] = [
   // --- High-Tier (90 Punkte) ---
   { pattern: /^tourism\.attraction(\..*)?$/, score: 10 }, // 90
   { pattern: /^tourism\.sights(\..*)?$/, score: 10 }, // 90
-  { pattern: /^entertainment\.museum$/, score: 70 },
-  { pattern: /^entertainment\.planetarium$/, score: 80 },
-  { pattern: /^entertainment\.aquarium$/, score: 80 },
-  { pattern: /^tourism(\.sights)?\.zoo$/, score: 10 },
+  { pattern: /^entertainment\.museum$/, score: 75 },
+  { pattern: /^entertainment\.planetarium$/, score: 100 },
+  { pattern: /^entertainment\.aquarium$/, score: 100 },
   { pattern: /^entertainment\.theme_park$/, score: 80 },
   { pattern: /^entertainment\.water_park$/, score: 80 },
-  { pattern: /^leisure\.water_park$/, score: 80 }, // Alias coverage
   { pattern: /^entertainment\.escape_game$/, score: 80 },
   { pattern: /^entertainment\.activity_park(\..*)?$/, score: 80 },
   { pattern: /^entertainment\.cinema$/, score: 80 },
   { pattern: /^entertainment\.bowling_alley$/, score: 80 },
   { pattern: /^entertainment\.miniature_golf$/, score: 80 },
-  { pattern: /^adult\.nightclub$/, score: 80 },
+  { pattern: /^adult\.nightclub$/, score: 75 },
   { pattern: /^catering\.pub$/, score: 80 },
   { pattern: /^catering\.bar$/, score: 80 },
   { pattern: /^catering\.biergarten$/, score: 80 },
   { pattern: /^sport\.stadium$/, score: 80 },
   { pattern: /^building\.tourism$/, score: 80 },
-  { pattern: /^entertainment\.zoo$/, score: 80 },
+  { pattern: /^entertainment\.zoo$/, score: 79 },
   { pattern: /^entertainment(\..*)?$/, score: 75 },
   { pattern: /^building\.entertainment$/, score: 70 },
 
@@ -88,6 +86,19 @@ function getTagScore(tag: string): number {
 }
 
 /**
+ * Zerfallskonstante für die Distanz-Gewichtung im Cold-Start Algorithmus.
+ * Dieser Konfigurationsparameter ist leicht modifizierbar für die iterative
+ * Kalibrierung von Qualität vs. Entfernung.
+ */
+export const COLD_START_LAMBDA = 0.005;
+
+/**
+ * Toleranzkorridor für die stochastische Injektion (Rauschvariable).
+ * Verhindert deterministische Startbedingungen für symmetrische Datenerhebung.
+ */
+export const EPSILON_TOLERANCE = 0.7;
+
+/**
  * HMFR 2.0: Asymmetric Contextual Ranking (Wildcard-Edition)
  */
 export function calculateRelevance(
@@ -135,32 +146,33 @@ export function calculateRelevance(
   // 3. Logarithmische Dämpfungsfunktion (Soft-Cap)
   const T_final = Math.sign(T_weighted) * 100 * Math.log10(1 + (Math.abs(T_weighted) / 20));
 
-  // 4. Finale Kalkulation
-  const lambda = COLD_START_LAMBDA > 0 ? COLD_START_LAMBDA : 0.5; // Nutze den Konfigwert Lambda
-  const epsilon = (Math.random() * 2 - 1) * EPSILON_TOLERANCE;
-  const S = (T_final + epsilon) * Math.exp(-lambda * distanceKm);
+  // 4. Basis-Score (Zwischenergebnis — reine Formel ohne Votes)
+  const lambda = COLD_START_LAMBDA > 0 ? COLD_START_LAMBDA : 0.5;
+  // Deterministischer Epsilon basierend auf Place-ID (stabil über Re-Renders)
+  const placeId = item.place_id || item.id || '';
+  let hash = 0;
+  for (let i = 0; i < placeId.length; i++) {
+    hash = ((hash << 5) - hash + placeId.charCodeAt(i)) | 0;
+  }
+  const deterministicRandom = ((hash & 0x7fffffff) / 0x7fffffff) * 2 - 1; // -1 bis +1
+  const epsilon = deterministicRandom * EPSILON_TOLERANCE;
+  const S_base = (T_final + epsilon) * Math.exp(-lambda * distanceKm);
 
-  // 5. Voting Integration (Finale Priorität)
-  const communityScore = item.communityScore || 0;
-  return S + (communityScore * 50);
+  // 5. Vote-Integration (additiver Bonus/Malus auf Zwischenergebnis)
+  //    V = W_up * ln(1 + upvotes) - W_down * ln(1 + downvotes)
+  //    Log-Dämpfung verhindert, dass wenige Power-Voter das Ranking dominieren.
+  const upvotes = item.upvotes || 0;
+  const downvotes = item.downvotes || 0;
+  const W_UP = 1.5;    // Gewicht pro Upvote (gedämpft)
+  const W_DOWN = 2.0;  // Gewicht pro Downvote (asymmetrisch stärker)
+
+  const V = (W_UP * Math.log(1 + upvotes)) - (W_DOWN * Math.log(1 + downvotes));
+
+  // 6. Finale Zusammenführung
+  return S_base + V;
 }
 
-// -----------------------------------------------------
-// Cold-Start Ranking Algorithm
-// -----------------------------------------------------
 
-/**
- * Zerfallskonstante für die Distanz-Gewichtung im Cold-Start Algorithmus.
- * Dieser Konfigurationsparameter ist leicht modifizierbar für die iterative
- * Kalibrierung von Qualität vs. Entfernung.
- */
-export const COLD_START_LAMBDA = 0.005;
-
-/**
- * Toleranzkorridor für die stochastische Injektion (Rauschvariable).
- * Verhindert deterministische Startbedingungen für symmetrische Datenerhebung.
- */
-export const EPSILON_TOLERANCE = 0.7;
 
 /**
  * Berechnet den Cold-Start Score einer einzelnen Entität gemäß der Exponentialfunktion und Rauschvariable.

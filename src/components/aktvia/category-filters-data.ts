@@ -34,7 +34,8 @@ export const availableTabs = [
       "tourism.sights.castle", "tourism.sights.fort", 
       "tourism.sights.archaeological_site"
     ], 
-    icon: Landmark 
+    icon: Landmark,
+    color: "#f59e0b" // Amber
   },
   { 
     id: "Religion", 
@@ -43,13 +44,15 @@ export const availableTabs = [
       "religion.place_of_worship", "tourism.sights.place_of_worship",
       "tourism.sights.monastery"
     ], 
-    icon: Church 
+    icon: Church,
+    color: "#8b5cf6" // Violet
   },
   { 
     id: "Museums", 
     label: "Museen", 
     query: ["entertainment.museum"], 
-    icon: Library 
+    icon: Library,
+    color: "#6366f1" // Indigo
   },
   { 
     id: "Attractions", 
@@ -59,13 +62,15 @@ export const availableTabs = [
       "tourism.attraction.viewpoint", "entertainment.planetarium", 
       "tourism.attraction.fountain"
     ], 
-    icon: Ticket 
+    icon: Ticket,
+    color: "#ec4899" // Pink
   },
   { 
     id: "theater_cinema", 
     label: "Theater & Kinos", 
     query: ["entertainment.cinema", "entertainment.culture.theatre", "entertainment.culture.arts_centre"], 
-    icon: Film 
+    icon: Film,
+    color: "#f43f5e" // Rose
   },
   
   // --- NATUR & AKTIV ---
@@ -77,7 +82,8 @@ export const availableTabs = [
       "leisure.picnic", "pet.dog_park", "camping.camp_site", "camping.caravan_site", 
       "camping.summer_camp", "natural.mountain", "natural.mountain.peak"
     ], 
-    icon: TreePine 
+    icon: TreePine,
+    color: "#10b981" // Green
   },
   { 
     id: "Water", 
@@ -87,13 +93,15 @@ export const availableTabs = [
       "beach", "beach.beach_resort", "natural.sand.dune", "man_made.pier",
       "leisure.spa", "building.spa"
     ], 
-    icon: Waves 
+    icon: Waves,
+    color: "#0ea5e9" // Sky
   },
   { 
     id: "Zoos", 
     label: "Zoos & Aquarien", 
     query: ["entertainment.zoo", "entertainment.aquarium"], 
-    icon: Bird 
+    icon: Bird,
+    color: "#06b6d4" // Cyan
   },
   { 
     id: "Sport", 
@@ -106,7 +114,8 @@ export const availableTabs = [
       "entertainment.escape_game", "entertainment.miniature_golf", "ski", "ski.lift", 
       "commercial.outdoor_and_sport"
     ], 
-    icon: Dumbbell 
+    icon: Dumbbell,
+    color: "#f97316" // Orange
   },
   
   // --- SOCIAL & FOOD ---
@@ -114,37 +123,43 @@ export const availableTabs = [
     id: "Restaurants", 
     label: "Restaurants", 
     query: ["catering.restaurant", "catering.food_court"], 
-    icon: Utensils 
+    icon: Utensils,
+    color: "#059669" // Emerald
   },
   { 
     id: "Cafes", 
     label: "Cafés", 
     query: ["catering.cafe"], 
-    icon: Coffee 
+    icon: Coffee,
+    color: "#78350f" // Brown
   },
   { 
     id: "FastFood", 
     label: "Fast Food", 
     query: ["catering.fast_food"], 
-    icon: Drumstick 
+    icon: Drumstick,
+    color: "#eab308" // Yellow
   },
   { 
     id: "IceCream", 
     label: "Eisdielen", 
     query: ["catering.ice_cream", "catering.cafe.ice_cream", "catering.cafe.frozen_yogurt"], 
-    icon: IceCream 
+    icon: IceCream,
+    color: "#d946ef" // Fuchsia
   },
   { 
     id: "Nightlife", 
     label: "Bars & Pubs", 
     query: ["catering.bar", "catering.pub", "catering.biergarten", "catering.taproom"], 
-    icon: Beer 
+    icon: Beer,
+    color: "#ef4444" // Red
   },
   { 
     id: "Clubs", 
     label: "Clubs & Discos", 
     query: ["adult.nightclub"], 
-    icon: Music 
+    icon: Music,
+    color: "#a855f7" // Purple
   },
   
   // --- UTILITY & WISSEN ---
@@ -152,13 +167,15 @@ export const availableTabs = [
     id: "Education", 
     label: "Bildung", 
     query: ["education.library", "building.university", "education.university", "building.college", "education.college"], 
-    icon: BookOpen 
+    icon: BookOpen,
+    color: "#3b82f6" // Blue
   },
   { 
     id: "Coworking", 
     label: "Coworking", 
     query: ["office.coworking"], 
-    icon: Building 
+    icon: Building,
+    color: "#6b7280" // Gray
   },
   { 
     id: "Shopping", 
@@ -168,6 +185,7 @@ export const availableTabs = [
       "commercial.marketplace", "commercial.gift_and_souvenir", "commercial.books", 
       "commercial.hobby"
     ], 
-    icon: ShoppingBag 
+    icon: ShoppingBag,
+    color: "#84cc16" // Lime
   }
 ];

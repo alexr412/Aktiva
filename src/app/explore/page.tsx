@@ -1,54 +1,29 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { motion, useAnimation } from 'framer-motion';
+import { motion, useAnimation, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase/client';
-import { joinActivity } from '@/lib/firebase/firestore';
+import { joinActivity, createActivity } from '@/lib/firebase/firestore';
 import type { Activity } from '@/lib/types';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Compass, X, Heart, Home, MapPin, Calendar, Users, RotateCcw, ExternalLink, Sparkles, CreditCard } from 'lucide-react';
+import { Compass, X, Check, Info, MapPin, Star, Building2, ArrowLeft, ArrowRight, PlusCircle, RefreshCw, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { ProximityRadarView } from '@/components/aktvia/proximity-radar-view';
 import { cn } from '@/lib/utils';
 import { calculateDistance } from '@/lib/geo-utils';
+import { PlaceDetails } from '@/components/aktvia/place-details';
+import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const QUARANTINE_THRESHOLD = 3;
-
-const CardSkeleton = () => (
-  <div className="w-full max-w-sm h-[70vh] max-h-[600px] bg-card rounded-[2.5rem] shadow-xl border-none overflow-hidden flex flex-col">
-    <Skeleton className="flex-1 rounded-none" />
-    <div className="p-6 space-y-4">
-        <Skeleton className="h-12 w-full rounded-2xl" />
-        <Skeleton className="h-12 w-full rounded-2xl" />
-        <div className="pt-4 flex justify-between">
-            <Skeleton className="h-6 w-24 rounded-full" />
-        </div>
-    </div>
-  </div>
-);
-
-const AdCard = () => (
-  <div className="w-full h-full bg-primary/5 flex flex-col p-8 items-center justify-center text-center">
-    <div className="bg-primary/10 p-4 rounded-full mb-6">
-      <Sparkles className="h-12 w-12 text-primary animate-pulse" />
-    </div>
-    <h2 className="text-2xl font-bold text-primary mb-2">Gesponserter Partner</h2>
-    <p className="text-muted-foreground mb-8 text-sm font-medium">Entdecke exklusive Angebote unserer Partner in deiner Region.</p>
-    <Button className="rounded-full h-14 px-8 font-black gap-2 shadow-lg shadow-primary/20">
-      <ExternalLink className="h-4 w-4" />
-      Mehr erfahren
-    </Button>
-    <span className="mt-6 text-[10px] uppercase tracking-widest text-neutral-400 font-black">Anzeige</span>
-  </div>
-);
 
 export default function ExplorePage() {
     const { user, userProfile } = useAuth();
@@ -57,33 +32,20 @@ export default function ExplorePage() {
 
     const [allCards, setAllCards] = useState<Activity[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
     const animationControls = useAnimation();
     
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
     const [radiusKm, setRadiusKm] = useState<number | null>(null);
     const [lastSwipedCard, setLastSwipedCard] = useState<Activity | null>(null);
+    const [selectedPlace, setSelectedPlace] = useState<Activity | null>(null);
+    const [swipedIds, setSwipedIds] = useState<Set<string>>(new Set());
 
     const resetFilters = () => {
         setActiveCategory(['all']);
         setRadiusKm(null);
     };
-
-    const EmptyState = () => (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full">
-            <div className="bg-primary/10 p-6 rounded-[2.5rem]">
-                <Compass className="h-12 w-12 text-primary" />
-            </div>
-            <h2 className="text-xl font-black text-[#0f172a]">Keine Aktivitäten gefunden</h2>
-            <p className="text-neutral-500 font-medium max-w-xs">
-                Passe deine Filter an oder schau später wieder vorbei.
-            </p>
-            <Button onClick={resetFilters} variant="outline" className="rounded-2xl h-12 font-bold px-6 border-neutral-200 mt-2">
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Filter zurücksetzen
-            </Button>
-        </div>
-    );
 
     useEffect(() => {
         if (navigator.geolocation) {
@@ -101,7 +63,6 @@ export default function ExplorePage() {
         }
     }, []);
 
-
     useEffect(() => {
         if (!db || !user) return;
 
@@ -110,7 +71,6 @@ export default function ExplorePage() {
         try {
             const collectionRef = collection(db, 'activities');
             const constraints: any[] = [];
-
             const isCommunityMode = activeCategory.includes('user_event');
 
             if (isCommunityMode) {
@@ -146,7 +106,7 @@ export default function ExplorePage() {
                     return timeA - timeB;
                 });
 
-                setAllCards(fetchedActivities);
+                setAllCards(fetchedActivities.reverse());
                 setIsLoading(false);
             }, (error) => {
                 console.error("FIRESTORE ERROR:", error.message);
@@ -160,6 +120,41 @@ export default function ExplorePage() {
         }
     }, [user, activeCategory, userLocation]);
     
+    const handleCreateActivity = async (
+        startDate: Date, 
+        endDate: Date | undefined, 
+        isTimeFlexible: boolean, 
+        customLocationName?: string, 
+        maxParticipants?: number, 
+        isBoosted?: boolean,
+        isPaid?: boolean,
+        price?: number,
+        category?: ActivityCategory
+    ) => {
+        if (!user) return false;
+        try {
+            await createActivity({
+                place: activityModalPlace === 'custom' ? undefined : activityModalPlace as Place,
+                customLocationName,
+                startDate,
+                endDate,
+                user,
+                isTimeFlexible,
+                maxParticipants,
+                isBoosted,
+                isPaid,
+                price,
+                category: category || 'Sonstiges'
+            });
+            toast({ title: "Aktivität erstellt!", description: "Viel Spaß!" });
+            setActivityModalPlace(null);
+            return true;
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: "Fehler", description: err.message });
+            return false;
+        }
+    };
+
     const visibleCards = useMemo(() => {
         let filtered = allCards;
 
@@ -182,14 +177,13 @@ export default function ExplorePage() {
         }
         
         return filtered.filter(card => !userProfile?.hiddenEntityIds?.includes(card.id!));
-
     }, [allCards, activeCategory, radiusKm, userLocation, userProfile]);
     
     const [cards, setCards] = useState<Activity[]>([]);
     useEffect(() => {
-        setCards(visibleCards);
-    }, [visibleCards]);
-
+        const newCards = visibleCards.filter(c => !swipedIds.has(c.id!));
+        setCards(newCards);
+    }, [visibleCards, swipedIds]);
 
     const handleSwipe = (direction: 'left' | 'right') => {
         if (cards.length === 0) return;
@@ -208,13 +202,13 @@ export default function ExplorePage() {
         });
 
         const removeCard = () => {
+             setSwipedIds(prev => new Set(prev).add(topCardId));
              setCards(prev => prev.filter(c => c.id !== topCardId));
         }
 
         if (direction === 'right') {
              if (!user) {
                 router.push('/login');
-                animationControls.start({ x: 0, rotate: 0, opacity: 1, transition: { duration: 0.4 }});
                 return;
             }
 
@@ -227,7 +221,6 @@ export default function ExplorePage() {
                 .then(() => {
                     toast({ title: 'Aktivität beigetreten!', description: 'Du findest sie jetzt in deinen Chats.' });
                     setTimeout(removeCard, 200);
-                    setLastSwipedCard(null);
                 })
                 .catch((error) => {
                     console.error(error);
@@ -242,14 +235,6 @@ export default function ExplorePage() {
 
     const handleUndo = () => {
         if (!lastSwipedCard) return;
-
-        animationControls.start({
-            x: 0,
-            rotate: 0,
-            opacity: 1,
-            transition: { duration: 0.2, ease: "easeIn" }
-        });
-        
         setCards(prev => [...prev, lastSwipedCard]);
         setLastSwipedCard(null);
     };
@@ -257,199 +242,309 @@ export default function ExplorePage() {
     const onDragEnd = (event: any, info: any) => {
       const { offset } = info;
       const swipeThreshold = 80;
-
-      if (offset.x > swipeThreshold) {
-        handleSwipe('right');
-      } else if (offset.x < -swipeThreshold) {
-        handleSwipe('left');
-      }
-    };
-    
-    const renderDate = (activity: Activity) => {
-        if (!activity.activityDate) return "Kein Datum";
-        if (activity.activityEndDate) {
-            return `${format(activity.activityDate.toDate(), "eee, d. MMM")} - ${format(activity.activityEndDate.toDate(), "eee, d. MMM")}`;
-        }
-        if (activity.isTimeFlexible) {
-            return `${format(activity.activityDate.toDate(), "eee, d. MMM")} (Flexibel)`;
-        }
-        return format(activity.activityDate.toDate(), "eee, d. MMM 'um' p");
+      if (offset.x > swipeThreshold) handleSwipe('right');
+      else if (offset.x < -swipeThreshold) handleSwipe('left');
     };
 
     return (
-        <div className="flex h-full flex-col bg-secondary/30">
-            <header className="sticky top-0 z-10 w-full border-b border-neutral-100 bg-white/80 backdrop-blur-md shrink-0 px-4 py-5 space-y-4">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-black tracking-tight text-[#0f172a]">Aktivitäten</h1>
-                    <NotificationBell />
+        <div className="flex h-[100dvh] flex-col lg:flex-row bg-[#fdfdfd] dark:bg-neutral-950 overflow-hidden font-jakarta">
+            {/* Desktop Sidebar */}
+            <aside className="hidden lg:flex w-[320px] shrink-0 border-r border-slate-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 flex-col overflow-y-auto">
+                <div className="p-8 space-y-12">
+                     <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-2xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                            <Compass className="h-6 w-6 text-white" />
+                        </div>
+                        <h1 className="text-[24px] font-black tracking-tighter text-[#0f172a] dark:text-neutral-50 leading-none">Aktvia</h1>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between px-2">
+                            <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Aktvia Radar</h3>
+                            <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                        </div>
+                        <div className="bg-slate-50/50 dark:bg-neutral-800/30 rounded-[2.25rem] p-5 border border-slate-50 dark:border-neutral-800/50">
+                            <ProximityRadarView />
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 px-2">Präferenzen</h3>
+                        <div className="flex flex-col gap-6">
+                            <CategoryFilters activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
+                        </div>
+                    </div>
                 </div>
-                <div className="space-y-4">
-                  <CategoryFilters activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
-                  <div className="flex gap-2">
-                      <Select 
-                          onValueChange={(value) => setRadiusKm(value === 'all' ? null : Number(value))}
-                          disabled={!userLocation}
-                      >
-                          <SelectTrigger className="w-full rounded-2xl h-12 bg-neutral-50 border-none focus:ring-0 font-bold text-neutral-600">
-                              <SelectValue placeholder="In der Umgebung..." />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl border-none shadow-xl font-bold">
-                              <SelectItem value="all">Überall</SelectItem>
-                              <SelectItem value="5">Bis 5 km</SelectItem>
-                              <SelectItem value="10">Bis 10 km</SelectItem>
-                              <SelectItem value="25">Bis 25 km</SelectItem>
-                              <SelectItem value="50">Bis 50 km</SelectItem>
-                          </SelectContent>
-                      </Select>
-                  </div>
-                </div>
-              <ProximityRadarView />
-            </header>
+            </aside>
             
-            <main className="flex-1 flex flex-col min-h-0">
-                {isLoading && (
-                    <div className="flex-1 flex items-center justify-center">
-                        <CardSkeleton />
+            <main className="flex-1 flex flex-col min-h-0 relative">
+                {/* Header */}
+                <header className="sticky top-0 z-30 w-full bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md px-6 py-3.5 flex items-center justify-between border-b border-slate-50 dark:border-neutral-900">
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-xl font-extrabold tracking-tight text-[#0f172a] dark:text-neutral-50 italic">Aktivitäten</h1>
+                        <Compass className="h-5 w-5 text-orange-400" />
                     </div>
-                )}
-
-                {!isLoading && cards.length === 0 && (
-                     <div className="flex-1">
-                        <EmptyState />
+                    <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 flex items-center justify-center rounded-full bg-slate-50 dark:bg-neutral-900">
+                           <NotificationBell />
+                        </div>
                     </div>
-                )}
-                
-                {!isLoading && cards.length > 0 &&
-                    <>
-                        <div className="flex-1 min-h-0 relative flex items-center justify-center p-4">
-                            {cards.map((card, index) => {
-                                const isTopCard = index === cards.length - 1;
-                                const showAd = !userProfile?.isPremium && (index % 10 === 0 && index !== 0);
-                                const isPaidEvent = card.isPaid && card.price && card.price > 0;
-                                const distance = (userLocation && card.lat && card.lon) 
-                                  ? calculateDistance(userLocation.lat, userLocation.lng, card.lat, card.lon)
-                                  : null;
+                </header>
 
-                                return (
-                                    <motion.div
-                                        key={card.id || index}
-                                        className={cn(
-                                          "absolute w-full max-w-sm h-[70vh] max-h-[600px] bg-white rounded-[2.5rem] shadow-xl border-none overflow-hidden flex flex-col",
-                                          card.isBoosted && "ring-4 ring-orange-500/20"
-                                        )}
-                                        style={{
-                                            zIndex: index,
-                                        }}
-                                        initial={isTopCard ? { scale: 1, y: 0, opacity: 1 } : {}}
-                                        animate={isTopCard ? animationControls : {
-                                            scale: 1 - (cards.length - 1 - index) * 0.05,
-                                            y: (cards.length - 1 - index) * 10,
-                                            opacity: 1 - (cards.length - 1 - index) * 0.2,
-                                        }}
-                                        drag={isTopCard ? "x" : false}
-                                        dragConstraints={{ left: 0, right: 0 }}
-                                        onDragEnd={isTopCard ? onDragEnd : undefined}
-                                        whileDrag={{ cursor: 'grabbing' }}
-                                    >
-                                        {showAd ? (
-                                          <AdCard />
-                                        ) : (
-                                          <>
-                                            <div className={cn(
-                                              "flex-1 flex items-center justify-center relative",
-                                              card.isBoosted ? "bg-gradient-to-br from-orange-400 to-amber-500" : "bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400"
-                                            )}>
-                                                {card.isBoosted && (
-                                                  <div className="absolute top-6 left-6 bg-white/20 backdrop-blur-md text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1 shadow-lg">
-                                                    <Sparkles className="h-3 w-3" />
-                                                    Featured
-                                                  </div>
-                                                )}
-                                                
-                                                {distance !== null && (
-                                                  <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-md text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1 shadow-lg border border-white/10">
-                                                    <MapPin className="h-2.5 w-2.5" />
-                                                    {distance < 1 ? '< 1 km' : `${distance.toFixed(1)} km`}
-                                                  </div>
-                                                )}
+                <div className="flex-1 flex flex-col min-h-0 relative px-4 lg:px-0">
+                    {/* Mobile Filters Area */}
+                    <div className="lg:hidden py-3 space-y-3">
+                         <CategoryFilters activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
+                         <div className="flex items-center justify-between px-1">
+                            <div className="flex items-center gap-2 bg-slate-100 dark:bg-neutral-900 rounded-full py-1.5 px-3">
+                                <MapPin className="h-2.5 w-2.5 text-rose-400" />
+                                <span className="text-[10px] font-extrabold text-slate-600">Überall</span>
+                                <ChevronDown className="h-3 w-3 text-slate-400" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Radar aktiv</span>
+                            </div>
+                         </div>
+                    </div>
 
-                                                {isPaidEvent && (
-                                                  <div className="absolute top-6 right-6 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1 shadow-lg">
-                                                    <CreditCard className="h-3 w-3" />
-                                                    €{card.price!.toFixed(2)}
-                                                  </div>
-                                                )}
+                    <div className="flex-1 flex flex-col items-center justify-center relative min-h-0 py-2 sm:py-6">
+                          <div className="relative w-full max-w-[400px] aspect-[3.6/5] max-h-[580px]">
+                            <AnimatePresence mode="popLayout">
+                                {cards.slice(-3).map((card, index) => {
+                                    const displayedIndex = cards.length - cards.slice(-3).length + index;
+                                    const isTopCard = displayedIndex === cards.length - 1;
+                                    const distance = (userLocation && card.lat && card.lon) 
+                                      ? calculateDistance(userLocation.lat, userLocation.lng, card.lat, card.lon)
+                                      : null;
 
-                                                {card.isCustomActivity ? (
-                                                  <Home className="h-24 w-24 text-white/30 drop-shadow-lg"/>
-                                                ) : (
-                                                  <MapPin className="h-24 w-24 text-white/30 drop-shadow-lg"/>
-                                                )}
-                                                <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent p-6 flex flex-col justify-end">
-                                                    <h2 className="text-2xl font-black text-white shadow-lg leading-tight mb-1">{card.placeName}</h2>
-                                                    <p className="text-sm text-white/80 font-bold shadow-md truncate">{card.placeAddress || 'Ort Details im Chat'}</p>
+                                    return (
+                                        <motion.div
+                                            key={card.id}
+                                            className={cn(
+                                              "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[3rem] shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] border-none overflow-hidden flex flex-col"
+                                            )}
+                                            style={{ zIndex: isTopCard ? 100 : (10 + index), perspective: 1000 }}
+                                            initial={{ scale: 0.9, opacity: 0 }}
+                                            animate={isTopCard ? { 
+                                                opacity: 1, 
+                                                scale: 1, 
+                                                x: 0, 
+                                                y: 0,
+                                                transition: { duration: 0.2 } 
+                                            } : {
+                                                scale: 1 - (cards.length - 1 - displayedIndex) * 0.05,
+                                                y: (cards.length - 1 - displayedIndex) * 12,
+                                                opacity: 0.05,
+                                            }}
+                                            whileDrag={{ scale: 1.02, opacity: 1, zIndex: 200 }}
+                                            exit={{ x: 500, opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
+                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                            drag={isTopCard ? "x" : false}
+                                            dragConstraints={{ left: 0, right: 0 }}
+                                            onDragEnd={isTopCard ? onDragEnd : undefined}
+                                        >
+                                            <div className={cn("flex-1 flex flex-col bg-white dark:bg-neutral-900", !isTopCard && "pointer-events-none")}>
+                                                <div className="h-[55%] w-full relative overflow-hidden bg-gradient-to-br from-[#bfc6e8] to-[#9fa9d1]">
+                                                    <div className="absolute top-5 left-5 flex gap-2 z-10">
+                                                        <div className="bg-amber-100 text-amber-700 text-[9px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
+                                                            <Star className="h-2.5 w-2.5 fill-current" />
+                                                            NEU
+                                                        </div>
+                                                        <div className="bg-white/80 backdrop-blur-md text-[#6e7ee5] text-[9px] font-bold px-3 py-1.5 rounded-full">
+                                                            {card.categories?.[0] || 'Aktivität'}
+                                                        </div>
+                                                    </div>
+
+                                                    {distance !== null && (
+                                                        <div className="absolute top-5 right-5 z-10">
+                                                            <div className="bg-black/20 backdrop-blur-md text-white text-[9px] font-bold px-3 py-1.5 rounded-full">
+                                                                {distance < 1 ? '< 1 km' : `${distance.toFixed(1)} km`}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <Building2 className="h-24 w-24 text-white/50" strokeWidth={1}/>
+                                                    </div>
+
+                                                    <div className="absolute bottom-0 left-0 w-full p-6 pt-16 bg-gradient-to-t from-black/60 to-transparent">
+                                                        <h2 className="text-2xl font-extrabold text-white leading-tight mb-1.5 tracking-tight">{card.placeName}</h2>
+                                                        <div className="flex items-center gap-2 text-white/80">
+                                                            <MapPin className="h-3 w-3 text-rose-400" />
+                                                            <p className="text-[11px] font-bold truncate tracking-wide">{card.placeAddress || 'In deiner Umgebung'}</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="p-6 flex flex-col gap-3">
-                                                <div className="flex items-center gap-3 bg-emerald-50 text-emerald-700 p-4 rounded-2xl transition-colors">
-                                                    <Calendar className="h-5 w-5 opacity-70"/>
-                                                    <span className="font-black text-sm">{renderDate(card)}</span>
-                                                </div>
-                                                <div className="flex items-center gap-3 bg-blue-50 text-blue-700 p-4 rounded-2xl transition-colors">
-                                                    <Users className="h-5 w-5 opacity-70"/>
-                                                    <span className="font-black text-sm">
-                                                      {card.participantIds.length} Teilnehmer &bull; von {card.hostName?.split(' ')[0] || 'Entdecker'}
-                                                    </span>
-                                                </div>
-                                                
-                                                <div className="flex items-center justify-between mt-3 pt-4 border-t border-neutral-50">
-                                                    <div className="rounded-full bg-orange-50 text-orange-600 font-black px-4 py-1.5 text-[10px] uppercase tracking-wider border-none">
-                                                        {card.isCustomActivity ? "Community" : "Location"}
+
+                                                <div className="flex-1 p-6 flex flex-col justify-around bg-white dark:bg-neutral-900">
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+                                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">WANN</span>
+                                                            <span className="text-[10px] font-extrabold text-[#0f172a] dark:text-neutral-200">
+                                                                {format(card.activityDate.toDate(), "eee, d. MMM")}
+                                                            </span>
+                                                        </div>
+                                                        <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+                                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">UHRZEIT</span>
+                                                            <span className="text-[10px] font-extrabold text-[#0f172a] dark:text-neutral-200">Flexibel</span>
+                                                        </div>
+                                                        <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+                                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">PLÄTZE</span>
+                                                            <span className="text-[10px] font-extrabold text-emerald-600">
+                                                                {(card.maxParticipants || 10) - card.participantIds.length} frei
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex -space-x-2.5 overflow-hidden p-0.5 items-center">
+                                                            <Avatar className="h-9 w-9 border-2 border-white dark:border-neutral-900 shadow-sm ring-1 ring-black/10 z-10">
+                                                                <AvatarImage src={card.hostPhotoURL || undefined} alt={card.hostName || 'Host'} />
+                                                                <AvatarFallback className="bg-orange-100 text-orange-700 text-[10px] font-bold">
+                                                                    {card.hostName?.charAt(0) || 'H'}
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                            
+                                                            {(card.participantsPreview || [])
+                                                                .filter(p => p.uid !== card.hostId)
+                                                                .slice(0, 3)
+                                                                .map((p, pidx) => (
+                                                                <Avatar key={p.uid} className="h-8 w-8 border-2 border-white dark:border-neutral-900 shadow-sm">
+                                                                    <AvatarImage src={p.photoURL || undefined} alt={p.displayName || 'Participant'} />
+                                                                    <AvatarFallback className={cn(
+                                                                        "text-[9px] font-bold text-white",
+                                                                        pidx === 0 ? "bg-indigo-400" : pidx === 1 ? "bg-emerald-500" : "bg-purple-500"
+                                                                    )}>
+                                                                        {p.displayName?.charAt(0) || '?'}
+                                                                    </AvatarFallback>
+                                                                </Avatar>
+                                                            ))}
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="text-[10px] font-bold text-slate-500 leading-none">
+                                                                <span className="text-[#0f172a] dark:text-neutral-200">v. {card.hostName?.split(' ')[0] || 'Test'}</span> 
+                                                                {card.participantIds.length > 1 && (
+                                                                    <span className="text-slate-400"> & {card.participantIds.length - 1} weitere</span>
+                                                                )}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                          </>
-                                        )}
-                                    </motion.div>
-                                );
-                            })}
+                                        </motion.div>
+                                    );
+                                })}
+                            </AnimatePresence>
+
+                            {!isLoading && cards.length === 0 && (
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
+                                >
+                                    <div className="w-24 h-24 bg-orange-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                                        <PlusCircle className="h-10 w-10 text-orange-500" strokeWidth={1.5} />
+                                    </div>
+                                    <h3 className="text-xl font-extrabold text-[#0f172a] dark:text-neutral-100 mb-2">Alles entdeckt!</h3>
+                                    <p className="text-sm text-slate-500 dark:text-neutral-400 mb-8 max-w-[240px]">
+                                        Aktuell gibt es keine weiteren Aktivitäten in deiner Nähe. Starte doch einfach selbst etwas!
+                                    </p>
+                                    <Button 
+                                        onClick={() => setActivityModalPlace('custom')}
+                                        className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-8 py-6 h-auto text-base font-bold shadow-lg shadow-orange-500/20 active:scale-95 transition-all w-full max-w-[200px]"
+                                    >
+                                        Aktivität erstellen
+                                    </Button>
+                                    <button 
+                                        onClick={() => window.location.reload()}
+                                        className="mt-6 text-xs font-bold text-slate-400 flex items-center gap-2 hover:text-slate-600 transition-colors"
+                                    >
+                                        <RefreshCw className="h-3 w-3" />
+                                        Liste aktualisieren
+                                    </button>
+                                </motion.div>
+                            )}
+                         </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    {cards.length > 0 && !isLoading && (
+                        <div className="pb-12 flex items-center justify-center gap-8">
+                            <div className="flex flex-col items-center gap-2">
+                                <Button 
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    asChild
+                                >
+                                    <motion.button 
+                                        onClick={() => handleSwipe('left')}
+                                        className="h-16 w-16 rounded-full bg-white dark:bg-neutral-900 border-2 border-slate-50 dark:border-neutral-800 text-rose-500 shadow-sm flex items-center justify-center"
+                                    >
+                                        <X className="h-7 w-7 stroke-[3]"/>
+                                    </motion.button>
+                                </Button>
+                                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest tracking-widest">Skip</span>
+                            </div>
+
+                            <div className="flex flex-col items-center gap-2 translate-y-1">
+                                <Button 
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    asChild
+                                >
+                                    <motion.button 
+                                        onClick={() => {
+                                            const topCard = cards[cards.length - 1];
+                                            if (topCard) setSelectedPlace(topCard);
+                                        }}
+                                        className="h-12 w-12 rounded-full bg-slate-50 dark:bg-neutral-800 border-none text-blue-500 flex items-center justify-center"
+                                    >
+                                        <Info className="h-6 w-6 stroke-[3] fill-blue-500/10"/>
+                                    </motion.button>
+                                </Button>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Info</span>
+                            </div>
+
+                            <div className="flex flex-col items-center gap-2">
+                                <Button 
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    asChild
+                                >
+                                    <motion.button 
+                                        onClick={() => handleSwipe('right')}
+                                        className="h-16 w-16 rounded-full bg-emerald-100/50 dark:bg-emerald-900/30 border-none text-emerald-600 flex items-center justify-center"
+                                    >
+                                        <Check className="h-8 w-8 stroke-[3]"/>
+                                    </motion.button>
+                                </Button>
+                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Beitreten</span>
+                            </div>
                         </div>
-                        
-                        <div className="shrink-0 flex items-center justify-center gap-6 pt-4 pb-24 z-20">
-                            <Button 
-                              onClick={() => handleSwipe('left')} 
-                              variant="outline" 
-                              size="icon" 
-                              className="h-16 w-16 rounded-full bg-red-50 border-none shadow-sm text-red-500 hover:bg-red-100 hover:scale-105 active:scale-90 transition-all"
-                            >
-                                <X className="h-8 w-8 stroke-[2.5]"/>
-                            </Button>
-                             <Button 
-                                onClick={handleUndo} 
-                                variant="outline" 
-                                size="icon" 
-                                className="h-12 w-12 rounded-full bg-slate-50 border-none shadow-sm text-slate-500 hover:bg-slate-100 hover:scale-105 active:scale-90 transition-all disabled:opacity-30"
-                                disabled={!lastSwipedCard}
-                            >
-                                <RotateCcw className="h-5 w-5 stroke-[2.5]"/>
-                            </Button>
-                             <Button 
-                              onClick={() => handleSwipe('right')} 
-                              variant="outline" 
-                              size="icon" 
-                              className={cn(
-                                "h-16 w-16 rounded-full border-none shadow-sm transition-all hover:scale-105 active:scale-90",
-                                cards[cards.length-1]?.isPaid 
-                                    ? "bg-slate-900 text-white hover:bg-black" 
-                                    : "bg-emerald-50 text-emerald-500 hover:bg-emerald-100"
-                              )}
-                            >
-                                <Heart className={cn("h-8 w-8 stroke-[2.5]", !cards[cards.length-1]?.isPaid && "fill-emerald-500/10")}/>
-                            </Button>
-                        </div>
-                    </>
-                }
+                    )}
+                </div>
             </main>
+
+            {/* Place Details Overlay */}
+            {selectedPlace && (
+                <PlaceDetails
+                    place={selectedPlace as any}
+                    onClose={() => setSelectedPlace(null)}
+                    onJoinActivity={() => {
+                        handleSwipe('right');
+                        setSelectedPlace(null);
+                    }}
+                    userLocation={userLocation}
+                />
+            )}
+
+            <CreateActivityDialog 
+                place={activityModalPlace === 'custom' ? null : activityModalPlace} 
+                open={!!activityModalPlace} 
+                onOpenChange={(open) => !open && setActivityModalPlace(null)} 
+                onCreateActivity={handleCreateActivity} 
+            />
         </div>
     );
 }

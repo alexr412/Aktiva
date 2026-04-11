@@ -68,28 +68,63 @@ export const formatTags = (tags: string[]): string[] => {
 };
 
 /**
- * Formatiert den rohen OSM Opening Hours String in ein lesbares Format.
+ * Formatiert den rohen OSM Opening Hours String in ein lesbares, smartes Format.
+ * Zeigt bevorzugt die Zeiten für den aktuellen Monat/Tag an.
  */
 export const formatOpeningHours = (raw?: string | null): string => {
   if (!raw) return '';
   
-  // 1. Semikolons durch Trennpunkte ersetzen
+  // 1. Grundbereinigung
   let formatted = raw.replace(/;/g, ' • ');
   
-  // 2. Wochentage lokalisieren
+  // 2. Saisonale Filterung (Heuristik)
+  // Beispiel: "Apr-Sep Mo-So 09:00-19:00; Nov-Feb Mo-So 09:00-18:00"
+  const now = new Date();
+  const currentMonth = now.getMonth(); // 0-11
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  const segments = raw.split(';');
+  let bestSegment = segments[0] || '';
+
+  // Suche nach einem Segment, das den aktuellen Monat abdeckt
+  for (const seg of segments) {
+    const monthsMatch = seg.match(/([A-Z][a-z]{2})-([A-Z][a-z]{2})/);
+    if (monthsMatch) {
+      const startIdx = monthNames.indexOf(monthsMatch[1]);
+      const endIdx = monthNames.indexOf(monthsMatch[2]);
+      if (startIdx !== -1 && endIdx !== -1) {
+        // Handle Jahresübergang (z.B. Nov-Feb)
+        const isInRange = startIdx <= endIdx 
+          ? (currentMonth >= startIdx && currentMonth <= endIdx)
+          : (currentMonth >= startIdx || currentMonth <= endIdx);
+        
+        if (isInRange) {
+          bestSegment = seg;
+          break;
+        }
+      }
+    }
+  }
+
+  // 3. Wochentage & Begriffe lokalisieren
   const dayMap: Record<string, string> = {
+    'Mo-Su': 'Täglich',
+    'Mo-Fr': 'Mo-Fr',
+    'Sa-Su': 'Wochenende',
     'Mo': 'Mo', 'Tu': 'Di', 'We': 'Mi', 'Th': 'Do', 'Fr': 'Fr', 'Sa': 'Sa', 'Su': 'So',
-    'PH': 'Feiertage', '24/7': '24/7'
+    'PH': 'Feiertage', '24/7': '24/7',
+    'off': 'geschlossen',
+    'open': 'geöffnet'
   };
   
+  let result = bestSegment.trim();
   Object.entries(dayMap).forEach(([en, de]) => {
     const regex = new RegExp(`\\b${en}\\b`, 'g');
-    formatted = formatted.replace(regex, de);
+    result = result.replace(regex, de);
   });
 
-  // 3. Schlüsselbegriffe bereinigen
-  formatted = formatted.replace(/\boff\b/gi, 'geschlossen');
-  formatted = formatted.replace(/\bopen\b/gi, 'geöffnet');
+  // Kürzen von Jahresangaben im Segment
+  result = result.replace(/[A-Z][a-z]{2}-[A-Z][a-z]{2}/, '').trim();
 
-  return formatted;
+  return result || formatted;
 };

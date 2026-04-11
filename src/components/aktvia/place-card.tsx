@@ -14,6 +14,7 @@ import {
   ArrowDown,
   Star,
   Clock,
+  Sparkles,
 } from 'lucide-react';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
@@ -55,21 +56,23 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         communityScore: 0,
         userVotes: {} as Record<string, 'up' | 'down'>,
         avgRating: 0,
-        reviewCount: 0
+        reviewCount: 0,
+        activityCount: 0
     });
 
     useEffect(() => {
         if (!db || !place.id) return;
-        const unsub = onSnapshot(doc(db, 'places', place.id), (doc) => {
-            if (doc.exists()) {
-                const data = doc.data();
+        const unsub = onSnapshot(doc(db, 'places', place.id), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
                 setPlaceMeta({
                     upvotes: data.upvotes || 0,
                     downvotes: data.downvotes || 0,
                     communityScore: data.communityScore || 0,
                     userVotes: data.userVotes || {},
                     avgRating: data.avgRating || 0,
-                    reviewCount: data.reviewCount || 0
+                    reviewCount: data.reviewCount || 0,
+                    activityCount: data.activityCount || 0
                 });
             }
         });
@@ -77,15 +80,6 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     }, [place.id]);
 
     const userVote = user ? (placeMeta.userVotes?.[user.uid] || 'none') : 'none';
-
-    const handleBookmarkToggle = (e: React.MouseEvent) => {
-        e.stopPropagation(); 
-        if (isFavorite) {
-            removeFavorite(place.id);
-        } else {
-            addFavorite(place);
-        }
-    };
 
     const handleVoteClick = async (e: React.MouseEvent, type: 'up' | 'down' | 'none') => {
         e.stopPropagation();
@@ -100,153 +94,156 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         }
     };
 
-    const categories = place.categories || [];
-    const rawTags = categories.filter((tag: string) => 
-      !tag.startsWith('wheelchair') && 
-      !tag.startsWith('fee') && 
-      !tag.startsWith('no_fee')
-    );
-    const processedTags = formatTags(rawTags);
+    const handleBookmarkToggle = (e: React.MouseEvent) => {
+        e.stopPropagation(); 
+        if (isFavorite) {
+            removeFavorite(place.id);
+        } else {
+            addFavorite(place);
+        }
+    };
+
+    const categories = (place.categories || []);
+    const processedTags = formatTags(categories);
 
   return (
     <Card
       onClick={onClick}
       className={cn(
-        "cursor-pointer group overflow-hidden rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-sm hover:shadow-xl transition-all duration-500 flex flex-row relative p-0"
+        "cursor-pointer group overflow-hidden rounded-[2.5rem] bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 flex flex-col relative p-0 h-full dark:shadow-none"
       )}
     >
-      {/* Linker Medien-Bereich */}
+      {/* Oberer Bild/Icon-Bereich */}
       <div className={cn(
-        "w-28 sm:w-32 flex-shrink-0 flex items-center justify-center relative transition-transform duration-500 group-hover:scale-105",
-        primaryStyle.bgClass.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-400 to-').concat(primaryStyle.color === '#ef4444' ? 'red-500' : 'violet-500')
+        "w-full h-36 flex items-center justify-center relative transition-transform duration-700 group-hover:scale-105 overflow-hidden",
+        primaryStyle.bgClass.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-400 to-').concat(primaryStyle.color === '#ef4444' ? 'red-500' : 'blue-500')
       )}
       style={{ backgroundColor: primaryStyle.color + '20' }}
       >
-        <PrimaryIcon className="text-white/90 h-12 w-12 drop-shadow-md" />
+        {/* Dekorative Icons im Hintergrund */}
+        <PrimaryIcon className="absolute -bottom-4 -right-4 h-24 w-24 text-white/10 rotate-12" />
         
-        {place.activityCount !== undefined && place.activityCount > 0 && (
-            <div className="absolute top-2 left-2 bg-primary text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md shadow-lg animate-pulse">
-                Aktiv
-            </div>
-        )}
-      </div>
-
-      {/* Rechter Content-Bereich */}
-      <div className="p-4 flex flex-col justify-between w-full min-w-0">
-        <div>
-          <div className="flex justify-between items-start gap-2 mb-1">
-            <h3 className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight flex-1">
-              {place.name}
-            </h3>
-            <div className="flex flex-col items-end shrink-0">
-              {place.distance !== undefined && (
-                <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap pt-1">
-                  {formatDistance(place.distance)}
-                </span>
-              )}
-              {place.relevanceScore !== undefined && (
-                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/50 mt-1 whitespace-nowrap shadow-sm">
-                  ★ {place.relevanceScore.toFixed(1)} PTS
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex flex-col gap-0.5 mb-2">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-md border border-amber-100 dark:border-amber-800">
-                <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
-                {placeMeta.reviewCount > 0 ? (
-                  <span className="text-[9px] font-black text-amber-700 dark:text-amber-400">
-                    {placeMeta.avgRating.toFixed(1)} <span className="opacity-50">({placeMeta.reviewCount})</span>
-                  </span>
-                ) : (
-                  <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-500">Neu</span>
-                )}
-              </div>
-              <p className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate font-medium">
-                {place.address}
-              </p>
-            </div>
-            
-            {place.openingHours && (
-              <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground truncate">
-                <Clock className="h-3 w-3 shrink-0" />
-                <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
-              </div>
+        {/* Haupt-Icon */}
+        <PrimaryIcon className="text-white h-16 w-16 drop-shadow-2xl relative z-10" />
+        
+        {/* Status Badges */}
+        <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
+            {(placeMeta.activityCount > 0 || (place.activityCount !== undefined && place.activityCount > 0)) && (
+                <div className="bg-emerald-500/90 backdrop-blur-md text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-full shadow-lg animate-pulse tracking-widest">
+                    Aktiv
+                </div>
             )}
-          </div>
-          
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {userProfile?.role === 'admin' ? (
-              rawTags.map((tag: string, idx: number) => (
-                <span 
-                  key={`${tag}-${idx}`} 
-                  className="px-2 py-0.5 text-[8px] font-mono bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400 rounded-md border border-neutral-200 dark:border-neutral-700 whitespace-nowrap"
-                >
-                  {tag}
-                </span>
-              ))
-            ) : (
-              processedTags.slice(0, 2).map((tag, index) => (
-                <Badge 
-                  key={index} 
-                  variant="secondary" 
-                  className={cn(
-                    "rounded-full text-[9px] font-black uppercase tracking-tight px-2 py-0.5 border-none",
-                    index === 0 ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" : "bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
-                  )}
-                >
-                  {tag}
-                </Badge>
-              ))
+            {(!placeMeta.reviewCount || placeMeta.reviewCount === 0) && (
+                <div className="bg-white/90 backdrop-blur-md text-neutral-800 text-[9px] font-black uppercase px-2.5 py-1 rounded-full shadow-lg tracking-widest">
+                    Neu
+                </div>
             )}
-          </div>
         </div>
 
-        {/* Footer-Aktionen */}
-        <div className="flex justify-between items-center mt-auto pt-3 border-t border-neutral-50 dark:border-neutral-700/50">
-          <div className="flex items-center bg-neutral-100 dark:bg-neutral-700/50 rounded-full p-0.5">
-            <button 
-              onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
-              className={cn(
-                "h-7 w-8 rounded-full flex items-center justify-center transition-all",
-                userVote === 'up' ? "bg-white text-green-500 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
-              )}
-            >
-              {isVoting ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
-            </button>
-            <span className="text-xs font-black min-w-[20px] text-center text-neutral-600 dark:text-neutral-300">
-              {Math.round(placeMeta.communityScore || 0) > 0 ? `+${Math.round(placeMeta.communityScore || 0)}` : Math.round(placeMeta.communityScore || 0)}
-            </span>
-            <button 
-              onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
-              className={cn(
-                "h-7 w-8 rounded-full flex items-center justify-center transition-all",
-                userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
-              )}
-            >
-              {isVoting ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowDown className="h-4 w-4" />}
-            </button>
-          </div>
+        {/* Status & Debug Badges */}
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+            {userProfile?.role === 'admin' && place.relevanceScore !== undefined && (
+                <div className="bg-amber-500/90 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    {place.relevanceScore.toFixed(1)}
+                </div>
+            )}
+            {place.distance !== undefined && (
+                <div className="bg-black/20 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap">
+                    {formatDistance(place.distance)}
+                </div>
+            )}
+        </div>
+      </div>
 
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={handleBookmarkToggle}
-              className="h-9 w-9 rounded-full text-neutral-400 hover:text-primary hover:bg-primary/5"
-            >
-              <Bookmark className={cn("h-5 w-5", isFavorite && "fill-primary text-primary")} />
-            </Button>
-            <Button 
-              size="icon" 
-              onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
-              className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-transform active:scale-90"
-            >
-              <Plus className="h-5 w-5" strokeWidth={3} />
-            </Button>
+      {/* Content Bereich */}
+      <div className="p-5 pb-7 flex flex-col flex-1">
+        <div className="mb-4">
+          <h3 className="text-lg font-black text-[#0f172a] dark:text-neutral-100 line-clamp-1 leading-tight mb-1 font-heading">
+            {place.name}
+          </h3>
+          <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[11px]">
+             {place.openingHours ? (
+                 <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
+             ) : (
+                 <span className="truncate">{place.address.split(',').slice(0, 2).join(', ')}</span>
+             )}
           </div>
+        </div>
+        
+        <div className="flex flex-wrap gap-1.5 mb-6">
+            {userProfile?.role === 'admin' ? (
+                (place.categories || []).map((tag: string, idx: number) => (
+                    <span 
+                      key={`${tag}-${idx}`} 
+                      className="px-2 py-0.5 text-[8px] font-mono bg-neutral-50 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 rounded border border-neutral-100 dark:border-neutral-800 whitespace-nowrap"
+                    >
+                      {tag}
+                    </span>
+                ))
+            ) : (
+                processedTags.slice(0, 1).map((tag, index) => (
+                    <Badge 
+                        key={index} 
+                        variant="secondary" 
+                        className="rounded-full text-[9px] font-black uppercase tracking-widest px-3 py-1 bg-primary/5 text-primary border-none"
+                    >
+                        {tag}
+                    </Badge>
+                ))
+            )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between mt-auto pr-12 relative">
+            <div className="flex items-center bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-1 gap-1">
+                <button 
+                onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
+                className={cn(
+                    "h-8 w-8 rounded-xl flex items-center justify-center transition-all",
+                    userVote === 'up' ? "bg-white text-emerald-500 shadow-sm" : "text-emerald-500/30 hover:text-emerald-500"
+                )}
+                >
+                <ArrowUp className="h-4 w-4" />
+                </button>
+                
+                {userProfile?.role === 'admin' && (
+                    <span className="text-xs font-black min-w-[20px] text-center text-neutral-600 dark:text-neutral-300">
+                      {Math.round(placeMeta.communityScore || 0)}
+                    </span>
+                )}
+                
+                <button 
+                onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
+                className={cn(
+                    "h-8 w-8 rounded-xl flex items-center justify-center transition-all",
+                    userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-red-500/30 hover:text-red-500"
+                )}
+                >
+                <ArrowDown className="h-4 w-4" />
+                </button>
+            </div>
+
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={handleBookmarkToggle}
+                className={cn(
+                    "h-11 w-11 rounded-2xl transition-all",
+                    isFavorite ? "text-primary bg-primary/10" : "text-neutral-300 hover:text-primary hover:bg-primary/5"
+                )}
+            >
+                <Bookmark className={cn("h-6 w-6", isFavorite && "fill-primary")} />
+            </Button>
+
+            {/* Floating Plus Button */}
+            <Button 
+                size="icon" 
+                onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
+                className="absolute -bottom-1 -right-1 h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/30 transition-all active:scale-95 z-30 flex items-center justify-center"
+            >
+                <Plus className="h-5 w-5" strokeWidth={3} />
+            </Button>
         </div>
       </div>
     </Card>

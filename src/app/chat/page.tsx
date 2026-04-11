@@ -12,17 +12,20 @@ import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Users, UserPlus } from 'lucide-react';
+import { Users, UserPlus, Search, Bell, MessageCircle, MoreHorizontal } from 'lucide-react';
 import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { getPrimaryIconData } from '@/lib/tag-config';
 
 const ChatListItemSkeleton = () => (
-    <div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 mb-3 shadow-sm flex items-center gap-4 border border-slate-100/50 dark:border-neutral-800">
-        <Skeleton className="h-14 w-14 rounded-full shrink-0" />
+    <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-5 mb-3 shadow-sm flex items-center gap-5 border border-slate-100/50 dark:border-neutral-800">
+        <Skeleton className="h-20 w-20 rounded-[2rem] shrink-0" />
         <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-3 w-3/4" />
+            <Skeleton className="h-5 w-1/2 rounded-full" />
+            <Skeleton className="h-4 w-3/4 rounded-full" />
+            <Skeleton className="h-4 w-1/4 rounded-full" />
         </div>
     </div>
 );
@@ -47,6 +50,9 @@ export default function ChatPage() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddFriendDialog, setShowAddFriendDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'places' | 'people'>('all');
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -69,19 +75,12 @@ export default function ChatPage() {
       
       const visibleChats = userChats.filter(chat => {
           if (!userProfile?.hiddenEntityIds) return true;
-
-          if (chat.activityId && userProfile.hiddenEntityIds.includes(chat.activityId)) {
-              return false;
-          }
-
+          if (chat.activityId && userProfile.hiddenEntityIds.includes(chat.activityId)) return false;
           const isDM = !chat.activityId;
           if (isDM) {
               const otherUserId = chat.participantIds.find(id => id !== user.uid);
-              if (otherUserId && userProfile.hiddenEntityIds.includes(otherUserId)) {
-                  return false;
-              }
+              if (otherUserId && userProfile.hiddenEntityIds.includes(otherUserId)) return false;
           }
-          
           return true;
       });
 
@@ -101,36 +100,53 @@ export default function ChatPage() {
     return () => unsubscribe();
   }, [user, userProfile, authLoading, router]);
 
+  useEffect(() => {
+    if (!user || !db) return;
+    const q = query(
+      collection(db, "notifications"),
+      where("recipientId", "==", user.uid),
+      where("isRead", "==", false)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadNotifications(snapshot.docs.length);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const filteredChats = chats.filter(chat => {
+    const chatName = chat.placeName?.toLowerCase() || "";
+    if (searchQuery && !chatName.includes(searchQuery.toLowerCase())) return false;
+    if (filter === 'unread') {
+        const unreadCount = user ? (chat.unreadCount?.[user.uid] || 0) : 0;
+        return unreadCount > 0;
+    }
+    if (filter === 'places') return !!chat.activityId;
+    if (filter === 'people') return !chat.activityId;
+    return true;
+  });
+
   const getGradient = (chatId: string) => {
-    const gradients = [
-      'from-teal-400 to-emerald-500',
-      'from-indigo-400 to-cyan-400',
-      'from-orange-400 to-pink-500',
-      'from-blue-400 to-indigo-500',
-      'from-purple-400 to-pink-400'
-    ];
-    const index = (chatId.charCodeAt(0) + chatId.charCodeAt(chatId.length - 1)) % gradients.length;
+    const gradients = ['from-teal-400 to-emerald-500', 'from-indigo-400 to-cyan-400', 'from-orange-400 to-pink-500', 'from-blue-400 to-indigo-500', 'from-purple-400 to-pink-400'];
+    const index = (chatId.charCodeAt(0) + (chatId.charCodeAt(chatId.length - 1) || 0)) % gradients.length;
     return gradients[index];
   };
 
   const renderContent = () => {
     if (loading || authLoading) {
       return (
-        <div className="p-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <ChatListItemSkeleton key={i} />
-          ))}
+        <div className="p-4 space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => <ChatListItemSkeleton key={i} />)}
         </div>
       );
     }
 
-    if (chats.length === 0) {
+    if (filteredChats.length === 0) {
       return <EmptyState />;
     }
 
     return (
-      <div className="p-4 pb-24">
-        {chats.map((chat) => {
+      <div className="px-4 py-2 space-y-3 pb-32">
+        {filteredChats.map((chat) => {
           const isDM = !chat.activityId;
           let otherUser: { displayName: string | null; photoURL: string | null; } | undefined;
           let chatName = chat.placeName;
@@ -149,64 +165,77 @@ export default function ChatPage() {
 
           const unreadCount = user ? (chat.unreadCount?.[user.uid] || 0) : 0;
           const hasUnread = unreadCount > 0;
+          
+          // Mocking category data based on place icons if possible
+          const primaryStyle = chat.placeName ? getPrimaryIconData({ name: chat.placeName } as any) : null;
+          
+          // Generate a consistent color for DMs or places without style
+          const fallbackColor = isDM ? ['#f43f5e', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'][chat.id.charCodeAt(0) % 5] : '#94a3b8';
+          const displayColor = primaryStyle?.color || fallbackColor;
+          const CategoryIcon = isDM ? User : (primaryStyle?.icon || MessageCircle);
 
           return (
             <Link 
               key={chat.id} 
               href={`/chat/${chat.id}`} 
               className={cn(
-                "bg-white dark:bg-neutral-900 rounded-2xl p-4 mb-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-4 border border-slate-100/50 dark:border-neutral-800",
-                hasUnread && "border-primary/20 bg-primary/[0.02] dark:bg-primary/[0.05]"
+                "bg-white dark:bg-neutral-900 rounded-[2.5rem] p-5 shadow-xl shadow-slate-200/50 dark:shadow-none transition-all duration-300 flex items-center gap-5 border border-transparent active:scale-95",
+                hasUnread && "ring-2 ring-emerald-500/20 bg-emerald-50/10"
               )}
             >
-              {/* Avatar Container */}
+              {/* Square Icon Container */}
               <div className={cn(
-                "h-14 w-14 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm relative overflow-hidden",
-                !avatarUrl && `bg-gradient-to-br ${getGradient(chat.id)}`
-              )}>
+                "h-20 w-20 rounded-[2rem] flex items-center justify-center flex-shrink-0 relative overflow-hidden",
+                primaryStyle || isDM ? "bg-white" : "bg-neutral-100"
+              )}
+              style={{ 
+                  backgroundColor: displayColor + '25',
+                  boxShadow: `inset 0 0 0 1px ${displayColor}10`
+              }}
+              >
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={chatName || ''} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-white font-black text-lg">{avatarFallback}</span>
+                  <CategoryIcon className="h-10 w-10 drop-shadow-md" style={{ color: displayColor }} />
                 )}
+                {/* Active Indicator */}
+                {!isDM && <div className="absolute bottom-3 right-3 w-3.5 h-3.5 rounded-full bg-emerald-500 border-4 border-white shadow-sm" />}
               </div>
 
               {/* Text Content */}
               <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-baseline mb-0.5">
-                  <h3 className={cn(
-                    "text-base font-black text-slate-900 dark:text-neutral-100 truncate pr-2",
-                    hasUnread && "text-primary"
-                  )}>
+                <div className="flex justify-between items-start mb-1">
+                  <h3 className="text-xl font-black text-[#0f172a] dark:text-neutral-100 truncate pr-2 font-heading tracking-tight leading-none pt-1">
                     {chatName}
                   </h3>
                   {chat.lastMessage?.sentAt && (
-                    <time className={cn(
-                      "shrink-0 text-[10px] font-bold uppercase tracking-wider",
-                      hasUnread ? "text-primary" : "text-muted-foreground"
-                    )}>
-                      {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: false }).replace('about ', '')}
+                    <time className="shrink-0 text-[11px] font-bold text-neutral-400 uppercase tracking-tighter">
+                      {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: false }).replace('about ', '').replace(' hours', 'h').replace(' hour', 'h').replace(' minutes', 'm').replace(' minute', 'm').replace(' days', 'd')}
                     </time>
                   )}
                 </div>
                 
-                <div className="flex items-center justify-between gap-2">
-                  <p className={cn(
-                    "truncate text-sm font-medium",
-                    hasUnread ? "text-slate-700 dark:text-slate-300" : "text-muted-foreground"
-                  )}>
-                    {chat.lastMessage ? (
-                      <>
-                        <span className="font-bold">{chat.lastMessage.senderName?.split(' ')[0]}:</span> {chat.lastMessage.text}
-                      </>
-                    ) : 'Noch keine Nachrichten.'}
-                  </p>
-                  
-                  {hasUnread && (
-                    <div className="bg-primary text-white text-[10px] font-black min-w-[20px] h-5 rounded-full flex items-center justify-center px-1.5 shrink-0 shadow-lg shadow-primary/20">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </div>
-                  )}
+                <p className="truncate text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2 leading-tight">
+                  {chat.lastMessage ? (
+                    <>
+                      {chat.lastMessage.senderId === user?.uid && <span className="text-neutral-400 mr-1">Du:</span>}
+                      {chat.lastMessage.text}
+                    </>
+                  ) : 'Noch keine Nachrichten.'}
+                </p>
+
+                <div className="flex items-center justify-between">
+                   <div className="text-[9px] font-black uppercase tracking-[0.15em] px-2.5 py-1 rounded-full"
+                   style={{ color: displayColor, backgroundColor: displayColor + '10' }}
+                   >
+                     {isDM ? 'Person' : (primaryStyle?.label || 'Ort')}
+                   </div>
+
+                    {hasUnread && (
+                        <div className="bg-emerald-500 text-white text-[11px] font-black min-w-[24px] h-6 rounded-full flex items-center justify-center px-1.5 shadow-lg shadow-emerald-200">
+                            {unreadCount}
+                        </div>
+                    )}
                 </div>
               </div>
             </Link>
@@ -218,24 +247,72 @@ export default function ChatPage() {
 
   return (
     <>
-      <div className="flex h-full flex-col bg-slate-50 dark:bg-neutral-950">
-          <header className="sticky top-0 z-10 w-full border-b border-slate-100 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md shrink-0">
-            <div className="px-4 flex h-16 items-center justify-between max-w-7xl mx-auto w-full">
-              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-neutral-100">Chats</h1>
+      <div className="flex h-full flex-col bg-[#fcfcfb] dark:bg-neutral-950">
+          <header className="sticky top-0 z-30 w-full bg-[#fcfcfb]/80 dark:bg-neutral-950/80 backdrop-blur-xl shrink-0 pt-8 pb-4">
+            <div className="px-6 flex items-center justify-between max-w-7xl mx-auto w-full mb-6">
               <div className="flex items-center gap-2">
+                <h1 className="text-3xl font-black tracking-tighter text-[#0f172a] dark:text-neutral-100 font-heading">Chats</h1>
+                <MessageCircle className="h-6 w-6 text-violet-400 fill-current opacity-30" />
+              </div>
+              <div className="flex items-center gap-3">
                 <Button 
-                  variant="ghost" 
+                  variant="secondary" 
                   size="icon" 
-                  className="h-10 w-10 rounded-2xl bg-slate-100/50 dark:bg-neutral-800/50 hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-600 dark:text-neutral-400" 
+                  className="h-12 w-12 rounded-2xl bg-white dark:bg-neutral-900 border-none shadow-xl shadow-slate-200/40 text-[#0f172a] dark:text-neutral-100" 
                   onClick={() => setShowAddFriendDialog(true)}
                 >
-                    <UserPlus className="h-5 w-5" />
-                    <span className="sr-only">Freund hinzufügen</span>
+                    <Users className="h-6 w-6" />
                 </Button>
-                <NotificationBell />
+                <div className="relative">
+                    <Button 
+                        variant="secondary" 
+                        size="icon" 
+                        className="h-12 w-12 rounded-2xl bg-[#ffeedd] border-none shadow-xl shadow-orange-200/20 text-orange-400" 
+                    >
+                        <Bell className="h-6 w-6 fill-current" />
+                    </Button>
+                    {unreadNotifications > 0 && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-sm" />
+                    )}
+                </div>
               </div>
             </div>
+
+            <div className="px-6 space-y-4">
+                <div className="relative">
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
+                    <Input 
+                        placeholder="Chats durchsuchen..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="h-14 w-full rounded-3xl border-none bg-neutral-100/60 pl-14 font-bold text-neutral-600 focus-visible:ring-offset-0 focus-visible:ring-emerald-500/20"
+                    />
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
+                    {[
+                        { id: 'all', label: 'Alle' },
+                        { id: 'unread', label: 'Ungelesen' },
+                        { id: 'places', label: 'Orte' },
+                        { id: 'people', label: 'Personen' }
+                    ].map((btn) => (
+                        <button
+                            key={btn.id}
+                            onClick={() => setFilter(btn.id as any)}
+                            className={cn(
+                                "flex-shrink-0 px-6 py-2.5 rounded-full text-[13px] font-black transition-all",
+                                filter === btn.id 
+                                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200" 
+                                    : "bg-neutral-100 text-neutral-400 hover:bg-neutral-200/50"
+                            )}
+                        >
+                            {btn.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
           </header>
+          
           <div className="flex-1 overflow-y-auto">
               {renderContent()}
           </div>

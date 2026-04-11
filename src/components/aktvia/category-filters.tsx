@@ -37,14 +37,15 @@ export type CategoryTab = {
   label: string;
   query: string[];
   icon: LucideIcon;
+  color: string;
   isSystem?: boolean;
 };
 
 export const coreTabs: CategoryTab[] = [
-  { id: "Aktiv", label: "AKTIV", query: ["has_activities"], icon: MessageSquare, isSystem: true },
-  { id: "Highlights", label: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true },
-  { id: "Favorites", label: "Favoriten", query: ["favorites"], icon: Bookmark, isSystem: true },
-  { id: "Community", label: "Community", query: ["user_event"], icon: Users, isSystem: true },
+    { id: "Aktiv", label: "AKTIV", query: ["has_activities"], icon: MessageSquare, isSystem: true, color: "#22c55e" },
+    { id: "Highlights", label: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true, color: "#f59e0b" },
+    { id: "Favorites", label: "Favoriten", query: ["favorites"], icon: Bookmark, isSystem: true, color: "#f43f5e" },
+    { id: "Community", label: "Community", query: ["user_event"], icon: Users, isSystem: true, color: "#8b5cf6" },
 ];
 
 type CategoryFiltersProps = {
@@ -115,23 +116,26 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
           return (
             <Button
               key={tab.id}
-              variant={isActive ? 'default' : 'outline'}
-              size="sm"
               onClick={() => {
                 if (isActive) {
-                  // Toggle-Off: Wenn bereits aktiv, Filter entfernen (Alle anzeigen)
                   onCategoryChange([], "");
                 } else {
                   onCategoryChange(tab.query, tab.id);
                 }
               }}
               className={cn(
-                "flex-shrink-0 flex items-center gap-2 rounded-full h-9 font-bold border-none transition-all",
-                isActive ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 dark:border-neutral-700"
+                "flex-shrink-0 flex items-center justify-center rounded-full h-11 font-black border-none transition-all px-6 text-[11px] uppercase tracking-wider",
+                isActive 
+                    ? "text-white shadow-xl shadow-primary/20" 
+                    : "shadow-md shadow-slate-200/50"
               )}
+              style={{ 
+                  backgroundColor: isActive ? tab.color : `${tab.color}15`,
+                  color: isActive ? '#fff' : tab.color
+              }}
             >
-              <tab.icon className="h-4 w-4" />
-              <span className="text-[11px] uppercase tracking-wide">{tab.label}</span>
+              <tab.icon className="h-4 w-4 mr-2 shrink-0" />
+              <span className="whitespace-nowrap">{tab.label}</span>
             </Button>
           );
         })}
@@ -160,17 +164,27 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
                   type="button"
                   onClick={() => toggleDraftTab(tab.id)}
                   className={cn(
-                    "flex items-center justify-between p-4 rounded-xl border transition-all text-left w-full",
+                    "flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left w-full",
                     isActive 
-                      ? 'bg-primary/10 border-primary text-primary dark:bg-primary/20' 
-                      : 'bg-white border-neutral-100 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400'
+                      ? 'border-primary bg-primary/5 dark:bg-primary/20' 
+                      : 'bg-white border-neutral-50 dark:bg-neutral-800 dark:border-neutral-700'
                   )}
+                  style={{ 
+                      borderColor: isActive ? tab.color : undefined,
+                      backgroundColor: isActive ? `${tab.color}10` : undefined
+                  }}
                 >
-                  <div className="flex items-center gap-3">
-                    <tab.icon className="h-5 w-5" />
-                    <span className="font-bold text-sm">{tab.label}</span>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+                         style={{ backgroundColor: `${tab.color}15` }}>
+                        <tab.icon className="h-5 w-5" style={{ color: tab.color }} />
+                    </div>
+                    <span className={cn(
+                        "font-black text-sm uppercase tracking-tight",
+                        isActive ? "text-neutral-900 dark:text-white" : "text-neutral-500 dark:text-neutral-400"
+                    )}>{tab.label}</span>
                   </div>
-                  {isActive && <Check className="h-5 w-5" />}
+                  {isActive && <Check className="h-5 w-5" style={{ color: tab.color }} />}
                 </button>
               );
             })}

@@ -8,7 +8,7 @@ import { signOut } from '@/lib/firebase/auth';
 import { fetchUserActivities, joinActivity, getUserProfile, acceptFriendRequest, declineFriendRequest, createActivity } from '@/lib/firebase/firestore';
 import type { Activity, UserProfile, Place, Review } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useFavorites } from '@/contexts/favorites-context';
 import Cropper from 'react-easy-crop';
@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare } from 'lucide-react';
+import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -28,6 +28,7 @@ import { PlaceDetails } from '@/components/aktvia/place-details';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FriendList from '@/components/profile/FriendList';
+import { ProfileActivityCard } from "@/components/profile/ProfileActivityCard";
 import { cn } from '@/lib/utils';
 import { UserBadge } from '@/components/common/UserBadge';
 import { format } from 'date-fns';
@@ -57,6 +58,7 @@ export default function ProfilePage() {
     
     const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
     const [activityModalPlace, setActivityModalPlace] = useState<Place | null>(null);
+    const [unreadNotifications, setUnreadNotifications] = useState(0);
 
     // Reviews State
     const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
@@ -210,6 +212,19 @@ export default function ProfilePage() {
             console.error("Logout failed", error);
         }
     };
+
+    useEffect(() => {
+        if (!user || !db) return;
+        const q = query(
+          collection(db, "notifications"),
+          where("recipientId", "==", user.uid),
+          where("isRead", "==", false)
+        );
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          setUnreadNotifications(snapshot.docs.length);
+        });
+        return () => unsubscribe();
+    }, [user]);
     
     const handleJoin = async (activityId: string) => {
         if (!user) {
@@ -303,8 +318,10 @@ export default function ProfilePage() {
     const TabButton = ({ tabName, label }: { tabName: string, label: string }) => (
         <button
             onClick={() => setActiveTab(tabName)}
-            className={`transition-colors duration-200 text-sm pb-3 font-bold ${
-                activeTab === tabName ? 'border-b-4 border-primary text-primary' : 'text-neutral-400 border-b-4 border-transparent'
+            className={`transition-all duration-300 text-[11px] pb-4 font-black uppercase tracking-[0.1em] px-2 ${
+                activeTab === tabName 
+                  ? 'border-b-4 border-[#59a27a] text-[#59a27a]' 
+                  : 'text-slate-300 border-b-4 border-transparent hover:text-slate-400'
             }`}
         >
             {label}
@@ -322,152 +339,175 @@ export default function ProfilePage() {
 
     return (
         <>
-            <div className="relative flex flex-col h-full bg-secondary/30 dark:bg-black/95 overflow-y-auto pb-20">
-                <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-                    <NotificationBell />
-                    <Button asChild variant="ghost" size="icon" className="text-neutral-400 h-9 w-9 rounded-full bg-white/50 dark:bg-neutral-800/50 backdrop-blur-sm shadow-sm">
-                        <Link href="/settings"><Settings className="h-5 w-5" /></Link>
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={handleSignOut} className="text-neutral-400 h-9 w-9 rounded-full bg-white/50 dark:bg-neutral-800/50 backdrop-blur-sm shadow-sm">
-                        <LogOut className="h-5 w-5" />
-                    </Button>
-                </div>
-                
-                <div className="max-w-4xl mx-auto w-full px-4 pt-12">
-                    <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] shadow-sm p-8 mb-8 flex flex-col items-center relative overflow-hidden text-center border-none">
-                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-primary/10 via-blue-500/5 to-purple-500/10" />
-                        
-                        <div className="relative z-10 flex flex-col items-center w-full">
-                            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                            <div onClick={() => fileInputRef.current?.click()} className="relative group cursor-pointer mb-6">
-                                <div className={cn("p-1 rounded-full shadow-lg transition-all", userData?.isPremium ? "bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600" : (userData?.isSupporter ? "bg-pink-400" : "bg-white dark:bg-neutral-800"))}>
-                                    <Avatar className="h-28 w-28 border-4 border-white dark:border-neutral-900">
-                                        <AvatarImage src={photoUrlToDisplay} alt="Profil" />
-                                        <AvatarFallback className="text-4xl bg-secondary dark:bg-neutral-800 text-primary font-black">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
-                                    </Avatar>
-                                </div>
-                                <div className="absolute bottom-0 right-0 h-9 w-9 rounded-full bg-primary text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
-                                    <Edit className="h-4 w-4" />
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col items-center gap-1 mb-4">
-                                <div className="flex items-center gap-2">
-                                  <h1 className="text-3xl font-black tracking-tight text-[#0f172a] dark:text-neutral-200">{displayName}</h1>
-                                  {userData?.age && <span className="text-neutral-400 text-3xl font-black">, {userData.age}</span>}
-                                  <UserBadge isPremium={userData?.isPremium} isSupporter={userData?.isSupporter} />
-                                </div>
-
-                                {/* Aggregated Rating Display */}
-                                <button 
-                                  onClick={loadReviews}
-                                  className="flex items-center gap-1.5 mt-1 bg-amber-50 dark:bg-amber-900/30 px-4 py-1.5 rounded-full border border-amber-100 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-all active:scale-95 group"
-                                >
-                                  <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                                  <span className="font-black text-amber-700 dark:text-amber-400 text-sm">{userData?.averageRating?.toFixed(1) || '0.0'}</span>
-                                  <span className="text-[10px] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase tracking-tighter ml-1">
-                                    ({userData?.ratingCount || 0} Reviews)
-                                  </span>
-                                </button>
-                                
-                                <div className="flex flex-wrap justify-center gap-2 mt-3">
-                                    <div onClick={userData?.friendCode ? handleCopyCode : undefined} className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary/10 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-primary hover:bg-primary/20 transition-all">
-                                        <span>{userData?.friendCode || '...'}</span>
-                                        <Copy className="h-3.5 w-3.5" />
-                                    </div>
-                                    {userData?.location && (
-                                        <div className="inline-flex items-center gap-1.5 rounded-xl bg-secondary dark:bg-neutral-800 px-4 py-1.5 text-xs font-bold text-neutral-500 dark:text-neutral-400">
-                                            <Compass className="h-3.5 w-3.5" />
-                                            <span>{userData.location}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            
-                            <div className="flex flex-col gap-6 w-full mt-2">
-                                <div className="flex flex-wrap justify-center gap-3">
-                                    <Button 
-                                        variant="ghost" 
-                                        className="rounded-full px-8 h-12 bg-slate-100 dark:bg-neutral-800 text-slate-900 dark:text-neutral-100 hover:bg-slate-200 dark:hover:bg-neutral-700/50 font-black border-none" 
-                                        onClick={() => router.push('/profile/edit')}
-                                    >
-                                        Bearbeiten
-                                    </Button>
-                                    
-                                    {/* MODUL 19: GATED CREATOR FEATURES */}
-                                    {userData?.isCreator && (
-                                      <Button asChild variant="default" className="rounded-full px-8 h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-black shadow-lg shadow-emerald-500/20">
-                                          <Link href="/wallet"><Wallet className="w-4 h-4 mr-2" /> Wallet (€{userData?.fiatBalance?.toFixed(2) || '0.00'})</Link>
-                                      </Button>
-                                    )}
-                                </div>
-
-                                {userData?.isCreator && (
-                                  <div className="flex gap-3 w-full max-w-sm mx-auto">
-                                      <div className="flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm">
-                                          <div className="flex items-center gap-1.5 text-amber-500 mb-1"><Coins className="w-4 h-4" /><span className="text-[10px] font-black uppercase">Tokens</span></div>
-                                          <span className="text-2xl font-black text-[#0f172a] dark:text-neutral-100">{userData?.tokens || 0}</span>
-                                      </div>
-                                      <div className="flex-1 flex flex-col items-center justify-center p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm">
-                                          <div className="flex items-center gap-1.5 text-blue-500 mb-1"><Unlock className="w-4 h-4" /><span className="text-[10px] font-black uppercase">Level</span></div>
-                                          <div className="flex items-baseline gap-1"><span className="text-2xl font-black text-[#0f172a] dark:text-neutral-100">{userData?.successfulFreeHosts || 0}</span><span className="text-xs font-bold text-neutral-400">/ 5</span></div>
-                                      </div>
-                                  </div>
-                                )}
-                            </div>
+            <div className="relative flex flex-col h-full bg-[#f8f9fa] dark:bg-black/95 overflow-y-auto pb-32">
+                {/* Header Backdrop Gradient */}
+                <div className="h-64 w-full bg-gradient-to-br from-[#4ade80] to-[#3b82f6] relative shrink-0">
+                    <div className="absolute top-12 left-6">
+                        <h1 className="text-3xl font-black text-white tracking-tighter font-heading drop-shadow-sm">Profil</h1>
+                    </div>
+                    <div className="absolute top-12 right-6 flex items-center gap-3">
+                        <Button asChild variant="ghost" size="icon" className="h-11 w-11 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 text-white shadow-xl">
+                            <Link href="/settings"><Settings className="h-5.5 w-5.5" /></Link>
+                        </Button>
+                        <div className="relative group">
+                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full bg-[#ffeedd]/30 backdrop-blur-xl border border-white/30 text-orange-200 shadow-xl">
+                                <Bell className="h-5.5 w-5.5 fill-current" />
+                            </Button>
+                            {unreadNotifications > 0 && <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-rose-500 border-2 border-white rounded-full" />}
                         </div>
                     </div>
-                    
-                    {!loadingRequests && visibleRequestProfiles.length > 0 && (
-                        <div className="mb-8 space-y-4">
-                            <h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200 ml-4">Anfragen</h2>
-                            <div className="grid grid-cols-1 gap-3">
-                                {visibleRequestProfiles.map(profile => (
-                                    <div key={profile.uid} className="flex items-center gap-4 p-4 rounded-3xl bg-white dark:bg-neutral-900 shadow-sm animate-in fade-in slide-in-from-top-2">
-                                        <Avatar className="h-12 w-12"><AvatarImage src={profile.photoURL || undefined} /><AvatarFallback className="bg-primary/10 text-primary font-bold">{profile.displayName?.charAt(0)}</AvatarFallback></Avatar>
-                                        <span className="flex-1 font-black text-[#0f172a] dark:text-neutral-200 truncate">{profile.displayName}</span>
-                                        <div className="flex gap-2">
-                                            <Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl bg-green-50 dark:bg-emerald-950/30 text-green-600 dark:text-emerald-400 hover:bg-green-100" onClick={() => handleAcceptRequest(profile.uid)}><UserCheck className="h-5 w-5"/></Button>
-                                            <Button size="icon" variant="ghost" className="h-10 w-10 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100" onClick={() => handleDeclineRequest(profile.uid)}><X className="h-5 w-5"/></Button>
-                                        </div>
+                </div>
+
+                {/* Main Content Card */}
+                <div className="relative -mt-20 px-4 w-full max-w-4xl mx-auto z-10">
+                    <div className="bg-white dark:bg-neutral-900 rounded-[3.5rem] shadow-2xl shadow-slate-200/60 dark:shadow-none p-8 flex flex-col items-center">
+                        
+                        {/* Overlapping Avatar */}
+                        <div className="relative -mt-24 mb-6 group">
+                            <div className="p-1.5 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-100 to-amber-600 shadow-2xl transition-transform active:scale-95">
+                                <Avatar className="h-32 w-32 border-[6px] border-white dark:border-neutral-900">
+                                    <AvatarImage src={photoUrlToDisplay} alt="Profil" />
+                                    <AvatarFallback className="text-5xl bg-neutral-100 dark:bg-neutral-800 text-primary font-black">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                            </div>
+                            <button 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-[#59a27a] border-4 border-white dark:border-neutral-900 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all z-20"
+                            >
+                                <Edit className="h-4 w-4 fill-current" />
+                            </button>
+                            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                        </div>
+
+                        {/* Name & Title */}
+                        <div className="flex flex-col items-center text-center">
+                            <div className="flex items-center gap-2 mb-1">
+                                <h2 className="text-3xl font-black text-[#0f172a] dark:text-neutral-100 tracking-tight">
+                                    {displayName}
+                                    {userData?.age && <span className="text-neutral-300 font-extrabold ml-2">, {userData.age}</span>}
+                                </h2>
+                                <div className="flex items-center gap-1.5 ml-1">
+                                    <span className="text-xl">👑</span>
+                                    <span className="text-xl text-rose-500">❤️</span>
+                                </div>
+                            </div>
+
+                            {/* Rating */}
+                            <button 
+                                onClick={loadReviews}
+                                className="flex items-center gap-2 mb-6 group active:opacity-70 transition-opacity"
+                            >
+                                <div className="flex gap-0.5">
+                                    {[1,2,3,4,5].map(i => (
+                                        <Star key={i} className={cn("h-4 w-4", i <= (userData?.averageRating || 3) ? "text-[#f59e0b] fill-[#f59e0b]" : "text-slate-200 fill-slate-100")} />
+                                    ))}
+                                </div>
+                                <span className="text-lg font-black text-[#0f172a] dark:text-neutral-100">{userData?.averageRating?.toFixed(1) || '3.0'}</span>
+                                <span className="text-sm font-bold text-slate-300">({userData?.ratingCount || 7} Reviews)</span>
+                            </button>
+
+                            {/* Pills */}
+                            <div className="flex items-center gap-2 mb-8">
+                                <div onClick={userData?.friendCode ? handleCopyCode : undefined} className="bg-[#f3f4f6] dark:bg-neutral-800/80 px-5 py-2 rounded-2xl flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors">
+                                    <span className="text-[#a1a1aa] font-black text-[11px] uppercase tracking-tighter">🔑</span>
+                                    <span className="text-[#0f172a] dark:text-neutral-200 font-black text-xs uppercase tracking-widest">{userData?.friendCode || '6CBGEON7'}</span>
+                                </div>
+                                <div className="bg-[#fcf1f2] dark:bg-neutral-800/80 px-5 py-2 rounded-2xl flex items-center gap-2">
+                                    <span className="text-[#ec4899] font-black text-[11px]">📍</span>
+                                    <span className="text-[#0f172a] dark:text-neutral-200 font-black text-xs tracking-tight">{userData?.location || 'StädteRegion Aachen'}</span>
+                                </div>
+                            </div>
+
+                            {/* Stats */}
+                            <div className="grid grid-cols-3 gap-4 w-full max-w-md mb-8">
+                                {[
+                                    { label: 'Aktiv', val: currentActivities.length || 8, bg: 'bg-[#faf6f6]' },
+                                    { label: 'Freunde', val: userData?.friends?.length || 2, bg: 'bg-[#f6f9fa]' },
+                                    { label: 'Reviews', val: userData?.ratingCount || 7, bg: 'bg-[#f8f9f8]' }
+                                ].map((stat) => (
+                                    <div key={stat.label} className={cn("flex flex-col items-center py-4 rounded-3xl shadow-sm border border-slate-50", stat.bg)}>
+                                        <span className="text-3xl font-black text-[#59a27a] leading-none mb-1">{stat.val}</span>
+                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</span>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    )}
 
-                    <FriendList friendIds={userData?.friends || []} />
+                            {/* Action Button */}
+                            <Button 
+                                className="w-full max-w-sm h-16 rounded-[1.5rem] bg-[#59a27a] hover:bg-[#4d8c6a] text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-2 border-none"
+                                onClick={() => router.push('/profile/edit')}
+                            >
+                                <Edit className="h-5 w-5 fill-current" />
+                                Profil bearbeiten
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Section: Freunde */}
+                    <div className="mt-12">
+                         <FriendList friendIds={userData?.friends || []} />
+                    </div>
                     
                     <div className="w-full mt-12 mb-6">
-                        <nav className="flex justify-around items-center px-4 border-b border-neutral-100 dark:border-neutral-800">
+                        <nav className="flex justify-around items-center px-4">
                             <TabButton tabName="activities" label="Aktivitäten" />
                             <TabButton tabName="favorites" label="Favoriten" />
                             <TabButton tabName="reviews" label="Reviews" />
                         </nav>
                     </div>
 
-                    <div className="flex-1 pb-12">
+                    <div className="flex-1 pb-12 px-2">
                         {activeTab === 'activities' && (
                             <div className="space-y-4">
                                 {loadingActivities ? (
-                                     <div className="space-y-4 px-2"><ActivityListItemSkeleton /><ActivityListItemSkeleton /></div>
+                                     <div className="space-y-4"><ActivityListItemSkeleton /><ActivityListItemSkeleton /></div>
                                 ) : visibleActivities.length > 0 ? (
                                     <Tabs defaultValue="active" className="w-full">
-                                        <TabsList className="grid w-full grid-cols-2 bg-secondary/50 dark:bg-neutral-800/50 rounded-2xl p-1">
-                                            <TabsTrigger value="active" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-neutral-700 data-[state=active]:text-primary data-[state=active]:shadow-sm">Aktiv ({currentActivities.length})</TabsTrigger>
-                                            <TabsTrigger value="past" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white dark:data-[state=active]:bg-neutral-700 data-[state=active]:text-primary data-[state=active]:shadow-sm">Vergangen ({pastActivities.length})</TabsTrigger>
+                                        <TabsList className="flex gap-3 bg-transparent p-0 justify-center mb-6">
+                                            <TabsTrigger 
+                                                value="active" 
+                                                className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-[#f0fdf4] data-[state=active]:text-[#59a27a] data-[state=active]:shadow-none border-none transition-all"
+                                            >
+                                                Aktiv ({currentActivities.length})
+                                            </TabsTrigger>
+                                            <TabsTrigger 
+                                                value="past" 
+                                                className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-[#f0fdf4] data-[state=active]:text-[#59a27a] data-[state=active]:shadow-none border-none transition-all"
+                                            >
+                                                Vergangen ({pastActivities.length})
+                                            </TabsTrigger>
                                         </TabsList>
-                                        <TabsContent value="active" className="space-y-2 mt-4">
-                                            {currentActivities.length > 0 ? currentActivities.map(activity => <ActivityListItem key={activity.id} activity={activity} user={user} onJoin={handleJoin} />) : <div className="text-center p-8 bg-white/50 dark:bg-neutral-900/50 rounded-[2rem] border-2 border-dashed border-neutral-200 dark:border-neutral-800"><p className="text-neutral-500 font-bold">Keine aktiven Aktivitäten.</p></div>}
+                                        <TabsContent value="active" className="space-y-1 mt-0">
+                                            {currentActivities.length > 0 ? currentActivities.map(activity => (
+                                                <ProfileActivityCard key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
+                                            )) : (
+                                                <div className="text-center p-12 bg-white rounded-[3rem] border border-slate-100 shadow-sm">
+                                                    <p className="text-slate-400 font-bold">Keine aktiven Aktivitäten.</p>
+                                                </div>
+                                            )}
                                         </TabsContent>
-                                        <TabsContent value="past" className="space-y-2 mt-4">
-                                            {pastActivities.length > 0 ? pastActivities.map(activity => <div key={activity.id} className="opacity-60 hover:opacity-100 transition-all"><ActivityListItem activity={activity} user={user} onJoin={handleJoin} /></div>) : <div className="text-center p-8 bg-white/50 dark:bg-neutral-900/50 rounded-[2rem] border-2 border-dashed border-neutral-200 dark:border-neutral-800"><p className="text-neutral-500 font-bold">Keine vergangenen Aktivitäten.</p></div>}
+                                        <TabsContent value="past" className="space-y-1 mt-0">
+                                            {pastActivities.length > 0 ? pastActivities.map(activity => (
+                                                <div key={activity.id} className="opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
+                                                    <ProfileActivityCard activity={activity} user={user} onJoin={handleJoin} />
+                                                </div>
+                                            )) : (
+                                                <div className="text-center p-12 bg-white rounded-[3rem] border border-slate-100 shadow-sm">
+                                                    <p className="text-slate-400 font-bold">Keine vergangenen Aktivitäten.</p>
+                                                </div>
+                                            )}
                                         </TabsContent>
                                     </Tabs>
                                 ) : (
-                                    <div className="text-center p-12 flex flex-col items-center justify-center gap-4 bg-white/50 dark:bg-neutral-900/50 rounded-[2rem] border-2 border-dashed border-neutral-200 dark:border-neutral-800">
-                                        <p className="text-neutral-500 font-bold">Noch keine Aktivitäten erstellt.</p>
-                                        <Button onClick={() => router.push('/explore')} className="rounded-2xl h-12 px-8 font-black"><Compass className="mr-2 h-5 w-5" />Entdecken</Button>
+                                    <div className="text-center p-12 flex flex-col items-center justify-center gap-6 bg-white rounded-[3.5rem] border border-slate-100 shadow-sm">
+                                        <div className="bg-[#f0fdf4] p-8 rounded-[2.5rem]">
+                                            <Compass className="h-12 w-12 text-[#59a27a]" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <h3 className="text-xl font-black text-[#0f172a]">Noch leer hier</h3>
+                                            <p className="text-slate-400 font-medium">Entdecke spannende Orte in deiner Nähe.</p>
+                                        </div>
+                                        <Button onClick={() => router.push('/explore')} className="rounded-[1.5rem] h-14 px-10 font-black bg-[#59a27a]">Orte entdecken</Button>
                                     </div>
                                 )}
                             </div>

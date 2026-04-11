@@ -106,40 +106,41 @@ export default function FriendList({ friendIds }: FriendListProps) {
   );
 
   return (
-    <div className="flex flex-col gap-4 mb-12 w-full px-2">
-      <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200 ml-4 flex items-center gap-2">
-        Freunde <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-lg text-xs">{uniqueFriends.length}</span>
-      </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="flex flex-col gap-5 mb-12 w-full">
+      <div className="flex items-center justify-between px-4">
+        <h3 className="font-black text-2xl text-[#0f172a] dark:text-neutral-200 flex items-center gap-2.5">
+          Freunde <span className="bg-[#59a27a]/10 text-[#59a27a] px-3 py-1 rounded-full text-sm font-black tracking-tight">{uniqueFriends.length}</span>
+        </h3>
+        <Link href="/friends" className="text-[#59a27a] font-black text-sm hover:opacity-70 transition-opacity">Alle sehen</Link>
+      </div>
+
+      <div className="flex overflow-x-auto pb-4 gap-4 px-4 no-scrollbar scroll-smooth">
         {uniqueFriends.map((friend, index) => {
           const proximity = getProximityLabel(friend);
           const friendKey = friend.uid || (friend as any).id || `fallback-${index}`;
           
           return (
-            <Link href={`/profile/${friend.uid || (friend as any).id}`} key={friendKey} className="block group">
-              <Card className="flex items-center gap-4 p-4 border-none rounded-[2rem] bg-white dark:bg-neutral-900 group-hover:shadow-md transition-all cursor-pointer shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-primary/20 group-hover:bg-primary transition-colors" />
-                <div className="p-1 bg-secondary rounded-full">
-                    <Avatar className="h-14 w-14 border-2 border-white">
+            <Link href={`/profile/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[42%]">
+              <div className="flex flex-col items-center gap-3 p-5 border border-slate-100 dark:border-neutral-800 rounded-[2.5rem] bg-white dark:bg-neutral-900 hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer relative overflow-hidden group">
+                <div className="relative">
+                    <Avatar className="h-16 w-16 border-2 border-slate-50 shadow-md">
                       <AvatarImage src={friend.photoURL || undefined} />
-                      <AvatarFallback className="bg-primary/5 text-primary font-black">{friend.displayName?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
+                      <AvatarFallback className="bg-[#f0f9ff] text-[#3b82f6] font-black text-xl">{friend.displayName?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
                     </Avatar>
+                    <div className="absolute -bottom-1 -right-1 bg-white dark:bg-neutral-800 p-1 rounded-full shadow-sm border border-slate-100">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    </div>
                 </div>
-                <div className="flex flex-col overflow-hidden">
-                  <span className="font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight">{friend.displayName || "Unbekannter Nutzer"}</span>
-                  {proximity ? (
-                    <span className="text-[9px] text-green-600 font-black flex items-center gap-1 mt-1 uppercase tracking-wider">
-                      <MapPin className="h-3 w-3" />
-                      {proximity}
+                <div className="flex flex-col items-center text-center overflow-hidden w-full">
+                  <span className="font-black text-[#0f172a] dark:text-neutral-200 truncate w-full leading-tight text-lg">{friend.displayName?.split(' ')[0] || "Nutzer"}</span>
+                  <div className="flex items-center gap-1 mt-1 text-rose-500">
+                    <MapPin className="h-3 w-3 fill-current" />
+                    <span className="text-[10px] font-black uppercase tracking-tight whitespace-nowrap">
+                      {proximity ? "< 5km" : (friend.location?.split(' ')[0] || "Hagen")}
                     </span>
-                  ) : (
-                    <span className="text-[10px] text-neutral-400 font-bold truncate flex items-center gap-1 mt-1">
-                      <Compass className="h-3 w-3" />
-                      {friend.location || "Kein Standort"}
-                    </span>
-                  )}
+                  </div>
                 </div>
-              </Card>
+              </div>
             </Link>
           );
         })}

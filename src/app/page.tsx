@@ -6,16 +6,18 @@ import { useToast } from '@/hooks/use-toast';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { PlaceCard } from '@/components/aktvia/place-card';
+import { SpotActionSheet } from '@/components/aktvia/spot-action-sheet';
 import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { createActivity, joinActivity, searchActivitiesBySemanticVector, castActivityVote, votePlace } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter } from "firebase/firestore";
+import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter, doc, documentId } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { ActivityListItem } from "@/components/aktvia/activity-list-item";
 import { Input } from '@/components/ui/input';
@@ -97,6 +99,7 @@ export default function Home() {
   const [maxDistance, setMaxDistance] = useState<number | null>(10);
   const [activityCategoryFilter, setActivityCategoryFilter] = useState<ActivityCategory | 'Alle'>('Alle');
   const [visibleCount, setVisibleCount] = useState(25);
+  const [actionSheetPlace, setActionSheetPlace] = useState<Place | null>(null);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -110,6 +113,27 @@ export default function Home() {
   const router = useRouter();
   const { planningState } = usePlanningMode();
   const { favorites } = useFavorites();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Background scroll lock
+  useEffect(() => {
+    const isAnyModalOpen = !!selectedPlace || !!activityModalPlace || isLocationSearchOpen || isPremiumUpsellOpen || !!actionSheetPlace;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [selectedPlace, activityModalPlace, isLocationSearchOpen, isPremiumUpsellOpen, actionSheetPlace]);
 
   const isCommunityCategory = activeTabId === "Community";
   const isFavoritesCategory = activeTabId === "Favorites";
@@ -188,7 +212,7 @@ export default function Home() {
 
     if (!userLocation) return null;
     let categoriesToFetch: string[] = (activeCategory.length === 0 || activeCategory.includes('has_activities'))
-      ? ["entertainment", "leisure", "catering", "tourism.attraction"]
+      ? ["entertainment", "leisure", "catering", "tourism.attraction", "adult.nightclub"]
       : activeCategory;
 
     // Fetch 300 initially for a massive algorithmic search pool, UI renders 25 initially
@@ -237,6 +261,9 @@ export default function Home() {
     dislikedTags: userProfile?.dislikedTags || []
   }), [userProfile]);
 
+  // Vote-Daten aus Firestore für Ranking-Integration
+  const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number }>>({}); 
+
   const places = useMemo(() => {
     if (!data || isCommunityCategory || isAktivCategory || isFavoritesCategory) return [];
     if (isHighlightsCategory) return data.flat() as Place[];
@@ -259,8 +286,10 @@ export default function Home() {
         }
         const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
         const distance = item.distance || 0;
+        const placeId = props.place_id;
+        const votes = votesMap[placeId] || { upvotes: 0, downvotes: 0 };
         return {
-          id: props.place_id,
+          id: placeId,
           name: props.name || props.address_line1 || "Unbekannter Ort",
           address: props.address_line2 || "Keine Adresse verfügbar",
           categories: cats,
@@ -269,7 +298,7 @@ export default function Home() {
           rating: rating,
           distance: distance,
           relevanceScore: calculateRelevance(
-            { ...props, categories: cats, distance: distance },
+            { ...props, categories: cats, distance: distance, upvotes: votes.upvotes, downvotes: votes.downvotes },
             userProfile || { role: 'user' } as any,
             userLocation || { lat: 0, lng: 0 }
           ),
@@ -277,7 +306,35 @@ export default function Home() {
         } as Place;
       });
     });
-  }, [data, userPrefs, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory]);
+  }, [data, userPrefs, votesMap, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory]);
+
+  // Batch-Fetch & Echtzeit-Listener für Vote-Daten aller sichtbaren Orte
+  useEffect(() => {
+    if (!db || places.length === 0) return;
+    const placeIds = [...new Set(places.map(p => p.id).filter(Boolean))];
+    if (placeIds.length === 0) return;
+
+    // Echtzeit-Listener für alle Orte in der places-Collection
+    const unsubscribers: (() => void)[] = [];
+    for (const id of placeIds) {
+      const unsub = onSnapshot(doc(db, 'places', id), (snap) => {
+        if (snap.exists()) {
+          const d = snap.data();
+          setVotesMap(prev => {
+            const prevEntry = prev[id];
+            if (prevEntry && prevEntry.upvotes === (d.upvotes || 0) && prevEntry.downvotes === (d.downvotes || 0)) {
+              return prev; // Kein Update nötig
+            }
+            return { ...prev, [id]: { upvotes: d.upvotes || 0, downvotes: d.downvotes || 0 } };
+          });
+        }
+      });
+      unsubscribers.push(unsub);
+    }
+
+    return () => unsubscribers.forEach(unsub => unsub());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const isLoadingMore = useRef(false);
@@ -354,7 +411,13 @@ export default function Home() {
 
   const handlePlaceSelect = (place: Place) => setSelectedPlace(place);
   const handleDialogClose = () => setSelectedPlace(null);
-  const handleOpenActivityModal = (place: Place) => { if (!user) { router.push('/login'); return; } setActivityModalPlace(place); };
+  const handleOpenActivityModal = (place: Place) => { 
+    if (!user) { 
+      router.push('/login'); 
+      return; 
+    } 
+    setActionSheetPlace(place); 
+  };
   const handleOpenCustomActivityModal = () => { if (!user) { router.push('/login'); return; } setActivityModalPlace('custom'); };
 
   const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory): Promise<boolean> => {
@@ -389,7 +452,7 @@ export default function Home() {
 
   const renderContent = () => {
     if (isLoadingInitialData) {
-      return <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}</div>;
+      return <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">{Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}</div>;
     }
     if (!userLocation && !isLoadingInitialData) {
       return <div className="flex h-full w-full items-center justify-center"><div className="flex flex-col items-center gap-2 text-muted-foreground"><MapPin className="h-8 w-8 animate-bounce text-primary" /><p className="font-bold text-sm">Standort wird ermittelt...</p></div></div>;
@@ -413,9 +476,9 @@ export default function Home() {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200">Noch keine Favoriten</h2></div>;
           }
           return (
-            <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="p-4 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
               {favorites.map(place => (
-                <div key={place.id} className="min-h-[180px] w-full">
+                <div key={place.id} className="min-h-[280px] w-full">
                   <PlaceCard place={place as Place} onClick={() => handlePlaceSelect(place as Place)} onAddActivity={() => handleOpenActivityModal(place as Place)} />
                 </div>
               ))}
@@ -481,7 +544,7 @@ export default function Home() {
 
           if (sortedList.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
           return (
-            <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {sortedList.map((item) => {
                 const itemPlace: Place = {
                   id: item.placeId || "unknown",
@@ -496,7 +559,7 @@ export default function Home() {
                 };
 
                 return (
-                  <div key={item.id} className="min-h-[180px] w-full">
+                  <div key={item.id} className="min-h-[280px] w-full">
                     {isCommunityCategory ? (
                       <ActivityListItem activity={item as any} user={user} onJoin={handleJoin} />
                     ) : (
@@ -525,7 +588,7 @@ export default function Home() {
         if (uniqueSorted.length === 0) {
           if (isValidating) {
             return (
-              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                 <CardSkeleton />
                 <CardSkeleton />
                 <CardSkeleton />
@@ -538,9 +601,9 @@ export default function Home() {
         const paginatedSorted = uniqueSorted.slice(0, visibleCount);
 
         return (
-          <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {paginatedSorted.map((place) => (
-              <div key={place.id} className="min-h-[180px] w-full">
+              <div key={place.id} className="min-h-[280px] w-full">
                 <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
               </div>
             ))}
@@ -552,7 +615,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col">
           {renderList()}
           {isFetchingNextPage && !isReachingEnd && (
-            <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               <CardSkeleton />
             </div>
           )}
@@ -584,118 +647,77 @@ export default function Home() {
 
   return (
     <>
-      <div className="flex h-full w-full flex-col bg-secondary/30">
-        <header className="flex-none w-full border-b border-neutral-100 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/90 backdrop-blur-md z-20">
-          <div className="flex flex-col gap-4 px-4 py-5 sm:px-6 max-w-7xl mx-auto w-full">
-            <div className="flex items-center justify-between mt-3 px-1">
-              <div className="flex items-center gap-3 animate-in slide-in-from-left-4 fade-in duration-500">
-                <Avatar className="h-10 w-10 border-2 border-white dark:border-neutral-800 shadow-sm">
+      <div className="flex flex-col h-full bg-white/40 dark:bg-neutral-900/40 relative">
+        {/* Background Blobs for Visual Depth */}
+        <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+        <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
+         <header className="flex-none w-full border-none bg-transparent pt-6 pb-2 z-20">
+          <div className="flex flex-col gap-5 px-6 max-w-7xl mx-auto w-full">
+            {/* Top Bar: Profile & System Actions */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-14 w-14 border-4 border-white dark:border-neutral-800 shadow-2xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer">
                   <AvatarImage src={userProfile?.photoURL || user?.photoURL || undefined} alt="Avatar" />
-                  <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-black">
+                  <AvatarFallback className="bg-emerald-50 text-emerald-600 font-black text-xl">
                     {userProfile?.displayName ? userProfile.displayName.charAt(0) : 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
-                  <div className="flex items-center gap-1.5">
-                    <h1 className="text-xl font-black tracking-tight text-[#0f172a] dark:text-neutral-200">
-                      Hey {userProfile?.displayName?.split(' ')[0] || 'Entdecker'} 👋
-                    </h1>
-                    <UserBadge isPremium={userProfile?.isPremium} isSupporter={userProfile?.isSupporter} size="sm" />
-                  </div>
-                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1 text-neutral-500 dark:text-neutral-400 font-bold text-xs uppercase tracking-wide mt-0.5">
-                    <MapPin className="h-3 w-3" />
+                  <h1 className="text-2xl font-black tracking-tight text-[#0f172a] dark:text-neutral-100 font-heading">
+                    Hallo, {userProfile?.displayName?.split(' ')[0] || 'Du'} 👋
+                  </h1>
+                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[10px] uppercase tracking-[0.15em] mt-0.5">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span>{cityName}</span>
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 animate-in slide-in-from-right-4 fade-in duration-500">
+              <div className="flex items-center gap-3">
                 <NotificationBell />
-                <div className="flex items-center gap-1 rounded-2xl bg-neutral-50 dark:bg-neutral-800 p-1">
-                  <Button
-                    variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                    size="icon"
-                    className={cn("h-9 w-9 rounded-xl", viewMode === 'list' ? "bg-white dark:bg-neutral-700 text-primary shadow-sm" : "text-neutral-500")}
-                    onClick={() => setViewMode('list')}
-                  >
-                    <List className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'map' ? 'secondary' : 'ghost'}
-                    size="icon"
-                    className={cn("h-9 w-9 rounded-xl relative", viewMode === 'map' ? "bg-white dark:bg-neutral-700 text-primary shadow-sm" : "text-neutral-500")}
-                    onClick={handleMapToggle}
-                  >
-                    <MapIcon className="h-5 w-5" />
-                    {!userProfile?.isPremium && <Lock className="absolute -top-1 -right-1 h-3 w-3 text-amber-500 fill-amber-500" />}
-                  </Button>
-                </div>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="h-12 w-12 rounded-2xl bg-white dark:bg-neutral-800 text-neutral-500 shadow-xl shadow-slate-200/50 dark:shadow-none"
+                  onClick={handleMapToggle}
+                >
+                  {viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}
+                </Button>
               </div>
             </div>
 
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
 
-            {(isAktivCategory || isCommunityCategory) && (
-              <div className="flex overflow-x-auto gap-2 pb-1 hide-scrollbar">
-                {ACTIVITY_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setActivityCategoryFilter(cat)}
-                    className={cn(
-                      "flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all",
-                      activityCategoryFilter === cat
-                        ? "bg-slate-900 text-white shadow-md"
-                        : "bg-white dark:bg-neutral-800 text-slate-500 dark:text-neutral-400 border border-slate-100 dark:border-neutral-700 hover:bg-slate-50"
-                    )}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="flex flex-col md:flex-row md:items-end gap-3 mt-2 px-1">
-              <div className="flex relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
+            {/* Search & Radius Area */}
+            <div className="flex items-center gap-3 w-full">
+              <div className="flex relative flex-1 group">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />
                 <Input
                   type="search"
-                  placeholder="Suchen nach Orten..."
+                  placeholder="Was möchtest du unternehmen?"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 h-14 rounded-2xl border-none bg-white font-medium shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-800 dark:text-neutral-100"
+                  className="w-full pl-14 h-14 rounded-full border-none bg-white font-bold shadow-xl shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none"
                 />
               </div>
 
-              <div className="flex flex-col gap-2 w-full md:w-64 flex-shrink-0 bg-white dark:bg-neutral-800 px-4 py-2.5 rounded-2xl shadow-sm h-14 justify-center">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Suchradius</span>
-                  <span className="text-[10px] font-black text-primary">{maxDistance || 100} km</span>
-                </div>
-                <Slider
-                  value={[maxDistance || 100]}
-                  max={100}
-                  min={1}
-                  step={1}
-                  onValueChange={(val) => setMaxDistance(val[0])}
-                  className="w-full"
-                />
+              <div className="relative group">
+                <Button 
+                    variant="secondary"
+                    className="h-14 px-5 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-2"
+                    onClick={() => {}} // Could trigger a radius modal
+                >
+                    {maxDistance || 10} km
+                    <ChevronDown className="h-4 w-4 opacity-30" />
+                </Button>
               </div>
-
-              {!isAktivCategory && !isCommunityCategory && !isFavoritesCategory && (
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-full md:w-[150px] h-14 rounded-2xl border-none bg-white font-bold shadow-sm dark:bg-neutral-800">
-                    <SelectValue placeholder="Sortierung" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl font-medium dark:bg-neutral-800">
-                    <SelectItem value="recommended">Empfohlen</SelectItem>
-                    <SelectItem value="rating">Top Bewertung</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
             </div>
           </div>
         </header>
-        <div className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden'}`}>{renderContent()}</div>
+
+        <div className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden scroll-smooth'}`}>
+            <div className="max-w-7xl mx-auto w-full">{renderContent()}</div>
+        </div>
       </div>
 
       {/* Floating Action Button (FAB) */}
@@ -710,15 +732,47 @@ export default function Home() {
         </Button>
       </div>
 
-      <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-        <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden rounded-3xl border-none dark:bg-neutral-900">
-          <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
-          <DialogDescription className="sr-only">Details zum ausgewählten Ort</DialogDescription>
-          {selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} />}
-        </DialogContent>
-      </Dialog>
+      {/* Responsive Place Details */}
+      {isMobile ? (
+        <Sheet open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
+          <SheetContent side="bottom" className="p-0 h-[92vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none">
+            <SheetHeader className="sr-only">
+              <SheetTitle>{selectedPlace?.name}</SheetTitle>
+            </SheetHeader>
+            <div className="h-full w-full">
+              {selectedPlace && (
+                <PlaceDetails 
+                  place={selectedPlace} 
+                  onClose={handleDialogClose} 
+                  onCreateActivity={() => setActivityModalPlace(selectedPlace)}
+                />
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
+          <DialogContent className="p-0 w-full max-w-4xl max-h-[92vh] gap-0 overflow-hidden border-none outline-none">
+            <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
+            <DialogDescription className="sr-only">Details zum ausgewählten Ort</DialogDescription>
+            {selectedPlace && (
+              <PlaceDetails 
+                place={selectedPlace} 
+                onClose={handleDialogClose} 
+                onCreateActivity={() => setActivityModalPlace(selectedPlace)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
 
       <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
+      <SpotActionSheet 
+        place={actionSheetPlace} 
+        open={!!actionSheetPlace} 
+        onOpenChange={(open) => !open && setActionSheetPlace(null)} 
+        onCreateNew={(place) => setActivityModalPlace(place)} 
+      />
       <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
 
       <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}>
