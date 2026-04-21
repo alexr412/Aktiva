@@ -8,8 +8,8 @@ export const ACTIVITY_BASE_SCORE = 100;
 // Hierarchical Regex Matchers - Specific beats Generic
 const tagRules: { pattern: RegExp; score: number }[] = [
   // --- High-Tier (90 Punkte) ---
-  { pattern: /^tourism\.attraction(\..*)?$/, score: 10 }, // 90
-  { pattern: /^tourism\.sights(\..*)?$/, score: 10 }, // 90
+  { pattern: /^tourism\.attraction(\..*)?$/, score: 50 },
+  { pattern: /^tourism\.sights(\..*)?$/, score: 50 },
   { pattern: /^entertainment\.museum$/, score: 75 },
   { pattern: /^entertainment\.planetarium$/, score: 100 },
   { pattern: /^entertainment\.aquarium$/, score: 100 },
@@ -34,45 +34,45 @@ const tagRules: { pattern: RegExp; score: number }[] = [
 
   // --- Mid-Tier (60 Punkte) ---
   { pattern: /^leisure\.park(\..*)?$/, score: 55 },
-  { pattern: /^leisure\.nature_reserve$/, score: 45 },
-  { pattern: /^leisure\.garden$/, score: 45 },
+  { pattern: /^leisure\.nature_reserve$/, score: 55 },
+  { pattern: /^leisure\.garden$/, score: 55 },
   { pattern: /^beach(\..*)?$/, score: 60 },
-  { pattern: /^leisure\.beach$/, score: 45 }, // Alias coverage
+  { pattern: /^leisure\.beach$/, score: 55 }, // Alias coverage
   { pattern: /^sport(\..*)?$/, score: 60 }, // Will match if not stadium (already matched above)
   { pattern: /^entertainment\.culture(\..*)?$/, score: 60 },
-  { pattern: /^camping(\..*)?$/, score: 40 },
-  { pattern: /^tourism\.camping$/, score: 40 }, // Alias coverage
+  { pattern: /^camping(\..*)?$/, score: 50 },
+  { pattern: /^tourism\.camping$/, score: 50 }, // Alias coverage
   { pattern: /^leisure\.spa(\..*)?$/, score: 60 },
-  { pattern: /^building\.historic$/, score: 10 }, //60
-  { pattern: /^man_made\.tower$/, score: 30 },
-  { pattern: /^man_made\.lighthouse$/, score: 30 },
-  { pattern: /^man_made\.bridge$/, score: 30 },
+  { pattern: /^building\.historic$/, score: 50 },
+  { pattern: /^man_made\.tower$/, score: 50 },
+  { pattern: /^man_made\.lighthouse$/, score: 50 },
+  { pattern: /^man_made\.bridge$/, score: 50 },
   { pattern: /^education\.library$/, score: 65 },
   { pattern: /^education\.university$/, score: 65 },
   { pattern: /^catering\.cafe(\..*)?$/, score: 60 },
   { pattern: /^catering\.ice_cream$/, score: 60 },
-  { pattern: /^commercial\.shopping_mall$/, score: 50 },
-  { pattern: /^building\.commercial$/, score: 50 },
+  { pattern: /^commercial\.shopping_mall$/, score: 60 },
+  { pattern: /^building\.commercial$/, score: 60 },
 
   // --- Low-Tier (20 Punkte) ---
-  { pattern: /^national_park$/, score: 20 },
-  { pattern: /^natural\.protected_area$/, score: 35 },
-  { pattern: /^natural\.mountain(\..*)?$/, score: 35 },
-  { pattern: /^natural\.water(\..*)?$/, score: 35 },
-  { pattern: /^catering(\..*)?$/, score: 35 }, // Generic catering
-  { pattern: /^catering\.fast_food$/, score: 35 },
-  { pattern: /^commercial(\..*)?$/, score: 45 },
-  { pattern: /^leisure\.playground$/, score: 35 },
-  { pattern: /^leisure\.picnic(\..*)?$/, score: 35 },
-  { pattern: /^natural\.forest$/, score: 35 },
-  { pattern: /^natural\.sand$/, score: 35 },
-  { pattern: /^religion\.place_of_worship$/, score: 75 },
-  { pattern: /^building\.place_of_worship$/, score: 75 },
+  { pattern: /^national_park$/, score: 50 },
+  { pattern: /^natural\.protected_area$/, score: 50 },
+  { pattern: /^natural\.mountain(\..*)?$/, score: 50 },
+  { pattern: /^natural\.water(\..*)?$/, score: 50 },
+  { pattern: /^catering(\..*)?$/, score: 50 }, // Generic catering
+  { pattern: /^catering\.fast_food$/, score: 50 },
+  { pattern: /^commercial(\..*)?$/, score: 50 },
+  { pattern: /^leisure\.playground$/, score: 45 },
+  { pattern: /^leisure\.picnic(\..*)?$/, score: 45 },
+  { pattern: /^natural\.forest$/, score: 45 },
+  { pattern: /^natural\.sand$/, score: 45 },
+  { pattern: /^religion\.place_of_worship$/, score: 60 },
+  { pattern: /^building\.place_of_worship$/, score: 60 },
   { pattern: /^building\.historic$/, score: 60 },
   { pattern: /^accommodation\.hotel$/, score: 45 },
 
-  { pattern: /^building(\..*)?$/, score: 50 }, // Generic building (MUSS IMMER UNTER DEN SPEZIFISCHEN SEIN)
-  { pattern: /^production(\..*)?$/, score: 50 },
+  { pattern: /^building(\..*)?$/, score: 55 }, // Generic building (MUSS IMMER UNTER DEN SPEZIFISCHEN SEIN)
+  { pattern: /^production(\..*)?$/, score: 55 },
   { pattern: /^education(\..*)?$/, score: 70 }
 
 ];
@@ -262,21 +262,9 @@ export function sortColdStartEntities<E extends { D: number; categories?: string
         });
 
         if (weightedScores.length > 0) {
-          // Identifikation des dominanten gewichteten Wertes
-          const T_max = Math.max(...weightedScores);
-
-          let maxRemoved = false;
-          const secondaryScores = weightedScores.filter(score => {
-            if (score === T_max && !maxRemoved) {
-              maxRemoved = true;
-              return false;
-            }
-            return true;
-          });
-
-          // Akkumulation der sekundären Tags mit Bonus-Faktor
-          const secondarySum = secondaryScores.reduce((acc, val) => acc + val, 0);
-          T_weighted = T_max + (secondarySum * 0.1);
+          // Durchschnitts-Berechnung (Average-Modell nach User-Wunsch)
+          const scoreSum = weightedScores.reduce((acc, val) => acc + val, 0);
+          T_weighted = scoreSum / weightedScores.length;
         }
       }
 

@@ -178,7 +178,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                     {tag}
                 </Badge>
             ))}
-            {userProfile?.role === 'admin' && processedTags.length === 0 && (
+            {userProfile?.role === 'admin' && (
                 (place.categories || []).map((tag: string, idx: number) => (
                     <span 
                       key={`${tag}-${idx}`} 

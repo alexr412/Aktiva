@@ -23,7 +23,7 @@ export const UserPreferenceSlider: React.FC<UserPreferenceSliderProps> = ({
   onChange 
 }) => {
   // Das Array umfasst exakt die 9 vordefinierten diskreten Werte (Multiplikatoren)
-  const discreteValues = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+  const discreteValues = [0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0];
   
   // Index 4 entspricht dem neutralen Wert "1.0"
   const [currentIndex, setCurrentIndex] = useState(() => {
@@ -33,7 +33,7 @@ export const UserPreferenceSlider: React.FC<UserPreferenceSliderProps> = ({
     
     // Legacy Fallback (alte -5 bis +5 Werte auf den neuen Index mappen, falls noch existent)
     if (initialValue < 0) return 0; // Extrem negativ -> 0.1
-    if (initialValue > 2.0) return 8; // Extrem positiv -> 2.0
+    if (initialValue > 3.0) return 8; // Extrem positiv -> 3.0
     return 4; // Fallback Neutral
   });
 
