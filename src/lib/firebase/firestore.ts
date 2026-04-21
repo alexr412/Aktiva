@@ -44,16 +44,8 @@ type CreateActivityPayload = {
 const MAX_FREE_PARTICIPANTS = 4;
 const SMOOTHING_FACTOR = 5;
 
-function generateFriendCode(length = 8) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
 
-export async function createUserProfileDocument(user: User) {
+export async function createUserProfileDocument(user: User, additionalData?: Partial<UserProfile>) {
   if (!db) throw new Error('Firestore is not initialized.');
   const userDocRef = doc(db, 'users', user.uid);
   const userProfile: UserProfile = {
@@ -62,10 +54,10 @@ export async function createUserProfileDocument(user: User) {
     email: user.email,
     photoURL: user.photoURL,
     onboardingCompleted: false,
+    ...additionalData,
     friends: [],
     friendRequestsSent: [],
     friendRequestsReceived: [],
-    friendCode: generateFriendCode(),
     hiddenEntityIds: [],
     activeTabs: ['Sights', 'Nature', 'Restaurants'],
     likedTags: [],
@@ -1211,12 +1203,12 @@ export const verifyTicket = async (activityId: string, scannedUserId: string) =>
   });
 };
 
-export async function findUserByFriendCode(friendCode: string): Promise<UserProfile | null> {
+export async function findUserByUsername(username: string): Promise<UserProfile | null> {
     if (!db) throw new Error('Firestore is not initialized.');
     
     const userQuery = query(
         collection(db, 'users'), 
-        where('friendCode', '==', friendCode.toUpperCase()),
+        where('username', '==', username.toLowerCase()),
         limit(1)
     );
 
@@ -1227,6 +1219,13 @@ export async function findUserByFriendCode(friendCode: string): Promise<UserProf
     }
 
     return querySnapshot.docs[0].data() as UserProfile;
+}
+
+export async function isUsernameTaken(username: string): Promise<boolean> {
+  if (!db) return true; // fail safe
+  const userQuery = query(collection(db, 'users'), where('username', '==', username.toLowerCase()), limit(1));
+  const snap = await getDocs(userQuery);
+  return !snap.empty;
 }
 
 export async function markNotificationAsRead(notificationId: string) {

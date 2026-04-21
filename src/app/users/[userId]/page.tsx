@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { useLanguage } from '@/hooks/use-language';
+
 import {
   fetchUserActivities,
   joinActivity,
@@ -44,7 +46,9 @@ export default function UserProfilePage() {
     const { user: currentUser, userProfile, loading: authLoading } = useAuth();
     const router = useRouter();
     const params = useParams();
+    const language = useLanguage();
     const { toast } = useToast();
+
 
     const userId = params.userId as string;
 
@@ -60,7 +64,11 @@ export default function UserProfilePage() {
         
         if (userProfile?.hiddenEntityIds?.includes(userId)) {
             router.back();
-            toast({ title: "User cannot be viewed", description: "This user is hidden." });
+            toast({ 
+                title: language === 'de' ? "Nutzer nicht sichtbar" : "User cannot be viewed", 
+                description: language === 'de' ? "Dieser Nutzer ist verborgen." : "This user is hidden." 
+            });
+
             return;
         }
 
@@ -97,16 +105,22 @@ export default function UserProfilePage() {
                     setUserData(profile);
                     setActivities(userActivities as Activity[]);
                 } else {
-                    toast({ title: "User not found", description: "This user profile could not be loaded.", variant: "destructive" });
+                    toast({ 
+                        title: language === 'de' ? "Nutzer nicht gefunden" : "User not found", 
+                        description: language === 'de' ? "Dieses Profil konnte nicht geladen werden." : "This user profile could not be loaded.", 
+                        variant: "destructive" 
+                    });
+
                     router.back();
                 }
             } catch (error) {
                 console.error("Failed to fetch user data:", error);
                 toast({
-                    title: "Error",
-                    description: "Could not load this user's profile.",
+                    title: language === 'de' ? "Fehler" : "Error",
+                    description: language === 'de' ? "Profil konnte nicht geladen werden." : "Could not load this user's profile.",
                     variant: "destructive",
                 });
+
             } finally {
                 setLoading(false);
             }
@@ -117,18 +131,31 @@ export default function UserProfilePage() {
 
     const handleJoin = async (activityId: string) => {
         if (!currentUser) {
-            toast({ title: 'Login Required', description: 'You must be logged in to join an activity.' });
+            toast({ 
+                title: language === 'de' ? 'Login erforderlich' : 'Login Required', 
+                description: language === 'de' ? 'Bitte logge dich ein, um beizutreten.' : 'You must be logged in to join an activity.' 
+            });
+
             router.push('/login');
             throw new Error('Login Required');
         }
         try {
             await joinActivity(activityId, currentUser);
-            toast({ title: 'Success!', description: 'You have joined the activity. You can find it in your chats.' });
+            toast({ 
+                title: language === 'de' ? 'Erfolgreich!' : 'Success!', 
+                description: language === 'de' ? 'Du bist beigetreten. Du findest die Aktivität in deinen Chats.' : 'You have joined the activity. You can find it in your chats.' 
+            });
+
             setActivities(prev => prev.map(act => act.id === activityId ? {...act, participantIds: [...act.participantIds, currentUser.uid]} : act));
             router.push(`/chat/${activityId}`);
         } catch (error: any) {
             console.error(error);
-            toast({ title: 'Error', description: error.message || 'Failed to join activity.', variant: 'destructive' });
+            toast({ 
+                title: language === 'de' ? 'Fehler' : 'Error', 
+                description: error.message || (language === 'de' ? 'Beitritt fehlgeschlagen.' : 'Failed to join activity.'), 
+                variant: 'destructive' 
+            });
+
             throw error;
         }
     };
@@ -141,32 +168,42 @@ export default function UserProfilePage() {
                 case 'send':
                     await sendFriendRequest(currentUser.uid, userId);
                     setFriendshipStatus('request_sent');
-                    toast({ title: 'Friend request sent!' });
+                    toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Friend request sent!' });
+
                     break;
                 case 'cancel':
                     await cancelFriendRequest(currentUser.uid, userId);
                     setFriendshipStatus('not_friends');
-                    toast({ title: 'Friend request cancelled.' });
+                    toast({ title: language === 'de' ? 'Anfrage zurückgezogen.' : 'Friend request cancelled.' });
+
                     break;
                 case 'remove':
                     await removeFriend(currentUser.uid, userId);
                     setFriendshipStatus('not_friends');
-                    toast({ title: 'Friend removed.' });
+                    toast({ title: language === 'de' ? 'Freund entfernt.' : 'Friend removed.' });
+
                     break;
                 case 'accept':
                     await acceptFriendRequest(currentUser.uid, userId);
                     setFriendshipStatus('friends');
-                    toast({ title: 'Friend request accepted!' });
+                    toast({ title: language === 'de' ? 'Anfrage bestätigt!' : 'Friend request accepted!' });
+
                     break;
                 case 'decline':
                     await declineFriendRequest(currentUser.uid, userId);
                     setFriendshipStatus('not_friends');
-                    toast({ title: 'Friend request declined.' });
+                    toast({ title: language === 'de' ? 'Anfrage abgelehnt.' : 'Friend request declined.' });
+
                     break;
             }
         } catch (error) {
             console.error("Friend action failed", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not complete the action.' });
+            toast({ 
+                variant: 'destructive', 
+                title: language === 'de' ? 'Fehler' : 'Error', 
+                description: language === 'de' ? 'Aktion konnte nicht ausgeführt werden.' : 'Could not complete the action.' 
+            });
+
         } finally {
             setIsFriendActionLoading(false);
         }
@@ -182,9 +219,10 @@ export default function UserProfilePage() {
             console.error("Failed to create or get chat", error);
             toast({
                 variant: 'destructive',
-                title: 'Error',
-                description: 'Could not start a chat.',
+                title: language === 'de' ? 'Fehler' : 'Error',
+                description: language === 'de' ? 'Chat konnte nicht gestartet werden.' : 'Could not start a chat.',
             });
+
         } finally {
             setIsCreatingChat(false);
         }
@@ -218,11 +256,13 @@ export default function UserProfilePage() {
                     <div className="w-full flex gap-4">
                         <Button onClick={handleMessage} disabled={isCreatingChat} className="flex-1">
                             {isCreatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
-                            Message
+                            {language === 'de' ? 'Nachricht' : 'Message'}
+
                         </Button>
                         <Button onClick={() => handleFriendAction('remove')} disabled={isFriendActionLoading} variant="outline" className="flex-1">
                             {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserMinus className="mr-2 h-4 w-4" />}
-                            Remove
+                            {language === 'de' ? 'Entfernen' : 'Remove'}
+
                         </Button>
                     </div>
                 );
@@ -230,7 +270,8 @@ export default function UserProfilePage() {
                 return (
                     <Button onClick={() => handleFriendAction('cancel')} disabled={isFriendActionLoading} variant="secondary">
                         {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
-                        Request Sent
+                        {language === 'de' ? 'Anfrage gesendet' : 'Request Sent'}
+
                     </Button>
                 );
             case 'request_received':
@@ -238,11 +279,13 @@ export default function UserProfilePage() {
                     <div className="flex gap-2">
                          <Button onClick={() => handleFriendAction('accept')} disabled={isFriendActionLoading} className="flex-1">
                             {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
-                            Accept
+                            {language === 'de' ? 'Annehmen' : 'Accept'}
+
                         </Button>
                         <Button onClick={() => handleFriendAction('decline')} disabled={isFriendActionLoading} variant="outline" className="flex-1">
                              <X className="mr-2 h-4 w-4" />
-                            Decline
+                            {language === 'de' ? 'Ablehnen' : 'Decline'}
+
                         </Button>
                     </div>
                 );
@@ -250,7 +293,8 @@ export default function UserProfilePage() {
                 return (
                     <Button onClick={() => handleFriendAction('send')} disabled={isFriendActionLoading}>
                         {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-                        Add Friend
+                        {language === 'de' ? 'Freund hinzufügen' : 'Add Friend'}
+
                     </Button>
                 );
             default:
@@ -260,7 +304,8 @@ export default function UserProfilePage() {
 
 
     const photoUrlToDisplay = userData.photoURL || '';
-    const displayName = userData.displayName || 'Anonymous User';
+    const displayName = userData.displayName || (language === 'de' ? 'Anonymer Nutzer' : 'Anonymous User');
+
     
     const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
     
@@ -274,7 +319,8 @@ export default function UserProfilePage() {
                 <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()}>
                     <ArrowLeft />
                 </Button>
-                <h1 className="font-bold truncate">{displayName}'s Profile</h1>
+                <h1 className="font-bold truncate">{language === 'de' ? `Profil von ${displayName}` : `${displayName}'s Profile`}</h1>
+
                 <EntityMoreOptions
                     entityId={userId}
                     entityType="user"
@@ -309,7 +355,8 @@ export default function UserProfilePage() {
                       <div className="flex items-center justify-center gap-1.5 mt-1 bg-amber-50 px-3 py-1 rounded-full border border-amber-100">
                         <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
                         <span className="font-black text-amber-700 text-sm">{userData.averageRating?.toFixed(1)}</span>
-                        <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-tighter">({userData.ratingCount} Reviews)</span>
+                        <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-tighter">({userData.ratingCount} {language === 'de' ? 'Bewertungen' : 'Reviews'})</span>
+
                       </div>
                     ) : null}
                     
@@ -329,7 +376,8 @@ export default function UserProfilePage() {
             
             {(userData.interests && userData.interests.length > 0) &&
               <div className="p-6 space-y-4">
-                 <h2 className="font-bold text-lg">Interests</h2>
+                 <h2 className="font-bold text-lg">{language === 'de' ? 'Interessen' : 'Interests'}</h2>
+
                 <div className="flex flex-wrap gap-2 items-center">
                     {userData.interests.map(tag => (
                          <Badge key={tag} variant="secondary" className="text-base py-1 px-3">
@@ -347,13 +395,15 @@ export default function UserProfilePage() {
                             value="active" 
                             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-bold text-sm"
                         >
-                            Active ({currentActivities.length})
+                            {language === 'de' ? 'Aktiv' : 'Active'} ({currentActivities.length})
+
                         </TabsTrigger>
                         <TabsTrigger 
                             value="past" 
                             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-bold text-sm"
                         >
-                            Past ({pastActivities.length})
+                            {language === 'de' ? 'Vergangen' : 'Past'} ({pastActivities.length})
+
                         </TabsTrigger>
                     </TabsList>
 
@@ -379,7 +429,8 @@ export default function UserProfilePage() {
                                     </ul>
                                 ) : (
                                     <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
-                                        <p className="text-muted-foreground">No active activities found.</p>
+                                        <p className="text-muted-foreground">{language === 'de' ? 'Keine aktiven Aktivitäten gefunden.' : 'No active activities found.'}</p>
+
                                     </div>
                                 )}
                             </div>
@@ -401,7 +452,8 @@ export default function UserProfilePage() {
                                     </ul>
                                 ) : (
                                     <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
-                                        <p className="text-muted-foreground">No past activities found.</p>
+                                        <p className="text-muted-foreground">{language === 'de' ? 'Keine vergangenen Aktivitäten gefunden.' : 'No past activities found.'}</p>
+
                                     </div>
                                 )}
                             </div>

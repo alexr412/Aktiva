@@ -4,16 +4,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Home, Compass, MessageCircle, User } from 'lucide-react';
-
-const navItems = [
-  { href: '/', label: 'Discover', icon: Home, activeColor: '#f97316' },
-  { href: '/explore', label: 'Explore', icon: Compass, activeColor: '#eab308' },
-  { href: '/chat', label: 'Chat', icon: MessageCircle, activeColor: '#8b5cf6' },
-  { href: '/profile', label: 'Profile', icon: User, activeColor: '#a855f7' },
-];
+import { useLanguage } from '@/hooks/use-language';
 
 export function BottomNav() {
   const pathname = usePathname();
+  const language = useLanguage();
+
+  const navItems = [
+    { href: '/', label: language === 'de' ? 'Entdecken' : 'Discover', icon: Home, activeColor: '#f97316' },
+    { href: '/explore', label: language === 'de' ? 'Erkunden' : 'Explore', icon: Compass, activeColor: '#eab308' },
+    { href: '/chat', label: 'Chat', icon: MessageCircle, activeColor: '#8b5cf6' },
+    { href: '/profile', label: language === 'de' ? 'Profil' : 'Profile', icon: User, activeColor: '#a855f7' },
+  ];
 
   const hideOnPaths = ['/login', '/signup', '/onboarding'];
   if (hideOnPaths.includes(pathname)) {

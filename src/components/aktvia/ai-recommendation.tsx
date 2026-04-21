@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Place } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLanguage } from '@/hooks/use-language';
 
 type AiRecommendationProps = {
   place: Place;
 };
 
 export function AiRecommendation({ place }: AiRecommendationProps) {
+  const language = useLanguage();
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export function AiRecommendation({ place }: AiRecommendationProps) {
       });
       setRecommendation(result.recommendation);
     } catch (e) {
-      setError('Could not generate recommendation. Please try again.');
+      setError(language === 'de' ? 'Empfehlung konnte nicht generiert werden. Bitte erneut versuchen.' : 'Could not generate recommendation. Please try again.');
       console.error(e);
     } finally {
       setIsLoading(false);
@@ -42,18 +44,20 @@ export function AiRecommendation({ place }: AiRecommendationProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Sparkles className="text-primary" />
-          <span>AI Recommendation</span>
+          <span>{language === 'de' ? 'KI-Empfehlung' : 'AI Recommendation'}</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
         {!recommendation && !isLoading && !error && (
           <div className="space-y-4">
              <p className="text-sm text-muted-foreground">
-                Want a quick, personalized summary? Let our AI give you a recommendation for this place.
+                {language === 'de' 
+                    ? 'Möchtest du eine schnelle, personalisierte Zusammenfassung? Lass dir eine KI-Empfehlung für diesen Ort geben.' 
+                    : 'Want a quick, personalized summary? Let our AI give you a recommendation for this place.'}
             </p>
             <Button onClick={getRecommendation} disabled={isLoading}>
               <Sparkles className="mr-2 h-4 w-4" />
-              Generate
+              {language === 'de' ? 'Generieren' : 'Generate'}
             </Button>
           </div>
         )}

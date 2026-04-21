@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { useLanguage } from '@/hooks/use-language';
 import { signOut } from '@/lib/firebase/auth';
 import { fetchUserActivities, joinActivity, getUserProfile, acceptFriendRequest, declineFriendRequest, createActivity } from '@/lib/firebase/firestore';
 import type { Activity, UserProfile, Place, Review } from '@/lib/types';
@@ -33,17 +34,11 @@ import { cn } from '@/lib/utils';
 import { UserBadge } from '@/components/common/UserBadge';
 import { format } from 'date-fns';
 
-function generateFriendCode(length = 8) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
+
 
 export default function ProfilePage() {
     const { user, userProfile, loading: authLoading } = useAuth();
+    const language = useLanguage();
     const router = useRouter();
     const { toast } = useToast();
     const { favorites } = useFavorites();
@@ -108,8 +103,8 @@ export default function ProfilePage() {
                 } catch (error) {
                     console.error("Failed to fetch user activities:", error);
                     toast({
-                        title: "Error",
-                        description: "Could not load your activities.",
+                        title: language === 'de' ? "Fehler" : "Error",
+                        description: language === 'de' ? "Deine Aktivitäten konnten nicht geladen werden." : "Could not load your activities.",
                         variant: "destructive",
                     });
                 } finally {
@@ -122,22 +117,6 @@ export default function ProfilePage() {
         }
     }, [user, authLoading, router, toast, userProfile]);
     
-    useEffect(() => {
-        const createFriendCode = async () => {
-            if (user && userData && !userData.friendCode && db) {
-                const newCode = generateFriendCode();
-                const userDocRef = doc(db, 'users', user.uid);
-                try {
-                    await updateDoc(userDocRef, { friendCode: newCode });
-                    setUserData(prev => prev ? { ...prev, friendCode: newCode } : null);
-                } catch (error) {
-                    console.error("Failed to create friend code:", error);
-                }
-            }
-        };
-        createFriendCode();
-    }, [user, userData]);
-
     const loadReviews = async () => {
         if (!user || !db) return;
         setIsLoadingReviews(true);
@@ -165,7 +144,7 @@ export default function ProfilePage() {
         if (!file) return;
 
         if (file.size > 5242880) {
-            toast({ variant: 'destructive', title: 'Datei zu groß', description: 'Bitte wähle ein Bild unter 5MB.' });
+            toast({ variant: 'destructive', title: language === 'de' ? 'Datei zu groß' : 'File too large', description: language === 'de' ? 'Bitte wähle ein Bild unter 5MB.' : 'Please choose an image under 5MB.' });
             return;
         }
 
@@ -194,10 +173,10 @@ export default function ProfilePage() {
             
             setIsCropModalOpen(false);
             setImageToCrop(null);
-            toast({ title: "Profilbild aktualisiert!" });
+            toast({ title: language === 'de' ? "Profilbild aktualisiert!" : "Profile picture updated!" });
         } catch (error: any) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'Upload fehlgeschlagen', description: error.message });
+            toast({ variant: 'destructive', title: language === 'de' ? 'Upload fehlgeschlagen' : 'Upload failed', description: error.message });
         } finally {
             setIsUploading(false);
         }
@@ -207,7 +186,7 @@ export default function ProfilePage() {
         try {
             await signOut();
             router.push('/');
-            toast({ title: 'Erfolgreich abgemeldet.' });
+            toast({ title: language === 'de' ? 'Erfolgreich abgemeldet.' : 'Successfully logged out.' });
         } catch (error) {
             console.error("Logout failed", error);
         }
@@ -236,7 +215,7 @@ export default function ProfilePage() {
             setActivities(prev => prev.map(act => act.id === activityId ? {...act, participantIds: [...act.participantIds, user.uid]} : act));
             router.push(`/chat/${activityId}`);
         } catch (error: any) {
-            toast({ title: 'Fehler beim Beitritt.', variant: 'destructive' });
+            toast({ title: language === 'de' ? 'Fehler beim Beitritt.' : 'Error joining.', variant: 'destructive' });
             throw error;
         }
     };
@@ -246,9 +225,9 @@ export default function ProfilePage() {
         try {
             await acceptFriendRequest(user.uid, requestingUserId);
             setRequestProfiles(prev => prev.filter(p => p.uid !== requestingUserId));
-            toast({ title: "Freund hinzugefügt!" });
+            toast({ title: language === 'de' ? "Freund hinzugefügt!" : "Friend added!" });
         } catch (error) {
-            toast({ title: "Fehler beim Bestätigen.", variant: "destructive" });
+            toast({ title: language === 'de' ? "Fehler beim Bestätigen." : "Error confirming.", variant: "destructive" });
         }
     };
 
@@ -257,16 +236,16 @@ export default function ProfilePage() {
         try {
             await declineFriendRequest(user.uid, requestingUserId);
             setRequestProfiles(prev => prev.filter(p => p.uid !== requestingUserId));
-            toast({ title: "Anfrage abgelehnt." });
+            toast({ title: language === 'de' ? "Anfrage abgelehnt." : "Request declined." });
         } catch (error) {
-            toast({ title: "Fehler beim Ablehnen.", variant: "destructive" });
+            toast({ title: language === 'de' ? "Fehler beim Ablehnen." : "Error declining.", variant: "destructive" });
         }
     };
     
-    const handleCopyCode = () => {
-        if (!userData?.friendCode) return;
-        navigator.clipboard.writeText(userData.friendCode)
-        .then(() => { toast({ title: "Code kopiert!" }); });
+    const handleCopyUsername = () => {
+        if (!userData?.username) return;
+        navigator.clipboard.writeText(userData.username)
+        .then(() => { toast({ title: language === 'de' ? "Username kopiert!" : "Username copied!" }); });
     };
     
     const handleOpenActivityModal = (place: Place) => {
@@ -291,12 +270,12 @@ export default function ProfilePage() {
                 isBoosted,
                 category: 'Sonstiges'
             });
-            toast({ title: 'Aktivität erstellt!' });
+            toast({ title: language === 'de' ? 'Aktivität erstellt!' : 'Activity created!' });
             setActivityModalPlace(null);
             router.push(`/chat/${newActivityRef.id}`);
             return true;
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Fehler beim Erstellen', description: error.message });
+            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler beim Erstellen' : 'Creation error', description: error.message });
             return false;
         }
     };
@@ -329,7 +308,7 @@ export default function ProfilePage() {
     );
 
     const photoUrlToDisplay = userData?.photoURL || user.photoURL || '';
-    const displayName = userData?.displayName || user.displayName || 'Anonymer Nutzer';
+    const displayName = userData?.displayName || user.displayName || (language === 'de' ? 'Anonymer Nutzer' : 'Anonymous User');
 
     const visibleRequestProfiles = requestProfiles.filter(p => !userProfile?.hiddenEntityIds?.includes(p.uid));
     const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
@@ -343,7 +322,7 @@ export default function ProfilePage() {
                 {/* Header Backdrop Gradient */}
                 <div className="h-64 w-full bg-gradient-to-br from-[#4ade80] to-[#3b82f6] relative shrink-0">
                     <div className="absolute top-12 left-6">
-                        <h1 className="text-3xl font-black text-white tracking-tighter font-heading drop-shadow-sm">Profil</h1>
+                        <h1 className="text-3xl font-black text-white tracking-tighter font-heading drop-shadow-sm">{language === 'de' ? 'Profil' : 'Profile'}</h1>
                     </div>
                     <div className="absolute top-12 right-6 flex items-center gap-3">
                         <Button asChild variant="ghost" size="icon" className="h-11 w-11 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 text-white shadow-xl">
@@ -403,14 +382,15 @@ export default function ProfilePage() {
                                     ))}
                                 </div>
                                 <span className="text-lg font-black text-[#0f172a] dark:text-neutral-100">{userData?.averageRating?.toFixed(1) || '3.0'}</span>
-                                <span className="text-sm font-bold text-slate-300">({userData?.ratingCount || 7} Reviews)</span>
+                                <span className="text-sm font-bold text-slate-300">({userData?.ratingCount || 7} {language === 'de' ? 'Bewertungen' : 'Reviews'})</span>
+
                             </button>
 
                             {/* Pills */}
-                            <div className="flex items-center gap-2 mb-8">
-                                <div onClick={userData?.friendCode ? handleCopyCode : undefined} className="bg-[#f3f4f6] dark:bg-neutral-800/80 px-5 py-2 rounded-2xl flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors">
-                                    <span className="text-[#a1a1aa] font-black text-[11px] uppercase tracking-tighter">🔑</span>
-                                    <span className="text-[#0f172a] dark:text-neutral-200 font-black text-xs uppercase tracking-widest">{userData?.friendCode || '6CBGEON7'}</span>
+                             <div className="flex items-center gap-2 mb-8">
+                                <div onClick={userData?.username ? handleCopyUsername : undefined} className="bg-[#f3f4f6] dark:bg-neutral-800/80 px-5 py-2 rounded-2xl flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors">
+                                    <span className="text-[#a1a1aa] font-black text-[11px] uppercase tracking-tighter">@</span>
+                                    <span className="text-[#0f172a] dark:text-neutral-200 font-black text-xs tracking-widest">{userData?.username || 'user'}</span>
                                 </div>
                                 <div className="bg-[#fcf1f2] dark:bg-neutral-800/80 px-5 py-2 rounded-2xl flex items-center gap-2">
                                     <span className="text-[#ec4899] font-black text-[11px]">📍</span>
@@ -419,11 +399,13 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Stats */}
-                            <div className="grid grid-cols-3 gap-4 w-full max-w-md mb-8">
+                             <div className="grid grid-cols-3 gap-4 w-full max-w-md mb-8">
                                 {[
-                                    { label: 'Aktiv', val: currentActivities.length || 8, bg: 'bg-[#faf6f6]' },
-                                    { label: 'Freunde', val: userData?.friends?.length || 2, bg: 'bg-[#f6f9fa]' },
-                                    { label: 'Reviews', val: userData?.ratingCount || 7, bg: 'bg-[#f8f9f8]' }
+                                    { label: language === 'de' ? 'Aktiv' : 'Active', val: currentActivities.length || 8, bg: 'bg-[#faf6f6]' },
+                                    { label: language === 'de' ? 'Freunde' : 'Friends', val: userData?.friends?.length || 2, bg: 'bg-[#f6f9fa]' },
+                                    { label: language === 'de' ? 'Bewertungen' : 'Reviews', val: userData?.ratingCount || 7, bg: 'bg-[#f8f9f8]' }
+
+
                                 ].map((stat) => (
                                     <div key={stat.label} className={cn("flex flex-col items-center py-4 rounded-3xl shadow-sm border border-slate-50", stat.bg)}>
                                         <span className="text-3xl font-black text-[#59a27a] leading-none mb-1">{stat.val}</span>
@@ -433,12 +415,12 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Action Button */}
-                            <Button 
+                             <Button 
                                 className="w-full max-w-sm h-16 rounded-[1.5rem] bg-[#59a27a] hover:bg-[#4d8c6a] text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-2 border-none"
                                 onClick={() => router.push('/profile/edit')}
                             >
                                 <Edit className="h-5 w-5 fill-current" />
-                                Profil bearbeiten
+                                {language === 'de' ? 'Profil bearbeiten' : 'Edit Profile'}
                             </Button>
                         </div>
                     </div>
@@ -449,10 +431,12 @@ export default function ProfilePage() {
                     </div>
                     
                     <div className="w-full mt-12 mb-6">
-                        <nav className="flex justify-around items-center px-4">
-                            <TabButton tabName="activities" label="Aktivitäten" />
-                            <TabButton tabName="favorites" label="Favoriten" />
-                            <TabButton tabName="reviews" label="Reviews" />
+                         <nav className="flex justify-around items-center px-4">
+                            <TabButton tabName="activities" label={language === 'de' ? 'Aktivitäten' : 'Activities'} />
+                            <TabButton tabName="favorites" label={language === 'de' ? 'Favoriten' : 'Favorites'} />
+                            <TabButton tabName="reviews" label={language === 'de' ? 'Bewertungen' : 'Reviews'} />
+
+
                         </nav>
                     </div>
 
@@ -464,25 +448,25 @@ export default function ProfilePage() {
                                 ) : visibleActivities.length > 0 ? (
                                     <Tabs defaultValue="active" className="w-full">
                                         <TabsList className="flex gap-3 bg-transparent p-0 justify-center mb-6">
-                                            <TabsTrigger 
+                                             <TabsTrigger 
                                                 value="active" 
                                                 className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-[#f0fdf4] data-[state=active]:text-[#59a27a] data-[state=active]:shadow-none border-none transition-all"
                                             >
-                                                Aktiv ({currentActivities.length})
+                                                {language === 'de' ? 'Aktiv' : 'Active'} ({currentActivities.length})
                                             </TabsTrigger>
                                             <TabsTrigger 
                                                 value="past" 
                                                 className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-[#f0fdf4] data-[state=active]:text-[#59a27a] data-[state=active]:shadow-none border-none transition-all"
                                             >
-                                                Vergangen ({pastActivities.length})
+                                                {language === 'de' ? 'Vergangen' : 'Past'} ({pastActivities.length})
                                             </TabsTrigger>
                                         </TabsList>
                                         <TabsContent value="active" className="space-y-1 mt-0">
                                             {currentActivities.length > 0 ? currentActivities.map(activity => (
                                                 <ProfileActivityCard key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
-                                            )) : (
+                                             )) : (
                                                 <div className="text-center p-12 bg-white rounded-[3rem] border border-slate-100 shadow-sm">
-                                                    <p className="text-slate-400 font-bold">Keine aktiven Aktivitäten.</p>
+                                                    <p className="text-slate-400 font-bold">{language === 'de' ? 'Keine aktiven Aktivitäten.' : 'No active activities.'}</p>
                                                 </div>
                                             )}
                                         </TabsContent>
@@ -490,10 +474,10 @@ export default function ProfilePage() {
                                             {pastActivities.length > 0 ? pastActivities.map(activity => (
                                                 <div key={activity.id} className="opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
                                                     <ProfileActivityCard activity={activity} user={user} onJoin={handleJoin} />
-                                                </div>
+                                                 </div>
                                             )) : (
                                                 <div className="text-center p-12 bg-white rounded-[3rem] border border-slate-100 shadow-sm">
-                                                    <p className="text-slate-400 font-bold">Keine vergangenen Aktivitäten.</p>
+                                                    <p className="text-slate-400 font-bold">{language === 'de' ? 'Keine vergangenen Aktivitäten.' : 'No past activities.'}</p>
                                                 </div>
                                             )}
                                         </TabsContent>
@@ -503,11 +487,11 @@ export default function ProfilePage() {
                                         <div className="bg-[#f0fdf4] p-8 rounded-[2.5rem]">
                                             <Compass className="h-12 w-12 text-[#59a27a]" />
                                         </div>
-                                        <div className="space-y-1">
-                                            <h3 className="text-xl font-black text-[#0f172a]">Noch leer hier</h3>
-                                            <p className="text-slate-400 font-medium">Entdecke spannende Orte in deiner Nähe.</p>
+                                         <div className="space-y-1">
+                                            <h3 className="text-xl font-black text-[#0f172a]">{language === 'de' ? 'Noch leer hier' : 'Nothing here yet'}</h3>
+                                            <p className="text-slate-400 font-medium">{language === 'de' ? 'Entdecke spannende Orte in deiner Nähe.' : 'Discover exciting places nearby.'}</p>
                                         </div>
-                                        <Button onClick={() => router.push('/explore')} className="rounded-[1.5rem] h-14 px-10 font-black bg-[#59a27a]">Orte entdecken</Button>
+                                        <Button onClick={() => router.push('/explore')} className="rounded-[1.5rem] h-14 px-10 font-black bg-[#59a27a]">{language === 'de' ? 'Orte entdecken' : 'Discover Places'}</Button>
                                     </div>
                                 )}
                             </div>
@@ -515,9 +499,10 @@ export default function ProfilePage() {
                          {activeTab === 'favorites' && (
                             <div className="px-2">
                                 {favorites.length === 0 ? (
-                                    <div className="text-center p-12 flex flex-col items-center justify-center gap-4 bg-white/50 dark:bg-neutral-900/50 rounded-[2rem] border-2 border-dashed border-neutral-200 dark:border-neutral-800">
+                                     <div className="text-center p-12 flex flex-col items-center justify-center gap-4 bg-white/50 dark:bg-neutral-900/50 rounded-[2rem] border-2 border-dashed border-neutral-200 dark:border-neutral-800">
                                          <div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-10 w-10 text-primary" /></div>
-                                         <Button onClick={() => router.push('/')} className="rounded-2xl h-12 px-8 font-black">Orte finden</Button>
+                                         <Button onClick={() => router.push('/')} className="rounded-2xl h-12 px-8 font-black">{language === 'de' ? 'Orte finden' : 'Find Places'}</Button>
+
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -527,8 +512,9 @@ export default function ProfilePage() {
                             </div>
                          )}
                          {activeTab === 'reviews' && (
-                             <div className="text-center text-neutral-400 font-bold p-12 bg-white/50 dark:bg-neutral-900/50 rounded-[2rem] border-2 border-dashed border-neutral-200 dark:border-neutral-800">
-                                <p>Reviews folgen in Kürze.</p>
+                              <div className="text-center text-neutral-400 font-bold p-12 bg-white/50 dark:bg-neutral-900/50 rounded-[2rem] border-2 border-dashed border-neutral-200 dark:border-neutral-800">
+                                <p>{language === 'de' ? 'Bewertungen folgen in Kürze.' : 'Reviews coming soon.'}</p>
+
                             </div>
                          )}
                     </div>
@@ -539,14 +525,16 @@ export default function ProfilePage() {
             <Dialog open={isReviewsModalOpen} onOpenChange={setIsReviewsModalOpen}>
               <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
                 <DialogHeader className="p-6 bg-amber-50 dark:bg-amber-950/20">
-                  <DialogTitle className="text-xl font-black flex items-center gap-2 text-amber-900 dark:text-amber-200">
-                    <Star className="h-5 w-5 fill-amber-500" /> Community Feedback
+                   <DialogTitle className="text-xl font-black flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                    <Star className="h-5 w-5 fill-amber-500" /> {language === 'de' ? 'Community Feedback' : 'Community Feedback'}
                   </DialogTitle>
-                  <DialogDescription className="text-amber-800/70 dark:text-amber-400/70 font-medium">Das sagen andere Teilnehmer über dich.</DialogDescription>
+                  <DialogDescription className="text-amber-800/70 dark:text-amber-400/70 font-medium">
+                    {language === 'de' ? 'Das sagen andere Teilnehmer über dich.' : 'What other participants say about you.'}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="max-h-[60vh] overflow-y-auto p-6 space-y-4">
-                  {isLoadingReviews ? (
-                    <div className="flex flex-col items-center py-10 gap-2"><Loader2 className="animate-spin text-primary" /><p className="text-xs font-black uppercase text-slate-400">Lade Feedback...</p></div>
+                   {isLoadingReviews ? (
+                    <div className="flex flex-col items-center py-10 gap-2"><Loader2 className="animate-spin text-primary" /><p className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Lade Feedback...' : 'Loading feedback...'}</p></div>
                   ) : recentReviews.length > 0 ? (
                     recentReviews.map((review) => (
                       <div key={review.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-neutral-800 border border-slate-100 dark:border-neutral-700">
@@ -559,42 +547,42 @@ export default function ProfilePage() {
                           <span className="text-[10px] font-bold text-slate-400 uppercase">{format(review.createdAt.toDate(), 'dd.MM.yy')}</span>
                         </div>
                         {review.comment ? (
-                          <p className="text-sm font-medium text-slate-700 dark:text-neutral-300 italic">"{review.comment}"</p>
+                           <p className="text-sm font-medium text-slate-700 dark:text-neutral-300 italic">"{review.comment}"</p>
                         ) : (
-                          <p className="text-xs text-slate-400 italic">Kein Kommentar hinterlassen.</p>
+                          <p className="text-xs text-slate-400 italic">{language === 'de' ? 'Kein Kommentar hinterlassen.' : 'No comment left.'}</p>
                         )}
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-10">
+                     <div className="text-center py-10">
                       <MessageSquare className="h-10 w-10 text-slate-200 dark:text-neutral-800 mx-auto mb-2" />
-                      <p className="text-sm font-bold text-slate-400">Noch keine Bewertungen erhalten.</p>
+                      <p className="text-sm font-bold text-slate-400">{language === 'de' ? 'Noch keine Bewertungen erhalten.' : 'No reviews received yet.'}</p>
                     </div>
                   )}
                 </div>
                 <DialogFooter className="p-4 bg-slate-50 dark:bg-neutral-800/50">
-                  <Button onClick={() => setIsReviewsModalOpen(false)} className="w-full rounded-xl font-black h-12">Schließen</Button>
+                  <Button onClick={() => setIsReviewsModalOpen(false)} className="w-full rounded-xl font-black h-12">{language === 'de' ? 'Schließen' : 'Close'}</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
 
             {/* Modal für Bildzuschnitt */}
-            <Dialog open={isCropModalOpen} onOpenChange={(open) => !open && !isUploading && setIsCropModalOpen(false)}>
+             <Dialog open={isCropModalOpen} onOpenChange={(open) => !open && !isUploading && setIsCropModalOpen(false)}>
                 <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 rounded-3xl p-6 border-none shadow-2xl overflow-hidden">
-                    <DialogHeader><DialogTitle className="text-xl font-black dark:text-neutral-100">Bild zuschneiden</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle className="text-xl font-black dark:text-neutral-100">{language === 'de' ? 'Bild zuschneiden' : 'Crop Image'}</DialogTitle></DialogHeader>
                     <div className="relative h-64 w-full bg-slate-900 rounded-2xl overflow-hidden mt-4">
                         {imageToCrop && <Cropper image={imageToCrop} crop={crop} zoom={zoom} aspect={1} cropShape="round" showGrid={false} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />}
                     </div>
-                    <DialogFooter className="mt-6 flex gap-2">
-                        <Button variant="ghost" className="rounded-xl font-bold dark:text-neutral-400" onClick={() => { setIsCropModalOpen(false); setImageToCrop(null); }} disabled={isUploading}>Abbrechen</Button>
-                        <Button onClick={handleSaveCroppedImage} className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex-1" disabled={isUploading}>{isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}Bild speichern</Button>
+                     <DialogFooter className="mt-6 flex gap-2">
+                        <Button variant="ghost" className="rounded-xl font-bold dark:text-neutral-400" onClick={() => { setIsCropModalOpen(false); setImageToCrop(null); }} disabled={isUploading}>{language === 'de' ? 'Abbrechen' : 'Cancel'}</Button>
+                        <Button onClick={handleSaveCroppedImage} className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex-1" disabled={isUploading}>{isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}{language === 'de' ? 'Bild speichern' : 'Save Image'}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
+             <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
                 <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl dark:bg-neutral-900">
-                    <DialogTitle className="sr-only">Ort Details</DialogTitle>
+                    <DialogTitle className="sr-only">{language === 'de' ? 'Ort Details' : 'Place Details'}</DialogTitle>
                     <DialogDescription className="sr-only">Profil Ort Details</DialogDescription>
                     {selectedPlace && <PlaceDetails place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
                 </DialogContent>

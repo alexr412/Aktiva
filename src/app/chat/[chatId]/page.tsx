@@ -9,6 +9,8 @@ import { sendMessage, checkIfUserReviewed, markChatAsRead, removeUserFromChat } 
 import type { Message, Chat, Activity, UserProfile } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
+import { de, enUS } from 'date-fns/locale';
+import { useLanguage } from '@/hooks/use-language';
 import Link from 'next/link';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -32,11 +34,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const DateSeparator = ({ date }: { date: Date }) => {
+const DateSeparator = ({ date, language }: { date: Date, language: string }) => {
   const formatDate = (d: Date) => {
-    if (isToday(d)) return 'Heute';
-    if (isYesterday(d)) return 'Gestern';
-    return format(d, 'd. MMMM yyyy');
+    if (isToday(d)) return language === 'de' ? 'Heute' : 'Today';
+    if (isYesterday(d)) return language === 'de' ? 'Gestern' : 'Yesterday';
+    return format(d, 'd. MMMM yyyy', { locale: language === 'de' ? de : enUS });
   };
 
   return (
@@ -65,6 +67,7 @@ const MessageBubble = ({
   currentUserProfile?: UserProfile | null;
   participantDetails?: Chat['participantDetails'];
   isFirstInGroup: boolean;
+  language: string;
 }) => {
   const badgePremium = isOwnMessage 
     ? Boolean(currentUserProfile?.isPremium) 
@@ -90,7 +93,7 @@ const MessageBubble = ({
             className="flex items-center gap-1 mb-1 mx-1 hover:opacity-80 transition-opacity cursor-pointer group"
           >
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider group-hover:underline">
-              {isOwnMessage ? 'Du' : message.senderName}
+              {isOwnMessage ? (language === 'de' ? 'Du' : 'You') : message.senderName}
             </span>
             <UserBadge isPremium={badgePremium} isSupporter={badgeSupporter} size="sm" />
           </Link>
@@ -119,6 +122,7 @@ const MessageBubble = ({
 
 export default function ChatRoomPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
+  const language = useLanguage();
   const [chat, setChat] = useState<Chat | null>(null);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -194,7 +198,11 @@ export default function ChatRoomPage() {
       setLoading(false);
     }, (error) => {
       console.error("Error fetching messages:", error);
-      toast({ title: "Fehler", description: "Nachrichten konnten nicht geladen werden.", variant: 'destructive'});
+      toast({ 
+        title: language === 'de' ? "Fehler" : "Error", 
+        description: language === 'de' ? "Nachrichten konnten nicht geladen werden." : "Messages could not be loaded.", 
+        variant: 'destructive'
+      });
       setLoading(false);
     });
 
@@ -230,7 +238,11 @@ export default function ChatRoomPage() {
     } catch (error) {
       console.error(error);
       setNewMessage(currentMessage);
-      toast({ title: "Fehler", description: "Nachricht konnte nicht gesendet werden.", variant: 'destructive'});
+      toast({ 
+        title: language === 'de' ? "Fehler" : "Error", 
+        description: language === 'de' ? "Nachricht konnte nicht gesendet werden." : "Message could not be sent.", 
+        variant: 'destructive'
+      });
     }
   };
 
@@ -244,10 +256,13 @@ export default function ChatRoomPage() {
     setIsDeleting(true);
     try {
       await removeUserFromChat(chatId, user.uid);
-      toast({ title: "Chat entfernt", description: "Vielen Dank für dein Feedback." });
+      toast({ 
+        title: language === 'de' ? "Chat entfernt" : "Chat removed", 
+        description: language === 'de' ? "Vielen Dank für dein Feedback." : "Thank you for your feedback." 
+      });
       router.push('/');
     } catch (error: any) {
-      toast({ variant: 'destructive', title: "Fehler beim Entfernen", description: error.message });
+      toast({ variant: 'destructive', title: language === 'de' ? "Fehler beim Entfernen" : "Error removing chat", description: error.message });
       setIsDeleting(false);
     }
   };
@@ -326,13 +341,14 @@ export default function ChatRoomPage() {
               
               return (
                 <div key={message.id} className="w-full">
-                  {showDateSeparator && message.sentAt && <DateSeparator date={message.sentAt.toDate()} />}
+                  {showDateSeparator && message.sentAt && <DateSeparator date={message.sentAt.toDate()} language={language} />}
                   <MessageBubble
                     message={message}
                     isOwnMessage={isOwnMessage}
                     isFirstInGroup={isFirstInGroup}
                     currentUserProfile={userProfile}
                     participantDetails={chat?.participantDetails}
+                    language={language}
                   />
                 </div>
               );
@@ -348,7 +364,7 @@ export default function ChatRoomPage() {
             <Input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Nachricht schreiben..."
+              placeholder={language === 'de' ? "Nachricht schreiben..." : "Write a message..."}
               autoComplete="off"
               className="w-full rounded-full bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 pr-12 h-12 text-sm font-medium focus-visible:ring-primary/20 text-foreground"
               disabled={activity?.status === 'completed'}
@@ -360,7 +376,7 @@ export default function ChatRoomPage() {
               className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 flex-shrink-0 transition-transform active:scale-95"
             >
               <Send className="h-4 w-4" />
-              <span className="sr-only">Senden</span>
+              <span className="sr-only">{language === 'de' ? 'Senden' : 'Send'}</span>
             </Button>
           </form>
         </div>
@@ -392,19 +408,19 @@ export default function ChatRoomPage() {
       <AlertDialog open={showCleanupDialog} onOpenChange={setShowCleanupDialog}>
         <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl dark:bg-neutral-900">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-black text-center dark:text-neutral-100">Treffen beendet</AlertDialogTitle>
+            <AlertDialogTitle className="text-2xl font-black text-center dark:text-neutral-100">{language === 'de' ? 'Treffen beendet' : 'Meetup finished'}</AlertDialogTitle>
             <AlertDialogDescription className="text-center text-base font-medium dark:text-neutral-400">
-              Möchtest du den zugehörigen Chat jetzt aus deiner Liste entfernen?
+              {language === 'de' ? 'Möchtest du den zugehörigen Chat jetzt aus deiner Liste entfernen?' : 'Would you like to remove the associated chat from your list now?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-col gap-3 sm:gap-0 mt-6">
-            <AlertDialogCancel className="rounded-xl font-bold h-12 dark:bg-neutral-800 dark:text-neutral-300">Später</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl font-bold h-12 dark:bg-neutral-800 dark:text-neutral-300">{language === 'de' ? 'Später' : 'Later'}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleCleanup} 
               disabled={isDeleting}
               className="rounded-xl font-black h-12 bg-slate-900 dark:bg-primary hover:bg-black dark:hover:bg-primary/90 shadow-xl"
             >
-              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ja, jetzt entfernen"}
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : (language === 'de' ? "Ja, jetzt entfernen" : "Yes, remove now")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

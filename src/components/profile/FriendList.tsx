@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { MapPin, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/hooks/use-language";
 
 interface FriendListProps {
   friendIds: string[];
@@ -28,6 +29,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 export default function FriendList({ friendIds }: FriendListProps) {
   const { userProfile: currentUser } = useAuth();
+  const language = useLanguage();
   const [friends, setFriends] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -68,9 +70,9 @@ export default function FriendList({ friendIds }: FriendListProps) {
       friend.lastLocation.lng
     );
 
-    if (dist < 5) return "In direkter Nähe (< 5km)";
-    if (dist < 20) return "In der Umgebung (< 20km)";
-    return "Weiter entfernt";
+    if (dist < 5) return language === 'de' ? "In direkter Nähe (< 5km)" : "Very close (< 5km)";
+    if (dist < 20) return language === 'de' ? "In der Umgebung (< 20km)" : "Nearby (< 20km)";
+    return language === 'de' ? "Weiter entfernt" : "Further away";
   };
 
   if (isLoading) {
@@ -88,8 +90,8 @@ export default function FriendList({ friendIds }: FriendListProps) {
   if (friends.length === 0) {
     return (
       <div className="px-2 mb-12">
-        <div className="text-neutral-400 font-bold border-2 border-dashed border-neutral-200 p-12 rounded-[2rem] text-center bg-white/50">
-          Noch keine Freunde hinzugefügt.
+        <div className="text-neutral-400 font-bold border-2 border-dashed border-neutral-200 p-12 rounded-[2rem] text-center bg-white/50 dark:bg-neutral-900/50 dark:border-neutral-800">
+          {language === 'de' ? 'Noch keine Freunde hinzugefügt.' : 'No friends added yet.'}
         </div>
       </div>
     );
@@ -109,9 +111,9 @@ export default function FriendList({ friendIds }: FriendListProps) {
     <div className="flex flex-col gap-5 mb-12 w-full">
       <div className="flex items-center justify-between px-4">
         <h3 className="font-black text-2xl text-[#0f172a] dark:text-neutral-200 flex items-center gap-2.5">
-          Freunde <span className="bg-[#59a27a]/10 text-[#59a27a] px-3 py-1 rounded-full text-sm font-black tracking-tight">{uniqueFriends.length}</span>
+          {language === 'de' ? 'Freunde' : 'Friends'} <span className="bg-[#59a27a]/10 text-[#59a27a] px-3 py-1 rounded-full text-sm font-black tracking-tight">{uniqueFriends.length}</span>
         </h3>
-        <Link href="/friends" className="text-[#59a27a] font-black text-sm hover:opacity-70 transition-opacity">Alle sehen</Link>
+        <Link href="/community" className="text-[#59a27a] font-black text-sm hover:opacity-70 transition-opacity">{language === 'de' ? 'Alle sehen' : 'See all'}</Link>
       </div>
 
       <div className="flex overflow-x-auto pb-4 gap-4 px-4 no-scrollbar scroll-smooth">
@@ -132,11 +134,11 @@ export default function FriendList({ friendIds }: FriendListProps) {
                     </div>
                 </div>
                 <div className="flex flex-col items-center text-center overflow-hidden w-full">
-                  <span className="font-black text-[#0f172a] dark:text-neutral-200 truncate w-full leading-tight text-lg">{friend.displayName?.split(' ')[0] || "Nutzer"}</span>
+                  <span className="font-black text-[#0f172a] dark:text-neutral-100 truncate w-full leading-tight text-lg">{friend.displayName?.split(' ')[0] || (language === 'de' ? 'Nutzer' : 'User')}</span>
                   <div className="flex items-center gap-1 mt-1 text-rose-500">
                     <MapPin className="h-3 w-3 fill-current" />
                     <span className="text-[10px] font-black uppercase tracking-tight whitespace-nowrap">
-                      {proximity ? "< 5km" : (friend.location?.split(' ')[0] || "Hagen")}
+                      {proximity ? proximity : (friend.location?.split(' ')[0] || "Hagen")}
                     </span>
                   </div>
                 </div>

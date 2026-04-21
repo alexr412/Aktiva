@@ -1,8 +1,10 @@
 'use client';
 
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
+import { de, enUS } from 'date-fns/locale';
 import { Users, Star, Flame } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useLanguage } from '@/hooks/use-language';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { cn } from '@/lib/utils';
 import type { Activity } from '@/lib/types';
@@ -13,11 +15,14 @@ interface ProfileActivityCardProps {
   onJoin: (id: string) => void;
 }
 
-export function ProfileActivityCard({ activity, user, onJoin }: ProfileActivityCardProps) {
+ export function ProfileActivityCard({ activity, user, onJoin }: ProfileActivityCardProps) {
+  const language = useLanguage();
+  const locale = language === 'de' ? de : enUS;
+
   const iconData = getPrimaryIconData({ 
     categories: activity.categories || [], 
-    name: activity.placeName || "Aktivität" 
-  });
+    name: activity.placeName || (language === 'de' ? "Aktivität" : "Activity")
+  }, language);
   const Icon = iconData.icon;
   
   const participantIds = activity.participantIds || [];
@@ -43,13 +48,13 @@ export function ProfileActivityCard({ activity, user, onJoin }: ProfileActivityC
             <h4 className="font-black text-lg text-[#0f172a] dark:text-neutral-100 truncate flex-1">{activity.placeName}</h4>
             {activity.isNew && (
                 <div className="bg-[#fff7ed] text-[#ea580c] px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0">
-                    <Star className="w-2.5 h-2.5 fill-current" /> NEU
+                    <Star className="w-2.5 h-2.5 fill-current" /> {language === 'de' ? 'NEU' : 'NEW'}
                 </div>
             )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-sm font-bold text-slate-400">
-                {activityDate ? format(activityDate, 'eee, d. MMM') : 'In Kürze'}
+                {activityDate ? format(activityDate, language === 'de' ? 'eee, d. MMM' : 'eee, MMM d', { locale }) : (language === 'de' ? 'In Kürze' : 'Soon')}
             </span>
           </div>
         </div>
@@ -69,11 +74,11 @@ export function ProfileActivityCard({ activity, user, onJoin }: ProfileActivityC
                 ))}
             </div>
             <span className="text-[11px] font-bold text-slate-400 ml-1">
-                {participantIds.length} / {activity.maxParticipants || 6} Teilnehmer
+                {participantIds.length} / {activity.maxParticipants || 6} {language === 'de' ? 'Teilnehmer' : 'Participants'}
             </span>
         </div>
         <div className="text-[11px] font-bold text-slate-300 uppercase tracking-tight">
-            in 2 Tagen
+            {activityDate ? formatDistanceToNow(activityDate, { addSuffix: true, locale }) : ''}
         </div>
       </div>
     </div>

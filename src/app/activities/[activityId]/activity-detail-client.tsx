@@ -14,7 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
+import { useLanguage } from '@/hooks/use-language';
 import { UserBadge } from '@/components/common/UserBadge';
 import { TicketQR } from '@/components/ticket-qr';
 import {
@@ -40,6 +41,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const searchParams = useSearchParams();
   const referralId = searchParams.get('ref');
   const { user, userProfile } = useAuth();
+  const language = useLanguage();
   const { toast } = useToast();
 
   const [activity, setActivity] = useState<Activity | null>(null);
@@ -87,10 +89,13 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
     setIsJoining(true);
     try {
       await joinActivity(activity.id!, user, null, referralId);
-      toast({ title: "Willkommen!", description: "Du bist der Aktivität beigetreten." });
+      toast({ 
+        title: language === 'de' ? "Willkommen!" : "Welcome!", 
+        description: language === 'de' ? "Du bist der Aktivität beigetreten." : "You have joined the activity." 
+      });
       router.push(`/chat/${activity.id}`);
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Fehler', description: error.message });
+      toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message });
     } finally {
       setIsJoining(false);
     }
@@ -101,9 +106,12 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
     setIsCancelling(true);
     try {
       await cancelActivity(activity.id, user.uid);
-      toast({ title: "Aktivität storniert", description: "Alle Teilnehmer wurden über die Stornierung informiert." });
+      toast({ 
+        title: language === 'de' ? "Aktivität storniert" : "Activity cancelled", 
+        description: language === 'de' ? "Alle Teilnehmer wurden über die Stornierung informiert." : "All participants have been notified of the cancellation." 
+      });
     } catch (error: any) {
-      toast({ variant: 'destructive', title: "Fehler", description: error.message });
+      toast({ variant: 'destructive', title: language === 'de' ? "Fehler" : "Error", description: error.message });
     } finally {
       setIsCancelling(false);
     }
@@ -126,7 +134,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
       }
     } else {
       navigator.clipboard.writeText(shareUrl);
-      toast({ title: "Link kopiert!" });
+      toast({ title: language === 'de' ? "Link kopiert!" : "Link copied!" });
     }
   };
 
@@ -141,9 +149,9 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   if (!activity) {
     return (
       <div className="flex h-screen flex-col items-center justify-center p-6 text-center">
-        <h1 className="text-2xl font-black text-slate-900">Nicht gefunden</h1>
-        <p className="text-slate-500 mb-6">Diese Aktivität existiert nicht mehr oder ist privat.</p>
-        <Button onClick={() => router.push('/')} className="rounded-2xl h-12 px-8 font-black">Zurück zum Feed</Button>
+        <h1 className="text-2xl font-black text-slate-900">{language === 'de' ? 'Nicht gefunden' : 'Not Found'}</h1>
+        <p className="text-slate-500 mb-6">{language === 'de' ? 'Diese Aktivität existiert nicht mehr oder ist privat.' : 'This activity no longer exists or is private.'}</p>
+        <Button onClick={() => router.push('/')} className="rounded-2xl h-12 px-8 font-black">{language === 'de' ? 'Zurück zum Feed' : 'Back to Feed'}</Button>
       </div>
     );
   }
@@ -176,8 +184,8 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
           <div className="bg-red-50 border-2 border-red-100 p-6 rounded-[2rem] flex flex-col items-center text-center gap-2 animate-in slide-in-from-top-4 duration-500">
             <Ban className="h-10 w-10 text-red-500" />
             <div>
-              <h3 className="text-lg font-black text-red-900 uppercase">Aktivität Storniert</h3>
-              <p className="text-sm font-medium text-red-700/70">Dieses Event findet nicht statt. Falls du ein Ticket gekauft hast, wird der Betrag automatisch rückerstattet.</p>
+              <h3 className="text-lg font-black text-red-900 uppercase">{language === 'de' ? 'Aktivität Storniert' : 'Activity Cancelled'}</h3>
+              <p className="text-sm font-medium text-red-700/70">{language === 'de' ? 'Dieses Event findet nicht statt. Falls du ein Ticket gekauft hast, wird der Betrag automatisch rückerstattet.' : 'This event will not take place. If you bought a ticket, the amount will be automatically refunded.'}</p>
             </div>
           </div>
         )}
@@ -194,7 +202,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                 <Button asChild className="rounded-xl font-black bg-primary hover:bg-primary/90 text-white gap-2">
                   <Link href={`/activities/${activity.id}/scanner`}>
                     <Camera className="h-4 w-4" />
-                    Scanner öffnen
+                    {language === 'de' ? 'Scanner öffnen' : 'Open Scanner'}
                   </Link>
                 </Button>
               </div>
@@ -204,7 +212,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-white/5 rounded-xl font-bold gap-2">
                       <Ban className="h-4 w-4" />
-                      Aktivität stornieren
+                      {language === 'de' ? 'Aktivität stornieren' : 'Cancel activity'}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
@@ -212,15 +220,15 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                       <div className="mx-auto bg-red-100 p-4 rounded-full w-fit mb-4">
                         <AlertTriangle className="h-10 w-10 text-red-600" />
                       </div>
-                      <AlertDialogTitle className="text-2xl font-black text-center">Unwiderruflich stornieren?</AlertDialogTitle>
+                      <AlertDialogTitle className="text-2xl font-black text-center">{language === 'de' ? 'Unwiderruflich stornieren?' : 'Cancel irrevocably?'}</AlertDialogTitle>
                       <AlertDialogDescription className="text-center text-base font-medium">
-                        Dies kann nicht rückgängig gemacht werden. {activity.isPaid && "Alle bezahlten Tickets werden automatisch zur Rückerstattung vorgemerkt und dein Treuhand-Guthaben wird entsprechend reduziert."}
+                        {language === 'de' ? 'Dies kann nicht rückgängig gemacht werden.' : 'This cannot be undone.'} {activity.isPaid && (language === 'de' ? "Alle bezahlten Tickets werden automatisch zur Rückerstattung vorgemerkt und dein Treuhand-Guthaben wird entsprechend reduziert." : "All paid tickets will be automatically marked for refund and your escrow balance will be reduced accordingly.")}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex flex-col gap-3 sm:gap-0 mt-6">
-                      <AlertDialogCancel className="rounded-xl font-bold h-12">Abbrechen</AlertDialogCancel>
+                      <AlertDialogCancel className="rounded-xl font-bold h-12">{language === 'de' ? 'Abbrechen' : 'Cancel'}</AlertDialogCancel>
                       <AlertDialogAction onClick={handleCancel} disabled={isCancelling} className="rounded-xl font-black h-12 bg-red-500 hover:bg-red-600 shadow-lg shadow-red-100">
-                        {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ja, Stornieren"}
+                        {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : (language === 'de' ? "Ja, Stornieren" : "Yes, Cancel")}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -238,21 +246,21 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         )}>
           <div className="relative z-10">
             <Badge className="bg-white/20 hover:bg-white/30 text-white border-none mb-4 px-3 py-1 font-black uppercase tracking-widest text-[10px]">
-              {activity.category || 'Aktivität'}
+              {activity.category || (language === 'de' ? 'Aktivität' : 'Activity')}
             </Badge>
             <h2 className="text-3xl font-black leading-tight mb-2">{activity.placeName}</h2>
             <p className="text-white/70 font-medium mb-6 flex items-center gap-1.5 text-sm">
-              <MapPin className="h-4 w-4" /> {activity.placeAddress || 'Ort wird im Chat bekannt gegeben'}
+              <MapPin className="h-4 w-4" /> {activity.placeAddress || (language === 'de' ? 'Ort wird im Chat bekannt gegeben' : 'Location will be announced in chat')}
             </p>
             
             <div className="flex items-center gap-4">
               <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 flex-1">
-                <p className="text-[10px] font-bold uppercase opacity-60 mb-1">Datum</p>
-                <p className="text-sm font-black">{format(activity.activityDate.toDate(), 'eee, d. MMM', { locale: de })}</p>
+                <p className="text-[10px] font-bold uppercase opacity-60 mb-1">{language === 'de' ? 'Datum' : 'Date'}</p>
+                <p className="text-sm font-black">{format(activity.activityDate.toDate(), 'eee, d. MMM', { locale: language === 'de' ? de : enUS })}</p>
               </div>
               <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 flex-1">
-                <p className="text-[10px] font-bold uppercase opacity-60 mb-1">Zeit</p>
-                <p className="text-sm font-black">{activity.isTimeFlexible ? 'Flexibel' : format(activity.activityDate.toDate(), 'HH:mm')}</p>
+                <p className="text-[10px] font-bold uppercase opacity-60 mb-1">{language === 'de' ? 'Zeit' : 'Time'}</p>
+                <p className="text-sm font-black">{activity.isTimeFlexible ? (language === 'de' ? 'Flexibel' : 'Flexible') : format(activity.activityDate.toDate(), 'HH:mm')}</p>
               </div>
             </div>
           </div>
@@ -264,7 +272,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-slate-400">
                 <Clock className="h-4 w-4" />
-                <CardTitle className="text-[10px] font-black uppercase tracking-widest">Betriebszeiten des Ortes</CardTitle>
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest">{language === 'de' ? 'Betriebszeiten des Ortes' : 'Opening Hours of the Place'}</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -275,7 +283,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   ))}
                 </p>
                 <p className="text-[9px] font-medium text-slate-400 mt-3 uppercase tracking-tighter italic">
-                  * Angaben ohne Gewähr. Daten stammen von OpenStreetMap via Geoapify.
+                  {language === 'de' ? '* Angaben ohne Gewähr. Daten stammen von OpenStreetMap via Geoapify.' : '* Information subject to change. Data from OpenStreetMap via Geoapify.'}
                 </p>
               </div>
             </CardContent>
@@ -286,8 +294,8 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         {isParticipant && !isCancelled && (
           <Card className="border-none shadow-sm rounded-[2.5rem] bg-white overflow-hidden text-center p-8">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-black uppercase tracking-tight">Dein Ticket</CardTitle>
-              <CardDescription className="font-medium">Zeige diesen Code beim Einlass vor.</CardDescription>
+              <CardTitle className="text-lg font-black uppercase tracking-tight">{language === 'de' ? 'Dein Ticket' : 'Your Ticket'}</CardTitle>
+              <CardDescription className="font-medium">{language === 'de' ? 'Zeige diesen Code beim Einlass vor.' : 'Show this code at the entrance.'}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center">
               <div className={cn("transition-opacity duration-500", checkInStatus === 'scanned' && "opacity-20 grayscale")}>
@@ -297,7 +305,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
               {checkInStatus === 'scanned' && (
                 <div className="mt-4 flex items-center gap-2 text-emerald-600 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100 animate-in fade-in zoom-in-95">
                   <Star className="h-4 w-4 fill-emerald-600" />
-                  <span className="text-xs font-black uppercase tracking-widest">Eingetreten & Verifiziert</span>
+                  <span className="text-xs font-black uppercase tracking-widest">{language === 'de' ? 'Eingetreten & Verifiziert' : 'Entered & Verified'}</span>
                 </div>
               )}
             </CardContent>
@@ -307,7 +315,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         {/* Host Info */}
         <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-400">Veranstalter</CardTitle>
+            <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-400">{language === 'de' ? 'Veranstalter' : 'Host'}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
@@ -321,10 +329,10 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                     <p className="font-black text-slate-900">{activity.hostName}</p>
                     <UserBadge isPremium={activity.participantDetails?.[activity.hostId]?.isPremium} />
                   </div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Host auf Aktvia</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">{language === 'de' ? 'Host auf Aktvia' : 'Host on Aktvia'}</p>
                 </div>
               </div>
-              <Button variant="outline" onClick={() => router.push(`/profile/${activity.hostId}`)} className="rounded-xl font-bold h-10">Profil</Button>
+              <Button variant="outline" onClick={() => router.push(`/profile/${activity.hostId}`)} className="rounded-xl font-bold h-10">{language === 'de' ? 'Profil' : 'Profile'}</Button>
             </div>
           </CardContent>
         </Card>
@@ -334,12 +342,12 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
           <Card className="border-none shadow-sm rounded-3xl bg-white p-6 flex flex-col items-center justify-center text-center">
             <Users className="h-5 w-5 text-primary mb-2" />
             <p className="text-2xl font-black text-slate-900">{activity.participantIds.length} / {activity.maxParticipants || '∞'}</p>
-            <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Teilnehmer</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">{language === 'de' ? 'Teilnehmer' : 'Participants'}</p>
           </Card>
           <Card className="border-none shadow-sm rounded-3xl bg-white p-6 flex flex-col items-center justify-center text-center">
             <Star className="h-5 w-5 text-amber-500 mb-2 fill-amber-500" />
             <p className="text-2xl font-black text-slate-900">{activity.upvotes || 0}</p>
-            <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Beliebtheit</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">{language === 'de' ? 'Beliebtheit' : 'Popularity'}</p>
           </Card>
         </div>
 
@@ -350,7 +358,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
               {isParticipant ? (
                 <Button onClick={() => router.push(`/chat/${activity.id}`)} className="w-full h-14 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20">
                   <MessageSquare className="mr-2 h-5 w-5" />
-                  Zum Gruppenchat
+                  {language === 'de' ? 'Zum Gruppenchat' : 'To Group Chat'}
                 </Button>
               ) : (
                 <Button 
@@ -366,7 +374,12 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   {isJoining ? <Loader2 className="h-5 w-5 animate-spin" /> : (
                     <>
                       {activity.isPaid ? <CreditCard className="mr-2 h-5 w-5" /> : <Users className="mr-2 h-5 w-5" />}
-                      {isFull ? 'Aktivität ist voll' : activity.isPaid ? `Beitreten (€${activity.price?.toFixed(2)})` : 'Jetzt beitreten'}
+                      {isFull 
+                        ? (language === 'de' ? 'Aktivität ist voll' : 'Activity is full') 
+                        : (activity.isPaid 
+                            ? (language === 'de' ? `Beitreten (€${activity.price?.toFixed(2)})` : `Join (€${activity.price?.toFixed(2)})`) 
+                            : (language === 'de' ? 'Jetzt beitreten' : 'Join now')
+                          )}
                     </>
                   )}
                 </Button>

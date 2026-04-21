@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { joinActivity } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { format } from 'date-fns';
+import { de, enUS } from 'date-fns/locale';
 
 import {
     Star,
@@ -47,7 +49,8 @@ type PlaceDetailsProps = {
 };
 
 export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsProps) {
-    const primaryStyle = getPrimaryIconData(place);
+    const language = useLanguage();
+    const primaryStyle = getPrimaryIconData(place, language);
     const PrimaryIcon = primaryStyle.icon;
     
     const { user, userProfile } = useAuth();
@@ -124,14 +127,14 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
         setJoiningActivityId(activity.id!);
         try {
             await joinActivity(activity.id!, user);
-            toast({ title: 'Erfolgreich beigetreten!' });
+            toast({ title: language === 'de' ? 'Erfolgreich beigetreten!' : 'Successfully joined!' });
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Fehler', description: error.message });
+            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message });
         } finally { setJoiningActivityId(null); }
     };
 
     const categories = (place.categories || []);
-    const processedTags = formatTags(categories);
+    const processedTags = formatTags(categories, language);
 
     return (
         <div className="flex flex-col h-full bg-white dark:bg-neutral-900 overflow-hidden rounded-none sm:rounded-[2.5rem] relative">
@@ -154,10 +157,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                 {/* Overlapping Badges */}
                 <div className="absolute bottom-5 sm:bottom-6 left-5 sm:left-6 flex items-center gap-2 z-20">
                     <div className="bg-[#facc15] text-[#854d0e] px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-1.5 border border-[#fef08a]/50">
-                        <Star className="w-3 h-3 fill-current" /> NEU
+                        <Star className="w-3 h-3 fill-current" /> {language === 'de' ? 'NEU' : 'NEW'}
                     </div>
                     <div className="bg-white/90 backdrop-blur-md text-neutral-800 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border border-white/30">
-                        {processedTags[0] || 'Entdecken'}
+                        {processedTags[0] || (language === 'de' ? 'Entdecken' : 'Discover')}
                     </div>
                 </div>
 
@@ -172,7 +175,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     )}
                 >
                     <Bookmark className={cn("h-4 w-4", isFavorite && "fill-current")} />
-                    <span>Speichern</span>
+                    <span>{language === 'de' ? 'Speichern' : 'Save'}</span>
                 </Button>
             </div>
 
@@ -203,22 +206,22 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                             <div className="flex items-center gap-1.5">
                                 <Star className="w-4 h-4 text-[#f59e0b] fill-[#f59e0b]" />
                                 <span className="text-[18px] font-black text-[#854d0e] dark:text-amber-400">
-                                    {placeMeta.avgRating > 0 ? placeMeta.avgRating.toFixed(1) : 'NEU'}
+                                    {placeMeta.avgRating > 0 ? placeMeta.avgRating.toFixed(1) : (language === 'de' ? 'NEU' : 'NEW')}
                                 </span>
                             </div>
                             <span className="text-[11px] font-bold text-amber-900/40 dark:text-amber-400/50">Community</span>
                         </div>
                         <div className="bg-[#f0f9ff] dark:bg-blue-950/20 p-4 rounded-[2rem] flex flex-col items-center justify-center gap-1 text-center border border-blue-100/50 dark:border-blue-900/30">
-                            <span className="text-[18px] font-black text-[#0369a1] dark:text-blue-400">
+                             <span className="text-[18px] font-black text-[#0369a1] dark:text-blue-400">
                                 {place.distance ? (place.distance < 1000 ? `${Math.round(place.distance)}m` : `${(place.distance/1000).toFixed(1)}`) : '---'}
                             </span>
-                            <span className="text-[11px] font-bold text-blue-900/40 dark:text-blue-400/50">km entfernt</span>
+                            <span className="text-[11px] font-bold text-blue-900/40 dark:text-blue-400/50">{language === 'de' ? 'km entfernt' : 'km away'}</span>
                         </div>
                         <div className="bg-[#fef2f2] dark:bg-rose-950/20 p-4 rounded-[2rem] flex flex-col items-center justify-center gap-1 text-center border border-rose-100/50 dark:border-rose-900/30">
-                            <span className="text-[18px] font-black text-[#b91c1c] dark:text-rose-400">
+                             <span className="text-[18px] font-black text-[#b91c1c] dark:text-rose-400">
                                 {activities.length}
                             </span>
-                            <span className="text-[11px] font-bold text-rose-900/40 dark:text-rose-400/50">Aktivitäten</span>
+                            <span className="text-[11px] font-bold text-rose-900/40 dark:text-rose-400/50">{language === 'de' ? 'Aktivitäten' : 'Activities'}</span>
                         </div>
                     </div>
 
@@ -226,11 +229,11 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     {/* Activities Local */}
                     <div>
                         <div className="flex items-center justify-between mb-6">
-                             <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2">
                                 <Users className="h-6 w-6 text-[#1e293b] dark:text-neutral-100" />
-                                <h3 className="text-xl font-black text-[#0f172a] dark:text-neutral-50 tracking-tight">Aktivitäten vor Ort</h3>
+                                <h3 className="text-xl font-black text-[#0f172a] dark:text-neutral-50 tracking-tight">{language === 'de' ? 'Aktivitäten vor Ort' : 'Local Activities'}</h3>
                              </div>
-                             <button onClick={onCreateActivity} className="text-[#59a27a] font-black text-sm hover:opacity-70 transition-all">+ Erstellen</button>
+                             <button onClick={onCreateActivity} className="text-[#59a27a] font-black text-sm hover:opacity-70 transition-all">+ {language === 'de' ? 'Erstellen' : 'Create'}</button>
                         </div>
 
                         {loadingActivities ? (
@@ -239,17 +242,17 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                 <Skeleton className="h-24 w-full rounded-3xl" />
                             </div>
                         ) : activities.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 px-6 bg-[#f8fafc] dark:bg-neutral-800/50 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-neutral-800 text-center group">
+                             <div className="flex flex-col items-center justify-center py-12 px-6 bg-[#f8fafc] dark:bg-neutral-800/50 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-neutral-800 text-center group">
                                 <div className="bg-white dark:bg-neutral-800 p-6 rounded-3xl shadow-sm mb-6 transform group-hover:-rotate-6 transition-transform">
                                     <span className="text-4xl">📬</span>
                                 </div>
-                                <h4 className="text-lg font-black text-[#0f172a] dark:text-neutral-100 mb-1">Noch keine Treffen</h4>
-                                <p className="text-sm text-slate-400 font-medium max-w-[200px] mb-8">Sei der Erste und erstelle eine Aktivität!</p>
+                                <h4 className="text-lg font-black text-[#0f172a] dark:text-neutral-100 mb-1">{language === 'de' ? 'Noch keine Treffen' : 'No meetups yet'}</h4>
+                                <p className="text-sm text-slate-400 font-medium max-w-[200px] mb-8">{language === 'de' ? 'Sei der Erste und erstelle eine Aktivität!' : 'Be the first and create an activity!'}</p>
                                 <Button 
                                     onClick={onCreateActivity}
                                     className="bg-[#1e293b] text-white hover:bg-black rounded-2xl h-14 px-8 font-black text-sm shadow-xl"
                                 >
-                                    + Aktivität erstellen
+                                    + {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
                                 </Button>
                             </div>
                         ) : (
@@ -263,16 +266,16 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                             {/* Date Circle */}
                                             <div className="h-16 w-14 bg-[#f0fdf4] dark:bg-emerald-950/20 rounded-2xl flex flex-col items-center justify-center shrink-0 border border-emerald-100/50 dark:border-emerald-900/30">
                                                 <span className="text-xl font-black text-[#59a27a]">{format(actDate, 'd')}</span>
-                                                <span className="text-[9px] font-black text-[#59a27a] uppercase tracking-tighter">{format(actDate, 'MMM')}</span>
+                                                <span className="text-[9px] font-black text-[#59a27a] uppercase tracking-tighter">{format(actDate, 'MMM', { locale: language === 'de' ? de : enUS })}</span>
                                             </div>
 
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-0.5">
-                                                    <h4 className="font-black text-[15px] truncate text-[#0f172a] dark:text-neutral-100 leading-tight">
-                                                        {activity.placeName || 'Treffen'}
+                                                     <h4 className="font-black text-[15px] truncate text-[#0f172a] dark:text-neutral-100 leading-tight">
+                                                        {activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}
                                                     </h4>
-                                                    <div className="bg-[#fff7ed] text-[#ea580c] px-1.5 py-0 rounded-sm text-[7px] font-black uppercase tracking-wider">NEU</div>
+                                                    <div className="bg-[#fff7ed] text-[#ea580c] px-1.5 py-0 rounded-sm text-[7px] font-black uppercase tracking-wider">{language === 'de' ? 'NEU' : 'NEW'}</div>
                                                 </div>
                                                 <div className="flex items-center gap-1.5 flex-wrap">
                                                     <div className="flex -space-x-1.5">
@@ -282,8 +285,8 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                             </div>
                                                         ))}
                                                     </div>
-                                                    <span className="text-[11px] font-bold text-slate-400">
-                                                        {activity.participantIds.length} Teilnehmer
+                                                     <span className="text-[11px] font-bold text-slate-400">
+                                                        {activity.participantIds.length} {language === 'de' ? 'Teilnehmer' : 'Participants'}
                                                     </span>
                                                 </div>
                                             </div>
@@ -298,12 +301,12 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                     Chat
                                                 </Button>
                                             ) : (
-                                                <Button 
+                                                 <Button 
                                                     onClick={() => handleJoin(activity)}
                                                     disabled={joiningActivityId === activity.id}
                                                     className="bg-[#59a27a] text-white hover:bg-[#4d8c6a] rounded-[1.25rem] h-11 px-5 font-black text-sm border-none shadow-lg shadow-[#59a27a]/20"
                                                 >
-                                                    {joiningActivityId === activity.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Beitreten'}
+                                                    {joiningActivityId === activity.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (language === 'de' ? 'Beitreten' : 'Join')}
                                                 </Button>
                                             )}
                                         </div>
@@ -319,11 +322,11 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
             <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 z-40">
                 <div className="bg-white/90 dark:bg-neutral-950/90 backdrop-blur-xl p-3 sm:p-4 rounded-[2rem] sm:rounded-[2.5rem] flex items-center shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-white/40 dark:border-neutral-800/50">
                     <Button 
-                        onClick={onCreateActivity}
+                         onClick={onCreateActivity}
                         className="bg-[#59a27a] hover:bg-[#4d8c6a] text-white rounded-[1.25rem] sm:rounded-[1.5rem] h-12 sm:h-14 w-full font-black text-[14px] sm:text-[15px] border-none shadow-lg shadow-[#59a27a]/20 flex items-center justify-center gap-2 transition-transform active:scale-95"
                     >
                         <Plus className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={3} />
-                        Aktivität erstellen
+                        {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
                     </Button>
                 </div>
             </div>

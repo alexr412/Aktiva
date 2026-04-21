@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { PlaceDetails } from '@/components/aktvia/place-details';
@@ -10,6 +11,11 @@ import { SpotActionSheet } from '@/components/aktvia/spot-action-sheet';
 import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { 
+  DropdownMenu, 
+  DropdownMenuTrigger, 
+  DropdownMenuContent,
+} from '@/components/ui/dropdown-menu';
 import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
@@ -35,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserBadge } from '@/components/common/UserBadge';
 import { calculateDistance } from '@/lib/geo-utils';
+import { useLanguage } from '@/hooks/use-language';
 
 // Dynamic import for MapView to avoid SSR issues
 const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod => mod.MapView), {
@@ -77,13 +84,14 @@ const fetcher = async (url: string) => {
 };
 
 const DISTANCE_FILTERS = [
-  { label: 'Alle', value: null },
-  { label: '< 5km', value: 5 },
-  { label: '< 10km', value: 10 },
-  { label: '< 25km', value: 25 },
+  { label: 'Alle', labelEn: 'All', value: null },
+  { label: '< 5km', labelEn: '< 5km', value: 5 },
+  { label: '< 10km', labelEn: '< 10km', value: 10 },
+  { label: '< 25km', labelEn: '< 25km', value: 25 },
 ];
 
 export default function Home() {
+  const language = useLanguage();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
@@ -92,12 +100,13 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [cityName, setCityName] = useState<string>("Wird geladen...");
+  const [cityName, setCityName] = useState<string>(language === 'de' ? "Wird geladen..." : "Loading...");
+  const [isRadiusOpen, setIsRadiusOpen] = useState(false);
   const [sortBy, setSortBy] = useState("recommended");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
   const [maxDistance, setMaxDistance] = useState<number | null>(10);
-  const [activityCategoryFilter, setActivityCategoryFilter] = useState<ActivityCategory | 'Alle'>('Alle');
+  const [activityCategoryFilter, setActivityCategoryFilter] = useState<ActivityCategory | 'Alle' | 'All'>(language === 'de' ? 'Alle' : 'All');
   const [visibleCount, setVisibleCount] = useState(25);
   const [actionSheetPlace, setActionSheetPlace] = useState<Place | null>(null);
 
@@ -290,8 +299,8 @@ export default function Home() {
         const votes = votesMap[placeId] || { upvotes: 0, downvotes: 0 };
         return {
           id: placeId,
-          name: props.name || props.address_line1 || "Unbekannter Ort",
-          address: props.address_line2 || "Keine Adresse verfügbar",
+          name: props.name || props.address_line1 || (language === "de" ? "Unbekannter Ort" : "Unknown Place"),
+          address: props.address_line2 || (language === "de" ? "Keine Adresse verfügbar" : "No address available"),
           categories: cats,
           lat: props.lat,
           lon: props.lon,
@@ -372,8 +381,11 @@ export default function Home() {
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
         const data = await response.json();
-        setCityName(data.address.city || data.address.town || data.address.village || "Unbekannter Ort");
-      } catch (error) { setCityName("Unbekannter Ort"); }
+        const fallback = language === 'de' ? 'Unbekannter Ort' : 'Unknown Place';
+        setCityName(data.address.city || data.address.town || data.address.village || fallback);
+      } catch (error) { 
+        setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'); 
+      }
     };
     if (planningState.isPlanning && planningState.destination) {
       setUserLocation(planningState.destination);
@@ -455,16 +467,16 @@ export default function Home() {
       return <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">{Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}</div>;
     }
     if (!userLocation && !isLoadingInitialData) {
-      return <div className="flex h-full w-full items-center justify-center"><div className="flex flex-col items-center gap-2 text-muted-foreground"><MapPin className="h-8 w-8 animate-bounce text-primary" /><p className="font-bold text-sm">Standort wird ermittelt...</p></div></div>;
+      return <div className="flex h-full w-full items-center justify-center"><div className="flex flex-col items-center gap-2 text-muted-foreground"><MapPin className="h-8 w-8 animate-bounce text-primary" /><p className="font-bold text-sm">{language === 'de' ? 'Standort wird ermittelt...' : 'Locating...'}</p></div></div>;
     }
-    if (error) return <div className="flex h-full w-full items-center justify-center p-6 text-center text-destructive font-bold">Verbindungsproblem.</div>;
+    if (error) return <div className="flex h-full w-full items-center justify-center p-6 text-center text-destructive font-bold">{language === 'de' ? 'Verbindungsproblem.' : 'Connection problem.'}</div>;
 
     const EmptySearchState = () => (
       <div className="flex h-full w-full items-center justify-center p-6 text-center">
         <div className="space-y-4">
-          <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">Keine Ergebnisse</h3>
-          <p className="text-[#64748b] dark:text-neutral-400 font-medium">Passe deine Suche oder die Filter an.</p>
-          <Button onClick={() => { handleCategoryChange([], ''); setMaxDistance(10); setActivityCategoryFilter('Alle'); }} variant="outline" className="rounded-xl font-bold">Filter zurücksetzen</Button>
+          <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">{language === "de" ? "Keine Ergebnisse" : "No results"}</h3>
+          <p className="text-[#64748b] dark:text-neutral-400 font-medium">{language === "de" ? "Passe deine Suche oder die Filter an." : "Adjust your search or filters."}</p>
+          <Button onClick={() => { handleCategoryChange([], ''); setMaxDistance(10); setActivityCategoryFilter(language === 'de' ? 'Alle' : 'All'); }} variant="outline" className="rounded-xl font-bold">{language === "de" ? "Filter zurücksetzen" : "Reset filters"}</Button>
         </div>
       </div>
     );
@@ -473,7 +485,7 @@ export default function Home() {
       const renderList = () => {
         if (isFavoritesCategory) {
           if (favorites.length === 0) {
-            return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200">Noch keine Favoriten</h2></div>;
+            return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
           }
           return (
             <div className="p-4 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -498,7 +510,7 @@ export default function Home() {
           });
 
           let semanticFiltered = safeActivities;
-          if (activityCategoryFilter !== 'Alle') {
+          if (activityCategoryFilter !== (language === 'de' ? 'Alle' : 'All')) {
             semanticFiltered = semanticFiltered.filter((item: any) => item.category === activityCategoryFilter);
           }
 
@@ -546,17 +558,17 @@ export default function Home() {
           return (
             <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {sortedList.map((item) => {
-                const itemPlace: Place = {
-                  id: item.placeId || "unknown",
-                  name: item.placeName || "Unbekannter Ort",
-                  address: item.placeAddress || "Keine Adresse",
-                  categories: item.categories || [],
-                  lat: item.lat || 0,
-                  lon: item.lon || 0,
-                  activityCount: 1,
-                  distance: item.distance ? item.distance * 1000 : undefined,
-                  openingHours: item.openingHours || null
-                };
+                  const itemPlace: Place = {
+                    id: item.placeId || "unknown",
+                    name: item.placeName || (language === "de" ? "Unbekannter Ort" : "Unknown Place"),
+                    address: item.placeAddress || (language === "de" ? "Keine Adresse" : "No Address"),
+                    categories: item.categories || [],
+                    lat: item.lat || 0,
+                    lon: item.lon || 0,
+                    activityCount: 1,
+                    distance: item.distance ? item.distance * 1000 : undefined,
+                    openingHours: item.openingHours || null
+                  };
 
                 return (
                   <div key={item.id} className="min-h-[280px] w-full">
@@ -634,9 +646,9 @@ export default function Home() {
             <div className="bg-white dark:bg-neutral-800 p-8 rounded-full shadow-xl relative">
               <Lock className="h-12 w-12 text-neutral-400" />
             </div>
-            <h2 className="text-2xl font-black text-[#0f172a] dark:text-neutral-200">Kartenansicht gesperrt</h2>
+            <h2 className="text-2xl font-black text-[#0f172a] dark:text-neutral-200">{language === 'de' ? 'Kartenansicht gesperrt' : 'Map View Locked'}</h2>
             <Button onClick={() => setIsPremiumUpsellOpen(true)} className="rounded-2xl px-10 h-14 font-black">
-              Premium freischalten
+              {language === 'de' ? 'Premium freischalten' : 'Unlock Premium'}
             </Button>
           </div>
         );
@@ -656,15 +668,17 @@ export default function Home() {
             {/* Top Bar: Profile & System Actions */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Avatar className="h-14 w-14 border-4 border-white dark:border-neutral-800 shadow-2xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer">
-                  <AvatarImage src={userProfile?.photoURL || user?.photoURL || undefined} alt="Avatar" />
-                  <AvatarFallback className="bg-emerald-50 text-emerald-600 font-black text-xl">
-                    {userProfile?.displayName ? userProfile.displayName.charAt(0) : 'U'}
-                  </AvatarFallback>
-                </Avatar>
+                <Link href="/profile">
+                  <Avatar className="h-14 w-14 border-4 border-white dark:border-neutral-800 shadow-2xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer">
+                    <AvatarImage src={userProfile?.photoURL || user?.photoURL || undefined} alt="Avatar" />
+                    <AvatarFallback className="bg-emerald-50 text-emerald-600 font-black text-xl">
+                      {userProfile?.displayName ? userProfile.displayName.charAt(0) : 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
                 <div className="flex flex-col">
                   <h1 className="text-2xl font-black tracking-tight text-[#0f172a] dark:text-neutral-100 font-heading">
-                    Hallo, {userProfile?.displayName?.split(' ')[0] || 'Du'} 👋
+                    {language === "de" ? `Hallo, ${userProfile?.displayName?.split(' ')[0] || 'Du'} 👋` : `Hi, ${userProfile?.displayName?.split(' ')[0] || 'You'} 👋`}
                   </h1>
                   <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[10px] uppercase tracking-[0.15em] mt-0.5">
                     <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -694,7 +708,7 @@ export default function Home() {
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />
                 <Input
                   type="search"
-                  placeholder="Was möchtest du unternehmen?"
+                  placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-14 h-14 rounded-full border-none bg-white font-bold shadow-xl shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none"
@@ -702,14 +716,47 @@ export default function Home() {
               </div>
 
               <div className="relative group">
-                <Button 
-                    variant="secondary"
-                    className="h-14 px-5 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-2"
-                    onClick={() => {}} // Could trigger a radius modal
-                >
-                    {maxDistance || 10} km
-                    <ChevronDown className="h-4 w-4 opacity-30" />
-                </Button>
+                <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                        variant="secondary"
+                        className="h-14 px-5 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-2"
+                    >
+                        {maxDistance || 10} km
+                        <ChevronDown className={cn("h-4 w-4 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Radius' : 'Radius'}</span>
+                        <span className="text-sm font-black">{maxDistance} km</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="1" 
+                        max="100" 
+                        value={maxDistance || 10} 
+                        onChange={(e) => setMaxDistance(parseInt(e.target.value))}
+                        className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                      />
+                      <div className="grid grid-cols-4 gap-2">
+                        {[5, 10, 25, 50].map((r) => (
+                          <button 
+                            key={r}
+                            onClick={() => setMaxDistance(r)}
+                            className={cn(
+                              "py-2 rounded-xl text-[10px] font-black transition-all",
+                              maxDistance === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100"
+                            )}
+                          >
+                            {r}k
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </div>
@@ -753,8 +800,8 @@ export default function Home() {
       ) : (
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
           <DialogContent className="p-0 w-full max-w-4xl max-h-[92vh] gap-0 overflow-hidden border-none outline-none">
-            <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
-            <DialogDescription className="sr-only">Details zum ausgewählten Ort</DialogDescription>
+            <DialogTitle className="sr-only">{selectedPlace?.name || (language === 'de' ? 'Ort Details' : 'Place Details')}</DialogTitle>
+            <DialogDescription className="sr-only">{language === 'de' ? 'Details zum ausgewählten Ort' : 'Details about the selected place'}</DialogDescription>
             {selectedPlace && (
               <PlaceDetails 
                 place={selectedPlace} 
@@ -782,28 +829,33 @@ export default function Home() {
             <div className="mx-auto bg-amber-100 dark:bg-amber-900/30 p-4 rounded-full w-fit mb-4">
               <Crown className="h-10 w-10 text-amber-500" />
             </div>
-            <DialogTitle className="text-2xl font-black text-center">Premium-Funktion</DialogTitle>
+            <DialogTitle className="text-2xl font-black text-center">{language === 'de' ? 'Premium-Funktion' : 'Premium Feature'}</DialogTitle>
             <DialogDescription className="text-center text-base font-medium px-2 pt-2">
-              Die interaktive Kartenansicht ist ein exklusives Feature für Premium-Mitglieder. Schalte Premium frei, um alle Orte in deiner Umgebung visuell zu entdecken.
+              {language === 'de' 
+                ? 'Die interaktive Kartenansicht ist ein exklusives Feature für Premium-Mitglieder. Schalte Premium frei, um alle Orte in deiner Umgebung visuell zu entdecken.'
+                : 'The interactive map view is an exclusive feature for premium members. Unlock Premium to visually explore all places in your area.'}
             </DialogDescription>
+
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl space-y-3">
               <div className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-green-500" strokeWidth={3} />
-                <span className="font-bold text-sm">Vollständige interaktive Karte</span>
+                <span className="font-bold text-sm">{language === 'de' ? 'Vollständige interaktive Karte' : 'Full interactive map'}</span>
               </div>
               <div className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-green-500" strokeWidth={3} />
-                <span className="font-bold text-sm">Keine Werbung mehr</span>
+                <span className="font-bold text-sm">{language === 'de' ? 'Keine Werbung mehr' : 'No more ads'}</span>
               </div>
+
             </div>
           </div>
           <DialogFooter className="flex flex-col gap-3 sm:gap-0">
-            <Button variant="ghost" onClick={() => setIsPremiumUpsellOpen(false)} className="rounded-xl font-bold h-12">Abbrechen</Button>
+            <Button variant="ghost" onClick={() => setIsPremiumUpsellOpen(false)} className="rounded-xl font-bold h-12">{language === 'de' ? 'Abbrechen' : 'Cancel'}</Button>
             <Button onClick={() => setIsPremiumUpsellOpen(false)} className="rounded-xl font-black h-12 bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20">
-              Upgrade freischalten
+              {language === 'de' ? 'Upgrade freischalten' : 'Unlock Upgrade'}
             </Button>
+
           </DialogFooter>
         </DialogContent>
       </Dialog>

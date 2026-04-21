@@ -8,6 +8,8 @@ import { db } from '@/lib/firebase/client';
 import type { Chat } from '@/lib/types';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
+import { de, enUS } from 'date-fns/locale';
+import { useLanguage } from '@/hooks/use-language';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,23 +32,24 @@ const ChatListItemSkeleton = () => (
     </div>
 );
 
-const EmptyState = () => (
+const EmptyState = ({ language }: { language: string }) => (
   <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full">
     <div className="bg-primary/10 p-6 rounded-[2.5rem]">
       <Users className="h-12 w-12 text-primary" />
     </div>
-    <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100">Noch keine Chats</h2>
+    <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100">{language === 'de' ? 'Noch keine Chats' : 'No chats yet'}</h2>
     <p className="text-slate-500 dark:text-neutral-400 font-medium max-w-xs">
-      Tritt einer Aktivität bei oder füge Freunde hinzu, um loszulegen.
+      {language === 'de' ? 'Tritt einer Aktivität bei oder füge Freunde hinzu, um loszulegen.' : 'Join an activity or add friends to get started.'}
     </p>
     <Button asChild className="rounded-2xl h-12 px-8 font-black shadow-lg shadow-primary/20">
-      <Link href="/">Aktivitäten finden</Link>
+      <Link href="/">{language === 'de' ? 'Aktivitäten finden' : 'Find activities'}</Link>
     </Button>
   </div>
 );
 
 export default function ChatPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
+  const language = useLanguage();
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddFriendDialog, setShowAddFriendDialog] = useState(false);
@@ -141,7 +144,7 @@ export default function ChatPage() {
     }
 
     if (filteredChats.length === 0) {
-      return <EmptyState />;
+      return <EmptyState language={language} />;
     }
 
     return (
@@ -167,7 +170,7 @@ export default function ChatPage() {
           const hasUnread = unreadCount > 0;
           
           // Mocking category data based on place icons if possible
-          const primaryStyle = chat.placeName ? getPrimaryIconData({ name: chat.placeName } as any) : null;
+          const primaryStyle = chat.placeName ? getPrimaryIconData({ name: chat.placeName } as any, language) : null;
           
           // Generate a consistent color for DMs or places without style
           const fallbackColor = isDM ? ['#f43f5e', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'][chat.id.charCodeAt(0) % 5] : '#94a3b8';
@@ -210,7 +213,20 @@ export default function ChatPage() {
                   </h3>
                   {chat.lastMessage?.sentAt && (
                     <time className="shrink-0 text-[11px] font-bold text-neutral-400 uppercase tracking-tighter">
-                      {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: false }).replace('about ', '').replace(' hours', 'h').replace(' hour', 'h').replace(' minutes', 'm').replace(' minute', 'm').replace(' days', 'd')}
+                      {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: false, locale: language === 'de' ? de : enUS })
+                        .replace('about ', '')
+                        .replace('Stunden', 'h')
+                        .replace('Stunde', 'h')
+                        .replace('Minuten', 'm')
+                        .replace('Minute', 'm')
+                        .replace('Tage', 'd')
+                        .replace('Tag', 'd')
+                        .replace(' hours', 'h')
+                        .replace(' hour', 'h')
+                        .replace(' minutes', 'm')
+                        .replace(' minute', 'm')
+                        .replace(' days', 'd')
+                        .replace(' day', 'd')}
                     </time>
                   )}
                 </div>
@@ -218,17 +234,17 @@ export default function ChatPage() {
                 <p className="truncate text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2 leading-tight">
                   {chat.lastMessage ? (
                     <>
-                      {chat.lastMessage.senderId === user?.uid && <span className="text-neutral-400 mr-1">Du:</span>}
+                      {chat.lastMessage.senderId === user?.uid && <span className="text-neutral-400 mr-1">{language === 'de' ? 'Du:' : 'You:'}</span>}
                       {chat.lastMessage.text}
                     </>
-                  ) : 'Noch keine Nachrichten.'}
+                  ) : (language === 'de' ? 'Noch keine Nachrichten.' : 'No messages yet.')}
                 </p>
 
                 <div className="flex items-center justify-between">
                    <div className="text-[9px] font-black uppercase tracking-[0.15em] px-2.5 py-1 rounded-full"
                    style={{ color: displayColor, backgroundColor: displayColor + '10' }}
                    >
-                     {isDM ? 'Person' : (primaryStyle?.label || 'Ort')}
+                     {isDM ? (language === 'de' ? 'Person' : 'Person') : (primaryStyle?.label || (language === 'de' ? 'Ort' : 'Place'))}
                    </div>
 
                     {hasUnread && (
@@ -282,7 +298,7 @@ export default function ChatPage() {
                 <div className="relative">
                     <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
                     <Input 
-                        placeholder="Chats durchsuchen..."
+                        placeholder={language === 'de' ? "Chats durchsuchen..." : "Search chats..."}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="h-14 w-full rounded-3xl border-none bg-neutral-100/60 pl-14 font-bold text-neutral-600 focus-visible:ring-offset-0 focus-visible:ring-emerald-500/20"
@@ -291,10 +307,10 @@ export default function ChatPage() {
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
                     {[
-                        { id: 'all', label: 'Alle' },
-                        { id: 'unread', label: 'Ungelesen' },
-                        { id: 'places', label: 'Orte' },
-                        { id: 'people', label: 'Personen' }
+                        { id: 'all', label: language === 'de' ? 'Alle' : 'All' },
+                        { id: 'unread', label: language === 'de' ? 'Ungelesen' : 'Unread' },
+                        { id: 'places', label: language === 'de' ? 'Orte' : 'Places' },
+                        { id: 'people', label: language === 'de' ? 'Personen' : 'People' }
                     ].map((btn) => (
                         <button
                             key={btn.id}

@@ -1,6 +1,7 @@
 'use client';
 
 import { UserProfile } from './types';
+import { availableTabs } from '@/components/aktvia/category-filters-data';
 
 export const ACTIVITY_BASE_SCORE = 100;
 
@@ -55,24 +56,24 @@ const tagRules: { pattern: RegExp; score: number }[] = [
 
   // --- Low-Tier (20 Punkte) ---
   { pattern: /^national_park$/, score: 20 },
-  { pattern: /^natural\.protected_area$/, score: 20 },
-  { pattern: /^natural\.mountain(\..*)?$/, score: 20 },
-  { pattern: /^natural\.water(\..*)?$/, score: 20 },
-  { pattern: /^catering(\..*)?$/, score: 20 }, // Generic catering
-  { pattern: /^catering\.fast_food$/, score: 20 },
-  { pattern: /^commercial(\..*)?$/, score: 20 },
-  { pattern: /^leisure\.playground$/, score: 10 },
-  { pattern: /^leisure\.picnic(\..*)?$/, score: 20 },
-  { pattern: /^natural\.forest$/, score: 20 },
-  { pattern: /^natural\.sand$/, score: 20 },
-  { pattern: /^religion\.place_of_worship$/, score: -120 },
-  { pattern: /^building\.place_of_worship$/, score: -120 },
-  { pattern: /^building\.historic$/, score: -120 },
-  { pattern: /^accommodation\.hotel$/, score: -120 },
+  { pattern: /^natural\.protected_area$/, score: 35 },
+  { pattern: /^natural\.mountain(\..*)?$/, score: 35 },
+  { pattern: /^natural\.water(\..*)?$/, score: 35 },
+  { pattern: /^catering(\..*)?$/, score: 35 }, // Generic catering
+  { pattern: /^catering\.fast_food$/, score: 35 },
+  { pattern: /^commercial(\..*)?$/, score: 45 },
+  { pattern: /^leisure\.playground$/, score: 35 },
+  { pattern: /^leisure\.picnic(\..*)?$/, score: 35 },
+  { pattern: /^natural\.forest$/, score: 35 },
+  { pattern: /^natural\.sand$/, score: 35 },
+  { pattern: /^religion\.place_of_worship$/, score: 75 },
+  { pattern: /^building\.place_of_worship$/, score: 75 },
+  { pattern: /^building\.historic$/, score: 60 },
+  { pattern: /^accommodation\.hotel$/, score: 45 },
 
-  { pattern: /^building(\..*)?$/, score: 20 }, // Generic building (MUSS IMMER UNTER DEN SPEZIFISCHEN SEIN)
-  { pattern: /^production(\..*)?$/, score: 20 },
-  { pattern: /^education(\..*)?$/, score: 20 }
+  { pattern: /^building(\..*)?$/, score: 50 }, // Generic building (MUSS IMMER UNTER DEN SPEZIFISCHEN SEIN)
+  { pattern: /^production(\..*)?$/, score: 50 },
+  { pattern: /^education(\..*)?$/, score: 70 }
 
 ];
 
@@ -130,7 +131,24 @@ export function calculateRelevance(
 
     // Standardwert bei fehlender Affinität ist w_i = 1 (Statischen Boost eliminieren)
     let w_i = 1.0;
-    if (affinities[cat] !== undefined) {
+
+    // Mapping von Raw Geoapify Tags zu UI Kategorie-Tabs anhand des LÄNGSTEN Matches
+    let matchingTab;
+    let longestMatchLen = 0;
+    for (const tab of availableTabs) {
+      for (const q of tab.query) {
+        if (cat.startsWith(q) || cat === q) {
+          if (q.length > longestMatchLen) {
+            longestMatchLen = q.length;
+            matchingTab = tab;
+          }
+        }
+      }
+    }
+
+    if (matchingTab && affinities[matchingTab.id] !== undefined) {
+      w_i = affinities[matchingTab.id];
+    } else if (affinities[cat] !== undefined) {
       w_i = affinities[cat];
     }
 
@@ -219,7 +237,27 @@ export function sortColdStartEntities<E extends { D: number; categories?: string
         // Multiplikation jedes Tags der Entität mit dem individuellen Nutzerfaktor
         const weightedScores = entity.categories.map((cat: string) => {
           const T_i = getTagScore(cat);
-          const w_i = userPreferences[cat] !== undefined ? userPreferences[cat] : 1;
+          let w_i = 1;
+
+          let matchingTab;
+          let longestMatchLen = 0;
+          for (const tab of availableTabs) {
+            for (const q of tab.query) {
+              if (cat.startsWith(q) || cat === q) {
+                if (q.length > longestMatchLen) {
+                  longestMatchLen = q.length;
+                  matchingTab = tab;
+                }
+              }
+            }
+          }
+
+          if (matchingTab && userPreferences[matchingTab.id] !== undefined) {
+            w_i = userPreferences[matchingTab.id];
+          } else if (userPreferences[cat] !== undefined) {
+            w_i = userPreferences[cat];
+          }
+
           return T_i * w_i;
         });
 

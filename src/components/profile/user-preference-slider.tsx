@@ -19,16 +19,22 @@ interface UserPreferenceSliderProps {
 export const UserPreferenceSlider: React.FC<UserPreferenceSliderProps> = ({ 
   label, 
   tagKey, 
-  initialValue = 1, 
+  initialValue = 1.0, 
   onChange 
 }) => {
-  // Das Array umfasst exakt die 9 vordefinierten diskreten Werte
-  const discreteValues = [-5, -4, -3, -2, 1, 2, 3, 4, 5];
+  // Das Array umfasst exakt die 9 vordefinierten diskreten Werte (Multiplikatoren)
+  const discreteValues = [0.1, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
   
-  // Index 4 entspricht dem neutralen Wert "1"
+  // Index 4 entspricht dem neutralen Wert "1.0"
   const [currentIndex, setCurrentIndex] = useState(() => {
+    // Wenn in der Datenbank alte Werte (z.B. -5) stehen, mappen wir sie temporär auf Neutral (1.0) oder fangen sie ab
     const idx = discreteValues.indexOf(initialValue);
-    return idx !== -1 ? idx : 4; 
+    if (idx !== -1) return idx;
+    
+    // Legacy Fallback (alte -5 bis +5 Werte auf den neuen Index mappen, falls noch existent)
+    if (initialValue < 0) return 0; // Extrem negativ -> 0.1
+    if (initialValue > 2.0) return 8; // Extrem positiv -> 2.0
+    return 4; // Fallback Neutral
   });
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,8 +59,8 @@ export const UserPreferenceSlider: React.FC<UserPreferenceSliderProps> = ({
     <div className="flex flex-col gap-3 w-full max-w-sm mb-6 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
       <div className="flex justify-between items-center text-sm">
         <span className="font-semibold text-gray-800 dark:text-gray-200">{label}</span>
-        <span className={`font-mono px-2 py-1 rounded text-xs font-bold ${currentValue < 1 ? 'bg-red-50 text-red-600 dark:bg-red-900/30' : currentValue > 1 ? 'bg-green-50 text-green-600 dark:bg-green-900/30' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
-          w = {currentValue > 0 ? `+${currentValue}` : currentValue}
+        <span className={`font-mono px-2 py-1 rounded text-xs font-bold ${currentValue < 1.0 ? 'bg-red-50 text-red-600 dark:bg-red-900/30' : currentValue > 1.0 ? 'bg-green-50 text-green-600 dark:bg-green-900/30' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
+          w = {currentValue.toFixed(2)}x
         </span>
       </div>
       

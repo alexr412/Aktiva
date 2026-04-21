@@ -14,6 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Compass, X, Check, Info, MapPin, Star, Building2, ArrowLeft, ArrowRight, PlusCircle, RefreshCw, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
+import { de, enUS } from 'date-fns/locale';
+import { useLanguage } from '@/hooks/use-language';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { ProximityRadarView } from '@/components/aktvia/proximity-radar-view';
@@ -27,6 +29,7 @@ const QUARANTINE_THRESHOLD = 3;
 
 export default function ExplorePage() {
     const { user, userProfile } = useAuth();
+    const language = useLanguage();
     const { toast } = useToast();
     const router = useRouter();
 
@@ -144,13 +147,13 @@ export default function ExplorePage() {
                 isBoosted,
                 isPaid,
                 price,
-                category: category || 'Sonstiges'
+                category: category || (language === 'de' ? 'Sonstiges' : 'Other')
             });
-            toast({ title: "Aktivität erstellt!", description: "Viel Spaß!" });
+            toast({ title: language === 'de' ? "Aktivität erstellt!" : "Activity created!", description: language === 'de' ? "Viel Spaß!" : "Have fun!" });
             setActivityModalPlace(null);
             return true;
         } catch (err: any) {
-            toast({ variant: 'destructive', title: "Fehler", description: err.message });
+            toast({ variant: 'destructive', title: language === 'de' ? "Fehler" : "Error", description: err.message });
             return false;
         }
     };
@@ -219,12 +222,12 @@ export default function ExplorePage() {
 
              joinActivity(topCardId, user)
                 .then(() => {
-                    toast({ title: 'Aktivität beigetreten!', description: 'Du findest sie jetzt in deinen Chats.' });
+                    toast({ title: language === 'de' ? 'Aktivität beigetreten!' : 'Activity joined!', description: language === 'de' ? 'Du findest sie jetzt in deinen Chats.' : 'You can find it in your chats now.' });
                     setTimeout(removeCard, 200);
                 })
                 .catch((error) => {
                     console.error(error);
-                    toast({ title: 'Fehler', description: error.message || 'Beitritt fehlgeschlagen.', variant: 'destructive' });
+                    toast({ title: language === 'de' ? 'Fehler' : 'Error', description: error.message || (language === 'de' ? 'Beitritt fehlgeschlagen.' : 'Joining failed.'), variant: 'destructive' });
                     animationControls.start({ x: 0, rotate: 0, opacity: 1, transition: { duration: 0.4 }});
                 });
         } else {
@@ -269,7 +272,7 @@ export default function ExplorePage() {
                     </div>
 
                     <div className="space-y-6">
-                        <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 px-2">Präferenzen</h3>
+                        <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 px-2">{language === 'de' ? 'Präferenzen' : 'Preferences'}</h3>
                         <div className="flex flex-col gap-6">
                             <CategoryFilters activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
                         </div>
@@ -281,7 +284,7 @@ export default function ExplorePage() {
                 {/* Header */}
                 <header className="sticky top-0 z-30 w-full bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md px-6 py-3.5 flex items-center justify-between border-b border-slate-50 dark:border-neutral-900">
                     <div className="flex items-center gap-2">
-                        <h1 className="text-xl font-extrabold tracking-tight text-[#0f172a] dark:text-neutral-50 italic">Aktivitäten</h1>
+                        <h1 className="text-xl font-extrabold tracking-tight text-[#0f172a] dark:text-neutral-50 italic">{language === 'de' ? 'Aktivitäten' : 'Activities'}</h1>
                         <Compass className="h-5 w-5 text-orange-400" />
                     </div>
                     <div className="flex items-center gap-3">
@@ -298,12 +301,12 @@ export default function ExplorePage() {
                          <div className="flex items-center justify-between px-1">
                             <div className="flex items-center gap-2 bg-slate-100 dark:bg-neutral-900 rounded-full py-1.5 px-3">
                                 <MapPin className="h-2.5 w-2.5 text-rose-400" />
-                                <span className="text-[10px] font-extrabold text-slate-600">Überall</span>
+                                <span className="text-[10px] font-extrabold text-slate-600">{language === 'de' ? 'Überall' : 'Everywhere'}</span>
                                 <ChevronDown className="h-3 w-3 text-slate-400" />
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Radar aktiv</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{language === 'de' ? 'Radar aktiv' : 'Radar active'}</span>
                             </div>
                          </div>
                     </div>
@@ -349,10 +352,10 @@ export default function ExplorePage() {
                                                     <div className="absolute top-5 left-5 flex gap-2 z-10">
                                                         <div className="bg-amber-100 text-amber-700 text-[9px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
                                                             <Star className="h-2.5 w-2.5 fill-current" />
-                                                            NEU
+                                                            {language === 'de' ? 'NEU' : 'NEW'}
                                                         </div>
                                                         <div className="bg-white/80 backdrop-blur-md text-[#6e7ee5] text-[9px] font-bold px-3 py-1.5 rounded-full">
-                                                            {card.categories?.[0] || 'Aktivität'}
+                                                            {card.categories?.[0] || (language === 'de' ? 'Aktivität' : 'Activity')}
                                                         </div>
                                                     </div>
 
@@ -372,30 +375,30 @@ export default function ExplorePage() {
                                                         <h2 className="text-2xl font-extrabold text-white leading-tight mb-1.5 tracking-tight">{card.placeName}</h2>
                                                         <div className="flex items-center gap-2 text-white/80">
                                                             <MapPin className="h-3 w-3 text-rose-400" />
-                                                            <p className="text-[11px] font-bold truncate tracking-wide">{card.placeAddress || 'In deiner Umgebung'}</p>
+                                                            <p className="text-[11px] font-bold truncate tracking-wide">{card.placeAddress || (language === 'de' ? 'In deiner Umgebung' : 'In your area')}</p>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex-1 p-6 flex flex-col justify-around bg-white dark:bg-neutral-900">
                                                     <div className="grid grid-cols-3 gap-2">
-                                                        <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
-                                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">WANN</span>
-                                                            <span className="text-[10px] font-extrabold text-[#0f172a] dark:text-neutral-200">
-                                                                {format(card.activityDate.toDate(), "eee, d. MMM")}
-                                                            </span>
-                                                        </div>
-                                                        <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
-                                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">UHRZEIT</span>
-                                                            <span className="text-[10px] font-extrabold text-[#0f172a] dark:text-neutral-200">Flexibel</span>
-                                                        </div>
-                                                        <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
-                                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">PLÄTZE</span>
-                                                            <span className="text-[10px] font-extrabold text-emerald-600">
-                                                                {(card.maxParticipants || 10) - card.participantIds.length} frei
-                                                            </span>
-                                                        </div>
-                                                    </div>
+                                                         <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+                                                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">{language === 'de' ? 'WANN' : 'WHEN'}</span>
+                                                             <span className="text-[10px] font-extrabold text-[#0f172a] dark:text-neutral-200">
+                                                                 {format(card.activityDate.toDate(), language === 'de' ? "eee, d. MMM" : "eee, MMM d", { locale: language === 'de' ? de : enUS })}
+                                                             </span>
+                                                         </div>
+                                                         <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+                                                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">{language === 'de' ? 'UHRZEIT' : 'TIME'}</span>
+                                                             <span className="text-[10px] font-extrabold text-[#0f172a] dark:text-neutral-200">{language === 'de' ? 'Flexibel' : 'Flexible'}</span>
+                                                         </div>
+                                                         <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
+                                                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">{language === 'de' ? 'PLÄTZE' : 'SPOTS'}</span>
+                                                             <span className="text-[10px] font-extrabold text-emerald-600">
+                                                                 {(card.maxParticipants || 10) - card.participantIds.length} {language === 'de' ? 'frei' : 'free'}
+                                                             </span>
+                                                         </div>
+                                                     </div>
 
                                                     <div className="flex items-center gap-3">
                                                         <div className="flex -space-x-2.5 overflow-hidden p-0.5 items-center">
@@ -423,9 +426,9 @@ export default function ExplorePage() {
                                                         </div>
                                                         <div className="flex-1">
                                                             <p className="text-[10px] font-bold text-slate-500 leading-none">
-                                                                <span className="text-[#0f172a] dark:text-neutral-200">v. {card.hostName?.split(' ')[0] || 'Test'}</span> 
+                                                                <span className="text-[#0f172a] dark:text-neutral-200">{language === 'de' ? 'v.' : 'by'} {card.hostName?.split(' ')[0] || 'Explorer'}</span> 
                                                                 {card.participantIds.length > 1 && (
-                                                                    <span className="text-slate-400"> & {card.participantIds.length - 1} weitere</span>
+                                                                    <span className="text-slate-400"> & {card.participantIds.length - 1} {language === 'de' ? 'weitere' : 'more'}</span>
                                                                 )}
                                                             </p>
                                                         </div>
@@ -446,22 +449,22 @@ export default function ExplorePage() {
                                     <div className="w-24 h-24 bg-orange-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-6 shadow-sm">
                                         <PlusCircle className="h-10 w-10 text-orange-500" strokeWidth={1.5} />
                                     </div>
-                                    <h3 className="text-xl font-extrabold text-[#0f172a] dark:text-neutral-100 mb-2">Alles entdeckt!</h3>
+                                    <h3 className="text-xl font-extrabold text-[#0f172a] dark:text-neutral-100 mb-2">{language === 'de' ? 'Alles entdeckt!' : 'Everything discovered!'}</h3>
                                     <p className="text-sm text-slate-500 dark:text-neutral-400 mb-8 max-w-[240px]">
-                                        Aktuell gibt es keine weiteren Aktivitäten in deiner Nähe. Starte doch einfach selbst etwas!
+                                        {language === 'de' ? 'Aktuell gibt es keine weiteren Aktivitäten in deiner Nähe. Starte doch einfach selbst etwas!' : 'Currently there are no more activities near you. Why not start something yourself!'}
                                     </p>
                                     <Button 
                                         onClick={() => setActivityModalPlace('custom')}
                                         className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-8 py-6 h-auto text-base font-bold shadow-lg shadow-orange-500/20 active:scale-95 transition-all w-full max-w-[200px]"
                                     >
-                                        Aktivität erstellen
+                                        {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
                                     </Button>
                                     <button 
                                         onClick={() => window.location.reload()}
                                         className="mt-6 text-xs font-bold text-slate-400 flex items-center gap-2 hover:text-slate-600 transition-colors"
                                     >
                                         <RefreshCw className="h-3 w-3" />
-                                        Liste aktualisieren
+                                        {language === 'de' ? 'Liste aktualisieren' : 'Refresh list'}
                                     </button>
                                 </motion.div>
                             )}
@@ -484,7 +487,8 @@ export default function ExplorePage() {
                                         <X className="h-7 w-7 stroke-[3]"/>
                                     </motion.button>
                                 </Button>
-                                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest tracking-widest">Skip</span>
+                                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest tracking-widest">{language === 'de' ? 'Überspringen' : 'Skip'}</span>
+
                             </div>
 
                             <div className="flex flex-col items-center gap-2 translate-y-1">
@@ -503,7 +507,8 @@ export default function ExplorePage() {
                                         <Info className="h-6 w-6 stroke-[3] fill-blue-500/10"/>
                                     </motion.button>
                                 </Button>
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Info</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{language === 'de' ? 'Info' : 'Info'}</span>
+
                             </div>
 
                             <div className="flex flex-col items-center gap-2">
@@ -519,7 +524,8 @@ export default function ExplorePage() {
                                         <Check className="h-8 w-8 stroke-[3]"/>
                                     </motion.button>
                                 </Button>
-                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Beitreten</span>
+                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{language === 'de' ? 'Beitreten' : 'Join'}</span>
+
                             </div>
                         </div>
                     )}

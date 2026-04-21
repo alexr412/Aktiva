@@ -42,7 +42,7 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
 
     try {
       if (!db) throw new Error("Firestore not initialized");
-      const q = query(collection(db, "users"), where("friendCode", "==", searchCode.trim().toUpperCase()));
+      const q = query(collection(db, "users"), where("username", "==", searchCode.trim().toLowerCase()));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
@@ -95,17 +95,17 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
         <DialogHeader>
           <DialogTitle>Freund hinzufügen</DialogTitle>
           <DialogDescription>
-            Gib den 8-stelligen Code eines Freundes ein, um ihm eine Anfrage zu senden.
+            Gib den Username eines Freundes ein, um ihm eine Anfrage zu senden.
           </DialogDescription>
         </DialogHeader>
         <div className="pt-4">
           <form onSubmit={handleSearch} className="flex gap-2">
             <Input
-              placeholder="A1B2C3D4"
+              placeholder="@username"
               value={searchCode}
-              onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
-              className="h-12 text-base tracking-widest font-mono"
-              maxLength={8}
+              onChange={(e) => setSearchCode(e.target.value.toLowerCase().replace(/@/g, ''))}
+              className="h-12 text-base font-bold"
+              maxLength={32}
             />
             <Button type="submit" size="icon" className="h-12 w-12 flex-shrink-0" disabled={isSearching || !searchCode}>
               {isSearching ? <Loader2 className="animate-spin" /> : <Search />}

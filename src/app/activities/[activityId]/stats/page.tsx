@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { useLanguage } from '@/hooks/use-language';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { Activity } from '@/lib/types';
@@ -15,6 +16,7 @@ export default function ActivityStatsPage() {
     const params = useParams();
     const router = useRouter();
     const { user } = useAuth();
+    const language = useLanguage();
     const activityId = params.activityId as string;
 
     const [activity, setActivity] = useState<Activity | null>(null);
@@ -62,7 +64,7 @@ export default function ActivityStatsPage() {
                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2 rounded-full">
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <h1 className="font-black text-lg">Boost Insights</h1>
+                <h1 className="font-black text-lg">{language === 'de' ? 'Boost Insights' : 'Boost Insights'}</h1>
             </header>
 
             <main className="flex-1 p-4 sm:p-8 max-w-2xl mx-auto w-full space-y-6 pb-24">
@@ -70,17 +72,17 @@ export default function ActivityStatsPage() {
                     <div className="relative z-10">
                         <div className="flex items-center gap-2 mb-2">
                             <Flame className="h-5 w-5 fill-white" />
-                            <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Aktiver Boost</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{language === 'de' ? 'Aktiver Boost' : 'Active Boost'}</span>
                         </div>
                         <h2 className="text-3xl font-black leading-tight mb-4">{activity.placeName}</h2>
                         <div className="flex items-center gap-4">
                             <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 flex-1 text-center">
                                 <p className="text-[10px] font-bold uppercase opacity-70 mb-1">Status</p>
-                                <p className="text-sm font-black uppercase">{activity.status}</p>
+                                <p className="text-sm font-black uppercase">{language === 'de' ? activity.status : activity.status}</p>
                             </div>
                             <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 flex-1 text-center">
                                 <p className="text-[10px] font-bold uppercase opacity-70 mb-1">Booster</p>
-                                <p className="text-sm font-black uppercase">Aktiv</p>
+                                <p className="text-sm font-black uppercase">{language === 'de' ? 'Aktiv' : 'Active'}</p>
                             </div>
                         </div>
                     </div>
@@ -95,7 +97,7 @@ export default function ActivityStatsPage() {
                                 <span className="text-[10px] font-black uppercase tracking-widest">Impressions</span>
                             </div>
                             <p className="text-3xl font-black text-slate-900">{impressions.toLocaleString()}</p>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1">Ansichten im Feed</p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">{language === 'de' ? 'Ansichten im Feed' : 'Views in feed'}</p>
                         </CardContent>
                     </Card>
 
@@ -103,10 +105,10 @@ export default function ActivityStatsPage() {
                         <CardContent className="p-6">
                             <div className="flex items-center gap-2 text-primary mb-3">
                                 <Users className="h-4 w-4" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Teilnehmer</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">{language === 'de' ? 'Teilnehmer' : 'Participants'}</span>
                             </div>
                             <p className="text-3xl font-black text-slate-900">{participants}</p>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1">Aktuelle Gruppe</p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">{language === 'de' ? 'Aktuelle Gruppe' : 'Current group'}</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -115,14 +117,16 @@ export default function ActivityStatsPage() {
                     <CardHeader className="pb-2">
                         <div className="flex items-center gap-2 text-orange-500">
                             <Target className="h-5 w-5" />
-                            <CardTitle className="text-lg font-black uppercase tracking-tight">Push-Effektivität</CardTitle>
+                            <CardTitle className="text-lg font-black uppercase tracking-tight">{language === 'de' ? 'Push-Effektivität' : 'Push Effectiveness'}</CardTitle>
                         </div>
-                        <CardDescription className="font-medium">Nutzer, die über die 2km-Radar-Benachrichtigung beigetreten sind.</CardDescription>
+                        <CardDescription className="font-medium">
+                          {language === 'de' ? 'Nutzer, die über die 2km-Radar-Benachrichtigung beigetreten sind.' : 'Users who joined via the 2km radar notification.'}
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-4 pb-8">
                         <div className="flex items-baseline gap-2">
                             <span className="text-5xl font-black text-slate-900">{pushJoins}</span>
-                            <span className="text-lg font-bold text-slate-400">Erfolge</span>
+                            <span className="text-lg font-bold text-slate-400">{language === 'de' ? 'Erfolge' : 'Successes'}</span>
                         </div>
                         <div className="mt-6 space-y-2">
                             <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -132,7 +136,7 @@ export default function ActivityStatsPage() {
                                 />
                             </div>
                             <p className="text-[10px] font-bold text-slate-400 text-right uppercase">
-                                {participants > 0 ? ((pushJoins / participants) * 100).toFixed(0) : 0}% der Gruppe via Push
+                                {participants > 0 ? ((pushJoins / participants) * 100).toFixed(0) : 0}% {language === 'de' ? 'der Gruppe via Push' : 'of the group via push'}
                             </p>
                         </div>
                     </CardContent>
@@ -149,7 +153,7 @@ export default function ActivityStatsPage() {
                         </div>
                         <div className="text-right">
                             <p className="text-[11px] font-medium text-slate-400 leading-relaxed max-w-[140px]">
-                                Effizienz deiner Aktivität im Vergleich zur Gesamtsichtbarkeit.
+                                {language === 'de' ? 'Effizienz deiner Aktivität im Vergleich zur Gesamtsichtbarkeit.' : 'Efficiency of your activity compared to total visibility.'}
                             </p>
                         </div>
                     </CardContent>
@@ -160,9 +164,11 @@ export default function ActivityStatsPage() {
                         <BarChart3 className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                        <h4 className="font-black text-blue-900 text-sm mb-1">Optimierungs-Tipp</h4>
+                        <h4 className="font-black text-blue-900 text-sm mb-1">{language === 'de' ? 'Optimierungs-Tipp' : 'Optimization Tip'}</h4>
                         <p className="text-xs text-blue-800/70 font-medium leading-relaxed">
-                            Deine Conversion Rate liegt über dem Durchschnitt. Ein präziserer Titel oder ein attraktiverer Ort könnten die Impressions noch weiter steigern.
+                            {language === 'de' 
+                              ? 'Deine Conversion Rate liegt über dem Durchschnitt. Ein präziserer Titel oder ein attraktiverer Ort könnten die Impressions noch weiter steigern.' 
+                              : 'Your conversion rate is above average. A more precise title or a more attractive location could increase impressions even further.'}
                         </p>
                     </div>
                 </div>

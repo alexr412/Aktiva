@@ -19,6 +19,7 @@ import {
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
+import { useLanguage } from '@/hooks/use-language';
 import { votePlace } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -43,10 +44,11 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     if (!place) return null;
 
     const { user, userProfile } = useAuth();
+    const language = useLanguage();
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
     
-    const primaryStyle = getPrimaryIconData(place);
+    const primaryStyle = getPrimaryIconData(place, language);
     const PrimaryIcon = primaryStyle.icon;
     
     const [isVoting, setIsVoting] = useState(false);
@@ -104,7 +106,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     };
 
     const categories = (place.categories || []);
-    const processedTags = formatTags(categories);
+    const processedTags = formatTags(categories, language);
 
   return (
     <Card
@@ -130,12 +132,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
             {(placeMeta.activityCount > 0 || (place.activityCount !== undefined && place.activityCount > 0)) && (
                 <div className="bg-emerald-500/90 backdrop-blur-md text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-full shadow-lg animate-pulse tracking-widest">
-                    Aktiv
-                </div>
-            )}
-            {(!placeMeta.reviewCount || placeMeta.reviewCount === 0) && (
-                <div className="bg-white/90 backdrop-blur-md text-neutral-800 text-[9px] font-black uppercase px-2.5 py-1 rounded-full shadow-lg tracking-widest">
-                    Neu
+                    {language === 'de' ? 'Aktiv' : 'Active'}
                 </div>
             )}
         </div>
@@ -166,13 +163,22 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
              {place.openingHours ? (
                  <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
              ) : (
-                 <span className="truncate">{place.address.split(',').slice(0, 2).join(', ')}</span>
+                 <span className="truncate">{(place.address || (language === 'de' ? 'Keine Adresse' : 'No address')).split(',').slice(0, 2).join(', ')}</span>
              )}
           </div>
         </div>
         
         <div className="flex flex-wrap gap-1.5 mb-6">
-            {userProfile?.role === 'admin' ? (
+            {processedTags.map((tag, index) => (
+                <Badge 
+                    key={index} 
+                    variant="secondary" 
+                    className="rounded-full text-[9px] font-black uppercase tracking-widest px-3 py-1 bg-primary/5 text-primary border-none"
+                >
+                    {tag}
+                </Badge>
+            ))}
+            {userProfile?.role === 'admin' && processedTags.length === 0 && (
                 (place.categories || []).map((tag: string, idx: number) => (
                     <span 
                       key={`${tag}-${idx}`} 
@@ -180,16 +186,6 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                     >
                       {tag}
                     </span>
-                ))
-            ) : (
-                processedTags.slice(0, 1).map((tag, index) => (
-                    <Badge 
-                        key={index} 
-                        variant="secondary" 
-                        className="rounded-full text-[9px] font-black uppercase tracking-widest px-3 py-1 bg-primary/5 text-primary border-none"
-                    >
-                        {tag}
-                    </Badge>
                 ))
             )}
         </div>

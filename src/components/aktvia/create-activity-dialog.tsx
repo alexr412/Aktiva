@@ -39,7 +39,8 @@ import {
   isAfter,
   isWithinInterval,
 } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
+import { useLanguage } from '@/hooks/use-language';
 
 const MAX_FREE_PARTICIPANTS = 4;
 const REQUIRED_FREE_HOSTS = 5;
@@ -63,6 +64,7 @@ interface CreateActivityDialogProps {
 
 export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, onCreateActivity }: CreateActivityDialogProps) {
   const { userProfile, user } = useAuth();
+  const language = useLanguage();
   const { toast } = useToast();
   
   const [isCreating, setIsCreating] = useState(false);
@@ -138,7 +140,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
 
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
-      toast({ variant: 'destructive', title: 'Fehler', description: 'GPS wird nicht unterstützt.' });
+      toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: language === 'de' ? 'GPS wird nicht unterstützt.' : 'GPS not supported.' });
       return;
     }
     setIsLocating(true);
@@ -146,12 +148,12 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
       const place = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
       if (place) {
         setSelectedLocation(place);
-        toast({ title: 'Standort verifiziert', description: place.address });
+        toast({ title: language === 'de' ? 'Standort verifiziert' : 'Location verified', description: place.address });
       }
       setIsLocating(false);
     }, (err) => {
       setIsLocating(false);
-      toast({ variant: 'destructive', title: 'GPS Fehler', description: 'Standort konnte nicht ermittelt werden.' });
+      toast({ variant: 'destructive', title: language === 'de' ? 'GPS Fehler' : 'GPS Error', description: language === 'de' ? 'Standort konnte nicht ermittelt werden.' : 'Location could not be determined.' });
     });
   };
 
@@ -182,13 +184,20 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
         const currentVal = hours * 60 + minutes;
         const startVal = startH * 60 + startM;
         const endVal = endH * 60 + endM;
+        const locale = language === 'de' ? de : enUS;
 
         if (currentVal < startVal || currentVal > endVal) {
-          return `Der Ort hat laut Daten am ${format(selectedDate, 'EEEE', { locale: de })} von ${timeMatch[1]} bis ${timeMatch[2]} Uhr geöffnet. Deine Zeit liegt evtl. außerhalb.`;
+          const dayName = format(selectedDate, 'EEEE', { locale });
+          return language === 'de' 
+            ? `Der Ort hat laut Daten am ${dayName} von ${timeMatch[1]} bis ${timeMatch[2]} Uhr geöffnet. Deine Zeit liegt evtl. außerhalb.`
+            : `According to the data, the place is open on ${dayName} from ${timeMatch[1]} to ${timeMatch[2]}. Your time might be outside these hours.`;
         }
       }
     } else if (ohStr.includes('closed') && ohStr.includes(currentDayCode.toLowerCase())) {
-      return `Der Ort ist am ${format(selectedDate, 'EEEE', { locale: de })} voraussichtlich geschlossen.`;
+        const dayName = format(selectedDate, 'EEEE', { locale: language === 'de' ? de : enUS });
+        return language === 'de'
+            ? `Der Ort ist am ${dayName} voraussichtlich geschlossen.`
+            : `The place is likely closed on ${dayName}.`;
     }
 
     return null;
@@ -202,12 +211,13 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
 
     if (!isRange && !isSingleDay) return;
 
-    let derivedCategory: ActivityCategory = 'Sonstiges';
+    let derivedCategory: ActivityCategory = language === 'de' ? 'Sonstiges' : 'Other';
     const cats = selectedLocation.categories || [];
-    if (cats.some(c => c.startsWith('sport'))) derivedCategory = 'Sport';
-    else if (cats.some(c => c.startsWith('catering'))) derivedCategory = 'Networking';
-    else if (cats.some(c => c.startsWith('tourism'))) derivedCategory = 'Kultur';
-    else if (cats.some(c => c.startsWith('leisure'))) derivedCategory = 'Outdoor';
+    if (cats.some(c => c.startsWith('sport'))) derivedCategory = language === 'de' ? 'Sport' : 'Sports';
+    else if (cats.some(c => c.startsWith('catering'))) derivedCategory = language === 'de' ? 'Networking' : 'Networking';
+    else if (cats.some(c => c.startsWith('tourism'))) derivedCategory = language === 'de' ? 'Kultur' : 'Culture';
+    else if (cats.some(c => c.startsWith('leisure'))) derivedCategory = language === 'de' ? 'Outdoor' : 'Outdoor';
+
 
     let startDate = isRange ? selectedRange.from! : selectedDate;
     let endDate = isRange ? selectedRange.to : undefined;
@@ -227,7 +237,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
     }
 
     // Automatische Titel-Zuweisung bei festen Orten
-    const finalTitle = isSpecificPlaceMode ? (selectedLocation?.name || 'Aktivität') : activityTitle;
+    const finalTitle = isSpecificPlaceMode ? (selectedLocation?.name || (language === 'de' ? 'Aktivität' : 'Activity')) : activityTitle;
 
     setIsCreating(true);
     const success = await onCreateActivity(
@@ -252,9 +262,9 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
     setTimeout(async () => {
       try {
         await earnToken(user.uid);
-        toast({ title: "Token erhalten!" });
+        toast({ title: language === 'de' ? "Token erhalten!" : "Token earned!" });
       } catch (err) {
-        toast({ variant: "destructive", title: "Fehler" });
+        toast({ variant: "destructive", title: language === 'de' ? "Fehler" : "Error" });
       } finally {
         setIsWatchingAd(false);
       }
@@ -285,12 +295,12 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
             )}
           </div>
           <SheetTitle className="text-2xl font-black tracking-tight">
-            {isSpecificPlaceMode ? 'Aktivität planen' : 'Community Aktivität'}
+            {isSpecificPlaceMode ? (language === 'de' ? 'Aktivität planen' : 'Plan activity') : (language === 'de' ? 'Community Aktivität' : 'Community Activity')}
           </SheetTitle>
           <SheetDescription className="text-sm font-medium text-muted-foreground px-4">
             {isSpecificPlaceMode 
-              ? `Plane ein Treffen bei ${initialPlace?.name}` 
-              : 'Erstelle ein Event an einem Ort deiner Wahl.'}
+              ? (language === 'de' ? `Plane ein Treffen bei ${initialPlace?.name}` : `Plan a meetup at ${initialPlace?.name}`) 
+              : (language === 'de' ? 'Erstelle ein Event an einem Ort deiner Wahl.' : 'Create an event at a place of your choice.')}
           </SheetDescription>
         </SheetHeader>
         
@@ -299,18 +309,18 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
           <div className="space-y-4">
             {!isSpecificPlaceMode && (
               <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Was hast du vor?</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Was hast du vor?' : 'What are you planning?'}</Label>
                 <Input
                   value={activityTitle}
                   onChange={(e) => setActivityTitle(e.target.value)}
-                  placeholder="z.B. Street-Photography oder Yoga"
+                  placeholder={language === 'de' ? "z.B. Street-Photography oder Yoga" : "e.g. Street Photography or Yoga"}
                   className="h-14 text-lg rounded-2xl border-none bg-secondary/50 font-bold focus-visible:ring-primary/20"
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Wo treffen wir uns?</Label>
+              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Wo treffen wir uns?' : 'Where do we meet?'}</Label>
               
               {isSpecificPlaceMode ? (
                 <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 rounded-2xl p-4 flex items-center justify-between">
@@ -332,7 +342,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                       <Input
                         value={searchQuery}
                         onChange={(e) => handleSearch(e.target.value)}
-                        placeholder="Ort oder Adresse suchen..."
+                        placeholder={language === 'de' ? "Ort oder Adresse suchen..." : "Search place or address..."}
                         className="h-14 pl-12 rounded-2xl border-none bg-secondary/50 font-bold"
                       />
                       {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
@@ -363,7 +373,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                       className="w-full h-14 rounded-2xl font-black gap-2 border-dashed border-2"
                     >
                       {isLocating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Navigation className="h-5 w-5" />}
-                      Meinen Standort nutzen
+                      {language === 'de' ? 'Meinen Standort nutzen' : 'Use my location'}
                     </Button>
                   </div>
                 ) : (
@@ -390,8 +400,8 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
           <div className="space-y-4">
             <div className="flex items-center justify-between rounded-2xl border border-border p-4 shadow-sm bg-card/50">
               <div className="space-y-0.5">
-                <Label htmlFor="date-flexible" className="text-base font-bold">Datumsflexibel</Label>
-                <p className="text-xs text-muted-foreground font-medium">Genaues Datum steht noch nicht fest</p>
+                <Label htmlFor="date-flexible" className="text-base font-bold">{language === 'de' ? 'Datumsflexibel' : 'Flexible date'}</Label>
+                <p className="text-xs text-muted-foreground font-medium">{language === 'de' ? 'Genaues Datum steht noch nicht fest' : 'Fixed date not set yet'}</p>
               </div>
               <Switch id="date-flexible" checked={isDateFlexible} onCheckedChange={setIsDateFlexible} />
             </div>
@@ -401,7 +411,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                 <Button variant="ghost" size="icon" onClick={() => setCurrentMonthDate(subMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <h3 className="text-sm font-black uppercase tracking-widest">{format(currentMonthDate, 'MMMM yyyy', { locale: de })}</h3>
+                <h3 className="text-sm font-black uppercase tracking-widest">{format(currentMonthDate, language === 'de' ? 'MMMM yyyy' : 'MMMM yyyy', { locale: language === 'de' ? de : enUS })}</h3>
                 <Button variant="ghost" size="icon" onClick={() => setCurrentMonthDate(addMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -445,15 +455,15 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
               <div className="space-y-4">
                 <div className="flex items-center justify-between rounded-2xl border border-border p-4 shadow-sm bg-card/50">
                   <div className="space-y-0.5">
-                    <Label htmlFor="time-flexible" className="text-base font-bold">Zeitlich flexibel</Label>
-                    <p className="text-xs text-muted-foreground font-medium">Uhrzeit wird im Chat besprochen</p>
+                    <Label htmlFor="time-flexible" className="text-base font-bold">{language === 'de' ? 'Zeitlich flexibel' : 'Flexible time'}</Label>
+                    <p className="text-xs text-muted-foreground font-medium">{language === 'de' ? 'Uhrzeit wird im Chat besprochen' : 'Time will be discussed in chat'}</p>
                   </div>
                   <Switch id="time-flexible" checked={isTimeFlexible} onCheckedChange={setIsTimeFlexible} />
                 </div>
 
                 {!isTimeFlexible && (
                   <div className="animate-in slide-in-from-top-2 duration-300">
-                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1 mb-2 block">Uhrzeit wählen</Label>
+                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1 mb-2 block">{language === 'de' ? 'Uhrzeit wählen' : 'Select time'}</Label>
                     <Input
                       type="time"
                       value={selectedTime}
@@ -481,9 +491,9 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">Teilnehmerlimit</Label>
+                <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">{language === 'de' ? 'Teilnehmerlimit' : 'Participant limit'}</Label>
               </div>
-              {!isPremium && <Badge className="bg-primary/10 text-primary text-[10px] font-black border-none uppercase">Limit: {MAX_FREE_PARTICIPANTS}</Badge>}
+              {!isPremium && <Badge className="bg-primary/10 text-primary text-[10px] font-black border-none uppercase">{language === 'de' ? 'Limit' : 'Limit'}: {MAX_FREE_PARTICIPANTS}</Badge>}
             </div>
 
             <div className="flex items-center gap-6 bg-secondary/30 p-4 rounded-2xl">
@@ -494,9 +504,10 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
             <div className="space-y-3">
               <div className="flex items-center justify-between rounded-2xl border border-border p-4 bg-card/50">
                 <div className="space-y-0.5">
-                  <Label className="text-base font-bold flex items-center gap-2">Bezahltes Event {!canMonetize && <Lock className="h-3 w-3" />}</Label>
-                  <p className="text-xs text-muted-foreground">Proof of Community: {currentFreeHosts}/{REQUIRED_FREE_HOSTS}</p>
+                  <Label className="text-base font-bold flex items-center gap-2">{language === 'de' ? 'Bezahltes Event' : 'Paid event'} {!canMonetize && <Lock className="h-3 w-3" />}</Label>
+                  <p className="text-xs text-muted-foreground">{language === 'de' ? 'Proof of Community' : 'Proof of Community'}: {currentFreeHosts}/{REQUIRED_FREE_HOSTS}</p>
                 </div>
+
                 <Switch checked={isPaid} onCheckedChange={setIsPaid} disabled={!canMonetize} />
               </div>
               {isPaid && (
@@ -513,14 +524,14 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Flame className={cn("h-5 w-5", isBoosted ? "text-orange-500" : "text-muted-foreground")} />
-                <span className="font-black text-sm uppercase">Booster Aktivieren</span>
+                <span className="font-black text-sm uppercase">{language === 'de' ? 'Booster Aktivieren' : 'Activate Booster'}</span>
               </div>
               <Switch checked={isBoosted} onCheckedChange={setIsBoosted} disabled={availableTokens < 1} />
             </div>
             {availableTokens < 1 && (
               <Button onClick={handleEarnToken} disabled={isWatchingAd} variant="outline" className="w-full h-12 rounded-xl font-black gap-2 mt-2 bg-white/50">
                 {isWatchingAd ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
-                Token verdienen
+                {language === 'de' ? 'Token verdienen' : 'Earn token'}
               </Button>
             )}
           </div>
@@ -533,7 +544,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
             className="w-full h-14 text-base font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95"
           >
             {isCreating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
-            Aktivität jetzt erstellen
+            {language === 'de' ? 'Aktivität jetzt erstellen' : 'Create activity now'}
           </Button>
         </SheetFooter>
       </SheetContent>

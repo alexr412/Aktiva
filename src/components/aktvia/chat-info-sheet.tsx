@@ -7,7 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { leaveActivity, deleteActivity, voteToCompleteActivity, completeActivity } from '@/lib/firebase/firestore';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
+import { de, enUS } from 'date-fns/locale';
+import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
 
 import {
@@ -46,19 +47,22 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
   const [isActing, setIsActing] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
   const { user } = useAuth();
+  const language = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
 
   const renderDate = () => {
       if (!activity) return null;
 
+      const locale = language === 'de' ? de : enUS;
+
       if (activity.activityEndDate) {
-          return `${format(activity.activityDate.toDate(), "eee, d. MMM", { locale: de })} - ${format(activity.activityEndDate.toDate(), "eee, d. MMM", { locale: de })}`;
+          return `${format(activity.activityDate.toDate(), "eee, d. MMM", { locale })} - ${format(activity.activityEndDate.toDate(), "eee, d. MMM", { locale })}`;
       }
       if (activity.isTimeFlexible) {
-          return `${format(activity.activityDate.toDate(), "eee, d. MMM", { locale: de })} (Flexibel)`;
+          return `${format(activity.activityDate.toDate(), "eee, d. MMM", { locale })} ${language === 'de' ? '(Flexibel)' : '(Flexible)'}`;
       }
-      return format(activity.activityDate.toDate(), "eee, d. MMM 'um' p", { locale: de });
+      return format(activity.activityDate.toDate(), language === 'de' ? "eee, d. MMM 'um' p" : "eee, d. MMM 'at' p", { locale });
   }
 
 
@@ -105,11 +109,11 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
   const handleVote = async () => {
       if (!activity?.id || !user?.uid || hasVoted) return;
       setIsVoting(true);
-      try {
+       try {
         await voteToCompleteActivity(activity.id, user.uid);
-        toast({ title: "Stimme abgegeben!" });
+        toast({ title: language === 'de' ? "Stimme abgegeben!" : "Vote submitted!" });
       } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Fehler', description: error.message });
+        toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message });
       } finally {
         setIsVoting(false);
       }
@@ -120,9 +124,9 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
     setIsActing(true);
     try {
       await completeActivity(activity.id, user.uid, !!activity.isPaid);
-      toast({ title: "Aktivität erfolgreich abgeschlossen!" });
+      toast({ title: language === 'de' ? "Aktivität erfolgreich abgeschlossen!" : "Activity successfully completed!" });
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Fehler', description: error.message });
+      toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message });
     } finally {
       setIsActing(false);
     }
@@ -133,8 +137,8 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
       <SheetContent className="flex flex-col p-0 sm:max-w-md border-none rounded-l-[2.5rem] overflow-hidden dark:bg-neutral-950">
         {/* Versteckter Header für Accessibility (Radix Warning Fix) */}
         <SheetHeader className="sr-only">
-          <SheetTitle>Chat Info</SheetTitle>
-          <SheetDescription>Chat Einstellungen und Löschoptionen für {chat.placeName}</SheetDescription>
+          <SheetTitle>{language === 'de' ? 'Chat Info' : 'Chat Info'}</SheetTitle>
+          <SheetDescription>{language === 'de' ? `Chat Einstellungen und Löschoptionen für ${chat.placeName}` : `Chat settings and deletion options for ${chat.placeName}`}</SheetDescription>
         </SheetHeader>
 
         <ScrollArea className="flex-1">
@@ -150,7 +154,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
               
               <div className="flex flex-wrap justify-center gap-2">
                 <span className="bg-blue-50 text-blue-700 dark:bg-neutral-800 dark:text-neutral-200 dark:border dark:border-neutral-700 rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
-                  <Users className="h-3.5 w-3.5" /> {chat.participantIds.length} {chat.participantIds.length === 1 ? 'Mitglied' : 'Mitglieder'}
+                  <Users className="h-3.5 w-3.5" /> {chat.participantIds.length} {chat.participantIds.length === 1 ? (language === 'de' ? 'Mitglied' : 'Member') : (language === 'de' ? 'Mitglieder' : 'Members')}
                 </span>
                 <span className="bg-orange-50 text-orange-700 dark:bg-neutral-800 dark:text-neutral-200 dark:border dark:border-neutral-700 rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
                   <Calendar className="h-3.5 w-3.5" /> {renderDate()}
@@ -173,7 +177,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
 
             <div className="space-y-6">
               <div className="flex items-center justify-between px-2">
-                <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Mitglieder</h3>
+                <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">{language === 'de' ? 'Mitglieder' : 'Members'}</h3>
                 <span className="h-1 flex-1 mx-4 bg-slate-50 dark:bg-neutral-800 rounded-full" />
               </div>
               
@@ -195,10 +199,10 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                                     {p.displayName}
                                 </span>
                                 {uid === chat.hostId && (
-                                  <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tight">Creator</span>
+                                  <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tight">{language === 'de' ? 'Creator' : 'Creator'}</span>
                                 )}
                               </div>
-                              {uid === user?.uid && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Du</span>}
+                              {uid === user?.uid && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{language === 'de' ? 'Du' : 'You'}</span>}
                           </div>
                           <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-primary transition-colors" />
                       </Link>
@@ -214,11 +218,11 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
               <Button 
                 onClick={handleCompleteActivity} 
                 disabled={isActing}
-                className="w-full h-12 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 transition-all gap-2 mb-2"
-              >
-                {isActing ? <BarChart3 className="h-4 w-4 animate-spin"/> : <CheckCircle2 className="h-4 w-4" />}
-                <span>Aktivität erfolgreich abschließen</span>
-              </Button>
+                 className="w-full h-12 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 transition-all gap-2 mb-2"
+               >
+                 {isActing ? <BarChart3 className="h-4 w-4 animate-spin"/> : <CheckCircle2 className="h-4 w-4" />}
+                 <span>{language === 'de' ? 'Aktivität erfolgreich abschließen' : 'Successfully complete activity'}</span>
+               </Button>
             )}
 
             {!isCompleted && !isHost && (
@@ -227,42 +231,44 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                   disabled={isVoting || hasVoted} 
                   variant="outline" 
                   className="w-full h-12 rounded-2xl font-black bg-white dark:bg-neutral-800 border-none shadow-sm hover:shadow-md transition-all gap-2"
-                 >
-                    {isVoting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className={cn("h-4 w-4", hasVoted ? "text-primary" : "text-slate-400")}/>}
-                    <span className={hasVoted ? "text-primary" : "text-slate-600 dark:text-neutral-300"}>{hasVoted ? "Bestätigt" : "Treffen bestätigen"}</span>
-                 </Button>
+                  >
+                     {isVoting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className={cn("h-4 w-4", hasVoted ? "text-primary" : "text-slate-400")}/>}
+                     <span className={hasVoted ? "text-primary" : "text-slate-600 dark:text-neutral-300"}>
+                        {hasVoted ? (language === 'de' ? "Bestätigt" : "Confirmed") : (language === 'de' ? "Treffen bestätigen" : "Confirm meeting")}
+                     </span>
+                  </Button>
             )}
             
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="w-full h-12 rounded-2xl font-black bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 border-none shadow-none transition-all gap-2">
-                  {isActing ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
-                  {isOnlyParticipant ? 'Aktivität löschen' : 'Chat verlassen'}
-                </Button>
+                 <Button variant="destructive" className="w-full h-12 rounded-2xl font-black bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 border-none shadow-none transition-all gap-2">
+                   {isActing ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                   {isOnlyParticipant ? (language === 'de' ? 'Aktivität löschen' : 'Delete activity') : (language === 'de' ? 'Chat verlassen' : 'Leave chat')}
+                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent className="rounded-3xl border-none shadow-2xl dark:bg-neutral-900">
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="text-xl font-black dark:text-neutral-100">
-                    {isOnlyParticipant
-                      ? 'Wirklich löschen?'
-                      : 'Wirklich verlassen?'}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription className="text-sm font-medium dark:text-neutral-400">
-                    {isOnlyParticipant
-                      ? 'Diese Aktion kann nicht rückgängig gemacht werden. Alle Nachrichten werden dauerhaft gelöscht.'
-                      : 'Du kannst später wieder beitreten, solange die Aktivität noch existiert.'}
-                  </AlertDialogDescription>
+                   <AlertDialogTitle className="text-xl font-black dark:text-neutral-100">
+                     {isOnlyParticipant
+                       ? (language === 'de' ? 'Wirklich löschen?' : 'Really delete?')
+                       : (language === 'de' ? 'Wirklich verlassen?' : 'Really leave?')}
+                   </AlertDialogTitle>
+                   <AlertDialogDescription className="text-sm font-medium dark:text-neutral-400">
+                     {isOnlyParticipant
+                       ? (language === 'de' ? 'Diese Aktion kann nicht rückgängig gemacht werden. Alle Nachrichten werden dauerhaft gelöscht.' : 'This action cannot be undone. All messages will be permanently deleted.')
+                       : (language === 'de' ? 'Du kannst später wieder beitreten, solange die Aktivität noch existiert.' : 'You can join again later as long as the activity still exists.')}
+                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                  <AlertDialogCancel className="rounded-xl font-bold h-11 border-none bg-slate-100 dark:bg-neutral-800 dark:text-neutral-300">Abbrechen</AlertDialogCancel>
+                 <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                   <AlertDialogCancel className="rounded-xl font-bold h-11 border-none bg-slate-100 dark:bg-neutral-800 dark:text-neutral-300">{language === 'de' ? 'Abbrechen' : 'Cancel'}</AlertDialogCancel>
                   <AlertDialogAction 
                     disabled={isActing} 
                     className='bg-red-500 hover:bg-red-600 text-white rounded-xl font-black h-11 border-none shadow-lg shadow-red-200'
-                    onClick={handleLeaveOrDelete}
-                  >
-                    {isActing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isOnlyParticipant ? 'Endgültig löschen' : 'Jetzt verlassen'}
-                  </AlertDialogAction>
+                     onClick={handleLeaveOrDelete}
+                   >
+                     {isActing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                     {isOnlyParticipant ? (language === 'de' ? 'Endgültig löschen' : 'Delete permanently') : (language === 'de' ? 'Jetzt verlassen' : 'Leave now')}
+                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

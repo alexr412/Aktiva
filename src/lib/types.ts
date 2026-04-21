@@ -199,7 +199,9 @@ export interface UserProfile {
   };
   fcmToken?: string;
   onboardingCompleted: boolean;
-  friendCode?: string;
+  username?: string;
+  birthday?: string;
+  language?: 'de' | 'en';
   hiddenEntityIds?: string[];
   activeTabs?: string[];
   isPremium?: boolean;

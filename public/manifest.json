@@ -1,0 +1,21 @@
+{
+  "name": "Aktiva",
+  "short_name": "Aktiva",
+  "description": "Entdecke Orte. Triff Menschen.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#D0E0FF",
+  "theme_color": "#5BA17F",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

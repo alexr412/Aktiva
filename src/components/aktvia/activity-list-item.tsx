@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { voteActivity, trackActivityView, submitReport } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
+import { useLanguage } from '@/hooks/use-language';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatTags } from '@/lib/tag-parser';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +26,7 @@ interface ActivityListItemProps {
 
 export function ActivityListItem({ activity, user, onJoin }: ActivityListItemProps) {
     const { userProfile } = useAuth();
+    const language = useLanguage();
     const router = useRouter();
     const { toast } = useToast();
     const [isJoining, setIsJoining] = useState(false);
@@ -67,8 +69,8 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
     const primaryStyle = getPrimaryIconData({ 
         categories: activity.categories || [], 
-        name: activity.placeName || "Aktivität" 
-    });
+        name: activity.placeName || (language === 'de' ? "Aktivität" : "Activity")
+    }, language);
     const PrimaryIcon = primaryStyle.icon;
 
     const handleJoinClick = async (e: React.MouseEvent) => {
@@ -103,17 +105,17 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
       }
       setIsReporting(true);
       try {
-        await submitReport(activity.id!, user.uid, "Verstoß gegen Richtlinien");
+        await submitReport(activity.id!, user.uid, language === 'de' ? "Verstoß gegen Richtlinien" : "Policy violation");
         toast({
-          title: "Meldung eingegangen",
-          description: "Vielen Dank. Wir prüfen den Inhalt umgehend.",
+          title: language === 'de' ? "Meldung eingegangen" : "Report received",
+          description: language === 'de' ? "Vielen Dank. Wir prüfen den Inhalt umgehend." : "Thank you. We will review the content immediately.",
         });
       } catch (error) {
         console.error("Meldevorgang fehlgeschlagen", error);
         toast({
           variant: "destructive",
-          title: "Fehler",
-          description: "Meldung konnte nicht gesendet werden.",
+          title: language === 'de' ? "Fehler" : "Error",
+          description: language === 'de' ? "Meldung konnte nicht gesendet werden." : "Message could not be sent.",
         });
       } finally {
         setIsReporting(false);
@@ -137,7 +139,8 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
             {activity.isBoosted && (
               <div className="absolute -top-3 left-6 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg animate-in fade-in slide-in-from-top-1 flex items-center gap-1.5">
                 <Flame className="h-3 w-3 animate-pulse" />
-                <span>Highlight</span>
+                <span>{language === 'de' ? 'Highlight' : 'Highlight'}</span>
+
               </div>
             )}
 
@@ -166,7 +169,8 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between mb-1">
                         <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight flex-1">
-                            {activity.placeName || "Treffen"}
+                            {activity.placeName || (language === 'de' ? "Treffen" : "Meetup")}
+
                         </p>
                         
                         {/* MODUL 18: Enhanced Rating Display with Fallback */}
@@ -177,7 +181,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                               {rating.toFixed(1)} <span className="opacity-50">({reviewCount})</span>
                             </span>
                           ) : (
-                            <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-500">Neu</span>
+                            <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-500">{language === 'de' ? 'Neu' : 'New'}</span>
                           )}
                         </div>
                     </div>
@@ -201,11 +205,11 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     <div className="mt-3 flex items-center gap-2">
                       <div className="flex items-center gap-1 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-100/50">
                         <Layers className="w-2.5 h-2.5" />
-                        <span>{activity.category || 'Sonstiges'}</span>
+                        <span>{formatTags(activity.categories || [activity.category || ''], language)[0] || (language === 'de' ? 'Sonstiges' : 'Other')}</span>
                       </div>
                       {activityDate && (
                         <div className="text-[9px] font-bold text-slate-400 uppercase">
-                            {format(activityDate, 'eee, d. MMM')}
+                            {format(activityDate, language === 'de' ? 'eee, d. MMM' : 'eee, MMM d', { locale: language === 'de' ? de : enUS })}
                         </div>
                       )}
                     </div>
@@ -258,7 +262,8 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
               <div className="flex items-center gap-3">
                 <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1">
                     <Users className="h-3 w-3 text-primary/60"/>
-                    <span>Host: {activity.hostName?.split(' ')[0] || "Entdecker"}</span>
+                    <span>{language === 'de' ? 'Veranstalter' : 'Host'}: {activity.hostName?.split(' ')[0] || (language === 'de' ? "Gast" : "Explorer")}</span>
+
                 </p>
               </div>
 
@@ -288,11 +293,9 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     {isJoining ? (
                         <Loader2 className="animate-spin h-4 w-4" />
                     ) : isFull ? (
-                        'Voll'
-                    ) : isPaidEvent ? (
-                        `Beitreten`
+                        language === 'de' ? 'Voll' : 'Full'
                     ) : (
-                        'Beitreten'
+                        language === 'de' ? 'Beitreten' : 'Join'
                     )}
                   </Button>
                 )}

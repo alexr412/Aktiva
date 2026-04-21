@@ -15,7 +15,7 @@ import { createUserProfileDocument } from './firestore';
 
 export { auth };
 
-export async function signUp(name: string, email: string, password: string): Promise<User> {
+export async function signUp(name: string, email: string, password: string, username?: string, birthday?: string): Promise<User> {
   if (!auth) throw new Error('Firebase has not been initialized.');
 
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -28,7 +28,7 @@ export async function signUp(name: string, email: string, password: string): Pro
   await sendEmailVerification(userCredential.user);
   
   // Create a corresponding user document in Firestore
-  await createUserProfileDocument(userCredential.user);
+  await createUserProfileDocument(userCredential.user, { username, birthday });
   
   return userCredential.user;
 }

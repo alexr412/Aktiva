@@ -667,7 +667,7 @@ export async function fetchNearbyPlaces(
   // Synchronisierung: Wir fügen 'building' und 'education' zur API-Anfrage hinzu,
   // da wir diese in der BASE_WHITELIST erlauben (z.B. für das Klimahaus).
   let targetCategories: string[] = categories.length === 0 || categories.includes('all')
-    ? ["tourism", "entertainment", "heritage", "building", "education", "adult.nightclub", "catering"]
+    ? ["tourism", "entertainment", "heritage", "building", "education", "adult.nightclub", "catering", "religion", "leisure"]
     : categories.slice(0, 10);
   const fetchUrl = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 

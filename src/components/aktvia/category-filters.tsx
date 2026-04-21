@@ -28,6 +28,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { availableTabs } from './category-filters-data';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/hooks/use-language';
 
 // Re-export für Onboarding und andere Konsumenten
 export { availableTabs };
@@ -35,6 +36,7 @@ export { availableTabs };
 export type CategoryTab = {
   id: string;
   label: string;
+  labelEn?: string;
   query: string[];
   icon: LucideIcon;
   color: string;
@@ -42,10 +44,10 @@ export type CategoryTab = {
 };
 
 export const coreTabs: CategoryTab[] = [
-    { id: "Aktiv", label: "AKTIV", query: ["has_activities"], icon: MessageSquare, isSystem: true, color: "#22c55e" },
-    { id: "Highlights", label: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true, color: "#f59e0b" },
-    { id: "Favorites", label: "Favoriten", query: ["favorites"], icon: Bookmark, isSystem: true, color: "#f43f5e" },
-    { id: "Community", label: "Community", query: ["user_event"], icon: Users, isSystem: true, color: "#8b5cf6" },
+    { id: "Aktiv", label: "AKTIV", labelEn: "ACTIVE", query: ["has_activities"], icon: MessageSquare, isSystem: true, color: "#22c55e" },
+    { id: "Highlights", label: "Highlights", labelEn: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true, color: "#f59e0b" },
+    { id: "Favorites", label: "Favoriten", labelEn: "Favorites", query: ["favorites"], icon: Bookmark, isSystem: true, color: "#f43f5e" },
+    { id: "Community", label: "Community", labelEn: "Community", query: ["user_event"], icon: Users, isSystem: true, color: "#8b5cf6" },
 ];
 
 type CategoryFiltersProps = {
@@ -55,6 +57,7 @@ type CategoryFiltersProps = {
 
 export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFiltersProps) {
   const { user, userProfile } = useAuth();
+  const language = useLanguage();
   const { toast } = useToast();
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   
@@ -102,9 +105,9 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
       await updateDoc(userRef, { activeTabs: draftTabs });
       setLocalActiveTabs(draftTabs);
       setIsConfigOpen(false);
-      toast({ title: 'Gespeichert', description: 'Deine Kategorien wurden aktualisiert.' });
+      toast({ title: language === 'de' ? 'Gespeichert' : 'Saved', description: language === 'de' ? 'Deine Kategorien wurden aktualisiert.' : 'Your categories have been updated.' });
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Fehler', description: 'Änderungen konnten nicht gespeichert werden.' });
+      toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: language === 'de' ? 'Änderungen konnten nicht gespeichert werden.' : 'Changes could not be saved.' });
     } finally { setIsSaving(false); }
   };
 
@@ -135,7 +138,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
               }}
             >
               <tab.icon className="h-4 w-4 mr-2 shrink-0" />
-              <span className="whitespace-nowrap">{tab.label}</span>
+              <span className="whitespace-nowrap">{language === 'de' ? tab.label : (tab.labelEn || tab.label)}</span>
             </Button>
           );
         })}
@@ -153,7 +156,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
         <DialogContent className="sm:max-w-md dark:bg-neutral-900">
           <DialogHeader>
-            <DialogTitle className="font-black text-xl dark:text-neutral-200">Kategorien anpassen</DialogTitle>
+            <DialogTitle className="font-black text-xl dark:text-neutral-200">{language === 'de' ? 'Kategorien anpassen' : 'Customize categories'}</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-2 py-4 max-h-[60vh] overflow-y-auto pr-2">
             {availableTabs.map((tab) => {
@@ -182,7 +185,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
                     <span className={cn(
                         "font-black text-sm uppercase tracking-tight",
                         isActive ? "text-neutral-900 dark:text-white" : "text-neutral-500 dark:text-neutral-400"
-                    )}>{tab.label}</span>
+                    )}>{language === 'de' ? tab.label : (tab.labelEn || tab.label)}</span>
                   </div>
                   {isActive && <Check className="h-5 w-5" style={{ color: tab.color }} />}
                 </button>
@@ -191,7 +194,7 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
           </div>
           <DialogFooter>
             <Button onClick={saveConfiguration} disabled={isSaving} className="w-full h-12 font-black rounded-xl">
-              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Konfiguration übernehmen'}
+              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (language === 'de' ? 'Konfiguration übernehmen' : 'Apply configuration')}
             </Button>
           </DialogFooter>
         </DialogContent>

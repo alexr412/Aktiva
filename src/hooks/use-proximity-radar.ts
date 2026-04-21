@@ -56,10 +56,15 @@ export function useProximityRadar() {
         if (nearby.length > nearbyFriends.length) {
           const newFriend = nearby.find(f => !nearbyFriends.some(nf => nf.uid === f.uid));
           if (newFriend) {
-            toast({
+            const { dismiss } = toast({
               title: "Freunde in der Nähe!",
               description: `${newFriend.displayName} ist gerade in deinem Radar aufgetaucht.`,
             });
+            
+            // Auto-dismiss after 3 seconds
+            setTimeout(() => {
+              dismiss();
+            }, 3000);
           }
         }
 

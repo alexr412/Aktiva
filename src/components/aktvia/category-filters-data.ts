@@ -28,11 +28,12 @@ export const availableTabs = [
   { 
     id: "Sights", 
     label: "Sehenswürdigkeiten", 
+    labelEn: "Sights",
     query: [
-      "tourism.sights", "heritage", "building.historic", 
+      "tourism.sights", "heritage", "building.historic", "building.tourism",
       "man_made.lighthouse", "man_made.windmill", "man_made.watermill",
-      "tourism.sights.castle", "tourism.sights.fort", 
-      "tourism.sights.archaeological_site"
+      "man_made.tower", "man_made.bridge", "tourism.sights.castle", 
+      "tourism.sights.fort", "tourism.sights.archaeological_site"
     ], 
     icon: Landmark,
     color: "#f59e0b" // Amber
@@ -40,8 +41,9 @@ export const availableTabs = [
   { 
     id: "Religion", 
     label: "Religion & Glaube", 
+    labelEn: "Religion",
     query: [
-      "religion.place_of_worship", "tourism.sights.place_of_worship",
+      "religion", "building.place_of_worship", "tourism.sights.place_of_worship",
       "tourism.sights.monastery"
     ], 
     icon: Church,
@@ -50,17 +52,23 @@ export const availableTabs = [
   { 
     id: "Museums", 
     label: "Museen", 
-    query: ["entertainment.museum"], 
+    labelEn: "Museums",
+    query: [
+        "entertainment.museum", "entertainment.culture.gallery", 
+        "entertainment.culture.arts_centre", "entertainment.culture.artwork",
+        "tourism.sights.gallery"
+    ], 
     icon: Library,
     color: "#6366f1" // Indigo
   },
   { 
     id: "Attractions", 
     label: "Attraktionen", 
+    labelEn: "Attractions",
     query: [
       "tourism.attraction", "entertainment.theme_park", 
-      "tourism.attraction.viewpoint", "entertainment.planetarium", 
-      "tourism.attraction.fountain"
+      "entertainment.amusement_arcade", "entertainment.planetarium", 
+      "tourism.attraction.viewpoint", "tourism.attraction.fountain"
     ], 
     icon: Ticket,
     color: "#ec4899" // Pink
@@ -68,7 +76,8 @@ export const availableTabs = [
   { 
     id: "theater_cinema", 
     label: "Theater & Kinos", 
-    query: ["entertainment.cinema", "entertainment.culture.theatre", "entertainment.culture.arts_centre"], 
+    labelEn: "Theater & Cinema",
+    query: ["entertainment.cinema", "entertainment.culture.theatre"], 
     icon: Film,
     color: "#f43f5e" // Rose
   },
@@ -77,10 +86,11 @@ export const availableTabs = [
   { 
     id: "Nature", 
     label: "Natur & Parks", 
+    labelEn: "Nature & Parks",
     query: [
-      "leisure.park", "natural.forest", "natural.protected_area", "national_park", 
-      "leisure.picnic", "pet.dog_park", "camping.camp_site", "camping.caravan_site", 
-      "camping.summer_camp", "natural.mountain", "natural.mountain.peak"
+      "leisure.park", "natural", "leisure.nature_reserve", "national_park", 
+      "leisure.picnic", "leisure.playground", "pet.dog_park", "camping", 
+      "natural.mountain", "natural.forest"
     ], 
     icon: TreePine,
     color: "#10b981" // Green
@@ -88,9 +98,9 @@ export const availableTabs = [
   { 
     id: "Water", 
     label: "Wasser & Strand", 
+    labelEn: "Water & Beach",
     query: [
-      "natural.water", "natural.water.sea", "natural.water.hot_spring", 
-      "beach", "beach.beach_resort", "natural.sand.dune", "man_made.pier",
+      "natural.water", "beach", "natural.sand", "man_made.pier",
       "leisure.spa", "building.spa"
     ], 
     icon: Waves,
@@ -99,20 +109,20 @@ export const availableTabs = [
   { 
     id: "Zoos", 
     label: "Zoos & Aquarien", 
-    query: ["entertainment.zoo", "entertainment.aquarium"], 
+    labelEn: "Zoos & Aquaria",
+    query: ["entertainment.zoo", "entertainment.aquarium", "tourism.sights.zoo"], 
     icon: Bird,
     color: "#06b6d4" // Cyan
   },
   { 
     id: "Sport", 
     label: "Sportanlagen", 
+    labelEn: "Sports",
     query: [
-      "sport.sports_centre", "sport.fitness.fitness_centre", "sport.swimming_pool", 
-      "sport.stadium", "sport.ice_rink", "sport.pitch", "sport.track", 
-      "sport.horse_riding", "sport.dive_centre", "building.sport", "activity.sport_club", 
-      "entertainment.activity_park", "entertainment.bowling_alley", "entertainment.water_park", 
-      "entertainment.escape_game", "entertainment.miniature_golf", "ski", "ski.lift", 
-      "commercial.outdoor_and_sport"
+      "sport", "building.sport", "activity.sport_club", "ski",
+      "entertainment.activity_park", "entertainment.bowling_alley", 
+      "entertainment.water_park", "entertainment.escape_game", 
+      "entertainment.miniature_golf"
     ], 
     icon: Dumbbell,
     color: "#f97316" // Orange
@@ -122,6 +132,7 @@ export const availableTabs = [
   { 
     id: "Restaurants", 
     label: "Restaurants", 
+    labelEn: "Restaurants",
     query: ["catering.restaurant", "catering.food_court"], 
     icon: Utensils,
     color: "#059669" // Emerald
@@ -129,6 +140,7 @@ export const availableTabs = [
   { 
     id: "Cafes", 
     label: "Cafés", 
+    labelEn: "Cafes",
     query: ["catering.cafe"], 
     icon: Coffee,
     color: "#78350f" // Brown
@@ -136,6 +148,7 @@ export const availableTabs = [
   { 
     id: "FastFood", 
     label: "Fast Food", 
+    labelEn: "Fast Food",
     query: ["catering.fast_food"], 
     icon: Drumstick,
     color: "#eab308" // Yellow
@@ -143,6 +156,7 @@ export const availableTabs = [
   { 
     id: "IceCream", 
     label: "Eisdielen", 
+    labelEn: "Ice Cream",
     query: ["catering.ice_cream", "catering.cafe.ice_cream", "catering.cafe.frozen_yogurt"], 
     icon: IceCream,
     color: "#d946ef" // Fuchsia
@@ -150,6 +164,7 @@ export const availableTabs = [
   { 
     id: "Nightlife", 
     label: "Bars & Pubs", 
+    labelEn: "Bars & Pubs",
     query: ["catering.bar", "catering.pub", "catering.biergarten", "catering.taproom"], 
     icon: Beer,
     color: "#ef4444" // Red
@@ -157,7 +172,8 @@ export const availableTabs = [
   { 
     id: "Clubs", 
     label: "Clubs & Discos", 
-    query: ["adult.nightclub"], 
+    labelEn: "Clubs & Party",
+    query: ["adult.nightclub", "entertainment.nightclub"], 
     icon: Music,
     color: "#a855f7" // Purple
   },
@@ -166,13 +182,15 @@ export const availableTabs = [
   { 
     id: "Education", 
     label: "Bildung", 
-    query: ["education.library", "building.university", "education.university", "building.college", "education.college"], 
+    labelEn: "Education",
+    query: ["education", "building.university", "building.college"], 
     icon: BookOpen,
     color: "#3b82f6" // Blue
   },
   { 
     id: "Coworking", 
     label: "Coworking", 
+    labelEn: "Coworking",
     query: ["office.coworking"], 
     icon: Building,
     color: "#6b7280" // Gray
@@ -180,11 +198,8 @@ export const availableTabs = [
   { 
     id: "Shopping", 
     label: "Shopping", 
-    query: [
-      "commercial.shopping_mall", "commercial.clothing", "commercial.department_store", 
-      "commercial.marketplace", "commercial.gift_and_souvenir", "commercial.books", 
-      "commercial.hobby"
-    ], 
+    labelEn: "Shopping",
+    query: ["commercial"], 
     icon: ShoppingBag,
     color: "#84cc16" // Lime
   }

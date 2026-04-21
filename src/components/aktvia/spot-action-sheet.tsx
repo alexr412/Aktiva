@@ -24,6 +24,8 @@ import {
     Sparkles,
     Check
 } from 'lucide-react';
+import { de, enUS } from 'date-fns/locale';
+import { useLanguage } from '@/hooks/use-language';
 import type { Place, Activity } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
@@ -46,6 +48,7 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
     const [loading, setLoading] = useState(false);
     const [joiningId, setJoiningId] = useState<string | null>(null);
     const { user } = useAuth();
+    const language = useLanguage();
     const router = useRouter();
     const { toast } = useToast();
 
@@ -87,10 +90,10 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
         setJoiningId(activity.id!);
         try {
             await joinActivity(activity.id!, user);
-            toast({ title: 'Erfolgreich beigetreten!' });
+            toast({ title: language === 'de' ? 'Erfolgreich beigetreten!' : 'Successfully joined!' });
             router.push(`/chat/${activity.id}`);
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Fehler', description: error.message });
+            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message });
         } finally {
             setJoiningId(null);
         }
@@ -98,7 +101,7 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
 
     if (!place) return null;
 
-    const primaryStyle = getPrimaryIconData(place);
+    const primaryStyle = getPrimaryIconData(place, language);
     const PrimaryIcon = primaryStyle.icon;
 
     return (
@@ -127,10 +130,10 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
                     <div className="flex items-center justify-between mb-4 flex-shrink-0 px-1">
                         <h3 className="text-sm font-black uppercase tracking-widest text-neutral-500 flex items-center gap-2">
                             <Sparkles className="h-4 w-4 text-primary" />
-                            Active Rooms
+                            {language === 'de' ? 'Aktive Räume' : 'Active Rooms'}
                         </h3>
                         <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary font-black border-none text-[10px]">
-                            {activities.length} Aktiv
+                            {activities.length} {language === 'de' ? 'Aktiv' : 'Active'}
                         </Badge>
                     </div>
 
@@ -139,15 +142,15 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
                             {loading ? (
                                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary/30" />
-                                    <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Searching activities...</p>
+                                    <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest">{language === 'de' ? 'Aktivitäten werden gesucht...' : 'Searching activities...'}</p>
                                 </div>
                             ) : activities.length === 0 ? (
                                 <div className="bg-neutral-50 dark:bg-neutral-800/50 rounded-[2rem] p-8 text-center border-2 border-dashed border-neutral-100 dark:border-neutral-800">
                                     <div className="bg-white dark:bg-neutral-800 p-4 rounded-full w-fit mx-auto mb-4 shadow-sm">
                                         <Calendar className="h-8 w-8 text-neutral-300" />
                                     </div>
-                                    <p className="text-sm font-bold text-neutral-500 mb-2">Hier ist noch nichts los.</p>
-                                    <p className="text-xs text-neutral-400 font-medium max-w-[200px] mx-auto leading-relaxed">Sei der Erste und starte jetzt eine neue Aktivität an diesem Spot!</p>
+                                    <p className="text-sm font-bold text-neutral-500 mb-2">{language === 'de' ? 'Hier ist noch nichts los.' : 'Nothing going on here yet.'}</p>
+                                    <p className="text-xs text-neutral-400 font-medium max-w-[200px] mx-auto leading-relaxed">{language === 'de' ? 'Sei der Erste und starte jetzt eine neue Aktivität an diesem Spot!' : 'Be the first and start a new activity at this spot now!'}</p>
                                 </div>
                             ) : (
                                 activities.map((activity) => (
@@ -161,17 +164,17 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <span className="text-sm font-black text-neutral-900 dark:text-neutral-100 uppercase tracking-tight">
                                                         {activity.isTimeFlexible 
-                                                            ? `${format(activity.activityDate.toDate(), 'eee')}, Zeit flexibel`
-                                                            : format(activity.activityDate.toDate(), 'eee, HH:mm')}
+                                                            ? `${format(activity.activityDate.toDate(), 'eee', { locale: language === 'de' ? de : enUS })}, ${language === 'de' ? 'Zeit flexibel' : 'Time flexible'}`
+                                                            : format(activity.activityDate.toDate(), language === 'de' ? 'eee, HH:mm' : 'eee, h:mm a', { locale: language === 'de' ? de : enUS })}
                                                     </span>
                                                     {activity.isBoosted && (
-                                                        <Badge className="bg-amber-100 text-amber-700 text-[8px] font-black uppercase px-2 py-0 border-none rounded-full">Highlight</Badge>
+                                                        <Badge className="bg-amber-100 text-amber-700 text-[8px] font-black uppercase px-2 py-0 border-none rounded-full">{language === 'de' ? 'Highlight' : 'Highlight'}</Badge>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-3 text-neutral-500 dark:text-neutral-400 text-xs font-bold">
                                                     <div className="flex items-center gap-1.5">
                                                         <Users className="h-3.5 w-3.5 text-primary" />
-                                                        <span>{activity.participantIds.length} Teilnehmer</span>
+                                                        <span>{activity.participantIds.length} {language === 'de' ? 'Teilnehmer' : 'Participants'}</span>
                                                     </div>
                                                     <div className="w-1 h-1 bg-neutral-300 rounded-full" />
                                                     <p className="truncate">Host: {activity.hostName?.split(' ')[0]}</p>
@@ -205,7 +208,7 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
                         <div className="bg-white/10 p-2 rounded-xl">
                             <Plus className="h-5 w-5 text-white" strokeWidth={3} />
                         </div>
-                        Neue Aktivität planen
+                        {language === 'de' ? 'Neue Aktivität planen' : 'Plan new activity'}
                     </Button>
                     <p className="text-[10px] text-center font-bold text-neutral-400 uppercase tracking-[0.2em] pt-2">
                         Aktvia • Community Driven
