@@ -54,13 +54,13 @@ export default function DebugPage() {
     if (BASE_WHITELIST.includes(tag)) return 'whitelist';
     if (BASE_HARD_VETO.includes(tag)) return 'hard';
     if (BASE_SOFT_VETO.includes(tag)) return 'soft';
-    
+
     // Check parent fallback
     const parent = tag.split('.')[0];
     if (BASE_WHITELIST.includes(parent)) return 'whitelist-fallback';
     if (BASE_HARD_VETO.includes(parent)) return 'hard-fallback';
     if (BASE_SOFT_VETO.includes(parent)) return 'soft-fallback';
-    
+
     return 'none';
   };
 
@@ -93,13 +93,13 @@ export default function DebugPage() {
           <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
           </div>
-          <Input 
+          <Input
             className="w-full bg-card border-input h-16 pl-14 pr-32 rounded-3xl text-lg font-medium focus:ring-primary focus:border-primary transition-all shadow-xl text-foreground"
             placeholder="Search place name (e.g. Klimahaus Bremerhaven)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <Button 
+          <Button
             disabled={loading}
             className="absolute right-3 top-3 bottom-3 rounded-2xl px-6 bg-primary hover:bg-primary/90 font-bold uppercase tracking-tight text-white"
             type="submit"
@@ -125,8 +125,8 @@ export default function DebugPage() {
                     <div className={cn(
                       "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-lg",
                       place.simulatedVetoStatus === 'hard' ? "bg-red-500/20 text-red-500 border-red-500/30" :
-                      place.simulatedVetoStatus === 'soft' ? "bg-amber-500/20 text-amber-500 border-amber-500/30" :
-                      "bg-emerald-500/20 text-emerald-500 border-emerald-500/30"
+                        place.simulatedVetoStatus === 'soft' ? "bg-amber-500/20 text-amber-500 border-amber-500/30" :
+                          "bg-emerald-500/20 text-emerald-500 border-emerald-500/30"
                     )}>
                       {place.simulatedVetoStatus} Block
                     </div>
@@ -137,15 +137,15 @@ export default function DebugPage() {
 
                   <div className="space-y-4">
                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                       RAW GEOAPIFY CATEGORIES <div className="h-[1px] flex-1 bg-border" />
+                      RAW GEOAPIFY CATEGORIES <div className="h-[1px] flex-1 bg-border" />
                     </h3>
                     <div className="flex flex-wrap gap-2 mt-4">
                       {place.rawCategories && place.rawCategories.length > 0 ? (
                         place.rawCategories.map((tag: string) => {
                           const status = getTagStatus(tag);
                           return (
-                            <span 
-                              key={tag} 
+                            <span
+                              key={tag}
                               className={cn(
                                 "px-2.5 py-1 text-[11px] font-mono border rounded-xl transition-all hover:scale-110 cursor-help shadow-sm uppercase",
                                 getStatusColor(status)
@@ -176,6 +176,14 @@ export default function DebugPage() {
                   )}>
                     {place.simulatedVetoStatus === 'none' ? 'PASS' : 'VETOED'}
                   </div>
+                  {place.relevanceScore !== undefined && (
+                    <div className="mt-4 flex flex-col items-center">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Score Result</span>
+                      <div className="bg-primary/10 text-primary text-2xl font-black px-4 py-1 rounded-2xl border border-primary/20 shadow-sm">
+                        {place.relevanceScore.toFixed(1)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>

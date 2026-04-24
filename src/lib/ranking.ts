@@ -7,74 +7,36 @@ export const ACTIVITY_BASE_SCORE = 100;
 
 // Hierarchical Regex Matchers - Specific beats Generic
 const tagRules: { pattern: RegExp; score: number }[] = [
-  // --- High-Tier (90 Punkte) ---
-  { pattern: /^tourism\.attraction(\..*)?$/, score: 50 },
-  { pattern: /^tourism\.sights(\..*)?$/, score: 50 },
-  { pattern: /^entertainment\.museum$/, score: 75 },
-  { pattern: /^entertainment\.planetarium$/, score: 100 },
-  { pattern: /^entertainment\.aquarium$/, score: 100 },
-  { pattern: /^entertainment\.theme_park$/, score: 80 },
-  { pattern: /^entertainment\.water_park$/, score: 80 },
-  { pattern: /^entertainment\.escape_game$/, score: 80 },
-  { pattern: /^entertainment\.activity_park(\..*)?$/, score: 80 },
-  { pattern: /^entertainment\.cinema$/, score: 80 },
+  // --- Hero-Tier (90-100 Punkte) ---
+  { pattern: /^entertainment\.activity_park\.trampoline$/, score: 98 },
+  { pattern: /^entertainment\.activity_park(\..*)?$/, score: 95 },
+  { pattern: /^entertainment\.theme_park$/, score: 95 },
+  { pattern: /^entertainment\.water_park$/, score: 92 },
+  { pattern: /^entertainment\.zoo$/, score: 90 },
+  { pattern: /^entertainment\.aquarium$/, score: 90 },
+  { pattern: /^entertainment\.planetarium$/, score: 90 },
+  { pattern: /^entertainment\.cinema$/, score: 90 },
+  { pattern: /^entertainment\.escape_game$/, score: 85 },
+  
+  // --- Mid-Tier (60-80 Punkte) ---
+  { pattern: /^adult\.nightclub$/, score: 80 },
   { pattern: /^entertainment\.bowling_alley$/, score: 80 },
-  { pattern: /^entertainment\.miniature_golf$/, score: 80 },
-  { pattern: /^adult\.nightclub$/, score: 75 },
-  { pattern: /^catering\.pub$/, score: 80 },
-  { pattern: /^catering\.bar$/, score: 80 },
-  { pattern: /^catering\.biergarten$/, score: 80 },
-  { pattern: /^sport\.stadium$/, score: 80 },
-  { pattern: /^building\.tourism$/, score: 80 },
-  { pattern: /^entertainment\.zoo$/, score: 79 },
-  { pattern: /^entertainment(\..*)?$/, score: 75 },
-  { pattern: /^building\.entertainment$/, score: 70 },
-
-
-
-  // --- Mid-Tier (60 Punkte) ---
-  { pattern: /^leisure\.park(\..*)?$/, score: 55 },
-  { pattern: /^leisure\.nature_reserve$/, score: 55 },
-  { pattern: /^leisure\.garden$/, score: 55 },
+  { pattern: /^entertainment\.miniature_golf$/, score: 75 },
+  { pattern: /^entertainment\.culture(\..*)?$/, score: 70 },
+  { pattern: /^leisure\.playground$/, score: 65 },
+  { pattern: /^leisure\.park(\..*)?$/, score: 60 },
   { pattern: /^beach(\..*)?$/, score: 60 },
-  { pattern: /^leisure\.beach$/, score: 55 }, // Alias coverage
-  { pattern: /^sport(\..*)?$/, score: 60 }, // Will match if not stadium (already matched above)
-  { pattern: /^entertainment\.culture(\..*)?$/, score: 60 },
-  { pattern: /^camping(\..*)?$/, score: 50 },
-  { pattern: /^tourism\.camping$/, score: 50 }, // Alias coverage
-  { pattern: /^leisure\.spa(\..*)?$/, score: 60 },
+
+  // --- Infrastructure & Catering (Sub-60) ---
+  { pattern: /^catering\.pub$/, score: 55 },
+  { pattern: /^catering\.bar$/, score: 55 },
+  { pattern: /^catering\.biergarten$/, score: 55 },
+  { pattern: /^catering\.restaurant$/, score: 50 },
+  { pattern: /^catering\.cafe$/, score: 45 },
+  { pattern: /^tourism\.sights$/, score: 65 },
   { pattern: /^building\.historic$/, score: 50 },
-  { pattern: /^man_made\.tower$/, score: 50 },
-  { pattern: /^man_made\.lighthouse$/, score: 50 },
-  { pattern: /^man_made\.bridge$/, score: 50 },
-  { pattern: /^education\.library$/, score: 65 },
-  { pattern: /^education\.university$/, score: 65 },
-  { pattern: /^catering\.cafe(\..*)?$/, score: 60 },
-  { pattern: /^catering\.ice_cream$/, score: 60 },
   { pattern: /^commercial\.shopping_mall$/, score: 60 },
-  { pattern: /^building\.commercial$/, score: 60 },
-
-  // --- Low-Tier (20 Punkte) ---
-  { pattern: /^national_park$/, score: 50 },
-  { pattern: /^natural\.protected_area$/, score: 50 },
-  { pattern: /^natural\.mountain(\..*)?$/, score: 50 },
-  { pattern: /^natural\.water(\..*)?$/, score: 50 },
-  { pattern: /^catering(\..*)?$/, score: 50 }, // Generic catering
-  { pattern: /^catering\.fast_food$/, score: 50 },
-  { pattern: /^commercial(\..*)?$/, score: 50 },
-  { pattern: /^leisure\.playground$/, score: 45 },
-  { pattern: /^leisure\.picnic(\..*)?$/, score: 45 },
-  { pattern: /^natural\.forest$/, score: 45 },
-  { pattern: /^natural\.sand$/, score: 45 },
-  { pattern: /^religion\.place_of_worship$/, score: 60 },
-  { pattern: /^building\.place_of_worship$/, score: 60 },
-  { pattern: /^building\.historic$/, score: 60 },
-  { pattern: /^accommodation\.hotel$/, score: 45 },
-
-  { pattern: /^building(\..*)?$/, score: 55 }, // Generic building (MUSS IMMER UNTER DEN SPEZIFISCHEN SEIN)
-  { pattern: /^production(\..*)?$/, score: 55 },
-  { pattern: /^education(\..*)?$/, score: 70 }
-
+  { pattern: /^sport\.sports_centre$/, score: 75 }
 ];
 
 function getTagScore(tag: string): number {
@@ -85,6 +47,17 @@ function getTagScore(tag: string): number {
   }
   return 0; // Fallback-Tier
 }
+
+/**
+ * Berechnet den Basis-Score basierend auf den Tags (wird für die Diagnose genutzt)
+ */
+export function calculateRelevanceScore(tags: string[]): number {
+  if (!tags || tags.length === 0) return 0;
+  const scores = tags.map(tag => getTagScore(tag)).filter(s => s > 0);
+  if (scores.length === 0) return 0;
+  return scores.reduce((a, b) => a + b, 0) / scores.length;
+}
+
 
 /**
  * Zerfallskonstante für die Distanz-Gewichtung im Cold-Start Algorithmus.
@@ -105,7 +78,8 @@ export const EPSILON_TOLERANCE = 0.7;
 export function calculateRelevance(
   item: any,
   userProfile: UserProfile,
-  userLocation: { lat: number; lng: number }
+  userLocation: { lat: number; lng: number },
+  options: { disableBoringPenalty?: boolean } = {}
 ): number {
   if (!item) return 0;
 
@@ -113,30 +87,34 @@ export function calculateRelevance(
     return ACTIVITY_BASE_SCORE;
   }
 
-  const distanceKm = (item.distance !== undefined && item.distance !== null)
+  const distanceKm = (item?.distance !== undefined && item?.distance !== null)
     ? item.distance / 1000
     : 0;
 
-  // Extraktion der Tags
-  const categories: string[] = Array.isArray(item.categories) ? item.categories : [];
+  // SAFE-GUARD: Robust category extraction
+  const categories: string[] = Array.isArray(item?.categories) 
+    ? item.categories 
+    : (Array.isArray(item?.properties?.categories) ? item.properties.categories : []);
 
-  if (categories.length === 0) return 0;
+  // FALLBACK: If no tags found, return a minimal base score of 10 instead of crashing or returning 0
+  if (categories.length === 0) return 10;
 
   const affinities = userProfile?.categoryAffinities || {};
 
-  // 1. Individuelle Tag-Gewichtung (T_i' = T_i * w_i)
+  // 1. Individuelle Tag-Gewichtung 
   const weightedScores = categories.map(cat => {
+    if (!cat) return 0;
     const T_i = getTagScore(cat);
     if (T_i === 0) return 0;
 
-    // Standardwert bei fehlender Affinität ist w_i = 1 (Statischen Boost eliminieren)
     let w_i = 1.0;
-
-    // Mapping von Raw Geoapify Tags zu UI Kategorie-Tabs anhand des LÄNGSTEN Matches
     let matchingTab;
     let longestMatchLen = 0;
-    for (const tab of availableTabs) {
+    const tabs = availableTabs || [];
+    for (const tab of tabs) {
+      if (!tab?.query) continue;
       for (const q of tab.query) {
+        if (!q) continue;
         if (cat.startsWith(q) || cat === q) {
           if (q.length > longestMatchLen) {
             longestMatchLen = q.length;
@@ -148,46 +126,70 @@ export function calculateRelevance(
 
     if (matchingTab && affinities[matchingTab.id] !== undefined) {
       w_i = affinities[matchingTab.id];
-    } else if (affinities[cat] !== undefined) {
-      w_i = affinities[cat];
     }
-
     return T_i * w_i;
   }).filter(score => score !== 0);
 
   if (weightedScores.length === 0) return 0;
 
-  // 2. Durchschnitts-Berechnung (Average-Modell)
-  const scoreSum = weightedScores.reduce((sum, val) => sum + val, 0);
-  const T_weighted = scoreSum / weightedScores.length;
+  // 2. Weighted Cascade Modell (70% Best, 20% Second, 10% Third)
+  const sortedScores = [...weightedScores].sort((a, b) => b - a);
+  const T1 = sortedScores[0] || 0;
+  const T2 = sortedScores[1] || T1; 
+  const T3 = sortedScores[2] || T2; 
+
+  const T_cascade = (T1 * 0.7) + (T2 * 0.2) + (T3 * 0.1);
 
   // 3. Logarithmische Dämpfungsfunktion (Soft-Cap)
-  const T_final = Math.sign(T_weighted) * 100 * Math.log10(1 + (Math.abs(T_weighted) / 20));
+  let T_final = Math.sign(T_cascade) * 100 * Math.log10(1 + (Math.abs(T_cascade) / 20));
 
-  // 4. Basis-Score (Zwischenergebnis — reine Formel ohne Votes)
-  const lambda = COLD_START_LAMBDA > 0 ? COLD_START_LAMBDA : 0.5;
-  // Deterministischer Epsilon basierend auf Place-ID (stabil über Re-Renders)
+  // --- BORING-PENALTY (VETO MECHANISM) ---
+  // Wird nur angewendet, wenn NICHT explizit nach Kultur/Geschichte gesucht wird.
+  if (!options.disableBoringPenalty) {
+    const boringTags = [
+      'religion', 'place_of_worship', 'historic', 'heritage', 'archaeological_site',
+      'community_centre', 'arts_centre', 'social_facility', 'youth_centre',
+      'natural.protected_area', 'leisure.nature_reserve', 'leisure.park',
+      'catering.restaurant', 'catering.cafe', 'tourism.sights'
+    ];
+    const hasBoringTag = categories.some(cat => 
+      boringTags.some(boring => cat.toLowerCase().includes(boring))
+    );
+    
+    if (hasBoringTag) {
+      T_final -= 55; // MASSIVE Strafe für passive/infrastrukturelle Orte (z.B. Wald vs. Kino)
+    }
+  }
+
+  // 4. Dynamisches Lambda (Qualitäts-abhängiger Distanzverfall)
+  // Highlights (>= 80) verfallen langsamer als Mid-Tier oder Low-Tier Content.
+  let lambda = 0.015; // Default (Low-Tier)
+  if (T_final >= 80) {
+    lambda = 0.002;
+  } else if (T_final >= 60) {
+    lambda = 0.005;
+  }
+
+  // Deterministischer Epsilon
   const placeId = item.place_id || item.id || '';
   let hash = 0;
   for (let i = 0; i < placeId.length; i++) {
     hash = ((hash << 5) - hash + placeId.charCodeAt(i)) | 0;
   }
-  const deterministicRandom = ((hash & 0x7fffffff) / 0x7fffffff) * 2 - 1; // -1 bis +1
+  const deterministicRandom = ((hash & 0x7fffffff) / 0x7fffffff) * 2 - 1; 
   const epsilon = deterministicRandom * EPSILON_TOLERANCE;
+  
+  // 5. Basis-Score (Qualität * Exp-Verfall)
+  // Formel: ((T_final * UserAffinity) + Epsilon) * Math.exp(-Lambda * Distanz_in_km)
+  // Hinweis: UserAffinity ist hier bereits in T_final enthalten (w_i oben)
   const S_base = (T_final + epsilon) * Math.exp(-lambda * distanceKm);
 
-  // 5. Vote-Integration (additiver Bonus/Malus auf Zwischenergebnis)
-  //    V = W_up * ln(1 + upvotes) - W_down * ln(1 + downvotes)
-  //    Log-Dämpfung verhindert, dass wenige Power-Voter das Ranking dominieren.
+  // 6. Vote-Integration (logarithmisch gedämpft)
   const upvotes = item.upvotes || 0;
   const downvotes = item.downvotes || 0;
-  const W_UP = 1.5;    // Gewicht pro Upvote (gedämpft)
-  const W_DOWN = 2.0;  // Gewicht pro Downvote (asymmetrisch stärker)
+  const V = (1.5 * Math.log(1 + upvotes)) - (2.0 * Math.log(1 + downvotes));
 
-  const V = (W_UP * Math.log(1 + upvotes)) - (W_DOWN * Math.log(1 + downvotes));
-
-  // 6. Finale Zusammenführung
-  return S_base + V;
+  return Number((S_base + V).toFixed(1));
 }
 
 

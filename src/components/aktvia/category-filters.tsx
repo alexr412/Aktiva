@@ -44,7 +44,7 @@ export type CategoryTab = {
 };
 
 export const coreTabs: CategoryTab[] = [
-    { id: "Aktiv", label: "AKTIV", labelEn: "ACTIVE", query: ["has_activities"], icon: MessageSquare, isSystem: true, color: "#22c55e" },
+    { id: "Active", label: "AKTIV", labelEn: "ACTIVE", query: ["has_activities"], icon: MessageSquare, isSystem: true, color: "#22c55e" },
     { id: "Highlights", label: "Highlights", labelEn: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true, color: "#f59e0b" },
     { id: "Favorites", label: "Favoriten", labelEn: "Favorites", query: ["favorites"], icon: Bookmark, isSystem: true, color: "#f43f5e" },
     { id: "Community", label: "Community", labelEn: "Community", query: ["user_event"], icon: Users, isSystem: true, color: "#8b5cf6" },

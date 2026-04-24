@@ -11,12 +11,12 @@ import { SpotActionSheet } from '@/components/aktvia/spot-action-sheet';
 import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { 
-  DropdownMenu, 
-  DropdownMenuTrigger, 
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
   DropdownMenuContent,
 } from '@/components/ui/dropdown-menu';
-import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -34,7 +34,7 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING, applyFilters } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, applyFilters, searchTextPlaces } from '@/lib/geoapify';
 import { calculateRelevance } from '@/lib/ranking';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
@@ -76,8 +76,9 @@ const ACTIVITY_CATEGORIES: (ActivityCategory | 'Alle')[] = ['Alle', 'Sport', 'Te
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) {
-    const error = new Error(`Geoapify API error: ${res.status}`);
+    const error = new Error(`Geoapify API error: ${res.status} URL: ${url}`);
     (error as any).status = res.status;
+    (error as any).url = url;
     throw error;
   }
   return res.json();
@@ -147,35 +148,63 @@ export default function Home() {
   const isCommunityCategory = activeTabId === "Community";
   const isFavoritesCategory = activeTabId === "Favorites";
   const isHighlightsCategory = activeTabId === "Highlights";
-  const isAktivCategory = activeTabId === "Aktiv";
+  const isActiveCategory = activeTabId === "Active";
 
   // MULTI-SOURCE FETCHER (Geoapify vs Firestore)
   const multiFetcher = async (key: any) => {
     if (!key) return null;
-    const { type, cursorValue } = key;
+    const { type, pageIndex } = key;
+    
+    console.log(`🚀 [Discovery] Fetching ${type} (Page: ${pageIndex})`, key);
+
+    // FAIL-SAFE: 8s Timeout via AbortController
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     try {
+      if (type === 'search') {
+        const { query, lat, lon } = key;
+        return searchTextPlaces(query, lat, lon);
+      }
+
       if (type === 'geoapify') {
-        const { url } = key;
-        return fetcher(url);
+        const { urls, url: singleUrl } = key;
+        const disablePenalty = key.disablePenalty || false;
+        
+        const fetchWithTimeout = async (u: string) => {
+          const response = await fetch(u, { signal: controller.signal });
+          if (!response.ok) throw new Error(`API Error: ${response.status}`);
+          return response.json();
+        };
+
+        if (Array.isArray(urls)) {
+          const settles = await Promise.allSettled(urls.map(u => fetchWithTimeout(u)));
+          clearTimeout(timeoutId);
+
+          const successfulData = settles
+            .filter((s): s is PromiseFulfilledResult<any> => s.status === 'fulfilled')
+            .flatMap((s, idx) => {
+              const features = s.value.features || [];
+              console.log(`📡 [Stream ${idx}] Returned ${features.length} items from URL: ${urls[idx].substring(0, 80)}...`);
+              return features.map((f: any) => ({ ...f, disablePenalty, streamSource: idx }));
+            });
+            
+          console.log(`📥 [Discovery] API Response: ${successfulData.length} items total.`);
+          return successfulData;
+        }
+        
+        const result = await fetchWithTimeout(singleUrl || key.url);
+        clearTimeout(timeoutId);
+        const features = (result.features || []).map((f: any) => ({ ...f, disablePenalty }));
+        console.log(`📥 [Discovery] Single Stream Success: ${features.length} items.`);
+        return features;
       }
 
       if (type === 'activities') {
-        const queryLimit = key.pageIndex === 0 ? 150 : 10;
-        const constraints: any[] = [
-          limit(queryLimit * 5)
-        ];
-
-        const q = query(collection(db!, 'activities'), ...constraints);
+        const q = query(collection(db!, 'activities'), limit(250));
         const snap = await getDocs(q);
-        const allFetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        const isCommunity = key.subType === 'community';
-        const filtered = allFetched.filter((act: any) =>
-          isCommunity ? act.isCustomActivity === true : act.isCustomActivity !== true
-        );
-
-        return filtered.slice(0, PLACES_PER_PAGE);
+        clearTimeout(timeoutId);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() as Activity }));
       }
 
       if (type === 'highlights') {
@@ -188,10 +217,16 @@ export default function Home() {
         if (cursorValue !== null) constraints.push(startAfter(cursorValue));
         const q = query(collection(db!, 'places'), ...constraints);
         const snap = await getDocs(q);
+        clearTimeout(timeoutId);
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       }
     } catch (error: any) {
-      console.error("🔥 FIRESTORE QUERY ERROR:", error.message, "Key:", key);
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        const timeoutErr = new Error('Timeout');
+        (timeoutErr as any).isTimeout = true;
+        throw timeoutErr;
+      }
       throw error;
     }
 
@@ -203,39 +238,83 @@ export default function Home() {
   const GEOAPIFY_MAX_OFFSET = 500;
 
   const getKey = (pageIndex: number, previousPageData: any) => {
-    if (isFavoritesCategory) return null;
-    if (previousPageData && (
-      (previousPageData.features && previousPageData.features.length === 0) ||
-      (Array.isArray(previousPageData) && previousPageData.length === 0)
-    )) return null;
+    if (previousPageData && !previousPageData.length) return null;
+    if (!userLocation) return null;
 
-    if (isCommunityCategory || isAktivCategory) {
-      const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.createdAt;
-      return { type: 'activities', subType: isCommunityCategory ? 'community' : 'location', cursorValue: cursor, pageIndex };
-    }
-
+    // 1. HIGHLIGHTS (Spots mit hoher Upvote-Rate aus Firestore)
     if (isHighlightsCategory) {
       const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.upvotes;
       return { type: 'highlights', cursorValue: cursor, pageIndex };
     }
 
-    if (!userLocation) return null;
-    let categoriesToFetch: string[] = (activeCategory.length === 0 || activeCategory.includes('has_activities'))
-      ? ["entertainment", "leisure", "catering", "tourism.attraction", "adult.nightclub"]
-      : activeCategory;
+    // 2. COMMUNITY / ACTIVE (Aktivitäten aus Firestore)
+    if (isCommunityCategory || isActiveCategory) {
+      const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.createdAt;
+      return { type: 'activities', subType: isCommunityCategory ? 'community' : 'location', cursorValue: cursor, pageIndex };
+    }
 
-    // Fetch 300 initially for a massive algorithmic search pool, UI renders 25 initially
-    const queryLimit = pageIndex === 0 ? 300 : 50;
-    const offset = pageIndex === 0 ? 0 : 300 + (pageIndex - 1) * 50;
+    // --- GEOAPIFY LOGIK ---
+    const radiusMeters = Math.min(50000, maxDistance ? maxDistance * 1000 : 50000);
+    const pOffset = pageIndex === 0 ? 0 : 100 + (pageIndex - 1) * 100;
+    const cOffset = pageIndex === 0 ? 0 : 50 + (pageIndex - 1) * 50;
+    const gOffset = pageIndex === 0 ? 0 : 5 + (pageIndex - 1) * 5;
 
-    // Stop pagination if offset exceeds Geoapify's hard limit
-    if (offset >= GEOAPIFY_MAX_OFFSET) return null;
+    // 3. SEARCH ROUTING (Kurze Suche vs. Intens-Analyse)
+    if (debouncedSearchQuery && activeCategory.length === 0) {
+      if (debouncedSearchQuery.split(' ').length > 2 || /mit|für|bei|Ausflug/i.test(debouncedSearchQuery)) {
+        // Semantic/Vibe-Intent Analysis (Simplified)
+        let intentCats = ['entertainment'];
+        if (/kinder|familie|kids/i.test(debouncedSearchQuery)) intentCats = ['entertainment.zoo', 'entertainment.theme_park', 'entertainment.water_park'];
+        if (/regen|schlechtwetter|drinnen/i.test(debouncedSearchQuery)) intentCats = ['entertainment.cinema', 'entertainment.museum'];
+        
+        return { type: 'geoapify', url: `https://api.geoapify.com/v2/places?categories=${intentCats.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=100&apiKey=${GEOAPIFY_API_KEY}`, pageIndex };
+      } 
+      // Exact Match Mode (Textsuche für Begriffe wie "Cinestar")
+      return { type: 'geoapify', url: `https://api.geoapify.com/v2/places?text=${encodeURIComponent(debouncedSearchQuery)}&filter=circle:${userLocation.lng},${userLocation.lat},50000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=100&apiKey=${GEOAPIFY_API_KEY}`, pageIndex };
+    }
 
-    const radiusMeters = maxDistance ? maxDistance * 1000 : 100000;
-    const url = `https://api.geoapify.com/v2/places?categories=${categoriesToFetch.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+    // 4. VIBE-CLUSTER CHECK
+    const vibeClusters: Record<string, { cats: string[], radius: number }> = {
+      "Schlechtwetter-Retter": { cats: ['entertainment.cinema', 'entertainment.museum', 'entertainment.escape_game', 'leisure.spa'], radius: 20000 },
+      "Familien-Action": { cats: ['entertainment.zoo', 'entertainment.water_park', 'entertainment.theme_park', 'entertainment.activity_park'], radius: 20000 },
+      "Natur & Rausgehen": { cats: ['leisure.park', 'natural.protected_area'], radius: 15000 },
+      "Nachtleben & Drinks": { cats: ['adult.nightclub', 'catering.bar', 'catering.pub'], radius: 10000 },
+      "Gruppen-Spaß": { cats: ['entertainment.escape_game', 'entertainment.bowling_alley'], radius: 15000 },
+      "Adrenalin & Sport": { cats: ['entertainment.activity_park.trampoline', 'sport', 'entertainment.water_park'], radius: 20000 },
+      "Kaffee & Genuss": { cats: ['catering.cafe', 'catering.restaurant'], radius: 5000 },
+      "Kultur & Geschichte": { cats: ['entertainment.museum', 'tourism.sights'], radius: 15000 }
+    };
 
-    return { type: 'geoapify', url, pageIndex };
-  }
+    const activeVibe = Object.keys(vibeClusters).find(v => activeCategory.includes(v));
+    if (activeVibe) {
+      const v = vibeClusters[activeVibe];
+      return { type: 'geoapify', url: `https://api.geoapify.com/v2/places?categories=${v.cats.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${v.radius}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=100&apiKey=${GEOAPIFY_API_KEY}`, pageIndex };
+    }
+
+    // 5. TRIPLE-STREAM DISCOVERY (Hero, Food-Cap, Nature-Cap)
+    let categoriesToFetch: string[] = (activeCategory.length === 0 || activeCategory.includes('has_activities')) ? [] : activeCategory;
+
+    if (categoriesToFetch.length === 0) {
+      const uCats = ["entertainment", "adult.nightclub", "sport.sports_centre"];
+      const fCats = ["catering.pub", "catering.bar", "catering.restaurant"];
+      const nCats = ["commercial.shopping_mall", "leisure.park"];
+
+      // TASK 1: Force LARGE Radius for Hero Content (regardless of UI)
+      const url1 = `https://api.geoapify.com/v2/places?categories=${uCats.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},50000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=100&offset=${pOffset}&apiKey=${GEOAPIFY_API_KEY}`;
+      
+      // TASK 2: Radical Caps (max 2 per stream for page 0)
+      const a2LimitForPage0 = 2;
+      const a3LimitForPage0 = 2;
+      
+      const url2 = `https://api.geoapify.com/v2/places?categories=${fCats.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},10000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${pageIndex === 0 ? a2LimitForPage0 : 50}&offset=${cOffset}&apiKey=${GEOAPIFY_API_KEY}`;
+      const url3 = `https://api.geoapify.com/v2/places?categories=${nCats.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${pageIndex === 0 ? a3LimitForPage0 : 5}&offset=${gOffset}&apiKey=${GEOAPIFY_API_KEY}`;
+      return { type: 'geoapify', urls: [url1, url2, url3], pageIndex };
+    }
+
+    // Fallback für sonstige Kategorien
+    const fallbackCats = categoriesToFetch.join(',');
+    return { type: 'geoapify', url: `https://api.geoapify.com/v2/places?categories=${fallbackCats}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=150&offset=${pOffset}&apiKey=${GEOAPIFY_API_KEY}`, pageIndex };
+  };
 
   const { data, size, setSize, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {
     revalidateFirstPage: false,
@@ -248,22 +327,11 @@ export default function Home() {
   const isFetchingNextPage = Boolean(size > 0 && data && typeof data[size - 1] === "undefined");
 
   const isReachingEnd = useMemo(() => {
-    if (error) return true; // STOPS THE INFINITE 400 ERROR FIRESTORM LOOP!
     if (isEmpty) return true;
-    if (!data || data.length === 0) return false;
-    const lastPage = data[data.length - 1];
-    
-    // Geoapify pagination logic: Page 0 fetches 300, Page > 0 fetches 50
-    const expectedLimit = (data.length - 1) === 0 ? 300 : 50; 
-    
-    if (isCommunityCategory || isAktivCategory || isHighlightsCategory) {
-      // Firebase fallback limits (150 and 10)
-      const fbLimit = (data.length - 1) === 0 ? 150 : 10;
-      return Boolean(lastPage && lastPage.length < fbLimit);
-    }
-    
-    return Boolean(lastPage && lastPage.features?.length < expectedLimit);
-  }, [data, isEmpty, error, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
+    const lastPage = data?.[data.length - 1];
+    if (Array.isArray(lastPage)) return lastPage.length < 5;
+    return (lastPage?.features?.length || 0) < 5;
+  }, [data, isEmpty]);
 
   const userPrefs: UserPreferences = useMemo(() => ({
     likedTags: userProfile?.likedTags || [],
@@ -271,51 +339,75 @@ export default function Home() {
   }), [userProfile]);
 
   // Vote-Daten aus Firestore für Ranking-Integration
-  const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number }>>({}); 
+  const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number }>>({});
 
+  // Client-seitiges Merging, Deduplizierung und FINAL SORTING (Audit-Konform)
   const places = useMemo(() => {
-    if (!data || isCommunityCategory || isAktivCategory || isFavoritesCategory) return [];
-    if (isHighlightsCategory) return data.flat() as Place[];
-
-    return data.flatMap(page => {
-      const features = page?.features || [];
-      const itemsToFilter = features.map((f: any) => ({
-        tags: Array.isArray(f.properties.categories) ? f.properties.categories : [f.properties.categories],
-        properties: f.properties,
-        distance: f.properties.distance || 0
-      }));
-      const safeItems = applyFilters(itemsToFilter, activeCategory, userProfile?.blacklist?.hard || []);
-
-      return safeItems.map((item: any) => {
-        const props = item.properties;
-        let rating;
-        if (props.datasource?.raw?.rating) {
-          const parsedRating = parseFloat(props.datasource.raw.rating);
-          if (!isNaN(parsedRating)) rating = Math.max(0, Math.min(5, parsedRating));
+    console.log("🔍 [X-Ray] Raw SWR Data Type:", typeof data, "IsArray:", Array.isArray(data), "Content:", data);
+    try {
+      if (!data || isCommunityCategory || isActiveCategory || isFavoritesCategory) return [];
+      const deduplicatedMap = new Map<string, Place>();
+    
+      data.forEach((pageData: any, pageIdx: number) => {
+        if (!Array.isArray(pageData)) {
+          console.warn(`⚠️ [Pipeline] Page ${pageIdx} is not an array:`, pageData);
+          return;
         }
-        const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
-        const distance = item.distance || 0;
-        const placeId = props.place_id;
-        const votes = votesMap[placeId] || { upvotes: 0, downvotes: 0 };
-        return {
-          id: placeId,
-          name: props.name || props.address_line1 || (language === "de" ? "Unbekannter Ort" : "Unknown Place"),
-          address: props.address_line2 || (language === "de" ? "Keine Adresse verfügbar" : "No address available"),
-          categories: cats,
-          lat: props.lat,
-          lon: props.lon,
-          rating: rating,
-          distance: distance,
-          relevanceScore: calculateRelevance(
-            { ...props, categories: cats, distance: distance, upvotes: votes.upvotes, downvotes: votes.downvotes },
-            userProfile || { role: 'user' } as any,
-            userLocation || { lat: 0, lng: 0 }
-          ),
-          openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null
-        } as Place;
+
+        pageData.forEach((f: any) => {
+          const props = f?.properties || f;
+          // FIX: Correct ID extraction for Geoapify (properties.place_id) and Firestore (id)
+          const placeId = props?.place_id || f?.id || `fallback-${props?.lat}-${props?.lon}-${props?.name}`;
+          if (!placeId) return;
+
+          const disablePenalty = f?.disablePenalty || false;
+          const votes = votesMap[placeId] || { upvotes: 0, downvotes: 0 };
+          const tags = Array.isArray(props?.categories) ? props.categories : (props?.categories ? [props.categories] : []);
+          
+          const placeName = props?.name || props?.formatted || props?.address_line1;
+          if (!placeName || placeName.includes(',') || placeName.length < 2) return;
+
+          const processedPlace = {
+            id: placeId,
+            name: placeName,
+            address: props?.address_line2 || props?.formatted || (language === "de" ? "Keine Adresse" : "No address available"),
+            categories: tags,
+            lat: props?.lat || 0,
+            lon: props?.lon || 0,
+            rating: props?.rating || 0,
+            distance: props?.distance || calculateDistance(userLocation?.lat || 0, userLocation?.lng || 0, props?.lat || 0, props?.lon || 0),
+            relevanceScore: calculateRelevance(
+              { ...props, categories: tags, upvotes: votes.upvotes, downvotes: votes.downvotes },
+              userProfile || { role: 'user' } as any,
+              userLocation || { lat: 0, lng: 0 },
+              { disableBoringPenalty: disablePenalty }
+            ),
+            openingHours: props?.opening_hours || props?.datasource?.raw?.opening_hours || null
+          } as Place;
+
+          deduplicatedMap.set(placeId, processedPlace);
+        });
       });
-    });
-  }, [data, userPrefs, votesMap, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory]);
+
+        console.log("🚦 [Pipeline] Deduplizierte Orte vor Ranking:", deduplicatedMap.size);
+
+      const sorted = Array.from(deduplicatedMap.values()).sort((a, b) => b.relevanceScore - a.relevanceScore);
+      const top150 = sorted.slice(0, 150);
+
+      if (top150.length > 0) {
+        // TASK 4: Top 20 Log inklusive Distanz
+        console.log("🏆 [HMFR 2.0] Ranking complete. Current Top 20:");
+        top150.slice(0, 20).forEach((p, i) => {
+          console.log(`${i + 1}. ${p.name} - Score: ${p.relevanceScore.toFixed(1)}, Dist: ${(p.distance / 1000).toFixed(1)}km`);
+        });
+      }
+
+      return top150;
+    } catch (err) {
+      console.error("💥 [HMFR Crash] Fehler beim Verarbeiten der Orte:", err);
+      return [];
+    }
+  }, [data, isHighlightsCategory, activeCategory, userProfile, language, votesMap, userLocation, isCommunityCategory, isActiveCategory, isFavoritesCategory]);
 
   // Batch-Fetch & Echtzeit-Listener für Vote-Daten aller sichtbaren Orte
   useEffect(() => {
@@ -342,8 +434,8 @@ export default function Home() {
     }
 
     return () => unsubscribers.forEach(unsub => unsub());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, isCommunityCategory, isActiveCategory, isHighlightsCategory, isFavoritesCategory]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const isLoadingMore = useRef(false);
@@ -358,7 +450,7 @@ export default function Home() {
       const target = entries[0];
       if (target.isIntersecting && !isLoadingMore.current) {
         isLoadingMore.current = true;
-        if (!isFavoritesCategory && !isCommunityCategory && !isAktivCategory && !isHighlightsCategory) {
+        if (!isFavoritesCategory && !isCommunityCategory && !isActiveCategory && !isHighlightsCategory) {
           const totalFetched = data ? data.flat().length : 0;
           if (visibleCount < totalFetched) {
             setVisibleCount(prev => prev + 25);
@@ -374,7 +466,7 @@ export default function Home() {
       }
     }, options);
     if (node) observer.current.observe(node);
-  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, data, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
+  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, data, visibleCount, isFavoritesCategory, isCommunityCategory, isActiveCategory, isHighlightsCategory]);
 
   useEffect(() => {
     const reverseGeocode = async (lat: number, lng: number) => {
@@ -383,8 +475,8 @@ export default function Home() {
         const data = await response.json();
         const fallback = language === 'de' ? 'Unbekannter Ort' : 'Unknown Place';
         setCityName(data.address.city || data.address.town || data.address.village || fallback);
-      } catch (error) { 
-        setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'); 
+      } catch (error) {
+        setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
       }
     };
     if (planningState.isPlanning && planningState.destination) {
@@ -423,12 +515,12 @@ export default function Home() {
 
   const handlePlaceSelect = (place: Place) => setSelectedPlace(place);
   const handleDialogClose = () => setSelectedPlace(null);
-  const handleOpenActivityModal = (place: Place) => { 
-    if (!user) { 
-      router.push('/login'); 
-      return; 
-    } 
-    setActionSheetPlace(place); 
+  const handleOpenActivityModal = (place: Place) => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    setActionSheetPlace(place);
   };
   const handleOpenCustomActivityModal = () => { if (!user) { router.push('/login'); return; } setActivityModalPlace('custom'); };
 
@@ -471,18 +563,78 @@ export default function Home() {
     }
     if (error) return <div className="flex h-full w-full items-center justify-center p-6 text-center text-destructive font-bold">{language === 'de' ? 'Verbindungsproblem.' : 'Connection problem.'}</div>;
 
-    const EmptySearchState = () => (
-      <div className="flex h-full w-full items-center justify-center p-6 text-center">
-        <div className="space-y-4">
-          <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">{language === "de" ? "Keine Ergebnisse" : "No results"}</h3>
-          <p className="text-[#64748b] dark:text-neutral-400 font-medium">{language === "de" ? "Passe deine Suche oder die Filter an." : "Adjust your search or filters."}</p>
-          <Button onClick={() => { handleCategoryChange([], ''); setMaxDistance(10); setActivityCategoryFilter(language === 'de' ? 'Alle' : 'All'); }} variant="outline" className="rounded-xl font-bold">{language === "de" ? "Filter zurücksetzen" : "Reset filters"}</Button>
+    const EmptySearchState = () => {
+      const isActuallyEmpty = !debouncedSearchQuery && activeCategory.length === 0;
+      const showCreateCTA = isCommunityCategory || isActiveCategory;
+
+      return (
+        <div className="flex flex-col h-full w-full items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-500">
+          <div className="space-y-6 max-w-sm">
+            <div className="bg-primary/10 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6">
+              {showCreateCTA ? <Users className="h-10 w-10 text-primary" /> : <MapPin className="h-10 w-10 text-primary" />}
+            </div>
+            <h3 className="font-black text-2xl text-[#0f172a] dark:text-neutral-200">
+              {showCreateCTA
+                ? (language === "de" ? "Noch keine Aktivitäten" : "No activities yet")
+                : (language === "de" ? "Keine Ergebnisse" : "No results")}
+            </h3>
+            <p className="text-[#64748b] dark:text-neutral-400 font-bold leading-relaxed">
+              {showCreateCTA
+                ? (language === "de" ? "Sei der Erste und erstelle eine neue Aktivität in deiner Nähe!" : "Be the first to create an activity in your area!")
+                : (language === "de" ? "Passe deine Suche oder die Filter an, um mehr zu entdecken." : "Adjust your search or filters to discover more.")}
+            </p>
+
+            <div className="flex flex-col gap-3">
+              {showCreateCTA && (
+                <Button onClick={handleOpenCustomActivityModal} className="rounded-2xl font-black h-14 text-lg shadow-lg shadow-primary/20">
+                  <Plus className="mr-2 h-5 w-5 stroke-[3px]" />
+                  {language === "de" ? "Aktivität erstellen" : "Create Activity"}
+                </Button>
+              )}
+              <Button
+                onClick={() => { handleCategoryChange([], ''); setMaxDistance(10); setActivityCategoryFilter(language === 'de' ? 'Alle' : 'All'); }}
+                variant="ghost"
+                className="rounded-2xl font-black text-neutral-400 hover:text-primary transition-colors"
+              >
+                {language === "de" ? "Filter zurücksetzen" : "Reset filters"}
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
-    );
+      );
+    };
 
     if (viewMode === 'list') {
       const renderList = () => {
+        if (isLoadingInitialData) {
+          return (
+            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              {[...Array(8)].map((_, i) => <CardSkeleton key={`loading-skel-${i}`} />)}
+            </div>
+          );
+        }
+
+        if (error) {
+          return (
+            <div className="flex flex-col items-center justify-center p-12 text-center space-y-4">
+              <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-full">
+                <AlertCircle className="h-8 w-8 text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-black text-lg">{error.isTimeout ? (language === 'de' ? 'API Timeout' : 'API Timeout') : (language === 'de' ? 'Fehler beim Laden' : 'Loading Error')}</h3>
+                <p className="text-neutral-500 text-sm font-medium">
+                  {error.isTimeout 
+                    ? (language === 'de' ? 'Die Anfrage hat zu lange gedauert. Bitte verkleinere deinen Radius oder ändere die Filter.' : 'The request took too long. Please reduce your radius or change filters.')
+                    : (language === 'de' ? 'Bitte versuche es später erneut.' : 'Please try again later.')}
+                </p>
+              </div>
+              <Button onClick={() => mutate()} variant="outline" className="rounded-xl font-bold">
+                {language === 'de' ? 'Erneut versuchen' : 'Try Again'}
+              </Button>
+            </div>
+          );
+        }
+
         if (isFavoritesCategory) {
           if (favorites.length === 0) {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
@@ -498,124 +650,35 @@ export default function Home() {
           );
         }
 
-        if (isCommunityCategory || isAktivCategory) {
-          const list = data?.flat() || [];
-
-          const safeActivities = list.filter((item: any) => {
-            if (!item) return false;
-            return item.status !== 'completed' &&
-              item.status !== 'cancelled' &&
-              item.status !== 'blacklisted' &&
-              (item.reportCount || 0) < QUARANTINE_THRESHOLD;
-          });
-
-          let semanticFiltered = safeActivities;
-          if (activityCategoryFilter !== (language === 'de' ? 'Alle' : 'All')) {
-            semanticFiltered = semanticFiltered.filter((item: any) => item.category === activityCategoryFilter);
-          }
-
-          const listWithDistance = semanticFiltered.map((item: any) => {
-            const distance = (userLocation && item.lat && item.lon)
-              ? calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lon)
-              : null;
-            return { ...item, distance };
-          });
-
-          let filtered = listWithDistance.filter(item => {
-            const name = item.placeName || "";
-            return name.toLowerCase().includes(searchQuery.toLowerCase());
-          });
-
-          if (maxDistance !== null) {
-            filtered = filtered.filter(item => item.distance !== null && item.distance <= maxDistance);
-          }
-
-          const sortedList = [...filtered].sort((a, b) => {
-            if (a.isBoosted && !b.isBoosted) return -1;
-            if (!a.isBoosted && b.isBoosted) return 1;
-
-            const collectiveWeight = 1.0;
-            const personalWeight = 0.5;
-
-            const affA = userProfile?.categoryAffinities?.[a.category || ''] || 0;
-            const affB = userProfile?.categoryAffinities?.[b.category || ''] || 0;
-
-            const hriA = (collectiveWeight * (a.globalScore || 0)) + (personalWeight * affA);
-            const hriB = (collectiveWeight * (b.globalScore || 0)) + (personalWeight * affB);
-
-            if (hriA !== hriB) return hriB - hriA;
-
-            if (a.distance !== null && b.distance !== null) {
-              return a.distance - b.distance;
-            }
-
-            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-            return timeB - timeA;
-          });
-
-          if (sortedList.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
+        if (isCommunityCategory || isActiveCategory) {
+          const rawItems = (data?.flat() || []) as any[];
+          if (rawItems.length === 0 && !isValidating) return <EmptySearchState />;
+          
           return (
-            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-              {sortedList.map((item) => {
-                  const itemPlace: Place = {
-                    id: item.placeId || "unknown",
-                    name: item.placeName || (language === "de" ? "Unbekannter Ort" : "Unknown Place"),
-                    address: item.placeAddress || (language === "de" ? "Keine Adresse" : "No Address"),
-                    categories: item.categories || [],
-                    lat: item.lat || 0,
-                    lon: item.lon || 0,
-                    activityCount: 1,
-                    distance: item.distance ? item.distance * 1000 : undefined,
-                    openingHours: item.openingHours || null
-                  };
-
-                return (
-                  <div key={item.id} className="min-h-[280px] w-full">
-                    {isCommunityCategory ? (
-                      <ActivityListItem activity={item as any} user={user} onJoin={handleJoin} />
+            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 pb-24">
+              {rawItems.map((item: any) => (
+                <div key={`act-${item.id}`} className="min-h-[280px] w-full">
+                   {isCommunityCategory ? (
+                      <ActivityListItem activity={item} user={user} onJoin={handleJoin} />
                     ) : (
                       <PlaceCard
-                        place={itemPlace}
-                        onClick={() => handlePlaceSelect(itemPlace)}
-                        onAddActivity={() => handleOpenActivityModal(itemPlace)}
+                        place={item as any}
+                        onClick={() => handlePlaceSelect(item as any)}
+                        onAddActivity={() => handleOpenActivityModal(item as any)}
                       />
                     )}
-                  </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           );
         }
 
-        const filtered = places.filter(place => {
-          if (!debouncedSearchQuery) return true;
-          const name = place.name || "";
-          return name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-        });
-        const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : 0)));
-
-        const uniqueSorted = Array.from(new Map(sorted.map(place => [place.id, place])).values());
-
-        if (uniqueSorted.length === 0) {
-          if (isValidating) {
-            return (
-              <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-                <CardSkeleton />
-                <CardSkeleton />
-                <CardSkeleton />
-              </div>
-            );
-          }
-          if (!isFetchingNextPage) return <EmptySearchState />;
-        }
-
-        const paginatedSorted = uniqueSorted.slice(0, visibleCount);
+        if (places.length === 0 && !isValidating) return <EmptySearchState />;
 
         return (
           <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-            {paginatedSorted.map((place) => (
-              <div key={place.id} className="min-h-[280px] w-full">
+            {places.map((place) => (
+              <div key={`place-${place.id}`} className="min-h-[280px] w-full">
                 <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
               </div>
             ))}
@@ -631,7 +694,8 @@ export default function Home() {
               <CardSkeleton />
             </div>
           )}
-          {!isReachingEnd && !isLoadingInitialData && !debouncedSearchQuery && (
+          {/* OBSERVER BLOCKADE: Prevent infinite triggering on empty or error states */}
+          {!isReachingEnd && !isLoadingInitialData && !isValidating && places.length > 0 && !debouncedSearchQuery && !error && (
             <div ref={lastElementRef} className="h-1 w-full flex-shrink-0 bg-transparent" aria-hidden="true" />
           )}
         </div>
@@ -663,7 +727,7 @@ export default function Home() {
         {/* Background Blobs for Visual Depth */}
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
-         <header className="flex-none w-full border-none bg-transparent pt-6 pb-2 z-20">
+        <header className="flex-none w-full border-none bg-transparent pt-6 pb-2 z-20">
           <div className="flex flex-col gap-5 px-6 max-w-7xl mx-auto w-full">
             {/* Top Bar: Profile & System Actions */}
             <div className="flex items-center justify-between">
@@ -718,12 +782,12 @@ export default function Home() {
               <div className="relative group">
                 <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
                   <DropdownMenuTrigger asChild>
-                    <Button 
-                        variant="secondary"
-                        className="h-14 px-5 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-2"
+                    <Button
+                      variant="secondary"
+                      className="h-14 px-5 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-2"
                     >
-                        {maxDistance || 10} km
-                        <ChevronDown className={cn("h-4 w-4 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} />
+                      {maxDistance || 10} km
+                      <ChevronDown className={cn("h-4 w-4 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
@@ -732,17 +796,17 @@ export default function Home() {
                         <span className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Radius' : 'Radius'}</span>
                         <span className="text-sm font-black">{maxDistance} km</span>
                       </div>
-                      <input 
-                        type="range" 
-                        min="1" 
-                        max="100" 
-                        value={maxDistance || 10} 
+                      <input
+                        type="range"
+                        min="1"
+                        max="100"
+                        value={maxDistance || 10}
                         onChange={(e) => setMaxDistance(parseInt(e.target.value))}
                         className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                       />
                       <div className="grid grid-cols-4 gap-2">
                         {[5, 10, 25, 50].map((r) => (
-                          <button 
+                          <button
                             key={r}
                             onClick={() => setMaxDistance(r)}
                             className={cn(
@@ -763,7 +827,7 @@ export default function Home() {
         </header>
 
         <div className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden scroll-smooth'}`}>
-            <div className="max-w-7xl mx-auto w-full">{renderContent()}</div>
+          <div className="max-w-7xl mx-auto w-full">{renderContent()}</div>
         </div>
       </div>
 
@@ -788,9 +852,9 @@ export default function Home() {
             </SheetHeader>
             <div className="h-full w-full">
               {selectedPlace && (
-                <PlaceDetails 
-                  place={selectedPlace} 
-                  onClose={handleDialogClose} 
+                <PlaceDetails
+                  place={selectedPlace}
+                  onClose={handleDialogClose}
                   onCreateActivity={() => setActivityModalPlace(selectedPlace)}
                 />
               )}
@@ -803,9 +867,9 @@ export default function Home() {
             <DialogTitle className="sr-only">{selectedPlace?.name || (language === 'de' ? 'Ort Details' : 'Place Details')}</DialogTitle>
             <DialogDescription className="sr-only">{language === 'de' ? 'Details zum ausgewählten Ort' : 'Details about the selected place'}</DialogDescription>
             {selectedPlace && (
-              <PlaceDetails 
-                place={selectedPlace} 
-                onClose={handleDialogClose} 
+              <PlaceDetails
+                place={selectedPlace}
+                onClose={handleDialogClose}
                 onCreateActivity={() => setActivityModalPlace(selectedPlace)}
               />
             )}
@@ -814,11 +878,11 @@ export default function Home() {
       )}
 
       <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
-      <SpotActionSheet 
-        place={actionSheetPlace} 
-        open={!!actionSheetPlace} 
-        onOpenChange={(open) => !open && setActionSheetPlace(null)} 
-        onCreateNew={(place) => setActivityModalPlace(place)} 
+      <SpotActionSheet
+        place={actionSheetPlace}
+        open={!!actionSheetPlace}
+        onOpenChange={(open) => !open && setActionSheetPlace(null)}
+        onCreateNew={(place) => setActivityModalPlace(place)}
       />
       <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
 
@@ -831,7 +895,7 @@ export default function Home() {
             </div>
             <DialogTitle className="text-2xl font-black text-center">{language === 'de' ? 'Premium-Funktion' : 'Premium Feature'}</DialogTitle>
             <DialogDescription className="text-center text-base font-medium px-2 pt-2">
-              {language === 'de' 
+              {language === 'de'
                 ? 'Die interaktive Kartenansicht ist ein exklusives Feature für Premium-Mitglieder. Schalte Premium frei, um alle Orte in deiner Umgebung visuell zu entdecken.'
                 : 'The interactive map view is an exclusive feature for premium members. Unlock Premium to visually explore all places in your area.'}
             </DialogDescription>

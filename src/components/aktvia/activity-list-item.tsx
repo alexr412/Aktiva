@@ -137,12 +137,18 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
           )}
         >
             {activity.isBoosted && (
-              <div className="absolute -top-3 left-6 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg animate-in fade-in slide-in-from-top-1 flex items-center gap-1.5">
+              <div className="absolute -top-3 left-6 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg animate-in fade-in slide-in-from-top-1 flex items-center gap-1.5 z-10">
                 <Flame className="h-3 w-3 animate-pulse" />
                 <span>{language === 'de' ? 'Highlight' : 'Highlight'}</span>
-
               </div>
             )}
+
+            <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+                <div className="bg-primary/10 text-primary text-[11px] font-black px-3 py-1 rounded-xl border border-primary/20 shadow-sm flex items-center gap-1">
+                    <ArrowUp className="h-3 w-3" />
+                    {activity.communityScore || 0}
+                </div>
+            </div>
 
             {isOwnActivity && activity.isBoosted && (
               <Button 

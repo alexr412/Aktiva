@@ -4,22 +4,23 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import type { Place } from '@/lib/types';
 import {
-  Plus,
-  Navigation,
-  Bookmark,
-  Users,
-  Loader2,
-  MapPin,
-  ArrowUp,
-  ArrowDown,
-  Star,
-  Clock,
-  Sparkles,
+    Plus,
+    Navigation,
+    Bookmark,
+    Users,
+    Loader2,
+    MapPin,
+    ArrowUp,
+    ArrowDown,
+    Star,
+    Clock,
+    Sparkles,
 } from 'lucide-react';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/use-auth';
+import { format, isToday, isTomorrow } from 'date-fns';
 import { useLanguage } from '@/hooks/use-language';
+import { useAuth } from '@/hooks/use-auth';
 import { votePlace } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -35,9 +36,9 @@ const formatDistance = (distanceInMeters?: number) => {
 };
 
 type PlaceCardProps = {
-  place: Place;
-  onClick: () => void;
-  onAddActivity: (place: Place) => void;
+    place: Place;
+    onClick: () => void;
+    onAddActivity: (place: Place) => void;
 };
 
 export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
@@ -47,14 +48,14 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const language = useLanguage();
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
-    
+
     const primaryStyle = getPrimaryIconData(place, language);
     const PrimaryIcon = primaryStyle.icon;
-    
+
     const [isVoting, setIsVoting] = useState(false);
-    const [placeMeta, setPlaceMeta] = useState({ 
-        upvotes: 0, 
-        downvotes: 0, 
+    const [placeMeta, setPlaceMeta] = useState({
+        upvotes: 0,
+        downvotes: 0,
         communityScore: 0,
         userVotes: {} as Record<string, 'up' | 'down'>,
         avgRating: 0,
@@ -88,7 +89,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         if (!user || isVoting) return;
         setIsVoting(true);
         try {
-            await votePlace(place.id, user.uid, type, userProfile?.role);
+            await votePlace(place.id, user.uid, type, userProfile?.role, place);
         } catch (error) {
             console.error("Voting failed:", error);
         } finally {
@@ -97,7 +98,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     };
 
     const handleBookmarkToggle = (e: React.MouseEvent) => {
-        e.stopPropagation(); 
+        e.stopPropagation();
         if (isFavorite) {
             removeFavorite(place.id);
         } else {
@@ -108,140 +109,149 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const categories = (place.categories || []);
     const processedTags = formatTags(categories, language);
 
-  return (
-    <Card
-      onClick={onClick}
-      className={cn(
-        "cursor-pointer group overflow-hidden rounded-[2.5rem] bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 flex flex-col relative p-0 h-full dark:shadow-none"
-      )}
-    >
-      {/* Oberer Bild/Icon-Bereich */}
-      <div className={cn(
-        "w-full h-36 flex items-center justify-center relative transition-transform duration-700 group-hover:scale-105 overflow-hidden",
-        primaryStyle.bgClass.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-400 to-').concat(primaryStyle.color === '#ef4444' ? 'red-500' : 'blue-500')
-      )}
-      style={{ backgroundColor: primaryStyle.color + '20' }}
-      >
-        {/* Dekorative Icons im Hintergrund */}
-        <PrimaryIcon className="absolute -bottom-4 -right-4 h-24 w-24 text-white/10 rotate-12" />
-        
-        {/* Haupt-Icon */}
-        <PrimaryIcon className="text-white h-16 w-16 drop-shadow-2xl relative z-10" />
-        
-        {/* Status Badges */}
-        <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
-            {(placeMeta.activityCount > 0 || (place.activityCount !== undefined && place.activityCount > 0)) && (
-                <div className="bg-emerald-500/90 backdrop-blur-md text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-full shadow-lg animate-pulse tracking-widest">
-                    {language === 'de' ? 'Aktiv' : 'Active'}
-                </div>
+    return (
+        <Card
+            onClick={onClick}
+            className={cn(
+                "cursor-pointer group overflow-hidden rounded-[2.5rem] bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 flex flex-col relative p-0 h-full dark:shadow-none"
             )}
-        </div>
+        >
+            {/* Oberer Bild/Icon-Bereich */}
+            <div className={cn(
+                "w-full h-36 flex items-center justify-center relative transition-transform duration-700 group-hover:scale-105 overflow-hidden",
+                primaryStyle.bgClass.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-400 to-').concat(primaryStyle.color === '#ef4444' ? 'red-500' : 'blue-500')
+            )}
+                style={{ backgroundColor: primaryStyle.color + '20' }}
+            >
+                {/* Dekorative Icons im Hintergrund */}
+                <PrimaryIcon className="absolute -bottom-4 -right-4 h-24 w-24 text-white/10 rotate-12" />
 
-        {/* Status & Debug Badges */}
-        <div className="absolute top-4 right-4 flex items-center gap-2">
-            {userProfile?.role === 'admin' && place.relevanceScore !== undefined && (
-                <div className="bg-amber-500/90 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" />
-                    {place.relevanceScore.toFixed(1)}
-                </div>
-            )}
-            {place.distance !== undefined && (
-                <div className="bg-black/20 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap">
-                    {formatDistance(place.distance)}
-                </div>
-            )}
-        </div>
-      </div>
+                {/* Haupt-Icon */}
+                <PrimaryIcon className="text-white h-16 w-16 drop-shadow-2xl relative z-10" />
 
-      {/* Content Bereich */}
-      <div className="p-5 pb-7 flex flex-col flex-1">
-        <div className="mb-4">
-          <h3 className="text-lg font-black text-[#0f172a] dark:text-neutral-100 line-clamp-1 leading-tight mb-1 font-heading">
-            {place.name}
-          </h3>
-          <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[11px]">
-             {place.openingHours ? (
-                 <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
-             ) : (
-                 <span className="truncate">{(place.address || (language === 'de' ? 'Keine Adresse' : 'No address')).split(',').slice(0, 2).join(', ')}</span>
-             )}
-          </div>
-        </div>
-        
-        <div className="flex flex-wrap gap-1.5 mb-6">
-            {processedTags.map((tag, index) => (
-                <Badge 
-                    key={index} 
-                    variant="secondary" 
-                    className="rounded-full text-[9px] font-black uppercase tracking-widest px-3 py-1 bg-primary/5 text-primary border-none"
-                >
-                    {tag}
-                </Badge>
-            ))}
-            {userProfile?.role === 'admin' && (
-                (place.categories || []).map((tag: string, idx: number) => (
-                    <span 
-                      key={`${tag}-${idx}`} 
-                      className="px-2 py-0.5 text-[8px] font-mono bg-neutral-50 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 rounded border border-neutral-100 dark:border-neutral-800 whitespace-nowrap"
-                    >
-                      {tag}
-                    </span>
-                ))
-            )}
-        </div>
+                {/* Status Badges */}
+                <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
+                    {(placeMeta.activityCount > 0 || (place.activityCount !== undefined && place.activityCount > 0)) && (
+                        <div className="bg-emerald-500/90 backdrop-blur-md text-white text-[9px] font-black uppercase px-2.5 py-1.5 rounded-full shadow-lg animate-pulse tracking-widest flex items-center gap-1.5 border border-white/20">
+                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                            {(() => {
+                                const activityDate = place.activityDate?.toDate?.() || null;
+                                if (!activityDate) return language === 'de' ? 'Aktiv' : 'Active';
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-between mt-auto pr-12 relative">
-            <div className="flex items-center bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-1 gap-1">
-                <button 
-                onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
-                className={cn(
-                    "h-8 w-8 rounded-xl flex items-center justify-center transition-all",
-                    userVote === 'up' ? "bg-white text-emerald-500 shadow-sm" : "text-emerald-500/30 hover:text-emerald-500"
-                )}
-                >
-                <ArrowUp className="h-4 w-4" />
-                </button>
-                
-                {userProfile?.role === 'admin' && (
-                    <span className="text-xs font-black min-w-[20px] text-center text-neutral-600 dark:text-neutral-300">
-                      {Math.round(placeMeta.communityScore || 0)}
-                    </span>
-                )}
-                
-                <button 
-                onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
-                className={cn(
-                    "h-8 w-8 rounded-xl flex items-center justify-center transition-all",
-                    userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-red-500/30 hover:text-red-500"
-                )}
-                >
-                <ArrowDown className="h-4 w-4" />
-                </button>
+                                const timeStr = format(activityDate, 'HH:mm');
+                                if (isToday(activityDate)) return `${language === 'de' ? 'Heute' : 'Today'} ${timeStr}`;
+                                if (isTomorrow(activityDate)) return `${language === 'de' ? 'Morgen' : 'Tomorrow'} ${timeStr}`;
+                                return format(activityDate, 'dd.MM. HH:mm');
+                            })()}
+                        </div>
+                    )}
+                </div>
+
+                {/* Status & Debug Badges */}
+                <div className="absolute top-4 right-4 flex items-center gap-2">
+                    {userProfile?.role === 'admin' && place.relevanceScore !== undefined && (
+                        <div className="bg-amber-400 text-white text-[11px] font-black px-3 py-1.5 rounded-2xl shadow-lg flex items-center gap-1.5 border border-white/20">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            {place.relevanceScore.toFixed(1)}
+                        </div>
+                    )}
+                    {place.distance !== undefined && (
+                        <div className="bg-black/20 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap">
+                            {formatDistance(place.distance)}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={handleBookmarkToggle}
-                className={cn(
-                    "h-11 w-11 rounded-2xl transition-all",
-                    isFavorite ? "text-primary bg-primary/10" : "text-neutral-300 hover:text-primary hover:bg-primary/5"
-                )}
-            >
-                <Bookmark className={cn("h-6 w-6", isFavorite && "fill-primary")} />
-            </Button>
+            {/* Content Bereich */}
+            <div className="p-5 pb-7 flex flex-col flex-1">
+                <div className="mb-4">
+                    <h3 className="text-lg font-black text-[#0f172a] dark:text-neutral-100 line-clamp-1 leading-tight mb-1 font-heading">
+                        {place.name || (userProfile?.role === 'admin' ? `POI Ref: ${place.id.slice(-6)}` : (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'))}
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[11px]">
+                        {place.openingHours ? (
+                            <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
+                        ) : (
+                            <span className="truncate">{(place.address || (language === 'de' ? 'Adresse steht noch aus...' : 'Address pending sync...')).split(',').slice(0, 2).join(', ')}</span>
+                        )}
+                    </div>
+                </div>
 
-            {/* Floating Plus Button */}
-            <Button 
-                size="icon" 
-                onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
-                className="absolute -bottom-1 -right-1 h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/30 transition-all active:scale-95 z-30 flex items-center justify-center"
-            >
-                <Plus className="h-5 w-5" strokeWidth={3} />
-            </Button>
-        </div>
-      </div>
-    </Card>
-  );
+                <div className="flex flex-wrap gap-1.5 mb-6">
+                    {processedTags.map((tag, index) => (
+                        <Badge
+                            key={index}
+                            variant="secondary"
+                            className="rounded-full text-[9px] font-black uppercase tracking-widest px-3 py-1 bg-primary/5 text-primary border-none"
+                        >
+                            {tag}
+                        </Badge>
+                    ))}
+                    {userProfile?.role === 'admin' && (
+                        (place.categories || []).map((tag: string, idx: number) => (
+                            <span
+                                key={`${tag}-${idx}`}
+                                className="px-2 py-0.5 text-[8px] font-mono bg-neutral-50 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 rounded border border-neutral-100 dark:border-neutral-800 whitespace-nowrap"
+                            >
+                                {tag}
+                            </span>
+                        ))
+                    )}
+                </div>
+
+                {/* Footer Actions */}
+                <div className="flex items-center justify-between mt-auto pr-12 relative">
+                    <div className="flex items-center bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-1 gap-1">
+                        <button
+                            onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
+                            className={cn(
+                                "h-8 w-8 rounded-xl flex items-center justify-center transition-all",
+                                userVote === 'up' ? "bg-white text-emerald-500 shadow-sm" : "text-emerald-500/30 hover:text-emerald-500"
+                            )}
+                        >
+                            <ArrowUp className="h-4 w-4" />
+                        </button>
+
+                        {userProfile?.role === 'admin' && (
+                            <span className="text-xs font-black min-w-[20px] text-center text-neutral-600 dark:text-neutral-300">
+                                {Math.round(placeMeta.communityScore || 0)}
+                            </span>
+                        )}
+
+                        <button
+                            onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
+                            className={cn(
+                                "h-8 w-8 rounded-xl flex items-center justify-center transition-all",
+                                userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-red-500/30 hover:text-red-500"
+                            )}
+                        >
+                            <ArrowDown className="h-4 w-4" />
+                        </button>
+                    </div>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleBookmarkToggle}
+                        className={cn(
+                            "h-11 w-11 rounded-2xl transition-all",
+                            isFavorite ? "text-primary bg-primary/10" : "text-neutral-300 hover:text-primary hover:bg-primary/5"
+                        )}
+                    >
+                        <Bookmark className={cn("h-6 w-6", isFavorite && "fill-primary")} />
+                    </Button>
+
+                    {/* Floating Plus Button */}
+                    <Button
+                        size="icon"
+                        onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
+                        className="absolute -bottom-1 -right-1 h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/30 transition-all active:scale-95 z-30 flex items-center justify-center"
+                    >
+                        <Plus className="h-5 w-5" strokeWidth={3} />
+                    </Button>
+                </div>
+            </div>
+        </Card>
+    );
 }

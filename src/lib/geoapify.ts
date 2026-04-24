@@ -2,6 +2,7 @@
 
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import type { Place, GeoapifyFeature, UserPreferences } from '@/lib/types';
+import { calculateRelevanceScore } from '@/lib/ranking';
 
 /**
  * Stufe 0A: Absoluter Abbruch (Hard Veto)
@@ -601,8 +602,10 @@ export const applyFilters = (
     // --- STUFE 1: POSITIV-PRÜFUNG (UI-KATEGORIE EINSCHLUSS) ---
     // Bypass: Im Globalen Suchmodus (Null-State) oder wenn kein Tab gewählt ist, passiert ALLES diese Stufe.
     const passesCategoryFilter = isGlobalSearch || activeCategories.length === 0 ||
-      allTags.some(tag => activeCategories.includes(tag) ||
-        activeCategories.some(cat => tag.startsWith(cat + '.')));
+      allTags.some(tag =>
+        activeCategories.includes(tag) ||
+        activeCategories.some(cat => tag.startsWith(cat + '.') || cat.startsWith(tag + '.'))
+      );
 
     if (!passesCategoryFilter) return false;
 
@@ -632,29 +635,8 @@ export const applyFilters = (
   });
 };
 
-export const calculateRelevanceScore = (itemTags: string[], distanceInMeters: number, prefs: UserPreferences): number => {
-  let score = 500;
+// Die Punkte-Berechnung erfolgt nun zentral via calculateRelevanceScore aus der ranking.ts
 
-  if (itemTags.includes('education.library')) score += 5000;
-
-  const matchingCount = prefs.likedTags.reduce((count, liked) => {
-    const isMatch = itemTags.some(tag => tag === liked || tag.startsWith(`${liked}.`));
-    return isMatch ? count + 1 : count;
-  }, 0);
-
-  if (matchingCount > 0) {
-    score += (matchingCount * 2500);
-  }
-
-  // Deterministic Soft Veto Penalty
-  const vetoStatus = getPlaceVetoStatus(itemTags, BASE_SOFT_VETO, BASE_HARD_VETO, BASE_WHITELIST);
-  if (vetoStatus === "soft") score -= 300;
-
-  const distancePenalty = (distanceInMeters / 25);
-  score -= distancePenalty;
-
-  return Math.round(Math.max(0, score));
-};
 
 export async function fetchNearbyPlaces(
   lat: number,
@@ -667,7 +649,7 @@ export async function fetchNearbyPlaces(
   // Synchronisierung: Wir fügen 'building' und 'education' zur API-Anfrage hinzu,
   // da wir diese in der BASE_WHITELIST erlauben (z.B. für das Klimahaus).
   let targetCategories: string[] = categories.length === 0 || categories.includes('all')
-    ? ["tourism", "entertainment", "heritage", "building", "education", "adult.nightclub", "catering", "religion", "leisure"]
+    ? ["tourism", "entertainment", "heritage", "building", "education", "adult.nightclub", "catering", "religion", "leisure", "sport"]
     : categories.slice(0, 10);
   const fetchUrl = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
@@ -690,20 +672,78 @@ export async function fetchNearbyPlaces(
         const parsedRating = parseFloat(props.datasource.raw.rating);
         if (!isNaN(parsedRating)) rating = Math.max(0, Math.min(5, parsedRating));
       }
+      const categories = Array.isArray(props.categories) ? props.categories : [props.categories];
       return {
         id: props.place_id,
         name: props.name || props.address_line1,
         address: props.address_line2,
-        categories: Array.isArray(props.categories) ? props.categories : [props.categories],
+        categories: categories,
         lat: props.lat,
         lon: props.lon,
         rating: rating,
         distance: props.distance,
-        openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null
+        openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null,
+        relevanceScore: calculateRelevanceScore(categories)
       } as Place;
     });
   } catch (error) {
     console.error('Fetch error:', error);
+    return [];
+  }
+}
+
+export async function searchTextPlaces(text: string, lat: number, lon: number): Promise<Place[]> {
+  // Wir nutzen die Geocoding API für die Namenssuche, da diese toleranter gegenüber Schreibweisen ist
+  const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(text)}&filter=circle:${lon},${lat},50000&bias=proximity:${lon},${lat}&format=json&apiKey=${GEOAPIFY_API_KEY}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return [];
+    const data = await response.json();
+
+    if (!data.results) return [];
+
+    // Wir holen uns für die Top-Ergebnisse die Place-Details, um die vollständigen Kategorien für das Ranking zu haben
+    const placesWithDetails = await Promise.all(data.results.slice(0, 10).map(async (item: any) => {
+      const categories = Array.isArray(item.categories) ? item.categories : (item.category ? [item.category] : []);
+      const placeId = item.place_id;
+
+      if (placeId) {
+        try {
+          const detailsUrl = `https://api.geoapify.com/v2/place-details?id=${placeId}&apiKey=${GEOAPIFY_API_KEY}`;
+          const detailsRes = await fetch(detailsUrl);
+          if (detailsRes.ok) {
+            const detailsData = await detailsRes.json();
+            const detailedCategories = detailsData.features?.[0]?.properties?.categories || categories;
+            return {
+              id: placeId,
+              name: item.name || item.formatted,
+              address: item.formatted,
+              categories: detailedCategories,
+              lat: item.lat,
+              lon: item.lon,
+              distance: item.distance || 0,
+              relevanceScore: calculateRelevanceScore(detailedCategories)
+            } as Place;
+          }
+        } catch (e) { }
+      }
+
+      return {
+        id: placeId || Math.random().toString(),
+        name: item.name || item.formatted,
+        address: item.formatted,
+        categories: categories,
+        lat: item.lat,
+        lon: item.lon,
+        distance: item.distance || 0,
+        relevanceScore: calculateRelevanceScore(categories)
+      } as Place;
+    }));
+
+    return placesWithDetails;
+  } catch (error) {
+    console.error("Text search failed:", error);
     return [];
   }
 }
@@ -789,7 +829,8 @@ export async function fetchUnfilteredPlaceInfo(searchQuery: string) {
         address: item.formatted,
         rawCategories: extracted,
         // Führt die Logik isoliert aus, um das blockierende Tag zu diagnostizieren
-        simulatedVetoStatus: getPlaceVetoStatus(extracted, BASE_SOFT_VETO, BASE_HARD_VETO, BASE_WHITELIST)
+        simulatedVetoStatus: getPlaceVetoStatus(extracted, BASE_SOFT_VETO, BASE_HARD_VETO, BASE_WHITELIST),
+        relevanceScore: calculateRelevanceScore(extracted)
       };
     });
   } catch (error) {

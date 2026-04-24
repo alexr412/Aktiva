@@ -353,7 +353,7 @@ export async function castActivityVote(activityId: string, userId: string, type:
 /**
  * MODUL 18: The Balance Engine Core logic for Places.
  */
-export async function votePlace(placeId: string, userId: string, type: 'up' | 'down' | 'superboost' | 'none', userRole?: string): Promise<number> {
+export async function votePlace(placeId: string, userId: string, type: 'up' | 'down' | 'superboost' | 'none', userRole?: string, placeData?: Partial<Place>): Promise<number> {
   if (!db) throw new Error('Firestore is not initialized.');
   const placeRef = doc(db, 'places', placeId);
 
@@ -429,10 +429,32 @@ export async function votePlace(placeId: string, userId: string, type: 'up' | 'd
       } else {
         updates[`userVotes.${userId}`] = type;
       }
+      
+      // Update metadata if provided (Snapshotting)
+      if (placeData) {
+        if (placeData.name) updates.name = placeData.name;
+        if (placeData.address) updates.address = placeData.address;
+        if (placeData.categories) updates.categories = placeData.categories;
+        if (placeData.lat) updates.lat = placeData.lat;
+        if (placeData.lon) updates.lon = placeData.lon;
+        if (placeData.openingHours) updates.openingHours = placeData.openingHours;
+      }
+
       transaction.update(placeRef, updates);
     } else {
       if (type !== 'none') {
         updates.userVotes = { [userId]: type };
+        
+        // Initial Metadata Snapshot
+        if (placeData) {
+           updates.name = placeData.name || "";
+           updates.address = placeData.address || "";
+           updates.categories = placeData.categories || [];
+           updates.lat = placeData.lat || 0;
+           updates.lon = placeData.lon || 0;
+           updates.openingHours = placeData.openingHours || null;
+        }
+
         transaction.set(placeRef, updates);
       }
     }
@@ -796,7 +818,7 @@ export async function deleteActivity(activityId: string): Promise<void> {
   batch.delete(activityRef);
 
   // Orts-Anker deinkrementieren falls vorhanden
-  if (activityData.placeId && activityData.placeId !== 'custom' && (activityData.status === 'active' || activityData.status === 'open')) {
+  if (activityData.placeId && activityData.placeId !== 'custom') {
     const placeRef = doc(db, 'places', activityData.placeId);
     batch.set(placeRef, { 
       activityCount: increment(-1) 
@@ -1007,8 +1029,8 @@ export const cancelActivity = async (activityId: string, hostId: string): Promis
   const batch = writeBatch(db);
   batch.update(activityRef, { status: 'cancelled', updatedAt: serverTimestamp() });
 
-  // Orts-Anker deinkrementieren falls die Aktivität noch aktiv war
-  if (activity.placeId && activity.placeId !== 'custom' && (activity.status === 'active' || activity.status === 'open')) {
+  // Orts-Anker deinkrementieren
+  if (activity.placeId && activity.placeId !== 'custom') {
     const placeRef = doc(db, 'places', activity.placeId);
     batch.set(placeRef, { activityCount: increment(-1) }, { merge: true });
   }

@@ -156,9 +156,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
 
                 {/* Overlapping Badges */}
                 <div className="absolute bottom-5 sm:bottom-6 left-5 sm:left-6 flex items-center gap-2 z-20">
-                    <div className="bg-[#facc15] text-[#854d0e] px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-1.5 border border-[#fef08a]/50">
-                        <Star className="w-3 h-3 fill-current" /> {language === 'de' ? 'NEU' : 'NEW'}
-                    </div>
+
                     <div className="bg-white/90 backdrop-blur-md text-neutral-800 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border border-white/30">
                         {processedTags[0] || (language === 'de' ? 'Entdecken' : 'Discover')}
                     </div>
@@ -206,7 +204,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                             <div className="flex items-center gap-1.5">
                                 <Star className="w-4 h-4 text-[#f59e0b] fill-[#f59e0b]" />
                                 <span className="text-[18px] font-black text-[#854d0e] dark:text-amber-400">
-                                    {placeMeta.avgRating > 0 ? placeMeta.avgRating.toFixed(1) : (language === 'de' ? 'NEU' : 'NEW')}
+                                {placeMeta.avgRating > 0 ? placeMeta.avgRating.toFixed(1) : '---'}
                                 </span>
                             </div>
                             <span className="text-[11px] font-bold text-amber-900/40 dark:text-amber-400/50">Community</span>
@@ -275,7 +273,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                      <h4 className="font-black text-[15px] truncate text-[#0f172a] dark:text-neutral-100 leading-tight">
                                                         {activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}
                                                     </h4>
-                                                    <div className="bg-[#fff7ed] text-[#ea580c] px-1.5 py-0 rounded-sm text-[7px] font-black uppercase tracking-wider">{language === 'de' ? 'NEU' : 'NEW'}</div>
+
                                                 </div>
                                                 <div className="flex items-center gap-1.5 flex-wrap">
                                                     <div className="flex -space-x-1.5">
