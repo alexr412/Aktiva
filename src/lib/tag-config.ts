@@ -12,6 +12,7 @@ import {
   Drumstick,
   Gamepad2,
   Droplets,
+  LandPlot,
   type LucideIcon
 } from 'lucide-react';
 
@@ -61,6 +62,10 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   }
   if (name.includes('see')) {
     return { icon: Waves, color: '#0ea5e9', label: language === 'de' ? 'Gewässer' : 'Water body', bgClass: 'bg-sky-50' };
+  }
+
+  if (tags.includes('entertainment.miniature_golf') || name.includes('minigolf')) {
+    return { icon: LandPlot, color: '#22c55e', label: language === 'de' ? 'Minigolf' : 'Mini Golf', bgClass: 'bg-green-50' };
   }
 
   // --- PRIORITÄT 2: Kunst, Kultur & Theater ---
