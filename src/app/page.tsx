@@ -11,12 +11,12 @@ import { SpotActionSheet } from '@/components/aktvia/spot-action-sheet';
 import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
+import { 
+  DropdownMenu, 
+  DropdownMenuTrigger, 
   DropdownMenuContent,
 } from '@/components/ui/dropdown-menu';
-import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, Users } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -34,7 +34,7 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING, applyFilters, searchTextPlaces } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, applyFilters } from '@/lib/geoapify';
 import { calculateRelevance } from '@/lib/ranking';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
@@ -76,9 +76,8 @@ const ACTIVITY_CATEGORIES: (ActivityCategory | 'Alle')[] = ['Alle', 'Sport', 'Te
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) {
-    const error = new Error(`Geoapify API error: ${res.status} URL: ${url}`);
+    const error = new Error(`Geoapify API error: ${res.status}`);
     (error as any).status = res.status;
-    (error as any).url = url;
     throw error;
   }
   return res.json();
@@ -110,11 +109,13 @@ export default function Home() {
   const [activityCategoryFilter, setActivityCategoryFilter] = useState<ActivityCategory | 'Alle' | 'All'>(language === 'de' ? 'Alle' : 'All');
   const [visibleCount, setVisibleCount] = useState(25);
   const [actionSheetPlace, setActionSheetPlace] = useState<Place | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [shouldFilterByName, setShouldFilterByName] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 500);
+    }, 750); // Live-Search Debounce (requested 500-800ms)
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
@@ -148,63 +149,69 @@ export default function Home() {
   const isCommunityCategory = activeTabId === "Community";
   const isFavoritesCategory = activeTabId === "Favorites";
   const isHighlightsCategory = activeTabId === "Highlights";
-  const isActiveCategory = activeTabId === "Active";
+  const isAktivCategory = activeTabId === "Active";
 
   // MULTI-SOURCE FETCHER (Geoapify vs Firestore)
   const multiFetcher = async (key: any) => {
     if (!key) return null;
-    const { type, pageIndex } = key;
-    
-    console.log(`🚀 [Discovery] Fetching ${type} (Page: ${pageIndex})`, key);
-
-    // FAIL-SAFE: 8s Timeout via AbortController
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const { type, cursorValue } = key;
 
     try {
-      if (type === 'search') {
-        const { query, lat, lon } = key;
-        return searchTextPlaces(query, lat, lon);
+      if (type === 'geoapify') {
+        const { url } = key;
+        const result = await fetcher(url);
+        return result;
       }
 
-      if (type === 'geoapify') {
-        const { urls, url: singleUrl } = key;
-        const disablePenalty = key.disablePenalty || false;
-        
-        const fetchWithTimeout = async (u: string) => {
-          const response = await fetch(u, { signal: controller.signal });
-          if (!response.ok) throw new Error(`API Error: ${response.status}`);
-          return response.json();
-        };
+      if (type === 'geocoding') {
+        const { url } = key;
+        const result = await fetcher(url);
+        const results = result.results || [];
 
-        if (Array.isArray(urls)) {
-          const settles = await Promise.allSettled(urls.map(u => fetchWithTimeout(u)));
-          clearTimeout(timeoutId);
-
-          const successfulData = settles
-            .filter((s): s is PromiseFulfilledResult<any> => s.status === 'fulfilled')
-            .flatMap((s, idx) => {
-              const features = s.value.features || [];
-              console.log(`📡 [Stream ${idx}] Returned ${features.length} items from URL: ${urls[idx].substring(0, 80)}...`);
-              return features.map((f: any) => ({ ...f, disablePenalty, streamSource: idx }));
-            });
-            
-          console.log(`📥 [Discovery] API Response: ${successfulData.length} items total.`);
-          return successfulData;
-        }
+        // Enrichment: Geocoding V1 lacks detailed categories. We fetch them for the top 20 results
+        // to ensure correct icons, filtering and ranking.
+        const detailedFeatures = await Promise.all(results.slice(0, 20).map(async (item: any) => {
+          let categories = item.categories || [];
+          if (item.place_id) {
+            try {
+              const detailsUrl = `https://api.geoapify.com/v2/place-details?id=${item.place_id}&apiKey=${GEOAPIFY_API_KEY}`;
+              const dRes = await fetch(detailsUrl);
+              if (dRes.ok) {
+                const dData = await dRes.json();
+                categories = dData.features?.[0]?.properties?.categories || categories;
+              }
+            } catch (e) {
+              console.error("Detail enrichment failed for:", item.place_id, e);
+            }
+          }
+          // Normalize to GeoJSON-like structure for compatibility with places memo
+          return {
+            properties: {
+              ...item,
+              categories
+            }
+          };
+        }));
         
-        const result = await fetchWithTimeout(singleUrl || key.url);
-        clearTimeout(timeoutId);
-        const features = (result.features || []).map((f: any) => ({ ...f, disablePenalty }));
-        console.log(`📥 [Discovery] Single Stream Success: ${features.length} items.`);
-        return features;
+        return { features: detailedFeatures };
       }
 
       if (type === 'activities') {
-        const q = query(collection(db!, 'activities'), limit(250));
+        const queryLimit = key.pageIndex === 0 ? 150 : 10;
+        const constraints: any[] = [
+          limit(queryLimit * 5)
+        ];
+
+        const q = query(collection(db!, 'activities'), ...constraints);
         const snap = await getDocs(q);
-        clearTimeout(timeoutId);
-        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() as Activity }));
+        const allFetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        const isCommunity = key.subType === 'community';
+        const filtered = allFetched.filter((act: any) =>
+          isCommunity ? act.isCustomActivity === true : act.isCustomActivity !== true
+        );
+
+        return filtered.slice(0, PLACES_PER_PAGE);
       }
 
       if (type === 'highlights') {
@@ -217,104 +224,76 @@ export default function Home() {
         if (cursorValue !== null) constraints.push(startAfter(cursorValue));
         const q = query(collection(db!, 'places'), ...constraints);
         const snap = await getDocs(q);
-        clearTimeout(timeoutId);
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       }
     } catch (error: any) {
-      clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
-        const timeoutErr = new Error('Timeout');
-        (timeoutErr as any).isTimeout = true;
-        throw timeoutErr;
-      }
+      console.error("🔥 FIRESTORE QUERY ERROR:", error.message, "Key:", key);
       throw error;
     }
 
     return null;
   };
 
-  // Hard cap: Geoapify rejects offset values that are too high (400 Bad Request).
-  // limit=500 is the documented max; we keep offset + limit <= 500 to stay safe.
   const GEOAPIFY_MAX_OFFSET = 500;
 
   const getKey = (pageIndex: number, previousPageData: any) => {
-    if (previousPageData && !previousPageData.length) return null;
-    if (!userLocation) return null;
+    if (isFavoritesCategory) return null;
+    if (previousPageData && (
+      (previousPageData.features && previousPageData.features.length === 0) ||
+      (Array.isArray(previousPageData) && previousPageData.length === 0)
+    )) return null;
 
-    // 1. HIGHLIGHTS (Spots mit hoher Upvote-Rate aus Firestore)
+    if (isCommunityCategory || isAktivCategory) {
+      const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.createdAt;
+      return { type: 'activities', subType: isCommunityCategory ? 'community' : 'location', cursorValue: cursor, pageIndex };
+    }
+
     if (isHighlightsCategory) {
       const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.upvotes;
       return { type: 'highlights', cursorValue: cursor, pageIndex };
     }
 
-    // 2. COMMUNITY / ACTIVE (Aktivitäten aus Firestore)
-    if (isCommunityCategory || isActiveCategory) {
-      const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.createdAt;
-      return { type: 'activities', subType: isCommunityCategory ? 'community' : 'location', cursorValue: cursor, pageIndex };
+    if (!userLocation) return null;
+
+    const radiusMeters = maxDistance ? maxDistance * 1000 : 100000;
+    const queryLimit = pageIndex === 0 ? 300 : 50;
+    const offset = pageIndex === 0 ? 0 : 300 + (pageIndex - 1) * 50;
+
+    // CRITICAL: Pause fetching while the LLM is determining the intent/categories.
+    // This prevents "Endless fetches of default categories" while the search is starting.
+    if (debouncedSearchQuery && activeCategory.length === 0 && isSearching) {
+      return null;
     }
 
-    // --- GEOAPIFY LOGIK ---
-    const radiusMeters = Math.min(50000, maxDistance ? maxDistance * 1000 : 50000);
-    const pOffset = pageIndex === 0 ? 0 : 100 + (pageIndex - 1) * 100;
-    const cOffset = pageIndex === 0 ? 0 : 50 + (pageIndex - 1) * 50;
-    const gOffset = pageIndex === 0 ? 0 : 5 + (pageIndex - 1) * 5;
-
-    // 3. SEARCH ROUTING (Kurze Suche vs. Intens-Analyse)
-    if (debouncedSearchQuery && activeCategory.length === 0) {
-      if (debouncedSearchQuery.split(' ').length > 2 || /mit|für|bei|Ausflug/i.test(debouncedSearchQuery)) {
-        // Semantic/Vibe-Intent Analysis (Simplified)
-        let intentCats = ['entertainment'];
-        if (/kinder|familie|kids/i.test(debouncedSearchQuery)) intentCats = ['entertainment.zoo', 'entertainment.theme_park', 'entertainment.water_park'];
-        if (/regen|schlechtwetter|drinnen/i.test(debouncedSearchQuery)) intentCats = ['entertainment.cinema', 'entertainment.museum'];
-        
-        return { type: 'geoapify', url: `https://api.geoapify.com/v2/places?categories=${intentCats.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=100&apiKey=${GEOAPIFY_API_KEY}`, pageIndex };
-      } 
-      // Exact Match Mode (Textsuche für Begriffe wie "Cinestar")
-      return { type: 'geoapify', url: `https://api.geoapify.com/v2/places?text=${encodeURIComponent(debouncedSearchQuery)}&filter=circle:${userLocation.lng},${userLocation.lat},50000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=100&apiKey=${GEOAPIFY_API_KEY}`, pageIndex };
+    // PATH B: Specific Proper Names or Fallback Name Search
+    if (shouldFilterByName && debouncedSearchQuery) {
+       if (pageIndex > 0) return null;
+       // Smart Radius: If we are in fallback mode (categories were found but returned 0), 
+       // we expand the search radius to 5x to find something relevant further away.
+       const fallbackRadius = (activeCategory.length > 0) ? Math.min(radiusMeters * 5, 100000) : radiusMeters;
+       const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(debouncedSearchQuery)}&filter=circle:${userLocation.lng},${userLocation.lat},${fallbackRadius}&bias=proximity:${userLocation.lng},${userLocation.lat}&format=json&apiKey=${GEOAPIFY_API_KEY}`;
+       return { type: 'geocoding', url, pageIndex };
     }
 
-    // 4. VIBE-CLUSTER CHECK
-    const vibeClusters: Record<string, { cats: string[], radius: number }> = {
-      "Schlechtwetter-Retter": { cats: ['entertainment.cinema', 'entertainment.museum', 'entertainment.escape_game', 'leisure.spa'], radius: 20000 },
-      "Familien-Action": { cats: ['entertainment.zoo', 'entertainment.water_park', 'entertainment.theme_park', 'entertainment.activity_park'], radius: 20000 },
-      "Natur & Rausgehen": { cats: ['leisure.park', 'natural.protected_area'], radius: 15000 },
-      "Nachtleben & Drinks": { cats: ['adult.nightclub', 'catering.bar', 'catering.pub'], radius: 10000 },
-      "Gruppen-Spaß": { cats: ['entertainment.escape_game', 'entertainment.bowling_alley'], radius: 15000 },
-      "Adrenalin & Sport": { cats: ['entertainment.activity_park.trampoline', 'sport', 'entertainment.water_park'], radius: 20000 },
-      "Kaffee & Genuss": { cats: ['catering.cafe', 'catering.restaurant'], radius: 5000 },
-      "Kultur & Geschichte": { cats: ['entertainment.museum', 'tourism.sights'], radius: 15000 }
-    };
+    // Default categories are ONLY for discovery (no category AND no search text).
+    const rawCategories: string[] = activeCategory.length > 0
+      ? activeCategory
+      : (debouncedSearchQuery ? [] : ["entertainment", "leisure", "sport", "tourism.attraction", "adult.nightclub"]);
+    
+    const categoriesToFetch = rawCategories.map(tag => tag.trim()).filter(Boolean);
 
-    const activeVibe = Object.keys(vibeClusters).find(v => activeCategory.includes(v));
-    if (activeVibe) {
-      const v = vibeClusters[activeVibe];
-      return { type: 'geoapify', url: `https://api.geoapify.com/v2/places?categories=${v.cats.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${v.radius}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=100&apiKey=${GEOAPIFY_API_KEY}`, pageIndex };
+    // If we have a search query but NO categories to fetch (and we are NOT in Name-Search mode above),
+    // we return null to avoid 400 Bad Request.
+    if (debouncedSearchQuery && categoriesToFetch.length === 0 && !isSearching) {
+       return null; 
     }
 
-    // 5. TRIPLE-STREAM DISCOVERY (Hero, Food-Cap, Nature-Cap)
-    let categoriesToFetch: string[] = (activeCategory.length === 0 || activeCategory.includes('has_activities')) ? [] : activeCategory;
+    // PATH A: Intent/Category Search (e.g. "Sport")
+    const categoryString = categoriesToFetch.join(',');
+    const url = `https://api.geoapify.com/v2/places?categories=${categoryString}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
-    if (categoriesToFetch.length === 0) {
-      const uCats = ["entertainment", "adult.nightclub", "sport.sports_centre"];
-      const fCats = ["catering.pub", "catering.bar", "catering.restaurant"];
-      const nCats = ["commercial.shopping_mall", "leisure.park"];
-
-      // TASK 1: Force LARGE Radius for Hero Content (regardless of UI)
-      const url1 = `https://api.geoapify.com/v2/places?categories=${uCats.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},50000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=100&offset=${pOffset}&apiKey=${GEOAPIFY_API_KEY}`;
-      
-      // TASK 2: Radical Caps (max 2 per stream for page 0)
-      const a2LimitForPage0 = 2;
-      const a3LimitForPage0 = 2;
-      
-      const url2 = `https://api.geoapify.com/v2/places?categories=${fCats.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},10000&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${pageIndex === 0 ? a2LimitForPage0 : 50}&offset=${cOffset}&apiKey=${GEOAPIFY_API_KEY}`;
-      const url3 = `https://api.geoapify.com/v2/places?categories=${nCats.join(',')}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${pageIndex === 0 ? a3LimitForPage0 : 5}&offset=${gOffset}&apiKey=${GEOAPIFY_API_KEY}`;
-      return { type: 'geoapify', urls: [url1, url2, url3], pageIndex };
-    }
-
-    // Fallback für sonstige Kategorien
-    const fallbackCats = categoriesToFetch.join(',');
-    return { type: 'geoapify', url: `https://api.geoapify.com/v2/places?categories=${fallbackCats}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=150&offset=${pOffset}&apiKey=${GEOAPIFY_API_KEY}`, pageIndex };
-  };
+    return { type: 'geoapify', url, pageIndex };
+  }
 
   const { data, size, setSize, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {
     revalidateFirstPage: false,
@@ -327,95 +306,68 @@ export default function Home() {
   const isFetchingNextPage = Boolean(size > 0 && data && typeof data[size - 1] === "undefined");
 
   const isReachingEnd = useMemo(() => {
+    if (error) return true;
     if (isEmpty) return true;
-    const lastPage = data?.[data.length - 1];
-    if (Array.isArray(lastPage)) return lastPage.length < 5;
-    return (lastPage?.features?.length || 0) < 5;
-  }, [data, isEmpty]);
-
-  const userPrefs: UserPreferences = useMemo(() => ({
-    likedTags: userProfile?.likedTags || [],
-    dislikedTags: userProfile?.dislikedTags || []
-  }), [userProfile]);
-
-  // Vote-Daten aus Firestore für Ranking-Integration
-  const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number }>>({});
-
-  // Client-seitiges Merging, Deduplizierung und FINAL SORTING (Audit-Konform)
-  const places = useMemo(() => {
-    console.log("🔍 [X-Ray] Raw SWR Data Type:", typeof data, "IsArray:", Array.isArray(data), "Content:", data);
-    try {
-      if (!data || isCommunityCategory || isActiveCategory || isFavoritesCategory) return [];
-      const deduplicatedMap = new Map<string, Place>();
-    
-      data.forEach((pageData: any, pageIdx: number) => {
-        if (!Array.isArray(pageData)) {
-          console.warn(`⚠️ [Pipeline] Page ${pageIdx} is not an array:`, pageData);
-          return;
-        }
-
-        pageData.forEach((f: any) => {
-          const props = f?.properties || f;
-          // FIX: Correct ID extraction for Geoapify (properties.place_id) and Firestore (id)
-          const placeId = props?.place_id || f?.id || `fallback-${props?.lat}-${props?.lon}-${props?.name}`;
-          if (!placeId) return;
-
-          const disablePenalty = f?.disablePenalty || false;
-          const votes = votesMap[placeId] || { upvotes: 0, downvotes: 0 };
-          const tags = Array.isArray(props?.categories) ? props.categories : (props?.categories ? [props.categories] : []);
-          
-          const placeName = props?.name || props?.formatted || props?.address_line1;
-          if (!placeName || placeName.includes(',') || placeName.length < 2) return;
-
-          const processedPlace = {
-            id: placeId,
-            name: placeName,
-            address: props?.address_line2 || props?.formatted || (language === "de" ? "Keine Adresse" : "No address available"),
-            categories: tags,
-            lat: props?.lat || 0,
-            lon: props?.lon || 0,
-            rating: props?.rating || 0,
-            distance: props?.distance || calculateDistance(userLocation?.lat || 0, userLocation?.lng || 0, props?.lat || 0, props?.lon || 0),
-            relevanceScore: calculateRelevance(
-              { ...props, categories: tags, upvotes: votes.upvotes, downvotes: votes.downvotes },
-              userProfile || { role: 'user' } as any,
-              userLocation || { lat: 0, lng: 0 },
-              { disableBoringPenalty: disablePenalty }
-            ),
-            openingHours: props?.opening_hours || props?.datasource?.raw?.opening_hours || null
-          } as Place;
-
-          deduplicatedMap.set(placeId, processedPlace);
-        });
-      });
-
-        console.log("🚦 [Pipeline] Deduplizierte Orte vor Ranking:", deduplicatedMap.size);
-
-      const sorted = Array.from(deduplicatedMap.values()).sort((a, b) => b.relevanceScore - a.relevanceScore);
-      const top150 = sorted.slice(0, 150);
-
-      if (top150.length > 0) {
-        // TASK 4: Top 20 Log inklusive Distanz
-        console.log("🏆 [HMFR 2.0] Ranking complete. Current Top 20:");
-        top150.slice(0, 20).forEach((p, i) => {
-          console.log(`${i + 1}. ${p.name} - Score: ${p.relevanceScore.toFixed(1)}, Dist: ${(p.distance / 1000).toFixed(1)}km`);
-        });
-      }
-
-      return top150;
-    } catch (err) {
-      console.error("💥 [HMFR Crash] Fehler beim Verarbeiten der Orte:", err);
-      return [];
+    if (!data || data.length === 0) return false;
+    const lastPage = data[data.length - 1];
+    const expectedLimit = (data.length - 1) === 0 ? 300 : 50; 
+    if (isCommunityCategory || isAktivCategory || isHighlightsCategory) {
+      const fbLimit = (data.length - 1) === 0 ? 150 : 10;
+      return Boolean(lastPage && lastPage.length < fbLimit);
     }
-  }, [data, isHighlightsCategory, activeCategory, userProfile, language, votesMap, userLocation, isCommunityCategory, isActiveCategory, isFavoritesCategory]);
+    return Boolean(lastPage && lastPage.features?.length < expectedLimit);
+  }, [data, isEmpty, error, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
-  // Batch-Fetch & Echtzeit-Listener für Vote-Daten aller sichtbaren Orte
+  const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number }>>({}); 
+
+  const places = useMemo(() => {
+    if (!data || isCommunityCategory || isAktivCategory || isFavoritesCategory) return [];
+    if (isHighlightsCategory) return data.flat() as Place[];
+
+    return data.flatMap(page => {
+      const features = page?.features || [];
+      const itemsToFilter = features.map((f: any) => ({
+        tags: Array.isArray(f.properties.categories) ? f.properties.categories : [f.properties.categories],
+        properties: f.properties,
+        distance: f.properties.distance || 0
+      }));
+      const safeItems = applyFilters(itemsToFilter, activeCategory, userProfile?.blacklist?.hard || [], shouldFilterByName);
+
+      return safeItems.map((item: any) => {
+        const props = item.properties;
+        let rating;
+        if (props.datasource?.raw?.rating) {
+          const parsedRating = parseFloat(props.datasource.raw.rating);
+          if (!isNaN(parsedRating)) rating = Math.max(0, Math.min(5, parsedRating));
+        }
+        const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
+        const distance = item.distance || 0;
+        const placeId = props.place_id;
+        const votes = votesMap[placeId] || { upvotes: 0, downvotes: 0 };
+        return {
+          id: placeId,
+          name: props.name || props.address_line1 || (language === "de" ? "Unbekannter Ort" : "Unknown Place"),
+          address: props.address_line2 || (language === "de" ? "Keine Adresse verfügbar" : "No address available"),
+          categories: cats,
+          lat: props.lat,
+          lon: props.lon,
+          rating: rating,
+          distance: distance,
+          relevanceScore: calculateRelevance(
+            { ...props, categories: cats, distance: distance, upvotes: votes.upvotes, downvotes: votes.downvotes },
+            userProfile || { role: 'user' } as any,
+            userLocation || { lat: 0, lng: 0 }
+          ),
+          openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null
+        } as Place;
+      });
+    });
+  }, [data, votesMap, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory, language, userProfile, userLocation, activeCategory]);
+
   useEffect(() => {
     if (!db || places.length === 0) return;
     const placeIds = [...new Set(places.map(p => p.id).filter(Boolean))];
     if (placeIds.length === 0) return;
-
-    // Echtzeit-Listener für alle Orte in der places-Collection
     const unsubscribers: (() => void)[] = [];
     for (const id of placeIds) {
       const unsub = onSnapshot(doc(db, 'places', id), (snap) => {
@@ -424,7 +376,7 @@ export default function Home() {
           setVotesMap(prev => {
             const prevEntry = prev[id];
             if (prevEntry && prevEntry.upvotes === (d.upvotes || 0) && prevEntry.downvotes === (d.downvotes || 0)) {
-              return prev; // Kein Update nötig
+              return prev;
             }
             return { ...prev, [id]: { upvotes: d.upvotes || 0, downvotes: d.downvotes || 0 } };
           });
@@ -432,25 +384,20 @@ export default function Home() {
       });
       unsubscribers.push(unsub);
     }
-
     return () => unsubscribers.forEach(unsub => unsub());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, isCommunityCategory, isActiveCategory, isHighlightsCategory, isFavoritesCategory]);
+  }, [data, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory, places]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const isLoadingMore = useRef(false);
   const lastElementRef = useCallback((node: any) => {
     if (observer.current) observer.current.disconnect();
-    // Early-exit: don't observe if we know there's nothing left
-    if (isReachingEnd || isFetchingNextPage || isValidating) {
-      return;
-    }
+    if (isReachingEnd || isFetchingNextPage || isValidating) return;
     const options = { rootMargin: '0px 0px -50px 0px', threshold: 1.0 };
     observer.current = new IntersectionObserver(entries => {
       const target = entries[0];
       if (target.isIntersecting && !isLoadingMore.current) {
         isLoadingMore.current = true;
-        if (!isFavoritesCategory && !isCommunityCategory && !isActiveCategory && !isHighlightsCategory) {
+        if (!isFavoritesCategory && !isCommunityCategory && !isAktivCategory && !isHighlightsCategory) {
           const totalFetched = data ? data.flat().length : 0;
           if (visibleCount < totalFetched) {
             setVisibleCount(prev => prev + 25);
@@ -461,12 +408,11 @@ export default function Home() {
         } else {
           setSize(prev => prev + 1);
         }
-        // Reset guard after a short delay so the next intersection can fire
         setTimeout(() => { isLoadingMore.current = false; }, 1000);
       }
     }, options);
     if (node) observer.current.observe(node);
-  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, data, visibleCount, isFavoritesCategory, isCommunityCategory, isActiveCategory, isHighlightsCategory]);
+  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, data, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
   useEffect(() => {
     const reverseGeocode = async (lat: number, lng: number) => {
@@ -475,8 +421,8 @@ export default function Home() {
         const data = await response.json();
         const fallback = language === 'de' ? 'Unbekannter Ort' : 'Unknown Place';
         setCityName(data.address.city || data.address.town || data.address.village || fallback);
-      } catch (error) {
-        setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
+      } catch (error) { 
+        setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'); 
       }
     };
     if (planningState.isPlanning && planningState.destination) {
@@ -498,15 +444,88 @@ export default function Home() {
       setUserLocation({ lat: 53.5395, lng: 8.5809 });
       setCityName("Bremerhaven");
     }
-  }, [planningState]);
+  }, [planningState, language]);
+
+  useEffect(() => {
+    // Fallback termination: If we are specifically searching for a name, we don't fallback to defaults.
+    if (shouldFilterByName) return;
+
+    const hasZeroResults = !isLoadingInitialData && !isValidating && activeCategory.length > 0 && places.length === 0;
+    const hasError = !!error && activeCategory.length > 0;
+    if (hasZeroResults || hasError) {
+      setShouldFilterByName(true);
+      setActiveCategory([]);
+    }
+  }, [isLoadingInitialData, isValidating, activeCategory, places.length, debouncedSearchQuery, error, shouldFilterByName]);
 
   const handleCategoryChange = (categoryId: string[], tabId: string) => {
-    setSearchQuery('');
+    setSearchQuery("");
+    setShouldFilterByName(false);
     setActiveCategory(categoryId);
     setActiveTabId(tabId);
     setSortBy('recommended');
     setActivityCategoryFilter('Alle');
     setVisibleCount(25);
+  };
+
+  // ---------------------------------------------------------------------------
+  // SEARCH INTERCEPTOR — LLM-powered intent parser (Live-Search)
+  // ---------------------------------------------------------------------------
+
+  const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  useEffect(() => {
+    const performSearch = async () => {
+      const query = debouncedSearchQuery.trim();
+
+      // Empty query → reset to discovery feed (broad defaults)
+      if (!query) {
+        setShouldFilterByName(false);
+        setActiveCategory([]);
+        return;
+      }
+
+      // Guard: Don't search for extremely short strings (API spam prevention)
+      if (query.length < 2) return;
+
+      setIsSearching(true);
+
+      try {
+        const response = await fetch('/api/parse-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        });
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const { categories, filterByName } = await response.json();
+        
+        // 1. Set the filter flag (determines if we do local .includes(name) filtering)
+        setShouldFilterByName(!!filterByName);
+
+        // 2. Set the categories (triggers SWR getKey)
+        if (Array.isArray(categories) && categories.length > 0) {
+          setActiveCategory(categories);
+        } else {
+          console.warn('⚠️ [Live Search] LLM returned no categories. Falling back to default category pool.');
+          setActiveCategory([]); 
+        }
+      } catch (err) {
+        console.error('❌ [Live Search] Intent Parsing Failed:', err);
+        setShouldFilterByName(true); // Fallback to name filtering
+        setActiveCategory([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    performSearch();
+  }, [debouncedSearchQuery]);
+
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Handled automatically by Live-Search useEffect
   };
 
   useEffect(() => {
@@ -515,12 +534,12 @@ export default function Home() {
 
   const handlePlaceSelect = (place: Place) => setSelectedPlace(place);
   const handleDialogClose = () => setSelectedPlace(null);
-  const handleOpenActivityModal = (place: Place) => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    setActionSheetPlace(place);
+  const handleOpenActivityModal = (place: Place) => { 
+    if (!user) { 
+      router.push('/login'); 
+      return; 
+    } 
+    setActionSheetPlace(place); 
   };
   const handleOpenCustomActivityModal = () => { if (!user) { router.push('/login'); return; } setActivityModalPlace('custom'); };
 
@@ -563,78 +582,26 @@ export default function Home() {
     }
     if (error) return <div className="flex h-full w-full items-center justify-center p-6 text-center text-destructive font-bold">{language === 'de' ? 'Verbindungsproblem.' : 'Connection problem.'}</div>;
 
-    const EmptySearchState = () => {
-      const isActuallyEmpty = !debouncedSearchQuery && activeCategory.length === 0;
-      const showCreateCTA = isCommunityCategory || isActiveCategory;
-
-      return (
-        <div className="flex flex-col h-full w-full items-center justify-center p-6 text-center animate-in fade-in zoom-in duration-500">
-          <div className="space-y-6 max-w-sm">
-            <div className="bg-primary/10 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6">
-              {showCreateCTA ? <Users className="h-10 w-10 text-primary" /> : <MapPin className="h-10 w-10 text-primary" />}
-            </div>
-            <h3 className="font-black text-2xl text-[#0f172a] dark:text-neutral-200">
-              {showCreateCTA
-                ? (language === "de" ? "Noch keine Aktivitäten" : "No activities yet")
-                : (language === "de" ? "Keine Ergebnisse" : "No results")}
-            </h3>
-            <p className="text-[#64748b] dark:text-neutral-400 font-bold leading-relaxed">
-              {showCreateCTA
-                ? (language === "de" ? "Sei der Erste und erstelle eine neue Aktivität in deiner Nähe!" : "Be the first to create an activity in your area!")
-                : (language === "de" ? "Passe deine Suche oder die Filter an, um mehr zu entdecken." : "Adjust your search or filters to discover more.")}
-            </p>
-
-            <div className="flex flex-col gap-3">
-              {showCreateCTA && (
-                <Button onClick={handleOpenCustomActivityModal} className="rounded-2xl font-black h-14 text-lg shadow-lg shadow-primary/20">
-                  <Plus className="mr-2 h-5 w-5 stroke-[3px]" />
-                  {language === "de" ? "Aktivität erstellen" : "Create Activity"}
-                </Button>
-              )}
-              <Button
-                onClick={() => { handleCategoryChange([], ''); setMaxDistance(10); setActivityCategoryFilter(language === 'de' ? 'Alle' : 'All'); }}
-                variant="ghost"
-                className="rounded-2xl font-black text-neutral-400 hover:text-primary transition-colors"
-              >
-                {language === "de" ? "Filter zurücksetzen" : "Reset filters"}
-              </Button>
-            </div>
-          </div>
+    const EmptySearchState = () => (
+      <div className="flex h-full w-full items-center justify-center p-6 text-center">
+        <div className="space-y-4">
+          <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">{language === "de" ? "Keine Ergebnisse" : "No results"}</h3>
+          <p className="text-[#64748b] dark:text-neutral-400 font-medium">{language === "de" ? "Passe deine Suche oder die Filter an." : "Adjust your search or filters."}</p>
+          <Button onClick={() => { 
+            handleCategoryChange([], ''); 
+            setShouldFilterByName(false);
+            setSearchQuery("");
+            setMaxDistance(10); 
+            setActivityCategoryFilter(language === 'de' ? 'Alle' : 'All'); 
+          }} variant="outline" className="rounded-xl font-bold">
+            {language === "de" ? "Filter zurücksetzen" : "Reset filters"}
+          </Button>
         </div>
-      );
-    };
+      </div>
+    );
 
     if (viewMode === 'list') {
       const renderList = () => {
-        if (isLoadingInitialData) {
-          return (
-            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-              {[...Array(8)].map((_, i) => <CardSkeleton key={`loading-skel-${i}`} />)}
-            </div>
-          );
-        }
-
-        if (error) {
-          return (
-            <div className="flex flex-col items-center justify-center p-12 text-center space-y-4">
-              <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-full">
-                <AlertCircle className="h-8 w-8 text-red-500" />
-              </div>
-              <div>
-                <h3 className="font-black text-lg">{error.isTimeout ? (language === 'de' ? 'API Timeout' : 'API Timeout') : (language === 'de' ? 'Fehler beim Laden' : 'Loading Error')}</h3>
-                <p className="text-neutral-500 text-sm font-medium">
-                  {error.isTimeout 
-                    ? (language === 'de' ? 'Die Anfrage hat zu lange gedauert. Bitte verkleinere deinen Radius oder ändere die Filter.' : 'The request took too long. Please reduce your radius or change filters.')
-                    : (language === 'de' ? 'Bitte versuche es später erneut.' : 'Please try again later.')}
-                </p>
-              </div>
-              <Button onClick={() => mutate()} variant="outline" className="rounded-xl font-bold">
-                {language === 'de' ? 'Erneut versuchen' : 'Try Again'}
-              </Button>
-            </div>
-          );
-        }
-
         if (isFavoritesCategory) {
           if (favorites.length === 0) {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
@@ -650,35 +617,105 @@ export default function Home() {
           );
         }
 
-        if (isCommunityCategory || isActiveCategory) {
-          const rawItems = (data?.flat() || []) as any[];
-          if (rawItems.length === 0 && !isValidating) return <EmptySearchState />;
-          
+        if (isCommunityCategory || isAktivCategory) {
+          const list = data?.flat() || [];
+          const safeActivities = list.filter((item: any) => {
+            if (!item) return false;
+            return item.status !== 'completed' &&
+              item.status !== 'cancelled' &&
+              item.status !== 'blacklisted' &&
+              (item.reportCount || 0) < QUARANTINE_THRESHOLD;
+          });
+          let semanticFiltered = safeActivities;
+          if (activityCategoryFilter !== (language === 'de' ? 'Alle' : 'All')) {
+            semanticFiltered = semanticFiltered.filter((item: any) => item.category === activityCategoryFilter);
+          }
+          const listWithDistance = semanticFiltered.map((item: any) => {
+            const distance = (userLocation && item.lat && item.lon)
+              ? calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lon)
+              : null;
+            return { ...item, distance };
+          });
+          let filtered = listWithDistance.filter(item => {
+            // Priority 1: Semantic Filtering (Categories from LLM)
+            // If LLM found categories and we are NOT in specific name-filter mode,
+            // we check if the activity's categories match the LLM's intent.
+            const hasSemanticMatch = activeCategory.length > 0 && !shouldFilterByName 
+                ? activeCategory.some(cat => (item.categories || []).includes(cat) || item.category === cat)
+                : true;
+
+            // Priority 2: Text Search
+            // Only filter by name if specifically requested by shouldFilterByName OR as a secondary filter.
+            const name = item.placeName || "";
+            const hasTextMatch = name.toLowerCase().includes(searchQuery.toLowerCase());
+            
+            return hasSemanticMatch && hasTextMatch;
+          });
+          if (maxDistance !== null) {
+            filtered = filtered.filter(item => item.distance !== null && item.distance <= maxDistance);
+          }
+          const sortedList = [...filtered].sort((a, b) => {
+            if (a.isBoosted && !b.isBoosted) return -1;
+            if (!a.isBoosted && b.isBoosted) return 1;
+            const collectiveWeight = 1.0;
+            const personalWeight = 0.5;
+            const affA = userProfile?.categoryAffinities?.[a.category || ''] || 0;
+            const affB = userProfile?.categoryAffinities?.[b.category || ''] || 0;
+            const hriA = (collectiveWeight * (a.globalScore || 0)) + (personalWeight * affA);
+            const hriB = (collectiveWeight * (b.globalScore || 0)) + (personalWeight * affB);
+            if (hriA !== hriB) return hriB - hriA;
+            if (a.distance !== null && b.distance !== null) return a.distance - b.distance;
+            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return timeB - timeA;
+          });
+          if (sortedList.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
           return (
-            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 pb-24">
-              {rawItems.map((item: any) => (
-                <div key={`act-${item.id}`} className="min-h-[280px] w-full">
-                   {isCommunityCategory ? (
-                      <ActivityListItem activity={item} user={user} onJoin={handleJoin} />
+            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              {sortedList.map((item) => {
+                  const itemPlace: Place = {
+                    id: item.placeId || "unknown",
+                    name: item.placeName || (language === "de" ? "Unbekannter Ort" : "Unknown Place"),
+                    address: item.placeAddress || (language === "de" ? "Keine Adresse" : "No Address"),
+                    categories: item.categories || [],
+                    lat: item.lat || 0,
+                    lon: item.lon || 0,
+                    activityCount: 1,
+                    distance: item.distance ? item.distance * 1000 : undefined,
+                    openingHours: item.openingHours || null
+                  };
+                return (
+                  <div key={item.id} className="min-h-[280px] w-full">
+                    {isCommunityCategory ? (
+                      <ActivityListItem activity={item as any} user={user} onJoin={handleJoin} />
                     ) : (
-                      <PlaceCard
-                        place={item as any}
-                        onClick={() => handlePlaceSelect(item as any)}
-                        onAddActivity={() => handleOpenActivityModal(item as any)}
-                      />
+                      <PlaceCard place={itemPlace} onClick={() => handlePlaceSelect(itemPlace)} onAddActivity={() => handleOpenActivityModal(itemPlace)} />
                     )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           );
         }
 
-        if (places.length === 0 && !isValidating) return <EmptySearchState />;
-
+        const filtered = places.filter(place => {
+          if (!debouncedSearchQuery || !shouldFilterByName) return true;
+          const name = place.name || "";
+          return name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+        });
+        const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : 0)));
+        const uniqueSorted = Array.from(new Map(sorted.map(place => [place.id, place])).values());
+        if (uniqueSorted.length === 0) {
+          if (isValidating) {
+            return <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>;
+          }
+          if (!isFetchingNextPage) return <EmptySearchState />;
+        }
+        const paginatedSorted = uniqueSorted.slice(0, visibleCount);
         return (
           <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-            {places.map((place) => (
-              <div key={`place-${place.id}`} className="min-h-[280px] w-full">
+            {paginatedSorted.map((place) => (
+              <div key={place.id} className="min-h-[280px] w-full">
                 <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
               </div>
             ))}
@@ -690,12 +727,9 @@ export default function Home() {
         <div className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col">
           {renderList()}
           {isFetchingNextPage && !isReachingEnd && (
-            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-              <CardSkeleton />
-            </div>
+            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6"><CardSkeleton /></div>
           )}
-          {/* OBSERVER BLOCKADE: Prevent infinite triggering on empty or error states */}
-          {!isReachingEnd && !isLoadingInitialData && !isValidating && places.length > 0 && !debouncedSearchQuery && !error && (
+          {!isReachingEnd && !isLoadingInitialData && !debouncedSearchQuery && (
             <div ref={lastElementRef} className="h-1 w-full flex-shrink-0 bg-transparent" aria-hidden="true" />
           )}
         </div>
@@ -707,10 +741,8 @@ export default function Home() {
       if (!userProfile?.isPremium) {
         return (
           <div className="flex flex-col items-center justify-center p-10 h-[calc(100%-80px)] text-center space-y-6">
-            <div className="bg-white dark:bg-neutral-800 p-8 rounded-full shadow-xl relative">
-              <Lock className="h-12 w-12 text-neutral-400" />
-            </div>
-            <h2 className="text-2xl font-black text-[#0f172a] dark:text-neutral-200">{language === 'de' ? 'Kartenansicht gesperrt' : 'Map View Locked'}</h2>
+            <div className="bg-white dark:bg-neutral-800 p-8 rounded-full shadow-xl relative"><Lock className="h-12 w-12 text-neutral-400" /></div>
+            <h2 className="text-2xl font-black text-[#0f172a] dark:text-neutral-100">{language === 'de' ? 'Kartenansicht gesperrt' : 'Map View Locked'}</h2>
             <Button onClick={() => setIsPremiumUpsellOpen(true)} className="rounded-2xl px-10 h-14 font-black">
               {language === 'de' ? 'Premium freischalten' : 'Unlock Premium'}
             </Button>
@@ -724,100 +756,44 @@ export default function Home() {
   return (
     <>
       <div className="flex flex-col h-full bg-white/40 dark:bg-neutral-900/40 relative">
-        {/* Background Blobs for Visual Depth */}
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
-        <header className="flex-none w-full border-none bg-transparent pt-6 pb-2 z-20">
+         <header className="flex-none w-full border-none bg-transparent pt-6 pb-2 z-20">
           <div className="flex flex-col gap-5 px-6 max-w-7xl mx-auto w-full">
-            {/* Top Bar: Profile & System Actions */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Link href="/profile">
                   <Avatar className="h-14 w-14 border-4 border-white dark:border-neutral-800 shadow-2xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer">
                     <AvatarImage src={userProfile?.photoURL || user?.photoURL || undefined} alt="Avatar" />
-                    <AvatarFallback className="bg-emerald-50 text-emerald-600 font-black text-xl">
-                      {userProfile?.displayName ? userProfile.displayName.charAt(0) : 'U'}
-                    </AvatarFallback>
+                    <AvatarFallback className="bg-emerald-50 text-emerald-600 font-black text-xl">{userProfile?.displayName ? userProfile.displayName.charAt(0) : 'U'}</AvatarFallback>
                   </Avatar>
                 </Link>
                 <div className="flex flex-col">
-                  <h1 className="text-2xl font-black tracking-tight text-[#0f172a] dark:text-neutral-100 font-heading">
-                    {language === "de" ? `Hallo, ${userProfile?.displayName?.split(' ')[0] || 'Du'} 👋` : `Hi, ${userProfile?.displayName?.split(' ')[0] || 'You'} 👋`}
-                  </h1>
-                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[10px] uppercase tracking-[0.15em] mt-0.5">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>{cityName}</span>
-                  </button>
+                  <h1 className="text-2xl font-black tracking-tight text-[#0f172a] dark:text-neutral-100 font-heading">{language === "de" ? `Hallo, ${userProfile?.displayName?.split(' ')[0] || 'Du'} 👋` : `Hi, ${userProfile?.displayName?.split(' ')[0] || 'You'} 👋`}</h1>
+                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[10px] uppercase tracking-[0.15em] mt-0.5"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /><span>{cityName}</span></button>
                 </div>
               </div>
-
               <div className="flex items-center gap-3">
                 <NotificationBell />
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="h-12 w-12 rounded-2xl bg-white dark:bg-neutral-800 text-neutral-500 shadow-xl shadow-slate-200/50 dark:shadow-none"
-                  onClick={handleMapToggle}
-                >
-                  {viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}
-                </Button>
+                <Button variant="secondary" size="icon" className="h-12 w-12 rounded-2xl bg-white dark:bg-neutral-800 text-neutral-500 shadow-xl shadow-slate-200/50 dark:shadow-none" onClick={handleMapToggle}>{viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}</Button>
               </div>
             </div>
-
             <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
-
-            {/* Search & Radius Area */}
             <div className="flex items-center gap-3 w-full">
-              <div className="flex relative flex-1 group">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />
-                <Input
-                  type="search"
-                  placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-14 h-14 rounded-full border-none bg-white font-bold shadow-xl shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none"
-                />
-              </div>
-
+              <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
+                {isSearching ? <Loader2 className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 animate-spin" /> : <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
+                <Input type="search" placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} value={searchQuery} onChange={handleSearchInput} disabled={isSearching} className="w-full pl-14 h-14 rounded-full border-none bg-white font-bold shadow-xl shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none disabled:opacity-70" />
+              </form>
               <div className="relative group">
                 <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="secondary"
-                      className="h-14 px-5 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-2"
-                    >
-                      {maxDistance || 10} km
-                      <ChevronDown className={cn("h-4 w-4 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} />
-                    </Button>
+                    <Button variant="secondary" className="h-14 px-5 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-2">{maxDistance || 10} km <ChevronDown className={cn("h-4 w-4 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
                     <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Radius' : 'Radius'}</span>
-                        <span className="text-sm font-black">{maxDistance} km</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="1"
-                        max="100"
-                        value={maxDistance || 10}
-                        onChange={(e) => setMaxDistance(parseInt(e.target.value))}
-                        className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                      />
-                      <div className="grid grid-cols-4 gap-2">
-                        {[5, 10, 25, 50].map((r) => (
-                          <button
-                            key={r}
-                            onClick={() => setMaxDistance(r)}
-                            className={cn(
-                              "py-2 rounded-xl text-[10px] font-black transition-all",
-                              maxDistance === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100"
-                            )}
-                          >
-                            {r}k
-                          </button>
-                        ))}
-                      </div>
+                      <div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Radius' : 'Radius'}</span><span className="text-sm font-black">{maxDistance} km</span></div>
+                      <input type="range" min="1" max="100" value={maxDistance || 10} onChange={(e) => setMaxDistance(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                      <div className="grid grid-cols-4 gap-2">{[5, 10, 25, 50].map((r) => <button key={r} onClick={() => setMaxDistance(r)} className={cn("py-2 rounded-xl text-[10px] font-black transition-all", maxDistance === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>{r}k</button>)}</div>
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -825,102 +801,23 @@ export default function Home() {
             </div>
           </div>
         </header>
-
-        <div className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden scroll-smooth'}`}>
-          <div className="max-w-7xl mx-auto w-full">{renderContent()}</div>
-        </div>
+        <div className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden scroll-smooth'}`}><div className="max-w-7xl mx-auto w-full">{renderContent()}</div></div>
       </div>
-
-      {/* Floating Action Button (FAB) */}
-      <div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500">
-        <Button
-          variant="default"
-          size="icon"
-          className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 transition-transform hover:scale-105 active:scale-95"
-          onClick={handleOpenCustomActivityModal}
-        >
-          <Plus className="h-7 w-7" strokeWidth={3} />
-        </Button>
-      </div>
-
-      {/* Responsive Place Details */}
+      <div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500"><Button variant="default" size="icon" className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 transition-transform hover:scale-105 active:scale-95" onClick={handleOpenCustomActivityModal}><Plus className="h-7 w-7" strokeWidth={3} /></Button></div>
       {isMobile ? (
-        <Sheet open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-          <SheetContent side="bottom" className="p-0 h-[92vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none">
-            <SheetHeader className="sr-only">
-              <SheetTitle>{selectedPlace?.name}</SheetTitle>
-            </SheetHeader>
-            <div className="h-full w-full">
-              {selectedPlace && (
-                <PlaceDetails
-                  place={selectedPlace}
-                  onClose={handleDialogClose}
-                  onCreateActivity={() => setActivityModalPlace(selectedPlace)}
-                />
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
+        <Sheet open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}><SheetContent side="bottom" className="p-0 h-[92vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none"><SheetHeader className="sr-only"><SheetTitle>{selectedPlace?.name}</SheetTitle></SheetHeader><div className="h-full w-full">{selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} onCreateActivity={() => setActivityModalPlace(selectedPlace)} />}</div></SheetContent></Sheet>
       ) : (
-        <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-          <DialogContent className="p-0 w-full max-w-4xl max-h-[92vh] gap-0 overflow-hidden border-none outline-none">
-            <DialogTitle className="sr-only">{selectedPlace?.name || (language === 'de' ? 'Ort Details' : 'Place Details')}</DialogTitle>
-            <DialogDescription className="sr-only">{language === 'de' ? 'Details zum ausgewählten Ort' : 'Details about the selected place'}</DialogDescription>
-            {selectedPlace && (
-              <PlaceDetails
-                place={selectedPlace}
-                onClose={handleDialogClose}
-                onCreateActivity={() => setActivityModalPlace(selectedPlace)}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
+        <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}><DialogContent className="p-0 w-full max-w-4xl max-h-[92vh] gap-0 overflow-hidden border-none outline-none"><DialogTitle className="sr-only">{selectedPlace?.name || (language === 'de' ? 'Ort Details' : 'Place Details')}</DialogTitle><DialogDescription className="sr-only">{language === 'de' ? 'Details zum ausgewählten Ort' : 'Details about the selected place'}</DialogDescription>{selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} onCreateActivity={() => setActivityModalPlace(selectedPlace)} />}</DialogContent></Dialog>
       )}
-
       <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
-      <SpotActionSheet
-        place={actionSheetPlace}
-        open={!!actionSheetPlace}
-        onOpenChange={(open) => !open && setActionSheetPlace(null)}
-        onCreateNew={(place) => setActivityModalPlace(place)}
-      />
+      <SpotActionSheet place={actionSheetPlace} open={!!actionSheetPlace} onOpenChange={(open) => !open && setActionSheetPlace(null)} onCreateNew={(place) => setActivityModalPlace(place)} />
       <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
-
       <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500" />
-          <DialogHeader className="pt-6">
-            <div className="mx-auto bg-amber-100 dark:bg-amber-900/30 p-4 rounded-full w-fit mb-4">
-              <Crown className="h-10 w-10 text-amber-500" />
-            </div>
-            <DialogTitle className="text-2xl font-black text-center">{language === 'de' ? 'Premium-Funktion' : 'Premium Feature'}</DialogTitle>
-            <DialogDescription className="text-center text-base font-medium px-2 pt-2">
-              {language === 'de'
-                ? 'Die interaktive Kartenansicht ist ein exklusives Feature für Premium-Mitglieder. Schalte Premium frei, um alle Orte in deiner Umgebung visuell zu entdecken.'
-                : 'The interactive map view is an exclusive feature for premium members. Unlock Premium to visually explore all places in your area.'}
-            </DialogDescription>
-
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl space-y-3">
-              <div className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-green-500" strokeWidth={3} />
-                <span className="font-bold text-sm">{language === 'de' ? 'Vollständige interaktive Karte' : 'Full interactive map'}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-green-500" strokeWidth={3} />
-                <span className="font-bold text-sm">{language === 'de' ? 'Keine Werbung mehr' : 'No more ads'}</span>
-              </div>
-
-            </div>
-          </div>
-          <DialogFooter className="flex flex-col gap-3 sm:gap-0">
-            <Button variant="ghost" onClick={() => setIsPremiumUpsellOpen(false)} className="rounded-xl font-bold h-12">{language === 'de' ? 'Abbrechen' : 'Cancel'}</Button>
-            <Button onClick={() => setIsPremiumUpsellOpen(false)} className="rounded-xl font-black h-12 bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20">
-              {language === 'de' ? 'Upgrade freischalten' : 'Unlock Upgrade'}
-            </Button>
-
-          </DialogFooter>
+          <DialogHeader className="pt-6"><div className="mx-auto bg-amber-100 dark:bg-amber-900/30 p-4 rounded-full w-fit mb-4"><Crown className="h-10 w-10 text-amber-500" /></div><DialogTitle className="text-2xl font-black text-center">{language === 'de' ? 'Premium-Funktion' : 'Premium Feature'}</DialogTitle><DialogDescription className="text-center text-base font-medium px-2 pt-2">{language === 'de' ? 'Die interaktive Kartenansicht ist ein exklusives Feature für Premium-Mitglieder. Schalte Premium frei, um alle Orte in deiner Umgebung visuell zu entdecken.' : 'The interactive map view is an exclusive feature for premium members. Unlock Premium to visually explore all places in your area.'}</DialogDescription></DialogHeader>
+          <div className="space-y-4 py-4"><div className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-2xl space-y-3"><div className="flex items-center gap-3"><Check className="h-5 w-5 text-green-500" strokeWidth={3} /><span className="font-bold text-sm">{language === 'de' ? 'Vollständige interaktive Karte' : 'Full interactive map'}</span></div><div className="flex items-center gap-3"><Check className="h-5 w-5 text-green-500" strokeWidth={3} /><span className="font-bold text-sm">{language === 'de' ? 'Keine Werbung mehr' : 'No more ads'}</span></div></div></div>
+          <DialogFooter className="flex flex-col gap-3 sm:gap-0"><Button variant="ghost" onClick={() => setIsPremiumUpsellOpen(false)} className="rounded-xl font-bold h-12">{language === 'de' ? 'Abbrechen' : 'Cancel'}</Button><Button onClick={() => setIsPremiumUpsellOpen(false)} className="rounded-xl font-black h-12 bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20">{language === 'de' ? 'Upgrade freischalten' : 'Unlock Upgrade'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </>
