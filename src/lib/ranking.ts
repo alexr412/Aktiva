@@ -12,16 +12,16 @@ const tagRules: { pattern: RegExp; score: number }[] = [
   { pattern: /^entertainment\.activity_park(\..*)?$/, score: 95 },
   { pattern: /^entertainment\.theme_park$/, score: 95 },
   { pattern: /^entertainment\.water_park$/, score: 92 },
-  { pattern: /^entertainment\.zoo$/, score: 90 },
+  { pattern: /^entertainment\.zoo$/, score: 70 },
   { pattern: /^entertainment\.aquarium$/, score: 90 },
   { pattern: /^entertainment\.planetarium$/, score: 90 },
   { pattern: /^entertainment\.cinema$/, score: 90 },
   { pattern: /^entertainment\.escape_game$/, score: 85 },
-  
+
   // --- Mid-Tier (60-80 Punkte) ---
   { pattern: /^adult\.nightclub$/, score: 80 },
-  { pattern: /^entertainment\.bowling_alley$/, score: 80 },
-  { pattern: /^entertainment\.miniature_golf$/, score: 75 },
+  { pattern: /^entertainment\.bowling_alley$/, score: 95 },
+  { pattern: /^entertainment\.miniature_golf$/, score: 95 },
   { pattern: /^entertainment\.culture(\..*)?$/, score: 70 },
   { pattern: /^leisure\.playground$/, score: 65 },
   { pattern: /^leisure\.park(\..*)?$/, score: 60 },
@@ -36,7 +36,7 @@ const tagRules: { pattern: RegExp; score: number }[] = [
   { pattern: /^tourism\.sights$/, score: 65 },
   { pattern: /^building\.historic$/, score: 50 },
   { pattern: /^commercial\.shopping_mall$/, score: 60 },
-  { pattern: /^sport\.sports_centre$/, score: 75 }
+  { pattern: /^sport\.sports_centre$/, score: 60 }
 ];
 
 function getTagScore(tag: string): number {
@@ -92,8 +92,8 @@ export function calculateRelevance(
     : 0;
 
   // SAFE-GUARD: Robust category extraction
-  const categories: string[] = Array.isArray(item?.categories) 
-    ? item.categories 
+  const categories: string[] = Array.isArray(item?.categories)
+    ? item.categories
     : (Array.isArray(item?.properties?.categories) ? item.properties.categories : []);
 
   // FALLBACK: If no tags found, return a minimal base score of 10 instead of crashing or returning 0
@@ -135,8 +135,8 @@ export function calculateRelevance(
   // 2. Weighted Cascade Modell (70% Best, 20% Second, 10% Third)
   const sortedScores = [...weightedScores].sort((a, b) => b - a);
   const T1 = sortedScores[0] || 0;
-  const T2 = sortedScores[1] || T1; 
-  const T3 = sortedScores[2] || T2; 
+  const T2 = sortedScores[1] || T1;
+  const T3 = sortedScores[2] || T2;
 
   const T_cascade = (T1 * 0.7) + (T2 * 0.2) + (T3 * 0.1);
 
@@ -144,18 +144,21 @@ export function calculateRelevance(
   let T_final = Math.sign(T_cascade) * 100 * Math.log10(1 + (Math.abs(T_cascade) / 20));
 
   // --- BORING-PENALTY (VETO MECHANISM) ---
-  // Wird nur angewendet, wenn NICHT explizit nach Kultur/Geschichte gesucht wird.
-  if (!options.disableBoringPenalty) {
+  // HEROS SIND IMMUN: Wenn ein Ort einen Hero-Tag (>= 90) hat, greift die Strafe NICHT.
+  // Dies verhindert, dass z.B. das Klimahaus (Museum + Sights) abgestraft wird.
+  const hasHeroTag = categories.some(cat => getTagScore(cat) >= 90);
+
+  if (!options.disableBoringPenalty && !hasHeroTag) {
     const boringTags = [
       'religion', 'place_of_worship', 'historic', 'heritage', 'archaeological_site',
       'community_centre', 'arts_centre', 'social_facility', 'youth_centre',
       'natural.protected_area', 'leisure.nature_reserve', 'leisure.park',
       'catering.restaurant', 'catering.cafe', 'tourism.sights'
     ];
-    const hasBoringTag = categories.some(cat => 
+    const hasBoringTag = categories.some(cat =>
       boringTags.some(boring => cat.toLowerCase().includes(boring))
     );
-    
+
     if (hasBoringTag) {
       T_final -= 55; // MASSIVE Strafe für passive/infrastrukturelle Orte (z.B. Wald vs. Kino)
     }
@@ -176,9 +179,9 @@ export function calculateRelevance(
   for (let i = 0; i < placeId.length; i++) {
     hash = ((hash << 5) - hash + placeId.charCodeAt(i)) | 0;
   }
-  const deterministicRandom = ((hash & 0x7fffffff) / 0x7fffffff) * 2 - 1; 
+  const deterministicRandom = ((hash & 0x7fffffff) / 0x7fffffff) * 2 - 1;
   const epsilon = deterministicRandom * EPSILON_TOLERANCE;
-  
+
   // 5. Basis-Score (Qualität * Exp-Verfall)
   // Formel: ((T_final * UserAffinity) + Epsilon) * Math.exp(-Lambda * Distanz_in_km)
   // Hinweis: UserAffinity ist hier bereits in T_final enthalten (w_i oben)
