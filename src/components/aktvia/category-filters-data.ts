@@ -19,6 +19,9 @@ import {
   BookOpen,
   Building,
   ShoppingBag,
+  Binoculars,
+  Flower2,
+  Zap,
 } from 'lucide-react';
 
 export const availableTabs = [
@@ -27,15 +30,23 @@ export const availableTabs = [
     id: 'Sights',
     label: 'Sehenswürdigkeiten',
     labelEn: 'Sights',
-    query: ['tourism.sights', 'building.historic'],
+    query: ['tourism.sights', 'building.historic', 'tourism.sights.memorial.monument'],
     icon: Landmark,
     color: '#f59e0b', // Amber
+  },
+  {
+    id: 'Viewpoints',
+    label: 'Aussichtspunkte',
+    labelEn: 'Viewpoints',
+    query: ['tourism.attraction.viewpoint'],
+    icon: Binoculars,
+    color: '#d97706', // Dark Amber
   },
   {
     id: 'Religion',
     label: 'Religion & Glaube',
     labelEn: 'Religion',
-    query: ['religion'],
+    query: ['religion', 'religion.place_of_worship'],
     icon: Church,
     color: '#8b5cf6', // Violet
   },
@@ -43,7 +54,7 @@ export const availableTabs = [
     id: 'Museums',
     label: 'Museen',
     labelEn: 'Museums',
-    query: ['entertainment.museum'],
+    query: ['entertainment.museum', 'entertainment.culture.arts_centre'],
     icon: Library,
     color: '#6366f1', // Indigo
   },
@@ -69,15 +80,23 @@ export const availableTabs = [
     id: 'Nature',
     label: 'Natur & Parks',
     labelEn: 'Nature & Parks',
-    query: ['leisure.park', 'leisure.garden', 'leisure.nature_reserve'],
+    query: ['leisure.park', 'leisure.garden', 'leisure.nature_reserve', 'leisure.playground'],
     icon: TreePine,
     color: '#10b981', // Green
+  },
+  {
+    id: 'Wellness',
+    label: 'Wellness & Spa',
+    labelEn: 'Wellness',
+    query: ['leisure.spa', 'leisure.sauna'],
+    icon: Flower2,
+    color: '#06b6d4', // Cyan
   },
   {
     id: 'Water',
     label: 'Wasser & Strand',
     labelEn: 'Water & Beach',
-    query: ['beach', 'leisure.beach', 'natural.water'],
+    query: ['beach', 'leisure.water_park', 'leisure.swimming_pool'],
     icon: Waves,
     color: '#0ea5e9', // Sky
   },
@@ -93,9 +112,17 @@ export const availableTabs = [
     id: 'Sport',
     label: 'Sportanlagen',
     labelEn: 'Sports',
-    query: ['sport', 'entertainment.activity_park'],
+    query: ['sport'],
     icon: Dumbbell,
     color: '#f97316', // Orange
+  },
+  {
+    id: 'ActivityParks',
+    label: 'Aktivitätsparks',
+    labelEn: 'Activity Parks',
+    query: ['entertainment.activity_park'],
+    icon: Zap,
+    color: '#4f46e5', // Indigo
   },
 
   // --- SOCIAL & FOOD ---
@@ -153,7 +180,7 @@ export const availableTabs = [
     id: 'Education',
     label: 'Bildung',
     labelEn: 'Education',
-    query: ['education'],
+    query: ['education.library', 'education.university'],
     icon: BookOpen,
     color: '#3b82f6', // Blue
   },

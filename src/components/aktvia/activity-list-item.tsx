@@ -5,7 +5,8 @@ import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown, BarChart3, AlertTriangle, Layers, Star } from 'lucide-react';
+import { de, enUS } from 'date-fns/locale';
+import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown, BarChart3, AlertTriangle, Layers, Star, ArrowUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -128,6 +129,23 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const rating = activity.avgRating || 0;
     const reviewCount = activity.reviewCount || 0;
 
+    const getIconGradient = (bgClass: string) => {
+      const map: Record<string, string> = {
+        'bg-blue-50': 'bg-gradient-to-br from-blue-400 to-blue-600',
+        'bg-red-50': 'bg-gradient-to-br from-red-400 to-red-600',
+        'bg-orange-50': 'bg-gradient-to-br from-orange-400 to-orange-600',
+        'bg-green-50': 'bg-gradient-to-br from-green-400 to-green-600',
+        'bg-yellow-50': 'bg-gradient-to-br from-yellow-400 to-yellow-600',
+        'bg-amber-50': 'bg-gradient-to-br from-amber-400 to-amber-600',
+        'bg-purple-50': 'bg-gradient-to-br from-purple-400 to-purple-600',
+        'bg-cyan-50': 'bg-gradient-to-br from-cyan-400 to-cyan-600',
+        'bg-pink-50': 'bg-gradient-to-br from-pink-400 to-pink-600',
+        'bg-fuchsia-50': 'bg-gradient-to-br from-fuchsia-400 to-fuchsia-600',
+        'bg-slate-50': 'bg-gradient-to-br from-slate-400 to-slate-600',
+      };
+      return map[bgClass] || 'bg-gradient-to-br from-violet-400 to-violet-600';
+    };
+
     return (
         <div 
           ref={cardRef}
@@ -143,7 +161,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
               </div>
             )}
 
-            <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+            <div className="absolute top-4 right-4 flex flex-col items-end gap-2 z-10">
                 <div className="bg-primary/10 text-primary text-[11px] font-black px-3 py-1 rounded-xl border border-primary/20 shadow-sm flex items-center gap-1">
                     <ArrowUp className="h-3 w-3" />
                     {activity.communityScore || 0}
@@ -167,16 +185,15 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
             <div className="flex items-start gap-4">
                 <div className={cn(
                     "flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0 transition-transform group-hover:scale-105", 
-                    primaryStyle.bgClass.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-400 to-').concat(primaryStyle.color === '#ef4444' ? 'red-500' : 'violet-500')
+                    getIconGradient(primaryStyle.bgClass)
                 )}>
                     <PrimaryIcon className="h-8 w-8 text-white drop-shadow-sm" />
                 </div>
                 
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                        <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight flex-1">
+                <div className="min-w-0 flex-1 pr-14">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight">
                             {activity.placeName || (language === 'de' ? "Treffen" : "Meetup")}
-
                         </p>
                         
                         {/* MODUL 18: Enhanced Rating Display with Fallback */}

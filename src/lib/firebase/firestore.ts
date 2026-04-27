@@ -257,10 +257,23 @@ export async function createActivity({
 
   if (!isCustomActivity && placeIdValue !== "unknown") {
     const placeRef = doc(db, 'places', placeIdValue);
-    batch.set(placeRef, { 
+    
+    // We MUST save the full place data here so the ACTIVE tab can query the places collection directly!
+    const placeUpdate: any = { 
       activityCount: increment(1),
       updatedAt: serverTimestamp()
-    }, { merge: true });
+    };
+    
+    if (place) {
+      if (place.name) placeUpdate.name = place.name;
+      if (place.address) placeUpdate.address = place.address;
+      if (place.categories) placeUpdate.categories = place.categories;
+      if (place.lat) placeUpdate.lat = place.lat;
+      if (place.lon) placeUpdate.lon = place.lon;
+      if (place.openingHours) placeUpdate.openingHours = place.openingHours;
+    }
+    
+    batch.set(placeRef, placeUpdate, { merge: true });
   }
 
   if (isBoosted) {

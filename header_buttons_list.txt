@@ -1,0 +1,91 @@
+AKTIVA HEADER BUTTONS LISTE (AKTUALISIERT & BEREINIGT)
+========================================
+
+ÄNDERUNGSPROTOKOLL (Letzte Updates):
+---------------------------
+- Sights: Korrigiert auf 'tourism.sights.memorial.monument' (offizielle Geoapify-Taxonomie).
+- Museums: Ergänzt um Kunstzentren (entertainment.culture.arts_centre).
+- Theater: Bereinigt (nur offizielle Theater & Kinos Tags).
+- Nature: Ergänzt um Spielplätze (leisure.playground).
+- Sport: Bereinigt (Aktivitätsparks in eigenen Button verschoben).
+- NEU: Aussichtspunkte hinzugefügt.
+- NEU: Wellness & Spa hinzugefügt.
+- NEU: Aktivitätsparks hinzugefügt.
+
+SYSTEM-TABS (Interne Logik)
+---------------------------
+1. ACTIVE      - Orte mit aktiven Chats/Teilnehmern
+2. HIGHLIGHTS  - Meist-gelikte Orte (Upvotes > 0)
+3. FAVORITEN   - Deine gespeicherten Orte
+4. COMMUNITY   - User-generierte Events & Community-Chats
+
+KULTUR & HISTORIE (Geoapify Tags)
+---------------------------
+5. Sights      - Sehenswürdigkeiten, Historische Gebäude, Denkmäler
+   Tags: ['tourism.sights', 'building.historic', 'tourism.sights.memorial.monument']
+
+6. Aussichtspunkte - Panoramablicke & Viewpoints
+   Tags: ['tourism.attraction.viewpoint']
+
+7. Religion    - Religion & Glaube (Kirchen, Moscheen, Synagogen, etc.)
+   Tags: ['religion', 'religion.place_of_worship']
+
+8. Museums     - Museen, Galerien & Kunstzentren
+   Tags: ['entertainment.museum', 'entertainment.culture.arts_centre']
+
+9. Attractions - Touristische Attraktionen
+   Tags: ['tourism.attraction']
+
+10. Theater    - Theater, Kinos & Bühnen
+    Tags: ['entertainment.cinema', 'entertainment.culture.theatre']
+
+NATUR & FREIZEIT (Geoapify Tags)
+---------------------------
+11. Nature     - Natur, Parks, Gärten & Spielplätze
+    Tags: ['leisure.park', 'leisure.garden', 'leisure.nature_reserve', 'leisure.playground']
+
+12. Wellness   - Wellness, Spa, Thermen & Saunen
+    Tags: ['leisure.spa', 'leisure.sauna']
+
+13. Water      - Wasser, Strand, Freibäder & Wasserparks
+    Tags: ['beach', 'leisure.water_park', 'leisure.swimming_pool']
+
+14. Zoos       - Zoos, Aquarien & Tierparks
+    Tags: ['entertainment.zoo', 'entertainment.aquarium']
+
+15. Aktivitätsparks - Trampolinhallen, Kletterwälder etc.
+    Tags: ['entertainment.activity_park']
+
+16. Sport      - Sportanlagen (Fußball, Tennis etc.)
+    Tags: ['sport']
+
+GASTRONOMIE & SOCIAL (Geoapify Tags)
+---------------------------
+17. Restaurants - Klassische Gastronomie
+    Tags: ['catering.restaurant']
+
+18. Cafes       - Cafés & Bistros
+    Tags: ['catering.cafe']
+
+19. Fast Food   - Schnellrestaurants
+    Tags: ['catering.fast_food']
+
+20. Ice Cream   - Eisdielen
+    Tags: ['catering.ice_cream']
+
+21. Nightlife   - Bars & Pubs
+    Tags: ['catering.bar', 'catering.pub']
+
+22. Clubs       - Clubs & Discos
+    Tags: ['adult.nightclub']
+
+WISSEN & UTILITY (Geoapify Tags)
+---------------------------
+23. Education   - Bildung (Bibliotheken & Universitäten)
+    Tags: ['education.library', 'education.university']
+
+24. Coworking   - Gewerbliche Gebäude & Arbeitsplätze
+    Tags: ['building.commercial']
+
+25. Shopping    - Einkaufszentren & Malls
+    Tags: ['commercial.shopping_mall']

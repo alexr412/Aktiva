@@ -52,10 +52,11 @@ export const coreTabs: CategoryTab[] = [
 
 type CategoryFiltersProps = {
   activeCategory: string[];
+  activeTabId: string;
   onCategoryChange: (categoryId: string[], tabId: string) => void;
 };
 
-export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFiltersProps) {
+export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange }: CategoryFiltersProps) {
   const { user, userProfile } = useAuth();
   const language = useLanguage();
   const { toast } = useToast();
@@ -64,11 +65,6 @@ export function CategoryFilters({ activeCategory, onCategoryChange }: CategoryFi
   const [localActiveTabs, setLocalActiveTabs] = useState<string[]>([]);
   const [draftTabs, setDraftTabs] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-
-  // Finde den aktuell aktiven Tab-ID basierend auf dem query-State
-  // Wir nutzen dafür ein useEffect oder leiten es direkt ab
-  const activeTabId = coreTabs.find(t => JSON.stringify(t.query) === JSON.stringify(activeCategory))?.id || 
-                    availableTabs.find(t => JSON.stringify(t.query) === JSON.stringify(activeCategory))?.id || "";
 
   useEffect(() => {
     if (userProfile?.activeTabs) {

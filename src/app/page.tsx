@@ -197,25 +197,32 @@ export default function Home() {
       }
 
       if (type === 'activities') {
-        const queryLimit = key.pageIndex === 0 ? 150 : 10;
+        const queryLimit = 300; // Fetch a large batch to avoid needing a composite index for pagination
         const constraints: any[] = [
-          limit(queryLimit * 5)
+          where('categories', 'array-contains', 'user_event'),
+          limit(queryLimit)
         ];
-
+        // We cannot use startAfter without orderBy, so we just fetch the first 300 and sort locally
         const q = query(collection(db!, 'activities'), ...constraints);
         const snap = await getDocs(q);
-        const allFetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      }
 
-        const isCommunity = key.subType === 'community';
-        const filtered = allFetched.filter((act: any) =>
-          isCommunity ? act.isCustomActivity === true : act.isCustomActivity !== true
-        );
-
-        return filtered.slice(0, PLACES_PER_PAGE);
+      if (type === 'active_places') {
+        const queryLimit = key.pageIndex === 0 ? 50 : 10;
+        const constraints: any[] = [
+          where('activityCount', '>', 0),
+          orderBy('activityCount', 'desc'),
+          limit(queryLimit)
+        ];
+        if (cursorValue !== null) constraints.push(startAfter(cursorValue));
+        const q = query(collection(db!, 'places'), ...constraints);
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       }
 
       if (type === 'highlights') {
-        const queryLimit = key.pageIndex === 0 ? 25 : 10;
+        const queryLimit = key.pageIndex === 0 ? 50 : 10;
         const constraints: any[] = [
           where('upvotes', '>', 0),
           orderBy('upvotes', 'desc'),
@@ -243,9 +250,14 @@ export default function Home() {
       (Array.isArray(previousPageData) && previousPageData.length === 0)
     )) return null;
 
-    if (isCommunityCategory || isAktivCategory) {
+    if (isCommunityCategory) {
       const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.createdAt;
-      return { type: 'activities', subType: isCommunityCategory ? 'community' : 'location', cursorValue: cursor, pageIndex };
+      return { type: 'activities', subType: 'community', cursorValue: cursor, pageIndex };
+    }
+
+    if (isAktivCategory) {
+      const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.activityCount;
+      return { type: 'active_places', cursorValue: cursor, pageIndex };
     }
 
     if (isHighlightsCategory) {
@@ -310,9 +322,10 @@ export default function Home() {
     if (isEmpty) return true;
     if (!data || data.length === 0) return false;
     const lastPage = data[data.length - 1];
-    const expectedLimit = (data.length - 1) === 0 ? 300 : 50; 
+    const expectedLimit = (data.length - 1) === 0 ? 50 : 50; 
     if (isCommunityCategory || isAktivCategory || isHighlightsCategory) {
-      const fbLimit = (data.length - 1) === 0 ? 150 : 10;
+      // All three system tabs (Community, Active, Highlights) now fetch 50 initially, then 10.
+      let fbLimit = (data.length - 1) === 0 ? 50 : 10;
       return Boolean(lastPage && lastPage.length < fbLimit);
     }
     return Boolean(lastPage && lastPage.features?.length < expectedLimit);
@@ -321,8 +334,17 @@ export default function Home() {
   const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number }>>({}); 
 
   const places = useMemo(() => {
-    if (!data || isCommunityCategory || isAktivCategory || isFavoritesCategory) return [];
-    if (isHighlightsCategory) return data.flat() as Place[];
+    if (!data || isCommunityCategory || isFavoritesCategory) return [];
+    if (isHighlightsCategory || isAktivCategory) {
+      return data.flat().map((place: any) => {
+        // Calculate distance if missing so local filtering works
+        let distance = place.distance;
+        if (distance === undefined && userLocation && place.lat && place.lon) {
+           distance = calculateDistance(userLocation.lat, userLocation.lng, place.lat, place.lon);
+        }
+        return { ...place, distance } as Place;
+      });
+    }
 
     return data.flatMap(page => {
       const features = page?.features || [];
@@ -617,92 +639,63 @@ export default function Home() {
           );
         }
 
-        if (isCommunityCategory || isAktivCategory) {
-          const list = data?.flat() || [];
-          const safeActivities = list.filter((item: any) => {
+        if (isCommunityCategory) {
+          const rawList = data?.flat() || [];
+          
+          // Deduplicate the list to prevent React duplicate key errors from SWR caching edge cases
+          const uniqueMap = new Map();
+          for (const item of rawList) {
+             if (item?.id) uniqueMap.set(item.id, item);
+          }
+          const list = Array.from(uniqueMap.values());
+          
+          // "es muss doch nur geguckt werden ob es user_event hat" -> This is already done by the database query in multiFetcher!
+          // "und nach dem datum" -> We filter out activities that are already over (in the past).
+          const now = Date.now();
+          const filteredList = list.filter((item: any) => {
             if (!item) return false;
-            return item.status !== 'completed' &&
-              item.status !== 'cancelled' &&
-              item.status !== 'blacklisted' &&
-              (item.reportCount || 0) < QUARANTINE_THRESHOLD;
-          });
-          let semanticFiltered = safeActivities;
-          if (activityCategoryFilter !== (language === 'de' ? 'Alle' : 'All')) {
-            semanticFiltered = semanticFiltered.filter((item: any) => item.category === activityCategoryFilter);
-          }
-          const listWithDistance = semanticFiltered.map((item: any) => {
-            const distance = (userLocation && item.lat && item.lon)
-              ? calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lon)
-              : null;
-            return { ...item, distance };
-          });
-          let filtered = listWithDistance.filter(item => {
-            // Priority 1: Semantic Filtering (Categories from LLM)
-            // If LLM found categories and we are NOT in specific name-filter mode,
-            // we check if the activity's categories match the LLM's intent.
-            const hasSemanticMatch = activeCategory.length > 0 && !shouldFilterByName 
-                ? activeCategory.some(cat => (item.categories || []).includes(cat) || item.category === cat)
-                : true;
-
-            // Priority 2: Text Search
-            // Only filter by name if specifically requested by shouldFilterByName OR as a secondary filter.
-            const name = item.placeName || "";
-            const hasTextMatch = name.toLowerCase().includes(searchQuery.toLowerCase());
             
-            return hasSemanticMatch && hasTextMatch;
+            // Check end date or start date to ensure it's not in the past
+            if (item.activityEndDate?.toMillis) {
+               if (item.activityEndDate.toMillis() < now) return false;
+            } else if (item.activityDate?.toMillis) {
+               // If there's no end date, assume it's over 24 hours after the start date
+               if (item.activityDate.toMillis() + 86400000 < now) return false;
+            }
+            
+            return true;
           });
-          if (maxDistance !== null) {
-            filtered = filtered.filter(item => item.distance !== null && item.distance <= maxDistance);
-          }
-          const sortedList = [...filtered].sort((a, b) => {
-            if (a.isBoosted && !b.isBoosted) return -1;
-            if (!a.isBoosted && b.isBoosted) return 1;
-            const collectiveWeight = 1.0;
-            const personalWeight = 0.5;
-            const affA = userProfile?.categoryAffinities?.[a.category || ''] || 0;
-            const affB = userProfile?.categoryAffinities?.[b.category || ''] || 0;
-            const hriA = (collectiveWeight * (a.globalScore || 0)) + (personalWeight * affA);
-            const hriB = (collectiveWeight * (b.globalScore || 0)) + (personalWeight * affB);
-            if (hriA !== hriB) return hriB - hriA;
-            if (a.distance !== null && b.distance !== null) return a.distance - b.distance;
-            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-            return timeB - timeA;
+          
+          // Sort by activityDate (ascending: upcoming events first)
+          const sortedList = [...filteredList].sort((a, b) => {
+            const timeA = a.activityDate?.toMillis ? a.activityDate.toMillis() : 0;
+            const timeB = b.activityDate?.toMillis ? b.activityDate.toMillis() : 0;
+            return timeA - timeB; 
           });
+          
           if (sortedList.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
           return (
             <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-              {sortedList.map((item) => {
-                  const itemPlace: Place = {
-                    id: item.placeId || "unknown",
-                    name: item.placeName || (language === "de" ? "Unbekannter Ort" : "Unknown Place"),
-                    address: item.placeAddress || (language === "de" ? "Keine Adresse" : "No Address"),
-                    categories: item.categories || [],
-                    lat: item.lat || 0,
-                    lon: item.lon || 0,
-                    activityCount: 1,
-                    distance: item.distance ? item.distance * 1000 : undefined,
-                    openingHours: item.openingHours || null
-                  };
-                return (
+              {sortedList.map((item) => (
                   <div key={item.id} className="min-h-[280px] w-full">
-                    {isCommunityCategory ? (
                       <ActivityListItem activity={item as any} user={user} onJoin={handleJoin} />
-                    ) : (
-                      <PlaceCard place={itemPlace} onClick={() => handlePlaceSelect(itemPlace)} onAddActivity={() => handleOpenActivityModal(itemPlace)} />
-                    )}
                   </div>
-                );
-              })}
+              ))}
             </div>
           );
         }
 
-        const filtered = places.filter(place => {
+        let filtered = places.filter(place => {
           if (!debouncedSearchQuery || !shouldFilterByName) return true;
           const name = place.name || "";
           return name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
         });
+        
+        // Add distance filter for Highlights and Active tabs
+        if ((isHighlightsCategory || isAktivCategory) && maxDistance !== null) {
+           filtered = filtered.filter(place => place.distance !== undefined && place.distance !== null && place.distance <= maxDistance);
+        }
+
         const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : 0)));
         const uniqueSorted = Array.from(new Map(sorted.map(place => [place.id, place])).values());
         if (uniqueSorted.length === 0) {
@@ -778,7 +771,7 @@ export default function Home() {
                 <Button variant="secondary" size="icon" className="h-12 w-12 rounded-2xl bg-white dark:bg-neutral-800 text-neutral-500 shadow-xl shadow-slate-200/50 dark:shadow-none" onClick={handleMapToggle}>{viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}</Button>
               </div>
             </div>
-            <CategoryFilters activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
+            <CategoryFilters activeCategory={activeCategory} activeTabId={activeTabId} onCategoryChange={handleCategoryChange} />
             <div className="flex items-center gap-3 w-full">
               <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
                 {isSearching ? <Loader2 className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 animate-spin" /> : <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}

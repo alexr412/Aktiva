@@ -13,6 +13,11 @@ import {
   Gamepad2,
   Droplets,
   LandPlot,
+  Users,
+  Binoculars,
+  Flower2,
+  Zap,
+  Sparkles,
   type LucideIcon
 } from 'lucide-react';
 
@@ -43,8 +48,8 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   if (tags.includes('tourism.sights.place_of_worship.mosque') || tags.includes('religion.place_of_worship.islam') || n.includes('moschee')) {
     return { icon: MoonStar, color: '#10b981', label: language === 'de' ? 'Moschee' : 'Mosque', bgClass: 'bg-emerald-50' };
   }
-  if (tags.includes('tourism.sights.place_of_worship.church') || tags.includes('tourism.sights.place_of_worship.cathedral') || tags.includes('tourism.sights.place_of_worship.chapel') || tags.includes('religion.place_of_worship.christianity') || n.includes('kirche') || n.includes('dom') || n.includes('kapelle')) {
-    return { icon: Church, color: '#8b5cf6', label: language === 'de' ? 'Kirche' : 'Church', bgClass: 'bg-violet-50' };
+  if (tags.includes('tourism.sights.place_of_worship.church') || tags.includes('tourism.sights.place_of_worship.cathedral') || tags.includes('tourism.sights.place_of_worship.chapel') || tags.includes('religion.place_of_worship.christianity') || tags.includes('religion') || tags.includes('religion.place_of_worship') || n.includes('kirche') || n.includes('dom') || n.includes('kapelle')) {
+    return { icon: Church, color: '#8b5cf6', label: language === 'de' ? 'Religiöser Ort' : 'Religious Place', bgClass: 'bg-violet-50' };
   }
   if (tags.includes('tourism.sights.place_of_worship.temple') || tags.includes('religion.place_of_worship.buddhism') || tags.includes('religion.place_of_worship.hinduism') || n.includes('tempel') || n.includes('schrein')) {
     return { icon: Landmark, color: '#f59e0b', label: language === 'de' ? 'Tempel/Schrein' : 'Temple/Shrine', bgClass: 'bg-amber-50' };
@@ -79,15 +84,31 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
     return { icon: Palette, color: '#f59e0b', label: language === 'de' ? 'Kunst' : 'Art', bgClass: 'bg-amber-50' };
   }
   if (tags.includes('entertainment.museum') || name.includes('museum')) {
-    return { icon: Landmark, color: '#8b5cf6', label: language === 'de' ? 'Museum' : 'Museum', bgClass: 'bg-purple-50' };
+    return { icon: Landmark, color: '#6366f1', label: language === 'de' ? 'Museum' : 'Museum', bgClass: 'bg-indigo-50' };
+  }
+
+  if (tags.includes('tourism.attraction.viewpoint') || name.includes('aussicht')) {
+    return { icon: Binoculars, color: '#d97706', label: language === 'de' ? 'Aussichtspunkt' : 'Viewpoint', bgClass: 'bg-amber-50' };
+  }
+
+  if (tags.includes('leisure.spa') || tags.includes('leisure.sauna') || name.includes('wellness') || name.includes('sauna') || name.includes('therme')) {
+    return { icon: Flower2, color: '#06b6d4', label: language === 'de' ? 'Wellness/Spa' : 'Wellness/Spa', bgClass: 'bg-cyan-50' };
+  }
+
+  if (tags.includes('entertainment.activity_park') || name.includes('trampolin') || name.includes('kletterwald')) {
+    return { icon: Zap, color: '#4f46e5', label: language === 'de' ? 'Aktivitätspark' : 'Activity Park', bgClass: 'bg-indigo-50' };
   }
 
   if (name.includes('quest') || name.includes('escape') || name.includes('rätsel')) {
     return { icon: Gamepad2, color: '#f59e0b', label: language === 'de' ? 'Escape Game' : 'Escape Game', bgClass: 'bg-amber-50' };
   }
 
-  if (name.includes('wasser') || name.includes('bad') || name.includes('schwimm')) {
-    return { icon: Droplets, color: '#0ea5e9', label: language === 'de' ? 'Wasserpark' : 'Water park', bgClass: 'bg-sky-50' };
+  if (tags.includes('leisure.water_park') || tags.includes('leisure.swimming_pool') || name.includes('wasser') || name.includes('bad') || name.includes('schwimm')) {
+    return { icon: Droplets, color: '#0ea5e9', label: language === 'de' ? 'Wasserpark/Bad' : 'Water park/Pool', bgClass: 'bg-sky-50' };
+  }
+
+  if (tags.includes('beach') || name.includes('strand')) {
+    return { icon: Waves, color: '#0ea5e9', label: language === 'de' ? 'Strand' : 'Beach', bgClass: 'bg-sky-50' };
   }
 
   // --- PRIORITÄT 2.5: Nachtleben ---
@@ -133,6 +154,11 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   if (tags.includes('entertainment.cinema') || name.includes('kino')) return { icon: Film, color: '#8b5cf6', label: language === 'de' ? 'Kino' : 'Cinema', bgClass: 'bg-purple-50' };
   if (tags.includes('entertainment.amusement_arcade') || name.includes('arcade') || name.includes('spielhalle')) {
     return { icon: Gamepad2, color: '#8b5cf6', label: language === 'de' ? 'Spielhalle' : 'Arcade', bgClass: 'bg-purple-50' };
+  }
+
+  // --- PRIORITÄT 6: Community Events ---
+  if (tags.includes('user_event')) {
+    return { icon: Users, color: '#8b5cf6', label: language === 'de' ? 'Community' : 'Community', bgClass: 'bg-purple-50' };
   }
 
   // --- FALLBACK ---
