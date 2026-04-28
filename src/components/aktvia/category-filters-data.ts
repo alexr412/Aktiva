@@ -30,7 +30,7 @@ export const availableTabs = [
     id: 'Sights',
     label: 'Sehenswürdigkeiten',
     labelEn: 'Sights',
-    query: ['tourism.sights', 'building.historic', 'tourism.sights.memorial.monument'],
+    query: ['tourism.sights'],
     icon: Landmark,
     color: '#f59e0b', // Amber
   },
@@ -54,7 +54,7 @@ export const availableTabs = [
     id: 'Museums',
     label: 'Museen',
     labelEn: 'Museums',
-    query: ['entertainment.museum', 'entertainment.culture.arts_centre'],
+    query: ['entertainment.museum'],
     icon: Library,
     color: '#6366f1', // Indigo
   },
@@ -80,7 +80,7 @@ export const availableTabs = [
     id: 'Nature',
     label: 'Natur & Parks',
     labelEn: 'Nature & Parks',
-    query: ['leisure.park', 'leisure.garden', 'leisure.nature_reserve', 'leisure.playground'],
+    query: ['leisure.park', 'leisure.park.garden', 'leisure.park.nature_reserve', 'leisure.playground'],
     icon: TreePine,
     color: '#10b981', // Green
   },
@@ -88,7 +88,7 @@ export const availableTabs = [
     id: 'Wellness',
     label: 'Wellness & Spa',
     labelEn: 'Wellness',
-    query: ['leisure.spa', 'leisure.sauna'],
+    query: ['leisure.spa', 'leisure.spa.sauna'],
     icon: Flower2,
     color: '#06b6d4', // Cyan
   },
@@ -96,7 +96,7 @@ export const availableTabs = [
     id: 'Water',
     label: 'Wasser & Strand',
     labelEn: 'Water & Beach',
-    query: ['beach', 'leisure.water_park', 'leisure.swimming_pool'],
+    query: ['beach', 'entertainment.water_park', 'sport.swimming_pool'],
     icon: Waves,
     color: '#0ea5e9', // Sky
   },
@@ -120,7 +120,7 @@ export const availableTabs = [
     id: 'ActivityParks',
     label: 'Aktivitätsparks',
     labelEn: 'Activity Parks',
-    query: ['entertainment.activity_park'],
+    query: ['entertainment.activity_park', 'entertainment.activity_park.climbing', 'entertainment.activity_park.trampoline'],
     icon: Zap,
     color: '#4f46e5', // Indigo
   },
@@ -188,7 +188,7 @@ export const availableTabs = [
     id: 'Coworking',
     label: 'Coworking',
     labelEn: 'Coworking',
-    query: ['building.commercial'],
+    query: ['office.coworking'],
     icon: Building,
     color: '#6b7280', // Gray
   },

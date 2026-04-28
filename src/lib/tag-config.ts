@@ -80,6 +80,10 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   if (tags.includes('entertainment.culture.arts_centre') || name.includes('galerie') || name.includes('kunstzentrum')) {
     return { icon: Image, color: '#ec4899', label: language === 'de' ? 'Galerie' : 'Gallery', bgClass: 'bg-pink-50' };
   }
+  if (tags.some((t: string) => t.startsWith('tourism.sights') || t.startsWith('building.historic'))) {
+    return { icon: Landmark, color: '#f59e0b', label: language === 'de' ? 'Sehenswürdigkeit' : 'Sight', bgClass: 'bg-amber-50' };
+  }
+
   if (tags.includes('tourism.attraction.artwork') || name.includes('statue') || name.includes('kunst')) {
     return { icon: Palette, color: '#f59e0b', label: language === 'de' ? 'Kunst' : 'Art', bgClass: 'bg-amber-50' };
   }
@@ -91,11 +95,11 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
     return { icon: Binoculars, color: '#d97706', label: language === 'de' ? 'Aussichtspunkt' : 'Viewpoint', bgClass: 'bg-amber-50' };
   }
 
-  if (tags.includes('leisure.spa') || tags.includes('leisure.sauna') || name.includes('wellness') || name.includes('sauna') || name.includes('therme')) {
+  if (tags.includes('leisure.spa') || tags.includes('leisure.sauna') || tags.includes('leisure.spa.sauna') || name.includes('wellness') || name.includes('sauna') || name.includes('therme')) {
     return { icon: Flower2, color: '#06b6d4', label: language === 'de' ? 'Wellness/Spa' : 'Wellness/Spa', bgClass: 'bg-cyan-50' };
   }
 
-  if (tags.includes('entertainment.activity_park') || name.includes('trampolin') || name.includes('kletterwald')) {
+  if (tags.includes('entertainment.activity_park') || tags.includes('entertainment.activity_park.climbing') || tags.includes('entertainment.activity_park.trampoline') || name.includes('trampolin') || name.includes('kletterwald')) {
     return { icon: Zap, color: '#4f46e5', label: language === 'de' ? 'Aktivitätspark' : 'Activity Park', bgClass: 'bg-indigo-50' };
   }
 

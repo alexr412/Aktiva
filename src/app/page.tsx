@@ -111,6 +111,7 @@ export default function Home() {
   const [actionSheetPlace, setActionSheetPlace] = useState<Place | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [shouldFilterByName, setShouldFilterByName] = useState(false);
+  const [isSwitchingTab, setIsSwitchingTab] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -310,7 +311,6 @@ export default function Home() {
   const { data, size, setSize, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {
     revalidateFirstPage: false,
     dedupingInterval: 60000,
-    keepPreviousData: true,
   });
 
   const isLoadingInitialData = !data && !error;
@@ -472,6 +472,10 @@ export default function Home() {
     // Fallback termination: If we are specifically searching for a name, we don't fallback to defaults.
     if (shouldFilterByName) return;
 
+    // ONLY do this fallback if the user actually typed a search query!
+    // Otherwise, clicking a category with no results will incorrectly clear the category and show everything.
+    if (!debouncedSearchQuery) return;
+
     const hasZeroResults = !isLoadingInitialData && !isValidating && activeCategory.length > 0 && places.length === 0;
     const hasError = !!error && activeCategory.length > 0;
     if (hasZeroResults || hasError) {
@@ -481,6 +485,10 @@ export default function Home() {
   }, [isLoadingInitialData, isValidating, activeCategory, places.length, debouncedSearchQuery, error, shouldFilterByName]);
 
   const handleCategoryChange = (categoryId: string[], tabId: string) => {
+    if (activeTabId !== tabId) {
+      setIsSwitchingTab(true);
+      setTimeout(() => setIsSwitchingTab(false), 800); // Guarantee skeleton animation for at least 800ms
+    }
     setSearchQuery("");
     setShouldFilterByName(false);
     setActiveCategory(categoryId);
@@ -596,7 +604,7 @@ export default function Home() {
   };
 
   const renderContent = () => {
-    if (isLoadingInitialData) {
+    if (isLoadingInitialData || isSwitchingTab) {
       return <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">{Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}</div>;
     }
     if (!userLocation && !isLoadingInitialData) {
