@@ -716,7 +716,7 @@ export default function Home() {
         return (
           <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {paginatedSorted.map((place) => (
-              <div key={place.id} className="min-h-[280px] w-full">
+              <div key={place.id} className="min-h-[210px] w-full">
                 <PlaceCard place={place} onClick={() => handlePlaceSelect(place)} onAddActivity={() => handleOpenActivityModal(place)} />
               </div>
             ))}
@@ -771,7 +771,7 @@ export default function Home() {
                 </Link>
                 <div className="flex flex-col">
                   <h1 className="text-2xl font-black tracking-tight text-[#0f172a] dark:text-neutral-100 font-heading">{language === "de" ? `Hallo, ${userProfile?.displayName?.split(' ')[0] || 'Du'} 👋` : `Hi, ${userProfile?.displayName?.split(' ')[0] || 'You'} 👋`}</h1>
-                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[10px] uppercase tracking-[0.15em] mt-0.5"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /><span>{cityName}</span></button>
+                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400 font-bold text-[10px] uppercase tracking-[0.15em] mt-0.5"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /><span>{cityName}</span></button>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -782,13 +782,13 @@ export default function Home() {
             <CategoryFilters activeCategory={activeCategory} activeTabId={activeTabId} onCategoryChange={handleCategoryChange} />
             <div className="flex items-center gap-3 w-full">
               <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
-                {isSearching ? <Loader2 className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-500 animate-spin" /> : <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
-                <Input type="search" placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} value={searchQuery} onChange={handleSearchInput} disabled={isSearching} className="w-full pl-14 h-14 rounded-full border-none bg-white font-bold shadow-xl shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none disabled:opacity-70" />
+                {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
+                <Input type="search" placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} value={searchQuery} onChange={handleSearchInput} disabled={isSearching} className="w-full pl-9 h-14 rounded-full border-none bg-white font-bold text-xs shadow-xl shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none disabled:opacity-70 placeholder:text-neutral-400" />
               </form>
               <div className="relative group">
                 <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" className="h-14 px-5 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-2">{maxDistance || 10} km <ChevronDown className={cn("h-4 w-4 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
+                    <Button variant="secondary" className="h-14 px-3 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance || 10} km <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
                     <div className="space-y-4">

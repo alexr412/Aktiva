@@ -10,8 +10,8 @@ import {
     Users,
     Loader2,
     MapPin,
-    ArrowUp,
-    ArrowDown,
+    ThumbsUp,
+    ThumbsDown,
     Star,
     Clock,
     Sparkles,
@@ -32,7 +32,7 @@ import { Button } from '@/components/ui/button';
 const formatDistance = (distanceInMeters?: number) => {
     if (distanceInMeters === undefined) return null;
     if (distanceInMeters < 1000) return `${Math.round(distanceInMeters)}m`;
-    return `${(distanceInMeters / 1000).toFixed(1)}km`;
+    return `${((distanceInMeters || 0) / 1000).toFixed(1)}km`;
 };
 
 type PlaceCardProps = {
@@ -124,20 +124,22 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                 style={{ backgroundColor: primaryStyle.color + '20' }}
             >
                 {/* Dekorative Icons im Hintergrund */}
-                <PrimaryIcon className="absolute -bottom-4 -right-4 h-24 w-24 text-white/10 rotate-12" />
+                <PrimaryIcon className="absolute -bottom-4 -right-4 h-24 w-24 text-white opacity-10 rotate-12" />
 
-                {/* Haupt-Icon */}
-                <PrimaryIcon className="text-white h-8 w-8 drop-shadow-2xl relative z-10" />
+                {/* Haupt-Icon & Label */}
+                <div className="flex flex-col items-center gap-1 z-10">
+                    <PrimaryIcon className="text-white h-7 w-7 drop-shadow-2xl" />
+                    <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white/90 drop-shadow-md">{primaryStyle.label}</span>
+                </div>
 
                 {/* Status Badges */}
-                <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
+                <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-20">
                     {(placeMeta.activityCount > 0 || (place.activityCount !== undefined && place.activityCount > 0)) && (
-                        <div className="bg-emerald-500/90 backdrop-blur-md text-white text-[9px] font-black uppercase px-2.5 py-1.5 rounded-full shadow-lg animate-pulse tracking-widest flex items-center gap-1.5 border border-white/20">
-                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                        <div className="h-5 bg-emerald-500/90 backdrop-blur-md text-white text-[8px] font-black uppercase px-2 rounded-full shadow-lg animate-pulse tracking-widest flex items-center gap-1 border border-white/20">
+                            <div className="h-1 w-1 rounded-full bg-white animate-ping" />
                             {(() => {
                                 const activityDate = place.activityDate?.toDate?.() || null;
                                 if (!activityDate) return language === 'de' ? 'Aktiv' : 'Active';
-
                                 const timeStr = format(activityDate, 'HH:mm');
                                 if (isToday(activityDate)) return `${language === 'de' ? 'Heute' : 'Today'} ${timeStr}`;
                                 if (isTomorrow(activityDate)) return `${language === 'de' ? 'Morgen' : 'Tomorrow'} ${timeStr}`;
@@ -147,16 +149,16 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                     )}
                 </div>
 
-                {/* Status & Debug Badges */}
-                <div className="absolute top-4 right-4 flex items-center gap-2">
+                {/* Status & Distanz Badges */}
+                <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
                     {userProfile?.role === 'admin' && place.relevanceScore !== undefined && (
-                        <div className="bg-amber-400 text-white text-[11px] font-black px-3 py-1.5 rounded-2xl shadow-lg flex items-center gap-1.5 border border-white/20">
-                            <Sparkles className="h-3.5 w-3.5" />
+                        <div className="h-5 bg-amber-400 text-white text-[8px] font-black px-2 rounded-2xl shadow-lg flex items-center gap-1 border border-white/20">
+                            <Sparkles className="h-2.5 w-2.5" />
                             {place.relevanceScore.toFixed(1)}
                         </div>
                     )}
                     {place.distance !== undefined && (
-                        <div className="bg-black/20 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-full whitespace-nowrap">
+                        <div className="h-5 bg-black/40 backdrop-blur-md text-white text-[8px] font-black px-2 rounded-full whitespace-nowrap flex items-center justify-center border border-white/10">
                             {formatDistance(place.distance)}
                         </div>
                     )}
@@ -178,7 +180,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1 mb-3">
+                <div className="flex flex-wrap gap-1 mb-1">
                     {processedTags.map((tag, index) => (
                         <Badge
                             key={index}
@@ -200,33 +202,27 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                     )}
                 </div>
 
-                {/* Footer Actions */}
-                <div className="flex items-center justify-between mt-auto pr-12 relative">
-                    <div className="flex items-center bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-1 gap-1">
+                {/* Footer Actions - Einheitliche Zeile */}
+                <div className="flex items-center gap-2 mt-auto">
+                    <div className="flex items-center bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-0.5 gap-0.5 border border-neutral-100 dark:border-neutral-800">
                         <button
                             onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
                             className={cn(
-                                "h-8 w-8 rounded-xl flex items-center justify-center transition-all",
-                                userVote === 'up' ? "bg-white text-emerald-500 shadow-sm" : "text-emerald-500/30 hover:text-emerald-500"
+                                "h-7 w-7 rounded-xl flex items-center justify-center transition-all",
+                                userVote === 'up' ? "bg-white text-emerald-500 shadow-sm" : "text-emerald-500/40 hover:text-emerald-500"
                             )}
                         >
-                            <ArrowUp className="h-4 w-4" />
+                            <ThumbsUp className="h-3.5 w-3.5" />
                         </button>
-
-                        {userProfile?.role === 'admin' && (
-                            <span className="text-xs font-black min-w-[20px] text-center text-neutral-600 dark:text-neutral-300">
-                                {Math.round(placeMeta.communityScore || 0)}
-                            </span>
-                        )}
 
                         <button
                             onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
                             className={cn(
-                                "h-8 w-8 rounded-xl flex items-center justify-center transition-all",
-                                userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-red-500/30 hover:text-red-500"
+                                "h-7 w-7 rounded-xl flex items-center justify-center transition-all",
+                                userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-red-500/40 hover:text-red-500"
                             )}
                         >
-                            <ArrowDown className="h-4 w-4" />
+                            <ThumbsDown className="h-3.5 w-3.5" />
                         </button>
                     </div>
 
@@ -235,20 +231,19 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                         size="icon"
                         onClick={handleBookmarkToggle}
                         className={cn(
-                            "h-11 w-11 rounded-2xl transition-all",
+                            "h-8 w-8 rounded-xl transition-all ml-auto",
                             isFavorite ? "text-primary bg-primary/10" : "text-neutral-300 hover:text-primary hover:bg-primary/5"
                         )}
                     >
-                        <Bookmark className={cn("h-6 w-6", isFavorite && "fill-primary")} />
+                        <Bookmark className={cn("h-4 w-4", isFavorite && "fill-primary")} />
                     </Button>
 
-                    {/* Floating Plus Button */}
                     <Button
                         size="icon"
                         onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
-                        className="absolute -bottom-1 -right-1 h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/30 transition-all active:scale-95 z-30 flex items-center justify-center"
+                        className="h-8 w-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-all active:scale-95 flex items-center justify-center"
                     >
-                        <Plus className="h-5 w-5" strokeWidth={3} />
+                        <Plus className="h-4 w-4" strokeWidth={3} />
                     </Button>
                 </div>
             </div>
