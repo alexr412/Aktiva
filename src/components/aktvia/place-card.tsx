@@ -118,7 +118,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         >
             {/* Oberer Bild/Icon-Bereich */}
             <div className={cn(
-                "w-full h-36 flex items-center justify-center relative transition-transform duration-700 group-hover:scale-105 overflow-hidden",
+                "w-full h-20 flex items-center justify-center relative transition-transform duration-700 group-hover:scale-105 overflow-hidden",
                 primaryStyle.bgClass.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-400 to-').concat(primaryStyle.color === '#ef4444' ? 'red-500' : 'blue-500')
             )}
                 style={{ backgroundColor: primaryStyle.color + '20' }}
@@ -127,7 +127,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                 <PrimaryIcon className="absolute -bottom-4 -right-4 h-24 w-24 text-white/10 rotate-12" />
 
                 {/* Haupt-Icon */}
-                <PrimaryIcon className="text-white h-16 w-16 drop-shadow-2xl relative z-10" />
+                <PrimaryIcon className="text-white h-8 w-8 drop-shadow-2xl relative z-10" />
 
                 {/* Status Badges */}
                 <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
@@ -164,12 +164,12 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             </div>
 
             {/* Content Bereich */}
-            <div className="p-5 pb-7 flex flex-col flex-1">
-                <div className="mb-4">
-                    <h3 className="text-lg font-black text-[#0f172a] dark:text-neutral-100 line-clamp-1 leading-tight mb-1 font-heading">
+            <div className="p-3 pb-4 flex flex-col flex-1">
+                <div className="mb-2">
+                    <h3 className="text-sm font-black text-[#0f172a] dark:text-neutral-100 line-clamp-2 leading-tight mb-0.5 font-heading">
                         {place.name || (userProfile?.role === 'admin' ? `POI Ref: ${place.id.slice(-6)}` : (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'))}
                     </h3>
-                    <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[11px]">
+                    <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px]">
                         {place.openingHours ? (
                             <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
                         ) : (
@@ -178,12 +178,12 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 mb-6">
+                <div className="flex flex-wrap gap-1 mb-3">
                     {processedTags.map((tag, index) => (
                         <Badge
                             key={index}
                             variant="secondary"
-                            className="rounded-full text-[9px] font-black uppercase tracking-widest px-3 py-1 bg-primary/5 text-primary border-none"
+                            className="rounded-full text-[7px] font-black uppercase tracking-widest px-2 py-0.5 bg-primary/5 text-primary border-none"
                         >
                             {tag}
                         </Badge>
