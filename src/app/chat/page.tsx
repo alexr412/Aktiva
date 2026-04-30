@@ -189,17 +189,17 @@ export default function ChatPage() {
               {/* Square Icon Container */}
               <div className={cn(
                 "h-20 w-20 rounded-[2rem] flex items-center justify-center flex-shrink-0 relative overflow-hidden",
-                primaryStyle || isDM ? "bg-white" : "bg-neutral-100"
+                !isDM && primaryStyle ? primaryStyle.gradientClass : (isDM ? "bg-white" : "bg-neutral-100")
               )}
-              style={{ 
+              style={isDM ? { 
                   backgroundColor: displayColor + '25',
                   boxShadow: `inset 0 0 0 1px ${displayColor}10`
-              }}
+              } : undefined}
               >
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={chatName || ''} className="h-full w-full object-cover" />
                 ) : (
-                  <CategoryIcon className="h-10 w-10 drop-shadow-md" style={{ color: displayColor }} />
+                  <CategoryIcon className={cn("h-10 w-10 drop-shadow-md", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
                 )}
                 {/* Active Indicator */}
                 {!isDM && <div className="absolute bottom-3 right-3 w-3.5 h-3.5 rounded-full bg-emerald-500 border-4 border-white shadow-sm" />}

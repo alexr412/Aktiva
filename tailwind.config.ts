@@ -6,6 +6,15 @@
       './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
       './src/components/**/*.{js,ts,jsx,tsx,mdx}',
       './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+      './src/lib/**/*.{js,ts,jsx,tsx,mdx}',
+    ],
+    safelist: [
+      {
+        pattern: /bg-gradient-to-br/,
+      },
+      {
+        pattern: /(from|to)-(blue|fuchsia|indigo|purple|rose|cyan|emerald|lime|orange|yellow|red|slate)-(300|400|500|600|700|900|950)/,
+      },
     ],
     theme: {
       extend: {

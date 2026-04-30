@@ -35,7 +35,7 @@ interface ProfileActivityCardProps {
         {/* Category Icon */}
         <div className={cn(
             "h-16 w-16 rounded-[1.5rem] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
-            iconData.bgClass
+            iconData.gradientClass
         )}>
             <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm border border-white/30">
                 <Icon className="w-8 h-8 text-white" />

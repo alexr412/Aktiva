@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { voteActivity, trackActivityView, submitReport } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
-import { getPrimaryIconData } from '@/lib/tag-config';
+import { getPrimaryIconData, translateTag } from '@/lib/tag-config';
 import { formatTags } from '@/lib/tag-parser';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -129,22 +129,6 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const rating = activity.avgRating || 0;
     const reviewCount = activity.reviewCount || 0;
 
-    const getIconGradient = (bgClass: string) => {
-      const map: Record<string, string> = {
-        'bg-blue-50': 'bg-gradient-to-br from-blue-400 to-blue-600',
-        'bg-red-50': 'bg-gradient-to-br from-red-400 to-red-600',
-        'bg-orange-50': 'bg-gradient-to-br from-orange-400 to-orange-600',
-        'bg-green-50': 'bg-gradient-to-br from-green-400 to-green-600',
-        'bg-yellow-50': 'bg-gradient-to-br from-yellow-400 to-yellow-600',
-        'bg-amber-50': 'bg-gradient-to-br from-amber-400 to-amber-600',
-        'bg-purple-50': 'bg-gradient-to-br from-purple-400 to-purple-600',
-        'bg-cyan-50': 'bg-gradient-to-br from-cyan-400 to-cyan-600',
-        'bg-pink-50': 'bg-gradient-to-br from-pink-400 to-pink-600',
-        'bg-fuchsia-50': 'bg-gradient-to-br from-fuchsia-400 to-fuchsia-600',
-        'bg-slate-50': 'bg-gradient-to-br from-slate-400 to-slate-600',
-      };
-      return map[bgClass] || 'bg-gradient-to-br from-violet-400 to-violet-600';
-    };
 
     return (
         <div 
@@ -185,7 +169,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
             <div className="flex items-start gap-4">
                 <div className={cn(
                     "flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0 transition-transform group-hover:scale-105", 
-                    getIconGradient(primaryStyle.bgClass)
+                    primaryStyle.gradientClass
                 )}>
                     <PrimaryIcon className="h-8 w-8 text-white drop-shadow-sm" />
                 </div>
@@ -228,7 +212,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     <div className="mt-3 flex items-center gap-2">
                       <div className="flex items-center gap-1 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-100/50">
                         <Layers className="w-2.5 h-2.5" />
-                        <span>{formatTags(activity.categories || [activity.category || ''], language)[0] || (language === 'de' ? 'Sonstiges' : 'Other')}</span>
+                        <span>{translateTag(activity.categories?.[0] || activity.category || '', language)}</span>
                       </div>
                       {activityDate && (
                         <div className="text-[9px] font-bold text-slate-400 uppercase">

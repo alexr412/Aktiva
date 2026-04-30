@@ -26,38 +26,56 @@ import { cn } from './utils';
  * Custom Icons für Kategorien, die Lucide nicht abdeckt
  */
 const TrampolineIcon = ({ className }: { className?: string }) => (
-  <img 
-    src="/assets/icons/trampoline.png" 
-    className={cn(className)} 
-    style={{ filter: 'brightness(0) invert(1)' }} 
-    alt="Trampoline" 
+  <img
+    src="/assets/icons/trampoline.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Trampoline"
   />
 );
 
 const WaterparkIcon = ({ className }: { className?: string }) => (
-  <img 
-    src="/assets/icons/waterpark.png" 
-    className={cn(className)} 
-    style={{ filter: 'brightness(0) invert(1)' }} 
-    alt="Waterpark" 
+  <img
+    src="/assets/icons/waterpark.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Waterpark"
   />
 );
 
 const NightclubIcon = ({ className }: { className?: string }) => (
-  <img 
-    src="/assets/icons/nightclub.png" 
-    className={cn(className)} 
-    style={{ filter: 'brightness(0) invert(1)' }} 
-    alt="Nightclub" 
+  <img
+    src="/assets/icons/nightclub.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Nightclub"
   />
 );
 
 const ZooIcon = ({ className }: { className?: string }) => (
-  <img 
-    src="/assets/icons/zoo.png" 
-    className={cn(className)} 
-    style={{ filter: 'brightness(0) invert(1)' }} 
-    alt="Zoo" 
+  <img
+    src="/assets/icons/zoo.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Zoo"
+  />
+);
+
+const GalleryIcon = ({ className }: { className?: string }) => (
+  <img
+    src="/assets/icons/gallery.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Gallery"
+  />
+);
+
+const PlaygroundIcon = ({ className }: { className?: string }) => (
+  <img
+    src="/assets/icons/playground.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Playground"
   />
 );
 
@@ -68,7 +86,8 @@ export interface TagStyle {
   icon: LucideIcon;
   color: string;
   label: string;
-  bgClass: string;
+  bgClass: string; // Basis-Klasse (z.B. bg-blue-50)
+  gradientClass: string; // Vollständige Gradient-Klasse für Premium-Look
   imageUrl?: string;
 }
 
@@ -82,145 +101,212 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   const name = (place.name || '').toLowerCase();
   const n = name;
 
-  // --- SAKRALBAUTEN (Höchste Priorität) ---
+  // --- PRIORITÄT 0: Spezifische Entertainment-Kategorien ---
+  if (tags.includes('entertainment.museum') || name.includes('museum')) {
+    return { icon: Landmark, color: '#4f46e5', label: language === 'de' ? 'Museum' : 'Museum', bgClass: 'bg-indigo-50', gradientClass: 'bg-gradient-to-br from-indigo-600 to-blue-700', imageUrl: 'https://images.unsplash.com/photo-1544333323-c242144ebd53?q=80&w=800&auto=format&fit=crop' };
+  }
+  if (tags.includes('entertainment.cinema') || name.includes('kino')) {
+    return { icon: Film, color: '#4c1d95', label: language === 'de' ? 'Kino' : 'Cinema', bgClass: 'bg-purple-50', gradientClass: 'bg-gradient-to-br from-rose-500 to-orange-500', imageUrl: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800&auto=format&fit=crop' };
+  }
+  if (name.includes('quest') || name.includes('escape') || name.includes('rätsel')) {
+    return { icon: Gamepad2, color: '#7c3aed', label: language === 'de' ? 'Escape Room' : 'Escape Room', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-slate-900 to-violet-800' };
+  }
+  if (tags.includes('entertainment.activity_park.trampoline') || name.includes('trampolin')) {
+    return { icon: TrampolineIcon as any, color: '#6366f1', label: language === 'de' ? 'Trampolinhalle' : 'Trampoline Park', bgClass: 'bg-indigo-50', gradientClass: 'bg-gradient-to-br from-fuchsia-500 to-purple-600' };
+  }
+
+  // --- SAKRALBAUTEN ---
   if (tags.includes('tourism.sights.place_of_worship.synagogue') || tags.includes('religion.place_of_worship.judaism') || n.includes('synagoge')) {
-    return { icon: Star, color: '#3b82f6', label: language === 'de' ? 'Synagoge' : 'Synagogue', bgClass: 'bg-blue-50' };
+    return { icon: Star, color: '#3b82f6', label: language === 'de' ? 'Synagoge' : 'Synagogue', bgClass: 'bg-blue-50', gradientClass: 'bg-gradient-to-br from-blue-500 to-indigo-600' };
   }
   if (tags.includes('tourism.sights.place_of_worship.mosque') || tags.includes('religion.place_of_worship.islam') || n.includes('moschee')) {
-    return { icon: MoonStar, color: '#10b981', label: language === 'de' ? 'Moschee' : 'Mosque', bgClass: 'bg-emerald-50' };
+    return { icon: MoonStar, color: '#10b981', label: language === 'de' ? 'Moschee' : 'Mosque', bgClass: 'bg-emerald-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-teal-400' };
   }
-  if (tags.includes('tourism.sights.place_of_worship.church') || tags.includes('tourism.sights.place_of_worship.cathedral') || tags.includes('tourism.sights.place_of_worship.chapel') || tags.includes('religion.place_of_worship.christianity') || tags.includes('religion') || tags.includes('religion.place_of_worship') || n.includes('kirche') || n.includes('dom') || n.includes('kapelle')) {
-    return { icon: Church, color: '#8b5cf6', label: language === 'de' ? 'Religiöser Ort' : 'Religious Place', bgClass: 'bg-violet-50' };
-  }
-  if (tags.includes('tourism.sights.place_of_worship.temple') || tags.includes('religion.place_of_worship.buddhism') || tags.includes('religion.place_of_worship.hinduism') || n.includes('tempel') || n.includes('schrein')) {
-    return { icon: Landmark, color: '#f59e0b', label: language === 'de' ? 'Tempel/Schrein' : 'Temple/Shrine', bgClass: 'bg-amber-50' };
+  if (tags.includes('tourism.sights.place_of_worship.church') || tags.includes('tourism.sights.place_of_worship.cathedral') || tags.includes('tourism.sights.place_of_worship.chapel') || tags.includes('religion.place_of_worship.christianity') || n.includes('kirche') || n.includes('dom') || n.includes('kapelle')) {
+    return { icon: Church, color: '#8b5cf6', label: language === 'de' ? 'Religiöser Ort' : 'Religious Site', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-violet-500 to-fuchsia-500' };
   }
 
-  // --- PRIORITÄT 1: Maritim & Spezifische Namens-Überschreibungen ---
-  if (tags.includes('tourism.sights.memorial.ship')) {
-    return { icon: Ship, color: '#3b82f6', label: language === 'de' ? 'Schiff' : 'Ship', bgClass: 'bg-blue-50' };
+  // --- MARITIM & ZOO ---
+  if (tags.includes('entertainment.zoo') || name.includes('zoo') || name.includes('tierpark')) {
+    return { icon: ZooIcon as any, color: '#7c2d12', label: language === 'de' ? 'Zoo & Tierpark' : 'Zoo', bgClass: 'bg-orange-50', gradientClass: 'bg-gradient-to-br from-amber-500 to-orange-600', imageUrl: 'https://images.unsplash.com/photo-1541315570220-449e7591244d?q=80&w=800&auto=format&fit=crop' };
   }
   if (tags.includes('tourism.attraction.ship') || name.includes('schiff') || name.includes('boot')) {
-    return { icon: Ship, color: '#3b82f6', label: language === 'de' ? 'Schiff' : 'Ship', bgClass: 'bg-blue-50', imageUrl: 'https://images.unsplash.com/photo-1540946484610-45cd54ff3ad2?q=80&w=800&auto=format&fit=crop' };
-  }
-  if (tags.includes('entertainment.zoo') || name.includes('zoo') || name.includes('tierpark')) {
-    return { icon: ZooIcon as any, color: '#755317ff', label: language === 'de' ? 'Zoo/Tierpark' : 'Zoo', bgClass: 'bg-amber-50', imageUrl: 'https://images.unsplash.com/photo-1541315570220-449e7591244d?q=80&w=800&auto=format&fit=crop' };
-  }
-  if (name.includes('dock')) {
-    return { icon: Anchor, color: '#3b82f6', label: language === 'de' ? 'Maritim' : 'Maritime', bgClass: 'bg-blue-50' };
-  }
-  if (name.includes('see')) {
-    return { icon: Waves, color: '#0ea5e9', label: language === 'de' ? 'Gewässer' : 'Water body', bgClass: 'bg-sky-50' };
+    return { icon: Ship, color: '#3b82f6', label: language === 'de' ? 'Maritim' : 'Maritime', bgClass: 'bg-blue-50', gradientClass: 'bg-gradient-to-br from-blue-500 to-cyan-400', imageUrl: 'https://images.unsplash.com/photo-1540946484610-45cd54ff3ad2?q=80&w=800&auto=format&fit=crop' };
   }
 
-  if (tags.includes('entertainment.miniature_golf') || name.includes('minigolf')) {
-    return { icon: LandPlot, color: '#22c55e', label: language === 'de' ? 'Minigolf' : 'Mini Golf', bgClass: 'bg-green-50', imageUrl: 'https://images.unsplash.com/photo-1531390844884-f93dca7bc9f3?q=80&w=800&auto=format&fit=crop' };
+  // --- WASSER & WELLNESS ---
+  if (tags.includes('leisure.water_park') || tags.includes('entertainment.water_park') || name.includes('wasserpark')) {
+    return { icon: WaterparkIcon as any, color: '#0284c7', label: language === 'de' ? 'Schwimmbad' : 'Water Park', bgClass: 'bg-sky-50', gradientClass: 'bg-gradient-to-br from-sky-400 to-blue-600', imageUrl: 'https://images.unsplash.com/photo-1562095241-8c6714fd4178?q=80&w=800&auto=format&fit=crop' };
+  }
+  if (tags.includes('leisure.swimming_pool') || name.includes('bad') || name.includes('schwimm')) {
+    return { icon: Droplets, color: '#0ea5e9', label: language === 'de' ? 'Freibad' : 'Pool', bgClass: 'bg-sky-50', gradientClass: 'bg-gradient-to-br from-cyan-400 to-blue-500' };
+  }
+  if (tags.includes('leisure.spa') || name.includes('wellness') || name.includes('sauna') || name.includes('therme')) {
+    return { icon: Flower2, color: '#0891b2', label: language === 'de' ? 'Wellness & Spa' : 'Wellness & Spa', bgClass: 'bg-cyan-50', gradientClass: 'bg-gradient-to-br from-teal-400 to-cyan-500' };
   }
 
-  // --- PRIORITÄT 2: Kunst, Kultur & Theater ---
+  // --- NATUR & SPIEL ---
+  if (tags.includes('leisure.playground') || name.includes('spielplatz')) {
+    return { icon: PlaygroundIcon as any, color: '#10b981', label: language === 'de' ? 'Spielplatz' : 'Playground', bgClass: 'bg-emerald-50', gradientClass: 'bg-gradient-to-br from-emerald-400 to-teal-500' };
+  }
+  if (tags.includes('leisure.park') || tags.includes('pet.dog_park') || n.includes('wiese') || n.includes('park') || n.includes('garten')) {
+    return { icon: Trees, color: '#059669', label: language === 'de' ? 'Natur & Park' : 'Nature & Park', bgClass: 'bg-green-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-lime-400' };
+  }
+
+  // --- KULTUR & FREIZEIT ---
   if (tags.includes('entertainment.culture.theatre') || name.includes('theater')) {
-    return { icon: Theater, color: '#ec4899', label: language === 'de' ? 'Theater' : 'Theater', bgClass: 'bg-pink-50', imageUrl: '/assets/categories/theater.png' };
+    return { icon: Theater, color: '#e11d48', label: language === 'de' ? 'Theater' : 'Theater', bgClass: 'bg-rose-50', gradientClass: 'bg-gradient-to-br from-rose-600 to-pink-500' };
   }
-  if (tags.includes('entertainment.culture.arts_centre') || name.includes('galerie') || name.includes('kunstzentrum')) {
-    return { icon: Image, color: '#ec4899', label: language === 'de' ? 'Galerie' : 'Gallery', bgClass: 'bg-pink-50', imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=800&auto=format&fit=crop' };
+  if (tags.includes('entertainment.culture.arts_centre') || tags.includes('entertainment.culture.gallery') || name.includes('galerie') || name.includes('gallery')) {
+    return { icon: GalleryIcon as any, color: '#db2777', label: language === 'de' ? 'Galerie' : 'Gallery', bgClass: 'bg-pink-50', gradientClass: 'bg-gradient-to-br from-pink-500 to-purple-600' };
   }
   if (tags.some((t: string) => t.startsWith('tourism.sights') || t.startsWith('building.historic'))) {
-    return { icon: Landmark, color: '#f59e0b', label: language === 'de' ? 'Sehenswürdigkeit' : 'Sight', bgClass: 'bg-amber-50', imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop' };
+    return { icon: Landmark, color: '#f59e0b', label: language === 'de' ? 'Sehenswürdigkeit' : 'Sight', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-yellow-500 to-orange-600' };
   }
 
-  if (tags.includes('tourism.attraction.artwork') || name.includes('statue') || name.includes('kunst')) {
-    return { icon: Palette, color: '#f59e0b', label: language === 'de' ? 'Kunst' : 'Art', bgClass: 'bg-amber-50' };
+  // --- GASTRONOMIE ---
+  if (tags.some((t: string) => t.startsWith('catering.cafe') || t.startsWith('catering.bar') || name.includes('bar') || name.includes('pub'))) {
+    return { icon: Coffee, color: '#d97706', label: language === 'de' ? 'Café & Bar' : 'Café & Bar', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-orange-400 to-red-600' };
   }
-  if (tags.includes('entertainment.museum') || name.includes('museum')) {
-    return { icon: Landmark, color: '#6366f1', label: language === 'de' ? 'Museum' : 'Museum', bgClass: 'bg-indigo-50', imageUrl: 'https://images.unsplash.com/photo-1544333323-c242144ebd53?q=80&w=800&auto=format&fit=crop' };
-  }
-
-  if (tags.includes('tourism.attraction.viewpoint') || name.includes('aussicht')) {
-    return { icon: Binoculars, color: '#d97706', label: language === 'de' ? 'Aussichtspunkt' : 'Viewpoint', bgClass: 'bg-amber-50', imageUrl: 'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=800&auto=format&fit=crop' };
+  if (tags.some((t: string) => t.startsWith('catering')) || name.includes('restaurant')) {
+    return { icon: Utensils, color: '#dc2626', label: language === 'de' ? 'Essen & Trinken' : 'Gastronomy', bgClass: 'bg-red-50', gradientClass: 'bg-gradient-to-br from-red-600 to-orange-600' };
   }
 
-  if (tags.includes('leisure.spa') || tags.includes('leisure.sauna') || tags.includes('leisure.spa.sauna') || name.includes('wellness') || name.includes('sauna') || name.includes('therme')) {
-    return { icon: Flower2, color: '#06b6d4', label: language === 'de' ? 'Wellness/Spa' : 'Wellness/Spa', bgClass: 'bg-cyan-50', imageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=800&auto=format&fit=crop' };
+  // --- NACHTLEBEN ---
+  if (tags.includes('adult.nightclub') || name.includes('club') || name.includes('disco')) {
+    return { icon: NightclubIcon as any, color: '#9333ea', label: language === 'de' ? 'Nachtclub' : 'Nightclub', bgClass: 'bg-purple-50', gradientClass: 'bg-gradient-to-br from-pink-600 to-purple-700' };
   }
 
-  if (tags.includes('entertainment.activity_park.trampoline') || name.includes('trampolin')) {
-    return { icon: TrampolineIcon as any, color: '#4f46e5', label: language === 'de' ? 'Trampolin' : 'Trampoline', bgClass: 'bg-indigo-50' };
-  }
-
-  if (tags.includes('entertainment.activity_park') || tags.includes('entertainment.activity_park.climbing') || name.includes('kletterwald')) {
-    return { icon: Zap, color: '#4f46e5', label: language === 'de' ? 'Aktivitätspark' : 'Activity Park', bgClass: 'bg-indigo-50', imageUrl: 'https://images.unsplash.com/photo-1541604193435-22287d32c2c2?q=80&w=800&auto=format&fit=crop' };
-  }
-
-  if (name.includes('quest') || name.includes('escape') || name.includes('rätsel')) {
-    return { icon: Gamepad2, color: '#f59e0b', label: language === 'de' ? 'Escape Game' : 'Escape Game', bgClass: 'bg-amber-50' };
-  }
-
-  if (tags.includes('leisure.water_park') || tags.includes('entertainment.water_park') || name.includes('wasserpark')) {
-    return { icon: WaterparkIcon as any, color: '#0ea5e9', label: language === 'de' ? 'Wasserpark' : 'Water Park', bgClass: 'bg-sky-50', imageUrl: 'https://images.unsplash.com/photo-1562095241-8c6714fd4178?q=80&w=800&auto=format&fit=crop' };
-  }
-
-  if (tags.includes('leisure.swimming_pool') || name.includes('wasser') || name.includes('bad') || name.includes('schwimm')) {
-    return { icon: Droplets, color: '#0ea5e9', label: language === 'de' ? 'Schwimmbad' : 'Pool', bgClass: 'bg-sky-50', imageUrl: 'https://images.unsplash.com/photo-1562095241-8c6714fd4178?q=80&w=800&auto=format&fit=crop' };
-  }
-
-  if (tags.includes('beach') || name.includes('strand')) {
-    return { icon: Waves, color: '#0ea5e9', label: language === 'de' ? 'Strand' : 'Beach', bgClass: 'bg-sky-50', imageUrl: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?q=80&w=800&auto=format&fit=crop' };
-  }
-
-  // --- PRIORITÄT 2.5: Nachtleben ---
-  if (tags.includes('adult.nightclub') || name.includes('club') || name.includes('disco') || name.includes('nachtclub')) {
-    return { icon: NightclubIcon as any, color: '#a855f7', label: language === 'de' ? 'Club' : 'Club', bgClass: 'bg-purple-50' };
-  }
-
-  // --- PRIORITÄT 3: Infrastruktur & Natur ---
-  if (tags.includes('man_made.bridge') || name.includes('brücke')) {
-    return { icon: Waves, color: '#0ea5e9', label: language === 'de' ? 'Brücke' : 'Bridge', bgClass: 'bg-sky-50' };
-  }
-
-  if (name.includes('kulturzentrum') || name.includes('kultur') || name.includes('theater') || name.includes('lichtburg')) {
-    return { icon: Palette, color: '#ec4899', label: language === 'de' ? 'Kultur' : 'Culture', bgClass: 'bg-pink-50' };
-  }
-
-  // Spezifische Wiesen/Parks Regel
-  if (tags.includes('pet.dog_park') || n.includes('wiese') || n.includes('park') || n.includes('gehege') || n.includes('garten')) {
-    return { icon: Trees, color: '#22c55e', label: language === 'de' ? 'Natur' : 'Nature', bgClass: 'bg-green-50 dark:bg-neutral-800' };
-  }
-
-  if (tags.includes('leisure.park') || tags.includes('leisure')) {
-    return { icon: TreePine, color: '#22c55e', label: language === 'de' ? 'Park' : 'Park', bgClass: 'bg-green-50', imageUrl: 'https://images.unsplash.com/photo-1444333509404-89ce9b2c7a0e?q=80&w=800&auto=format&fit=crop' };
-  }
-
-  // --- PRIORITÄT 4: Denkmäler & Monumente ---
-  if (tags.some((t: string) => t.includes('memorial') || t.includes('monument')) || n.includes('denkmal') || n.includes('mahnmal')) {
-    return { icon: Landmark, color: '#64748b', label: language === 'de' ? 'Denkmal' : 'Memorial', bgClass: 'bg-slate-50' };
-  }
-
-  // --- PRIORITÄT 4.5: Bildung ---
-  if (tags.some((t: string) => t.startsWith('education') || t === 'building.university' || t === 'building.library' || t === 'building.school') || name.includes('schule') || name.includes('uni')) {
-    return { icon: BookOpen, color: '#3b82f6', label: language === 'de' ? 'Bildung' : 'Education', bgClass: 'bg-blue-50' };
-  }
-
-  // --- PRIORITÄT 5: Verifizierte Basis-Kategorien ---
-  if (tags.some((t: string) => t.startsWith('catering.fast_food'))) return { icon: Drumstick, color: '#f97316', label: language === 'de' ? 'Fast Food' : 'Fast Food', bgClass: 'bg-orange-50', imageUrl: 'https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?q=80&w=800&auto=format&fit=crop' };
-  if (tags.some((t: string) => t.startsWith('catering.cafe') || t.startsWith('catering.bar') || t.startsWith('catering.pub')) || name.includes('cafe') || name.includes('bar') || name.includes('kneipe') || name.includes('pub')) {
-    return { icon: tags.includes('catering.pub') || name.includes('pub') || name.includes('kneipe') ? BottleWine : Coffee, color: '#d97706', label: language === 'de' ? 'Bar/Pub' : 'Bar/Pub', bgClass: 'bg-amber-50', imageUrl: 'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?q=80&w=800&auto=format&fit=crop' };
-  }
-  if (tags.some((t: string) => t.startsWith('catering')) || name.includes('restaurant')) return { icon: Utensils, color: '#ef4444', label: language === 'de' ? 'Gastronomie' : 'Gastronomy', bgClass: 'bg-red-50', imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=800&auto=format&fit=crop' };
-  if (tags.some((t: string) => t.startsWith('sport')) || name.includes('sport')) return { icon: Dumbbell, color: '#3b82f6', label: language === 'de' ? 'Sport' : 'Sports', bgClass: 'bg-blue-50', imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=800&auto=format&fit=crop' };
-  if (tags.includes('entertainment.cinema') || name.includes('kino')) return { icon: Film, color: '#8b5cf6', label: language === 'de' ? 'Kino' : 'Cinema', bgClass: 'bg-purple-50', imageUrl: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800&auto=format&fit=crop' };
-  if (tags.includes('entertainment.amusement_arcade') || name.includes('arcade') || name.includes('spielhalle')) {
-    return { icon: Gamepad2, color: '#8b5cf6', label: language === 'de' ? 'Spielhalle' : 'Arcade', bgClass: 'bg-purple-50' };
-  }
-
-  // --- PRIORITÄT 6: Community Events ---
+  // --- COMMUNITY & SONSTIGES ---
   if (tags.includes('user_event')) {
-    return { icon: Users, color: '#8b5cf6', label: language === 'de' ? 'Community' : 'Community', bgClass: 'bg-purple-50' };
+    return { icon: Users, color: '#8b5cf6', label: language === 'de' ? 'Community' : 'Community', bgClass: 'bg-purple-50', gradientClass: 'bg-gradient-to-br from-blue-400 to-fuchsia-500' };
   }
 
   // --- FALLBACK ---
-  return { icon: Building, color: '#94a3b8', label: language === 'de' ? 'Ort' : 'Place', bgClass: 'bg-slate-50' };
+  return { icon: Building, color: '#94a3b8', label: language === 'de' ? 'Interessanter Ort' : 'Point of Interest', bgClass: 'bg-slate-50', gradientClass: 'bg-gradient-to-br from-slate-400 to-slate-500' };
 };
 
 export const getPrimaryTagStyle = (categories: string[], language: 'de' | 'en' = 'de'): TagStyle => {
   return getPrimaryIconData({ categories }, language);
+};
+
+export const translateTag = (tag: string, language: 'de' | 'en' = 'de'): string => {
+  if (language === 'en') {
+    const lastPart = tag.split('.').pop() || tag;
+    return (lastPart.charAt(0).toUpperCase() + lastPart.slice(1)).replace(/_/g, ' ');
+  }
+
+  const translations: Record<string, string> = {
+    'entertainment': 'Unterhaltung',
+    'entertainment.museum': 'Museum',
+    'entertainment.cinema': 'Kino',
+    'entertainment.theme_park': 'Freizeitpark',
+    'entertainment.water_park': 'Erlebnisbad',
+    'entertainment.zoo': 'Zoo',
+    'entertainment.activity_park': 'Aktivitätspark',
+    'entertainment.activity_park.trampoline': 'Trampolinhalle',
+    'entertainment.culture.theatre': 'Theater',
+    'leisure': 'Freizeit',
+    'leisure.park': 'Park',
+    'leisure.swimming_pool': 'Schwimmbad',
+    'leisure.water_park': 'Schwimmbad',
+    'leisure.playground': 'Spielplatz',
+    'leisure.spa': 'Wellness',
+    'leisure.beach': 'Strand',
+    'leisure.ice_rink': 'Eissporthalle',
+    'tourism': 'Tourismus',
+    'tourism.sights': 'Sehenswürdigkeit',
+    'tourism.attraction': 'Attraktion',
+    'tourism.information': 'Information',
+    'catering': 'Gastronomie',
+    'catering.restaurant': 'Restaurant',
+    'catering.cafe': 'Café',
+    'catering.bar': 'Bar',
+    'catering.fast_food': 'Schnellimbiss',
+    'catering.pub': 'Kneipe',
+    'sport': 'Sport',
+    'sport.sports_centre': 'Sporthalle',
+    'sport.swimming': 'Schwimmen',
+    'sport.fitness': 'Fitness',
+    'building': 'Gebäude',
+    'building.commercial': 'Gewerblich',
+    'building.historic': 'Historisch',
+    'wheelchair': 'Barrierefrei',
+    'wheelchair.yes': 'Barrierefrei',
+    'wheelchair.limited': 'Teilw. Barrierefrei',
+    'fee': 'Eintrittspflichtig',
+    'fee.yes': 'Eintrittspflichtig',
+    'fee.no': 'Kostenlos',
+    'commercial': 'Gewerbe',
+    'activity': 'Aktivität',
+    'amenity': 'Einrichtung',
+    'natural': 'Natur',
+    'adult': 'Ab 18',
+    'adult.nightclub': 'Club',
+    'escape': 'Escape Room',
+    'entertainment.escape_game': 'Escape Room',
+    'internet_access': 'WLAN verfügbar',
+    'internet_access.free': 'Gratis WLAN',
+    'dogs': 'Hunde erlaubt',
+    'dogs.leashed': 'Hunde (Leine)',
+    'dogs.yes': 'Hunde willkommen',
+    'parking': 'Parkplatz',
+    'rental': 'Verleih',
+    'shop': 'Geschäft'
+  };
+
+  // 1. Check full tag path
+  if (translations[tag.toLowerCase()]) return translations[tag.toLowerCase()];
+
+  // 2. Check last part of the dot notation
+  const lastPart = tag.split('.').pop() || tag;
+  const lastPartLower = lastPart.toLowerCase();
+  
+  if (translations[lastPartLower]) return translations[lastPartLower];
+
+  // 3. Fallback: Remove underscores, spaces and capitalize
+  return (lastPart.charAt(0).toUpperCase() + lastPart.slice(1))
+    .replace(/_/g, ' ')
+    .replace(/\./g, ' ');
+};
+
+export const getCleanTags = (tags: string[]): { tag: string, isMain: boolean }[] => {
+  if (!tags || !Array.isArray(tags)) return [];
+
+  // 1. Filter out redundant tags (if child exists, remove parent)
+  let deduplicated = tags.filter(tag => 
+    !tags.some(other => other !== tag && other.startsWith(tag + '.'))
+  );
+
+  // 2. Specific redundancy: If we have entertainment.*, remove building.entertainment or entertainment
+  const hasSpecificEntertainment = deduplicated.some(t => 
+    t.startsWith('entertainment.') && t !== 'entertainment'
+  );
+  
+  if (hasSpecificEntertainment) {
+    deduplicated = deduplicated.filter(t => t !== 'entertainment' && t !== 'building.entertainment');
+  }
+
+  // 3. Filter out low-value/technical tags
+  const filtered = deduplicated.filter(tag => {
+    const t = tag.toLowerCase();
+    return !['yes', 'no', 'access', 'public', 'fee.yes', 'fee.no', 'building', 'no_fee'].includes(t);
+  });
+
+  // 4. Classify tags
+  return filtered.map(tag => {
+    const t = tag.toLowerCase();
+    const isAttribute = t.startsWith('wheelchair') || 
+                        t.startsWith('fee') || 
+                        t.startsWith('access') || 
+                        t.startsWith('internet_access') ||
+                        t.startsWith('dogs') ||
+                        t.startsWith('payment') ||
+                        t.startsWith('building.'); // Mark building tags as attributes (grey)
+    
+    return {
+      tag,
+      isMain: !isAttribute
+    };
+  });
 };

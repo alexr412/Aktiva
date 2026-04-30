@@ -39,8 +39,8 @@ import type { Place, Activity } from '@/lib/types';
 import { AiRecommendation } from './ai-recommendation';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
-import { getPrimaryIconData } from '@/lib/tag-config';
-import { formatTags, formatOpeningHours } from '@/lib/tag-parser';
+import { getPrimaryIconData, translateTag } from '@/lib/tag-config';
+import { formatOpeningHours } from '@/lib/tag-parser';
 
 type PlaceDetailsProps = {
     place: Place;
@@ -134,16 +134,14 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     };
 
     const categories = (place.categories || []);
-    const processedTags = formatTags(categories, language);
 
     return (
         <div className="flex flex-col h-full bg-white dark:bg-neutral-900 overflow-hidden rounded-none sm:rounded-[2.5rem] relative">
             {/* Immersiver Header */}
             <div className={cn(
                 "relative h-56 sm:h-64 w-full flex-shrink-0 flex items-center justify-center overflow-hidden",
-                primaryStyle.bgClass.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-400 to-').concat(primaryStyle.color === '#ef4444' ? 'red-500' : 'blue-500')
+                primaryStyle.gradientClass
             )}
-            style={{ backgroundColor: primaryStyle.color + '20' }}
             >
                 {/* Main Dynamic Icon */}
                 <div className="relative z-10 drop-shadow-[0_20px_50px_rgba(0,0,0,0.3)] transform transition-transform duration-700 hover:scale-110">
@@ -158,7 +156,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                 <div className="absolute bottom-5 sm:bottom-6 left-5 sm:left-6 flex items-center gap-2 z-20">
 
                     <div className="bg-white/90 backdrop-blur-md text-neutral-800 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border border-white/30">
-                        {processedTags[0] || (language === 'de' ? 'Entdecken' : 'Discover')}
+                        {translateTag(categories[0] || '', language)}
                     </div>
                 </div>
 

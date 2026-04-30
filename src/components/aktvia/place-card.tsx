@@ -24,7 +24,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { votePlace } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { getPrimaryIconData } from '@/lib/tag-config';
+import { getPrimaryIconData, translateTag, getCleanTags } from '@/lib/tag-config';
 import { formatTags, formatOpeningHours } from '@/lib/tag-parser';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -107,7 +107,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     };
 
     const categories = (place.categories || []);
-    const processedTags = formatTags(categories, language);
+    const processedTags = getCleanTags(categories).slice(0, 6);
 
     return (
         <Card
@@ -119,9 +119,8 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             {/* Oberer Bild/Icon-Bereich */}
             <div className={cn(
                 "w-full h-20 flex items-center justify-center relative transition-transform duration-700 group-hover:scale-105 overflow-hidden",
-                primaryStyle.bgClass.replace('bg-', 'bg-gradient-to-br from-').replace('-50', '-400 to-').concat(primaryStyle.color === '#ef4444' ? 'red-500' : 'blue-500')
+                primaryStyle.gradientClass
             )}
-                style={{ backgroundColor: primaryStyle.color + '20' }}
             >
                 {/* Dekorative Icons im Hintergrund */}
                 <PrimaryIcon className="absolute -bottom-4 -right-4 h-24 w-24 text-white opacity-10 rotate-12" />
@@ -181,13 +180,13 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                 </div>
 
                 <div className="flex flex-wrap gap-1 mb-1">
-                    {processedTags.map((tag, index) => (
+                    {processedTags.filter(item => item.isMain).map((item, index) => (
                         <Badge
                             key={index}
                             variant="secondary"
-                            className="rounded-full text-[7px] font-black uppercase tracking-widest px-2 py-0.5 bg-primary/5 text-primary border-none"
+                            className="rounded-full text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-primary/5 text-primary"
                         >
-                            {tag}
+                            {translateTag(item.tag, language)}
                         </Badge>
                     ))}
                     {userProfile?.role === 'admin' && (

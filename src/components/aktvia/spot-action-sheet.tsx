@@ -111,7 +111,7 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
                 
                 <SheetHeader className="text-left mb-6 flex-shrink-0">
                     <div className="flex items-center gap-4 mb-4">
-                        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center bg-primary/10", primaryStyle.bgClass)}>
+                        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center", primaryStyle.gradientClass)}>
                             <PrimaryIcon className="h-8 w-8" style={{ color: primaryStyle.color }} />
                         </div>
                         <div className="min-w-0 flex-1">
