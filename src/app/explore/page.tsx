@@ -12,7 +12,7 @@ import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestor
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Compass, X, Check, Info, MapPin, Star, Building2, ArrowLeft, ArrowRight, PlusCircle, RefreshCw, ChevronDown } from 'lucide-react';
+import { Compass, X, Check, Info, MapPin, Star, Building2, ArrowLeft, ArrowRight, PlusCircle, Plus, RefreshCw, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
@@ -249,6 +249,8 @@ export default function ExplorePage() {
       else if (offset.x < -swipeThreshold) handleSwipe('left');
     };
 
+    const [dragX, setDragX] = useState(0);
+
     return (
         <div className="flex h-[100dvh] flex-col lg:flex-row bg-[#fdfdfd] dark:bg-neutral-950 overflow-hidden font-jakarta">
             {/* Desktop Sidebar */}
@@ -311,8 +313,8 @@ export default function ExplorePage() {
                          </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col items-center justify-center relative min-h-0 py-2 sm:py-6">
-                          <div className="relative w-full max-w-[400px] aspect-[3.6/5] max-h-[580px]">
+                    <div className="flex-1 flex flex-col items-center justify-start relative min-h-0 pt-4 pb-36">
+                          <div className="relative w-full max-w-[400px] aspect-[3.6/5] max-h-[540px]">
                             <AnimatePresence mode="popLayout">
                                 {cards.slice(-3).map((card, index) => {
                                     const displayedIndex = cards.length - cards.slice(-3).length + index;
@@ -325,112 +327,156 @@ export default function ExplorePage() {
                                         <motion.div
                                             key={card.id}
                                             className={cn(
-                                              "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[3rem] shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] border-none overflow-hidden flex flex-col"
+                                              "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[2.5rem] sm:rounded-[3rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] border-none overflow-hidden flex flex-col transition-shadow duration-300"
                                             )}
-                                            style={{ zIndex: isTopCard ? 100 : (10 + index), perspective: 1000 }}
+                                            style={{ 
+                                                zIndex: isTopCard ? 100 : (10 + index),
+                                                x: isTopCard ? 0 : (cards.length - 1 - displayedIndex) * 8,
+                                                rotate: isTopCard ? 0 : (cards.length - 1 - displayedIndex) * 2,
+                                                scale: isTopCard ? 1 : 1 - (cards.length - 1 - displayedIndex) * 0.04
+                                            }}
                                             initial={{ scale: 0.9, opacity: 0 }}
                                             animate={isTopCard ? { 
                                                 opacity: 1, 
                                                 scale: 1, 
                                                 x: 0, 
                                                 y: 0,
+                                                rotate: 0,
                                                 transition: { duration: 0.2 } 
                                             } : {
-                                                scale: 1 - (cards.length - 1 - displayedIndex) * 0.05,
-                                                y: (cards.length - 1 - displayedIndex) * 12,
-                                                opacity: 0.05,
+                                                opacity: 1,
+                                                scale: 1 - (cards.length - 1 - displayedIndex) * 0.04,
+                                                y: (cards.length - 1 - displayedIndex) * 15,
+                                                x: (cards.length - 1 - displayedIndex) * (index % 2 === 0 ? 5 : -5),
+                                                rotate: (cards.length - 1 - displayedIndex) * (index % 2 === 0 ? 2 : -2),
                                             }}
                                             whileDrag={{ scale: 1.02, opacity: 1, zIndex: 200 }}
-                                            exit={{ x: 500, opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
-                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                            exit={{ x: dragX > 0 ? 1000 : -1000, opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
+                                            transition={{ type: "spring", stiffness: 400, damping: 40 }}
                                             drag={isTopCard ? "x" : false}
                                             dragConstraints={{ left: 0, right: 0 }}
-                                            onDragEnd={isTopCard ? onDragEnd : undefined}
+                                            onDrag={(e, info) => isTopCard && setDragX(info.offset.x)}
+                                            onDragEnd={isTopCard ? (e, info) => {
+                                                setDragX(0);
+                                                onDragEnd(e, info);
+                                            } : undefined}
                                         >
-                                            <div className={cn("flex-1 flex flex-col bg-white dark:bg-neutral-900", !isTopCard && "pointer-events-none")}>
-                                                <div className="h-[55%] w-full relative overflow-hidden bg-gradient-to-br from-[#bfc6e8] to-[#9fa9d1]">
-                                                    <div className="absolute top-5 left-5 flex gap-2 z-10">
-                                                        <div className="bg-amber-100 text-amber-700 text-[9px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
-                                                            <Star className="h-2.5 w-2.5 fill-current" />
-                                                            {language === 'de' ? 'NEU' : 'NEW'}
+                                            {/* Swipe Overlays */}
+                                            {isTopCard && (
+                                                <>
+                                                    <motion.div 
+                                                        style={{ opacity: Math.min(dragX / 150, 0.8) }}
+                                                        className="absolute inset-0 z-50 pointer-events-none bg-emerald-500/20 flex items-center justify-center"
+                                                    >
+                                                        <div className="border-8 border-emerald-500 rounded-2xl px-8 py-4 rotate-[-15deg] scale-125">
+                                                            <span className="text-5xl font-black text-emerald-500 uppercase tracking-tighter italic">LIKE</span>
                                                         </div>
-                                                        <div className="bg-white/80 backdrop-blur-md text-[#6e7ee5] text-[9px] font-bold px-3 py-1.5 rounded-full">
-                                                            {card.categories?.[0] || (language === 'de' ? 'Aktivität' : 'Activity')}
+                                                    </motion.div>
+                                                    <motion.div 
+                                                        style={{ opacity: Math.min(-dragX / 150, 0.8) }}
+                                                        className="absolute inset-0 z-50 pointer-events-none bg-rose-500/20 flex items-center justify-center"
+                                                    >
+                                                        <div className="border-8 border-rose-500 rounded-2xl px-8 py-4 rotate-[15deg] scale-125">
+                                                            <span className="text-5xl font-black text-rose-500 uppercase tracking-tighter italic">NOPE</span>
+                                                        </div>
+                                                    </motion.div>
+                                                </>
+                                            )}
+                                            <div className={cn("flex-1 flex flex-col bg-white dark:bg-neutral-900", !isTopCard && "pointer-events-none")}>
+                                            <div className={cn("h-[62%] w-full relative overflow-hidden bg-slate-200", !isTopCard && "pointer-events-none")}>
+                                                    {card.imageUrl ? (
+                                                        <img 
+                                                            src={card.imageUrl} 
+                                                            alt={card.placeName} 
+                                                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                                                        />
+                                                    ) : (
+                                                        <div className="absolute inset-0 bg-gradient-to-br from-[#bfc6e8] to-[#9fa9d1]" />
+                                                    )}
+
+                                                    <div className="absolute top-5 left-5 flex gap-2 z-10">
+                                                        <div className="bg-amber-400 text-white text-[10px] font-black px-3 h-7 flex items-center rounded-full shadow-lg">
+                                                            <Star className="h-3 w-3 fill-current mr-1" />
+                                                            {language === 'de' ? 'Neu' : 'New'}
+                                                        </div>
+                                                        <div className="bg-white/90 backdrop-blur-md text-neutral-600 text-[10px] font-bold px-3 h-7 flex items-center rounded-full shadow-sm capitalize">
+                                                            {(card.categories?.[0] || (language === 'de' ? 'Aktivität' : 'Activity')).toLowerCase()}
                                                         </div>
                                                     </div>
 
                                                     {distance !== null && (
                                                         <div className="absolute top-5 right-5 z-10">
-                                                            <div className="bg-black/20 backdrop-blur-md text-white text-[9px] font-bold px-3 py-1.5 rounded-full">
+                                                            <div className="bg-black/50 backdrop-blur-md text-white text-[10px] font-black px-3 h-7 flex items-center rounded-full">
                                                                 {distance < 1 ? '< 1 km' : `${distance.toFixed(1)} km`}
                                                             </div>
                                                         </div>
                                                     )}
 
-                                                    <div className="absolute inset-0 flex items-center justify-center">
-                                                        <Building2 className="h-24 w-24 text-white/50" strokeWidth={1}/>
-                                                    </div>
-
-                                                    <div className="absolute bottom-0 left-0 w-full p-6 pt-16 bg-gradient-to-t from-black/60 to-transparent">
-                                                        <h2 className="text-2xl font-extrabold text-white leading-tight mb-1.5 tracking-tight">{card.placeName}</h2>
-                                                        <div className="flex items-center gap-2 text-white/80">
-                                                            <MapPin className="h-3 w-3 text-rose-400" />
-                                                            <p className="text-[11px] font-bold truncate tracking-wide">{card.placeAddress || (language === 'de' ? 'In deiner Umgebung' : 'In your area')}</p>
+                                                    <div className="absolute inset-x-0 bottom-0 p-6 pb-8 pt-24 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10">
+                                                        <h2 className="text-[28px] font-black text-white leading-[1.1] mb-1.5 tracking-tight drop-shadow-sm">{card.placeName}</h2>
+                                                        <div className="flex items-center gap-2 text-white/90 font-bold">
+                                                            <MapPin className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
+                                                            <p className="text-[12px] truncate tracking-wide">{card.placeAddress || (language === 'de' ? 'In deiner Umgebung' : 'In your area')}</p>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex-1 p-6 flex flex-col justify-around bg-white dark:bg-neutral-900">
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                         <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
-                                                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">{language === 'de' ? 'WANN' : 'WHEN'}</span>
-                                                             <span className="text-[10px] font-extrabold text-[#0f172a] dark:text-neutral-200">
+                                                    <div className="grid grid-cols-3 gap-2 px-1">
+                                                         <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
+                                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Wann' : 'When'}</span>
+                                                             <span className="text-[11px] font-black text-[#0f172a] dark:text-neutral-200">
                                                                  {format(card.activityDate.toDate(), language === 'de' ? "eee, d. MMM" : "eee, MMM d", { locale: language === 'de' ? de : enUS })}
                                                              </span>
                                                          </div>
-                                                         <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
-                                                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">{language === 'de' ? 'UHRZEIT' : 'TIME'}</span>
-                                                             <span className="text-[10px] font-extrabold text-[#0f172a] dark:text-neutral-200">{language === 'de' ? 'Flexibel' : 'Flexible'}</span>
+                                                         <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
+                                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Uhrzeit' : 'Time'}</span>
+                                                             <span className="text-[11px] font-black text-[#0f172a] dark:text-neutral-200">{language === 'de' ? 'Flexibel' : 'Flexible'}</span>
                                                          </div>
-                                                         <div className="bg-orange-50/50 dark:bg-neutral-800/50 rounded-2xl p-3 flex flex-col items-center justify-center text-center">
-                                                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1">{language === 'de' ? 'PLÄTZE' : 'SPOTS'}</span>
-                                                             <span className="text-[10px] font-extrabold text-emerald-600">
+                                                         <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
+                                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Plätze' : 'Spots'}</span>
+                                                             <span className="text-[11px] font-black text-emerald-600">
                                                                  {(card.maxParticipants || 10) - card.participantIds.length} {language === 'de' ? 'frei' : 'free'}
                                                              </span>
                                                          </div>
                                                      </div>
 
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex -space-x-2.5 overflow-hidden p-0.5 items-center">
-                                                            <Avatar className="h-9 w-9 border-2 border-white dark:border-neutral-900 shadow-sm ring-1 ring-black/10 z-10">
+                                                    <div className="flex items-center justify-center mt-2 mb-4">
+                                                        <div className="flex space-x-3 p-0.5 items-center">
+                                                            {/* Host Avatar */}
+                                                            <Avatar className="h-10 w-10 border-2 border-white dark:border-neutral-900 shadow-md ring-1 ring-black/5">
                                                                 <AvatarImage src={card.hostPhotoURL || undefined} alt={card.hostName || 'Host'} />
-                                                                <AvatarFallback className="bg-orange-100 text-orange-700 text-[10px] font-bold">
+                                                                <AvatarFallback className="bg-orange-100 text-orange-700 text-xs font-bold">
                                                                     {card.hostName?.charAt(0) || 'H'}
                                                                 </AvatarFallback>
                                                             </Avatar>
                                                             
-                                                            {(card.participantsPreview || [])
-                                                                .filter(p => p.uid !== card.hostId)
-                                                                .slice(0, 3)
-                                                                .map((p, pidx) => (
-                                                                <Avatar key={p.uid} className="h-8 w-8 border-2 border-white dark:border-neutral-900 shadow-sm">
-                                                                    <AvatarImage src={p.photoURL || undefined} alt={p.displayName || 'Participant'} />
-                                                                    <AvatarFallback className={cn(
-                                                                        "text-[9px] font-bold text-white",
-                                                                        pidx === 0 ? "bg-indigo-400" : pidx === 1 ? "bg-emerald-500" : "bg-purple-500"
-                                                                    )}>
-                                                                        {p.displayName?.charAt(0) || '?'}
-                                                                    </AvatarFallback>
-                                                                </Avatar>
-                                                            ))}
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <p className="text-[10px] font-bold text-slate-500 leading-none">
-                                                                <span className="text-[#0f172a] dark:text-neutral-200">{language === 'de' ? 'v.' : 'by'} {card.hostName?.split(' ')[0] || 'Explorer'}</span> 
-                                                                {card.participantIds.length > 1 && (
-                                                                    <span className="text-slate-400"> & {card.participantIds.length - 1} {language === 'de' ? 'weitere' : 'more'}</span>
-                                                                )}
-                                                            </p>
+                                                            {/* Participant Avatars (max 3 slots) */}
+                                                            {[0, 1, 2].map((i) => {
+                                                                const participant = (card.participantsPreview || [])
+                                                                    .filter(p => p.uid !== card.hostId)[i];
+                                                                
+                                                                if (participant) {
+                                                                    return (
+                                                                        <Avatar key={participant.uid} className="h-10 w-10 border-2 border-white dark:border-neutral-900 shadow-md">
+                                                                            <AvatarImage src={participant.photoURL || undefined} alt={participant.displayName || 'Participant'} />
+                                                                            <AvatarFallback className={cn(
+                                                                                "text-[10px] font-bold text-white",
+                                                                                i === 0 ? "bg-indigo-400" : i === 1 ? "bg-emerald-500" : "bg-purple-500"
+                                                                            )}>
+                                                                                {participant.displayName?.charAt(0) || '?'}
+                                                                            </AvatarFallback>
+                                                                        </Avatar>
+                                                                    );
+                                                                }
+
+                                                                {/* Placeholder for empty slots */}
+                                                                return (
+                                                                    <div key={`empty-${i}`} className="h-10 w-10 rounded-full border-2 border-white dark:border-neutral-900 bg-neutral-50 dark:bg-neutral-800 flex items-center justify-center shadow-sm">
+                                                                        <Plus className="h-4 w-4 text-neutral-300" />
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -471,62 +517,44 @@ export default function ExplorePage() {
                          </div>
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Floating Action Buttons */}
                     {cards.length > 0 && !isLoading && (
-                        <div className="pb-12 flex items-center justify-center gap-8">
-                            <div className="flex flex-col items-center gap-2">
-                                <Button 
-                                    whileHover={{ scale: 1.1 }}
+                        <div className="absolute bottom-[11.5%] left-0 right-0 z-[150] flex items-center justify-center gap-6 pointer-events-none">
+                            <motion.div 
+                                initial={{ y: 20, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                className="bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl px-6 py-3 rounded-[2.5rem] flex items-center gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20 pointer-events-auto"
+                            >
+                                <motion.button 
+                                    whileHover={{ scale: 1.15 }}
                                     whileTap={{ scale: 0.9 }}
-                                    asChild
+                                    onClick={() => handleSwipe('left')}
+                                    className="h-14 w-14 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center shadow-inner transition-colors hover:bg-rose-100"
                                 >
-                                    <motion.button 
-                                        onClick={() => handleSwipe('left')}
-                                        className="h-16 w-16 rounded-full bg-white dark:bg-neutral-900 border-2 border-slate-50 dark:border-neutral-800 text-rose-500 shadow-sm flex items-center justify-center"
-                                    >
-                                        <X className="h-7 w-7 stroke-[3]"/>
-                                    </motion.button>
-                                </Button>
-                                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest tracking-widest">{language === 'de' ? 'Überspringen' : 'Skip'}</span>
+                                    <X className="h-6 w-6 stroke-[3]"/>
+                                </motion.button>
 
-                            </div>
-
-                            <div className="flex flex-col items-center gap-2 translate-y-1">
-                                <Button 
-                                    whileHover={{ scale: 1.1 }}
+                                <motion.button 
+                                    whileHover={{ scale: 1.15 }}
                                     whileTap={{ scale: 0.9 }}
-                                    asChild
+                                    onClick={() => {
+                                        const topCard = cards[cards.length - 1];
+                                        if (topCard) setSelectedPlace(topCard);
+                                    }}
+                                    className="h-12 w-12 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-400 flex items-center justify-center transition-colors hover:bg-slate-200"
                                 >
-                                    <motion.button 
-                                        onClick={() => {
-                                            const topCard = cards[cards.length - 1];
-                                            if (topCard) setSelectedPlace(topCard);
-                                        }}
-                                        className="h-12 w-12 rounded-full bg-slate-50 dark:bg-neutral-800 border-none text-blue-500 flex items-center justify-center"
-                                    >
-                                        <Info className="h-6 w-6 stroke-[3] fill-blue-500/10"/>
-                                    </motion.button>
-                                </Button>
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{language === 'de' ? 'Info' : 'Info'}</span>
+                                    <Info className="h-5 w-5 stroke-[3]"/>
+                                </motion.button>
 
-                            </div>
-
-                            <div className="flex flex-col items-center gap-2">
-                                <Button 
-                                    whileHover={{ scale: 1.1 }}
+                                <motion.button 
+                                    whileHover={{ scale: 1.15 }}
                                     whileTap={{ scale: 0.9 }}
-                                    asChild
+                                    onClick={() => handleSwipe('right')}
+                                    className="h-14 w-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-[0_10px_25px_rgba(16,185,129,0.3)] transition-all hover:bg-emerald-600 active:shadow-none"
                                 >
-                                    <motion.button 
-                                        onClick={() => handleSwipe('right')}
-                                        className="h-16 w-16 rounded-full bg-emerald-100/50 dark:bg-emerald-900/30 border-none text-emerald-600 flex items-center justify-center"
-                                    >
-                                        <Check className="h-8 w-8 stroke-[3]"/>
-                                    </motion.button>
-                                </Button>
-                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{language === 'de' ? 'Beitreten' : 'Join'}</span>
-
-                            </div>
+                                    <Check className="h-7 w-7 stroke-[3]"/>
+                                </motion.button>
+                            </motion.div>
                         </div>
                     )}
                 </div>

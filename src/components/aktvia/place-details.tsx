@@ -137,25 +137,24 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
 
     return (
         <div className="flex flex-col h-full bg-white dark:bg-neutral-900 overflow-hidden rounded-none sm:rounded-[2.5rem] relative">
-            {/* Immersiver Header */}
+            {/* Immersiver Header mit dynamischem Verlauf */}
             <div className={cn(
                 "relative h-56 sm:h-64 w-full flex-shrink-0 flex items-center justify-center overflow-hidden",
                 primaryStyle.gradientClass
             )}
             >
-                {/* Main Dynamic Icon */}
-                <div className="relative z-10 drop-shadow-[0_20px_50px_rgba(0,0,0,0.3)] transform transition-transform duration-700 hover:scale-110">
+                {/* Main Dynamic Icon (Reduced Scale) */}
+                <div className="relative z-20 drop-shadow-[0_15px_30px_rgba(0,0,0,0.4)] transform transition-transform duration-700 hover:scale-110">
                     <div className="absolute inset-0 blur-2xl opacity-40 scale-150" style={{ color: primaryStyle.color }}>
                         <PrimaryIcon className="w-full h-full fill-current" />
                     </div>
-                    <PrimaryIcon className="h-24 w-24 sm:h-32 sm:w-32 text-white fill-current/10" strokeWidth={1.5} />
-                    <PrimaryIcon className="h-24 w-24 sm:h-32 sm:w-32 text-white absolute inset-0" strokeWidth={1.5} />
+                    <PrimaryIcon className="h-16 w-16 sm:h-20 sm:w-20 text-white fill-current/10" strokeWidth={1.5} />
+                    <PrimaryIcon className="h-16 w-16 sm:h-20 sm:w-20 text-white absolute inset-0" strokeWidth={1.5} />
                 </div>
 
                 {/* Overlapping Badges */}
                 <div className="absolute bottom-5 sm:bottom-6 left-5 sm:left-6 flex items-center gap-2 z-20">
-
-                    <div className="bg-white/90 backdrop-blur-md text-neutral-800 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border border-white/30">
+                    <div className="bg-white/90 backdrop-blur-md text-neutral-800 px-4 h-7 flex items-center rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border border-white/30 leading-none">
                         {translateTag(categories[0] || '', language)}
                     </div>
                 </div>
@@ -178,16 +177,16 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
             <ScrollArea className="flex-1 bg-white dark:bg-neutral-900 border-t border-slate-100 dark:border-neutral-800/50">
                 <div className="p-6 sm:p-8 pb-44">
                     {/* Metadata */}
-                    <div className="mb-8">
+                    <div className="mb-10">
                         <h2 className="text-[1.75rem] sm:text-[2rem] font-black text-[#0f172a] dark:text-neutral-50 leading-[1.1] mb-2 tracking-tight">
                             {place.name}
                         </h2>
                         <div className="space-y-1.5">
                             <div className="flex items-center gap-2 text-rose-500">
                                 <MapPin className="h-4 w-4 fill-current" />
-                                <span className="text-sm font-bold text-slate-400 dark:text-slate-500 truncate block max-w-[280px]">{place.address}</span>
+                                <span className="text-sm font-bold text-slate-600 dark:text-neutral-400 truncate block max-w-[280px]">{place.address}</span>
                             </div>
-                                <div className="flex items-start gap-2 text-slate-400 dark:text-slate-500">
+                                <div className="flex items-start gap-2 text-slate-600 dark:text-neutral-400">
                                     <Clock className="h-4 w-4 mt-0.5 shrink-0" />
                                     <span className="text-[13px] font-bold leading-tight">
                                         {formatOpeningHours(place.openingHours)}
@@ -198,26 +197,29 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
 
                     {/* Horizontal Stats */}
                     <div className="grid grid-cols-3 gap-3 mb-8">
-                        <div className="bg-[#fff7ed] dark:bg-amber-950/20 p-4 rounded-[2rem] flex flex-col items-center justify-center gap-1 text-center border border-amber-100/50 dark:border-amber-900/30">
+                        <div className="bg-[#fff7ed] dark:bg-amber-950/20 p-4 rounded-[2rem] flex flex-col items-center justify-center gap-0.5 text-center border border-amber-100/50 dark:border-amber-900/30">
                             <div className="flex items-center gap-1.5">
                                 <Star className="w-4 h-4 text-[#f59e0b] fill-[#f59e0b]" />
-                                <span className="text-[18px] font-black text-[#854d0e] dark:text-amber-400">
-                                {placeMeta.avgRating > 0 ? placeMeta.avgRating.toFixed(1) : '---'}
+                                <span className={cn(
+                                    "font-black text-[#854d0e] dark:text-amber-400",
+                                    placeMeta.avgRating > 0 ? "text-[18px]" : "text-[10px] leading-tight"
+                                )}>
+                                    {placeMeta.avgRating > 0 ? placeMeta.avgRating.toFixed(1) : (language === 'de' ? 'Noch keine' : 'No ratings')}
                                 </span>
                             </div>
-                            <span className="text-[11px] font-bold text-amber-900/40 dark:text-amber-400/50">Community</span>
+                            <span className="text-[12px] font-bold text-amber-900/80 dark:text-amber-400/80">Community</span>
                         </div>
                         <div className="bg-[#f0f9ff] dark:bg-blue-950/20 p-4 rounded-[2rem] flex flex-col items-center justify-center gap-1 text-center border border-blue-100/50 dark:border-blue-900/30">
                              <span className="text-[18px] font-black text-[#0369a1] dark:text-blue-400">
                                 {place.distance ? (place.distance < 1000 ? `${Math.round(place.distance)}m` : `${(place.distance/1000).toFixed(1)}`) : '---'}
                             </span>
-                            <span className="text-[11px] font-bold text-blue-900/40 dark:text-blue-400/50">{language === 'de' ? 'km entfernt' : 'km away'}</span>
+                            <span className="text-[12px] font-bold text-blue-900/80 dark:text-blue-400/80">{language === 'de' ? 'km entfernt' : 'km away'}</span>
                         </div>
                         <div className="bg-[#fef2f2] dark:bg-rose-950/20 p-4 rounded-[2rem] flex flex-col items-center justify-center gap-1 text-center border border-rose-100/50 dark:border-rose-900/30">
                              <span className="text-[18px] font-black text-[#b91c1c] dark:text-rose-400">
                                 {activities.length}
                             </span>
-                            <span className="text-[11px] font-bold text-rose-900/40 dark:text-rose-400/50">{language === 'de' ? 'Aktivitäten' : 'Activities'}</span>
+                            <span className="text-[12px] font-bold text-rose-900/80 dark:text-rose-400/80">{language === 'de' ? 'Aktivitäten' : 'Activities'}</span>
                         </div>
                     </div>
 
@@ -229,7 +231,6 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                 <Users className="h-6 w-6 text-[#1e293b] dark:text-neutral-100" />
                                 <h3 className="text-xl font-black text-[#0f172a] dark:text-neutral-50 tracking-tight">{language === 'de' ? 'Aktivitäten vor Ort' : 'Local Activities'}</h3>
                              </div>
-                             <button onClick={onCreateActivity} className="text-[#59a27a] font-black text-sm hover:opacity-70 transition-all">+ {language === 'de' ? 'Erstellen' : 'Create'}</button>
                         </div>
 
                         {loadingActivities ? (
@@ -269,7 +270,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-0.5">
                                                      <h4 className="font-black text-[15px] truncate text-[#0f172a] dark:text-neutral-100 leading-tight">
-                                                        {activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}
+                                                        {activity.title || activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}
                                                     </h4>
 
                                                 </div>
@@ -300,7 +301,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                  <Button 
                                                     onClick={() => handleJoin(activity)}
                                                     disabled={joiningActivityId === activity.id}
-                                                    className="bg-[#59a27a] text-white hover:bg-[#4d8c6a] rounded-[1.25rem] h-11 px-5 font-black text-sm border-none shadow-lg shadow-[#59a27a]/20"
+                                                    className="bg-[#59a27a] text-white hover:bg-[#4d8c6a] rounded-[1.25rem] h-11 px-5 min-w-[100px] font-black text-sm border-none shadow-lg shadow-[#59a27a]/20"
                                                 >
                                                     {joiningActivityId === activity.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (language === 'de' ? 'Beitreten' : 'Join')}
                                                 </Button>
@@ -314,17 +315,15 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                 </div>
             </ScrollArea>
 
-            {/* Fixed Sticky Footer */}
-            <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 z-40">
-                <div className="bg-white/90 dark:bg-neutral-950/90 backdrop-blur-xl p-3 sm:p-4 rounded-[2rem] sm:rounded-[2.5rem] flex items-center shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-white/40 dark:border-neutral-800/50">
-                    <Button 
-                         onClick={onCreateActivity}
-                        className="bg-[#59a27a] hover:bg-[#4d8c6a] text-white rounded-[1.25rem] sm:rounded-[1.5rem] h-12 sm:h-14 w-full font-black text-[14px] sm:text-[15px] border-none shadow-lg shadow-[#59a27a]/20 flex items-center justify-center gap-2 transition-transform active:scale-95"
-                    >
-                        <Plus className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={3} />
-                        {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
-                    </Button>
-                </div>
+            {/* Fixed Floating Bottom Action (Transparent Container) */}
+            <div className="absolute bottom-6 left-6 right-6 z-40 pointer-events-none">
+                <Button 
+                    onClick={onCreateActivity}
+                    className="w-full bg-[#59a27a] hover:bg-[#4d8c6a] text-white rounded-[1.5rem] h-14 font-black text-[15px] border-none shadow-[0_20px_50px_rgba(89,162,122,0.4)] flex items-center justify-center gap-2 transition-all active:scale-95 pointer-events-auto"
+                >
+                    <Plus className="w-5 h-5" strokeWidth={3} />
+                    {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
+                </Button>
             </div>
         </div>
     );
