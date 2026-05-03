@@ -114,6 +114,7 @@ export default function Home() {
   const [shouldFilterByName, setShouldFilterByName] = useState(false);
   const [isSwitchingTab, setIsSwitchingTab] = useState(false);
   const [showLocationRequirement, setShowLocationRequirement] = useState(false);
+  const [isLocationLoading, setIsLocationLoading] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -449,35 +450,49 @@ export default function Home() {
     if (node) observer.current.observe(node);
   }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, data, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
-  useEffect(() => {
-    const requestLocation = () => {
-      if (planningState.isPlanning && planningState.destination) {
-        setUserLocation(planningState.destination);
-        setCityName(planningState.destination.name);
-        return;
-      }
-      
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const location = { lat: position.coords.latitude, lng: position.coords.longitude };
-            setUserLocation(location);
-            setShowLocationRequirement(false);
-            if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
-          }, 
-          (error) => {
-            console.warn("Geolocation error:", error);
-            setShowLocationRequirement(true);
-          }, 
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-      } else {
-        setShowLocationRequirement(true);
-      }
-    };
+  const requestLocation = useCallback(() => {
+    setIsLocationLoading(true);
+    
+    if (planningState.isPlanning && planningState.destination) {
+      setUserLocation(planningState.destination);
+      setCityName(planningState.destination.name);
+      setIsLocationLoading(false);
+      return;
+    }
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+          setUserLocation(location);
+          setShowLocationRequirement(false);
+          setIsLocationLoading(false);
+          if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
+        }, 
+        (error) => {
+          console.warn("Geolocation error:", error);
+          setIsLocationLoading(false);
+          setShowLocationRequirement(true);
+          
+          if (error.code === error.PERMISSION_DENIED) {
+            toast({
+              title: language === 'de' ? "Standort blockiert" : "Location blocked",
+              description: language === 'de' ? "Bitte aktiviere den Standortzugriff in deinen Browsereinstellungen." : "Please enable location access in your browser settings.",
+              variant: "destructive"
+            });
+          }
+        }, 
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      setIsLocationLoading(false);
+      setShowLocationRequirement(true);
+    }
+  }, [planningState, reverseGeocode, language, toast]);
 
+  useEffect(() => {
     requestLocation();
-  }, [planningState, language]);
+  }, [requestLocation]);
 
   const handleUseHomeLocation = () => {
     if (userProfile?.lastLocation) {
@@ -840,11 +855,10 @@ export default function Home() {
       <LocationRequirementDialog 
         open={showLocationRequirement}
         onOpenChange={setShowLocationRequirement}
-        onRetry={() => {
-            window.location.reload();
-        }}
+        onRetry={requestLocation}
         onUseHomeLocation={handleUseHomeLocation}
         homeCity="Bremerhaven"
+        isLoading={isLocationLoading}
       />
       <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl overflow-hidden p-0 gap-0">

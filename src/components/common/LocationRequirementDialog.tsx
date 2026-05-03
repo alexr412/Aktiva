@@ -1,16 +1,12 @@
-'use client';
-
-import { MapPin, Navigation, Search, Home } from 'lucide-react';
+import { MapPin, Navigation, Home, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 interface LocationRequirementDialogProps {
   open: boolean;
@@ -18,6 +14,7 @@ interface LocationRequirementDialogProps {
   onRetry: () => void;
   onUseHomeLocation: () => void;
   homeCity?: string;
+  isLoading?: boolean;
 }
 
 export function LocationRequirementDialog({
@@ -26,6 +23,7 @@ export function LocationRequirementDialog({
   onRetry,
   onUseHomeLocation,
   homeCity,
+  isLoading,
 }: LocationRequirementDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -61,15 +59,23 @@ export function LocationRequirementDialog({
           <div className="mt-10 space-y-3">
             <Button 
               onClick={onRetry}
-              className="w-full h-16 rounded-[1.5rem] bg-[#59a27a] hover:bg-[#4d8c6a] text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-3 border-none transition-all active:scale-95"
+              disabled={isLoading}
+              className="w-full h-16 rounded-[1.5rem] bg-[#59a27a] hover:bg-[#4d8c6a] text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-3 border-none transition-all active:scale-95 disabled:opacity-80"
             >
-              <Navigation className="h-5 w-5 fill-current" />
-              Standort freigeben
+              {isLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              ) : (
+                <>
+                  <Navigation className="h-5 w-5 fill-current" />
+                  Standort freigeben
+                </>
+              )}
             </Button>
             
             <Button 
               variant="ghost"
               onClick={onUseHomeLocation}
+              disabled={isLoading}
               className="w-full h-14 rounded-2xl text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-bold flex items-center justify-center gap-2 transition-all"
             >
               <Home className="h-5 w-5" />
