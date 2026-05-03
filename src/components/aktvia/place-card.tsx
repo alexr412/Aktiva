@@ -29,10 +29,10 @@ import { formatTags, formatOpeningHours } from '@/lib/tag-parser';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
-const formatDistance = (distanceInMeters?: number) => {
-    if (distanceInMeters === undefined) return null;
-    if (distanceInMeters < 1000) return `${Math.round(distanceInMeters)}m`;
-    return `${((distanceInMeters || 0) / 1000).toFixed(1)}km`;
+const formatDistance = (distanceInKm?: number) => {
+    if (distanceInKm === undefined) return null;
+    if (distanceInKm < 1) return `${Math.round(distanceInKm * 1000)}m`;
+    return `${distanceInKm.toFixed(1)}km`;
 };
 
 type PlaceCardProps = {

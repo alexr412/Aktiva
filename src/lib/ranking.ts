@@ -88,7 +88,7 @@ export function calculateRelevance(
   }
 
   const distanceKm = (item?.distance !== undefined && item?.distance !== null)
-    ? item.distance / 1000
+    ? item.distance
     : 0;
 
   // SAFE-GUARD: Robust category extraction

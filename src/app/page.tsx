@@ -351,7 +351,7 @@ export default function Home() {
       const itemsToFilter = features.map((f: any) => ({
         tags: Array.isArray(f.properties.categories) ? f.properties.categories : [f.properties.categories],
         properties: f.properties,
-        distance: f.properties.distance || 0
+        distance: (f.properties.distance || 0) / 1000
       }));
       const safeItems = applyFilters(itemsToFilter, activeCategory, userProfile?.blacklist?.hard || [], shouldFilterByName);
 

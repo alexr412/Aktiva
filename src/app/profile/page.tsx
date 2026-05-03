@@ -313,17 +313,22 @@ export default function ProfilePage() {
     const visibleRequestProfiles = requestProfiles.filter(p => !userProfile?.hiddenEntityIds?.includes(p.uid));
     const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
     
-    const pastActivities = visibleActivities.filter(a => a.status === 'completed');
-    const currentActivities = visibleActivities.filter(a => a.status !== 'completed' && a.status !== 'cancelled');
+    const now = new Date();
+    const pastActivities = visibleActivities.filter(a => 
+        a.status === 'completed' || 
+        (a.activityDate?.toDate() && a.activityDate.toDate() < now)
+    );
+    const currentActivities = visibleActivities.filter(a => 
+        a.status !== 'completed' && 
+        a.status !== 'cancelled' && 
+        (!a.activityDate?.toDate() || a.activityDate.toDate() >= now)
+    );
 
     return (
         <>
             <div className="relative flex flex-col h-full bg-[#f8f9fa] dark:bg-black/95 overflow-y-auto pb-32">
                 {/* Header Backdrop Gradient */}
                 <div className="h-64 w-full bg-gradient-to-br from-[#4ade80] to-[#3b82f6] relative shrink-0">
-                    <div className="absolute top-12 left-6">
-                        <h1 className="text-3xl font-black text-white tracking-tighter font-heading drop-shadow-sm">{language === 'de' ? 'Profil' : 'Profile'}</h1>
-                    </div>
                     <div className="absolute top-12 right-6 flex items-center gap-3">
                         <Button asChild variant="ghost" size="icon" className="h-11 w-11 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 text-white shadow-xl">
                             <Link href="/settings"><Settings className="h-5.5 w-5.5" /></Link>
@@ -363,7 +368,7 @@ export default function ProfilePage() {
                             <div className="flex items-center gap-2 mb-1">
                                 <h2 className="text-3xl font-black text-[#0f172a] dark:text-neutral-100 tracking-tight">
                                     {displayName}
-                                    {userData?.age && <span className="text-neutral-300 font-extrabold ml-2">, {userData.age}</span>}
+                                    {userData?.age && <span className="text-neutral-300 font-extrabold">, {userData.age}</span>}
                                 </h2>
                                 <div className="flex items-center gap-1.5 ml-1">
                                     <span className="text-xl">👑</span>
@@ -382,7 +387,7 @@ export default function ProfilePage() {
                                     ))}
                                 </div>
                                 <span className="text-lg font-black text-[#0f172a] dark:text-neutral-100">{userData?.averageRating?.toFixed(1) || '3.0'}</span>
-                                <span className="text-sm font-bold text-slate-300">({userData?.ratingCount || 7} {language === 'de' ? 'Bewertungen' : 'Reviews'})</span>
+                                <span className="text-sm font-bold text-slate-500">({userData?.ratingCount || 7} {language === 'de' ? 'Bewertungen' : 'Reviews'})</span>
 
                             </button>
 
@@ -401,15 +406,13 @@ export default function ProfilePage() {
                             {/* Stats */}
                              <div className="grid grid-cols-3 gap-4 w-full max-w-md mb-8">
                                 {[
-                                    { label: language === 'de' ? 'Aktiv' : 'Active', val: currentActivities.length || 8, bg: 'bg-[#faf6f6]' },
-                                    { label: language === 'de' ? 'Freunde' : 'Friends', val: userData?.friends?.length || 2, bg: 'bg-[#f6f9fa]' },
-                                    { label: language === 'de' ? 'Bewertungen' : 'Reviews', val: userData?.ratingCount || 7, bg: 'bg-[#f8f9f8]' }
-
-
+                                    { label: language === 'de' ? 'Aktiv' : 'Active', val: currentActivities.length, bg: 'bg-[#faf6f6]' },
+                                    { label: language === 'de' ? 'Freunde' : 'Friends', val: userData?.friends?.length || 0, bg: 'bg-[#f6f9fa]' },
+                                    { label: language === 'de' ? 'Bewertungen' : 'Reviews', val: userData?.ratingCount || 0, bg: 'bg-[#f8f9f8]' }
                                 ].map((stat) => (
                                     <div key={stat.label} className={cn("flex flex-col items-center py-4 rounded-3xl shadow-sm border border-slate-50", stat.bg)}>
                                         <span className="text-3xl font-black text-[#59a27a] leading-none mb-1">{stat.val}</span>
-                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</span>
+                                        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">{stat.label}</span>
                                     </div>
                                 ))}
                             </div>

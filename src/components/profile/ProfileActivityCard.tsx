@@ -53,7 +53,7 @@ interface ProfileActivityCardProps {
             )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-sm font-bold text-slate-400">
+            <span className="text-sm font-bold text-slate-600">
                 {activityDate ? format(activityDate, language === 'de' ? 'eee, d. MMM' : 'eee, MMM d', { locale }) : (language === 'de' ? 'In Kürze' : 'Soon')}
             </span>
           </div>
@@ -67,18 +67,18 @@ interface ProfileActivityCardProps {
                 {previewList.slice(0, 3).map((p, i) => (
                     <Avatar key={i} className="h-7 w-7 border-2 border-white ring-2 ring-slate-50">
                         <AvatarImage src={p.photoURL || undefined} />
-                        <AvatarFallback className="bg-slate-100 text-[8px] font-black text-slate-400">
+                        <AvatarFallback className="bg-slate-100 text-[8px] font-black text-slate-600">
                             {p.displayName?.charAt(0)}
                         </AvatarFallback>
                     </Avatar>
                 ))}
             </div>
-            <span className="text-[11px] font-bold text-slate-400 ml-1">
+            <span className="text-[11px] font-bold text-slate-600 ml-1">
                 {participantIds.length} / {activity.maxParticipants || 6} {language === 'de' ? 'Teilnehmer' : 'Participants'}
             </span>
         </div>
         <div className="text-[11px] font-bold text-slate-300 uppercase tracking-tight">
-            {activityDate ? formatDistanceToNow(activityDate, { addSuffix: true, locale }) : ''}
+            {/* Redundanter relativer Indikator entfernt */}
         </div>
       </div>
     </div>

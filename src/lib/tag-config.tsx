@@ -111,8 +111,11 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   if (name.includes('quest') || name.includes('escape') || name.includes('rätsel')) {
     return { icon: Gamepad2, color: '#7c3aed', label: language === 'de' ? 'Escape Room' : 'Escape Room', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-slate-900 to-violet-800' };
   }
-  if (tags.includes('entertainment.activity_park.trampoline') || name.includes('trampolin')) {
+  if (tags.includes('entertainment.activity_park.trampoline') || name.includes('trampolin') || name.includes('sprung')) {
     return { icon: TrampolineIcon as any, color: '#6366f1', label: language === 'de' ? 'Trampolinhalle' : 'Trampoline Park', bgClass: 'bg-indigo-50', gradientClass: 'bg-gradient-to-br from-fuchsia-500 to-purple-600' };
+  }
+  if (name.includes('minigolf') || name.includes('adventure golf')) {
+    return { icon: LandPlot, color: '#10b981', label: language === 'de' ? 'Minigolf' : 'Minigolf', bgClass: 'bg-emerald-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-teal-400' };
   }
 
   // --- SAKRALBAUTEN ---
@@ -183,7 +186,7 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   }
 
   // --- FALLBACK ---
-  return { icon: Building, color: '#94a3b8', label: language === 'de' ? 'Interessanter Ort' : 'Point of Interest', bgClass: 'bg-slate-50', gradientClass: 'bg-gradient-to-br from-slate-400 to-slate-500' };
+  return { icon: Building, color: '#475569', label: language === 'de' ? 'Interessanter Ort' : 'Point of Interest', bgClass: 'bg-slate-50', gradientClass: 'bg-gradient-to-br from-slate-500 to-slate-600' };
 };
 
 export const getPrimaryTagStyle = (categories: string[], language: 'de' | 'en' = 'de'): TagStyle => {

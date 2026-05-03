@@ -11,7 +11,7 @@ import {
   SheetFooter,
 } from '@/components/ui/sheet';
 import type { Place, ActivityCategory } from '@/lib/types';
-import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users, CreditCard, Lock, MapPin, Search, Navigation, X, Check, AlertTriangle } from 'lucide-react';
+import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users, CreditCard, Lock, MapPin, Search, Navigation, X, Check, AlertTriangle, Dumbbell, Zap, Landmark, Trees, Gamepad2, Coffee, Star, type LucideIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -85,6 +85,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
   const [isTimeFlexible, setIsTimeFlexible] = useState(true);
   const [isDateFlexible, setIsDateFlexible] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState<number>(4);
+  const [selectedCategory, setSelectedCategory] = useState<ActivityCategory>(language === 'de' ? 'Sonstiges' : 'Sonstiges');
   
   // Monetization: Boost
   const [isBoosted, setIsBoosted] = useState(false);
@@ -123,6 +124,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
       setIsBoosted(false);
       setIsPaid(false);
       setPrice(0);
+      setSelectedCategory(language === 'de' ? 'Sonstiges' : 'Sonstiges');
     }
   }, [open, initialPlace]);
 
@@ -211,12 +213,16 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
 
     if (!isRange && !isSingleDay) return;
 
-    let derivedCategory: ActivityCategory = language === 'de' ? 'Sonstiges' : 'Other';
-    const cats = selectedLocation.categories || [];
-    if (cats.some(c => c.startsWith('sport'))) derivedCategory = language === 'de' ? 'Sport' : 'Sports';
-    else if (cats.some(c => c.startsWith('catering'))) derivedCategory = language === 'de' ? 'Networking' : 'Networking';
-    else if (cats.some(c => c.startsWith('tourism'))) derivedCategory = language === 'de' ? 'Kultur' : 'Culture';
-    else if (cats.some(c => c.startsWith('leisure'))) derivedCategory = language === 'de' ? 'Outdoor' : 'Outdoor';
+    let derivedCategory: ActivityCategory = selectedCategory;
+    
+    // Auto-override category if specific place has clear tags and it's not custom mode
+    if (isSpecificPlaceMode) {
+        const cats = selectedLocation.categories || [];
+        if (cats.some(c => c.startsWith('sport'))) derivedCategory = language === 'de' ? 'Sport' : 'Sport';
+        else if (cats.some(c => c.startsWith('catering'))) derivedCategory = language === 'de' ? 'Networking' : 'Networking';
+        else if (cats.some(c => c.startsWith('tourism'))) derivedCategory = language === 'de' ? 'Kultur' : 'Kultur';
+        else if (cats.some(c => c.startsWith('leisure'))) derivedCategory = language === 'de' ? 'Outdoor' : 'Outdoor';
+    }
 
 
     let startDate = isRange ? selectedRange.from! : selectedDate;
@@ -308,14 +314,52 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
           {/* Sektion 1: Name & Ort */}
           <div className="space-y-4">
             {!isSpecificPlaceMode && (
-              <div className="space-y-2">
-                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Was hast du vor?' : 'What are you planning?'}</Label>
-                <Input
-                  value={activityTitle}
-                  onChange={(e) => setActivityTitle(e.target.value)}
-                  placeholder={language === 'de' ? "z.B. Street-Photography oder Yoga" : "e.g. Street Photography or Yoga"}
-                  className="h-14 text-lg rounded-2xl border-none bg-secondary/50 font-bold focus-visible:ring-primary/20"
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Was hast du vor?' : 'What are you planning?'}</Label>
+                  <Input
+                    value={activityTitle}
+                    onChange={(e) => setActivityTitle(e.target.value)}
+                    placeholder={language === 'de' ? "z.B. Street-Photography oder Yoga" : "e.g. Street Photography or Yoga"}
+                    className="h-14 text-lg rounded-2xl border-none bg-secondary/50 font-bold focus-visible:ring-primary/20"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Icon wählen' : 'Choose icon'}</Label>
+                  <div className="flex items-center gap-3 overflow-x-auto pb-2 hide-scrollbar">
+                    {[
+                      { id: 'Sport', icon: Dumbbell, label: language === 'de' ? 'Sport' : 'Sports' },
+                      { id: 'Outdoor', icon: Trees, label: language === 'de' ? 'Outdoor' : 'Outdoor' },
+                      { id: 'Party', icon: Flame, label: language === 'de' ? 'Party' : 'Party' },
+                      { id: 'Kultur', icon: Landmark, label: language === 'de' ? 'Kultur' : 'Culture' },
+                      { id: 'Gaming', icon: Gamepad2, label: language === 'de' ? 'Gaming' : 'Gaming' },
+                      { id: 'Tech', icon: Zap, label: language === 'de' ? 'Tech' : 'Tech' },
+                      { id: 'Networking', icon: Coffee, label: language === 'de' ? 'Networking' : 'Networking' },
+                      { id: 'Sonstiges', icon: Star, label: language === 'de' ? 'Andere' : 'Other' },
+                    ].map((cat) => {
+                      const Icon = cat.icon;
+                      const isSelected = selectedCategory === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          onClick={() => setSelectedCategory(cat.id as ActivityCategory)}
+                          className={cn(
+                            "flex flex-col items-center justify-center gap-2 flex-shrink-0 w-20 h-20 rounded-2xl transition-all duration-200 border-2",
+                            isSelected 
+                              ? "bg-primary/10 border-primary shadow-lg shadow-primary/5" 
+                              : "bg-secondary/30 border-transparent hover:bg-secondary/50"
+                          )}
+                        >
+                          <Icon className={cn("h-6 w-6", isSelected ? "text-primary" : "text-muted-foreground")} />
+                          <span className={cn("text-[10px] font-black uppercase tracking-tighter", isSelected ? "text-primary" : "text-muted-foreground")}>
+                            {cat.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -501,6 +545,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
               <div className="min-w-[40px] text-center"><span className="text-2xl font-black text-primary">{maxParticipants}</span></div>
             </div>
 
+            {/* 
             <div className="space-y-3">
               <div className="flex items-center justify-between rounded-2xl border border-border p-4 bg-card/50">
                 <div className="space-y-0.5">
@@ -517,6 +562,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                 </div>
               )}
             </div>
+            */}
           </div>
 
           {/* Sektion 4: Booster */}

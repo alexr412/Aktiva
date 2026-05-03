@@ -14,7 +14,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Users, UserPlus, Search, Bell, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { Users, UserPlus, Search, Bell, MessageCircle, MoreHorizontal, User, Building } from 'lucide-react';
 import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Input } from '@/components/ui/input';
@@ -199,10 +199,14 @@ export default function ChatPage() {
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={chatName || ''} className="h-full w-full object-cover" />
                 ) : (
-                  <CategoryIcon className={cn("h-10 w-10 drop-shadow-md", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
+                  !isDM && primaryStyle?.icon === Building ? (
+                    <span className="text-3xl font-black text-white drop-shadow-sm">{chatName?.charAt(0).toUpperCase()}</span>
+                  ) : (
+                    <CategoryIcon className={cn("h-10 w-10 drop-shadow-md", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
+                  )
                 )}
                 {/* Active Indicator */}
-                {!isDM && <div className="absolute bottom-3 right-3 w-3.5 h-3.5 rounded-full bg-emerald-500 border-4 border-white shadow-sm" />}
+                {!isDM && <div className="absolute bottom-3 right-3 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />}
               </div>
 
               {/* Text Content */}
@@ -237,14 +241,14 @@ export default function ChatPage() {
                       {chat.lastMessage.senderId === user?.uid && <span className="text-neutral-400 mr-1">{language === 'de' ? 'Du:' : 'You:'}</span>}
                       {chat.lastMessage.text}
                     </>
-                  ) : (language === 'de' ? 'Noch keine Nachrichten.' : 'No messages yet.')}
+                  ) : (language === 'de' ? 'Erste Nachricht senden' : 'Send first message')}
                 </p>
 
                 <div className="flex items-center justify-between">
-                   <div className="text-[9px] font-black uppercase tracking-[0.15em] px-2.5 py-1 rounded-full"
-                   style={{ color: displayColor, backgroundColor: displayColor + '10' }}
+                   <div className="text-[9px] font-bold px-2.5 py-1 rounded-full"
+                   style={{ color: displayColor, backgroundColor: displayColor + '15' }}
                    >
-                     {isDM ? (language === 'de' ? 'Person' : 'Person') : (primaryStyle?.label || (language === 'de' ? 'Ort' : 'Place'))}
+                     {isDM ? (language === 'de' ? 'Person' : 'Person') : (primaryStyle?.label || (language === 'de' ? 'Interessanter Ort' : 'Place of Interest'))}
                    </div>
 
                     {hasUnread && (

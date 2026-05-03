@@ -183,7 +183,7 @@ export async function createActivity({
     isCustomActivity: isCustomActivity,
     isTimeFlexible: !!isTimeFlexible,
     category: category || 'Sonstiges',
-    categories: isCustomActivity ? ["user_event"] : placeCategories,
+    categories: ["user_event", category, ...(isCustomActivity ? [] : placeCategories)].filter(Boolean),
     lastInteractionAt: serverTimestamp() as Timestamp,
     status: 'active' as const,
     completionVotes: [],
