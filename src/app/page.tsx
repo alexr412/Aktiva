@@ -42,6 +42,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserBadge } from '@/components/common/UserBadge';
 import { calculateDistance } from '@/lib/geo-utils';
 import { useLanguage } from '@/hooks/use-language';
+import { LocationRequirementDialog } from '@/components/common/LocationRequirementDialog';
 
 // Dynamic import for MapView to avoid SSR issues
 const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod => mod.MapView), {
@@ -112,6 +113,7 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
   const [shouldFilterByName, setShouldFilterByName] = useState(false);
   const [isSwitchingTab, setIsSwitchingTab] = useState(false);
+  const [showLocationRequirement, setShowLocationRequirement] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -126,6 +128,17 @@ export default function Home() {
   const { planningState } = usePlanningMode();
   const { favorites } = useFavorites();
   const [isMobile, setIsMobile] = useState(false);
+
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const data = await response.json();
+      const fallback = language === 'de' ? 'Unbekannter Ort' : 'Unknown Place';
+      setCityName(data.address.city || data.address.town || data.address.village || fallback);
+    } catch (error) { 
+      setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'); 
+    }
+  }, [language]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
@@ -437,36 +450,47 @@ export default function Home() {
   }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, data, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
   useEffect(() => {
-    const reverseGeocode = async (lat: number, lng: number) => {
-      try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-        const data = await response.json();
-        const fallback = language === 'de' ? 'Unbekannter Ort' : 'Unknown Place';
-        setCityName(data.address.city || data.address.town || data.address.village || fallback);
-      } catch (error) { 
-        setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'); 
+    const requestLocation = () => {
+      if (planningState.isPlanning && planningState.destination) {
+        setUserLocation(planningState.destination);
+        setCityName(planningState.destination.name);
+        return;
+      }
+      
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+            setUserLocation(location);
+            setShowLocationRequirement(false);
+            if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
+          }, 
+          (error) => {
+            console.warn("Geolocation error:", error);
+            setShowLocationRequirement(true);
+          }, 
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      } else {
+        setShowLocationRequirement(true);
       }
     };
-    if (planningState.isPlanning && planningState.destination) {
-      setUserLocation(planningState.destination);
-      setCityName(planningState.destination.name);
-      return;
-    }
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const location = { lat: position.coords.latitude, lng: position.coords.longitude };
-        setUserLocation(location);
-        if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
-      }, () => {
-        setUserLocation({ lat: 53.5395, lng: 8.5809 });
-        setCityName("Bremerhaven");
-      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
+
+    requestLocation();
+  }, [planningState, language]);
+
+  const handleUseHomeLocation = () => {
+    if (userProfile?.lastLocation) {
+      const { lat, lng } = userProfile.lastLocation;
+      setUserLocation({ lat, lng });
+      reverseGeocode(lat, lng);
     } else {
+      // Fallback to defaults
       setUserLocation({ lat: 53.5395, lng: 8.5809 });
       setCityName("Bremerhaven");
     }
-  }, [planningState, language]);
+    setShowLocationRequirement(false);
+  };
 
   useEffect(() => {
     // Fallback termination: If we are specifically searching for a name, we don't fallback to defaults.
@@ -810,9 +834,18 @@ export default function Home() {
       ) : (
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}><DialogContent className="p-0 w-full max-w-4xl max-h-[92vh] gap-0 overflow-hidden border-none outline-none"><DialogTitle className="sr-only">{selectedPlace?.name || (language === 'de' ? 'Ort Details' : 'Place Details')}</DialogTitle><DialogDescription className="sr-only">{language === 'de' ? 'Details zum ausgewählten Ort' : 'Details about the selected place'}</DialogDescription>{selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} onCreateActivity={() => setActivityModalPlace(selectedPlace)} />}</DialogContent></Dialog>
       )}
-      <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
+      <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace as Place} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
       <SpotActionSheet place={actionSheetPlace} open={!!actionSheetPlace} onOpenChange={(open) => !open && setActionSheetPlace(null)} onCreateNew={(place) => setActivityModalPlace(place)} />
       <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
+      <LocationRequirementDialog 
+        open={showLocationRequirement}
+        onOpenChange={setShowLocationRequirement}
+        onRetry={() => {
+            window.location.reload();
+        }}
+        onUseHomeLocation={handleUseHomeLocation}
+        homeCity="Bremerhaven"
+      />
       <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl overflow-hidden p-0 gap-0">
           <div className="p-8">
