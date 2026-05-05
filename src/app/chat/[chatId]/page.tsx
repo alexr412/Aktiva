@@ -304,7 +304,7 @@ export default function ChatRoomPage() {
                         <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">{otherUser.displayName?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex items-center gap-1.5 truncate">
-                      <h2 className="font-black text-slate-900 dark:text-neutral-100 truncate tracking-tight">{otherUser.displayName}</h2>
+                      <h1 className="">{otherUser.displayName}</h1>
                       <UserBadge isPremium={otherUser.isPremium} isSupporter={otherUser.isSupporter} size="sm" />
                     </div>
                 </Link>
@@ -313,7 +313,7 @@ export default function ChatRoomPage() {
                   <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <span className="text-primary font-black text-xs uppercase">{chat?.placeName?.charAt(0)}</span>
                   </div>
-                  <h2 className="font-black text-slate-900 dark:text-neutral-100 truncate tracking-tight">{chat?.placeName}</h2>
+                  <h1 className="">{chat?.placeName}</h1>
                 </div>
             )}
           </div>

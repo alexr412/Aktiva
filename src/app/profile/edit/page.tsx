@@ -5,7 +5,7 @@ import { useState, useEffect, useTransition, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { getUserProfile } from '@/lib/firebase/firestore';
+import { getUserProfile, isUsernameTaken } from '@/lib/firebase/firestore';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { uploadProfileImage } from '@/lib/firebase/storage';
@@ -38,6 +38,7 @@ export default function EditProfilePage() {
   const [isSaving, startSaving] = useTransition();
   const [formData, setFormData] = useState<Partial<FormData>>({
     displayName: '',
+    username: '',
     age: undefined,
     location: '',
     bio: '',
@@ -47,6 +48,9 @@ export default function EditProfilePage() {
     interests: [],
     categoryAffinities: {}
   });
+
+  const [usernameAvailability, setUsernameAvailability] = useState<'available' | 'taken' | 'invalid' | null>(null);
+  const [isUsernameChecking, setIsUsernameChecking] = useState(false);
 
   // Cropper State
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
@@ -70,6 +74,7 @@ export default function EditProfilePage() {
         setProfilePhoto(profile.photoURL || null);
         setFormData({
           displayName: profile.displayName || '',
+          username: profile.username || '',
           age: profile.age,
           location: profile.location || '',
           bio: profile.bio || '',
@@ -147,14 +152,43 @@ export default function EditProfilePage() {
     }));
   };
 
+  // Live Username Check
+  useEffect(() => {
+    if (!formData.username || formData.username.length < 4 || !user?.uid) {
+      setUsernameAvailability(null);
+      return;
+    }
+
+    const check = async () => {
+      setIsUsernameChecking(true);
+      try {
+        const isTaken = await isUsernameTaken(formData.username!, user.uid);
+        setUsernameAvailability(isTaken ? 'taken' : 'available');
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsUsernameChecking(false);
+      }
+    };
+
+    const timeoutId = setTimeout(check, 600);
+    return () => clearTimeout(timeoutId);
+  }, [formData.username, user?.uid]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.uid) return;
+
+    if (formData.username && (formData.username.length < 4 || usernameAvailability === 'taken')) {
+      toast({ variant: 'destructive', title: "Ungültiger Username", description: "Bitte wähle einen verfügbaren Usernamen mit mindestens 4 Zeichen." });
+      return;
+    }
 
     startSaving(async () => {
       try {
         const updateData = {
           displayName: formData.displayName,
+          username: formData.username?.toLowerCase().replace(/\s/g, ''),
           age: formData.age ? parseInt(String(formData.age), 10) : null,
           location: formData.location,
           bio: formData.bio,
@@ -188,7 +222,7 @@ export default function EditProfilePage() {
         <Button variant="ghost" size="icon" className="mr-2 h-10 w-10 rounded-full" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-black tracking-tight text-[#0f172a]">Profil bearbeiten</h1>
+        <h1 className="">Profil bearbeiten</h1>
       </header>
       
       <main className="flex-1 p-4 sm:p-8 pb-24">
@@ -226,20 +260,43 @@ export default function EditProfilePage() {
             <CardHeader className="bg-primary/5 pb-8">
               <div className="flex items-center gap-3 mb-2">
                 <UserCircle className="h-6 w-6 text-primary" />
-                <CardTitle className="text-2xl font-black">Persönliche Infos</CardTitle>
+                <CardTitle className="">Persönliche Infos</CardTitle>
               </div>
               <CardDescription className="text-base font-medium">Aktualisiere deine öffentlichen Profilinformationen.</CardDescription>
             </CardHeader>
             <CardContent className="pt-8 space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="displayName" className="font-semibold text-slate-700 ml-1">Anzeigename</Label>
-                <Input 
-                    id="displayName" 
-                    name="displayName" 
-                    value={formData.displayName || ''} 
-                    onChange={handleChange} 
-                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg px-6 focus-visible:ring-primary/50"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <Label htmlFor="displayName" className="font-semibold text-slate-700 ml-1">Anzeigename</Label>
+                    <Input 
+                        id="displayName" 
+                        name="displayName" 
+                        value={formData.displayName || ''} 
+                        onChange={handleChange} 
+                        className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg px-6 focus-visible:ring-primary/50"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="username" className="font-semibold text-slate-700 ml-1">Username (@)</Label>
+                    <div className="relative">
+                        <Input 
+                            id="username" 
+                            name="username" 
+                            value={formData.username || ''} 
+                            onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().replace(/\s/g, '')})} 
+                            className={cn(
+                                "h-14 rounded-2xl bg-slate-50 font-bold text-lg px-6 focus-visible:ring-primary/50 pr-12",
+                                usernameAvailability === 'available' ? "border-emerald-500" : 
+                                usernameAvailability === 'taken' ? "border-rose-500" : "border-slate-100"
+                            )}
+                        />
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                            {isUsernameChecking && <Loader2 className="h-5 w-5 animate-spin text-slate-300" />}
+                            {!isUsernameChecking && usernameAvailability === 'available' && <Check className="h-5 w-5 text-emerald-500" />}
+                        </div>
+                    </div>
+                    {usernameAvailability === 'taken' && <p className="text-[10px] font-black text-rose-500 uppercase px-1">Bereits vergeben</p>}
+                </div>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -338,7 +395,7 @@ export default function EditProfilePage() {
             <CardHeader className="bg-emerald-500/5 pb-8">
               <div className="flex items-center gap-3 mb-2">
                 <Sparkles className="h-6 w-6 text-emerald-500" />
-                <CardTitle className="text-2xl font-black">Interessen-Gewichtung</CardTitle>
+                <CardTitle className="">Interessen-Gewichtung</CardTitle>
               </div>
               <CardDescription className="text-base font-medium">
                 Bestimme hier, wie sehr dir bestimmte Kategorien gefallen. Dies beeinflusst direkt deinen Feed-Algorithmus.

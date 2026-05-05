@@ -14,8 +14,8 @@
     --secondary-foreground: 0 0% 3.9%;
     --muted: 0 0% 96.1%;
     --muted-foreground: 0 0% 45.1%;
-    --accent: 150 60% 90%;
-    --accent-foreground: 150 60% 25%;
+    --accent: 158 94% 96%;
+    --accent-foreground: 160 84% 20%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 89.8%;
@@ -27,9 +27,9 @@
     --chart-5: 27 87% 67%;
     --radius: 1rem;
 
-    --primary: 150 60% 45%;
+    --primary: 160 84% 39%;
     --primary-foreground: 0 0% 100%;
-    --ring: 150 60% 45%;
+    --ring: 160 84% 39%;
   }
 
   .dark {
@@ -43,8 +43,8 @@
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 12%;
     --muted-foreground: 0 0% 63.9%;
-    --accent: 150 60% 20%;
-    --accent-foreground: 150 60% 90%;
+    --accent: 160 84% 15%;
+    --accent-foreground: 158 94% 96%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14.9%;
@@ -68,8 +68,20 @@
     -moz-osx-font-smoothing: grayscale;
   }
   
-  h1, h2, h3, h4, .font-heading {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+  h1 {
+    @apply text-3xl font-black tracking-tighter text-slate-900 dark:text-neutral-100 font-heading leading-tight;
+  }
+
+  h2 {
+    @apply text-2xl font-black tracking-tight text-slate-900 dark:text-neutral-100 font-heading leading-snug;
+  }
+
+  h3 {
+    @apply text-xl font-black tracking-tight text-slate-900 dark:text-neutral-100 font-heading;
+  }
+
+  h4 {
+    @apply text-lg font-black tracking-tight text-slate-900 dark:text-neutral-100 font-heading;
   }
 
   /* Luxury Mesh Gradient Background */
@@ -197,4 +209,48 @@
   --primary: 0 72% 51%;
   --primary-foreground: 0 0% 100%;
   --ring: 0 72% 51%;
+}
+
+@layer components {
+  .secondary-header-button {
+    @apply h-12 w-12 rounded-2xl flex items-center justify-center transition-all duration-300;
+    @apply bg-white dark:bg-neutral-900;
+    @apply border border-slate-100 dark:border-neutral-800;
+    @apply elevation-low;
+    @apply text-slate-500 dark:text-neutral-400;
+    @apply hover:scale-105 active:scale-95 hover:text-primary dark:hover:text-primary;
+  }
+
+  .global-viewport-header {
+    @apply sticky top-0 z-header w-full shrink-0 pt-6 pb-6 backdrop-blur-xl border-b border-slate-100 dark:border-neutral-800/50 transition-all duration-300;
+    @apply bg-[#fcfcfb]/80 dark:bg-neutral-950/80;
+  }
+
+  .global-header-container {
+    @apply px-6 flex items-center justify-between max-w-7xl mx-auto w-full;
+  }
+}
+
+@layer utilities {
+  /* Z-Index Catalog */
+  .z-below { z-index: -1; }
+  .z-base { z-index: 0; }
+  .z-above { z-index: 10; }
+  .z-sticky { z-index: 20; }
+  .z-header { z-index: 30; }
+  .z-nav { z-index: 40; }
+  .z-overlay { z-index: 50; }
+  .z-modal { z-index: 60; }
+  .z-toast { z-index: 100; }
+
+  /* Elevation (Shadow) Catalog */
+  .elevation-low {
+    @apply shadow-sm shadow-slate-200/50 dark:shadow-none;
+  }
+  .elevation-mid {
+    @apply shadow-xl shadow-slate-300/30 dark:shadow-none;
+  }
+  .elevation-high {
+    @apply shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] dark:shadow-none;
+  }
 }

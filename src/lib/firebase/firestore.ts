@@ -1256,11 +1256,18 @@ export async function findUserByUsername(username: string): Promise<UserProfile 
     return querySnapshot.docs[0].data() as UserProfile;
 }
 
-export async function isUsernameTaken(username: string): Promise<boolean> {
-  if (!db) return true; // fail safe
+export async function isUsernameTaken(username: string, excludeUserId?: string): Promise<boolean> {
+  if (!db) return true;
   const userQuery = query(collection(db, 'users'), where('username', '==', username.toLowerCase()), limit(1));
   const snap = await getDocs(userQuery);
-  return !snap.empty;
+  
+  if (snap.empty) return false;
+  
+  if (excludeUserId) {
+    return snap.docs[0].id !== excludeUserId;
+  }
+  
+  return true;
 }
 
 export async function markNotificationAsRead(notificationId: string) {

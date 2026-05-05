@@ -128,7 +128,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
       <header className="flex flex-col gap-2">
-        <h2 className="text-4xl font-black text-slate-900 dark:text-neutral-100 tracking-tight flex items-center gap-3">
+        <h2 className="">
           Dashboard
           <Badge className="bg-red-500 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1">Admin Mode</Badge>
         </h2>
@@ -139,7 +139,7 @@ export default function AdminDashboardPage() {
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-orange-600">
           <ShieldAlert className="h-5 w-5" />
-          <h3 className="font-black text-lg uppercase tracking-tight">Moderation Queue (Balance Engine)</h3>
+          <h2 className="">Moderation Queue (Balance Engine)</h2>
         </div>
         <div className="grid grid-cols-1 gap-4">
           {moderationTasks.length === 0 ? (
@@ -185,7 +185,7 @@ export default function AdminDashboardPage() {
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-primary">
           <UserCheck className="h-5 w-5" />
-          <h3 className="font-black text-lg uppercase tracking-tight">Creator-Bewerbungen</h3>
+          <h2 className="">Creator-Bewerbungen</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {creatorApps.length === 0 ? (
@@ -238,7 +238,7 @@ export default function AdminDashboardPage() {
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-blue-600">
           <RotateCcw className="h-5 w-5" />
-          <h3 className="font-black text-lg uppercase tracking-tight">Refund-Pipeline</h3>
+          <h2 className="">Refund-Pipeline</h2>
         </div>
         <Card className="border-none shadow-md rounded-[2rem] overflow-hidden bg-white dark:bg-neutral-900">
           <CardContent className="p-0">
@@ -286,7 +286,7 @@ export default function AdminDashboardPage() {
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-red-600">
           <TrendingDown className="h-5 w-5" />
-          <h3 className="font-black text-lg uppercase tracking-tight">Kritische Reputation</h3>
+          <h2 className="">Kritische Reputation</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {flaggedUsers.map((u) => (

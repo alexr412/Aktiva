@@ -44,7 +44,7 @@ export function NotificationBell() {
     return (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full">
+                <Button variant="ghost" size="icon" className="secondary-header-button relative">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
                         <span className="absolute top-1 right-1 flex h-2.5 w-2.5 items-center justify-center">
@@ -57,7 +57,7 @@ export function NotificationBell() {
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0">
                 <div className="p-4 pb-2">
-                    <h4 className="font-medium leading-none">Notifications</h4>
+                    <h4 className="">Notifications</h4>
                     <p className="text-sm text-muted-foreground">
                         You have {unreadCount} unread message{unreadCount !== 1 ? 's' : ''}.
                     </p>

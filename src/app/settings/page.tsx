@@ -239,14 +239,14 @@ export default function SettingsPage() {
                 <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()}>
                     <ArrowLeft />
                 </Button>
-                <h1 className="text-lg font-semibold">{language === 'de' ? 'Einstellungen' : 'Settings'}</h1>
+                <h1 className="">{language === 'de' ? 'Einstellungen' : 'Settings'}</h1>
             </header>
 
             <main className="flex-1 overflow-y-auto pb-20">
                 <div className="p-6 space-y-8 max-w-2xl mx-auto">
                     {/* Fundraising Section */}
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                        <h2 className="flex items-center gap-3">
                             <Heart className="h-5 w-5 text-red-500 fill-red-500" />
                             <span>{language === 'de' ? 'Community Support' : 'Community Support'}</span>
 
@@ -264,7 +264,7 @@ export default function SettingsPage() {
 
                     {/* Friends Radar Section */}
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                        <h2 className="flex items-center gap-3">
                             <Radar className="h-5 w-5 text-primary" />
                             <span>{language === 'de' ? 'Freunde-Radar' : 'Friends Radar'}</span>
                         </h2>
@@ -308,7 +308,7 @@ export default function SettingsPage() {
 
                     {/* Notifications Section */}
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                        <h2 className="flex items-center gap-3">
                             <Bell className="h-5 w-5 text-primary" />
                             <span>{language === 'de' ? 'Benachrichtigungen' : 'Notifications'}</span>
                         </h2>
@@ -368,7 +368,7 @@ export default function SettingsPage() {
 
                     {/* Account Section */}
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                        <h2 className="flex items-center gap-3">
                             <User className="h-5 w-5 text-primary" />
                             <span>{language === 'de' ? 'Konto' : 'Account'}</span>
 
@@ -400,7 +400,7 @@ export default function SettingsPage() {
 
                     {/* Privacy & Safety Section */}
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                        <h2 className="flex items-center gap-3">
                             <Ban className="h-5 w-5 text-primary" />
                             <span>{language === 'de' ? 'Datenschutz & Sicherheit' : 'Privacy & Safety'}</span>
                         </h2>
@@ -417,7 +417,7 @@ export default function SettingsPage() {
 
                     {/* MODUL 19: Creator Status Program */}
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                        <h2 className="flex items-center gap-3">
                             <UserCheck className="h-5 w-5 text-primary" />
                             <span>{language === 'de' ? 'Creator Programm' : 'Creator Program'}</span>
                         </h2>
@@ -472,7 +472,7 @@ export default function SettingsPage() {
 
                     {/* Appearance Section */}
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                        <h2 className="flex items-center gap-3">
                             <Palette className="h-5 w-5 text-primary" />
                             <span>{language === 'de' ? 'Erscheinungsbild' : 'Appearance'}</span>
                         </h2>
@@ -481,7 +481,7 @@ export default function SettingsPage() {
 
                     {/* Support Section */}
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                        <h2 className="flex items-center gap-3">
                             <Bug className="h-5 w-5 text-primary" />
                             <span>{language === 'de' ? 'Support' : 'Support'}</span>
 
@@ -499,7 +499,7 @@ export default function SettingsPage() {
                      
                     {/* About Section */}
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3">
+                        <h2 className="flex items-center gap-3">
                             <Info className="h-5 w-5 text-primary" />
                             <span>{language === 'de' ? 'Über' : 'About'}</span>
                         </h2>
@@ -536,7 +536,7 @@ export default function SettingsPage() {
                     
                     {/* Danger Zone */}
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold tracking-tight flex items-center gap-3 text-destructive">
+                        <h2 className="flex items-center gap-3 text-destructive">
                             <Trash2 className="h-5 w-5" />
                             <span>{language === 'de' ? 'Gefahrenzone' : 'Danger Zone'}</span>
                         </h2>

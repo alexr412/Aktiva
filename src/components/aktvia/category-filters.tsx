@@ -27,7 +27,7 @@ import { db } from '@/lib/firebase/client';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { availableTabs } from './category-filters-data';
-import { cn } from '@/lib/utils';
+import { cn, formatLabel } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 
 // Re-export für Onboarding und andere Konsumenten
@@ -134,7 +134,7 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange 
               }}
             >
               <tab.icon className="h-4 w-4 mr-2 shrink-0" />
-              <span className="whitespace-nowrap">{language === 'de' ? tab.label : (tab.labelEn || tab.label)}</span>
+              <span className="whitespace-nowrap">{formatLabel(language === 'de' ? tab.label : (tab.labelEn || tab.label))}</span>
             </Button>
           );
         })}
@@ -181,7 +181,7 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange 
                     <span className={cn(
                         "font-black text-sm uppercase tracking-tight",
                         isActive ? "text-neutral-900 dark:text-white" : "text-neutral-500 dark:text-neutral-400"
-                    )}>{language === 'de' ? tab.label : (tab.labelEn || tab.label)}</span>
+                    )}>{formatLabel(language === 'de' ? tab.label : (tab.labelEn || tab.label))}</span>
                   </div>
                   {isActive && <Check className="h-5 w-5" style={{ color: tab.color }} />}
                 </button>

@@ -79,7 +79,7 @@ export default function AdminReportsPage() {
           <Link href="/admin"><ArrowLeft className="h-5 w-5" /></Link>
         </Button>
         <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Moderation</h2>
+          <h2 className="">Moderation</h2>
           <p className="text-slate-500 font-medium">Behandle gemeldete Inhalte und schütze die Community.</p>
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function AdminReportsPage() {
                     {report.createdAt ? format(report.createdAt.toDate(), 'Pp', { locale: de }) : 'Unbekannt'}
                   </span>
                 </div>
-                <CardTitle className="text-xl font-black text-slate-900">Grund: {report.reason}</CardTitle>
+                <CardTitle className="">Grund: {report.reason}</CardTitle>
                 <CardDescription className="font-bold text-slate-500 mt-1">Reporter-ID: {report.reporterId}</CardDescription>
               </CardHeader>
               <CardContent className="p-8">

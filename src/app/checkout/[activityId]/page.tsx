@@ -82,7 +82,7 @@ export default function CheckoutPage() {
     if (!activity) {
         return (
             <div className="p-10 text-center flex flex-col items-center justify-center h-full">
-                <h1 className="text-xl font-bold">Aktivität nicht gefunden.</h1>
+                <h1 className="">Aktivität nicht gefunden.</h1>
                 <Button onClick={() => router.back()} className="mt-4 rounded-xl">Zurück</Button>
             </div>
         );
@@ -95,7 +95,7 @@ export default function CheckoutPage() {
                     <div className="mx-auto bg-emerald-100 p-4 rounded-full w-fit mb-6">
                         <CheckCircle2 className="h-12 w-12 text-emerald-600" />
                     </div>
-                    <CardTitle className="text-2xl font-black mb-2">Zahlung bestätigt!</CardTitle>
+                    <CardTitle className="">Zahlung bestätigt!</CardTitle>
                     <CardDescription className="text-base font-medium text-emerald-800">
                         Vielen Dank für deine Buchung für <strong>{activity.placeName}</strong>. 
                         Du wirst jetzt zum Gruppenchat hinzugefügt.
@@ -114,14 +114,14 @@ export default function CheckoutPage() {
                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2 rounded-full">
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <h1 className="font-black text-lg">Checkout</h1>
+                <h1 className="">Checkout</h1>
             </header>
 
             <main className="flex-1 p-4 sm:p-8 flex flex-col items-center">
                 <div className="w-full max-w-md space-y-6">
                     <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
                         <CardHeader className="bg-slate-900 text-white p-6">
-                            <CardTitle className="text-xl font-black">Zusammenfassung</CardTitle>
+                            <CardTitle className="">Zusammenfassung</CardTitle>
                             <CardDescription className="text-slate-400 font-medium">Aktivität bei {activity.placeName}</CardDescription>
                         </CardHeader>
                         <CardContent className="p-6 space-y-4 bg-white">

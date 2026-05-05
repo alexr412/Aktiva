@@ -83,7 +83,7 @@ export default function CommunityPage() {
         <div className="flex flex-col h-full">
             <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
                 <div className="px-4 flex h-16 items-center justify-between">
-                    <h1 className="text-2xl font-bold tracking-tight">Community</h1>
+                    <h1 className="">Community</h1>
                 </div>
             </header>
             <main className="flex-1 overflow-y-auto p-4 sm:p-6">

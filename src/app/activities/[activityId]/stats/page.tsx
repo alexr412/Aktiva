@@ -64,7 +64,7 @@ export default function ActivityStatsPage() {
                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2 rounded-full">
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <h1 className="font-black text-lg">{language === 'de' ? 'Boost Insights' : 'Boost Insights'}</h1>
+                <h1 className="">{language === 'de' ? 'Boost Insights' : 'Boost Insights'}</h1>
             </header>
 
             <main className="flex-1 p-4 sm:p-8 max-w-2xl mx-auto w-full space-y-6 pb-24">
@@ -74,7 +74,7 @@ export default function ActivityStatsPage() {
                             <Flame className="h-5 w-5 fill-white" />
                             <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{language === 'de' ? 'Aktiver Boost' : 'Active Boost'}</span>
                         </div>
-                        <h2 className="text-3xl font-black leading-tight mb-4">{activity.placeName}</h2>
+                        <h2 className="">{activity.placeName}</h2>
                         <div className="flex items-center gap-4">
                             <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 flex-1 text-center">
                                 <p className="text-[10px] font-bold uppercase opacity-70 mb-1">Status</p>
@@ -117,7 +117,7 @@ export default function ActivityStatsPage() {
                     <CardHeader className="pb-2">
                         <div className="flex items-center gap-2 text-orange-500">
                             <Target className="h-5 w-5" />
-                            <CardTitle className="text-lg font-black uppercase tracking-tight">{language === 'de' ? 'Push-Effektivität' : 'Push Effectiveness'}</CardTitle>
+                            <CardTitle className="">{language === 'de' ? 'Push-Effektivität' : 'Push Effectiveness'}</CardTitle>
                         </div>
                         <CardDescription className="font-medium">
                           {language === 'de' ? 'Nutzer, die über die 2km-Radar-Benachrichtigung beigetreten sind.' : 'Users who joined via the 2km radar notification.'}
@@ -164,7 +164,7 @@ export default function ActivityStatsPage() {
                         <BarChart3 className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                        <h4 className="font-black text-blue-900 text-sm mb-1">{language === 'de' ? 'Optimierungs-Tipp' : 'Optimization Tip'}</h4>
+                        <h4 className="">{language === 'de' ? 'Optimierungs-Tipp' : 'Optimization Tip'}</h4>
                         <p className="text-xs text-blue-800/70 font-medium leading-relaxed">
                             {language === 'de' 
                               ? 'Deine Conversion Rate liegt über dem Durchschnitt. Ein präziserer Titel oder ein attraktiverer Ort könnten die Impressions noch weiter steigern.' 

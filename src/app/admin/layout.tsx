@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="bg-red-500 p-1.5 rounded-lg text-white">
             <ShieldAlert className="h-5 w-5" />
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight whitespace-nowrap text-slate-900 dark:text-neutral-100">
+          <h1 className="">
             System Control Center
           </h1>
         </div>

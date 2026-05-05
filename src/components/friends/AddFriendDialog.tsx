@@ -93,7 +93,7 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Freund hinzufügen</DialogTitle>
+          <DialogTitle className="">Freund hinzufügen</DialogTitle>
           <DialogDescription>
             Gib den Username eines Freundes ein, um ihm eine Anfrage zu senden.
           </DialogDescription>

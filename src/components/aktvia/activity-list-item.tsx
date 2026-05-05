@@ -248,7 +248,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                         </div>
 
                         {!isPremium && (
-                          <span className="text-[10px] text-muted-foreground font-medium italic flex items-center gap-1">
+                          <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
                             <Crown className="w-3 h-3 text-amber-500" />
                             Preview
                           </span>

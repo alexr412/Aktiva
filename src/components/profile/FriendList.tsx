@@ -57,7 +57,10 @@ export default function FriendList({ friendIds }: FriendListProps) {
     if (!currentUser?.proximitySettings?.enabled || !friend.proximitySettings?.enabled) return null;
     if (!currentUser.lastLocation || !friend.lastLocation?.updatedAt) return null;
 
-    const lastUpdate = friend.lastLocation.updatedAt.toMillis();
+    const lastUpdate = typeof friend.lastLocation.updatedAt === 'object' && 'toMillis' in friend.lastLocation.updatedAt 
+      ? friend.lastLocation.updatedAt.toMillis() 
+      : Date.now();
+      
     const now = Date.now();
     const twentyFourHours = 24 * 60 * 60 * 1000;
 
@@ -70,35 +73,36 @@ export default function FriendList({ friendIds }: FriendListProps) {
       friend.lastLocation.lng
     );
 
-    if (dist < 5) return language === 'de' ? "In direkter Nähe (< 5km)" : "Very close (< 5km)";
-    if (dist < 20) return language === 'de' ? "In der Umgebung (< 20km)" : "Nearby (< 20km)";
-    return language === 'de' ? "Weiter entfernt" : "Further away";
+    if (dist < 5) return language === 'de' ? "In der Nähe" : "Nearby";
+    if (dist < 20) return language === 'de' ? "Umgebung" : "Area";
+    return null;
   };
 
-  if (isLoading) {
+  if (isLoading && friendIds.length > 0) {
     return (
-      <div className="space-y-4 mb-12 w-full px-2">
-        <Skeleton className="h-8 w-48 ml-4 mb-2" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Skeleton className="h-24 rounded-[2rem]" />
-          <Skeleton className="h-24 rounded-[2rem]" />
+      <div className="flex flex-col gap-5 mb-12 w-full">
+        <div className="flex items-center justify-between px-4">
+          <div className="h-8 w-32 bg-slate-100 animate-pulse rounded-xl" />
+          <div className="h-4 w-16 bg-slate-50 animate-pulse rounded-lg" />
+        </div>
+        <div className="flex gap-4 px-4 overflow-x-hidden">
+          <Skeleton className="h-44 w-[45%] shrink-0 rounded-[2.5rem]" />
+          <Skeleton className="h-44 w-[45%] shrink-0 rounded-[2.5rem]" />
         </div>
       </div>
     );
   }
 
-  if (friends.length === 0) {
+  if (friendIds.length === 0) {
     return (
-      <div className="px-2 mb-12">
-        <div className="text-neutral-400 font-bold border-2 border-dashed border-neutral-200 p-12 rounded-[2rem] text-center bg-white/50 dark:bg-neutral-900/50 dark:border-neutral-800">
-          {language === 'de' ? 'Noch keine Freunde hinzugefügt.' : 'No friends added yet.'}
+      <div className="px-4 mb-12">
+        <div className="text-neutral-400 font-bold border-2 border-dashed border-neutral-100 p-8 rounded-[2rem] text-center bg-white/30 dark:bg-neutral-900/30 dark:border-neutral-800 text-sm">
+          {language === 'de' ? 'Noch keine Freunde' : 'No friends yet'}
         </div>
       </div>
     );
   }
 
-  // Architektur-Fix: Robuste Deduplizierung zur Vermeidung von React Key-Kollisionen
-  // Filtert ungültige Profile und nutzt eine Map für eindeutige UIDs
   const uniqueFriends = Array.from(
     new Map(
       friends
@@ -110,42 +114,58 @@ export default function FriendList({ friendIds }: FriendListProps) {
   return (
     <div className="flex flex-col gap-5 mb-12 w-full">
       <div className="flex items-center justify-between px-4">
-        <h3 className="font-black text-2xl text-[#0f172a] dark:text-neutral-200 flex items-center gap-2.5">
-          {language === 'de' ? 'Freunde' : 'Friends'} <span className="bg-[#59a27a]/10 text-[#59a27a] px-3 py-1 rounded-full text-sm font-black tracking-tight">{uniqueFriends.length}</span>
+        <h3 className="">
+          {language === 'de' ? 'Freunde' : 'Friends'} 
+          <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-black tracking-tight">
+            {friendIds.length}
+          </span>
         </h3>
-        <Link href="/community" className="text-[#59a27a] font-black text-sm hover:opacity-70 transition-opacity">{language === 'de' ? 'Alle sehen' : 'See all'}</Link>
+        <Link href="/community" className="text-primary font-black text-sm hover:opacity-70 transition-opacity">
+          {language === 'de' ? 'Alle sehen' : 'See all'}
+        </Link>
       </div>
 
       <div className="flex overflow-x-auto pb-4 gap-4 px-4 no-scrollbar scroll-smooth">
-        {uniqueFriends.map((friend, index) => {
-          const proximity = getProximityLabel(friend);
-          const friendKey = friend.uid || (friend as any).id || `fallback-${index}`;
-          
-          return (
-            <Link href={`/profile/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[42%]">
-              <div className="flex flex-col items-center gap-3 p-5 border border-slate-100 dark:border-neutral-800 rounded-[2.5rem] bg-white dark:bg-neutral-900 hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer relative overflow-hidden group">
-                <div className="relative">
-                    <Avatar className="h-16 w-16 border-2 border-slate-50 shadow-md">
-                      <AvatarImage src={friend.photoURL || undefined} />
-                      <AvatarFallback className="bg-[#f0f9ff] text-[#3b82f6] font-black text-xl">{friend.displayName?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 bg-white dark:bg-neutral-800 p-1 rounded-full shadow-sm border border-slate-100">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                    </div>
-                </div>
-                <div className="flex flex-col items-center text-center overflow-hidden w-full">
-                  <span className="font-black text-[#0f172a] dark:text-neutral-100 truncate w-full leading-tight text-lg">{friend.displayName?.split(' ')[0] || (language === 'de' ? 'Nutzer' : 'User')}</span>
-                  <div className="flex items-center gap-1 mt-1 text-rose-500">
-                    <MapPin className="h-3 w-3 fill-current" />
-                    <span className="text-[10px] font-black uppercase tracking-tight whitespace-nowrap">
-                      {proximity ? proximity : (friend.location?.split(' ')[0] || "Hagen")}
+        {uniqueFriends.length > 0 ? (
+          uniqueFriends.map((friend, index) => {
+            const proximity = getProximityLabel(friend);
+            const friendKey = friend.uid || (friend as any).id || `fallback-${index}`;
+            
+            return (
+              <Link href={`/profile/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[45%] max-w-[180px]">
+                <div className="flex flex-col items-center gap-3 p-5 border border-slate-100 dark:border-neutral-800 rounded-[2.5rem] bg-white dark:bg-neutral-900 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer relative overflow-hidden group">
+                  <div className="relative">
+                      <Avatar className="h-20 w-20 border-2 border-slate-50 shadow-md">
+                        <AvatarImage src={friend.photoURL || undefined} />
+                        <AvatarFallback className="bg-[#f0f9ff] text-[#3b82f6] font-black text-2xl">
+                          {friend.displayName?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-1 -right-1 bg-white dark:bg-neutral-800 p-1 rounded-full shadow-sm border border-slate-100">
+                          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+                      </div>
+                  </div>
+                  <div className="flex flex-col items-center text-center overflow-hidden w-full">
+                    <span className="font-black text-[#0f172a] dark:text-neutral-100 truncate w-full leading-tight text-base">
+                      {friend.displayName?.split(' ')[0] || (language === 'de' ? 'Nutzer' : 'User')}
                     </span>
+                    <div className="flex items-center gap-1 mt-1 text-[#f43f5e]">
+                      <MapPin className="h-3 w-3 fill-current" />
+                      <span className="text-[10px] font-black uppercase tracking-tight whitespace-nowrap opacity-80">
+                        {proximity ? proximity : (friend.location?.split(' ')[0] || "Hagen")}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          );
-        })}
+              </Link>
+            );
+          })
+        ) : (
+          // Fallback if IDs exist but profiles couldn't be loaded yet
+          [1, 2].map((i) => (
+            <Skeleton key={i} className="h-44 w-[45%] shrink-0 rounded-[2.5rem]" />
+          ))
+        )}
       </div>
     </div>
   );

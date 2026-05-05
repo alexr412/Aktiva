@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,7 +34,9 @@ import {
   MapPin,
   Calendar,
   Shield,
-  FileText
+  FileText,
+  X,
+  Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -52,6 +54,8 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('signup');
   const [step, setStep] = useState(1);
+  const [isUsernameChecking, setIsUsernameChecking] = useState(false);
+  const [usernameAvailability, setUsernameAvailability] = useState<'available' | 'taken' | 'invalid' | null>(null);
 
   const formSchema = z.object({
     username: z.string()
@@ -137,6 +141,29 @@ export default function SignupPage() {
   const forbiddenWords = ['sex', 'porn', 'fuck', 'bitch', 'schlampe', 'fotze', 'hurensohn', 'wichser', 'nazi', 'hitler', 'admin', 'support']; 
   const hasProfanity = forbiddenWords.some(word => usernameValue.toLowerCase().includes(word));
 
+  // Live Username Check Logic
+  useEffect(() => {
+    if (step !== 4 || usernameValue.length < 4 || usernameValue.length > 32 || hasProfanity) {
+      if (usernameAvailability !== null) setUsernameAvailability(null);
+      return;
+    }
+
+    const checkAvailability = async () => {
+      setIsUsernameChecking(true);
+      try {
+        const isTaken = await isUsernameTaken(usernameValue);
+        setUsernameAvailability(isTaken ? 'taken' : 'available');
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsUsernameChecking(false);
+      }
+    };
+
+    const timeoutId = setTimeout(checkAvailability, 600);
+    return () => clearTimeout(timeoutId);
+  }, [usernameValue, step, hasProfanity, usernameAvailability]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setSubmitError('');
     
@@ -197,7 +224,7 @@ export default function SignupPage() {
           <div className="mx-auto w-20 h-20 bg-emerald-100 rounded-3xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-emerald-50">
             <Check className="w-10 h-10 text-emerald-500" strokeWidth={3} />
           </div>
-          <h2 className="text-2xl font-black text-neutral-800 mb-3">{language === 'de' ? 'Fast fertig!' : 'Almost done!'}</h2>
+          <h2 className="">{language === 'de' ? 'Fast fertig!' : 'Almost done!'}</h2>
           <p className="text-neutral-500 font-bold mb-8 leading-relaxed text-sm">
             {language === 'de' ? 'Wir haben einen Bestätigungslink an' : 'We have sent a verification link to'} <br />
             <span className="text-[#4E89E3] font-black">{emailValue}</span> <br />
@@ -231,8 +258,6 @@ export default function SignupPage() {
         />
 
         {/* Dynamic Pattern Layer */}
-        <div className="absolute -top-[20%] -right-[10%] w-[100%] h-[100%] rounded-full bg-emerald-400/30 blur-[120px]" />
-        <div className="absolute top-[20%] -left-[20%] w-[110%] h-[110%] rounded-full bg-blue-500/30 blur-[140px]" />
         <div className="absolute inset-0 opacity-[0.2]" style={{ backgroundImage: 'radial-gradient(circle, #10b981 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
         <div className="absolute inset-0 opacity-[0.04] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
       </div>
@@ -249,7 +274,7 @@ export default function SignupPage() {
                   <div key={s} className={cn("h-1.5 rounded-full transition-all duration-500", step === s ? "w-8 bg-emerald-500" : "w-2 bg-slate-200 dark:bg-white/10")} />
                 ))}
               </div>
-              <h2 className="text-3xl md:text-4xl font-[1000] text-slate-950 dark:text-white tracking-tighter mb-2">
+              <h2 className="">
                 {step === 1 && (language === 'de' ? "Willkommen!" : "Welcome!")}
                 {step === 2 && (language === 'de' ? "Sicherheit" : "Security")}
                 {step === 3 && (language === 'de' ? "Über dich" : "About You")}
@@ -342,15 +367,15 @@ export default function SignupPage() {
                       />
                        <div className="space-y-2 px-2">
                         {[
-                          { val: validation.hasLength, label: language === 'de' ? '8-32 Zeichen' : '8-32 Characters' },
-                          { val: validation.hasUpper && validation.hasLower, label: language === 'de' ? 'Groß & Klein' : 'Upper & Lower' },
-                          { val: validation.hasNumber, label: language === 'de' ? 'Eine Zahl' : 'One Number' },
-                          { val: validation.hasSpecial, label: language === 'de' ? 'Sonderzeichen' : 'Special Char' },
-                          { val: passwordsMatch, label: language === 'de' ? 'Passwörter gleich' : 'Passwords match' },
+                           { val: validation.hasLength, label: language === 'de' ? '8-32 Zeichen' : '8-32 Characters' },
+                           { val: validation.hasUpper && validation.hasLower, label: language === 'de' ? 'Groß & Klein' : 'Upper & Lower' },
+                           { val: validation.hasNumber, label: language === 'de' ? 'Eine Zahl' : 'One Number' },
+                           { val: validation.hasSpecial, label: language === 'de' ? 'Sonderzeichen' : 'Special Char' },
+                           { val: passwordsMatch, label: language === 'de' ? 'Passwörter gleich' : 'Passwords match' },
                         ].map((item, idx) => (
                           <div key={idx} className="flex items-center gap-3">
                             <div className={cn("w-4 h-4 rounded-full flex items-center justify-center border-2 transition-all", item.val ? "bg-emerald-500 border-emerald-500" : "border-slate-200")}>
-                              {item.val && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                               {item.val && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                             </div>
                             <span className={cn("text-[10px] font-black uppercase tracking-wider", item.val ? "text-emerald-600" : "text-slate-400")}>{item.label}</span>
                           </div>
@@ -417,7 +442,7 @@ export default function SignupPage() {
 
                   {step === 4 && (
                     <motion.div key="step4" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
-                       <FormField
+                        <FormField
                         control={form.control}
                         name="username"
                         render={({ field }) => (
@@ -432,11 +457,27 @@ export default function SignupPage() {
                                   placeholder="username" 
                                   {...field} 
                                   maxLength={32}
-                                  className="h-18 pl-10 rounded-3xl bg-white dark:bg-white/[0.05] border-2 border-slate-100 dark:border-white/10 focus-visible:border-emerald-500 focus-visible:ring-0 font-black text-slate-950 dark:text-white" 
+                                  className={cn(
+                                    "h-18 pl-10 pr-12 rounded-3xl bg-white dark:bg-white/[0.05] border-2 focus-visible:ring-0 font-black text-slate-950 dark:text-white transition-all",
+                                    usernameAvailability === 'available' ? "border-emerald-500 bg-emerald-50/10" : 
+                                    usernameAvailability === 'taken' || hasProfanity ? "border-rose-500 bg-rose-50/10" : 
+                                    "border-slate-100 dark:border-white/10 focus-visible:border-emerald-500"
+                                  )} 
                                   onChange={(e) => field.onChange(e.target.value.replace(/\s/g, '').toLowerCase())} 
                                 />
+                                <div className="absolute right-5 top-1/2 -translate-y-1/2">
+                                  {isUsernameChecking && <Loader2 className="h-5 w-5 animate-spin text-slate-300" />}
+                                  {!isUsernameChecking && usernameAvailability === 'available' && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
+                                  {!isUsernameChecking && (usernameAvailability === 'taken' || hasProfanity) && <X className="h-5 w-5 text-rose-500" />}
+                                </div>
                               </div>
                             </FormControl>
+                            <div className="px-2">
+                                {usernameAvailability === 'taken' && <p className="text-[10px] font-black text-rose-500 uppercase tracking-wider">{language === 'de' ? 'Leider schon vergeben' : 'Already taken'}</p>}
+                                {hasProfanity && <p className="text-[10px] font-black text-rose-500 uppercase tracking-wider">{language === 'de' ? 'Ungültiger Name' : 'Invalid name'}</p>}
+                                {usernameAvailability === 'available' && <p className="text-[10px] font-black text-emerald-500 uppercase tracking-wider">{language === 'de' ? 'Verfügbar!' : 'Available!'}</p>}
+                                {!usernameAvailability && !hasProfanity && usernameValue.length >= 4 && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{language === 'de' ? 'Wird geprüft...' : 'Checking...'}</p>}
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -445,9 +486,9 @@ export default function SignupPage() {
                         <Button type="button" variant="ghost" onClick={() => setStep(3)} className="flex-1 h-18 rounded-3xl font-black text-slate-400">{language === 'de' ? 'ZURÜCK' : 'BACK'}</Button>
                         <Button 
                           type="button" 
-                          onClick={() => usernameValue.length >= 4 && usernameValue.length <= 32 && !hasProfanity && setStep(5)} 
+                          onClick={() => usernameValue.length >= 4 && usernameValue.length <= 32 && !hasProfanity && usernameAvailability === 'available' && setStep(5)} 
                           className="flex-[2] h-18 rounded-3xl bg-emerald-500 text-black font-black" 
-                          disabled={usernameValue.length < 4 || usernameValue.length > 32 || hasProfanity}
+                          disabled={usernameValue.length < 4 || usernameValue.length > 32 || hasProfanity || usernameAvailability !== 'available' || isUsernameChecking}
                         >
                           {language === 'de' ? 'WEITER' : 'CONTINUE'}
                         </Button>
@@ -463,14 +504,14 @@ export default function SignupPage() {
                             <Shield className="w-6 h-6 text-emerald-500" />
                           </div>
                           <div>
-                            <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider mb-1">{language === 'de' ? 'Nutzung & Datenschutz' : 'Usage & Privacy'}</p>
-                            <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
-                              {language === 'de' ? 'Bitte bestätige, dass du unsere' : 'Please confirm that you have read our'}{' '}
-                              <Link href="/terms" className="text-emerald-500 hover:text-emerald-400 underline underline-offset-2">{language === 'de' ? 'AGB' : 'Terms'}</Link>{' '}
-                              {language === 'de' ? 'und' : 'and'}{' '}
-                              <Link href="/privacy" className="text-emerald-500 hover:text-emerald-400 underline underline-offset-2">{language === 'de' ? 'Datenschutzrichtlinien' : 'Privacy Policy'}</Link>{' '}
-                              {language === 'de' ? 'gelesen hast.' : 'read.'}
-                            </p>
+                             <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider mb-1">{language === 'de' ? 'Nutzung & Datenschutz' : 'Usage & Privacy'}</p>
+                             <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
+                               {language === 'de' ? 'Bitte bestätige, dass du unsere' : 'Please confirm that you have read our'}{' '}
+                               <Link href="/terms" className="text-emerald-500 hover:text-emerald-400 underline underline-offset-2">{language === 'de' ? 'AGB' : 'Terms'}</Link>{' '}
+                               {language === 'de' ? 'und' : 'and'}{' '}
+                               <Link href="/privacy" className="text-emerald-500 hover:text-emerald-400 underline underline-offset-2">{language === 'de' ? 'Datenschutzrichtlinien' : 'Privacy Policy'}</Link>{' '}
+                               {language === 'de' ? 'gelesen hast.' : 'read.'}
+                             </p>
                           </div>
                         </div>
 

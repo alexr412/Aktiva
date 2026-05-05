@@ -123,7 +123,6 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             )}
             >
                 {/* Dekorative Icons im Hintergrund */}
-                <PrimaryIcon className="absolute -bottom-4 -right-4 h-24 w-24 text-white opacity-10 rotate-12" />
 
                 {/* Haupt-Icon & Label */}
                 <div className="flex flex-col items-center gap-1 z-10">
@@ -167,7 +166,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             {/* Content Bereich */}
             <div className="p-3 pb-4 flex flex-col flex-1">
                 <div className="mb-2">
-                    <h3 className="text-sm font-black text-[#0f172a] dark:text-neutral-100 line-clamp-2 leading-tight mb-0.5 font-heading">
+                    <h3 className="">
                         {place.name || (userProfile?.role === 'admin' ? `POI Ref: ${place.id.slice(-6)}` : (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'))}
                     </h3>
                     <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px]">

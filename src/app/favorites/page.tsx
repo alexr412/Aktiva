@@ -102,7 +102,7 @@ export default function FavoritesPage() {
             <div className="flex flex-col h-full bg-secondary/30">
                 <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
                     <div className="px-4 h-16 flex items-center max-w-7xl mx-auto w-full">
-                        <h1 className="text-2xl font-bold tracking-tight">{language === 'de' ? 'Favoriten' : 'Favorites'}</h1>
+                        <h1 className="">{language === 'de' ? 'Favoriten' : 'Favorites'}</h1>
 
                     </div>
                 </header>

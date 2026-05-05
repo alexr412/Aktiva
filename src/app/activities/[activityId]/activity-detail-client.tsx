@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { cn } from '@/lib/utils';
+import { cn, formatLabel } from '@/lib/utils';
 import Link from 'next/link';
 
 interface ActivityDetailClientProps {
@@ -149,7 +149,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   if (!activity) {
     return (
       <div className="flex h-screen flex-col items-center justify-center p-6 text-center">
-        <h1 className="text-2xl font-black text-slate-900">{language === 'de' ? 'Nicht gefunden' : 'Not Found'}</h1>
+        <h1 className="">{language === 'de' ? 'Nicht gefunden' : 'Not Found'}</h1>
         <p className="text-slate-500 mb-6">{language === 'de' ? 'Diese Aktivität existiert nicht mehr oder ist privat.' : 'This activity no longer exists or is private.'}</p>
         <Button onClick={() => router.push('/')} className="rounded-2xl h-12 px-8 font-black">{language === 'de' ? 'Zurück zum Feed' : 'Back to Feed'}</Button>
       </div>
@@ -172,7 +172,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="font-black text-lg truncate flex-1 text-center px-4">{activity.placeName}</h1>
+        <h1 className="">{activity.placeName}</h1>
         <Button variant="ghost" size="icon" onClick={handleShare} className="rounded-full">
           <Share2 className="h-5 w-5" />
         </Button>
@@ -246,9 +246,9 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         )}>
           <div className="relative z-10">
             <Badge className="bg-white/20 hover:bg-white/30 text-white border-none mb-4 px-3 py-1 font-black uppercase tracking-widest text-[10px]">
-              {activity.category || (language === 'de' ? 'Aktivität' : 'Activity')}
+              {formatLabel(activity.category || (language === 'de' ? 'Aktivität' : 'Activity'))}
             </Badge>
-            <h2 className="text-3xl font-black leading-tight mb-2">{activity.placeName}</h2>
+            <h2 className="">{activity.placeName}</h2>
             <p className="text-white/70 font-medium mb-6 flex items-center gap-1.5 text-sm">
               <MapPin className="h-4 w-4" /> {activity.placeAddress || (language === 'de' ? 'Ort wird im Chat bekannt gegeben' : 'Location will be announced in chat')}
             </p>
@@ -272,7 +272,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-slate-400">
                 <Clock className="h-4 w-4" />
-                <CardTitle className="text-[10px] font-black uppercase tracking-widest">{language === 'de' ? 'Betriebszeiten des Ortes' : 'Opening Hours of the Place'}</CardTitle>
+                <CardTitle className="">{language === 'de' ? 'Betriebszeiten des Ortes' : 'Opening Hours of the Place'}</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -294,7 +294,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         {isParticipant && !isCancelled && (
           <Card className="border-none shadow-sm rounded-[2.5rem] bg-white overflow-hidden text-center p-8">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-black uppercase tracking-tight">{language === 'de' ? 'Dein Ticket' : 'Your Ticket'}</CardTitle>
+              <CardTitle className="">{language === 'de' ? 'Dein Ticket' : 'Your Ticket'}</CardTitle>
               <CardDescription className="font-medium">{language === 'de' ? 'Zeige diesen Code beim Einlass vor.' : 'Show this code at the entrance.'}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center">
@@ -315,7 +315,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         {/* Host Info */}
         <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-black uppercase tracking-widest text-slate-400">{language === 'de' ? 'Veranstalter' : 'Host'}</CardTitle>
+            <CardTitle className="">{language === 'de' ? 'Veranstalter' : 'Host'}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
@@ -353,7 +353,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
         {/* Action Button */}
         {!isCancelled && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100 z-20">
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100 z-nav elevation-mid">
             <div className="max-w-md mx-auto">
               {isParticipant ? (
                 <Button onClick={() => router.push(`/chat/${activity.id}`)} className="w-full h-14 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20">

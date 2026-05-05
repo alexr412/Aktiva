@@ -58,7 +58,7 @@ export const UserPreferenceSlider: React.FC<UserPreferenceSliderProps> = ({
   return (
     <div className="flex flex-col gap-3 w-full max-w-sm mb-6 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
       <div className="flex justify-between items-center text-sm">
-        <span className="font-semibold text-gray-800 dark:text-gray-200">{label}</span>
+        <span className="">{label}</span>
         <span className={`font-mono px-2 py-1 rounded text-xs font-bold ${currentValue < 1.0 ? 'bg-red-50 text-red-600 dark:bg-red-900/30' : currentValue > 1.0 ? 'bg-green-50 text-green-600 dark:bg-green-900/30' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
           w = {currentValue.toFixed(2)}x
         </span>

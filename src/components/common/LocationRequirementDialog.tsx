@@ -60,7 +60,7 @@ export function LocationRequirementDialog({
             <Button 
               onClick={onRetry}
               disabled={isLoading}
-              className="w-full h-16 rounded-[1.5rem] bg-[#59a27a] hover:bg-[#4d8c6a] text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-3 border-none transition-all active:scale-95 disabled:opacity-80"
+              className="w-full h-16 rounded-[1.5rem] bg-primary hover:opacity-90 text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-3 border-none transition-all active:scale-95 disabled:opacity-80"
             >
               {isLoading ? (
                 <Loader2 className="h-6 w-6 animate-spin" />

@@ -90,7 +90,7 @@ export const availableTabs = [
     labelEn: 'Wellness',
     query: ['leisure.spa', 'leisure.spa.sauna'],
     icon: Flower2,
-    color: '#06b6d4', // Cyan
+    color: '#10b981', // Emerald Primary
   },
   {
     id: 'Water',
@@ -106,7 +106,7 @@ export const availableTabs = [
     labelEn: 'Zoos & Aquaria',
     query: ['entertainment.zoo', 'entertainment.aquarium'],
     icon: Bird,
-    color: '#06b6d4', // Cyan
+    color: '#10b981', // Emerald Primary
   },
   {
     id: 'Sport',
@@ -132,7 +132,7 @@ export const availableTabs = [
     labelEn: 'Restaurants',
     query: ['catering.restaurant'],
     icon: Utensils,
-    color: '#059669', // Emerald
+    color: '#10b981', // Emerald Primary
   },
   {
     id: 'Cafes',

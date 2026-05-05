@@ -148,7 +148,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                 <MapPin className="text-white h-10 w-10 drop-shadow-md" />
               </div>
               
-              <h2 className="text-2xl font-black text-slate-900 dark:text-neutral-100 mb-4 tracking-tight leading-tight">
+              <h2 className="">
                 {chat.placeName}
               </h2>
               
@@ -177,7 +177,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
 
             <div className="space-y-6">
               <div className="flex items-center justify-between px-2">
-                <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">{language === 'de' ? 'Mitglieder' : 'Members'}</h3>
+                <h3 className="">{language === 'de' ? 'Mitglieder' : 'Members'}</h3>
                 <span className="h-1 flex-1 mx-4 bg-slate-50 dark:bg-neutral-800 rounded-full" />
               </div>
               
@@ -248,7 +248,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
               </AlertDialogTrigger>
               <AlertDialogContent className="rounded-3xl border-none shadow-2xl dark:bg-neutral-900">
                 <AlertDialogHeader>
-                   <AlertDialogTitle className="text-xl font-black dark:text-neutral-100">
+                   <AlertDialogTitle className="">
                      {isOnlyParticipant
                        ? (language === 'de' ? 'Wirklich löschen?' : 'Really delete?')
                        : (language === 'de' ? 'Wirklich verlassen?' : 'Really leave?')}

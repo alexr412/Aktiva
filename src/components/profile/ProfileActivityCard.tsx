@@ -45,7 +45,7 @@ interface ProfileActivityCardProps {
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <h4 className="font-black text-lg text-[#0f172a] dark:text-neutral-100 truncate flex-1">{activity.placeName}</h4>
+            <h4 className="">{activity.placeName}</h4>
             {activity.isNew && (
                 <div className="bg-[#fff7ed] text-[#ea580c] px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0">
                     <Star className="w-2.5 h-2.5 fill-current" /> {language === 'de' ? 'NEU' : 'NEW'}

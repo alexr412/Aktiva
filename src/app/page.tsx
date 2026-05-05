@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger, 
   DropdownMenuContent,
 } from '@/components/ui/dropdown-menu';
-import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, X } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, X, Compass } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -673,7 +673,7 @@ export default function Home() {
       const renderList = () => {
         if (isFavoritesCategory) {
           if (favorites.length === 0) {
-            return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="text-xl font-black text-[#0f172a] dark:text-neutral-200">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
+            return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
           }
           return (
             <div className="p-4 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -782,7 +782,7 @@ export default function Home() {
         return (
           <div className="flex flex-col items-center justify-center p-10 h-[calc(100%-80px)] text-center space-y-6">
             <div className="bg-white dark:bg-neutral-800 p-8 rounded-full shadow-xl relative"><Lock className="h-12 w-12 text-neutral-400" /></div>
-            <h2 className="text-2xl font-black text-[#0f172a] dark:text-neutral-100">{language === 'de' ? 'Kartenansicht gesperrt' : 'Map View Locked'}</h2>
+            <h2 className="">{language === 'de' ? 'Kartenansicht gesperrt' : 'Map View Locked'}</h2>
             <Button onClick={() => setIsPremiumUpsellOpen(true)} className="rounded-2xl px-10 h-14 font-black">
               {language === 'de' ? 'Premium freischalten' : 'Unlock Premium'}
             </Button>
@@ -798,45 +798,59 @@ export default function Home() {
       <div className="flex flex-col h-full bg-white/40 dark:bg-neutral-900/40 relative">
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
-         <header className="flex-none w-full border-none bg-transparent pt-6 pb-2 z-20">
-          <div className="flex flex-col gap-5 px-6 max-w-7xl mx-auto w-full">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+         <header className="global-viewport-header pb-4">
+          <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
+            <div className="global-header-container">
+              <div className="flex items-center gap-3">
                 <Link href="/profile">
-                  <Avatar className="h-14 w-14 border-4 border-white dark:border-neutral-800 shadow-2xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer">
+                  <Avatar className="h-10 w-10 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer">
                     <AvatarImage src={userProfile?.photoURL || user?.photoURL || undefined} alt="Avatar" />
-                    <AvatarFallback className="bg-emerald-50 text-emerald-600 font-black text-xl">{userProfile?.displayName ? userProfile.displayName.charAt(0) : 'U'}</AvatarFallback>
+                    <AvatarFallback className="bg-emerald-50 text-emerald-600 font-black text-xs">{userProfile?.displayName ? userProfile.displayName.charAt(0) : 'U'}</AvatarFallback>
                   </Avatar>
                 </Link>
-                <div className="flex flex-col">
-                  <h1 className="text-2xl font-black tracking-tight text-[#0f172a] dark:text-neutral-100 font-heading">{language === "de" ? `Hallo, ${userProfile?.displayName?.split(' ')[0] || 'Du'} 👋` : `Hi, ${userProfile?.displayName?.split(' ')[0] || 'You'} 👋`}</h1>
-                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400 font-bold text-[10px] uppercase tracking-[0.15em] mt-0.5"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /><span>{cityName}</span></button>
-                </div>
+                <h1 className="">{language === "de" ? `Hallo, ${userProfile?.displayName?.split(' ')[0] || 'Du'} 👋` : `Hi, ${userProfile?.displayName?.split(' ')[0] || 'You'} 👋`}</h1>
               </div>
               <div className="flex items-center gap-3">
                 <NotificationBell />
-                <Button variant="secondary" size="icon" className="h-12 w-12 rounded-2xl bg-white dark:bg-neutral-800 text-neutral-500 shadow-xl shadow-slate-200/50 dark:shadow-none" onClick={handleMapToggle}>{viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}</Button>
+                <Button variant="ghost" size="icon" className="secondary-header-button" onClick={handleMapToggle}>{viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}</Button>
               </div>
             </div>
-            <CategoryFilters activeCategory={activeCategory} activeTabId={activeTabId} onCategoryChange={handleCategoryChange} />
-            <div className="flex items-center gap-3 w-full">
-              <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
-                {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
-                <Input type="search" placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} value={searchQuery} onChange={handleSearchInput} disabled={isSearching} className="w-full pl-9 h-14 rounded-full border-none bg-white font-bold text-xs shadow-xl shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none disabled:opacity-70 placeholder:text-neutral-400" />
-              </form>
-              <div className="relative group">
-                <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" className="h-14 px-3 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance || 10} km <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Radius' : 'Radius'}</span><span className="text-sm font-black">{maxDistance} km</span></div>
-                      <input type="range" min="1" max="100" value={maxDistance || 10} onChange={(e) => setMaxDistance(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
-                      <div className="grid grid-cols-4 gap-2">{[5, 10, 25, 50].map((r) => <button key={r} onClick={() => setMaxDistance(r)} className={cn("py-2 rounded-xl text-[10px] font-black transition-all", maxDistance === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>{r}k</button>)}</div>
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+
+            {/* Secondary Header Row: Context & Location */}
+            {/* Secondary Header Row: Location context */}
+            <div className="px-6 flex items-center justify-start">
+              <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-2 px-4 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest">{cityName}</span>
+                <ChevronDown className="h-3 w-3 text-neutral-400" />
+              </button>
+            </div>
+
+            <div className="px-6">
+                <CategoryFilters activeCategory={activeCategory} activeTabId={activeTabId} onCategoryChange={handleCategoryChange} />
+            </div>
+
+            {/* Search and Radius Row */}
+            <div className="px-6">
+              <div className="flex items-center gap-3 w-full">
+                <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
+                  {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
+                  <Input type="search" placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} value={searchQuery} onChange={handleSearchInput} disabled={isSearching} className="w-full pl-9 h-14 rounded-full border-none bg-white font-bold text-xs shadow-xl shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none disabled:opacity-70 placeholder:text-neutral-400" />
+                </form>
+                <div className="relative group">
+                  <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" className="h-14 px-3 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance || 10} km <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Radius' : 'Radius'}</span><span className="text-sm font-black">{maxDistance} km</span></div>
+                        <input type="range" min="1" max="100" value={maxDistance || 10} onChange={(e) => setMaxDistance(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                        <div className="grid grid-cols-4 gap-2">{[5, 10, 25, 50].map((r) => <button key={r} onClick={() => setMaxDistance(r)} className={cn("py-2 rounded-xl text-[10px] font-black transition-all", maxDistance === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>{r}k</button>)}</div>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </div>
           </div>
@@ -867,7 +881,7 @@ export default function Home() {
               <div className="mx-auto bg-amber-100 dark:bg-amber-900/30 p-4 rounded-full w-fit mb-4">
                 <Crown className="h-10 w-10 text-amber-500" />
               </div>
-              <DialogTitle className="text-2xl font-black text-center">
+              <DialogTitle className="">
                 {language === 'de' ? 'Premium-Funktion' : 'Premium Feature'}
               </DialogTitle>
               <DialogDescription className="text-center text-base font-medium px-2 pt-2">

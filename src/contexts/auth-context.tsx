@@ -30,7 +30,7 @@ const NotConfigured = () => (
         <Card className="max-w-md">
             <CardHeader className='text-center items-center'>
                 <AlertTriangle className="h-10 w-10 text-destructive mb-2" />
-                <CardTitle className="text-destructive">Firebase Not Configured</CardTitle>
+                <CardTitle className="">Firebase Not Configured</CardTitle>
             </CardHeader>
             <CardContent className='text-center'>
                 <p className='text-muted-foreground'>
@@ -46,7 +46,7 @@ const BannedScreen = () => (
     <div className="bg-red-500 p-6 rounded-full mb-8 shadow-2xl shadow-red-500/20 animate-pulse">
       <Ban className="h-16 w-16" />
     </div>
-    <h1 className="text-4xl font-black mb-4 uppercase tracking-tighter">Account Suspended</h1>
+    <h1 className="">Account Suspended</h1>
     <p className="max-w-md text-slate-400 font-medium leading-relaxed">
       Dein Account wurde aufgrund von wiederholten Verstößen gegen unsere Community-Richtlinien permanent gesperrt. 
       <br /><br />

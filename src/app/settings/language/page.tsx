@@ -43,7 +43,7 @@ export default function LanguageSettingsPage() {
                 <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()}>
                     <ArrowLeft />
                 </Button>
-                <h1 className="text-lg font-semibold flex items-center gap-2">
+                <h1 className="">
                     <Globe className="h-5 w-5 text-primary" />
                     {currentLanguage === 'de' ? 'Spracheinstellungen' : 'Language Settings'}
                 </h1>

@@ -55,7 +55,7 @@ export default function AdminPayoutsPage() {
           <Link href="/admin"><ArrowLeft className="h-5 w-5" /></Link>
         </Button>
         <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Auszahlungen</h2>
+          <h2 className="">Auszahlungen</h2>
           <p className="text-slate-500 font-medium">Finanz-Clearing und Treasury-Management.</p>
         </div>
       </div>
@@ -90,7 +90,7 @@ export default function AdminPayoutsPage() {
                 </div>
                 <div className="mt-6">
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1">Auszahlungsbetrag</span>
-                  <CardTitle className="text-5xl font-black text-slate-900 tracking-tighter">€{payout.amount?.toFixed(2)}</CardTitle>
+                   <CardTitle className="">€{payout.amount?.toFixed(2)}</CardTitle>
                 </div>
                 <CardDescription className="font-bold text-slate-500 mt-4 flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase text-slate-400">Host-ID:</span>

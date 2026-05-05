@@ -19,7 +19,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CategoryFilters } from '@/components/aktvia/category-filters';
 import { ProximityRadarView } from '@/components/aktvia/proximity-radar-view';
-import { cn } from '@/lib/utils';
+import { cn, formatLabel } from '@/lib/utils';
 import { calculateDistance } from '@/lib/geo-utils';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
@@ -260,12 +260,12 @@ export default function ExplorePage() {
                         <div className="h-10 w-10 rounded-2xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
                             <Compass className="h-6 w-6 text-white" />
                         </div>
-                        <h1 className="text-[24px] font-black tracking-tighter text-[#0f172a] dark:text-neutral-50 leading-none">Aktvia</h1>
+                        <h1 className="">Community</h1>
                     </div>
 
                     <div className="space-y-6">
                         <div className="flex items-center justify-between px-2">
-                            <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Aktvia Radar</h3>
+                            <h3 className="">Aktvia Radar</h3>
                             <div className="h-2 w-2 rounded-full bg-emerald-500" />
                         </div>
                         <div className="bg-slate-50/50 dark:bg-neutral-800/30 rounded-[2.25rem] p-5 border border-slate-50 dark:border-neutral-800/50">
@@ -274,7 +274,7 @@ export default function ExplorePage() {
                     </div>
 
                     <div className="space-y-6">
-                        <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 px-2">{language === 'de' ? 'Präferenzen' : 'Preferences'}</h3>
+                        <h3 className="">{language === 'de' ? 'Präferenzen' : 'Preferences'}</h3>
                         <div className="flex flex-col gap-6">
                             <CategoryFilters activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
                         </div>
@@ -284,14 +284,14 @@ export default function ExplorePage() {
             
             <main className="flex-1 flex flex-col min-h-0 relative">
                 {/* Header */}
-                <header className="sticky top-0 z-30 w-full bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md px-6 py-3.5 flex items-center justify-between border-b border-slate-50 dark:border-neutral-900">
-                    <div className="flex items-center gap-2">
-                        <h1 className="text-xl font-extrabold tracking-tight text-[#0f172a] dark:text-neutral-50 italic">{language === 'de' ? 'Aktivitäten' : 'Activities'}</h1>
-                        <Compass className="h-5 w-5 text-orange-400" />
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 flex items-center justify-center rounded-full bg-slate-50 dark:bg-neutral-900">
-                           <NotificationBell />
+                <header className="global-viewport-header">
+                    <div className="global-header-container">
+                        <div className="flex items-center gap-2">
+                            <h1 className="">{language === 'de' ? 'Aktivitäten' : 'Activities'}</h1>
+                            <Compass className="h-6 w-6 text-orange-500" />
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <NotificationBell />
                         </div>
                     </div>
                 </header>
@@ -327,7 +327,7 @@ export default function ExplorePage() {
                                         <motion.div
                                             key={card.id}
                                             className={cn(
-                                              "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[2.5rem] sm:rounded-[3rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] border-none overflow-hidden flex flex-col transition-shadow duration-300"
+                                              "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[2.5rem] sm:rounded-[3rem] elevation-high border-none overflow-hidden flex flex-col transition-shadow duration-300"
                                             )}
                                             style={{ 
                                                 zIndex: isTopCard ? 100 : (10 + index),
@@ -369,7 +369,7 @@ export default function ExplorePage() {
                                                         className="absolute inset-0 z-50 pointer-events-none bg-emerald-500/20 flex items-center justify-center"
                                                     >
                                                         <div className="border-8 border-emerald-500 rounded-2xl px-8 py-4 rotate-[-15deg] scale-125">
-                                                            <span className="text-5xl font-black text-emerald-500 uppercase tracking-tighter italic">LIKE</span>
+                                                            <span className="text-5xl font-black text-emerald-500 uppercase tracking-tighter">LIKE</span>
                                                         </div>
                                                     </motion.div>
                                                     <motion.div 
@@ -377,7 +377,7 @@ export default function ExplorePage() {
                                                         className="absolute inset-0 z-50 pointer-events-none bg-rose-500/20 flex items-center justify-center"
                                                     >
                                                         <div className="border-8 border-rose-500 rounded-2xl px-8 py-4 rotate-[15deg] scale-125">
-                                                            <span className="text-5xl font-black text-rose-500 uppercase tracking-tighter italic">NOPE</span>
+                                                            <span className="text-5xl font-black text-rose-500 uppercase tracking-tighter">NOPE</span>
                                                         </div>
                                                     </motion.div>
                                                 </>
@@ -400,7 +400,7 @@ export default function ExplorePage() {
                                                             {language === 'de' ? 'Neu' : 'New'}
                                                         </div>
                                                         <div className="bg-white/90 backdrop-blur-md text-neutral-600 text-[10px] font-bold px-3 h-7 flex items-center rounded-full shadow-sm capitalize">
-                                                            {(card.categories?.[0] || (language === 'de' ? 'Aktivität' : 'Activity')).toLowerCase()}
+                                                            {formatLabel(card.categories?.[0] || (language === 'de' ? 'Aktivität' : 'Activity'))}
                                                         </div>
                                                     </div>
 
@@ -413,7 +413,7 @@ export default function ExplorePage() {
                                                     )}
 
                                                     <div className="absolute inset-x-0 bottom-0 p-6 pb-8 pt-24 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10">
-                                                        <h2 className="text-[28px] font-black text-white leading-[1.1] mb-1.5 tracking-tight drop-shadow-sm">{card.placeName}</h2>
+                                                        <h2 className="">{card.placeName}</h2>
                                                         <div className="flex items-center gap-2 text-white/90 font-bold">
                                                             <MapPin className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
                                                             <p className="text-[12px] truncate tracking-wide">{card.placeAddress || (language === 'de' ? 'In deiner Umgebung' : 'In your area')}</p>
@@ -495,7 +495,7 @@ export default function ExplorePage() {
                                     <div className="w-24 h-24 bg-orange-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-6 shadow-sm">
                                         <PlusCircle className="h-10 w-10 text-orange-500" strokeWidth={1.5} />
                                     </div>
-                                    <h3 className="text-xl font-extrabold text-[#0f172a] dark:text-neutral-100 mb-2">{language === 'de' ? 'Alles entdeckt!' : 'Everything discovered!'}</h3>
+                                    <h3 className="">{language === 'de' ? 'Alles entdeckt!' : 'Everything discovered!'}</h3>
                                     <p className="text-sm text-slate-500 dark:text-neutral-400 mb-8 max-w-[240px]">
                                         {language === 'de' ? 'Aktuell gibt es keine weiteren Aktivitäten in deiner Nähe. Starte doch einfach selbst etwas!' : 'Currently there are no more activities near you. Why not start something yourself!'}
                                     </p>

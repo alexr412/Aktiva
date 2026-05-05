@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell } from 'lucide-react';
+import { LogOut, User, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -299,7 +299,7 @@ export default function ProfilePage() {
             onClick={() => setActiveTab(tabName)}
             className={`transition-all duration-300 text-[11px] pb-4 font-black uppercase tracking-[0.1em] px-2 ${
                 activeTab === tabName 
-                  ? 'border-b-4 border-[#59a27a] text-[#59a27a]' 
+                  ? 'border-b-4 border-primary text-primary' 
                   : 'text-slate-300 border-b-4 border-transparent hover:text-slate-400'
             }`}
         >
@@ -326,28 +326,29 @@ export default function ProfilePage() {
 
     return (
         <>
-            <div className="relative flex flex-col h-full bg-[#f8f9fa] dark:bg-black/95 overflow-y-auto pb-32">
-                {/* Header Backdrop Gradient */}
-                <div className="h-64 w-full bg-gradient-to-br from-[#4ade80] to-[#3b82f6] relative shrink-0">
-                    <div className="absolute top-12 right-6 flex items-center gap-3">
-                        <Button asChild variant="ghost" size="icon" className="h-11 w-11 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 text-white shadow-xl">
-                            <Link href="/settings"><Settings className="h-5.5 w-5.5" /></Link>
-                        </Button>
-                        <div className="relative group">
-                            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-full bg-[#ffeedd]/30 backdrop-blur-xl border border-white/30 text-orange-200 shadow-xl">
-                                <Bell className="h-5.5 w-5.5 fill-current" />
-                            </Button>
-                            {unreadNotifications > 0 && <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-rose-500 border-2 border-white rounded-full" />}
+            <div className="relative flex flex-col h-full bg-[#fcfcfb] dark:bg-neutral-950 overflow-y-auto pb-32">
+                <header className="global-viewport-header">
+                    <div className="global-header-container">
+                        <div className="flex items-center gap-2">
+                            <h1 className="">{language === 'de' ? 'Profil' : 'Profile'}</h1>
+                            <User className="h-6 w-6 text-primary fill-current" />
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <NotificationBell />
+                            <Link href="/settings">
+                                <Button variant="ghost" size="icon" className="secondary-header-button">
+                                    <Settings className="h-5 w-5" />
+                                </Button>
+                            </Link>
                         </div>
                     </div>
-                </div>
+                </header>
 
-                {/* Main Content Card */}
-                <div className="relative -mt-20 px-4 w-full max-w-4xl mx-auto z-10">
-                    <div className="bg-white dark:bg-neutral-900 rounded-[3.5rem] shadow-2xl shadow-slate-200/60 dark:shadow-none p-8 flex flex-col items-center">
+                {/* Main Content Area - Flat Model */}
+                <div className="relative px-6 w-full max-w-4xl mx-auto z-10 pt-4 flex flex-col items-center">
                         
-                        {/* Overlapping Avatar */}
-                        <div className="relative -mt-24 mb-6 group">
+                        {/* Avatar Section */}
+                        <div className="relative mb-6 group">
                             <div className="p-1.5 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-100 to-amber-600 shadow-2xl transition-transform active:scale-95">
                                 <Avatar className="h-32 w-32 border-[6px] border-white dark:border-neutral-900">
                                     <AvatarImage src={photoUrlToDisplay} alt="Profil" />
@@ -356,7 +357,7 @@ export default function ProfilePage() {
                             </div>
                             <button 
                                 onClick={() => fileInputRef.current?.click()}
-                                className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-[#59a27a] border-4 border-white dark:border-neutral-900 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all z-20"
+                                className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-primary border-4 border-white dark:border-neutral-900 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all z-20"
                             >
                                 <Edit className="h-4 w-4 fill-current" />
                             </button>
@@ -366,10 +367,10 @@ export default function ProfilePage() {
                         {/* Name & Title */}
                         <div className="flex flex-col items-center text-center">
                             <div className="flex items-center gap-2 mb-1">
-                                <h2 className="text-3xl font-black text-[#0f172a] dark:text-neutral-100 tracking-tight">
+                                <h1 className="">
                                     {displayName}
                                     {userData?.age && <span className="text-neutral-300 font-extrabold">, {userData.age}</span>}
-                                </h2>
+                                </h1>
                                 <div className="flex items-center gap-1.5 ml-1">
                                     <span className="text-xl">👑</span>
                                     <span className="text-xl text-rose-500">❤️</span>
@@ -393,13 +394,15 @@ export default function ProfilePage() {
 
                             {/* Pills */}
                              <div className="flex items-center gap-2 mb-8">
-                                <div onClick={userData?.username ? handleCopyUsername : undefined} className="bg-[#f3f4f6] dark:bg-neutral-800/80 px-5 py-2 rounded-2xl flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors">
-                                    <span className="text-[#a1a1aa] font-black text-[11px] uppercase tracking-tighter">@</span>
-                                    <span className="text-[#0f172a] dark:text-neutral-200 font-black text-xs tracking-widest">{userData?.username || 'user'}</span>
-                                </div>
+                                {userData?.username && (
+                                    <div onClick={handleCopyUsername} className="bg-[#f3f4f6] dark:bg-neutral-800/80 px-5 py-2 rounded-2xl flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors">
+                                        <span className="text-[#a1a1aa] font-black text-[11px] uppercase tracking-tighter">@</span>
+                                        <span className="text-[#0f172a] dark:text-neutral-200 font-black text-xs tracking-widest">{userData.username}</span>
+                                    </div>
+                                )}
                                 <div className="bg-[#fcf1f2] dark:bg-neutral-800/80 px-5 py-2 rounded-2xl flex items-center gap-2">
                                     <span className="text-[#ec4899] font-black text-[11px]">📍</span>
-                                    <span className="text-[#0f172a] dark:text-neutral-200 font-black text-xs tracking-tight">{userData?.location || 'StädteRegion Aachen'}</span>
+                                    <span className="text-[#0f172a] dark:text-neutral-200 font-black text-xs tracking-tight">{userData?.location || (language === 'de' ? 'Unbekannter Ort' : 'Unknown location')}</span>
                                 </div>
                             </div>
 
@@ -411,7 +414,7 @@ export default function ProfilePage() {
                                     { label: language === 'de' ? 'Bewertungen' : 'Reviews', val: userData?.ratingCount || 0, bg: 'bg-[#f8f9f8]' }
                                 ].map((stat) => (
                                     <div key={stat.label} className={cn("flex flex-col items-center py-4 rounded-3xl shadow-sm border border-slate-50", stat.bg)}>
-                                        <span className="text-3xl font-black text-[#59a27a] leading-none mb-1">{stat.val}</span>
+                                        <span className="text-3xl font-black text-primary leading-none mb-1">{stat.val}</span>
                                         <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">{stat.label}</span>
                                     </div>
                                 ))}
@@ -419,7 +422,7 @@ export default function ProfilePage() {
 
                             {/* Action Button */}
                              <Button 
-                                className="w-full max-w-sm h-16 rounded-[1.5rem] bg-[#59a27a] hover:bg-[#4d8c6a] text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-2 border-none"
+                                className="w-full max-w-sm h-16 rounded-[1.5rem] bg-primary hover:opacity-90 text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-2 border-none"
                                 onClick={() => router.push('/profile/edit')}
                             >
                                 <Edit className="h-5 w-5 fill-current" />
@@ -453,13 +456,13 @@ export default function ProfilePage() {
                                         <TabsList className="flex gap-3 bg-transparent p-0 justify-center mb-6">
                                              <TabsTrigger 
                                                 value="active" 
-                                                className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-[#f0fdf4] data-[state=active]:text-[#59a27a] data-[state=active]:shadow-none border-none transition-all"
+                                                className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-accent data-[state=active]:text-primary data-[state=active]:shadow-none border-none transition-all"
                                             >
                                                 {language === 'de' ? 'Aktiv' : 'Active'} ({currentActivities.length})
                                             </TabsTrigger>
                                             <TabsTrigger 
                                                 value="past" 
-                                                className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-[#f0fdf4] data-[state=active]:text-[#59a27a] data-[state=active]:shadow-none border-none transition-all"
+                                                className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-accent data-[state=active]:text-primary data-[state=active]:shadow-none border-none transition-all"
                                             >
                                                 {language === 'de' ? 'Vergangen' : 'Past'} ({pastActivities.length})
                                             </TabsTrigger>
@@ -488,13 +491,13 @@ export default function ProfilePage() {
                                 ) : (
                                     <div className="text-center p-12 flex flex-col items-center justify-center gap-6 bg-white rounded-[3.5rem] border border-slate-100 shadow-sm">
                                         <div className="bg-[#f0fdf4] p-8 rounded-[2.5rem]">
-                                            <Compass className="h-12 w-12 text-[#59a27a]" />
+                                            <Compass className="h-12 w-12 text-primary" />
                                         </div>
                                          <div className="space-y-1">
-                                            <h3 className="text-xl font-black text-[#0f172a]">{language === 'de' ? 'Noch leer hier' : 'Nothing here yet'}</h3>
-                                            <p className="text-slate-400 font-medium">{language === 'de' ? 'Entdecke spannende Orte in deiner Nähe.' : 'Discover exciting places nearby.'}</p>
+                                            <h3 className="">{language === 'de' ? 'Noch leer hier' : 'Nothing here yet'}</h3>
+                                            <p className="text-sm text-slate-500 font-medium leading-relaxed line-clamp-3">{language === 'de' ? 'Entdecke spannende Orte in deiner Nähe.' : 'Discover exciting places nearby.'}</p>
                                         </div>
-                                        <Button onClick={() => router.push('/explore')} className="rounded-[1.5rem] h-14 px-10 font-black bg-[#59a27a]">{language === 'de' ? 'Orte entdecken' : 'Discover Places'}</Button>
+                                        <Button onClick={() => router.push('/explore')} className="rounded-[1.5rem] h-14 px-10 font-black bg-primary">{language === 'de' ? 'Orte entdecken' : 'Discover Places'}</Button>
                                     </div>
                                 )}
                             </div>
@@ -520,7 +523,6 @@ export default function ProfilePage() {
 
                             </div>
                          )}
-                    </div>
                 </div>
             </div>
 
@@ -528,7 +530,7 @@ export default function ProfilePage() {
             <Dialog open={isReviewsModalOpen} onOpenChange={setIsReviewsModalOpen}>
               <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
                 <DialogHeader className="p-6 bg-amber-50 dark:bg-amber-950/20">
-                   <DialogTitle className="text-xl font-black flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                   <DialogTitle className="">
                     <Star className="h-5 w-5 fill-amber-500" /> {language === 'de' ? 'Community Feedback' : 'Community Feedback'}
                   </DialogTitle>
                   <DialogDescription className="text-amber-800/70 dark:text-amber-400/70 font-medium">
@@ -550,9 +552,9 @@ export default function ProfilePage() {
                           <span className="text-[10px] font-bold text-slate-400 uppercase">{format(review.createdAt.toDate(), 'dd.MM.yy')}</span>
                         </div>
                         {review.comment ? (
-                           <p className="text-sm font-medium text-slate-700 dark:text-neutral-300 italic">"{review.comment}"</p>
+                           <p className="text-sm font-medium text-slate-700 dark:text-neutral-300">"{review.comment}"</p>
                         ) : (
-                          <p className="text-xs text-slate-400 italic">{language === 'de' ? 'Kein Kommentar hinterlassen.' : 'No comment left.'}</p>
+                          <p className="text-xs text-slate-400">{language === 'de' ? 'Kein Kommentar hinterlassen.' : 'No comment left.'}</p>
                         )}
                       </div>
                     ))
@@ -572,13 +574,13 @@ export default function ProfilePage() {
             {/* Modal für Bildzuschnitt */}
              <Dialog open={isCropModalOpen} onOpenChange={(open) => !open && !isUploading && setIsCropModalOpen(false)}>
                 <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 rounded-3xl p-6 border-none shadow-2xl overflow-hidden">
-                    <DialogHeader><DialogTitle className="text-xl font-black dark:text-neutral-100">{language === 'de' ? 'Bild zuschneiden' : 'Crop Image'}</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle className="">{language === 'de' ? 'Bild zuschneiden' : 'Crop Image'}</DialogTitle></DialogHeader>
                     <div className="relative h-64 w-full bg-slate-900 rounded-2xl overflow-hidden mt-4">
                         {imageToCrop && <Cropper image={imageToCrop} crop={crop} zoom={zoom} aspect={1} cropShape="round" showGrid={false} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />}
                     </div>
                      <DialogFooter className="mt-6 flex gap-2">
                         <Button variant="ghost" className="rounded-xl font-bold dark:text-neutral-400" onClick={() => { setIsCropModalOpen(false); setImageToCrop(null); }} disabled={isUploading}>{language === 'de' ? 'Abbrechen' : 'Cancel'}</Button>
-                        <Button onClick={handleSaveCroppedImage} className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex-1" disabled={isUploading}>{isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}{language === 'de' ? 'Bild speichern' : 'Save Image'}</Button>
+                        <Button onClick={handleSaveCroppedImage} className="bg-primary hover:opacity-90 text-white rounded-xl font-black flex-1" disabled={isUploading}>{isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}{language === 'de' ? 'Bild speichern' : 'Save Image'}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

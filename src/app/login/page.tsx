@@ -158,7 +158,7 @@ export default function LoginPage() {
               <MapPin className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 fill-emerald-500/20" />
             </div>
           </div>
-          <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-[-0.07em] flex items-center justify-center">
+          <h1 className="">
             aktiva<span className="text-emerald-500 ml-0.5 animate-pulse">.</span>
           </h1>
           <div className="h-0.5 w-12 bg-emerald-500/30 mx-auto mt-4 rounded-full" />
@@ -177,7 +177,7 @@ export default function LoginPage() {
           
           <div className="relative z-10 w-full">
             <div className="mb-10 md:mb-14 text-center text-balance">
-              <h2 className="text-3xl md:text-4xl font-[1000] text-slate-950 dark:text-white tracking-tighter mb-3">{language === 'de' ? 'Entdecke mehr' : 'Explore more'}</h2>
+              <h2 className="">{language === 'de' ? 'Entdecke mehr' : 'Explore more'}</h2>
               <p className="text-slate-600 dark:text-emerald-400 font-extrabold uppercase tracking-[0.2em] text-[13px] md:text-[15px]">Connect. Explore. Live.</p>
             </div>
 
@@ -295,7 +295,7 @@ export default function LoginPage() {
        <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
         <DialogContent className="sm:max-w-md rounded-[2.5rem] border-none shadow-2xl p-8">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black text-neutral-800">{language === 'de' ? 'Passwort vergessen?' : 'Forgot password?'}</DialogTitle>
+            <DialogTitle className="">{language === 'de' ? 'Passwort vergessen?' : 'Forgot password?'}</DialogTitle>
             <DialogDescription className="font-semibold text-neutral-500 pt-2">
               {language === 'de' ? 'Kein Problem! Gib deine E-Mail-Adresse ein und wir senden dir einen Link.' : 'No problem! Enter your email and we will send you a link.'}
             </DialogDescription>

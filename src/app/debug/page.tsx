@@ -27,7 +27,7 @@ export default function DebugPage() {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-neutral-950 p-6 text-center">
         <XCircle className="h-16 w-16 text-red-500 mb-4" />
-        <h1 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter">Zugriff Verweigert</h1>
+        <h1 className="">Zugriff Verweigert</h1>
         <p className="text-neutral-400 max-w-md">Diese Seite ist ausschließlich für Administratoren zur Veto-Diagnose reserviert.</p>
         <Button className="mt-6 rounded-full px-8" onClick={() => window.location.href = '/'}>Zurück zum Feed</Button>
       </div>
@@ -67,11 +67,11 @@ export default function DebugPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'whitelist': return 'bg-emerald-500/20 text-emerald-600 border-emerald-500/30';
-      case 'whitelist-fallback': return 'bg-emerald-500/10 text-emerald-600/80 border-emerald-500/20 italic';
+      case 'whitelist-fallback': return 'bg-emerald-500/10 text-emerald-600/80 border-emerald-500/20';
       case 'hard': return 'bg-red-500/20 text-red-600 border-red-500/30';
-      case 'hard-fallback': return 'bg-red-500/10 text-red-600/80 border-red-500/20 italic';
+      case 'hard-fallback': return 'bg-red-500/10 text-red-600/80 border-red-500/20';
       case 'soft': return 'bg-amber-500/20 text-amber-600 border-amber-500/30';
-      case 'soft-fallback': return 'bg-amber-500/10 text-amber-600/80 border-amber-500/20 italic';
+      case 'soft-fallback': return 'bg-amber-500/10 text-amber-600/80 border-amber-500/20';
       default: return 'bg-secondary text-muted-foreground border-border';
     }
   };
@@ -84,7 +84,7 @@ export default function DebugPage() {
             <div className="h-10 w-10 bg-gradient-to-tr from-primary to-violet-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
               <AlertCircle className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-4xl font-black uppercase tracking-tighter italic text-foreground leading-none">Veto <span className="text-primary tracking-normal not-italic tracking-tighter">Diagnosis</span></h1>
+            <h1 className="">Veto Diagnosis</h1>
           </div>
           <p className="text-muted-foreground font-medium">Bypass applyFilters to identify tag collisions and logic conflicts.</p>
         </header>
@@ -121,7 +121,7 @@ export default function DebugPage() {
               <div className="flex flex-col md:flex-row justify-between gap-8 relative z-10">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
-                    <h2 className="text-2xl font-black truncate tracking-tighter text-foreground uppercase italic">{place.name}</h2>
+                    <h2 className="">{place.name}</h2>
                     <div className={cn(
                       "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-lg",
                       place.simulatedVetoStatus === 'hard' ? "bg-red-500/20 text-red-500 border-red-500/30" :
@@ -136,9 +136,7 @@ export default function DebugPage() {
                   </p>
 
                   <div className="space-y-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                      RAW GEOAPIFY CATEGORIES <div className="h-[1px] flex-1 bg-border" />
-                    </h3>
+                    <h3 className="">RAW GEOAPIFY CATEGORIES</h3>
                     <div className="flex flex-wrap gap-2 mt-4">
                       {place.rawCategories && place.rawCategories.length > 0 ? (
                         place.rawCategories.map((tag: string) => {
@@ -156,7 +154,7 @@ export default function DebugPage() {
                           );
                         })
                       ) : (
-                        <span className="text-sm text-neutral-600 italic">Keine Tags übermittelt.</span>
+                        <span className="text-sm text-neutral-600">Keine Tags übermittelt.</span>
                       )}
                     </div>
                   </div>
@@ -169,9 +167,9 @@ export default function DebugPage() {
                       place.simulatedVetoStatus === 'none' ? "text-emerald-500" : "text-muted"
                     )} />
                   </div>
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Final Logic Result</h3>
+                  <h3 className="">Final Logic Result</h3>
                   <div className={cn(
-                    "text-lg font-black uppercase italic tracking-tighter",
+                    "text-lg font-black uppercase tracking-tighter",
                     place.simulatedVetoStatus === 'none' ? "text-emerald-500" : "text-muted-foreground"
                   )}>
                     {place.simulatedVetoStatus === 'none' ? 'PASS' : 'VETOED'}

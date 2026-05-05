@@ -11,10 +11,10 @@ export function BottomNav() {
   const language = useLanguage();
 
   const navItems = [
-    { href: '/', label: language === 'de' ? 'Entdecken' : 'Discover', icon: Home, activeColor: '#f97316' },
-    { href: '/explore', label: language === 'de' ? 'Erkunden' : 'Explore', icon: Compass, activeColor: '#eab308' },
-    { href: '/chat', label: 'Chat', icon: MessageCircle, activeColor: '#8b5cf6' },
-    { href: '/profile', label: language === 'de' ? 'Profil' : 'Profile', icon: User, activeColor: '#a855f7' },
+    { href: '/', label: language === 'de' ? 'Entdecken' : 'Discover', icon: Home, activeColor: '#10b981' },
+    { href: '/explore', label: language === 'de' ? 'Erkunden' : 'Explore', icon: Compass, activeColor: '#10b981' },
+    { href: '/chat', label: 'Chat', icon: MessageCircle, activeColor: '#10b981' },
+    { href: '/profile', label: language === 'de' ? 'Profil' : 'Profile', icon: User, activeColor: '#10b981' },
   ];
 
   const hideOnPaths = ['/login', '/signup', '/onboarding'];
@@ -23,16 +23,14 @@ export function BottomNav() {
   }
   
   const getIsActive = (itemHref: string) => {
-    // Root path is only active if it's an exact match
     if (itemHref === '/') {
       return pathname === '/';
     }
-    // Other paths are active if the current path starts with their href
     return pathname.startsWith(itemHref);
   };
 
   return (
-    <div className="fixed bottom-0 left-0 w-full z-50 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 pb-safe">
+    <div className="fixed bottom-0 left-0 w-full z-nav elevation-mid bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 pb-safe">
       <nav className="flex h-[76px] items-center justify-around px-2">
         {navItems.map((item) => {
           const isActive = getIsActive(item.href);
@@ -48,13 +46,13 @@ export function BottomNav() {
             >
               <div className={cn(
                   "p-2 rounded-2xl transition-all duration-300",
-                  isActive ? "bg-current/10 shadow-lg shadow-current/5" : ""
+                  isActive ? "bg-current/20 shadow-lg shadow-current/10 scale-110" : ""
               )}>
                 <item.icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} />
               </div>
               <span className={cn(
-                  "text-[10px] uppercase font-black tracking-widest",
-                  isActive ? "opacity-100" : "opacity-0 translate-y-2 scale-50"
+                  "text-[10px] uppercase font-black tracking-widest transition-all duration-300",
+                  isActive ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-50"
               )}>
                 {item.label}
               </span>

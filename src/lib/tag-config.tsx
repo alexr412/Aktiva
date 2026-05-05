@@ -20,7 +20,7 @@ import {
   Sparkles,
   type LucideIcon
 } from 'lucide-react';
-import { cn } from './utils';
+import { cn, formatLabel } from './utils';
 
 /**
  * Custom Icons für Kategorien, die Lucide nicht abdeckt
@@ -182,11 +182,23 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
 
   // --- COMMUNITY & SONSTIGES ---
   if (tags.includes('user_event')) {
-    return { icon: Users, color: '#8b5cf6', label: language === 'de' ? 'Community' : 'Community', bgClass: 'bg-purple-50', gradientClass: 'bg-gradient-to-br from-blue-400 to-fuchsia-500' };
+    return { 
+      icon: Users, 
+      color: '#8b5cf6', 
+      label: formatLabel(language === 'de' ? 'Community' : 'Community'), 
+      bgClass: 'bg-purple-50', 
+      gradientClass: 'bg-gradient-to-br from-blue-400 to-fuchsia-500' 
+    };
   }
 
   // --- FALLBACK ---
-  return { icon: Building, color: '#475569', label: language === 'de' ? 'Interessanter Ort' : 'Point of Interest', bgClass: 'bg-slate-50', gradientClass: 'bg-gradient-to-br from-slate-500 to-slate-600' };
+  return { 
+    icon: Building, 
+    color: '#475569', 
+    label: formatLabel(language === 'de' ? 'Interessanter Ort' : 'Point of Interest'), 
+    bgClass: 'bg-slate-50', 
+    gradientClass: 'bg-gradient-to-br from-slate-500 to-slate-600' 
+  };
 };
 
 export const getPrimaryTagStyle = (categories: string[], language: 'de' | 'en' = 'de'): TagStyle => {
@@ -259,18 +271,16 @@ export const translateTag = (tag: string, language: 'de' | 'en' = 'de'): string 
   };
 
   // 1. Check full tag path
-  if (translations[tag.toLowerCase()]) return translations[tag.toLowerCase()];
+  let result = translations[tag.toLowerCase()];
 
   // 2. Check last part of the dot notation
-  const lastPart = tag.split('.').pop() || tag;
-  const lastPartLower = lastPart.toLowerCase();
-  
-  if (translations[lastPartLower]) return translations[lastPartLower];
+  if (!result) {
+    const lastPart = tag.split('.').pop() || tag;
+    const lastPartLower = lastPart.toLowerCase();
+    result = translations[lastPartLower] || lastPart;
+  }
 
-  // 3. Fallback: Remove underscores, spaces and capitalize
-  return (lastPart.charAt(0).toUpperCase() + lastPart.slice(1))
-    .replace(/_/g, ' ')
-    .replace(/\./g, ' ');
+  return formatLabel(result);
 };
 
 export const getCleanTags = (tags: string[]): { tag: string, isMain: boolean }[] => {

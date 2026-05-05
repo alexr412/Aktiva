@@ -125,7 +125,7 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
           <div className="bg-primary/10 p-3 rounded-2xl mb-2">
             <UserCheck className="h-6 w-6 text-primary" />
           </div>
-          <SheetTitle className="text-2xl font-black tracking-tight">{language === 'de' ? 'Review Time' : 'Review Time'}</SheetTitle>
+          <SheetTitle className="">{language === 'de' ? 'Review Time' : 'Review Time'}</SheetTitle>
 
           <SheetDescription className="text-sm font-medium text-slate-500">
             {language === 'de' ? 'Wie war dein Treffen bei ' : 'How was your meetup at '} <strong>{activity.placeName}</strong>?
@@ -139,7 +139,7 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-amber-500" />
-                <h3 className="font-black text-sm uppercase tracking-widest text-slate-400">{language === 'de' ? 'Das Event' : 'The Event'}</h3>
+                <h3 className="">{language === 'de' ? 'Das Event' : 'The Event'}</h3>
 
               </div>
               <div className="flex flex-col items-center gap-4 bg-slate-50 p-6 rounded-3xl border border-slate-100">
@@ -159,7 +159,7 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
-                  <h3 className="font-black text-sm uppercase tracking-widest text-slate-400">{language === 'de' ? 'Die Teilnehmer' : 'The Participants'}</h3>
+                  <h3 className="">{language === 'de' ? 'Die Teilnehmer' : 'The Participants'}</h3>
 
                 </div>
                 <div className="space-y-3">

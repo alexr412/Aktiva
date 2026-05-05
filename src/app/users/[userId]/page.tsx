@@ -319,7 +319,7 @@ export default function UserProfilePage() {
                 <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()}>
                     <ArrowLeft />
                 </Button>
-                <h1 className="font-bold truncate">{language === 'de' ? `Profil von ${displayName}` : `${displayName}'s Profile`}</h1>
+                <h1 className="truncate">{language === 'de' ? `Profil von ${displayName}` : `${displayName}'s Profile`}</h1>
 
                 <EntityMoreOptions
                     entityId={userId}
@@ -343,7 +343,7 @@ export default function UserProfilePage() {
 
                 <div className="flex flex-col items-center">
                     <div className="flex items-center justify-center gap-2">
-                        <h1 className="text-2xl font-bold">
+                        <h1 className="">
                             {displayName}
                         </h1>
                         {userData.age && <span className="text-muted-foreground text-2xl font-bold">, {userData.age}</span>}

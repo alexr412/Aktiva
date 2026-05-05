@@ -18,7 +18,7 @@ import { Users, UserPlus, Search, Bell, MessageCircle, MoreHorizontal, User, Bui
 import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, formatLabel } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 
 const ChatListItemSkeleton = () => (
@@ -37,7 +37,7 @@ const EmptyState = ({ language }: { language: string }) => (
     <div className="bg-primary/10 p-6 rounded-[2.5rem]">
       <Users className="h-12 w-12 text-primary" />
     </div>
-    <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100">{language === 'de' ? 'Noch keine Chats' : 'No chats yet'}</h2>
+    <h2 className="">{language === 'de' ? 'Noch keine Chats' : 'No chats yet'}</h2>
     <p className="text-slate-500 dark:text-neutral-400 font-medium max-w-xs">
       {language === 'de' ? 'Tritt einer Aktivität bei oder füge Freunde hinzu, um loszulegen.' : 'Join an activity or add friends to get started.'}
     </p>
@@ -248,7 +248,7 @@ export default function ChatPage() {
                    <div className="text-[9px] font-bold px-2.5 py-1 rounded-full"
                    style={{ color: displayColor, backgroundColor: displayColor + '15' }}
                    >
-                     {isDM ? (language === 'de' ? 'Person' : 'Person') : (primaryStyle?.label || (language === 'de' ? 'Interessanter Ort' : 'Place of Interest'))}
+                     {isDM ? formatLabel(language === 'de' ? 'Person' : 'Person') : formatLabel(primaryStyle?.label || (language === 'de' ? 'Interessanter Ort' : 'Place of Interest'))}
                    </div>
 
                     {hasUnread && (
@@ -268,33 +268,33 @@ export default function ChatPage() {
   return (
     <>
       <div className="flex h-full flex-col bg-[#fcfcfb] dark:bg-neutral-950">
-          <header className="sticky top-0 z-30 w-full bg-[#fcfcfb]/80 dark:bg-neutral-950/80 backdrop-blur-xl shrink-0 pt-8 pb-4">
-            <div className="px-6 flex items-center justify-between max-w-7xl mx-auto w-full mb-6">
+          <header className="global-viewport-header">
+            <div className="global-header-container mb-6">
               <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-black tracking-tighter text-[#0f172a] dark:text-neutral-100 font-heading">Chats</h1>
+                <h1 className="">Chats</h1>
                 <MessageCircle className="h-6 w-6 text-violet-400 fill-current opacity-30" />
               </div>
               <div className="flex items-center gap-3">
-                <Button 
-                  variant="secondary" 
-                  size="icon" 
-                  className="h-12 w-12 rounded-2xl bg-white dark:bg-neutral-900 border-none shadow-xl shadow-slate-200/40 text-[#0f172a] dark:text-neutral-100" 
-                  onClick={() => setShowAddFriendDialog(true)}
-                >
-                    <Users className="h-6 w-6" />
-                </Button>
                 <div className="relative">
                     <Button 
-                        variant="secondary" 
+                        variant="ghost" 
                         size="icon" 
-                        className="h-12 w-12 rounded-2xl bg-[#ffeedd] border-none shadow-xl shadow-orange-200/20 text-orange-400" 
+                        className="secondary-header-button" 
                     >
-                        <Bell className="h-6 w-6 fill-current" />
+                        <Bell className="h-6 w-6" />
                     </Button>
                     {unreadNotifications > 0 && (
                         <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-sm" />
                     )}
                 </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="secondary-header-button" 
+                  onClick={() => setShowAddFriendDialog(true)}
+                >
+                    <Users className="h-6 w-6" />
+                </Button>
               </div>
             </div>
 

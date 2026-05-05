@@ -55,7 +55,7 @@ export default function AdminRefundsPage() {
           <Link href="/admin"><ArrowLeft className="h-5 w-5" /></Link>
         </Button>
         <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Rückzahlungen</h2>
+          <h2 className="">Rückzahlungen</h2>
           <p className="text-slate-500 font-medium">Verwaltung von Erstattungen stornierter Aktivitäten.</p>
         </div>
       </div>
@@ -90,7 +90,7 @@ export default function AdminRefundsPage() {
                 </div>
                 <div className="mt-6">
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1">Rückerstattungsbetrag</span>
-                  <CardTitle className="text-5xl font-black text-slate-900 tracking-tighter">€{refund.amount?.toFixed(2)}</CardTitle>
+                  <CardTitle className="">€{refund.amount?.toFixed(2)}</CardTitle>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
                   <div>

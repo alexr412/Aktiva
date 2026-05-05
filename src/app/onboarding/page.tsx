@@ -217,7 +217,7 @@ export default function OnboardingPage() {
 
         <div className="p-8 md:p-12 pt-16">
           <header className="mb-10 text-center">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">
+            <h1 className="">
               {language === 'de' ? onboardingSteps[step-1].title.de : onboardingSteps[step-1].title.en}
             </h1>
             <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">
@@ -355,7 +355,7 @@ export default function OnboardingPage() {
                         </label>
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-bold text-slate-500 italic">
+                        <p className="text-sm font-bold text-slate-500">
                           {language === 'de' ? "Zeig dich der Community!" : "Show yourself to the community!"}
                         </p>
                       </div>
@@ -377,12 +377,12 @@ export default function OnboardingPage() {
                                      {form.watch('displayName')?.charAt(0) || 'A'}
                                    </AvatarFallback>
                                </Avatar>
-                               <div className="absolute -bottom-1 -right-1 bg-emerald-500 p-1.5 rounded-full border-2 border-slate-900">
-                                  <Check className="w-3 h-3 text-white" strokeWidth={4} />
-                               </div>
+                                <div className="absolute -bottom-1 -right-1 bg-emerald-500 p-1.5 rounded-full border-2 border-slate-900">
+                                   <Check className="w-3 h-3 text-white" strokeWidth={4} />
+                                </div>
                             </div>
                             <div className="flex-1 overflow-hidden">
-                              <h3 className={cn("font-black text-white truncate", nameFontSizeClass)}>
+                              <h3 className="">
                                 {form.watch('displayName')}
                               </h3>
                               <div className="flex items-center gap-2 mt-1">
@@ -395,7 +395,7 @@ export default function OnboardingPage() {
                           </div>
 
                           <div className="mt-6 pt-6 border-t border-white/5 relative z-10">
-                             <p className="text-sm text-slate-300 font-medium leading-relaxed italic line-clamp-3">
+                             <p className="text-sm text-slate-300 font-medium leading-relaxed line-clamp-3">
                                {form.watch('bio') || (language === 'de' ? "Keine Bio angegeben..." : "No bio provided...")}
                              </p>
                           </div>
