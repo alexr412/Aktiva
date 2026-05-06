@@ -6,11 +6,14 @@ import type { UserProfile } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
-import { MapPin, Compass } from "lucide-react";
+import { MapPin, Compass, UserPlus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
+import { db } from "@/lib/firebase/client";
+import { doc, updateDoc, arrayRemove } from "firebase/firestore";
 
 interface FriendListProps {
   friendIds: string[];
@@ -44,6 +47,22 @@ export default function FriendList({ friendIds }: FriendListProps) {
       try {
         const data = await fetchFriendsProfiles(friendIds);
         setFriends(data);
+
+        // Auto-Cleanup: IDs entfernen, die keine Profile mehr haben
+        if (currentUser?.uid && data.length < friendIds.length) {
+          const foundIds = new Set(data.map(f => f.uid || (f as any).id));
+          const missingIds = friendIds.filter(id => !foundIds.has(id));
+          
+          if (missingIds.length > 0) {
+            console.log("Cleaning up ghost friends:", missingIds);
+            const userRef = doc(db!, "users", currentUser.uid);
+            for (const mid of missingIds) {
+              await updateDoc(userRef, {
+                friends: arrayRemove(mid)
+              });
+            }
+          }
+        }
       } catch (error) {
         console.error("Failed to load friends:", error);
       } finally {
@@ -86,8 +105,9 @@ export default function FriendList({ friendIds }: FriendListProps) {
           <div className="h-4 w-16 bg-slate-50 animate-pulse rounded-lg" />
         </div>
         <div className="flex gap-4 px-4 overflow-x-hidden">
-          <Skeleton className="h-44 w-[45%] shrink-0 rounded-[2.5rem]" />
-          <Skeleton className="h-44 w-[45%] shrink-0 rounded-[2.5rem]" />
+          {friendIds.slice(0, 2).map((_, i) => (
+            <Skeleton key={i} className="h-36 w-[45%] shrink-0 rounded-[2.5rem] bg-neutral-200" />
+          ))}
         </div>
       </div>
     );
@@ -95,9 +115,34 @@ export default function FriendList({ friendIds }: FriendListProps) {
 
   if (friendIds.length === 0) {
     return (
-      <div className="px-4 mb-12">
-        <div className="text-neutral-400 font-bold border-2 border-dashed border-neutral-100 p-8 rounded-[2rem] text-center bg-white/30 dark:bg-neutral-900/30 dark:border-neutral-800 text-sm">
-          {language === 'de' ? 'Noch keine Freunde' : 'No friends yet'}
+      <div className="px-6 mb-4">
+        <div className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 rounded-2xl py-3 px-6 flex flex-col items-center text-center shadow-none">
+          {/* Illustration Stack - Minimal */}
+          <div className="relative mb-2">
+            <div className="relative flex items-center justify-center">
+               <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center border-2 border-white dark:border-neutral-800">
+                  <Users className="w-5 h-5 text-emerald-600" />
+               </div>
+               <div className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-lg bg-white dark:bg-neutral-800 flex items-center justify-center border border-slate-100 dark:border-neutral-700">
+                  <UserPlus className="w-2.5 h-2.5 text-emerald-600" />
+               </div>
+            </div>
+          </div>
+
+          <div className="relative z-10 w-full max-w-[240px]">
+            <h3 className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">
+              {language === 'de' ? 'Baue dein Netzwerk auf' : 'Build your travel circle'}
+            </h3>
+            <p className="text-[10px] font-medium text-slate-400 mb-3 leading-tight px-2">
+              {language === 'de' ? 'Verbinde dich mit Explorern weltweit.' : 'Connect with explorers worldwide.'}
+            </p>
+            
+            <Link href="/community" className="w-full">
+              <Button className="w-full h-9 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-[9px] shadow-none border-none transition-all active:scale-[0.98]">
+                {language === 'de' ? 'FREUNDE FINDEN' : 'Search for new friends'}
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -117,7 +162,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
         <h3 className="">
           {language === 'de' ? 'Freunde' : 'Friends'} 
           <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-black tracking-tight">
-            {friendIds.length}
+            {uniqueFriends.length}
           </span>
         </h3>
         <Link href="/community" className="text-primary font-black text-sm hover:opacity-70 transition-opacity">
@@ -160,11 +205,16 @@ export default function FriendList({ friendIds }: FriendListProps) {
               </Link>
             );
           })
-        ) : (
-          // Fallback if IDs exist but profiles couldn't be loaded yet
-          [1, 2].map((i) => (
-            <Skeleton key={i} className="h-44 w-[45%] shrink-0 rounded-[2.5rem]" />
+        ) : isLoading ? (
+          friendIds.slice(0, 2).map((_, i) => (
+            <Skeleton key={i} className="h-36 w-[45%] shrink-0 rounded-[2.5rem] bg-neutral-200" />
           ))
+        ) : (
+          <div className="px-4 w-full">
+             <div className="text-neutral-400 font-medium py-8 text-center bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+                {language === 'de' ? 'Profil konnte nicht geladen werden' : 'Profile could not be loaded'}
+             </div>
+          </div>
         )}
       </div>
     </div>

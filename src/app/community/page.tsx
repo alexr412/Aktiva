@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Search, UserPlus, Check, Users } from 'lucide-react';
+import { Loader2, Search, UserPlus, Check, Users, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -80,10 +80,13 @@ export default function CommunityPage() {
     const isAlreadyFriend = userProfile?.friends?.includes(foundUser?.uid || '');
 
     return (
-        <div className="flex flex-col h-full">
-            <header className="sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-sm">
-                <div className="px-4 flex h-16 items-center justify-between">
-                    <h1 className="">Community</h1>
+        <div className="flex flex-col h-full bg-[#fcfcfb] dark:bg-neutral-950">
+            <header className="sticky top-0 z-10 w-full border-b bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md">
+                <div className="px-4 flex h-16 items-center gap-4">
+                    <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors">
+                        <ArrowLeft className="h-6 w-6" />
+                    </Button>
+                    <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Community</h1>
                 </div>
             </header>
             <main className="flex-1 overflow-y-auto p-4 sm:p-6">

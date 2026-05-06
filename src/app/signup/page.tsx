@@ -28,19 +28,24 @@ import {
   ArrowRight, 
   User, 
   Lock, 
-  Compass,
   Loader2,
   CheckCircle2,
   MapPin,
   Calendar,
   Shield,
-  FileText,
   X,
-  Check
+  Check,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -49,13 +54,14 @@ export default function SignupPage() {
   
   const [isRegistered, setIsRegistered] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [passwordStrength, setPasswordStrength] = useState({ score: 0, text: '', color: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [activeTab, setActiveTab] = useState<'login' | 'signup'>('signup');
   const [step, setStep] = useState(1);
   const [isUsernameChecking, setIsUsernameChecking] = useState(false);
   const [usernameAvailability, setUsernameAvailability] = useState<'available' | 'taken' | 'invalid' | null>(null);
+  
+  const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
+  const [isPrivacyDialogOpen, setIsPrivacyDialogOpen] = useState(false);
 
   const formSchema = z.object({
     username: z.string()
@@ -79,13 +85,12 @@ export default function SignupPage() {
       .regex(/[0-9]/, { message: language === 'de' ? 'Eine Zahl.' : 'One number.' })
       .regex(/[^A-Za-z0-9]/, { message: language === 'de' ? 'Ein Sonderzeichen.' : 'One special character.' }),
     confirmPassword: z.string(),
-    termsAccepted: z.boolean().refine(val => val === true, { message: language === 'de' ? 'Bitte akzeptiere die Bedingungen.' : 'Please accept the terms.' }),
+    termsAccepted: z.boolean().refine(val => val === true, { message: language === 'de' ? 'Bitte akzeptiere die AGB.' : 'Please accept the Terms.' }),
+    privacyAccepted: z.boolean().refine(val => val === true, { message: language === 'de' ? 'Bitte akzeptiere die Datenschutzbestimmungen.' : 'Please accept the Privacy Policy.' }),
   }).refine((data) => data.password === data.confirmPassword, {
     message: language === 'de' ? "Passwörter stimmen nicht überein." : "Passwords do not match.",
     path: ["confirmPassword"],
   });
-
-
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -97,6 +102,7 @@ export default function SignupPage() {
       password: '',
       confirmPassword: '',
       termsAccepted: false,
+      privacyAccepted: false,
     },
   });
 
@@ -106,6 +112,7 @@ export default function SignupPage() {
   const birthdayValue = form.watch('birthday') || '';
   const emailValue = form.watch('email') || '';
   const termsAcceptedValue = form.watch('termsAccepted');
+  const privacyAcceptedValue = form.watch('privacyAccepted');
 
   const evaluatePassword = (pass: string) => {
     return {
@@ -141,7 +148,6 @@ export default function SignupPage() {
   const forbiddenWords = ['sex', 'porn', 'fuck', 'bitch', 'schlampe', 'fotze', 'hurensohn', 'wichser', 'nazi', 'hitler', 'admin', 'support']; 
   const hasProfanity = forbiddenWords.some(word => usernameValue.toLowerCase().includes(word));
 
-  // Live Username Check Logic
   useEffect(() => {
     if (step !== 4 || usernameValue.length < 4 || usernameValue.length > 32 || hasProfanity) {
       if (usernameAvailability !== null) setUsernameAvailability(null);
@@ -162,21 +168,10 @@ export default function SignupPage() {
 
     const timeoutId = setTimeout(checkAvailability, 600);
     return () => clearTimeout(timeoutId);
-  }, [usernameValue, step, hasProfanity, usernameAvailability]);
+  }, [usernameValue, step, hasProfanity]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setSubmitError('');
-    
-    if (strengthScore < 1) {
-        setSubmitError(language === 'de' ? 'Dein Passwort ist zu einfach.' : 'Your password is too simple.');
-        return;
-    }
-
-    if (hasProfanity) {
-        setSubmitError(language === 'de' ? 'Bitte wähle einen anderen Usernamen.' : 'Please choose a different username.');
-        return;
-    }
-
     try {
       const isTaken = await isUsernameTaken(values.username);
       if (isTaken) {
@@ -184,7 +179,7 @@ export default function SignupPage() {
          return;
       }
 
-      const user = await signUp(
+      await signUp(
         values.fullName, 
         values.email, 
         values.password,
@@ -192,12 +187,14 @@ export default function SignupPage() {
         values.birthday
       );
       
+      await signOut();
+      
       toast({
-        title: language === 'de' ? 'Account erstellt!' : 'Account created!',
-        description: language === 'de' ? "Willkommen bei Aktiva!" : "Welcome to Aktiva!",
+        title: language === 'de' ? 'Fast geschafft!' : 'Almost done!',
+        description: language === 'de' ? "Bitte bestätige deine E-Mail-Adresse (prüfe auch den Spam-Ordner), um dich einzuloggen." : "Please verify your email address (check your spam folder) to log in.",
       });
       
-      router.push('/onboarding');
+      router.push('/login');
     } catch (error: any) {
       console.error(error);
       if (error.code === 'auth/email-already-in-use') {
@@ -208,348 +205,385 @@ export default function SignupPage() {
     }
   }
 
-  if (isRegistered) {
-    return (
-      <main className="relative h-screen w-full flex items-center justify-center p-6 bg-[#E8EEFF]">
-        {/* Success Effects */}
-        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-0 w-full h-full bg-emerald-400/10 blur-[120px]" />
-        </div>
-
-        <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="w-full max-w-md bg-white/90 backdrop-blur-xl rounded-[3rem] shadow-2xl p-8 text-center relative z-10"
-        >
-          <div className="mx-auto w-20 h-20 bg-emerald-100 rounded-3xl flex items-center justify-center mb-6 shadow-inner ring-4 ring-emerald-50">
-            <Check className="w-10 h-10 text-emerald-500" strokeWidth={3} />
-          </div>
-          <h2 className="">{language === 'de' ? 'Fast fertig!' : 'Almost done!'}</h2>
-          <p className="text-neutral-500 font-bold mb-8 leading-relaxed text-sm">
-            {language === 'de' ? 'Wir haben einen Bestätigungslink an' : 'We have sent a verification link to'} <br />
-            <span className="text-[#4E89E3] font-black">{emailValue}</span> <br />
-            {language === 'de' ? 'gesendet. Bitte aktiviere dein Konto.' : 'sent. Please activate your account.'}
-          </p>
-          <Button asChild className="w-full h-14 text-base font-black rounded-2xl bg-gradient-to-r from-[#5BA17F] to-[#4E89E3] shadow-xl shadow-blue-500/30">
-            <Link href="/login">
-              {language === 'de' ? 'Zum Login' : 'To Login'}
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Link>
-          </Button>
-        </motion.div>
-      </main>
-    );
-  }
-
   return (
-    <main className="relative h-screen w-full overflow-hidden bg-[#FAF7FF] dark:bg-[#050505] selection:bg-emerald-500/30 font-sans tracking-tight transition-colors duration-1000">
-      {/* --- Chromatic Environmental Layers --- */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        {/* Saturated Mesh Gradients - High Energy */}
+    <main className="min-h-screen w-full bg-white dark:bg-neutral-950 flex flex-col items-center justify-center p-6 antialiased">
+      
+      <div className="w-full max-w-[400px] flex flex-col items-center relative z-10">
+        
+        {/* Logo Section */}
         <motion.div 
-          animate={{ scale: [1, 1.4, 1], x: [-80, 80, -80], y: [-40, 40, -40], rotate: [0, 45, 0] }}
-          transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-[20%] -right-[10%] w-[100%] h-[100%] rounded-full bg-emerald-400/30 dark:bg-emerald-500/15 blur-[120px]" 
-        />
-        <motion.div 
-          animate={{ scale: [1.4, 1, 1.4], x: [80, -80, 80], y: [40, -40, 40], rotate: [45, 0, 45] }}
-          transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[20%] -left-[20%] w-[110%] h-[110%] rounded-full bg-blue-500/30 dark:bg-blue-600/15 blur-[140px]" 
-        />
-
-        {/* Dynamic Pattern Layer */}
-        <div className="absolute inset-0 opacity-[0.2]" style={{ backgroundImage: 'radial-gradient(circle, #10b981 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-        <div className="absolute inset-0 opacity-[0.04] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-      </div>
-
-      <div className="relative z-[100] flex flex-col items-center justify-center min-h-screen px-4">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.98, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="w-full max-w-[460px] bg-white/60 dark:bg-[#0a0a0b]/40 backdrop-blur-[60px] rounded-[3rem] border border-white/80 shadow-[0_60px_120px_-20px_rgba(0,0,0,0.12)] p-8 md:p-14"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-12 text-center"
         >
-            <div className="mb-8 md:mb-12 text-center">
-              <div className="flex justify-center gap-1 mb-4">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <div key={s} className={cn("h-1.5 rounded-full transition-all duration-500", step === s ? "w-8 bg-emerald-500" : "w-2 bg-slate-200 dark:bg-white/10")} />
-                ))}
-              </div>
-              <h2 className="">
+          <div className="flex items-center justify-center gap-2 mb-10">
+              <MapPin className="w-10 h-10 text-[#10b981]" />
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">aktiva<span className="text-[#10b981]">.</span></h1>
+          </div>
+          
+          <div className="mb-4">
+             <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">
+                {language === 'de' ? 'SCHRITT' : 'STEP'} <span className="text-[#10b981]">{step}</span> {language === 'de' ? 'VON' : 'OF'} <span className="text-[#10b981]">5</span>
+             </p>
+             <h1 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-neutral-100 font-heading leading-tight">
                 {step === 1 && (language === 'de' ? "Willkommen!" : "Welcome!")}
                 {step === 2 && (language === 'de' ? "Sicherheit" : "Security")}
                 {step === 3 && (language === 'de' ? "Über dich" : "About You")}
                 {step === 4 && "@handle"}
                 {step === 5 && (language === 'de' ? "Fast fertig" : "Almost done")}
-              </h2>
-              <p className="text-slate-500 dark:text-emerald-400 font-bold uppercase tracking-[0.2em] text-[10px]">
-                {language === 'de' ? 'Schritt' : 'Step'} {step} {language === 'de' ? 'von' : 'of'} 5
-              </p>
-            </div>
-
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <AnimatePresence mode="wait">
-                  {step === 1 && (
-                    <motion.div key="step1" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
-                       <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem className="space-y-4">
-                            <FormLabel className="text-[11px] font-[1000] dark:text-emerald-400 uppercase tracking-[0.3em] px-1">{language === 'de' ? 'E-Mail Adresse' : 'Email Address'}</FormLabel>
-                            <FormControl>
-                              <div className="relative group/input">
-                                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/60 transition-colors" />
-                                <Input placeholder={language === 'de' ? 'E-Mail-Adresse' : 'Email Address'} {...field} className="h-18 pl-14 rounded-3xl bg-white dark:bg-white/[0.05] border-2 border-slate-100 dark:border-white/10 focus-visible:border-emerald-500 focus-visible:ring-0 font-black text-slate-950 dark:text-white" />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button type="button" onClick={() => form.getValues('email').includes('@') && setStep(2)} className="w-full h-18 text-sm font-black rounded-3xl bg-emerald-500 text-black shadow-lg" disabled={!form.getValues('email').includes('@')}>
-                        {language === 'de' ? 'WEITER' : 'CONTINUE'} <ArrowRight className="ml-2 w-5 h-5" />
-                      </Button>
-                    </motion.div>
-                  )}
-
-                  {step === 2 && (
-                    <motion.div key="step2" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
-                       <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem className="space-y-4">
-                            <FormLabel className="text-[11px] font-[1000] dark:text-emerald-400 uppercase tracking-[0.3em] px-1">{language === 'de' ? 'Passwort wählen' : 'Choose Password'}</FormLabel>
-                            <FormControl>
-                              <div className="relative group/input">
-                                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/60 transition-colors" />
-                                <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} className="h-18 pl-14 pr-12 rounded-3xl bg-white dark:bg-white/[0.05] border-2 border-slate-100 dark:border-white/10 focus-visible:border-emerald-500 focus-visible:ring-0 font-black text-slate-950 dark:text-white" />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors">
-                                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
-                              </div>
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      
-                      {/* Password Strength Meter (7 segments) */}
-                      <div className="flex gap-1 px-1 mt-[-8px]">
-                        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                          <div 
-                            key={i} 
-                            className={cn(
-                              "h-1.5 flex-1 rounded-full transition-all duration-500",
-                              strengthScore >= i ? getStrengthColor(strengthScore) : "bg-slate-100 dark:bg-white/10"
-                            )} 
-                          />
-                        ))}
-                      </div>
-
-                       <FormField
-                        control={form.control}
-                        name="confirmPassword"
-                        render={({ field }) => (
-                          <FormItem className="space-y-4">
-                            <FormLabel className="text-[11px] font-[1000] dark:text-emerald-400 uppercase tracking-[0.3em] px-1">{language === 'de' ? 'Bestätigen' : 'Confirm'}</FormLabel>
-                            <FormControl>
-                              <div className="relative group/input">
-                                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/60 transition-colors" />
-                                <Input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" {...field} className="h-18 pl-14 pr-12 rounded-3xl bg-white dark:bg-white/[0.05] border-2 border-slate-100 dark:border-white/10 focus-visible:border-emerald-500 focus-visible:ring-0 font-black text-slate-950 dark:text-white" />
-                                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors">
-                                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
-                              </div>
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                       <div className="space-y-2 px-2">
-                        {[
-                           { val: validation.hasLength, label: language === 'de' ? '8-32 Zeichen' : '8-32 Characters' },
-                           { val: validation.hasUpper && validation.hasLower, label: language === 'de' ? 'Groß & Klein' : 'Upper & Lower' },
-                           { val: validation.hasNumber, label: language === 'de' ? 'Eine Zahl' : 'One Number' },
-                           { val: validation.hasSpecial, label: language === 'de' ? 'Sonderzeichen' : 'Special Char' },
-                           { val: passwordsMatch, label: language === 'de' ? 'Passwörter gleich' : 'Passwords match' },
-                        ].map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-3">
-                            <div className={cn("w-4 h-4 rounded-full flex items-center justify-center border-2 transition-all", item.val ? "bg-emerald-500 border-emerald-500" : "border-slate-200")}>
-                               {item.val && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                            </div>
-                            <span className={cn("text-[10px] font-black uppercase tracking-wider", item.val ? "text-emerald-600" : "text-slate-400")}>{item.label}</span>
-                          </div>
-                        ))}
-                      </div>
-                       <div className="pt-4 flex gap-4">
-                        <Button type="button" variant="ghost" onClick={() => setStep(1)} className="flex-1 h-18 rounded-3xl font-black text-slate-400">{language === 'de' ? 'ZURÜCK' : 'BACK'}</Button>
-                        <Button type="button" onClick={() => setStep(3)} className="flex-[2] h-18 rounded-3xl bg-emerald-500 text-black font-black" disabled={!validation.hasLength || !validation.hasUpper || !validation.hasLower || !validation.hasNumber || !validation.hasSpecial || !passwordsMatch}>{language === 'de' ? 'WEITER' : 'CONTINUE'}</Button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {step === 3 && (
-                    <motion.div key="step3" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
-                       <FormField
-                        control={form.control}
-                        name="fullName"
-                        render={({ field }) => (
-                          <FormItem className="space-y-4">
-                            <FormLabel className="text-[11px] font-[1000] dark:text-emerald-400 uppercase tracking-[0.3em] px-1">{language === 'de' ? 'Name' : 'Name'}</FormLabel>
-                            <FormControl>
-                              <div className="relative group/input">
-                                <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/60 transition-colors" />
-                                <Input placeholder={language === 'de' ? 'Name' : 'Name'} {...field} className="h-18 pl-14 rounded-3xl bg-white dark:bg-white/[0.05] border-2 border-slate-100 dark:border-white/10 focus-visible:border-emerald-500 focus-visible:ring-0 font-black text-slate-950 dark:text-white" />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                       <FormField
-                        control={form.control}
-                        name="birthday"
-                        render={({ field }) => (
-                          <FormItem className="space-y-4">
-                            <FormLabel className="text-[11px] font-[1000] dark:text-emerald-400 uppercase tracking-[0.3em] px-1">{language === 'de' ? 'Geburtsdatum' : 'Birthday'}</FormLabel>
-                            <FormControl>
-                              <div className="relative group/input">
-                                <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-600/60 transition-colors" />
-                                <Input 
-                                  placeholder="DD/MM/YYYY" 
-                                  {...field} 
-                                  maxLength={10}
-                                  className="h-18 pl-14 rounded-3xl bg-white dark:bg-white/[0.05] border-2 border-slate-100 dark:border-white/10 focus-visible:border-emerald-500 focus-visible:ring-0 font-black text-slate-950 dark:text-white" 
-                                  onChange={(e) => {
-                                    let v = e.target.value.replace(/\D/g, '');
-                                    if (v.length > 2) v = v.substring(0, 2) + '/' + v.substring(2);
-                                    if (v.length > 5) v = v.substring(0, 5) + '/' + v.substring(5, 9);
-                                    field.onChange(v);
-                                  }}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                       <div className="pt-4 flex gap-4">
-                        <Button type="button" variant="ghost" onClick={() => setStep(2)} className="flex-1 h-18 rounded-3xl font-black text-slate-400">{language === 'de' ? 'ZURÜCK' : 'BACK'}</Button>
-                        <Button type="button" onClick={() => fullNameValue.length >= 2 && birthdayValue.length === 10 && setStep(4)} className="flex-[2] h-18 rounded-3xl bg-emerald-500 text-black font-black" disabled={fullNameValue.length < 2 || birthdayValue.length !== 10}>{language === 'de' ? 'WEITER' : 'CONTINUE'}</Button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {step === 4 && (
-                    <motion.div key="step4" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
-                        <FormField
-                        control={form.control}
-                        name="username"
-                        render={({ field }) => (
-                          <FormItem className="space-y-4">
-                            <FormLabel className="text-[11px] font-[1000] dark:text-emerald-400 uppercase tracking-[0.3em] px-1">{language === 'de' ? 'Username wählen' : 'Choose Username'}</FormLabel>
-                            <FormControl>
-                              <div className="relative group/input">
-                                <div className="absolute left-5 top-1/2 -translate-y-1/2">
-                                  <span className="text-emerald-600 font-black text-lg">@</span>
-                                </div>
-                                <Input 
-                                  placeholder="username" 
-                                  {...field} 
-                                  maxLength={32}
-                                  className={cn(
-                                    "h-18 pl-10 pr-12 rounded-3xl bg-white dark:bg-white/[0.05] border-2 focus-visible:ring-0 font-black text-slate-950 dark:text-white transition-all",
-                                    usernameAvailability === 'available' ? "border-emerald-500 bg-emerald-50/10" : 
-                                    usernameAvailability === 'taken' || hasProfanity ? "border-rose-500 bg-rose-50/10" : 
-                                    "border-slate-100 dark:border-white/10 focus-visible:border-emerald-500"
-                                  )} 
-                                  onChange={(e) => field.onChange(e.target.value.replace(/\s/g, '').toLowerCase())} 
-                                />
-                                <div className="absolute right-5 top-1/2 -translate-y-1/2">
-                                  {isUsernameChecking && <Loader2 className="h-5 w-5 animate-spin text-slate-300" />}
-                                  {!isUsernameChecking && usernameAvailability === 'available' && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-                                  {!isUsernameChecking && (usernameAvailability === 'taken' || hasProfanity) && <X className="h-5 w-5 text-rose-500" />}
-                                </div>
-                              </div>
-                            </FormControl>
-                            <div className="px-2">
-                                {usernameAvailability === 'taken' && <p className="text-[10px] font-black text-rose-500 uppercase tracking-wider">{language === 'de' ? 'Leider schon vergeben' : 'Already taken'}</p>}
-                                {hasProfanity && <p className="text-[10px] font-black text-rose-500 uppercase tracking-wider">{language === 'de' ? 'Ungültiger Name' : 'Invalid name'}</p>}
-                                {usernameAvailability === 'available' && <p className="text-[10px] font-black text-emerald-500 uppercase tracking-wider">{language === 'de' ? 'Verfügbar!' : 'Available!'}</p>}
-                                {!usernameAvailability && !hasProfanity && usernameValue.length >= 4 && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{language === 'de' ? 'Wird geprüft...' : 'Checking...'}</p>}
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                       <div className="pt-4 flex gap-4">
-                        <Button type="button" variant="ghost" onClick={() => setStep(3)} className="flex-1 h-18 rounded-3xl font-black text-slate-400">{language === 'de' ? 'ZURÜCK' : 'BACK'}</Button>
-                        <Button 
-                          type="button" 
-                          onClick={() => usernameValue.length >= 4 && usernameValue.length <= 32 && !hasProfanity && usernameAvailability === 'available' && setStep(5)} 
-                          className="flex-[2] h-18 rounded-3xl bg-emerald-500 text-black font-black" 
-                          disabled={usernameValue.length < 4 || usernameValue.length > 32 || hasProfanity || usernameAvailability !== 'available' || isUsernameChecking}
-                        >
-                          {language === 'de' ? 'WEITER' : 'CONTINUE'}
-                        </Button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {step === 5 && (
-                    <motion.div key="step5" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
-                      <div className="p-6 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] border-2 border-slate-100 dark:border-white/10 space-y-6">
-                        <div className="flex gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                            <Shield className="w-6 h-6 text-emerald-500" />
-                          </div>
-                          <div>
-                             <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider mb-1">{language === 'de' ? 'Nutzung & Datenschutz' : 'Usage & Privacy'}</p>
-                             <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
-                               {language === 'de' ? 'Bitte bestätige, dass du unsere' : 'Please confirm that you have read our'}{' '}
-                               <Link href="/terms" className="text-emerald-500 hover:text-emerald-400 underline underline-offset-2">{language === 'de' ? 'AGB' : 'Terms'}</Link>{' '}
-                               {language === 'de' ? 'und' : 'and'}{' '}
-                               <Link href="/privacy" className="text-emerald-500 hover:text-emerald-400 underline underline-offset-2">{language === 'de' ? 'Datenschutzrichtlinien' : 'Privacy Policy'}</Link>{' '}
-                               {language === 'de' ? 'gelesen hast.' : 'read.'}
-                             </p>
-                          </div>
-                        </div>
-
-                        <FormField
-                          control={form.control}
-                          name="termsAccepted"
-                          render={({ field }) => (
-                            <FormItem className="flex items-center space-x-3 space-y-0">
-                              <FormControl>
-                                <input type="checkbox" checked={field.value} onChange={field.onChange} className="w-6 h-6 rounded-lg border-2 border-slate-200 checked:bg-emerald-500 transition-all cursor-pointer" />
-                              </FormControl>
-                               <FormLabel className="text-[11px] font-black text-slate-700 dark:text-slate-300">
-                                 {language === 'de' ? 'Ich akzeptiere die' : 'I accept the'} <Link href="/terms" className="text-emerald-500 hover:text-emerald-400 underline underline-offset-2">{language === 'de' ? 'Bedingungen' : 'Terms'}</Link>
-                               </FormLabel>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                       <div className="pt-4 flex gap-4">
-                        <Button type="button" variant="ghost" onClick={() => setStep(4)} className="flex-1 h-18 rounded-3xl font-black text-slate-400">{language === 'de' ? 'ZURÜCK' : 'BACK'}</Button>
-                        <Button type="submit" className="flex-[2] h-18 rounded-3xl bg-emerald-500 text-black font-black shadow-xl" disabled={form.formState.isSubmitting || !termsAcceptedValue}>
-                          {form.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : (language === 'de' ? "FERTIGSTELLEN" : "FINISH")}
-                        </Button>
-                      </div>
-                      {submitError && (
-                        <div className="mt-4 p-3 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 text-center">
-                          <p className="text-xs font-black text-rose-600 dark:text-rose-400">{submitError}</p>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </form>
-            </Form>
+             </h1>
+          </div>
+          <p className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px]">Connect. Explore. Live.</p>
         </motion.div>
+
+        {/* Form */}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-8">
+            <AnimatePresence mode="wait">
+              {step === 1 && (
+                <motion.div key="step1" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-8">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">{language === 'de' ? 'E-Mail Adresse' : 'Email Address'}</FormLabel>
+                        <FormControl>
+                          <div className="relative group">
+                            <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#10b981] transition-colors z-10" />
+                            <Input 
+                              placeholder="your@email.com" 
+                              {...field} 
+                              className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-emerald-500/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm tracking-wider shadow-none" 
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-[10px] font-bold text-rose-500 px-1" />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="pt-4">
+                    <Button 
+                      type="button" 
+                      onClick={() => emailValue.includes('@') && setStep(2)}
+                      className="w-full h-14 text-base font-black rounded-full bg-[#10b981] hover:bg-emerald-600 text-white transition-all active:scale-[0.98] uppercase tracking-widest !shadow-none !border-none" 
+                      disabled={!emailValue.includes('@')}
+                    >
+                      {language === 'de' ? 'WEITER' : 'CONTINUE'}
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {step === 2 && (
+                <motion.div key="step2" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">{language === 'de' ? 'Passwort wählen' : 'Choose Password'}</FormLabel>
+                        <FormControl>
+                          <div className="relative group">
+                            <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#10b981] z-10" />
+                            <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} className="h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-emerald-500/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" />
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#10b981] transition-colors">
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {/* Strength Meter */}
+                  <div className="flex gap-1 px-1">
+                    {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                      <div key={i} className={cn("h-1.5 flex-1 rounded-full transition-all duration-500", strengthScore >= i ? getStrengthColor(strengthScore) : "bg-slate-100 dark:bg-white/10")} />
+                    ))}
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">{language === 'de' ? 'Bestätigen' : 'Confirm'}</FormLabel>
+                        <FormControl>
+                          <div className="relative group">
+                            <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#10b981] z-10" />
+                            <Input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" {...field} className="h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-emerald-500/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" />
+                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#10b981] transition-colors">
+                              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="pt-4 flex gap-4">
+                    <Button type="button" variant="ghost" onClick={() => setStep(1)} className="flex-1 h-14 rounded-full font-black text-slate-400 uppercase tracking-widest text-[11px]">{language === 'de' ? 'ZURÜCK' : 'BACK'}</Button>
+                    <Button type="button" onClick={() => setStep(3)} className="flex-[2] h-14 rounded-full bg-[#10b981] text-white font-black uppercase tracking-widest" disabled={!validation.hasLength || !validation.hasUpper || !validation.hasLower || !validation.hasNumber || !validation.hasSpecial || !passwordsMatch}>{language === 'de' ? 'WEITER' : 'CONTINUE'}</Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {step === 3 && (
+                <motion.div key="step3" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">{language === 'de' ? 'Vollständiger Name' : 'Full Name'}</FormLabel>
+                        <FormControl>
+                          <div className="relative group">
+                            <User className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#10b981] z-10" />
+                            <Input placeholder={language === 'de' ? 'Max Mustermann' : 'John Doe'} {...field} className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-emerald-500/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" />
+                          </div>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="birthday"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">{language === 'de' ? 'Geburtsdatum' : 'Birthday'}</FormLabel>
+                        <FormControl>
+                          <div className="relative group">
+                            <Calendar className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#10b981] z-10" />
+                            <Input 
+                              placeholder="DD/MM/YYYY" 
+                              {...field} 
+                              maxLength={10}
+                              className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-emerald-500/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" 
+                              onChange={(e) => {
+                                let v = e.target.value.replace(/\D/g, '');
+                                if (v.length > 2) v = v.substring(0, 2) + '/' + v.substring(2);
+                                if (v.length > 5) v = v.substring(0, 5) + '/' + v.substring(5, 9);
+                                field.onChange(v);
+                              }}
+                            />
+                          </div>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <div className="pt-4 flex gap-4">
+                    <Button type="button" variant="ghost" onClick={() => setStep(2)} className="flex-1 h-14 rounded-full font-black text-slate-400 uppercase tracking-widest text-[11px]">{language === 'de' ? 'ZURÜCK' : 'BACK'}</Button>
+                    <Button type="button" onClick={() => fullNameValue.length >= 2 && birthdayValue.length === 10 && setStep(4)} className="flex-[2] h-14 rounded-full bg-[#10b981] text-white font-black uppercase tracking-widest" disabled={fullNameValue.length < 2 || birthdayValue.length !== 10}>{language === 'de' ? 'WEITER' : 'CONTINUE'}</Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {step === 4 && (
+                <motion.div key="step4" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1">
+                        <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">{language === 'de' ? 'Username wählen' : 'Choose Username'}</FormLabel>
+                        <FormControl>
+                          <div className="relative group">
+                            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+                              <span className="text-[#10b981] font-black text-lg">@</span>
+                            </div>
+                            <Input 
+                              placeholder="username" 
+                              {...field} 
+                              className={cn(
+                                "h-16 pl-12 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-emerald-500/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none",
+                                usernameAvailability === 'taken' && "focus-visible:ring-rose-500/50"
+                              )} 
+                              onChange={(e) => field.onChange(e.target.value.replace(/\s/g, '').toLowerCase())} 
+                            />
+                            <div className="absolute right-6 top-1/2 -translate-y-1/2">
+                              {isUsernameChecking && <Loader2 className="h-5 w-5 animate-spin text-slate-300" />}
+                              {!isUsernameChecking && usernameAvailability === 'available' && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
+                              {!isUsernameChecking && usernameAvailability === 'taken' && <X className="h-5 w-5 text-rose-500" />}
+                            </div>
+                          </div>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <div className="pt-4 flex gap-4">
+                    <Button type="button" variant="ghost" onClick={() => setStep(3)} className="flex-1 h-14 rounded-full font-black text-slate-400 uppercase tracking-widest text-[11px]">{language === 'de' ? 'ZURÜCK' : 'BACK'}</Button>
+                    <Button type="button" onClick={() => usernameValue.length >= 4 && usernameAvailability === 'available' && setStep(5)} className="flex-[2] h-14 rounded-full bg-[#10b981] text-white font-black uppercase tracking-widest" disabled={usernameValue.length < 4 || usernameAvailability !== 'available' || isUsernameChecking}>{language === 'de' ? 'WEITER' : 'CONTINUE'}</Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {step === 5 && (
+                <motion.div key="step5" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-6">
+                   <div className="p-6 bg-slate-50 dark:bg-neutral-900 rounded-[2.5rem] space-y-6">
+                    <div className="flex gap-4">
+                      <Shield className="w-6 h-6 text-[#10b981] shrink-0" />
+                      <div>
+                        <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider mb-1">{language === 'de' ? 'RECHTLICHES' : 'LEGAL'}</p>
+                        <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
+                          {language === 'de' ? 'Bitte bestätige deine Zustimmung zu unseren Richtlinien.' : 'Please confirm your agreement to our policies.'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="termsAccepted"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <input type="checkbox" checked={field.value} onChange={field.onChange} className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-[#10b981]" />
+                            </FormControl>
+                            <FormLabel className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                               {language === 'de' ? 'Ich akzeptiere die' : 'I agree to the'}{' '}
+                               <button 
+                                 type="button"
+                                 onClick={() => setIsTermsDialogOpen(true)}
+                                 className="text-[#10b981] hover:underline"
+                               >
+                                 {language === 'de' ? 'Allgemeinen Geschäftsbedingungen (AGB)' : 'Terms of Service'}
+                               </button>
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="privacyAccepted"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <input type="checkbox" checked={field.value} onChange={field.onChange} className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-[#10b981]" />
+                            </FormControl>
+                            <FormLabel className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                               {language === 'de' ? 'Ich akzeptiere die' : 'I agree to the'}{' '}
+                               <button 
+                                 type="button"
+                                 onClick={() => setIsPrivacyDialogOpen(true)}
+                                 className="text-[#10b981] hover:underline"
+                               >
+                                 {language === 'de' ? 'Datenschutzerklärung' : 'Privacy Policy'}
+                               </button>
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-4 flex gap-4">
+                    <Button type="button" variant="ghost" onClick={() => setStep(4)} className="flex-1 h-14 rounded-full font-black text-slate-400 uppercase tracking-widest text-[11px]">{language === 'de' ? 'ZURÜCK' : 'BACK'}</Button>
+                    <Button type="submit" className="flex-[2] h-14 rounded-full bg-[#10b981] text-white font-black uppercase tracking-widest" disabled={form.formState.isSubmitting || !termsAcceptedValue || !privacyAcceptedValue}>
+                      {form.formState.isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : (language === 'de' ? "FERTIGSTELLEN" : "FINISH")}
+                    </Button>
+                  </div>
+                  {submitError && <p className="text-[10px] font-black text-rose-500 text-center uppercase tracking-widest">{submitError}</p>}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </form>
+        </Form>
+
+        {/* Legal Dialogs */}
+        <Dialog open={isTermsDialogOpen} onOpenChange={setIsTermsDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-[2.5rem] p-0 border-none">
+            <div className="p-8">
+              <DialogHeader className="mb-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-[#10b981]/10 flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-[#10b981]" />
+                  </div>
+                  <DialogTitle className="text-xl font-black uppercase tracking-tight">Terms of Service</DialogTitle>
+                </div>
+                <DialogDescription className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Version 2.0 • Stand 05.05.2026</DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-6 text-sm font-medium text-slate-600 leading-relaxed">
+                <p>Willkommen bei Aktvia. Durch die Nutzung unserer App erklärst du dich mit den folgenden Bedingungen einverstanden.</p>
+                
+                <div className="space-y-2">
+                  <h4 className="font-black text-slate-900 uppercase text-xs">1. Nutzung der Plattform</h4>
+                  <p>Aktvia ist eine Plattform zur Vernetzung von Menschen für Freizeitaktivitäten. Die Nutzung ist ab 16 Jahren gestattet. Du bist für die Sicherheit deines Kontos verantwortlich.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-black text-slate-900 uppercase text-xs">2. Verhaltenskodex</h4>
+                  <p>Respekt und Sicherheit stehen an erster Stelle. Belästigung oder illegale Aktivitäten führen zum sofortigen Ausschluss.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-black text-slate-900 uppercase text-xs">3. Haftung</h4>
+                  <p>Aktvia vermittelt Kontakte, haftet jedoch nicht für Vorfälle während physischer Aktivitäten. Die Teilnahme erfolgt auf eigene Gefahr.</p>
+                </div>
+              </div>
+              
+              <div className="mt-8">
+                <Button onClick={() => setIsTermsDialogOpen(false)} className="w-full h-12 rounded-full bg-[#10b981] text-white font-black uppercase tracking-widest">Schließen</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isPrivacyDialogOpen} onOpenChange={setIsPrivacyDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto rounded-[2.5rem] p-0 border-none">
+            <div className="p-8">
+              <DialogHeader className="mb-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-[#10b981]/10 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-[#10b981]" />
+                  </div>
+                  <DialogTitle className="text-xl font-black uppercase tracking-tight">Privacy Policy</DialogTitle>
+                </div>
+                <DialogDescription className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Safety Standard • Stand 05.05.2026</DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-6 text-sm font-medium text-slate-600 leading-relaxed">
+                <p>Deine Privatsphäre ist unser höchstes Gut. Hier erfährst du, wie wir deine Daten schützen.</p>
+                
+                <div className="space-y-2">
+                  <h4 className="font-black text-slate-900 uppercase text-xs">1. Datenerhebung</h4>
+                  <p>Wir erheben nur notwendige Daten: E-Mail, Name, Geburtsdatum und Standort (nur bei Nutzung), um Aktivitäten anzuzeigen.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-black text-slate-900 uppercase text-xs">2. Datenweitergabe</h4>
+                  <p>Aktvia verkauft niemals Daten an Dritte. Daten werden nur für Dienstleistungen (z.B. Hosting) geteilt.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-black text-slate-900 uppercase text-xs">3. Deine Rechte</h4>
+                  <p>Du hast jederzeit das Recht auf Auskunft oder Löschung deiner Daten in den Profileinstellungen.</p>
+                </div>
+              </div>
+              
+              <div className="mt-8">
+                <Button onClick={() => setIsPrivacyDialogOpen(false)} className="w-full h-12 rounded-full bg-[#10b981] text-white font-black uppercase tracking-widest">Schließen</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Footer */}
+        <div className="mt-16 text-center">
+          <p className="text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+            {language === 'de' ? 'Schon ein Konto?' : 'Already have an account?'} 
+            <button 
+              onClick={() => router.push('/login')}
+              className="text-[#10b981] ml-2 hover:underline underline-offset-4 font-black"
+            >
+              {language === 'de' ? 'Einloggen' : 'Sign in'}
+            </button>
+          </p>
+        </div>
+
       </div>
-      <div className="fixed bottom-0 left-0 right-0 w-full h-40 bg-gradient-to-t from-[#FAF7FF] via-[#FAF7FF]/80 to-transparent z-10 pointer-events-none" />
     </main>
   );
 }

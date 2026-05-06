@@ -12,6 +12,7 @@ import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestor
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { Compass, X, Check, Info, MapPin, Star, Building2, ArrowLeft, ArrowRight, PlusCircle, Plus, RefreshCw, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
@@ -24,6 +25,7 @@ import { calculateDistance } from '@/lib/geo-utils';
 import { PlaceDetails } from '@/components/aktvia/place-details';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getPrimaryIconData } from '@/lib/tag-config';
 
 const QUARANTINE_THRESHOLD = 3;
 
@@ -301,11 +303,26 @@ export default function ExplorePage() {
                     <div className="lg:hidden py-3 space-y-3">
                          <CategoryFilters activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
                          <div className="flex items-center justify-between px-1">
-                            <div className="flex items-center gap-2 bg-slate-100 dark:bg-neutral-900 rounded-full py-1.5 px-3">
-                                <MapPin className="h-2.5 w-2.5 text-rose-400" />
-                                <span className="text-[10px] font-extrabold text-slate-600">{language === 'de' ? 'Überall' : 'Everywhere'}</span>
-                                <ChevronDown className="h-3 w-3 text-slate-400" />
-                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger className="outline-none">
+                                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-neutral-900 rounded-full py-1.5 px-3 active:scale-95 transition-transform">
+                                        <MapPin className="h-2.5 w-2.5 text-rose-400" />
+                                        <span className="text-[10px] font-extrabold text-slate-600">{radiusKm === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `< ${radiusKm} km`}</span>
+                                        <ChevronDown className="h-3 w-3 text-slate-400" />
+                                    </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl ml-4 z-[9999]">
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Radius' : 'Radius'}</span><span className="text-sm font-black">{radiusKm === null ? '∞' : `${radiusKm} km`}</span></div>
+                                        <input type="range" min="1" max="100" value={radiusKm || 100} onChange={(e) => setRadiusKm(parseInt(e.target.value) === 100 ? null : parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {[5, 10, 25, null].map((r) => (
+                                                <button key={r === null ? 'all' : r} onClick={() => setRadiusKm(r)} className={cn("py-2 rounded-xl text-[10px] font-black transition-all", radiusKm === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>{r === null ? 'Alle' : `${r}k`}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             <div className="flex items-center gap-2">
                                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{language === 'de' ? 'Radar aktiv' : 'Radar active'}</span>
@@ -322,6 +339,12 @@ export default function ExplorePage() {
                                     const distance = (userLocation && card.lat && card.lon) 
                                       ? calculateDistance(userLocation.lat, userLocation.lng, card.lat, card.lon)
                                       : null;
+
+                                    const primaryStyle = getPrimaryIconData({ 
+                                        categories: card.categories || [], 
+                                        name: card.placeName || ""
+                                    }, language);
+                                    const PrimaryIcon = primaryStyle.icon;
 
                                     return (
                                         <motion.div
@@ -391,7 +414,16 @@ export default function ExplorePage() {
                                                             className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                                                         />
                                                     ) : (
-                                                        <div className="absolute inset-0 bg-gradient-to-br from-[#bfc6e8] to-[#9fa9d1]" />
+                                                        <div className={cn("absolute inset-0 flex items-center justify-center overflow-hidden", primaryStyle.gradientClass || "bg-gradient-to-br from-[#bfc6e8] to-[#9fa9d1]")}>
+                                                            <div className="absolute inset-0 opacity-[0.15] flex items-center justify-center transform scale-150">
+                                                                <PrimaryIcon className="w-64 h-64 text-white" />
+                                                            </div>
+                                                            <div className="absolute inset-0 bg-black/10 mix-blend-overlay" />
+                                                            <div className="relative z-10 p-5 bg-white/20 backdrop-blur-md rounded-3xl border border-white/30 shadow-xl flex flex-col items-center gap-2 transform -translate-y-4 transition-transform group-hover:scale-105 group-hover:-translate-y-6">
+                                                                <PrimaryIcon className="h-12 w-12 text-white drop-shadow-md" />
+                                                                <span className="text-white font-black text-[10px] tracking-[0.2em] uppercase drop-shadow">{primaryStyle.label}</span>
+                                                            </div>
+                                                        </div>
                                                     )}
 
                                                     <div className="absolute top-5 left-5 flex gap-2 z-10">
@@ -412,9 +444,9 @@ export default function ExplorePage() {
                                                         </div>
                                                     )}
 
-                                                    <div className="absolute inset-x-0 bottom-0 p-6 pb-8 pt-24 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10">
-                                                        <h2 className="">{card.placeName}</h2>
-                                                        <div className="flex items-center gap-2 text-white/90 font-bold">
+                                                    <div className="absolute inset-x-0 bottom-0 p-6 pb-8 pt-24 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10 pointer-events-none">
+                                                        <h2 className="text-white font-black drop-shadow-md">{card.placeName}</h2>
+                                                        <div className="flex items-center gap-2 text-white/90 font-bold mt-1">
                                                             <MapPin className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
                                                             <p className="text-[12px] truncate tracking-wide">{card.placeAddress || (language === 'de' ? 'In deiner Umgebung' : 'In your area')}</p>
                                                         </div>

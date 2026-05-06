@@ -1,6 +1,6 @@
 'use client';
 
-import { Crown, Heart } from 'lucide-react';
+import { Crown, Heart, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -12,12 +12,13 @@ import {
 interface UserBadgeProps {
   isPremium?: boolean;
   isSupporter?: boolean;
+  isCreator?: boolean;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-export function UserBadge({ isPremium, isSupporter, size = 'md', className }: UserBadgeProps) {
-  if (!isPremium && !isSupporter) return null;
+export function UserBadge({ isPremium, isSupporter, isCreator, size = 'md', className }: UserBadgeProps) {
+  if (!isPremium && !isSupporter && !isCreator) return null;
 
   const iconSize = {
     sm: 'h-3 w-3',
@@ -49,12 +50,24 @@ export function UserBadge({ isPremium, isSupporter, size = 'md', className }: Us
         {isSupporter && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex items-center justify-center rounded-full bg-pink-100 p-1 text-pink-600 shadow-sm dark:bg-pink-900/30 dark:text-pink-400">
+              <div className="flex items-center justify-center rounded-full bg-red-100 p-1 text-red-600 shadow-sm dark:bg-red-900/30 dark:text-red-400">
                 <Heart className={cn(iconSize, 'fill-current')} />
               </div>
             </TooltipTrigger>
             <TooltipContent>
               <p className="text-xs font-bold">Community Supporter</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {isCreator && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center justify-center rounded-full bg-slate-900 p-1 text-blue-400 shadow-sm dark:bg-slate-800/50 dark:text-blue-400">
+                <Wrench className={cn(iconSize, 'fill-current')} />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs font-bold">Official Creator</p>
             </TooltipContent>
           </Tooltip>
         )}

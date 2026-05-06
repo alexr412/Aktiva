@@ -12,13 +12,14 @@ import { format, isSameDay, isToday, isYesterday } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
 import Link from 'next/link';
+import { getPrimaryIconData } from '@/lib/tag-config';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChatInfoSheet } from '@/components/aktvia/chat-info-sheet';
-import { ArrowLeft, Send, MoreVertical, Loader2 } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Loader2, Users } from 'lucide-react';
 import { CompletionBanner } from '@/components/aktvia/CompletionBanner';
 import { MultiPeerReviewDialog } from '@/components/aktvia/multi-peer-review-dialog';
 import { UserBadge } from '@/components/common/UserBadge';
@@ -55,12 +56,27 @@ const DateSeparator = ({ date, language }: { date: Date, language: string }) => 
   );
 };
 
+const getColorForUser = (userId: string) => {
+  const colors = [
+    'text-red-500', 'text-blue-500', 'text-emerald-500', 'text-amber-500', 
+    'text-purple-500', 'text-pink-500', 'text-indigo-500', 'text-cyan-500',
+    'text-rose-500', 'text-teal-500', 'text-sky-500', 'text-fuchsia-500'
+  ];
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
 const MessageBubble = ({
   message,
   isOwnMessage,
   currentUserProfile,
   participantDetails,
   isFirstInGroup,
+  language,
+  isDirectMessage,
 }: {
   message: Message;
   isOwnMessage: boolean;
@@ -68,6 +84,7 @@ const MessageBubble = ({
   participantDetails?: Chat['participantDetails'];
   isFirstInGroup: boolean;
   language: string;
+  isDirectMessage: boolean;
 }) => {
   const badgePremium = isOwnMessage 
     ? Boolean(currentUserProfile?.isPremium) 
@@ -76,6 +93,10 @@ const MessageBubble = ({
   const badgeSupporter = isOwnMessage 
     ? Boolean(currentUserProfile?.isSupporter) 
     : Boolean(message.isSupporter || participantDetails?.[message.senderId]?.isSupporter);
+
+  const badgeCreator = isOwnMessage
+    ? Boolean(currentUserProfile?.isCreator)
+    : Boolean(message.isCreator || participantDetails?.[message.senderId]?.isCreator);
 
   return (
     <div className={cn(
@@ -87,15 +108,15 @@ const MessageBubble = ({
         "flex flex-col max-w-[85%]",
         isOwnMessage ? "items-end" : "items-start"
       )}>
-        {isFirstInGroup && (
+        {isFirstInGroup && !isDirectMessage && !isOwnMessage && (
           <Link 
-            href={isOwnMessage ? '/profile' : `/profile/${message.senderId}`} 
-            className="flex items-center gap-1 mb-1 mx-1 hover:opacity-80 transition-opacity cursor-pointer group"
+            href={`/profile/${message.senderId}`} 
+            className="flex items-center gap-1 mb-1 mx-1 hover:opacity-80 transition-opacity cursor-pointer group h-4"
           >
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider group-hover:underline">
-              {isOwnMessage ? (language === 'de' ? 'Du' : 'You') : message.senderName}
+            <span className={cn("text-[10px] font-black uppercase tracking-wider group-hover:underline leading-none flex items-center", getColorForUser(message.senderId))}>
+              {message.senderName}
             </span>
-            <UserBadge isPremium={badgePremium} isSupporter={badgeSupporter} size="sm" />
+            <UserBadge isPremium={badgePremium} isSupporter={badgeSupporter} isCreator={badgeCreator} size="sm" />
           </Link>
         )}
         
@@ -134,7 +155,7 @@ export default function ChatRoomPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(true);
   
-  const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string; isPremium?: boolean; isSupporter?: boolean } | null>(null);
+  const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string; isPremium?: boolean; isSupporter?: boolean; isCreator?: boolean } | null>(null);
   const [isDirectMessage, setIsDirectMessage] = useState(false);
   
   const router = useRouter();
@@ -298,22 +319,37 @@ export default function ChatRoomPage() {
                 <Link href={`/profile/${otherUser.uid}`} className="flex items-center gap-2.5 truncate hover:opacity-80 transition-opacity cursor-pointer">
                     <Avatar className={cn(
                       "h-9 w-9 shadow-sm border border-white dark:border-neutral-800",
-                      otherUser.isPremium ? "ring-2 ring-amber-400" : (otherUser.isSupporter ? "ring-2 ring-pink-400" : "")
+                      otherUser.isCreator ? "ring-2 ring-slate-900" : (otherUser.isPremium ? "ring-2 ring-amber-400" : (otherUser.isSupporter ? "ring-2 ring-red-500" : ""))
                     )}>
                         <AvatarImage src={otherUser.photoURL || undefined} />
                         <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">{otherUser.displayName?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="flex items-center gap-1.5 truncate">
                       <h1 className="">{otherUser.displayName}</h1>
-                      <UserBadge isPremium={otherUser.isPremium} isSupporter={otherUser.isSupporter} size="sm" />
+                      <UserBadge isPremium={otherUser.isPremium} isSupporter={otherUser.isSupporter} isCreator={otherUser.isCreator} size="sm" />
                     </div>
                 </Link>
             ) : (
                 <div className="flex items-center gap-2.5 truncate">
-                  <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-primary font-black text-xs uppercase">{chat?.placeName?.charAt(0)}</span>
-                  </div>
-                  <h1 className="">{chat?.placeName}</h1>
+                  {activity ? (
+                    (() => {
+                      const primaryStyle = getPrimaryIconData({ 
+                          categories: activity.categories || [], 
+                          name: activity.placeName || ""
+                      }, language);
+                      const PrimaryIcon = primaryStyle.icon;
+                      return (
+                        <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm", primaryStyle.gradientClass || "bg-primary/10")}>
+                          <PrimaryIcon className="h-5 w-5 text-white drop-shadow-sm" />
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                  )}
+                  <h1 className="font-black text-lg text-slate-900 dark:text-neutral-100 truncate">{chat?.placeName}</h1>
                 </div>
             )}
           </div>
@@ -349,6 +385,7 @@ export default function ChatRoomPage() {
                     currentUserProfile={userProfile}
                     participantDetails={chat?.participantDetails}
                     language={language}
+                    isDirectMessage={isDirectMessage}
                   />
                 </div>
               );

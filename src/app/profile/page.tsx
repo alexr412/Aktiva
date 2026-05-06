@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktvia/activity-list-item';
-import { LogOut, User, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell } from 'lucide-react';
+import { LogOut, User, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell, Camera } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -348,95 +348,96 @@ export default function ProfilePage() {
                 <div className="relative px-6 w-full max-w-4xl mx-auto z-10 pt-4 flex flex-col items-center">
                         
                         {/* Avatar Section */}
-                        <div className="relative mb-6 group">
-                            <div className="p-1.5 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-100 to-amber-600 shadow-2xl transition-transform active:scale-95">
-                                <Avatar className="h-32 w-32 border-[6px] border-white dark:border-neutral-900">
+                        <div className="relative mb-10 group">
+                            {/* Topographic Background Texture */}
+                            <div className="absolute inset-0 -m-8 opacity-[0.03] dark:opacity-[0.07] pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 80 Q 50 10 90 80 T 170 80' stroke='black' fill='none' stroke-width='2'/%3E%3Cpath d='M10 120 Q 50 50 90 120 T 170 120' stroke='black' fill='none' stroke-width='2'/%3E%3Cpath d='M10 160 Q 50 90 90 160 T 170 160' stroke='black' fill='none' stroke-width='2'/%3E%3Cpath d='M10 40 Q 50 -30 90 40 T 170 40' stroke='black' fill='none' stroke-width='2'/%3E%3C/svg%3E")`, backgroundSize: '120px' }} />
+                            
+                            <div className={cn(
+                                "rounded-full transition-transform active:scale-95 relative z-10 shadow-none",
+                                userData?.isCreator ? "bg-gradient-to-tr from-slate-900 via-slate-800 to-blue-500 p-1.5 shadow-none" : (userData?.isPremium ? "bg-gradient-to-tr from-amber-400 via-yellow-100 to-amber-600 p-1.5 shadow-none" : (userData?.isSupporter ? "bg-red-500 p-1.5 shadow-none" : "p-0 bg-transparent"))
+                            )}>
+                                <Avatar className="h-32 w-32 shadow-none border-none">
                                     <AvatarImage src={photoUrlToDisplay} alt="Profil" />
                                     <AvatarFallback className="text-5xl bg-neutral-100 dark:bg-neutral-800 text-primary font-black">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                             </div>
                             <button 
                                 onClick={() => fileInputRef.current?.click()}
-                                className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-primary border-4 border-white dark:border-neutral-900 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all z-20"
+                                className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-none hover:scale-110 active:scale-90 transition-all z-20"
                             >
-                                <Edit className="h-4 w-4 fill-current" />
+                                <Camera className="h-4 w-4" />
                             </button>
                             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                         </div>
 
                         {/* Name & Title */}
                         <div className="flex flex-col items-center text-center">
-                            <div className="flex items-center gap-2 mb-1">
-                                <h1 className="">
-                                    {displayName}
-                                    {userData?.age && <span className="text-neutral-300 font-extrabold">, {userData.age}</span>}
-                                </h1>
-                                <div className="flex items-center gap-1.5 ml-1">
-                                    <span className="text-xl">👑</span>
-                                    <span className="text-xl text-rose-500">❤️</span>
+                            <div className="flex flex-col items-center gap-1 mb-2">
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                                        {displayName}
+                                        {userData?.age && <span className="text-slate-300 ml-2">, {userData.age}</span>}
+                                    </h1>
+                                    <UserBadge isPremium={userData?.isPremium} isSupporter={userData?.isSupporter} isCreator={userData?.isCreator} />
                                 </div>
+                                {userData?.username && (
+                                    <span 
+                                        onClick={handleCopyUsername}
+                                        className="text-slate-400 font-black text-[11px] uppercase tracking-[0.2em] cursor-pointer hover:text-emerald-500 transition-colors"
+                                    >
+                                        @{userData.username}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Rating */}
-                            <button 
-                                onClick={loadReviews}
-                                className="flex items-center gap-2 mb-6 group active:opacity-70 transition-opacity"
-                            >
-                                <div className="flex gap-0.5">
-                                    {[1,2,3,4,5].map(i => (
-                                        <Star key={i} className={cn("h-4 w-4", i <= (userData?.averageRating || 3) ? "text-[#f59e0b] fill-[#f59e0b]" : "text-slate-200 fill-slate-100")} />
-                                    ))}
-                                </div>
-                                <span className="text-lg font-black text-[#0f172a] dark:text-neutral-100">{userData?.averageRating?.toFixed(1) || '3.0'}</span>
-                                <span className="text-sm font-bold text-slate-500">({userData?.ratingCount || 7} {language === 'de' ? 'Bewertungen' : 'Reviews'})</span>
-
-                            </button>
-
-                            {/* Pills */}
-                             <div className="flex items-center gap-2 mb-8">
-                                {userData?.username && (
-                                    <div onClick={handleCopyUsername} className="bg-[#f3f4f6] dark:bg-neutral-800/80 px-5 py-2 rounded-2xl flex items-center gap-2 cursor-pointer hover:bg-slate-200 transition-colors">
-                                        <span className="text-[#a1a1aa] font-black text-[11px] uppercase tracking-tighter">@</span>
-                                        <span className="text-[#0f172a] dark:text-neutral-200 font-black text-xs tracking-widest">{userData.username}</span>
+                            {(userData?.ratingCount && userData.ratingCount > 0) ? (
+                                <button 
+                                    onClick={loadReviews}
+                                    className="flex items-center gap-2 mb-8 group active:opacity-70 transition-opacity"
+                                >
+                                    <div className="flex gap-0.5">
+                                        {[1,2,3,4,5].map(i => (
+                                            <Star key={i} className={cn("h-4 w-4", i <= (userData.averageRating || 0) ? "text-[#f59e0b] fill-[#f59e0b]" : "text-slate-200 fill-slate-100")} />
+                                        ))}
                                     </div>
-                                )}
-                                <div className="bg-[#fcf1f2] dark:bg-neutral-800/80 px-5 py-2 rounded-2xl flex items-center gap-2">
-                                    <span className="text-[#ec4899] font-black text-[11px]">📍</span>
-                                    <span className="text-[#0f172a] dark:text-neutral-200 font-black text-xs tracking-tight">{userData?.location || (language === 'de' ? 'Unbekannter Ort' : 'Unknown location')}</span>
-                                </div>
-                            </div>
+                                    <span className="text-lg font-black text-slate-900 dark:text-neutral-100">{userData.averageRating?.toFixed(1) || '0.0'}</span>
+                                    <span className="text-sm font-bold text-slate-400">({userData.ratingCount})</span>
+                                </button>
+                            ) : <div className="h-4" />}
 
-                            {/* Stats */}
-                             <div className="grid grid-cols-3 gap-4 w-full max-w-md mb-8">
+
+                            {/* Stats - Asymmetric Pastel Tints */}
+                             <div className="grid grid-cols-3 gap-10 w-full max-w-lg mb-8">
                                 {[
-                                    { label: language === 'de' ? 'Aktiv' : 'Active', val: currentActivities.length, bg: 'bg-[#faf6f6]' },
-                                    { label: language === 'de' ? 'Freunde' : 'Friends', val: userData?.friends?.length || 0, bg: 'bg-[#f6f9fa]' },
-                                    { label: language === 'de' ? 'Bewertungen' : 'Reviews', val: userData?.ratingCount || 0, bg: 'bg-[#f8f9f8]' }
+                                    { label: language === 'de' ? 'Active' : 'Active', val: currentActivities.length, bg: 'bg-emerald-50/60 dark:bg-emerald-900/10', text: 'text-emerald-600' },
+                                    { label: language === 'de' ? 'Friends' : 'Friends', val: userData?.friends?.length || 0, bg: 'bg-cyan-50/60 dark:bg-cyan-900/10', text: 'text-cyan-600' },
+                                    { label: language === 'de' ? 'Reviews' : 'Reviews', val: userData?.ratingCount || 0, bg: 'bg-amber-50/60 dark:bg-amber-900/10', text: 'text-amber-600' }
                                 ].map((stat) => (
-                                    <div key={stat.label} className={cn("flex flex-col items-center py-4 rounded-3xl shadow-sm border border-slate-50", stat.bg)}>
-                                        <span className="text-3xl font-black text-primary leading-none mb-1">{stat.val}</span>
-                                        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">{stat.label}</span>
+                                    <div key={stat.label} className={cn("flex flex-col items-center py-6 rounded-[2.2rem] border border-white dark:border-neutral-800 shadow-none", stat.bg)}>
+                                        <span className={cn("text-3xl font-black leading-none mb-1", stat.text)}>{stat.val}</span>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</span>
                                     </div>
                                 ))}
                             </div>
 
-                            {/* Action Button */}
+                            {/* Compact Action Button */}
                              <Button 
-                                className="w-full max-w-sm h-16 rounded-[1.5rem] bg-primary hover:opacity-90 text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-2 border-none"
+                                variant="outline"
+                                className="h-10 rounded-full border-slate-200 text-slate-500 font-black text-[11px] uppercase tracking-widest px-8 hover:bg-slate-50 hover:text-primary transition-all"
                                 onClick={() => router.push('/profile/edit')}
                             >
-                                <Edit className="h-5 w-5 fill-current" />
                                 {language === 'de' ? 'Profil bearbeiten' : 'Edit Profile'}
                             </Button>
                         </div>
                     </div>
 
                     {/* Section: Freunde */}
-                    <div className="mt-12">
+                    <div className="mt-8">
                          <FriendList friendIds={userData?.friends || []} />
                     </div>
                     
-                    <div className="w-full mt-12 mb-6">
+                    <div className="w-full mt-8 mb-6">
                          <nav className="flex justify-around items-center px-4">
                             <TabButton tabName="activities" label={language === 'de' ? 'Aktivitäten' : 'Activities'} />
                             <TabButton tabName="favorites" label={language === 'de' ? 'Favoriten' : 'Favorites'} />
@@ -471,8 +472,8 @@ export default function ProfilePage() {
                                             {currentActivities.length > 0 ? currentActivities.map(activity => (
                                                 <ProfileActivityCard key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
                                              )) : (
-                                                <div className="text-center p-12 bg-white rounded-[3rem] border border-slate-100 shadow-sm">
-                                                    <p className="text-slate-400 font-bold">{language === 'de' ? 'Keine aktiven Aktivitäten.' : 'No active activities.'}</p>
+                                                <div className="text-center p-12 bg-white rounded-[3rem] border border-slate-100 shadow-none">
+                                                    <p className="text-slate-400 font-bold">{language === 'de' ? 'Uncharted territory. Zeit, die erste Aktivität zu planen!' : 'Uncharted territory. Start planning your first activity!'}</p>
                                                 </div>
                                             )}
                                         </TabsContent>

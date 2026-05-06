@@ -60,13 +60,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
-  const publicRoutes = ['/login', '/signup', '/onboarding'];
+  const publicRoutes = ['/', '/login', '/signup', '/onboarding', '/terms', '/privacy'];
   const isPublicRoute = publicRoutes.includes(pathname);
 
   useEffect(() => {
+    setIsMounted(true);
     if (!auth || !db) {
         setLoading(false);
         return;
@@ -75,6 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let unsubscribeDoc: (() => void) | undefined;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
+      setLoading(true);
       if (unsubscribeDoc) {
         unsubscribeDoc();
         unsubscribeDoc = undefined;
@@ -88,12 +91,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
             
-            // Lazy Migration: Remove legacy isAdmin field and ensure role is set
-            if ('isAdmin' in data) {
-              const legacyValue = data.isAdmin;
-              const currentRole = data.role;
-              const targetRole = currentRole || (legacyValue ? 'admin' : 'user');
-              
+            // Lazy migration check: if they have 'isAdmin' but not 'role'
+            if (data.isAdmin !== undefined && data.role === undefined) {
+              const targetRole = data.isAdmin === true ? 'admin' : 'user';
               updateDoc(userRef, {
                 isAdmin: deleteField(),
                 role: targetRole
@@ -110,9 +110,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             
             setUserProfile(profile);
 
-            if (!profile.onboardingCompleted && pathname !== '/onboarding') {
+            if (authUser.emailVerified && !profile.onboardingCompleted && pathname !== '/onboarding') {
               router.replace('/onboarding');
             }
+          } else {
+            setUserProfile(null);
           }
           setLoading(false);
         }, (error) => {
@@ -184,38 +186,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   if (!auth && !loading) {
     return <NotConfigured />;
   }
-  
-  if (loading) {
-      return (
-          <div className="flex h-screen w-full items-center justify-center bg-background">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-      )
-  }
 
   if (userProfile?.isBanned) {
     return <BannedScreen />;
   }
 
-  if (!user && !isPublicRoute) {
-      return (
-          <div className="flex h-screen w-full items-center justify-center bg-background">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-      );
-  }
+  // Hydration-Sicherheit: Auf dem Server rendern wir nichts Kritisches
+  if (!isMounted) return null;
 
-  if (user && userProfile && !userProfile.onboardingCompleted && pathname !== '/onboarding') {
-      return (
-          <div className="flex h-screen w-full items-center justify-center bg-background">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-      )
-  }
+  const showSpinner = loading && !isPublicRoute;
 
   return (
     <AuthContext.Provider value={{ user, userProfile, loading }}>
-      {children}
+      {showSpinner ? (
+        <div className="flex items-center justify-center min-h-screen bg-white dark:bg-neutral-950">
+          <Loader2 className="w-8 h-8 animate-spin text-[#10b981]" />
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };

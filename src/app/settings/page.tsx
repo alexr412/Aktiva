@@ -52,6 +52,7 @@ export default function SettingsPage() {
     const [isSendingReset, setIsSendingReset] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [deleteError, setDeleteError] = useState<string | null>(null);
     
     // Creator Stats
     const [activitiesCount, setActivitiesCount] = useState(0);
@@ -189,25 +190,27 @@ export default function SettingsPage() {
         }
     };
     
-    const handleDeleteAccount = async () => {
+    const handleDeleteAccount = async (password: string) => {
         if (!user) return;
         setIsDeleting(true);
         try {
-            await deleteUserDocument(user.uid);
-            await deleteAccount();
+            await deleteAccount(password);
             toast({ 
               title: language === 'de' ? 'Account gelöscht' : 'Account Deleted', 
               description: language === 'de' ? 'Dein Account und alle Daten wurden erfolgreich gelöscht.' : 'Your account and all data have been successfully deleted.' 
             });
-            router.push('/');
+            router.push('/signup');
         } catch (error: any) {
+            const msg = error.message || (language === 'de' ? 'Konnte deinen Account nicht löschen.' : 'Could not delete your account.');
+            setDeleteError(msg);
             toast({ 
               variant: 'destructive', 
               title: language === 'de' ? 'Löschen fehlgeschlagen' : 'Deletion Failed', 
-              description: error.message || (language === 'de' ? 'Konnte deinen Account nicht löschen. Eventuell musst du dich neu anmelden.' : 'Could not delete your account. You may need to log in again.') 
+              description: msg
             });
         } finally {
             setIsDeleting(false);
+            setDeleteConfirmText('');
         }
     };
 
@@ -421,48 +424,53 @@ export default function SettingsPage() {
                             <UserCheck className="h-5 w-5 text-primary" />
                             <span>{language === 'de' ? 'Creator Programm' : 'Creator Program'}</span>
                         </h2>
-                        <Card className="border-none shadow-sm overflow-hidden bg-white rounded-2xl">
+                        <Card className="border-none shadow-sm overflow-hidden bg-card rounded-2xl">
                           <CardContent className="p-6 space-y-6">
                             <div className="space-y-1">
-                              <p className="font-bold">{language === 'de' ? 'Monetarisierung & Wallet' : 'Monetization & Wallet'}</p>
+                              <div className="flex justify-between items-start">
+                                <p className="font-bold text-foreground">{language === 'de' ? 'Monetarisierung & Wallet' : 'Monetization & Wallet'}</p>
+                                <Badge variant="secondary" className="text-[9px] uppercase tracking-wider font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                                  {language === 'de' ? 'Bald verfügbar' : 'Coming soon'}
+                                </Badge>
+                              </div>
                               <p className="text-xs text-muted-foreground">{language === 'de' ? 'Schalte Creator-Features frei, um bezahlte Events zu hosten.' : 'Unlock creator features to host paid events.'}</p>
                             </div>
 
                             {userProfile?.isCreator ? (
-                              <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex items-center gap-3">
-                                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                                <span className="font-black text-emerald-700 text-sm">{language === 'de' ? 'Du bist verifizierter Creator!' : 'You are a verified creator!'}</span>
+                              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 p-4 rounded-xl flex items-center gap-3">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
+                                <span className="font-black text-emerald-700 dark:text-emerald-400 text-sm">{language === 'de' ? 'Du bist verifizierter Creator!' : 'You are a verified creator!'}</span>
                               </div>
                             ) : hasApplication ? (
-                              <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center gap-3">
-                                <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
-                                <span className="font-black text-blue-700 text-sm">{language === 'de' ? 'Prüfung läuft...' : 'Review in progress...'}</span>
+                              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 p-4 rounded-xl flex items-center gap-3">
+                                <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-500 animate-spin" />
+                                <span className="font-black text-blue-700 dark:text-blue-400 text-sm">{language === 'de' ? 'Prüfung läuft...' : 'Review in progress...'}</span>
                               </div>
                             ) : (
                               <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-3">
-                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", activitiesCount >= REQUIRED_ACTIVITIES ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-slate-100")}>
-                                    <Activity className={cn("h-4 w-4", activitiesCount >= REQUIRED_ACTIVITIES ? "text-primary" : "text-slate-400")} />
-                                    <span className="text-xl font-black">{activitiesCount} / {REQUIRED_ACTIVITIES}</span>
-                                    <span className="text-[8px] font-bold uppercase text-slate-400">{language === 'de' ? 'Aktivitäten' : 'Activities'}</span>
+                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", activitiesCount >= REQUIRED_ACTIVITIES ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
+                                    <Activity className={cn("h-4 w-4", activitiesCount >= REQUIRED_ACTIVITIES ? "text-primary" : "text-slate-400 dark:text-neutral-500")} />
+                                    <span className="text-xl font-black text-foreground">{activitiesCount} / {REQUIRED_ACTIVITIES}</span>
+                                    <span className="text-[8px] font-bold uppercase text-slate-400 dark:text-neutral-500">{language === 'de' ? 'Aktivitäten' : 'Activities'}</span>
                                   </div>
-                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "bg-primary/5 border-primary/20" : "bg-slate-50 border-slate-100")}>
-                                    <Star className={cn("h-4 w-4", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "text-amber-500 fill-amber-500" : "text-slate-400")} />
-                                    <span className="text-xl font-black">{userProfile?.averageRating?.toFixed(1) || '0.0'} / {REQUIRED_RATING}</span>
-                                    <span className="text-[8px] font-bold uppercase text-slate-400">{language === 'de' ? 'Bewertung' : 'Rating'}</span>
+                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
+                                    <Star className={cn("h-4 w-4", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "text-amber-500 fill-amber-500" : "text-slate-400 dark:text-neutral-500")} />
+                                    <span className="text-xl font-black text-foreground">{userProfile?.averageRating?.toFixed(1) || '0.0'} / {REQUIRED_RATING}</span>
+                                    <span className="text-[8px] font-bold uppercase text-slate-400 dark:text-neutral-500">{language === 'de' ? 'Bewertung' : 'Rating'}</span>
                                   </div>
                                 </div>
 
                                 <Button 
                                   onClick={handleApplyCreator} 
                                   disabled={!canApply || isApplying}
-                                  className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-slate-900 hover:bg-black"
+                                  className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-slate-900 hover:bg-black dark:bg-primary dark:hover:bg-primary/90 dark:text-white text-white"
                                 >
                                   {isApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : language === 'de' ? "Als Creator bewerben" : "Apply as Creator"}
                                 </Button>
                                 
                                 {!canApply && (
-                                  <p className="text-[10px] text-center text-slate-400 font-medium">{language === 'de' ? 'Erfülle beide Anforderungen, um dich zu bewerben.' : 'Meet both requirements to apply.'}</p>
+                                  <p className="text-[10px] text-center text-slate-400 dark:text-neutral-500 font-medium">{language === 'de' ? 'Erfülle beide Anforderungen, um dich zu bewerben.' : 'Meet both requirements to apply.'}</p>
                                 )}
                               </div>
                             )}
@@ -528,7 +536,7 @@ export default function SettingsPage() {
 
                     {/* Log out section */}
                     <div className="space-y-4 pt-4">
-                         <Button variant="ghost" onClick={handleSignOut} className="w-full text-destructive hover:text-destructive hover:bg-destructive/10">
+                         <Button variant="ghost" onClick={handleSignOut} className="w-full text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10 dark:hover:bg-red-400/10 font-bold">
                             <LogOut className="mr-2 h-5 w-5" />
                             {language === 'de' ? 'Abmelden' : 'Log Out'}
                         </Button>
@@ -554,23 +562,49 @@ export default function SettingsPage() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>{language === 'de' ? 'Bist du sicher?' : 'Are you absolutely sure?'}</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                {language === 'de' ? 'Dieser Vorgang kann nicht rückgängig gemacht werden. Alle deine Daten werden gelöscht. Tippe ' : 'This action cannot be undone. This will permanently delete your account, chats, and all other data. To confirm, please type '}
-                                                <strong className="text-foreground">DELETE</strong>
-                                                {language === 'de' ? ' unten ein, um zu bestätigen.' : ' below.'}
+                                                {language === 'de' 
+                                                    ? 'Dieser Vorgang kann nicht rückgängig gemacht werden. Alle deine Daten werden gelöscht. Zur Sicherheit gib bitte dein Passwort ein:' 
+                                                    : 'This action cannot be undone. All your data will be deleted. For security, please enter your password:'}
                                             </AlertDialogDescription>
 
                                         </AlertDialogHeader>
-                                        <Input 
-                                            value={deleteConfirmText}
-                                            onChange={(e) => setDeleteConfirmText(e.target.value)}
-                                            placeholder="DELETE"
-                                            className="bg-muted"
-                                        />
+                                        <div className="space-y-3">
+                                            {deleteError && (
+                                                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 space-y-2">
+                                                    <p className="text-xs font-bold text-destructive text-center">{deleteError}</p>
+                                                    <button 
+                                                        onClick={() => {
+                                                            handlePasswordReset();
+                                                            setDeleteError(null);
+                                                        }}
+                                                        className="w-full text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+                                                    >
+                                                        {language === 'de' ? 'Passwort vergessen?' : 'Forgot password?'}
+                                                    </button>
+                                                </div>
+                                            )}
+                                            <Input 
+                                                type="password"
+                                                value={deleteConfirmText}
+                                                onChange={(e) => {
+                                                    setDeleteConfirmText(e.target.value);
+                                                    if (deleteError) setDeleteError(null);
+                                                }}
+                                                placeholder={language === 'de' ? "Dein Passwort" : "Your password"}
+                                                className="bg-muted"
+                                            />
+                                        </div>
                                         <AlertDialogFooter>
-                                            <AlertDialogCancel onClick={() => setDeleteConfirmText('')}>{language === 'de' ? 'Abbrechen' : 'Cancel'}</AlertDialogCancel>
+                                            <AlertDialogCancel onClick={() => {
+                                                setDeleteConfirmText('');
+                                                setDeleteError(null);
+                                            }}>{language === 'de' ? 'Abbrechen' : 'Cancel'}</AlertDialogCancel>
                                             <AlertDialogAction
-                                                onClick={handleDeleteAccount}
-                                                disabled={deleteConfirmText !== 'DELETE' || isDeleting}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    handleDeleteAccount(deleteConfirmText);
+                                                }}
+                                                disabled={!deleteConfirmText || isDeleting}
                                                 className="bg-destructive hover:bg-destructive/90"
                                             >
                                                 {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

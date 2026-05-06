@@ -107,13 +107,13 @@ export async function updateUserProfile(userId: string, data: Partial<UserProfil
 export async function updateUserLocation(userId: string, lat: number, lng: number) {
   if (!db) return;
   const userDocRef = doc(db, 'users', userId);
-  await updateDoc(userDocRef, {
+  await setDoc(userDocRef, {
     lastLocation: {
       lat,
       lng,
       updatedAt: serverTimestamp()
     }
-  });
+  }, { merge: true });
 }
 
 
@@ -1523,3 +1523,159 @@ export async function searchActivitiesBySemanticVector(queryText: string, hardBl
   
   return results.filter(act => !act.category || !hardBlacklist.includes(act.category));
 }
+
+export async function deleteUserData(userId: string) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  
+  // 1. Aktivitäten bereinigen, in denen der Nutzer Teilnehmer ist
+  const activitiesQuery = query(collection(db, 'activities'), where('participantIds', 'array-contains', userId));
+  const activitiesSnap = await getDocs(activitiesQuery);
+  const batch = writeBatch(db);
+  
+  for (const docSnap of activitiesSnap.docs) {
+    const actData = docSnap.data();
+    if (actData.hostId === userId) {
+       // Wenn der Nutzer der Host war, storniere die Aktivität
+       batch.update(docSnap.ref, { status: 'cancelled' });
+    } else {
+       // Entferne den Nutzer aus der Teilnehmerliste und der Preview
+       const newPreview = (actData.participantsPreview || []).filter((p: any) => p.uid !== userId);
+       batch.update(docSnap.ref, {
+         participantIds: arrayRemove(userId),
+         participantsPreview: newPreview
+       });
+    }
+  }
+  
+  // 3. Chats bereinigen
+  const chatsQuery = query(collection(db, 'chats'), where('participants', 'array-contains', userId));
+  const chatsSnap = await getDocs(chatsQuery);
+  
+  for (const docSnap of chatsSnap.docs) {
+     batch.update(docSnap.ref, {
+        participants: arrayRemove(userId),
+        // Auch participantIds falls vorhanden
+        participantIds: arrayRemove(userId)
+     });
+  }
+
+  // 4. Freundschaften und Anfragen bereinigen
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+  if (userSnap.exists()) {
+    const userData = userSnap.data();
+    const friends = userData.friends || [];
+    const sent = userData.friendRequestsSent || [];
+    const received = userData.friendRequestsReceived || [];
+
+    // Aus Freundeslisten anderer entfernen
+    for (const friendId of friends) {
+      batch.update(doc(db, 'users', friendId), {
+        friends: arrayRemove(userId)
+      });
+    }
+
+    // Freundschaftsanfragen bei anderen bereinigen
+    for (const otherId of sent) {
+      batch.update(doc(db, 'users', otherId), {
+        friendRequestsReceived: arrayRemove(userId)
+      });
+    }
+    for (const otherId of received) {
+      batch.update(doc(db, 'users', otherId), {
+        friendRequestsSent: arrayRemove(userId)
+      });
+    }
+  }
+
+  // 5. Benachrichtigungen löschen (wo der Nutzer Empfänger oder Sender war)
+  const notificationsQuery = query(collection(db, 'notifications'), where('recipientId', '==', userId));
+  const notifsSnap = await getDocs(notificationsQuery);
+  notifsSnap.forEach(d => batch.delete(d.ref));
+
+  const sentNotificationsQuery = query(collection(db, 'notifications'), where('senderId', '==', userId));
+  const sentNotifsSnap = await getDocs(sentNotificationsQuery);
+  sentNotifsSnap.forEach(d => batch.delete(d.ref));
+
+  // 6. Benutzer-Profil löschen (am Ende, damit Batch/Transaction sauber ist)
+  batch.delete(doc(db, 'users', userId));
+
+  // Alles in einer Transaktion/Batch ausführen
+  await batch.commit();
+}
+
+export async function cleanupGhostUsers() {
+  if (!db) throw new Error('Firestore is not initialized.');
+  
+  // 1. Alle existierenden User-IDs abrufen
+  const usersSnap = await getDocs(collection(db, 'users'));
+  const validUserIds = new Set(usersSnap.docs.map(doc => doc.id));
+
+  const batch = writeBatch(db);
+  let changesCount = 0;
+
+  // 2. Aktivitäten bereinigen
+  const activitiesSnap = await getDocs(collection(db, 'activities'));
+  
+  for (const docSnap of activitiesSnap.docs) {
+    const actData = docSnap.data();
+    let changed = false;
+    let updates: any = {};
+
+    // Prüfe Host
+    if (actData.hostId && !validUserIds.has(actData.hostId)) {
+        if (actData.status !== 'cancelled') {
+           updates.status = 'cancelled';
+           changed = true;
+        }
+    }
+
+    // Prüfe Teilnehmer
+    const originalParticipantIds = actData.participantIds || [];
+    const validParticipantIds = originalParticipantIds.filter((uid: string) => validUserIds.has(uid));
+    
+    const originalPreview = actData.participantsPreview || [];
+    const validPreview = originalPreview.filter((p: any) => validUserIds.has(p.uid));
+
+    if (validParticipantIds.length !== originalParticipantIds.length) {
+       updates.participantIds = validParticipantIds;
+       updates.participantsPreview = validPreview;
+       changed = true;
+    }
+
+    if (changed) {
+       batch.update(docSnap.ref, updates);
+       changesCount++;
+    }
+  }
+
+  // 3. Chats bereinigen
+  const chatsSnap = await getDocs(collection(db, 'chats'));
+  for (const docSnap of chatsSnap.docs) {
+      const chatData = docSnap.data();
+      const originalParticipantIds = chatData.participantIds || [];
+      const validParticipantIds = originalParticipantIds.filter((uid: string) => validUserIds.has(uid));
+      
+      const originalDetails = chatData.participantDetails || {};
+      const validDetails: any = {};
+      for (const [uid, details] of Object.entries(originalDetails)) {
+          if (validUserIds.has(uid)) {
+              validDetails[uid] = details;
+          }
+      }
+
+      if (validParticipantIds.length !== originalParticipantIds.length || Object.keys(validDetails).length !== Object.keys(originalDetails).length) {
+          batch.update(docSnap.ref, { 
+              participantIds: validParticipantIds,
+              participantDetails: validDetails
+          });
+          changesCount++;
+      }
+  }
+
+  if (changesCount > 0) {
+      await batch.commit();
+  }
+  return changesCount;
+}
+

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { processRefund, banUser, approveCreator, resolveModerationTask } from '@/lib/firebase/firestore';
+import { processRefund, banUser, approveCreator, resolveModerationTask, cleanupGhostUsers } from '@/lib/firebase/firestore';
 import type { UserProfile, Refund, CreatorApplication, Report } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -117,6 +117,18 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleCleanupGhosts = async () => {
+    setActionLoading('cleanup');
+    try {
+      const count = await cleanupGhostUsers();
+      toast({ title: "Datenbank bereinigt", description: `${count} verwaiste Einträge korrigiert.` });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Fehler", description: err.message });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (authLoading || !userProfile || userProfile.role !== 'admin') {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -133,6 +145,19 @@ export default function AdminDashboardPage() {
           <Badge className="bg-red-500 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1">Admin Mode</Badge>
         </h2>
         <p className="text-slate-500 dark:text-neutral-400 font-medium">Zentrale Steuerung der Plattform-Integrität und Monetarisierung.</p>
+        
+        {/* Wartungs-Aktionen */}
+        <div className="flex gap-2 mt-2">
+            <Button 
+              variant="outline" 
+              onClick={handleCleanupGhosts} 
+              disabled={actionLoading === 'cleanup'}
+              className="rounded-xl border-dashed border-2 border-slate-300 dark:border-neutral-700 bg-slate-50/50 hover:bg-slate-100 dark:bg-neutral-900 font-bold"
+            >
+              {actionLoading === 'cleanup' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+              Datenbank: Geister-User bereinigen
+            </Button>
+        </div>
       </header>
 
       {/* MODUL 18: Automated Moderation Queue */}

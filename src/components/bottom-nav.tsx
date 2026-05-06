@@ -30,7 +30,7 @@ export function BottomNav() {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 w-full z-nav elevation-mid bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl border-t border-neutral-100 dark:border-neutral-800 pb-safe">
+    <div className="fixed bottom-0 left-0 w-full z-nav bg-white dark:bg-neutral-900 border-t border-slate-100 dark:border-neutral-800 pb-safe">
       <nav className="flex h-[76px] items-center justify-around px-2">
         {navItems.map((item) => {
           const isActive = getIsActive(item.href);
@@ -40,13 +40,13 @@ export function BottomNav() {
               href={item.href}
               className={cn(
                   "flex h-full flex-col items-center justify-center gap-1.5 transition-all duration-300 relative px-4 flex-1",
-                  isActive ? "scale-110" : "opacity-40 grayscale hover:opacity-70 hover:grayscale-0"
+                  isActive ? "scale-105" : "opacity-40 grayscale hover:opacity-70 hover:grayscale-0"
               )}
               style={{ color: isActive ? item.activeColor : undefined }}
             >
               <div className={cn(
                   "p-2 rounded-2xl transition-all duration-300",
-                  isActive ? "bg-current/20 shadow-lg shadow-current/10 scale-110" : ""
+                  isActive ? "bg-current/10 scale-110 shadow-none" : ""
               )}>
                 <item.icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} />
               </div>

@@ -8,10 +8,15 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   deleteUser,
+  GoogleAuthProvider,
+  OAuthProvider,
+  signInWithPopup,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   type User,
 } from 'firebase/auth';
 import { auth } from './client';
-import { createUserProfileDocument } from './firestore';
+import { createUserProfileDocument, getUserProfile, deleteUserData } from './firestore';
 
 export { auth };
 
@@ -51,17 +56,52 @@ export async function sendPasswordReset(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
 }
 
-export async function deleteAccount(): Promise<void> {
+export async function deleteAccount(password?: string): Promise<void> {
   if (!auth?.currentUser) {
     throw new Error('No user is currently signed in to delete.');
   }
+  
   try {
+    // Falls ein Passwort übergeben wurde (Email/Passwort Login), re-authentifizieren
+    if (password && auth.currentUser.email) {
+        const credential = EmailAuthProvider.credential(auth.currentUser.email, password);
+        await reauthenticateWithCredential(auth.currentUser, credential);
+    }
+    
+    await deleteUserData(auth.currentUser.uid);
     await deleteUser(auth.currentUser);
   } catch (error: any) {
     // Handle cases where recent login is required
-    if (error.code === 'auth/requires-recent-login') {
-      throw new Error('This is a sensitive operation and requires a recent login. Please sign in again and retry.');
+    if (error.code === 'auth/requires-recent-login' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      throw new Error((error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') ? 'Falsches Passwort' : 'Bitte logge dich erneut ein, um dein Konto zu löschen.');
     }
     throw error;
   }
+}
+export async function signInWithGoogle(): Promise<User> {
+  if (!auth) throw new Error('Firebase has not been initialized.');
+  const provider = new GoogleAuthProvider();
+  const userCredential = await signInWithPopup(auth, provider);
+  
+  // Check if profile exists, if not create it
+  const profile = await getUserProfile(userCredential.user.uid);
+  if (!profile) {
+    await createUserProfileDocument(userCredential.user);
+  }
+  
+  return userCredential.user;
+}
+
+export async function signInWithApple(): Promise<User> {
+  if (!auth) throw new Error('Firebase has not been initialized.');
+  const provider = new OAuthProvider('apple.com');
+  const userCredential = await signInWithPopup(auth, provider);
+  
+  // Check if profile exists, if not create it
+  const profile = await getUserProfile(userCredential.user.uid);
+  if (!profile) {
+    await createUserProfileDocument(userCredential.user);
+  }
+  
+  return userCredential.user;
 }

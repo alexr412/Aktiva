@@ -8,10 +8,13 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { PremiumUpgradeModal } from '@/components/premium/PremiumUpgradeModal';
 
 export function ThemeSelector() {
     const { theme, setTheme, mode, toggleMode } = useTheme();
     const { userProfile } = useAuth();
+    const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
     const isAdmin = userProfile?.role === 'admin';
     const isPremium = userProfile?.isPremium || isAdmin;
 
@@ -37,7 +40,12 @@ export function ThemeSelector() {
                             <Lock className="w-5 h-5" />
                             <span className="font-bold text-sm">Premium Feature</span>
                         </div>
-                        <Button variant="default" size="sm" className="px-4 py-2 h-auto text-xs font-bold rounded-lg shadow-lg transition-transform active:scale-95">
+                        <Button 
+                            variant="default" 
+                            size="sm" 
+                            onClick={() => setIsPremiumModalOpen(true)}
+                            className="px-4 py-2 h-auto text-xs font-bold rounded-lg shadow-lg transition-transform active:scale-95 bg-primary hover:bg-primary/90 text-primary-foreground"
+                        >
                             Upgrade freischalten
                         </Button>
                     </div>
@@ -76,6 +84,11 @@ export function ThemeSelector() {
                     onCheckedChange={toggleMode}
                 />
             </div>
+            
+            <PremiumUpgradeModal 
+                isOpen={isPremiumModalOpen} 
+                onClose={() => setIsPremiumModalOpen(false)} 
+            />
         </div>
     );
 }

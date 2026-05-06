@@ -317,7 +317,7 @@ export default function ExternalUserProfilePage() {
             <div className="p-6 flex flex-col items-center justify-center text-center space-y-4">
                 <div className={cn(
                   "p-1 rounded-full shadow-lg transition-all",
-                  userData.isPremium ? "bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600" : (userData.isSupporter ? "bg-pink-400" : "bg-transparent")
+                  userData.isCreator ? "bg-gradient-to-tr from-slate-900 via-slate-800 to-blue-500" : (userData.isPremium ? "bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600" : (userData.isSupporter ? "bg-red-500" : "bg-transparent"))
                 )}>
                     <Avatar className="h-24 w-24 border-4 border-white">
                         <AvatarImage src={photoUrlToDisplay} alt="Profil" />
@@ -333,7 +333,7 @@ export default function ExternalUserProfilePage() {
                           {displayName}
                       </h1>
                       {userData.age && <span className="text-muted-foreground text-2xl font-bold">, {userData.age}</span>}
-                      <UserBadge isPremium={userData.isPremium} isSupporter={userData.isSupporter} />
+                      <UserBadge isPremium={userData.isPremium} isSupporter={userData.isSupporter} isCreator={userData.isCreator} />
                     </div>
 
                     {/* MODUL 11: REPUTATION DISPLAY */}

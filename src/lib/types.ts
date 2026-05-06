@@ -70,6 +70,7 @@ export interface Activity {
           photoURL: string | null;
           isPremium?: boolean;
           isSupporter?: boolean;
+          isCreator?: boolean;
           checkInStatus?: CheckInStatus;
           checkInTime?: Timestamp;
           hasReviewed?: boolean;
@@ -109,6 +110,7 @@ export interface Message {
   sentAt: Timestamp;
   isPremium?: boolean;
   isSupporter?: boolean;
+  isCreator?: boolean;
 }
 
 export interface Chat {
@@ -123,6 +125,7 @@ export interface Chat {
             photoURL: string | null;
             isPremium?: boolean;
             isSupporter?: boolean;
+            isCreator?: boolean;
             checkInStatus?: CheckInStatus;
             checkInTime?: Timestamp;
         }

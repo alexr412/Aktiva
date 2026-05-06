@@ -331,7 +331,7 @@ export default function UserProfilePage() {
             <div className="p-6 flex flex-col items-center justify-center text-center space-y-4">
                 <div className={cn(
                   "p-1 rounded-full shadow-lg transition-all",
-                  userData.isPremium ? "bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600" : (userData.isSupporter ? "bg-pink-400" : "bg-transparent")
+                  userData.isPremium ? "bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600" : (userData.isSupporter ? "bg-red-500" : "bg-transparent")
                 )}>
                     <Avatar className="h-24 w-24 border-4 border-white">
                         <AvatarImage src={photoUrlToDisplay} alt="Profil" />
