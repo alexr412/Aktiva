@@ -209,7 +209,7 @@ export default function LoginPage() {
                       <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#10b981] transition-colors z-10" />
                       <Input 
                         placeholder="Email / Username" 
-
+                        autoComplete="username"
                         {...field} 
                         className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-emerald-500/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm tracking-wider shadow-none" 
                       />
@@ -241,6 +241,7 @@ export default function LoginPage() {
                       <Input 
                         type={showPassword ? "text" : "password"} 
                         placeholder="••••••••" 
+                        autoComplete="current-password"
                         {...field} 
                         className="h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-emerald-500/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" 
                       />

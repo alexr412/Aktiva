@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
+import { cn } from '@/lib/utils';
 
 /**
  * UI-Spezifikation für das Profil:
  * Komponente: Linearer Slider.
  * Farbskala: Bipolarer Gradient (Links: Rot / Rechts: Grün).
- * Skala: Diskrete Werte -5, -4, -3, -2, 1, 2, 3, 4, 5.
- * Mittelpunkt: Wert 1 (Standard-Neutralstellung).
- * Mapping: Die Slider-Position korrespondiert direkt mit dem Multiplikator w_i in der Datenbank.
+ * Skala: Diskrete Werte 0.1 bis 3.0.
+ * Mittelpunkt: Wert 1.0 (Standard-Neutralstellung).
  */
 
 interface UserPreferenceSliderProps {
@@ -22,19 +22,14 @@ export const UserPreferenceSlider: React.FC<UserPreferenceSliderProps> = ({
   initialValue = 1.0, 
   onChange 
 }) => {
-  // Das Array umfasst exakt die 9 vordefinierten diskreten Werte (Multiplikatoren)
   const discreteValues = [0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0];
   
-  // Index 4 entspricht dem neutralen Wert "1.0"
   const [currentIndex, setCurrentIndex] = useState(() => {
-    // Wenn in der Datenbank alte Werte (z.B. -5) stehen, mappen wir sie temporär auf Neutral (1.0) oder fangen sie ab
     const idx = discreteValues.indexOf(initialValue);
     if (idx !== -1) return idx;
-    
-    // Legacy Fallback (alte -5 bis +5 Werte auf den neuen Index mappen, falls noch existent)
-    if (initialValue < 0) return 0; // Extrem negativ -> 0.1
-    if (initialValue > 3.0) return 8; // Extrem positiv -> 3.0
-    return 4; // Fallback Neutral
+    if (initialValue < 1.0) return 0;
+    if (initialValue > 1.0) return 8;
+    return 4;
   });
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,42 +41,56 @@ export const UserPreferenceSlider: React.FC<UserPreferenceSliderProps> = ({
 
   const currentValue = discreteValues[currentIndex];
 
-  const backgroundStyle = {
-    background: 'linear-gradient(to right, #ef4444, #9ca3af, #22c55e)',
-    height: '8px',
-    borderRadius: '4px',
-    outline: 'none',
-    width: '100%',
-    appearance: 'none' as const
-  };
-
   return (
-    <div className="flex flex-col gap-3 w-full max-w-sm mb-6 p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
-      <div className="flex justify-between items-center text-sm">
-        <span className="">{label}</span>
-        <span className={`font-mono px-2 py-1 rounded text-xs font-bold ${currentValue < 1.0 ? 'bg-red-50 text-red-600 dark:bg-red-900/30' : currentValue > 1.0 ? 'bg-green-50 text-green-600 dark:bg-green-900/30' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
-          w = {currentValue.toFixed(2)}x
-        </span>
+    <div className="bg-white dark:bg-neutral-900 rounded-[2rem] p-5 shadow-lg shadow-slate-200/30 dark:shadow-none border border-slate-100 dark:border-neutral-800 transition-all group">
+      <div className="flex justify-between items-center mb-5">
+        <span className="font-black text-[#0f172a] dark:text-neutral-100 tracking-tight text-base uppercase leading-none">{label}</span>
+        <div className={cn(
+            "px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest shadow-sm transition-colors",
+            currentValue < 1.0 ? "bg-rose-500 text-white" : 
+            currentValue > 1.0 ? "bg-emerald-500 text-white" : 
+            "bg-slate-100 text-slate-500"
+        )}>
+          {currentValue.toFixed(2)}x
+        </div>
       </div>
       
-      <div className="relative w-full py-2">
-        <input 
-          type="range" 
-          min={0} 
-          max={8} 
-          step={1}
-          value={currentIndex} 
-          onChange={handleSliderChange}
-          className="cursor-pointer"
-          style={backgroundStyle}
-        />
+      <div className="relative h-10 flex items-center px-1">
+          {/* Track Background */}
+          <div className="absolute inset-x-0 h-2.5 rounded-full bg-slate-200 dark:bg-neutral-800 overflow-hidden shadow-inner">
+              {/* Highlight Fill */}
+              <div 
+                  className={cn(
+                      "absolute top-0 bottom-0 transition-all duration-500 ease-out",
+                      currentIndex < 4 ? "bg-gradient-to-l from-rose-200 to-rose-500" : 
+                      currentIndex > 4 ? "bg-gradient-to-r from-emerald-200 to-emerald-500" : 
+                      "bg-transparent"
+                  )}
+                  style={{
+                      left: currentIndex < 4 ? `${(currentIndex / 8) * 100}%` : '50%',
+                      right: currentIndex > 4 ? `${100 - (currentIndex / 8) * 100}%` : '50%',
+                      width: currentIndex === 4 ? '0' : 'auto'
+                  }}
+              />
+          </div>
+          
+          <input 
+            type="range" 
+            min={0} 
+            max={8} 
+            step={1}
+            value={currentIndex} 
+            onChange={handleSliderChange}
+            className="absolute inset-x-0 appearance-none bg-transparent cursor-pointer z-10 w-full h-full [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-8 [&::-webkit-slider-thumb]:w-8 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-[2px] [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-[0_2px_10px_rgba(0,0,0,0.15)] [&::-webkit-slider-thumb]:active:scale-110 [&::-webkit-slider-thumb]:transition-transform"
+          />
       </div>
       
-      <div className="flex justify-between text-[10px] text-gray-500 uppercase font-semibold tracking-wider">
-        <span className="text-red-500">Abneigung</span>
-        <span className="text-gray-400 ml-3">Neutral</span>
-        <span className="text-green-500">Favorit</span>
+      <div className="flex justify-between px-1 mt-3">
+        <span className={cn("text-[9px] font-black uppercase tracking-widest transition-colors", currentIndex < 4 ? "text-rose-500" : "text-slate-400")}>Abneigung</span>
+        <span className={cn("text-[9px] font-black uppercase tracking-widest transition-colors", currentIndex === 4 ? "text-slate-600" : "text-slate-400")}>Neutral</span>
+        <span className={cn("text-[9px] font-black uppercase tracking-widest transition-colors", currentIndex > 4 ? "text-emerald-500" : "text-slate-400")}>Favorit</span>
       </div>
     </div>
   );
 };
+

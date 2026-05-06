@@ -299,44 +299,19 @@ export default function EditProfilePage() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="age" className="font-semibold text-slate-700 ml-1">Alter</Label>
-                  <Input 
-                    id="age" 
-                    name="age" 
-                    type="number" 
-                    value={formData.age || ''} 
-                    onChange={handleChange} 
-                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg px-6"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pronouns" className="font-semibold text-slate-700 ml-1">Pronomen</Label>
-                  <Input 
-                    id="pronouns" 
-                    name="pronouns" 
-                    placeholder="z.B. sie/ihr" 
-                    value={formData.pronouns || ''} 
-                    onChange={handleChange} 
-                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg px-6"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <div className="flex items-center gap-2 mb-1">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    <Label htmlFor="location" className="font-semibold text-slate-700">Standort</Label>
-                </div>
+                <Label htmlFor="pronouns" className="font-semibold text-slate-700 ml-1">Pronomen</Label>
                 <Input 
-                    id="location" 
-                    name="location" 
-                    value={formData.location || ''} 
-                    onChange={handleChange} 
-                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg px-6"
+                  id="pronouns" 
+                  name="pronouns" 
+                  placeholder="z.B. sie/ihr" 
+                  value={formData.pronouns || ''} 
+                  onChange={handleChange} 
+                  className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg px-6"
                 />
               </div>
+
+
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">

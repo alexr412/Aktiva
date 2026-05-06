@@ -237,16 +237,15 @@ export default function SettingsPage() {
     const canApply = activitiesCount >= REQUIRED_ACTIVITIES && (userProfile?.averageRating || 0) >= REQUIRED_RATING;
 
     return (
-        <div className="flex flex-col h-full bg-secondary">
-            <header className="flex h-16 items-center border-b bg-background px-4 shrink-0">
+        <div className="flex flex-col h-full w-full bg-secondary overflow-y-auto pb-32">
+            <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background px-4 shrink-0">
                 <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()}>
                     <ArrowLeft />
                 </Button>
-                <h1 className="">{language === 'de' ? 'Einstellungen' : 'Settings'}</h1>
+                <h1 className="text-xl font-bold">{language === 'de' ? 'Einstellungen' : 'Settings'}</h1>
             </header>
 
-            <main className="flex-1 overflow-y-auto pb-20">
-                <div className="p-6 space-y-8 max-w-2xl mx-auto">
+            <div className="p-6 space-y-8 max-w-2xl mx-auto w-full">
                     {/* Fundraising Section */}
                     <div className="space-y-4">
                         <h2 className="flex items-center gap-3">
@@ -519,13 +518,13 @@ export default function SettingsPage() {
                                 </div>
                                 <p className="text-sm text-muted-foreground">1.0.0</p>
                             </div>
-                             <button className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
+                             <button onClick={() => router.push('/privacy')} className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
                                 <div>
                                     <p className="font-medium">{language === 'de' ? 'Datenschutzerklärung' : 'Privacy Policy'}</p>
                                 </div>
                                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
                             </button>
-                             <button className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
+                             <button onClick={() => router.push('/terms')} className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
                                 <div>
                                     <p className="font-medium">{language === 'de' ? 'Nutzungsbedingungen' : 'Terms of Service'}</p>
                                 </div>
@@ -617,7 +616,6 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </div>
-            </main>
         </div>
     );
 }

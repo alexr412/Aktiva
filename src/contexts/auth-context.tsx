@@ -108,12 +108,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               isBanned: !!data.isBanned
             } as UserProfile;
             
+            console.log("[AuthContext] User profile updated:", profile.uid, "Onboarding:", profile.onboardingCompleted);
             setUserProfile(profile);
-
-            if (authUser.emailVerified && !profile.onboardingCompleted && pathname !== '/onboarding') {
-              router.replace('/onboarding');
-            }
           } else {
+            console.log("[AuthContext] User document does not exist");
             setUserProfile(null);
           }
           setLoading(false);
@@ -125,10 +123,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         setUserProfile(null);
         setLoading(false);
-        
-        if (!isPublicRoute) {
-            router.replace('/login');
-        }
       }
     });
 
@@ -136,7 +130,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       unsubscribeAuth();
       if (unsubscribeDoc) unsubscribeDoc();
     };
-  }, [router, pathname, isPublicRoute]);
+  }, []);
+
+  // Separate effect strictly for routing
+  useEffect(() => {
+    if (!isMounted || loading) return;
+
+    if (user && userProfile) {
+        if (user.emailVerified && !userProfile.onboardingCompleted && pathname !== '/onboarding') {
+            console.log("[AuthContext] Redirecting to onboarding. Path:", pathname);
+            router.replace('/onboarding');
+        }
+    } else if (!user && !loading) {
+        if (!isPublicRoute) {
+            console.log("[AuthContext] Redirecting to login. Path:", pathname);
+            router.replace('/login');
+        }
+    }
+  }, [user, userProfile, loading, isMounted, pathname, isPublicRoute, router]);
 
   // FCM Integration
   useEffect(() => {

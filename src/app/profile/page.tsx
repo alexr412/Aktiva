@@ -309,6 +309,30 @@ export default function ProfilePage() {
     const photoUrlToDisplay = userData?.photoURL || user.photoURL || '';
     const displayName = userData?.displayName || user.displayName || (language === 'de' ? 'Anonymer Nutzer' : 'Anonymous User');
 
+    const calculateAge = (birthday: string) => {
+        if (!birthday) return null;
+        try {
+            // Support both DD/MM/YYYY and YYYY-MM-DD
+            const parts = birthday.includes('/') ? birthday.split('/') : birthday.split('-');
+            const birth = parts[0].length === 4 
+                ? new Date(birthday) 
+                : new Date(parts.reverse().join('-'));
+            
+            if (isNaN(birth.getTime())) return null;
+            
+            const today = new Date();
+            let age = today.getFullYear() - birth.getFullYear();
+            const m = today.getMonth() - birth.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+                age--;
+            }
+            return age;
+        } catch (e) {
+            return null;
+        }
+    };
+    const displayAge = userData?.age || (userData?.birthday ? calculateAge(userData.birthday) : null);
+
     const visibleRequestProfiles = requestProfiles.filter(p => !userProfile?.hiddenEntityIds?.includes(p.uid));
     const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
 
@@ -377,7 +401,7 @@ export default function ProfilePage() {
                             <div className="flex items-center gap-2">
                                 <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                                     {displayName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
-                                    {userData?.age && <span className="text-slate-300 ml-2">, {userData.age}</span>}
+                                    {displayAge && <span className="text-slate-400 font-bold text-xl">, {displayAge}</span>}
                                 </h1>
                                 <UserBadge isPremium={userData?.isPremium} isSupporter={userData?.isSupporter} isCreator={userData?.isCreator} />
                             </div>

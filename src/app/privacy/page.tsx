@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Shield, Lock, Eye } from 'lucide-react';
+import { ArrowLeft, Shield, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -10,24 +10,19 @@ export default function PrivacyPage() {
   const language = useLanguage();
 
   return (
-    <main className="min-h-screen w-full bg-white dark:bg-neutral-950 p-6 md:p-12 antialiased">
-      <div className="max-w-3xl mx-auto">
-        <header className="mb-12 flex items-center justify-between">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => router.back()}
-            className="rounded-full hover:bg-slate-100"
-          >
-            <ArrowLeft className="w-6 h-6 text-slate-900" />
-          </Button>
-          <div className="text-right">
-             <h1 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white uppercase leading-none">Privacy</h1>
-             <p className="text-[10px] font-black text-[#10b981] uppercase tracking-widest mt-1">Aktvia Protection</p>
-          </div>
-        </header>
+    <div className="flex flex-col h-full w-full bg-background overflow-y-auto pb-32">
+      <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background px-4 shrink-0">
+        <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()}>
+          <ArrowLeft />
+        </Button>
+        <h1 className="flex items-center gap-2 text-xl font-bold">
+          <Shield className="h-6 w-6 text-primary shrink-0" />
+          <span className="truncate">{language === 'de' ? 'Datenschutzerklärung' : 'Privacy Policy'}</span>
+        </h1>
+      </header>
 
-        <section className="space-y-12">
+      <div className="p-4 md:p-8 space-y-6">
+        <div className="max-w-3xl mx-auto space-y-12">
           <div className="p-8 bg-slate-50 dark:bg-neutral-900 rounded-[2.5rem] border-none">
             <div className="flex gap-4 mb-6">
                <div className="w-12 h-12 rounded-2xl bg-[#10b981]/10 flex items-center justify-center">
@@ -70,17 +65,17 @@ export default function PrivacyPage() {
               </div>
             </div>
           </div>
-        </section>
 
-        <footer className="mt-12 text-center pb-12">
-           <Button 
-             onClick={() => router.back()}
-             className="h-14 px-12 rounded-full bg-[#10b981] hover:bg-emerald-600 text-white font-black uppercase tracking-widest transition-all active:scale-[0.98]"
-           >
+          <footer className="text-center pb-12">
+            <Button 
+              onClick={() => router.back()}
+              className="h-14 px-12 rounded-full bg-[#10b981] hover:bg-emerald-600 text-white font-black uppercase tracking-widest transition-all active:scale-[0.98]"
+            >
               Akzeptieren
-           </Button>
-        </footer>
+            </Button>
+          </footer>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

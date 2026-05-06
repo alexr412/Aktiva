@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter, doc, documentId } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { ActivityListItem } from "@/components/aktvia/activity-list-item";
+import { PremiumUpgradeModal } from '@/components/premium/PremiumUpgradeModal';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -874,52 +875,10 @@ export default function Home() {
         homeCity="Bremerhaven"
         isLoading={isLocationLoading}
       />
-      <Dialog open={isPremiumUpsellOpen} onOpenChange={setIsPremiumUpsellOpen}>
-        <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl overflow-hidden p-0 gap-0">
-          <div className="p-8">
-            <DialogHeader className="pt-2">
-              <div className="mx-auto bg-amber-100 dark:bg-amber-900/30 p-4 rounded-full w-fit mb-4">
-                <Crown className="h-10 w-10 text-amber-500" />
-              </div>
-              <DialogTitle className="">
-                {language === 'de' ? 'Premium-Funktion' : 'Premium Feature'}
-              </DialogTitle>
-              <DialogDescription className="text-center text-base font-medium px-2 pt-2">
-                {language === 'de' ? 'Die interaktive Kartenansicht ist ein exklusives Feature für Premium-Mitglieder. Schalte Premium frei, um alle Orte in deiner Umgebung visuell zu entdecken.' : 'The interactive map view is an exclusive feature for premium members. Unlock Premium to visually explore all places in your area.'}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="mt-6 mb-8">
-              <div className="bg-neutral-50 dark:bg-neutral-800/50 p-5 rounded-2xl space-y-3">
-                <div className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-500" strokeWidth={3} />
-                  <span className="font-bold text-sm">{language === 'de' ? 'Vollständige interaktive Karte' : 'Full interactive map'}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-green-500" strokeWidth={3} />
-                  <span className="font-bold text-sm">{language === 'de' ? 'Keine Werbung mehr' : 'No more ads'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <Button 
-                onClick={() => setIsPremiumUpsellOpen(false)} 
-                className="w-full rounded-2xl font-black h-14 bg-amber-500 hover:bg-amber-600 text-white shadow-xl shadow-amber-500/30 text-base"
-              >
-                {language === 'de' ? 'Upgrade freischalten' : 'Unlock Upgrade'}
-              </Button>
-              
-              <button 
-                onClick={() => setIsPremiumUpsellOpen(false)} 
-                className="text-neutral-400 hover:text-neutral-600 font-bold text-sm transition-colors"
-              >
-                {language === 'de' ? 'Vorerst abbrechen' : 'Cancel for now'}
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PremiumUpgradeModal 
+        isOpen={isPremiumUpsellOpen} 
+        onClose={() => setIsPremiumUpsellOpen(false)} 
+      />
     </>
   );
 }

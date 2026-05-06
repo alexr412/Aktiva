@@ -47,20 +47,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
     // Mode Initialisierung
     try {
-      const storedMode = localStorage.getItem('app-mode') as Mode | null;
-      if (storedMode) {
-        setMode(storedMode);
-        if (storedMode === 'dark') {
-          document.documentElement.classList.add('dark');
-        }
-      } else {
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const initialMode = systemPrefersDark ? 'dark' : 'light';
-        setMode(initialMode);
-        if (initialMode === 'dark') {
-          document.documentElement.classList.add('dark');
-        }
-      }
+      // Temporarily force light mode while dark mode is being reworked
+      setMode('light');
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('app-mode', 'light');
     } catch (e) {
       // localStorage nicht verfügbar
     }
@@ -89,18 +79,15 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const toggleMode = () => {
-    const newMode = mode === 'light' ? 'dark' : 'light';
+    // Temporarily disable mode toggling while dark mode is being reworked
+    const newMode = 'light';
     setMode(newMode);
     try {
       localStorage.setItem('app-mode', newMode);
     } catch (e) {
       // ignore
     }
-    if (newMode === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.remove('dark');
   };
 
   return (

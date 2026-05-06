@@ -38,19 +38,18 @@ export default function LanguageSettingsPage() {
     };
 
     return (
-        <div className="flex flex-col h-full bg-secondary">
-            <header className="flex h-16 items-center border-b bg-background px-4 shrink-0">
+        <div className="flex flex-col h-full w-full bg-secondary overflow-y-auto pb-32">
+            <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background px-4 shrink-0">
                 <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()}>
                     <ArrowLeft />
                 </Button>
-                <h1 className="">
-                    <Globe className="h-5 w-5 text-primary" />
-                    {currentLanguage === 'de' ? 'Spracheinstellungen' : 'Language Settings'}
+                <h1 className="flex items-center gap-2">
+                    <Globe className="h-7 w-7 text-primary shrink-0" />
+                    <span className="truncate">{currentLanguage === 'de' ? 'Spracheinstellungen' : 'Language Settings'}</span>
                 </h1>
             </header>
 
-            <main className="flex-1 overflow-y-auto pb-20">
-                <div className="p-6 space-y-4 max-w-2xl mx-auto">
+            <div className="p-6 space-y-4 max-w-2xl mx-auto w-full">
                     <div className="space-y-3">
                         <button 
                             disabled={isSaving}
@@ -87,7 +86,6 @@ export default function LanguageSettingsPage() {
                         {currentLanguage === 'de' ? 'Diese Einstellung ändert die Sprache der gesamten Benutzeroberfläche und dynamischer Tags.' : 'This language setting primarily affects dynamically generated tags and localized place content.'}
                     </p>
                 </div>
-            </main>
         </div>
     );
 }
