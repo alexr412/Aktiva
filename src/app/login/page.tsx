@@ -42,6 +42,7 @@ export default function LoginPage() {
   const [isResetting, setIsResetting] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const formSchema = z.object({
     email: z.string().min(1, { message: language === 'de' ? 'Email oder Username ist erforderlich.' : 'Email or username is required.' }),

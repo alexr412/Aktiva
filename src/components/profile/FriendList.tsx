@@ -115,31 +115,31 @@ export default function FriendList({ friendIds }: FriendListProps) {
 
   if (friendIds.length === 0) {
     return (
-      <div className="px-6 mb-4">
-        <div className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 rounded-2xl py-3 px-6 flex flex-col items-center text-center shadow-none">
-          {/* Illustration Stack - Minimal */}
-          <div className="relative mb-2">
+      <div className="px-6 mb-6">
+        <div className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-[#E5E7EB] dark:border-neutral-800 rounded-2xl py-8 px-6 flex flex-col items-center text-center shadow-none">
+          {/* Illustration Stack - Scaled per Root Architecture */}
+          <div className="relative mb-6">
             <div className="relative flex items-center justify-center">
-               <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center border-2 border-white dark:border-neutral-800">
-                  <Users className="w-5 h-5 text-emerald-600" />
+               <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center border-2 border-[#E5E7EB] dark:border-neutral-800">
+                  <Users className="w-12 h-12 text-[#10b981]" />
                </div>
-               <div className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-lg bg-white dark:bg-neutral-800 flex items-center justify-center border border-slate-100 dark:border-neutral-700">
-                  <UserPlus className="w-2.5 h-2.5 text-emerald-600" />
+               <div className="absolute -top-1 -right-1 w-7 h-7 rounded-xl bg-white dark:bg-neutral-800 flex items-center justify-center border border-[#E5E7EB] dark:border-neutral-700">
+                  <UserPlus className="w-4 h-4 text-[#10b981]" />
                </div>
             </div>
           </div>
 
           <div className="relative z-10 w-full max-w-[240px]">
-            <h3 className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">
-              {language === 'de' ? 'Baue dein Netzwerk auf' : 'Build your travel circle'}
+            <h3 className="text-[15px] font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">
+              {language === 'de' ? 'Search For New Friends' : 'Search For New Friends'}
             </h3>
-            <p className="text-[10px] font-medium text-slate-400 mb-3 leading-tight px-2">
-              {language === 'de' ? 'Verbinde dich mit Explorern weltweit.' : 'Connect with explorers worldwide.'}
+            <p className="text-[11px] font-medium text-slate-400 mb-6 leading-tight px-2">
+              {language === 'de' ? 'Connect with explorers worldwide and build your circle.' : 'Connect with explorers worldwide and build your circle.'}
             </p>
             
             <Link href="/community" className="w-full">
-              <Button className="w-full h-9 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-[9px] shadow-none border-none transition-all active:scale-[0.98]">
-                {language === 'de' ? 'FREUNDE FINDEN' : 'Search for new friends'}
+              <Button className="w-full h-11 rounded-full bg-[#10b981] hover:bg-emerald-600 text-white font-black tracking-tight text-[13px] shadow-none border-none transition-all active:scale-[0.98]">
+                {language === 'de' ? 'Search For New Friends' : 'Search For New Friends'}
               </Button>
             </Link>
           </div>

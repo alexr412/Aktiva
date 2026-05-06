@@ -77,6 +77,9 @@ export function ThemeSelector() {
                 <Label htmlFor="dark-mode" className="flex items-center gap-2 font-medium">
                      {mode === 'light' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                     <span>{mode === 'light' ? 'Light' : 'Dark'} Mode</span>
+                    {mode === 'dark' && (
+                        <span className="text-[9px] font-black bg-emerald-500/10 text-[#10b981] px-1.5 py-0.5 rounded uppercase tracking-wider ml-1">Beta</span>
+                    )}
                 </Label>
                 <Switch 
                     id="dark-mode" 

@@ -30,7 +30,7 @@ interface ProfileActivityCardProps {
   const activityDate = activity.activityDate?.toDate();
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-5 mb-4 shadow-sm border border-slate-50 dark:border-neutral-800 transition-all hover:shadow-md group cursor-pointer overflow-hidden relative">
+    <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-5 mb-4 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)] border border-slate-50 dark:border-neutral-800 transition-all hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] group cursor-pointer overflow-hidden relative">
       <div className="flex items-center gap-4">
         {/* Category Icon */}
         <div className={cn(
