@@ -439,11 +439,10 @@ export default function Home() {
 
   const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number }>>({});
 
-  const places = useMemo(() => {
+  const basePlaces = useMemo(() => {
     if (!data || isCommunityCategory || isFavoritesCategory) return [];
     if (isHighlightsCategory || isAktivCategory) {
       return data.flat().map((place: any) => {
-        // Calculate distance if missing so local filtering works
         let distance = place.distance;
         if (distance === undefined && userLocation && place.lat && place.lon) {
           distance = calculateDistance(userLocation.lat, userLocation.lng, place.lat, place.lon);
@@ -460,7 +459,6 @@ export default function Home() {
         distance: (f.properties.distance || 0) / 1000
       }));
 
-      // Local sanity check: even if the API returns it, we double check the distance here
       const distanceCappedItems = maxDistance
         ? itemsToFilter.filter((item: any) => item.distance <= maxDistance)
         : itemsToFilter;
@@ -476,10 +474,8 @@ export default function Home() {
         }
         const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
         const distance = item.distance || 0;
-        const placeId = props.place_id;
-        const votes = votesMap[placeId] || { upvotes: 0, downvotes: 0 };
         return {
-          id: placeId,
+          id: props.place_id,
           name: props.name || props.address_line1 || (language === "de" ? "Unbekannter Ort" : "Unknown Place"),
           address: props.address_line2 || (language === "de" ? "Keine Adresse verfügbar" : "No address available"),
           categories: cats,
@@ -487,17 +483,28 @@ export default function Home() {
           lon: props.lon,
           rating: rating,
           distance: distance,
-          relevanceScore: calculateRelevance(
-            { ...props, categories: cats, distance: distance, upvotes: votes.upvotes, downvotes: votes.downvotes },
-            userProfile || { role: 'user' } as any,
-            userLocation || { lat: 0, lng: 0 },
-            { debug: false }
-          ),
           openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null
         } as Place;
       });
+    });
+  }, [data, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory, language, userProfile, userLocation, activeCategory, maxDistance]);
+
+  const places = useMemo(() => {
+    if (basePlaces.length === 0) return [];
+
+    return basePlaces.map(place => {
+      const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0 };
+      return {
+        ...place,
+        relevanceScore: calculateRelevance(
+          { ...place, upvotes: votes.upvotes, downvotes: votes.downvotes },
+          userProfile || { role: 'user' } as any,
+          userLocation || { lat: 0, lng: 0 },
+          { debug: false }
+        )
+      };
     }).sort((a, b) => b.relevanceScore - a.relevanceScore);
-  }, [data, votesMap, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory, language, userProfile, userLocation, activeCategory, maxDistance]);
+  }, [basePlaces, votesMap, userProfile, userLocation]);
 
   // Batch-Fetch der Vote-Daten: Einmaliger Read statt N Echtzeit-Listener
   useEffect(() => {
@@ -515,15 +522,16 @@ export default function Home() {
       for (let i = 0; i < placeIds.length; i += batchSize) {
         if (cancelled) return;
         const batch = placeIds.slice(i, i + batchSize);
-        const results = await Promise.allSettled(
-          batch.map(id => getDoc(doc(db!, 'places', id)))
-        );
-        results.forEach((result, idx) => {
-          if (result.status === 'fulfilled' && result.value.exists()) {
-            const d = result.value.data();
-            newVotes[batch[idx]] = { upvotes: d.upvotes || 0, downvotes: d.downvotes || 0 };
-          }
-        });
+        try {
+          const q = query(collection(db!, 'places'), where(documentId(), 'in', batch));
+          const snap = await getDocs(q);
+          snap.forEach(docSnap => {
+            const d = docSnap.data();
+            newVotes[docSnap.id] = { upvotes: d.upvotes || 0, downvotes: d.downvotes || 0 };
+          });
+        } catch (e) {
+          console.error("Batch vote fetch failed:", e);
+        }
       }
 
       if (!cancelled) {
