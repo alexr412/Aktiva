@@ -146,6 +146,11 @@ export default function Home() {
         if (user?.uid) {
           updateUserLocation(user.uid, lat, lng, city);
         }
+        
+        // Cache location for ultra-fast boot on next visit
+        localStorage.setItem('aktiva_last_location', JSON.stringify({
+          lat, lng, city, timestamp: Date.now()
+        }));
       }
     } catch (error) {
       console.error("Reverse geocoding failed:", error);
@@ -191,41 +196,9 @@ export default function Home() {
       }
 
       if (type === 'dual_stream') {
-        // Vier parallele Requests: Hero A, B, C + Discovery-Spots
-        const [heroResultA, heroResultB, heroResultC, discoveryResult] = await Promise.all([
-          fetcher(key.heroUrlA),
-          fetcher(key.heroUrlB),
-          fetcher(key.heroUrlC),
-          fetcher(key.discoveryUrl)
-        ]);
-
-        const heroFeatures = [
-          ...(heroResultA?.features || []), 
-          ...(heroResultB?.features || []),
-          ...(heroResultC?.features || [])
-        ];
-        const discoveryFeatures = discoveryResult?.features || [];
-
-        // STRIKTE DEDUPLIZIERUNG (Namensbasiert gegen OSM-Flooding)
-        const nameMap = new Map();
-        
-        // Hero-Spots zuerst (haben Vorrang)
-        for (const f of heroFeatures) {
-          const name = f.properties?.name;
-          if (name && !nameMap.has(name)) {
-            nameMap.set(name, f);
-          }
-        }
-        
-        // Discovery-Spots auffüllen
-        for (const f of discoveryFeatures) {
-          const name = f.properties?.name;
-          if (name && !nameMap.has(name)) {
-            nameMap.set(name, f);
-          }
-        }
-
-        return { features: Array.from(nameMap.values()) };
+        // Konsolidierung: Eine einzige, effiziente Anfrage für alle Kategorien
+        const result = await fetcher(key.url);
+        return result;
       }
 
       if (type === 'geocoding') {
@@ -380,36 +353,27 @@ export default function Home() {
       const queryLimit = pageIndex === 0 ? 100 : 40;
       const offset = pageIndex === 0 ? 0 : 100 + (pageIndex - 1) * 40;
       const categoryString = categoriesToFetch.join(',');
-      // WICHTIG: conditions=named entfernt, damit wir keine Daten verlieren
       const url = `https://api.geoapify.com/v2/places?categories=${categoryString}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
       return { type: 'geoapify', url, pageIndex };
     }
 
-    // Discovery-Modus: Quad-Stream (Hero A, Hero B, Hero C, Discovery)
+    // Discovery-Modus: Single-Stream mit allen Kategorien (Bessere Performance)
     if (pageIndex === 0) {
-      // Hero A: Core Entertainment
-      const heroCategoriesA = "entertainment.zoo,entertainment.cinema,leisure.spa,adult.nightclub";
-      
-      // Hero B: Action & Adventure
-      const heroCategoriesB = "entertainment.water_park,entertainment.theme_park,entertainment.escape_game,sport.stadium,entertainment.miniature_golf";
-      
-      // Hero C: Fun, Sport & Niche (100% verifizierte Geoapify v2 Tags)
-      const heroCategoriesC = "entertainment.bowling_alley,entertainment.aquarium,entertainment.planetarium,entertainment.amusement_arcade,entertainment.activity_park.climbing,sport.ice_rink";
-      
-      // Discovery-Kategorien (Auffangbecken)
-      const discoveryCategories = "tourism.attraction,tourism.sights,leisure,sport,heritage,entertainment,activity.sport_club";
+      const allHeroCategories = [
+        "entertainment.zoo,entertainment.cinema,leisure.spa,adult.nightclub",
+        "entertainment.water_park,entertainment.theme_park,entertainment.escape_game,sport.stadium,entertainment.miniature_golf",
+        "entertainment.bowling_alley,entertainment.aquarium,entertainment.planetarium,entertainment.amusement_arcade,entertainment.activity_park.climbing,sport.ice_rink",
+        "tourism.attraction,tourism.sights,leisure,sport,heritage,entertainment,activity.sport_club"
+      ].join(',');
 
-      const heroUrlA = `https://api.geoapify.com/v2/places?categories=${heroCategoriesA}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=200&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
-      const heroUrlB = `https://api.geoapify.com/v2/places?categories=${heroCategoriesB}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=200&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
-      const heroUrlC = `https://api.geoapify.com/v2/places?categories=${heroCategoriesC}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=200&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
-      const discoveryUrl = `https://api.geoapify.com/v2/places?categories=${discoveryCategories}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=200&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
+      const url = `https://api.geoapify.com/v2/places?categories=${allHeroCategories}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=200&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
 
-      return { type: 'dual_stream', heroUrlA, heroUrlB, heroUrlC, discoveryUrl, pageIndex };
+      return { type: 'dual_stream', url, pageIndex };
     }
 
-    // Nachfolgende Seiten: Normaler Single-Stream (Offset angepasst auf 400)
-    const allCategories = categoriesToFetch.join(',');
-    const offset = 400 + (pageIndex - 1) * 50;
+    // Nachfolgende Seiten: Normaler Single-Stream
+    const allCategories = categoriesToFetch.length > 0 ? categoriesToFetch.join(',') : "entertainment,leisure,sport,tourism.attraction";
+    const offset = 200 + (pageIndex - 1) * 50;
     const url = `https://api.geoapify.com/v2/places?categories=${allCategories}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
     return { type: 'geoapify', url, pageIndex };
   }
@@ -579,7 +543,22 @@ export default function Home() {
   }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, data, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
   const requestLocation = useCallback(() => {
-    setIsLocationLoading(true);
+    // Check for cached location for instant boot
+    const cached = localStorage.getItem('aktiva_last_location');
+    if (cached) {
+      try {
+        const { lat, lng, city, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+        if (age < 4 * 60 * 60 * 1000) { // 4 hours TTL
+          setUserLocation({ lat, lng });
+          setCityName(city);
+          setIsLocationLoading(false);
+          // Still request fresh location in background
+        }
+      } catch (e) {
+        localStorage.removeItem('aktiva_last_location');
+      }
+    }
 
     if (planningState.isPlanning && planningState.destination) {
       setUserLocation(planningState.destination);
@@ -602,7 +581,7 @@ export default function Home() {
           setIsLocationLoading(false);
           setShowLocationRequirement(true);
 
-          if (error.code === error.PERMISSION_DENIED) {
+          if (error.code === 1) { // PERMISSION_DENIED
             toast({
               title: language === 'de' ? "Standort blockiert" : "Location blocked",
               description: language === 'de' ? "Bitte aktiviere den Standortzugriff in deinen Browsereinstellungen." : "Please enable location access in your browser settings.",
@@ -610,13 +589,13 @@ export default function Home() {
             });
           }
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
       );
     } else {
       setIsLocationLoading(false);
       setShowLocationRequirement(true);
     }
-  }, [planningState, reverseGeocode, language, toast]);
+  }, [planningState, reverseGeocode, language, toast, userProfile]);
 
   useEffect(() => {
     requestLocation();

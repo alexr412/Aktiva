@@ -21,7 +21,6 @@ const tagRules = [
   { pattern: /^entertainment(\..*)?$/, score: 65 },
 
   // Tier 4: Kultur & Passiv (Bewusste Abwertung zur Vermeidung von Flooding)
-  { pattern: /^tourism\.museum(\..*)?$/, score: 55 },
   { pattern: /^tourism(\..*)?$/, score: 60 },
   { pattern: /^sport(\..*)?$/, score: 50 },
   { pattern: /^leisure(\..*)?$/, score: 40 }
@@ -60,7 +59,7 @@ export function calculateRelevance(
 
   const categories: string[] = item.categories || [];
   const distance = item.distance || 0;
-  
+
   // 1. Basis-Score ermitteln (Erster Treffer in der Prioritätsliste gewinnt)
   let baseScore = 30; // System-Fallback
   for (let i = 0; i < tagRules.length; i++) {
