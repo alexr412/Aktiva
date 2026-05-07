@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { getUserProfile, isUsernameTaken } from '@/lib/firebase/firestore';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import type { UserProfile } from '@/lib/types';
@@ -60,6 +60,8 @@ export default function EditProfilePage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [originalUsername, setOriginalUsername] = useState<string>('');
+  const [lastUsernameChange, setLastUsernameChange] = useState<Timestamp | null>(null);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -72,6 +74,8 @@ export default function EditProfilePage() {
       const profile = await getUserProfile(user.uid);
       if (profile) {
         setProfilePhoto(profile.photoURL || null);
+        setOriginalUsername(profile.username || '');
+        setLastUsernameChange(profile.usernameLastChangedAt || null);
         setFormData({
           displayName: profile.displayName || '',
           username: profile.username || '',
@@ -179,24 +183,41 @@ export default function EditProfilePage() {
     e.preventDefault();
     if (!user?.uid) return;
 
-    if (formData.username && (formData.username.length < 4 || usernameAvailability === 'taken')) {
-      toast({ variant: 'destructive', title: "Ungültiger Username", description: "Bitte wähle einen verfügbaren Usernamen mit mindestens 4 Zeichen." });
-      return;
+    const isUsernameChanged = formData.username?.toLowerCase().replace(/\s/g, '') !== originalUsername?.toLowerCase();
+    const now = new Date();
+    let daysRemaining = 0;
+
+    if (isUsernameChanged && lastUsernameChange) {
+      const lastDate = lastUsernameChange.toDate();
+      const diffTime = now.getTime() - lastDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < 180) {
+        daysRemaining = 180 - diffDays;
+        toast({ 
+          variant: 'destructive', 
+          title: "Username-Sperre", 
+          description: `Du kannst deinen Usernamen erst in ${daysRemaining} Tagen wieder ändern.` 
+        });
+        return;
+      }
     }
 
     startSaving(async () => {
       try {
-        const updateData = {
+        const updateData: any = {
           displayName: formData.displayName,
-          username: formData.username?.toLowerCase().replace(/\s/g, ''),
-          age: formData.age ? parseInt(String(formData.age), 10) : null,
-          location: formData.location,
           bio: formData.bio,
           pronouns: formData.pronouns,
           gender: formData.gender,
           socialBattery: formData.socialBattery,
           categoryAffinities: formData.categoryAffinities
         };
+
+        if (isUsernameChanged) {
+          updateData.username = formData.username?.toLowerCase().replace(/\s/g, '');
+          updateData.usernameLastChangedAt = serverTimestamp();
+        }
         
         await setDoc(doc(db!, "users", user.uid), updateData, { merge: true });
         toast({ title: "Profil aktualisiert", description: "Deine Änderungen wurden gespeichert." });
@@ -376,16 +397,25 @@ export default function EditProfilePage() {
                 Bestimme hier, wie sehr dir bestimmte Kategorien gefallen. Dies beeinflusst direkt deinen Feed-Algorithmus.
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {availableTabs.map((tab) => (
-                <UserPreferenceSlider
-                  key={tab.id}
-                  label={tab.label}
-                  tagKey={tab.id}
-                  initialValue={formData.categoryAffinities?.[tab.id]}
-                  onChange={handleAffinityChange}
-                />
-              ))}
+            <CardContent className="pt-4">
+              {/* Globale Legende */}
+              <div className="flex justify-between px-6 mb-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                <span className="text-rose-500/70">Abneigung</span>
+                <span className="translate-x-1">Neutral</span>
+                <span className="text-emerald-500/70">Favorit</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-1">
+                {availableTabs.map((tab) => (
+                  <UserPreferenceSlider
+                    key={tab.id}
+                    label={tab.label}
+                    tagKey={tab.id}
+                    initialValue={formData.categoryAffinities?.[tab.id]}
+                    onChange={handleAffinityChange}
+                  />
+                ))}
+              </div>
             </CardContent>
           </Card>
           

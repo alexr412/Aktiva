@@ -3,6 +3,9 @@ import { db } from '@/lib/firebase/client';
 import { doc, getDoc } from 'firebase/firestore';
 import ActivityDetailClient from './activity-detail-client';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 type Props = {
   params: Promise<{ activityId: string }>;
 };
@@ -16,9 +19,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   try {
     const activityRef = doc(db, 'activities', activityId);
-    const activitySnap = await getDoc(activityRef);
     
-    if (!activitySnap.exists()) {
+    // Safety timeout for build process
+    const fetchWithTimeout = Promise.race([
+      getDoc(activityRef),
+      new Promise<null>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+    ]);
+
+    const activitySnap = await fetchWithTimeout as any;
+
+    if (!activitySnap || !activitySnap.exists()) {
       return { title: 'Aktivität nicht gefunden' };
     }
 

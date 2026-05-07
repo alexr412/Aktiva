@@ -136,41 +136,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isMounted || loading) return;
 
+    const isInternalOnboarding = pathname === '/onboarding';
+    const isLoginPage = pathname === '/login';
+
     if (user && userProfile) {
-        if (user.emailVerified && !userProfile.onboardingCompleted && pathname !== '/onboarding') {
-            console.log("[AuthContext] Redirecting to onboarding. Path:", pathname);
+        // Only redirect if email is verified AND onboarding is definitely not completed
+        // AND we are not already on the onboarding page
+        if (user.emailVerified && userProfile.onboardingCompleted === false && !isInternalOnboarding) {
+            console.log("[AuthContext] Safety Redirect: Forcing onboarding from", pathname);
             router.replace('/onboarding');
         }
-    } else if (!user && !loading) {
-        if (!isPublicRoute) {
-            console.log("[AuthContext] Redirecting to login. Path:", pathname);
-            router.replace('/login');
-        }
+    } else if (!user && !loading && !isPublicRoute && !isLoginPage) {
+        console.log("[AuthContext] Safety Redirect: Forcing login from", pathname);
+        router.replace('/login');
     }
-  }, [user, userProfile, loading, isMounted, pathname, isPublicRoute, router]);
+  }, [user, userProfile?.onboardingCompleted, loading, isMounted, pathname, isPublicRoute, router]);
 
-  // FCM Integration
+  // FCM Integration - Optimized to prevent loops
   useEffect(() => {
     if (!user || !userProfile?.notificationSettings?.localHighlights) return;
 
+    let isSubscribed = true;
+
     const setupFCM = async () => {
-      const token = await requestAndGetFCMToken();
-      if (token && token !== userProfile.fcmToken) {
-        await updateUserProfile(user.uid, { fcmToken: token });
+      try {
+        const token = await requestAndGetFCMToken();
+        if (isSubscribed && token && token !== userProfile.fcmToken) {
+          console.log("[AuthContext] Updating FCM token...");
+          await updateUserProfile(user.uid, { fcmToken: token });
+        }
+      } catch (err) {
+        console.error("FCM Setup failed:", err);
       }
     };
 
     setupFCM();
 
     const unsubscribeFCM = onForegroundMessage((payload) => {
+      if (!isSubscribed) return;
       toast({
         title: payload.notification?.title || "Benachrichtigung",
         description: payload.notification?.body,
       });
     });
 
-    return () => unsubscribeFCM?.();
-  }, [user, userProfile?.notificationSettings?.localHighlights, userProfile?.fcmToken]);
+    return () => {
+      isSubscribed = false;
+      if (unsubscribeFCM) unsubscribeFCM();
+    };
+  }, [user?.uid, userProfile?.notificationSettings?.localHighlights, userProfile?.fcmToken]);
 
   // Proximity Radar
   useEffect(() => {

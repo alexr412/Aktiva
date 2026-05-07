@@ -203,6 +203,7 @@ export interface UserProfile {
   fcmToken?: string;
   onboardingCompleted: boolean;
   username?: string;
+  usernameLastChangedAt?: Timestamp;
   birthday?: string;
   language?: 'de' | 'en';
   hiddenEntityIds?: string[];

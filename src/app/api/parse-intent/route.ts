@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 // ---------------------------------------------------------------------------
 // POST /api/parse-intent
 // Body: { query: string }
@@ -84,7 +86,7 @@ export async function POST(req: NextRequest) {
 
     // 3-second timeout via Promise.race
     const parsePromise = ai.generate({
-      model: 'googleai/gemini-2.5-flash',
+      model: 'googleai/gemini-1.5-flash',
       system: SYSTEM_PROMPT,
       prompt: `Nutzereingabe: "${query}"`,
       output: { schema: IntentSchema },

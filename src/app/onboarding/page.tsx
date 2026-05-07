@@ -19,11 +19,11 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  MapPin, 
-  Compass, 
-  Check, 
-  ArrowRight, 
+import {
+  MapPin,
+  Compass,
+  Check,
+  ArrowRight,
   ArrowLeft,
   Camera,
   User,
@@ -58,6 +58,8 @@ import { uploadProfileImage } from '@/lib/firebase/storage';
 import { reverseGeocode } from '@/lib/geoapify';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+
+export const dynamic = 'force-dynamic';
 
 const profileSchema = z.object({
   displayName: z.string().min(2, { message: 'Name too short' }).optional(),
@@ -105,6 +107,20 @@ const categories = [
 ];
 
 export default function OnboardingPage() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-white" />;
+  }
+
+  return <OnboardingContent />;
+}
+
+function OnboardingContent() {
   const { user, userProfile } = useAuth();
   const language = useLanguage();
   const router = useRouter();
@@ -134,13 +150,13 @@ export default function OnboardingPage() {
         router.replace('/');
       }
       if (!form.getValues('displayName') && (userProfile.displayName || userProfile.username)) {
-          form.setValue('displayName', userProfile.displayName || userProfile.username);
+        form.setValue('displayName', userProfile.displayName || userProfile.username);
       }
       if (!form.getValues('birthDate') && userProfile.birthday) {
-          form.setValue('birthDate', userProfile.birthday);
+        form.setValue('birthDate', userProfile.birthday);
       }
       if (!form.getValues('photoURL') && userProfile.photoURL) {
-          form.setValue('photoURL', userProfile.photoURL);
+        form.setValue('photoURL', userProfile.photoURL);
       }
     }
   }, [userProfile, router, form]);
@@ -200,7 +216,6 @@ export default function OnboardingPage() {
           const { latitude, longitude } = position.coords;
           const result = await reverseGeocode(latitude, longitude);
           if (result) {
-            // Find city/town or fallback to name
             const cityName = result.address?.split(',')[0] || result.name || "";
             form.setValue('location', cityName, { shouldValidate: true });
             toast({
@@ -223,10 +238,10 @@ export default function OnboardingPage() {
           description: language === 'de' ? "Der Zugriff auf deinen genauen Standort wurde verweigert oder ist fehlgeschlagen." : "Access to your precise location was denied or failed.",
         });
       },
-      { 
-        enableHighAccuracy: true, 
-        timeout: 15000, 
-        maximumAge: 0 
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
       }
     );
   };
@@ -238,16 +253,16 @@ export default function OnboardingPage() {
     try {
       const birthDateToUse = data.birthDate || userProfile?.birthday || '';
       const nameToUse = data.displayName || userProfile?.displayName || userProfile?.username || 'Aktiva User';
-      
+
       let ageValue = 0;
       if (birthDateToUse) {
-          const birth = new Date(birthDateToUse.split('/').reverse().join('-'));
-          const today = new Date();
-          ageValue = today.getFullYear() - birth.getFullYear();
-          const m = today.getMonth() - birth.getMonth();
-          if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-            ageValue--;
-          }
+        const birth = new Date(birthDateToUse.split('/').reverse().join('-'));
+        const today = new Date();
+        ageValue = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+          ageValue--;
+        }
       }
 
       await updateUserProfile(user.uid, {
@@ -283,22 +298,17 @@ export default function OnboardingPage() {
     }
   };
 
-  const currentDisplayName = form.watch('displayName');
-  const nameLength = currentDisplayName?.length || 0;
-  const nameFontSizeClass = nameLength > 20 ? "text-base" : nameLength > 15 ? "text-lg" : "text-2xl";
-
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4 antialiased">
       <div className="w-full max-w-lg bg-white rounded-[3rem] overflow-hidden relative border-none">
-        {/* Progress Bar */}
         <div className="absolute top-0 left-0 w-full h-1.5 flex gap-1.5 px-6 mt-2">
           {onboardingSteps.map((s) => (
-            <div 
-              key={s.id} 
+            <div
+              key={s.id}
               className={cn(
                 "h-1 rounded-full flex-1 transition-all duration-700",
                 step >= s.id ? "bg-[#10b981]" : "bg-slate-100"
-              )} 
+              )}
             />
           ))}
         </div>
@@ -306,7 +316,7 @@ export default function OnboardingPage() {
         <div className="p-8 md:p-12 pt-16">
           <header className="mb-10 text-center">
             <h1 className="text-slate-900 font-black">
-              {language === 'de' ? onboardingSteps[step-1].title.de : onboardingSteps[step-1].title.en}
+              {language === 'de' ? onboardingSteps[step - 1].title.de : onboardingSteps[step - 1].title.en}
             </h1>
             <p className="text-slate-400 font-black uppercase tracking-widest text-[10px] mt-2">
               {language === 'de' ? `SCHRITT ${step} VON ${onboardingSteps.length}` : `STEP ${step} OF ${onboardingSteps.length}`}
@@ -335,7 +345,7 @@ export default function OnboardingPage() {
                               <div className="relative group">
                                 <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-[#10b981] transition-colors" />
                                 <Input placeholder={language === 'de' ? "z.B. Aachen" : "e.g. London"} {...field} className="h-16 pl-14 pr-14 rounded-full border-none bg-slate-50 font-black focus-visible:ring-0" />
-                                <button 
+                                <button
                                   type="button"
                                   onClick={handleLocate}
                                   disabled={isLocating}
@@ -363,10 +373,10 @@ export default function OnboardingPage() {
                               <span className="text-lg font-black text-slate-900">{field.value} km</span>
                             </div>
                             <FormControl>
-                              <input 
-                                type="range" 
-                                min="1" 
-                                max="100" 
+                              <input
+                                type="range"
+                                min="1"
+                                max="100"
                                 step="1"
                                 value={field.value}
                                 onChange={(e) => field.onChange(parseInt(e.target.value))}
@@ -389,10 +399,10 @@ export default function OnboardingPage() {
                           <FormItem>
                             <FormLabel className="text-[11px] font-black uppercase tracking-widest text-[#10b981]">Bio</FormLabel>
                             <FormControl>
-                              <Textarea 
-                                placeholder={language === 'de' ? "Erzähle etwas über dich..." : "Tell us something about yourself..."} 
-                                {...field} 
-                                className="min-h-[150px] rounded-[2rem] border-none bg-slate-50 p-6 font-bold resize-none focus-visible:ring-0" 
+                              <Textarea
+                                placeholder={language === 'de' ? "Erzähle etwas über dich..." : "Tell us something about yourself..."}
+                                {...field}
+                                className="min-h-[150px] rounded-[2rem] border-none bg-slate-50 p-6 font-bold resize-none focus-visible:ring-0"
                               />
                             </FormControl>
                             <FormMessage />
@@ -406,8 +416,8 @@ export default function OnboardingPage() {
                     <div className="space-y-6">
                       <div className="text-center pb-2">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                          {language === 'de' 
-                            ? "Keine Sorge, diese Einstellungen kannst du jederzeit im Profil anpassen." 
+                          {language === 'de'
+                            ? "Keine Sorge, diese Einstellungen kannst du jederzeit im Profil anpassen."
                             : "Don't worry, you can adjust these settings at any time in your profile."}
                         </p>
                       </div>
@@ -421,23 +431,22 @@ export default function OnboardingPage() {
                             const currentIndex = discreteValues.indexOf(affinityValue) !== -1 ? discreteValues.indexOf(affinityValue) : 4;
                             const Icon = cat.icon;
 
-                            // Alignment with profile/edit color logic
-                            let accentColor = "#9ca3af"; // Gray (Neutral)
+                            let accentColor = "#9ca3af";
                             let textColor = "text-slate-400";
                             let bgColor = "bg-white";
-                            
+
                             if (affinityValue > 1.0) {
-                              accentColor = "#10b981"; // Emerald (Favorite)
+                              accentColor = "#10b981";
                               textColor = "text-[#10b981]";
                               bgColor = "bg-[#10b981]/5";
                             } else if (affinityValue < 1.0) {
-                              accentColor = "#ef4444"; // Red (Dislike)
+                              accentColor = "#ef4444";
                               textColor = "text-red-500";
                               bgColor = "bg-red-50/50";
                             }
 
                             return (
-                              <div 
+                              <div
                                 key={cat.id}
                                 className={cn(
                                   "relative rounded-[2rem] border-2 transition-all p-3.5 flex flex-col gap-3",
@@ -466,33 +475,37 @@ export default function OnboardingPage() {
 
                                 <div className="px-1 relative group/slider">
                                   <style jsx>{`
-                                    input[type='range']::-webkit-slider-thumb {
+                                    .custom-thumb::-webkit-slider-thumb {
                                       appearance: none;
                                       width: 18px;
                                       height: 18px;
                                       background: white;
-                                      border: 2px solid ${accentColor};
+                                      border: 2px solid var(--thumb-color);
                                       border-radius: 50%;
                                       cursor: pointer;
                                       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                                       transition: all 0.2s;
                                     }
-                                    input[type='range']::-webkit-slider-thumb:hover {
+                                    .custom-thumb::-webkit-slider-thumb:hover {
                                       transform: scale(1.1);
                                       box-shadow: 0 3px 6px rgba(0,0,0,0.15);
                                     }
                                   `}</style>
-                                  <input 
-                                    type="range" 
-                                    min="0" 
-                                    max="8" 
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="8"
                                     step="1"
                                     value={currentIndex}
+                                    style={{
+                                      "--thumb-color": accentColor,
+                                      background: `linear-gradient(to right, ${accentColor} 0%, ${accentColor} ${(currentIndex / 8) * 100}%, #cbd5e1 ${(currentIndex / 8) * 100}%, #cbd5e1 100%)`
+                                    } as any}
                                     onChange={(e) => {
                                       const idx = parseInt(e.target.value, 10);
                                       const val = discreteValues[idx];
                                       form.setValue(`affinities.${cat.id}`, val);
-                                      
+
                                       const currentInterests = form.getValues('interests') || [];
                                       if (val > 0.1 && !currentInterests.includes(cat.id)) {
                                         form.setValue('interests', [...currentInterests, cat.id]);
@@ -500,10 +513,7 @@ export default function OnboardingPage() {
                                         form.setValue('interests', currentInterests.filter(i => i !== cat.id));
                                       }
                                     }}
-                                    style={{
-                                      background: `linear-gradient(to right, ${accentColor} 0%, ${accentColor} ${(currentIndex / 8) * 100}%, #cbd5e1 ${(currentIndex / 8) * 100}%, #cbd5e1 100%)`
-                                    }}
-                                    className={cn("w-full h-2.5 rounded-full appearance-none cursor-pointer transition-all shadow-inner")}
+                                    className={cn("w-full h-2.5 rounded-full appearance-none cursor-pointer transition-all shadow-inner custom-thumb")}
                                   />
                                 </div>
                               </div>
@@ -526,7 +536,7 @@ export default function OnboardingPage() {
                           )}
                           {uploadingImage && (
                             <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                               <Loader2 className="w-8 h-8 animate-spin text-[#10b981]" />
+                              <Loader2 className="w-8 h-8 animate-spin text-[#10b981]" />
                             </div>
                           )}
                         </div>
@@ -545,22 +555,21 @@ export default function OnboardingPage() {
 
                   {step === 5 && (
                     <div className="space-y-8">
-                       <div className="flex justify-center">
+                      <div className="flex justify-center">
                         <div className="w-full max-w-sm rounded-[2.5rem] bg-slate-900 border border-slate-800 p-6 shadow-none relative overflow-hidden group">
-                          {/* Saturated Mesh Effects */}
                           <div className="absolute -top-[20%] -right-[20%] w-40 h-40 bg-[#10b981]/20 blur-[50px] group-hover:scale-150 transition-transform duration-1000" />
-                          
+
                           <div className="flex items-center gap-5 relative z-10">
                             <div className="relative">
-                               <Avatar className="h-20 w-20 border-4 border-white/10">
-                                   <AvatarImage src={form.watch('photoURL')} />
-                                   <AvatarFallback className="bg-slate-800 text-white font-black text-2xl">
-                                     {form.watch('displayName')?.charAt(0) || 'A'}
-                                   </AvatarFallback>
-                               </Avatar>
-                                <div className="absolute -bottom-1 -right-1 bg-[#10b981] p-1.5 rounded-full border-2 border-slate-900">
-                                   <Check className="w-3 h-3 text-white" strokeWidth={4} />
-                                </div>
+                              <Avatar className="h-20 w-20 border-4 border-white/10">
+                                <AvatarImage src={form.watch('photoURL')} />
+                                <AvatarFallback className="bg-slate-800 text-white font-black text-2xl">
+                                  {form.watch('displayName')?.charAt(0) || 'A'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="absolute -bottom-1 -right-1 bg-[#10b981] p-1.5 rounded-full border-2 border-slate-900">
+                                <Check className="w-3 h-3 text-white" strokeWidth={4} />
+                              </div>
                             </div>
                             <div className="flex-1 overflow-hidden">
                               <h3 className="text-white font-black truncate">
@@ -576,26 +585,26 @@ export default function OnboardingPage() {
                           </div>
 
                           <div className="mt-6 pt-6 border-t border-white/5 relative z-10">
-                             <p className="text-sm text-slate-300 font-medium leading-relaxed line-clamp-3">
-                               {form.watch('bio') || (language === 'de' ? "Keine Bio angegeben..." : "No bio provided...")}
-                             </p>
+                            <p className="text-sm text-slate-300 font-medium leading-relaxed line-clamp-3">
+                              {form.watch('bio') || (language === 'de' ? "Keine Bio angegeben..." : "No bio provided...")}
+                            </p>
                           </div>
 
                           <div className="flex gap-2 mt-6 relative z-10 overflow-x-auto pb-2 scrollbar-hide">
                             {form.watch('interests').slice(0, 3).map((int) => {
-                               const cat = categories.find(c => c.id === int);
-                               if (!cat) return null;
-                               const PreviewIcon = cat.icon;
-                               return (
-                                 <div key={int} className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] text-white font-bold uppercase tracking-wider flex-shrink-0 flex items-center gap-1.5">
-                                   <PreviewIcon className="w-3 h-3" />
-                                   {language === 'de' ? cat.label.de : cat.label.en}
-                                 </div>
-                               );
+                              const cat = categories.find(c => c.id === int);
+                              if (!cat) return null;
+                              const PreviewIcon = cat.icon;
+                              return (
+                                <div key={int} className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] text-white font-bold uppercase tracking-wider flex-shrink-0 flex items-center gap-1.5">
+                                  <PreviewIcon className="w-3 h-3" />
+                                  {language === 'de' ? cat.label.de : cat.label.en}
+                                </div>
+                              );
                             })}
                           </div>
                         </div>
-                       </div>
+                      </div>
                     </div>
                   )}
                 </motion.div>
@@ -604,7 +613,7 @@ export default function OnboardingPage() {
               <div className="flex gap-4 pt-12">
                 {step > 1 && (
                   <Button type="button" variant="ghost" onClick={prevStep} className="h-14 px-8 rounded-full text-slate-500 font-black uppercase tracking-widest text-[11px] hover:bg-slate-50 transition-all">
-                     {language === 'de' ? 'ZURÜCK' : 'BACK'}
+                    {language === 'de' ? 'ZURÜCK' : 'BACK'}
                   </Button>
                 )}
                 {step < onboardingSteps.length ? (
@@ -624,3 +633,4 @@ export default function OnboardingPage() {
     </div>
   );
 }
+

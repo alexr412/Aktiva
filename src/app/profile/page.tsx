@@ -413,6 +413,11 @@ export default function ProfilePage() {
                                     @{userData.username}
                                 </span>
                             )}
+                            {userData?.bio && (
+                                <p className="mt-3 px-8 text-sm font-medium text-slate-600 dark:text-neutral-400 leading-relaxed max-w-md">
+                                    {userData.bio}
+                                </p>
+                            )}
                         </div>
 
                         {/* Rating */}
