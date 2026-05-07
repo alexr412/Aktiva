@@ -198,16 +198,12 @@ export default function FriendList({ friendIds }: FriendListProps) {
               <Link href={`/profile/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[35%] max-w-[140px]">
                 <div className="flex flex-col items-center gap-2 p-4 rounded-[1.5rem] bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 transition-all cursor-pointer relative overflow-hidden group hover:bg-slate-50 dark:hover:bg-neutral-800/50">
                   <div className="relative">
-                      <Avatar className={cn(
-                        "h-14 w-14 border-0 shadow-none transition-transform group-hover:scale-105",
-                        friend.isCreator
-                          ? "ring-4 ring-slate-900 dark:ring-blue-500"
-                          : friend.isPremium 
-                          ? "ring-4 ring-amber-400 dark:ring-amber-500" 
-                          : friend.isSupporter
-                          ? "ring-4 ring-red-500"
-                          : "ring-4 ring-slate-50 dark:ring-neutral-800/50"
-                      )}>
+                      <Avatar 
+                        className="h-14 w-14 border-0 shadow-none transition-transform group-hover:scale-105"
+                        isPremium={friend.isPremium}
+                        isCreator={friend.isCreator}
+                        isSupporter={friend.isSupporter}
+                      >
                         <AvatarImage src={friend.photoURL || undefined} />
                         <AvatarFallback className="bg-slate-100 text-slate-400 font-black text-xl">
                           {friend.displayName?.charAt(0).toUpperCase() || "U"}

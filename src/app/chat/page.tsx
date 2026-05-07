@@ -196,15 +196,24 @@ export default function ChatPage() {
                   boxShadow: `inset 0 0 0 1px ${displayColor}10`
               } : undefined}
               >
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt={chatName || ''} className="h-full w-full object-cover" />
-                ) : (
-                  !isDM && primaryStyle?.icon === Building ? (
-                    <span className="text-3xl font-black text-white drop-shadow-sm">{chatName?.charAt(0).toUpperCase()}</span>
+                <Avatar 
+                  className="h-20 w-20 rounded-[2rem]"
+                  isPremium={otherUser?.isPremium}
+                  isCreator={otherUser?.isCreator}
+                  isSupporter={otherUser?.isSupporter}
+                >
+                  {avatarUrl ? (
+                    <AvatarImage src={avatarUrl} alt={chatName || ''} className="object-cover" />
                   ) : (
-                    <CategoryIcon className={cn("h-10 w-10 drop-shadow-md", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
-                  )
-                )}
+                    <AvatarFallback className="bg-transparent">
+                      {!isDM && primaryStyle?.icon === Building ? (
+                        <span className="text-3xl font-black text-white drop-shadow-sm">{chatName?.charAt(0).toUpperCase()}</span>
+                      ) : (
+                        <CategoryIcon className={cn("h-10 w-10 drop-shadow-md", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
+                      )}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
                 {/* Active Indicator */}
                 {!isDM && <div className="absolute bottom-3 right-3 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />}
               </div>

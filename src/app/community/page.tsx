@@ -118,7 +118,11 @@ export default function CommunityPage() {
                             <div className="mt-6 rounded-lg border bg-secondary/30 p-4 border-border">
                                 <div className="flex items-center justify-between gap-4">
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <Avatar>
+                                        <Avatar
+                                            isPremium={foundUser.isPremium}
+                                            isCreator={foundUser.isCreator}
+                                            isSupporter={foundUser.isSupporter}
+                                        >
                                             <AvatarImage src={foundUser.photoURL || undefined} />
                                             <AvatarFallback>{foundUser.displayName?.charAt(0)}</AvatarFallback>
                                         </Avatar>

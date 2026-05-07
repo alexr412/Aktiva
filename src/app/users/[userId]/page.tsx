@@ -329,17 +329,17 @@ export default function UserProfilePage() {
             </header>
 
             <div className="p-6 flex flex-col items-center justify-center text-center space-y-4">
-                <div className={cn(
-                  "p-1 rounded-full shadow-lg transition-all",
-                  userData.isPremium ? "bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600" : (userData.isSupporter ? "bg-red-500" : "bg-transparent")
-                )}>
-                    <Avatar className="h-24 w-24 border-4 border-white">
-                        <AvatarImage src={photoUrlToDisplay} alt="Profil" />
-                        <AvatarFallback className="text-3xl bg-muted">
-                            {displayName.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
-                </div>
+                <Avatar 
+                    className="h-24 w-24 border-4 border-white"
+                    isPremium={userData.isPremium}
+                    isCreator={userData.isCreator}
+                    isSupporter={userData.isSupporter}
+                >
+                    <AvatarImage src={photoUrlToDisplay} alt="Profil" />
+                    <AvatarFallback className="text-3xl bg-muted">
+                        {displayName.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                </Avatar>
 
                 <div className="flex flex-col items-center">
                     <div className="flex items-center justify-center gap-2">

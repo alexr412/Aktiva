@@ -189,7 +189,12 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                           className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-neutral-800/50 transition-all group"
                           onClick={() => onOpenChange(false)}
                       >
-                          <Avatar className="h-12 w-12 border-2 border-white dark:border-neutral-800 shadow-sm ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
+                          <Avatar 
+                              className="h-12 w-12 border-2 border-white dark:border-neutral-800 shadow-sm ring-2 ring-transparent group-hover:ring-primary/20 transition-all"
+                              isPremium={p.isPremium}
+                              isCreator={p.isCreator}
+                              isSupporter={p.isSupporter}
+                          >
                               <AvatarImage src={p.photoURL || undefined} />
                               <AvatarFallback className="bg-primary/5 text-primary font-black">{p.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
                           </Avatar>

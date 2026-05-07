@@ -487,17 +487,24 @@ export default function ExplorePage() {
                                                                  {(card.maxParticipants || 10) - card.participantIds.length} {language === 'de' ? 'frei' : 'free'}
                                                              </span>
                                                          </div>
-                                                     </div>
-
-                                                    <div className="flex items-center justify-center mt-2 mb-4">
-                                                        <div className="flex space-x-3 p-0.5 items-center">
+                                                         <div className="flex space-x-3 p-0.5 items-center">
                                                             {/* Host Avatar */}
-                                                            <Avatar className="h-10 w-10 border-2 border-white dark:border-neutral-900 shadow-md ring-1 ring-black/5">
-                                                                <AvatarImage src={card.hostPhotoURL || undefined} alt={card.hostName || 'Host'} />
-                                                                <AvatarFallback className="bg-orange-100 text-orange-700 text-xs font-bold">
-                                                                    {card.hostName?.charAt(0) || 'H'}
-                                                                </AvatarFallback>
-                                                            </Avatar>
+                                                            {(() => {
+                                                                const hostDetails = card.participantDetails?.[card.hostId];
+                                                                return (
+                                                                    <Avatar 
+                                                                        className="h-10 w-10 border-2 border-white dark:border-neutral-900 shadow-md"
+                                                                        isPremium={hostDetails?.isPremium}
+                                                                        isCreator={hostDetails?.isCreator}
+                                                                        isSupporter={hostDetails?.isSupporter}
+                                                                    >
+                                                                        <AvatarImage src={card.hostPhotoURL || undefined} alt={card.hostName || 'Host'} />
+                                                                        <AvatarFallback className="bg-orange-100 text-orange-700 text-xs font-bold">
+                                                                            {card.hostName?.charAt(0) || 'H'}
+                                                                        </AvatarFallback>
+                                                                    </Avatar>
+                                                                )
+                                                            })()}
                                                             
                                                             {/* Participant Avatars (max 3 slots) */}
                                                             {[0, 1, 2].map((i) => {
@@ -505,8 +512,15 @@ export default function ExplorePage() {
                                                                     .filter(p => p.uid !== card.hostId)[i];
                                                                 
                                                                 if (participant) {
+                                                                    const pDetails = card.participantDetails?.[participant.uid];
                                                                     return (
-                                                                        <Avatar key={participant.uid} className="h-10 w-10 border-2 border-white dark:border-neutral-900 shadow-md">
+                                                                        <Avatar 
+                                                                            key={participant.uid} 
+                                                                            className="h-10 w-10 border-2 border-white dark:border-neutral-900 shadow-md"
+                                                                            isPremium={pDetails?.isPremium}
+                                                                            isCreator={pDetails?.isCreator}
+                                                                            isSupporter={pDetails?.isSupporter}
+                                                                        >
                                                                             <AvatarImage src={participant.photoURL || undefined} alt={participant.displayName || 'Participant'} />
                                                                             <AvatarFallback className={cn(
                                                                                 "text-[10px] font-bold text-white",
@@ -523,14 +537,14 @@ export default function ExplorePage() {
                                                                     <div key={`empty-${i}`} className="h-10 w-10 rounded-full border-2 border-white dark:border-neutral-900 bg-neutral-50 dark:bg-neutral-800 flex items-center justify-center shadow-sm">
                                                                         <Plus className="h-4 w-4 text-neutral-300" />
                                                                     </div>
-                                                                );
+                                                                )
                                                             })}
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </motion.div>
-                                    );
+                                    )
                                 })}
                             </AnimatePresence>
 

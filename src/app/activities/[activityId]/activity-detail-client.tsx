@@ -320,7 +320,12 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
           <CardContent>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Avatar className="h-14 w-14 border-2 border-slate-100">
+                <Avatar 
+                  className="h-14 w-14 border-2 border-slate-100"
+                  isPremium={activity.participantDetails?.[activity.hostId]?.isPremium}
+                  isCreator={activity.participantDetails?.[activity.hostId]?.isCreator}
+                  isSupporter={activity.participantDetails?.[activity.hostId]?.isSupporter}
+                >
                   <AvatarImage src={activity.hostPhotoURL || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary font-black">{activity.hostName?.charAt(0)}</AvatarFallback>
                 </Avatar>

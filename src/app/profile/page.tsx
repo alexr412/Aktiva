@@ -377,15 +377,15 @@ export default function ProfilePage() {
                     <div className="relative mb-10 group">
 
 
-                        <div className={cn(
-                            "rounded-full transition-transform active:scale-95 relative z-10 shadow-none",
-                            userData?.isCreator ? "bg-gradient-to-tr from-slate-900 via-slate-800 to-blue-500 p-1.5 shadow-none" : (userData?.isPremium ? "bg-gradient-to-tr from-amber-400 via-yellow-100 to-amber-600 p-1.5 shadow-none" : (userData?.isSupporter ? "bg-red-500 p-1.5 shadow-none" : "p-0 bg-transparent"))
-                        )}>
-                            <Avatar className="h-32 w-32 shadow-none border-none">
-                                <AvatarImage src={photoUrlToDisplay} alt="Profil" />
-                                <AvatarFallback className="text-5xl bg-neutral-100 dark:bg-neutral-800 text-primary font-black">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                        </div>
+                        <Avatar 
+                            className="h-32 w-32 shadow-xl border-4 border-white dark:border-neutral-900 relative z-10 transition-transform active:scale-95"
+                            isPremium={userData?.isPremium}
+                            isCreator={userData?.isCreator}
+                            isSupporter={userData?.isSupporter}
+                        >
+                            <AvatarImage src={photoUrlToDisplay} alt="Profil" />
+                            <AvatarFallback className="text-5xl bg-neutral-100 dark:bg-neutral-800 text-primary font-black">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-none hover:scale-110 active:scale-90 transition-all z-20"

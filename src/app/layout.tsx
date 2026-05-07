@@ -1,4 +1,4 @@
-import type {Metadata, Viewport} from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { BottomNav } from '@/components/bottom-nav';
@@ -9,6 +9,7 @@ import { PlanningModeProvider } from '@/contexts/planning-mode-context';
 import { PlanningModeBanner } from '@/components/common/PlanningModeBanner';
 import { FavoritesProvider } from '@/contexts/favorites-context';
 import { AppInit } from '@/components/common/AppInit';
+import { StatusBorder } from '@/components/common/StatusBorder';
 
 export const metadata: Metadata = {
   title: 'Aktvia',
@@ -62,6 +63,7 @@ export default function RootLayout({
                 <Toaster />
               </PlanningModeProvider>
             </FavoritesProvider>
+            <StatusBorder />
           </AuthProvider>
         </ThemeProvider>
       </body>

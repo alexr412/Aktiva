@@ -921,7 +921,12 @@ export default function Home() {
             <div className="global-header-container">
               <div className="flex items-center gap-3">
                 <Link href="/profile">
-                  <Avatar className="h-10 w-10 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer">
+                  <Avatar 
+                    className="h-10 w-10 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
+                    isPremium={userProfile?.isPremium}
+                    isCreator={userProfile?.isCreator}
+                    isSupporter={userProfile?.isSupporter}
+                  >
                     <AvatarImage src={userProfile?.photoURL || user?.photoURL || undefined} alt="Avatar" />
                     <AvatarFallback className="bg-emerald-50 text-emerald-600 font-black text-xs">{userProfile?.displayName ? userProfile.displayName.charAt(0) : 'U'}</AvatarFallback>
                   </Avatar>

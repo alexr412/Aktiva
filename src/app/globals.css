@@ -49,11 +49,21 @@
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
-    
     /* Default dark primary fallback */
     --primary: 150 60% 45%;
     --primary-foreground: 0 0% 100%;
     --ring: 150 60% 45%;
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; border-width: 4px; }
+  50% { opacity: 0.8; border-width: 3.5px; }
+}
+
+@layer utilities {
+  .animate-pulse-subtle {
+    animation: pulse-subtle 3s infinite ease-in-out;
   }
 }
 

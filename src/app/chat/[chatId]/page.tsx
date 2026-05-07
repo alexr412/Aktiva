@@ -317,10 +317,12 @@ export default function ChatRoomPage() {
           <div className="flex items-center gap-3 flex-1 truncate">
             {isDirectMessage && otherUser ? (
                 <Link href={`/profile/${otherUser.uid}`} className="flex items-center gap-2.5 truncate hover:opacity-80 transition-opacity cursor-pointer">
-                    <Avatar className={cn(
-                      "h-9 w-9 shadow-sm border border-white dark:border-neutral-800",
-                      otherUser.isCreator ? "ring-2 ring-slate-900" : (otherUser.isPremium ? "ring-2 ring-amber-400" : (otherUser.isSupporter ? "ring-2 ring-red-500" : ""))
-                    )}>
+                    <Avatar 
+                      className="h-9 w-9 shadow-sm border border-white dark:border-neutral-800"
+                      isPremium={otherUser.isPremium}
+                      isCreator={otherUser.isCreator}
+                      isSupporter={otherUser.isSupporter}
+                    >
                         <AvatarImage src={otherUser.photoURL || undefined} />
                         <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">{otherUser.displayName?.charAt(0)}</AvatarFallback>
                     </Avatar>
