@@ -53,14 +53,14 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   useEffect(() => {
     if (!activityId || !db) return;
 
-    const unsubscribe = onSnapshot(doc(db, 'activities', activityId), (docSnap) => {
+    const unsubscribe = onSnapshot(doc(db!, 'activities', activityId), (docSnap) => {
       if (docSnap.exists()) {
         const data = { id: docSnap.id, ...docSnap.data() } as Activity;
         setActivity(data);
         
         // Listener für den zugehörigen Ort (für Opening Hours etc.)
         if (data.placeId && data.placeId !== 'custom') {
-          onSnapshot(doc(db, 'places', data.placeId), (pSnap) => {
+          onSnapshot(doc(db!, 'places', data.placeId), (pSnap) => {
             if (pSnap.exists()) {
               setPlace({ id: pSnap.id, ...pSnap.data() } as Place);
             }

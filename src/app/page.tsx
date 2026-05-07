@@ -11,9 +11,9 @@ import { SpotActionSheet } from '@/components/aktvia/spot-action-sheet';
 import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { 
-  DropdownMenu, 
-  DropdownMenuTrigger, 
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
   DropdownMenuContent,
 } from '@/components/ui/dropdown-menu';
 import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, X, Compass } from 'lucide-react';
@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { createActivity, joinActivity, searchActivitiesBySemanticVector, castActivityVote, votePlace } from '@/lib/firebase/firestore';
+import { createActivity, joinActivity, searchActivitiesBySemanticVector, castActivityVote, votePlace, updateUserLocation } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter, doc, documentId } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
@@ -133,14 +133,25 @@ export default function Home() {
 
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-      const data = await response.json();
-      const fallback = language === 'de' ? 'Unbekannter Ort' : 'Unknown Place';
-      setCityName(data.address.city || data.address.town || data.address.village || fallback);
-    } catch (error) { 
-      setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'); 
+      const { reverseGeocode: geoapifyReverse } = await import('@/lib/geoapify');
+      const place = await geoapifyReverse(lat, lng);
+
+      if (place) {
+        // Geoapify properties usually contain city or address components
+        const props = (place as any)._rawProperties || {};
+        const city = props.city || props.town || props.village || props.suburb || props.municipality || place.name || (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
+
+        setCityName(city);
+
+        if (user?.uid) {
+          updateUserLocation(user.uid, lat, lng, city);
+        }
+      }
+    } catch (error) {
+      console.error("Reverse geocoding failed:", error);
+      setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
     }
-  }, [language]);
+  }, [language, user?.uid]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
@@ -179,6 +190,44 @@ export default function Home() {
         return result;
       }
 
+      if (type === 'dual_stream') {
+        // Vier parallele Requests: Hero A, B, C + Discovery-Spots
+        const [heroResultA, heroResultB, heroResultC, discoveryResult] = await Promise.all([
+          fetcher(key.heroUrlA),
+          fetcher(key.heroUrlB),
+          fetcher(key.heroUrlC),
+          fetcher(key.discoveryUrl)
+        ]);
+
+        const heroFeatures = [
+          ...(heroResultA?.features || []), 
+          ...(heroResultB?.features || []),
+          ...(heroResultC?.features || [])
+        ];
+        const discoveryFeatures = discoveryResult?.features || [];
+
+        // STRIKTE DEDUPLIZIERUNG (Namensbasiert gegen OSM-Flooding)
+        const nameMap = new Map();
+        
+        // Hero-Spots zuerst (haben Vorrang)
+        for (const f of heroFeatures) {
+          const name = f.properties?.name;
+          if (name && !nameMap.has(name)) {
+            nameMap.set(name, f);
+          }
+        }
+        
+        // Discovery-Spots auffüllen
+        for (const f of discoveryFeatures) {
+          const name = f.properties?.name;
+          if (name && !nameMap.has(name)) {
+            nameMap.set(name, f);
+          }
+        }
+
+        return { features: Array.from(nameMap.values()) };
+      }
+
       if (type === 'geocoding') {
         const { url } = key;
         const result = await fetcher(url);
@@ -208,7 +257,7 @@ export default function Home() {
             }
           };
         }));
-        
+
         return { features: detailedFeatures };
       }
 
@@ -280,12 +329,9 @@ export default function Home() {
       const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.upvotes;
       return { type: 'highlights', cursorValue: cursor, pageIndex };
     }
-
     if (!userLocation) return null;
 
     const radiusMeters = maxDistance ? maxDistance * 1000 : 100000;
-    const queryLimit = pageIndex === 0 ? 300 : 50;
-    const offset = pageIndex === 0 ? 0 : 300 + (pageIndex - 1) * 50;
 
     // CRITICAL: Pause fetching while the LLM is determining the intent/categories.
     // This prevents "Endless fetches of default categories" while the search is starting.
@@ -295,31 +341,76 @@ export default function Home() {
 
     // PATH B: Specific Proper Names or Fallback Name Search
     if (shouldFilterByName && debouncedSearchQuery) {
-       if (pageIndex > 0) return null;
-       // Smart Radius: If we are in fallback mode (categories were found but returned 0), 
-       // we expand the search radius to 5x to find something relevant further away.
-       const fallbackRadius = (activeCategory.length > 0) ? Math.min(radiusMeters * 5, 100000) : radiusMeters;
-       const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(debouncedSearchQuery)}&filter=circle:${userLocation.lng},${userLocation.lat},${fallbackRadius}&bias=proximity:${userLocation.lng},${userLocation.lat}&format=json&apiKey=${GEOAPIFY_API_KEY}`;
-       return { type: 'geocoding', url, pageIndex };
+      if (pageIndex > 0) return null;
+      // Smart Radius: If we are in fallback mode (categories were found but returned 0), 
+      // we expand the search radius to 5x to find something relevant further away.
+      const fallbackRadius = (activeCategory.length > 0) ? Math.min(radiusMeters * 5, 100000) : radiusMeters;
+      const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(debouncedSearchQuery)}&filter=circle:${userLocation.lng},${userLocation.lat},${fallbackRadius}&bias=proximity:${userLocation.lng},${userLocation.lat}&format=json&apiKey=${GEOAPIFY_API_KEY}`;
+      return { type: 'geocoding', url, pageIndex };
     }
 
     // Default categories are ONLY for discovery (no category AND no search text).
     const rawCategories: string[] = activeCategory.length > 0
       ? activeCategory
-      : (debouncedSearchQuery ? [] : ["entertainment", "leisure", "sport", "tourism.attraction", "adult.nightclub"]);
-    
+      : (debouncedSearchQuery ? [] : [
+        "entertainment",
+        "adult.nightclub",
+        "sport.stadium",
+        "sport.ice_rink",
+        "entertainment.escape_game",
+        "leisure",
+        "sport",
+        "tourism.attraction"
+      ]);
+
     const categoriesToFetch = rawCategories.map(tag => tag.trim()).filter(Boolean);
 
     // If we have a search query but NO categories to fetch (and we are NOT in Name-Search mode above),
     // we return null to avoid 400 Bad Request.
     if (debouncedSearchQuery && categoriesToFetch.length === 0 && !isSearching) {
-       return null; 
+      return null;
     }
 
-    // PATH A: Intent/Category Search (e.g. "Sport")
-    const categoryString = categoriesToFetch.join(',');
-    const url = `https://api.geoapify.com/v2/places?categories=${categoryString}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+    // ═══════════════════════════════════════════════════════════════
+    // DUAL-STREAM FETCH: Hero-Kategorien + Discovery-Kategorien
+    // ═══════════════════════════════════════════════════════════════
 
+    // Wenn ein spezifischer Tab/Kategorie-Filter aktiv ist, nutze Single-Stream
+    if (activeCategory.length > 0) {
+      const queryLimit = pageIndex === 0 ? 100 : 40;
+      const offset = pageIndex === 0 ? 0 : 100 + (pageIndex - 1) * 40;
+      const categoryString = categoriesToFetch.join(',');
+      // WICHTIG: conditions=named entfernt, damit wir keine Daten verlieren
+      const url = `https://api.geoapify.com/v2/places?categories=${categoryString}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
+      return { type: 'geoapify', url, pageIndex };
+    }
+
+    // Discovery-Modus: Quad-Stream (Hero A, Hero B, Hero C, Discovery)
+    if (pageIndex === 0) {
+      // Hero A: Core Entertainment
+      const heroCategoriesA = "entertainment.zoo,entertainment.cinema,leisure.spa,adult.nightclub";
+      
+      // Hero B: Action & Adventure
+      const heroCategoriesB = "entertainment.water_park,entertainment.theme_park,entertainment.escape_game,sport.stadium,entertainment.miniature_golf";
+      
+      // Hero C: Fun, Sport & Niche (100% verifizierte Geoapify v2 Tags)
+      const heroCategoriesC = "entertainment.bowling_alley,entertainment.aquarium,entertainment.planetarium,entertainment.amusement_arcade,entertainment.activity_park.climbing,sport.ice_rink";
+      
+      // Discovery-Kategorien (Auffangbecken)
+      const discoveryCategories = "tourism.attraction,tourism.sights,leisure,sport,heritage,entertainment,activity.sport_club";
+
+      const heroUrlA = `https://api.geoapify.com/v2/places?categories=${heroCategoriesA}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=200&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
+      const heroUrlB = `https://api.geoapify.com/v2/places?categories=${heroCategoriesB}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=200&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
+      const heroUrlC = `https://api.geoapify.com/v2/places?categories=${heroCategoriesC}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=200&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
+      const discoveryUrl = `https://api.geoapify.com/v2/places?categories=${discoveryCategories}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=200&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
+
+      return { type: 'dual_stream', heroUrlA, heroUrlB, heroUrlC, discoveryUrl, pageIndex };
+    }
+
+    // Nachfolgende Seiten: Normaler Single-Stream (Offset angepasst auf 400)
+    const allCategories = categoriesToFetch.join(',');
+    const offset = 400 + (pageIndex - 1) * 50;
+    const url = `https://api.geoapify.com/v2/places?categories=${allCategories}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
     return { type: 'geoapify', url, pageIndex };
   }
 
@@ -337,7 +428,7 @@ export default function Home() {
     if (isEmpty) return true;
     if (!data || data.length === 0) return false;
     const lastPage = data[data.length - 1];
-    const expectedLimit = (data.length - 1) === 0 ? 50 : 50; 
+    const expectedLimit = (data.length - 1) === 0 ? 50 : 50;
     if (isCommunityCategory || isAktivCategory || isHighlightsCategory) {
       // All three system tabs (Community, Active, Highlights) now fetch 50 initially, then 10.
       let fbLimit = (data.length - 1) === 0 ? 50 : 10;
@@ -346,7 +437,7 @@ export default function Home() {
     return Boolean(lastPage && lastPage.features?.length < expectedLimit);
   }, [data, isEmpty, error, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
-  const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number }>>({}); 
+  const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number }>>({});
 
   const places = useMemo(() => {
     if (!data || isCommunityCategory || isFavoritesCategory) return [];
@@ -355,7 +446,7 @@ export default function Home() {
         // Calculate distance if missing so local filtering works
         let distance = place.distance;
         if (distance === undefined && userLocation && place.lat && place.lon) {
-           distance = calculateDistance(userLocation.lat, userLocation.lng, place.lat, place.lon);
+          distance = calculateDistance(userLocation.lat, userLocation.lng, place.lat, place.lon);
         }
         return { ...place, distance } as Place;
       });
@@ -368,7 +459,13 @@ export default function Home() {
         properties: f.properties,
         distance: (f.properties.distance || 0) / 1000
       }));
-      const safeItems = applyFilters(itemsToFilter, activeCategory, userProfile?.blacklist?.hard || [], shouldFilterByName);
+
+      // Local sanity check: even if the API returns it, we double check the distance here
+      const distanceCappedItems = maxDistance
+        ? itemsToFilter.filter((item: any) => item.distance <= maxDistance)
+        : itemsToFilter;
+
+      const safeItems = applyFilters(distanceCappedItems, activeCategory, userProfile?.blacklist?.hard || [], shouldFilterByName);
 
       return safeItems.map((item: any) => {
         const props = item.properties;
@@ -393,36 +490,58 @@ export default function Home() {
           relevanceScore: calculateRelevance(
             { ...props, categories: cats, distance: distance, upvotes: votes.upvotes, downvotes: votes.downvotes },
             userProfile || { role: 'user' } as any,
-            userLocation || { lat: 0, lng: 0 }
+            userLocation || { lat: 0, lng: 0 },
+            { debug: false }
           ),
           openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null
         } as Place;
       });
-    });
-  }, [data, votesMap, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory, language, userProfile, userLocation, activeCategory]);
+    }).sort((a, b) => b.relevanceScore - a.relevanceScore);
+  }, [data, votesMap, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory, language, userProfile, userLocation, activeCategory, maxDistance]);
 
+  // Batch-Fetch der Vote-Daten: Einmaliger Read statt N Echtzeit-Listener
   useEffect(() => {
     if (!db || places.length === 0) return;
     const placeIds = [...new Set(places.map(p => p.id).filter(Boolean))];
     if (placeIds.length === 0) return;
-    const unsubscribers: (() => void)[] = [];
-    for (const id of placeIds) {
-      const unsub = onSnapshot(doc(db, 'places', id), (snap) => {
-        if (snap.exists()) {
-          const d = snap.data();
-          setVotesMap(prev => {
-            const prevEntry = prev[id];
-            if (prevEntry && prevEntry.upvotes === (d.upvotes || 0) && prevEntry.downvotes === (d.downvotes || 0)) {
-              return prev;
-            }
-            return { ...prev, [id]: { upvotes: d.upvotes || 0, downvotes: d.downvotes || 0 } };
+
+    let cancelled = false;
+
+    const fetchVotes = async () => {
+      const { getDoc } = await import('firebase/firestore');
+      const batchSize = 30;
+      const newVotes: Record<string, { upvotes: number; downvotes: number }> = {};
+
+      for (let i = 0; i < placeIds.length; i += batchSize) {
+        if (cancelled) return;
+        const batch = placeIds.slice(i, i + batchSize);
+        const results = await Promise.allSettled(
+          batch.map(id => getDoc(doc(db!, 'places', id)))
+        );
+        results.forEach((result, idx) => {
+          if (result.status === 'fulfilled' && result.value.exists()) {
+            const d = result.value.data();
+            newVotes[batch[idx]] = { upvotes: d.upvotes || 0, downvotes: d.downvotes || 0 };
+          }
+        });
+      }
+
+      if (!cancelled) {
+        setVotesMap(prev => {
+          // Nur updaten wenn sich wirklich was geändert hat
+          const hasChanges = Object.keys(newVotes).some(id => {
+            const p = prev[id];
+            const n = newVotes[id];
+            return !p || p.upvotes !== n.upvotes || p.downvotes !== n.downvotes;
           });
-        }
-      });
-      unsubscribers.push(unsub);
-    }
-    return () => unsubscribers.forEach(unsub => unsub());
-  }, [data, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory, places]);
+          return hasChanges ? { ...prev, ...newVotes } : prev;
+        });
+      }
+    };
+
+    fetchVotes();
+    return () => { cancelled = true; };
+  }, [data]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const isLoadingMore = useRef(false);
@@ -453,14 +572,14 @@ export default function Home() {
 
   const requestLocation = useCallback(() => {
     setIsLocationLoading(true);
-    
+
     if (planningState.isPlanning && planningState.destination) {
       setUserLocation(planningState.destination);
       setCityName(planningState.destination.name);
       setIsLocationLoading(false);
       return;
     }
-    
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -469,12 +588,12 @@ export default function Home() {
           setShowLocationRequirement(false);
           setIsLocationLoading(false);
           if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
-        }, 
+        },
         (error) => {
           console.warn("Geolocation error:", error);
           setIsLocationLoading(false);
           setShowLocationRequirement(true);
-          
+
           if (error.code === error.PERMISSION_DENIED) {
             toast({
               title: language === 'de' ? "Standort blockiert" : "Location blocked",
@@ -482,7 +601,7 @@ export default function Home() {
               variant: "destructive"
             });
           }
-        }, 
+        },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
@@ -568,10 +687,10 @@ export default function Home() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query }),
         });
-        
+
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const { categories, filterByName } = await response.json();
-        
+
         // 1. Set the filter flag (determines if we do local .includes(name) filtering)
         setShouldFilterByName(!!filterByName);
 
@@ -580,7 +699,7 @@ export default function Home() {
           setActiveCategory(categories);
         } else {
           console.warn('⚠️ [Live Search] LLM returned no categories. Falling back to default category pool.');
-          setActiveCategory([]); 
+          setActiveCategory([]);
         }
       } catch (err) {
         console.error('❌ [Live Search] Intent Parsing Failed:', err);
@@ -604,12 +723,12 @@ export default function Home() {
 
   const handlePlaceSelect = (place: Place) => setSelectedPlace(place);
   const handleDialogClose = () => setSelectedPlace(null);
-  const handleOpenActivityModal = (place: Place) => { 
-    if (!user) { 
-      router.push('/login'); 
-      return; 
-    } 
-    setActionSheetPlace(place); 
+  const handleOpenActivityModal = (place: Place) => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    setActionSheetPlace(place);
   };
   const handleOpenCustomActivityModal = () => { if (!user) { router.push('/login'); return; } setActivityModalPlace('custom'); };
 
@@ -657,12 +776,12 @@ export default function Home() {
         <div className="space-y-4">
           <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">{language === "de" ? "Keine Ergebnisse" : "No results"}</h3>
           <p className="text-[#64748b] dark:text-neutral-400 font-medium">{language === "de" ? "Passe deine Suche oder die Filter an." : "Adjust your search or filters."}</p>
-          <Button onClick={() => { 
-            handleCategoryChange([], ''); 
+          <Button onClick={() => {
+            handleCategoryChange([], '');
             setShouldFilterByName(false);
             setSearchQuery("");
-            setMaxDistance(10); 
-            setActivityCategoryFilter(language === 'de' ? 'Alle' : 'All'); 
+            setMaxDistance(10);
+            setActivityCategoryFilter(language === 'de' ? 'Alle' : 'All');
           }} variant="outline" className="rounded-xl font-bold">
             {language === "de" ? "Filter zurücksetzen" : "Reset filters"}
           </Button>
@@ -689,45 +808,45 @@ export default function Home() {
 
         if (isCommunityCategory) {
           const rawList = data?.flat() || [];
-          
+
           // Deduplicate the list to prevent React duplicate key errors from SWR caching edge cases
           const uniqueMap = new Map();
           for (const item of rawList) {
-             if (item?.id) uniqueMap.set(item.id, item);
+            if (item?.id) uniqueMap.set(item.id, item);
           }
           const list = Array.from(uniqueMap.values());
-          
+
           // "es muss doch nur geguckt werden ob es user_event hat" -> This is already done by the database query in multiFetcher!
           // "und nach dem datum" -> We filter out activities that are already over (in the past).
           const now = Date.now();
           const filteredList = list.filter((item: any) => {
             if (!item) return false;
-            
+
             // Check end date or start date to ensure it's not in the past
             if (item.activityEndDate?.toMillis) {
-               if (item.activityEndDate.toMillis() < now) return false;
+              if (item.activityEndDate.toMillis() < now) return false;
             } else if (item.activityDate?.toMillis) {
-               // If there's no end date, assume it's over 24 hours after the start date
-               if (item.activityDate.toMillis() + 86400000 < now) return false;
+              // If there's no end date, assume it's over 24 hours after the start date
+              if (item.activityDate.toMillis() + 86400000 < now) return false;
             }
-            
+
             return true;
           });
-          
+
           // Sort by activityDate (ascending: upcoming events first)
           const sortedList = [...filteredList].sort((a, b) => {
             const timeA = a.activityDate?.toMillis ? a.activityDate.toMillis() : 0;
             const timeB = b.activityDate?.toMillis ? b.activityDate.toMillis() : 0;
-            return timeA - timeB; 
+            return timeA - timeB;
           });
-          
+
           if (sortedList.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
           return (
             <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {sortedList.map((item) => (
-                  <div key={item.id} className="min-h-[280px] w-full">
-                      <ActivityListItem activity={item as any} user={user} onJoin={handleJoin} />
-                  </div>
+                <div key={item.id} className="min-h-[280px] w-full">
+                  <ActivityListItem activity={item as any} user={user} onJoin={handleJoin} />
+                </div>
               ))}
             </div>
           );
@@ -738,21 +857,32 @@ export default function Home() {
           const name = place.name || "";
           return name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
         });
-        
+
         // Add distance filter for Highlights and Active tabs
         if ((isHighlightsCategory || isAktivCategory) && maxDistance !== null) {
-           filtered = filtered.filter(place => place.distance !== undefined && place.distance !== null && place.distance <= maxDistance);
+          filtered = filtered.filter(place => place.distance !== undefined && place.distance !== null && place.distance <= maxDistance);
         }
 
-        const sorted = filtered.sort((a, b) => (sortBy === 'recommended' ? (b.relevanceScore || 0) - (a.relevanceScore || 0) : (sortBy === 'rating' ? (b.rating || 0) - (a.rating || 0) : 0)));
-        const uniqueSorted = Array.from(new Map(sorted.map(place => [place.id, place])).values());
-        if (uniqueSorted.length === 0) {
+        // SCHRITT 1: Deduplizierung ZUERST (damit die Sortierung danach das letzte Wort hat)
+        const uniqueFiltered = Array.from(new Map(filtered.map(place => [place.id, place])).values());
+
+        // SCHRITT 2: Immutable Sort (spread erzeugt neue Array-Referenz, verhindert React-Mutations-Bugs)
+        const sorted = [...uniqueFiltered].sort((a, b) => {
+          if (sortBy === 'recommended') {
+            return (b.relevanceScore || 0) - (a.relevanceScore || 0);
+          }
+          if (sortBy === 'rating') {
+            return (b.rating || 0) - (a.rating || 0);
+          }
+          return 0;
+        });
+        if (sorted.length === 0) {
           if (isValidating) {
             return <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>;
           }
           if (!isFetchingNextPage) return <EmptySearchState />;
         }
-        const paginatedSorted = uniqueSorted.slice(0, visibleCount);
+        const paginatedSorted = sorted.slice(0, visibleCount);
         return (
           <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {paginatedSorted.map((place) => (
@@ -799,7 +929,7 @@ export default function Home() {
       <div className="flex flex-col h-full bg-white/40 dark:bg-neutral-900/40 relative">
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
-         <header className="global-viewport-header pb-4">
+        <header className="global-viewport-header pb-4">
           <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
             <div className="global-header-container">
               <div className="flex items-center gap-3">
@@ -828,7 +958,7 @@ export default function Home() {
             </div>
 
             <div className="px-6">
-                <CategoryFilters activeCategory={activeCategory} activeTabId={activeTabId} onCategoryChange={handleCategoryChange} />
+              <CategoryFilters activeCategory={activeCategory} activeTabId={activeTabId} onCategoryChange={handleCategoryChange} />
             </div>
 
             {/* Search and Radius Row */}
@@ -867,7 +997,7 @@ export default function Home() {
       <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace as Place} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
       <SpotActionSheet place={actionSheetPlace} open={!!actionSheetPlace} onOpenChange={(open) => !open && setActionSheetPlace(null)} onCreateNew={(place) => setActivityModalPlace(place)} />
       <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
-      <LocationRequirementDialog 
+      <LocationRequirementDialog
         open={showLocationRequirement}
         onOpenChange={setShowLocationRequirement}
         onRetry={requestLocation}
@@ -875,9 +1005,9 @@ export default function Home() {
         homeCity="Bremerhaven"
         isLoading={isLocationLoading}
       />
-      <PremiumUpgradeModal 
-        isOpen={isPremiumUpsellOpen} 
-        onClose={() => setIsPremiumUpsellOpen(false)} 
+      <PremiumUpgradeModal
+        isOpen={isPremiumUpsellOpen}
+        onClose={() => setIsPremiumUpsellOpen(false)}
       />
     </>
   );

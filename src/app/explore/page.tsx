@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase/client';
 import { joinActivity, createActivity } from '@/lib/firebase/firestore';
-import type { Activity } from '@/lib/types';
+import type { Activity, Place, ActivityCategory } from '@/lib/types';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,6 +42,7 @@ export default function ExplorePage() {
     
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
+    const [activeTabId, setActiveTabId] = useState<string>('all');
     const [radiusKm, setRadiusKm] = useState<number | null>(null);
     const [lastSwipedCard, setLastSwipedCard] = useState<Activity | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<Activity | null>(null);
@@ -49,6 +50,7 @@ export default function ExplorePage() {
 
     const resetFilters = () => {
         setActiveCategory(['all']);
+        setActiveTabId('all');
         setRadiusKm(null);
     };
 
@@ -278,7 +280,14 @@ export default function ExplorePage() {
                     <div className="space-y-6">
                         <h3 className="">{language === 'de' ? 'Präferenzen' : 'Preferences'}</h3>
                         <div className="flex flex-col gap-6">
-                            <CategoryFilters activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
+                            <CategoryFilters 
+                                activeCategory={activeCategory} 
+                                activeTabId={activeTabId}
+                                onCategoryChange={(cats, tabId) => {
+                                    setActiveCategory(cats);
+                                    setActiveTabId(tabId);
+                                }} 
+                            />
                         </div>
                     </div>
                 </div>
@@ -301,7 +310,14 @@ export default function ExplorePage() {
                 <div className="flex-1 flex flex-col min-h-0 relative px-4 lg:px-0">
                     {/* Mobile Filters Area */}
                     <div className="lg:hidden py-3 space-y-3">
-                         <CategoryFilters activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
+                         <CategoryFilters 
+                            activeCategory={activeCategory} 
+                            activeTabId={activeTabId}
+                            onCategoryChange={(cats, tabId) => {
+                                setActiveCategory(cats);
+                                setActiveTabId(tabId);
+                            }} 
+                         />
                          <div className="flex items-center justify-between px-1">
                             <DropdownMenu>
                                 <DropdownMenuTrigger className="outline-none">
@@ -597,11 +613,10 @@ export default function ExplorePage() {
                 <PlaceDetails
                     place={selectedPlace as any}
                     onClose={() => setSelectedPlace(null)}
-                    onJoinActivity={() => {
-                        handleSwipe('right');
+                    onCreateActivity={() => {
+                        setActivityModalPlace(selectedPlace as any);
                         setSelectedPlace(null);
                     }}
-                    userLocation={userLocation}
                 />
             )}
 

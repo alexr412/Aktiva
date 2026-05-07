@@ -57,7 +57,7 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
 
         setLoading(true);
         const q = query(
-            collection(db, 'activities'),
+            collection(db!, 'activities'),
             where('placeId', '==', place.id),
             where('status', '==', 'active')
         );

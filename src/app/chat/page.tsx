@@ -66,7 +66,7 @@ export default function ChatPage() {
     }
 
     const q = query(
-      collection(db, 'chats'),
+      collection(db!, 'chats'),
       where('participantIds', 'array-contains', user.uid)
     );
 
@@ -106,7 +106,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (!user || !db) return;
     const q = query(
-      collection(db, "notifications"),
+      collection(db!, "notifications"),
       where("recipientId", "==", user.uid),
       where("isRead", "==", false)
     );

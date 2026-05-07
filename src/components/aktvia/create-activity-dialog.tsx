@@ -208,8 +208,8 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
   const handleCreate = async () => {
     if (!selectedLocation) return;
 
-    const isRange = isDateFlexible && selectedRange.from;
-    const isSingleDay = !isDateFlexible && selectedDate;
+    const isRange = !!(isDateFlexible && selectedRange.from);
+    const isSingleDay = !!(!isDateFlexible && selectedDate);
 
     if (!isRange && !isSingleDay) return;
 
@@ -229,7 +229,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
     let endDate = isRange ? selectedRange.to : undefined;
 
     let finalDate = new Date(startDate);
-    const timeIsFlexible = isTimeFlexible || isRange;
+    const timeIsFlexible = !!(isTimeFlexible || isRange);
 
     if (!timeIsFlexible) {
       const [hours, minutes] = selectedTime.split(':').map(Number);

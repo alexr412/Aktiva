@@ -3,19 +3,25 @@
   "short_name": "Aktiva",
   "description": "Entdecke Orte. Triff Menschen.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#D0E0FF",
-  "theme_color": "#5BA17F",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "categories": ["social", "lifestyle", "entertainment"],
+  "lang": "de",
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

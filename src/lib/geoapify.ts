@@ -763,7 +763,8 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place | 
         categories: props.categories || [],
         lat: props.lat,
         lon: props.lon,
-        openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null
+        openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null,
+        _rawProperties: props // Store raw properties for detail extraction
       } as Place;
     }
   } catch (error) {

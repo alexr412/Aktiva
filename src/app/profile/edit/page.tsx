@@ -23,7 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, ArrowLeft, UserCircle, MapPin, Sparkles, Camera, Check } from 'lucide-react';
+import { Loader2, ArrowLeft, UserCircle, MapPin, Sparkles, Camera, Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type FormData = Omit<UserProfile, 'uid' | 'email' | 'onboardingCompleted' | 'photoURL'>;
@@ -62,6 +62,18 @@ export default function EditProfilePage() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [originalUsername, setOriginalUsername] = useState<string>('');
   const [lastUsernameChange, setLastUsernameChange] = useState<Timestamp | null>(null);
+  const [isUsernameWarningOpen, setIsUsernameWarningOpen] = useState(false);
+  const [hasAcknowledgedWarning, setHasAcknowledgedWarning] = useState(false);
+
+  const now = Date.now();
+  const cooldownMs = 180 * 24 * 60 * 60 * 1000;
+  const isUsernameCooldownActive = lastUsernameChange 
+    ? (now - lastUsernameChange.toMillis()) < cooldownMs 
+    : false;
+  
+  const daysRemaining = lastUsernameChange 
+    ? Math.max(0, Math.ceil((cooldownMs - (now - lastUsernameChange.toMillis())) / (1000 * 60 * 60 * 24)))
+    : 0;
 
   useEffect(() => {
     if (!user?.uid) {
@@ -304,18 +316,37 @@ export default function EditProfilePage() {
                             id="username" 
                             name="username" 
                             value={formData.username || ''} 
-                            onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().replace(/\s/g, '')})} 
+                            readOnly={!hasAcknowledgedWarning && !isUsernameCooldownActive}
+                            disabled={isUsernameCooldownActive}
+                            onClick={() => {
+                                if (!isUsernameCooldownActive && !hasAcknowledgedWarning) {
+                                    setIsUsernameWarningOpen(true);
+                                }
+                            }}
+                            onChange={(e) => {
+                                if (hasAcknowledgedWarning) {
+                                    setFormData({...formData, username: e.target.value.toLowerCase().replace(/\s/g, '')});
+                                }
+                            }} 
                             className={cn(
-                                "h-14 rounded-2xl bg-slate-50 font-bold text-lg px-6 focus-visible:ring-primary/50 pr-12",
+                                "h-14 rounded-2xl bg-slate-50 font-bold text-lg px-6 focus-visible:ring-primary/50 pr-12 transition-all",
+                                isUsernameCooldownActive && "opacity-50 grayscale cursor-not-allowed",
+                                !hasAcknowledgedWarning && !isUsernameCooldownActive && "cursor-pointer",
                                 usernameAvailability === 'available' ? "border-emerald-500" : 
                                 usernameAvailability === 'taken' ? "border-rose-500" : "border-slate-100"
                             )}
                         />
                         <div className="absolute right-4 top-1/2 -translate-y-1/2">
                             {isUsernameChecking && <Loader2 className="h-5 w-5 animate-spin text-slate-300" />}
-                            {!isUsernameChecking && usernameAvailability === 'available' && <Check className="h-5 w-5 text-emerald-500" />}
+                            {!isUsernameChecking && !isUsernameCooldownActive && usernameAvailability === 'available' && <Check className="h-5 w-5 text-emerald-500" />}
+                            {isUsernameCooldownActive && <Lock className="h-4 w-4 text-slate-400" />}
                         </div>
                     </div>
+                    {isUsernameCooldownActive && (
+                        <p className="text-[10px] font-black text-amber-500 uppercase px-1">
+                            Änderung möglich in {daysRemaining} Tagen
+                        </p>
+                    )}
                     {usernameAvailability === 'taken' && <p className="text-[10px] font-black text-rose-500 uppercase px-1">Bereits vergeben</p>}
                 </div>
               </div>
@@ -470,6 +501,40 @@ export default function EditProfilePage() {
                   >
                       {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                       Bild speichern
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
+      {/* Username Warning Modal */}
+      <Dialog open={isUsernameWarningOpen} onOpenChange={setIsUsernameWarningOpen}>
+          <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 overflow-hidden border-none shadow-2xl">
+              <DialogHeader>
+                  <div className="h-12 w-12 bg-amber-100 rounded-2xl flex items-center justify-center mb-4">
+                      <Sparkles className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <DialogTitle className="text-xl font-black">Username ändern?</DialogTitle>
+                  <DialogDescription className="font-medium text-slate-600 leading-relaxed">
+                      Wähle deinen Usernamen weise! Du kannst ihn nach dieser Änderung erst in <span className="text-primary font-black">180 Tagen</span> wieder anpassen.
+                  </DialogDescription>
+              </DialogHeader>
+              
+              <DialogFooter className="mt-6 flex flex-col gap-2">
+                  <Button 
+                      onClick={() => {
+                          setHasAcknowledgedWarning(true);
+                          setIsUsernameWarningOpen(false);
+                      }} 
+                      className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-2xl font-black shadow-lg"
+                  >
+                      Verstanden, weiter
+                  </Button>
+                  <Button 
+                      variant="ghost" 
+                      className="w-full h-12 rounded-xl font-bold text-slate-400" 
+                      onClick={() => setIsUsernameWarningOpen(false)}
+                  >
+                      Abbrechen
                   </Button>
               </DialogFooter>
           </DialogContent>

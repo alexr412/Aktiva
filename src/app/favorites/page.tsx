@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useFavorites } from '@/contexts/favorites-context';
 import { PlaceCard } from '@/components/aktvia/place-card';
-import type { Place } from '@/lib/types';
+import type { Place, ActivityCategory } from '@/lib/types';
 import { Bookmark } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
@@ -54,7 +54,7 @@ export default function FavoritesPage() {
         setActivityModalPlace(place);
     };
 
-    const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number): Promise<boolean> => {
+    const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory): Promise<boolean> => {
         if (!user || !activityModalPlace) {
             toast({
                 title: language === 'de' ? 'Fehler' : 'Error',
@@ -73,6 +73,7 @@ export default function FavoritesPage() {
                 user,
                 isTimeFlexible,
                 maxParticipants,
+                category: category || (language === 'de' ? 'Sonstiges' : 'Other')
             });
             toast({
                 title: language === 'de' ? 'Aktivität erstellt!' : 'Activity Created!',
@@ -137,7 +138,16 @@ export default function FavoritesPage() {
                 <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden">
                     <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
                     <DialogDescription className="sr-only">Favorisierter Ort Details</DialogDescription>
-                    {selectedPlace && <PlaceDetails place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
+                    {selectedPlace && (
+                        <PlaceDetails 
+                            place={selectedPlace} 
+                            onClose={() => setSelectedPlace(null)} 
+                            onCreateActivity={() => {
+                                handleOpenActivityModal(selectedPlace);
+                                setSelectedPlace(null);
+                            }}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
         </>

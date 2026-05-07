@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useState, useEffect, useMemo, type ReactNode } from 'react';
 import type { User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase/client';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -86,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (authUser) {
         setUser(authUser);
         
-        const userRef = doc(db, 'users', authUser.uid);
+        const userRef = doc(db!, 'users', authUser.uid);
         unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
@@ -100,16 +100,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               }).catch(err => console.error("Lazy migration failed:", err));
             }
 
+            // Skip local/optimistic snapshots to avoid unnecessary re-renders during updates
+            if (docSnap.metadata.hasPendingWrites) return;
+
             // Explizite Zuweisung wichtiger Felder zur Vermeidung von State-Verlust
             const profile: UserProfile = {
               uid: docSnap.id,
               ...data,
-              role: data.role || 'user', // Fallback-Logik
-              isBanned: !!data.isBanned
+              role: data.role || 'user',
+              isBanned: !!data.isBanned,
+              friends: data.friends || [],
+              friendRequestsSent: data.friendRequestsSent || [],
+              friendRequestsReceived: data.friendRequestsReceived || []
             } as UserProfile;
             
-            console.log("[AuthContext] User profile updated:", profile.uid, "Onboarding:", profile.onboardingCompleted);
-            setUserProfile(profile);
+            setUserProfile(prev => {
+              // Deep equality check for critical fields to avoid state flutter
+              if (prev && 
+                  prev.uid === profile.uid && 
+                  prev.onboardingCompleted === profile.onboardingCompleted &&
+                  JSON.stringify(prev.lastLocation) === JSON.stringify(profile.lastLocation) &&
+                  prev.role === profile.role &&
+                  prev.friends?.length === profile.friends?.length
+              ) {
+                return prev;
+              }
+              console.log("[AuthContext] User profile updated:", profile.uid, "Onboarding:", profile.onboardingCompleted);
+              return profile;
+            });
           } else {
             console.log("[AuthContext] User document does not exist");
             setUserProfile(null);
@@ -193,9 +211,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const updateLocation = () => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          (position) => {
+          async (position) => {
             const { latitude, longitude } = position.coords;
-            updateUserLocation(user.uid, latitude, longitude);
+            
+            // Try to get city name for friends list using our reliable helper
+            let cityName = undefined;
+            try {
+              const { reverseGeocode: geoapifyReverse } = await import('@/lib/geoapify');
+              const place = await geoapifyReverse(latitude, longitude);
+              if (place) {
+                const props = (place as any)._rawProperties || {};
+                cityName = props.city || props.town || props.village || props.suburb || props.municipality || place.name;
+              }
+            } catch (e) {}
+
+            updateUserLocation(user.uid, latitude, longitude, cityName);
           },
           (error) => console.warn("Location update failed:", error),
           { enableHighAccuracy: false, timeout: 15000 }
@@ -208,6 +238,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [user, userProfile?.proximitySettings?.enabled]);
 
+  const contextValue = useMemo(() => ({ user, userProfile, loading }), [user, userProfile, loading]);
+
   if (!auth && !loading) {
     return <NotConfigured />;
   }
@@ -219,11 +251,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Hydration-Sicherheit: Auf dem Server rendern wir nichts Kritisches
   if (!isMounted) return null;
 
-  const showSpinner = loading && !isPublicRoute;
-
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading }}>
-      {showSpinner ? (
+    <AuthContext.Provider value={contextValue}>
+      {loading ? (
         <div className="flex items-center justify-center min-h-screen bg-white dark:bg-neutral-950">
           <Loader2 className="w-8 h-8 animate-spin text-[#10b981]" />
         </div>

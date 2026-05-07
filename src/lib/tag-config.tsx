@@ -79,6 +79,33 @@ const PlaygroundIcon = ({ className }: { className?: string }) => (
   />
 );
 
+const MinigolfIcon = ({ className }: { className?: string }) => (
+  <img
+    src="/assets/icons/minigolf.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Minigolf"
+  />
+);
+
+const EscapeRoomIcon = ({ className }: { className?: string }) => (
+  <img
+    src="/assets/icons/escaperoom.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Escape Room"
+  />
+);
+
+const ActivityParkIcon = ({ className }: { className?: string }) => (
+  <img
+    src="/assets/icons/activitypark.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Activity Park"
+  />
+);
+
 /**
  * TagStyle Interface für die visuelle Repräsentation
  */
@@ -108,14 +135,17 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   if (tags.includes('entertainment.cinema') || name.includes('kino')) {
     return { icon: Film, color: '#4c1d95', label: language === 'de' ? 'Kino' : 'Cinema', bgClass: 'bg-purple-50', gradientClass: 'bg-gradient-to-br from-rose-500 to-orange-500', imageUrl: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800&auto=format&fit=crop' };
   }
-  if (name.includes('quest') || name.includes('escape') || name.includes('rätsel')) {
-    return { icon: Gamepad2, color: '#7c3aed', label: language === 'de' ? 'Escape Room' : 'Escape Room', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-slate-900 to-violet-800' };
+  if (tags.includes('entertainment.escape_game') || name.includes('quest') || name.includes('escape') || name.includes('rätsel')) {
+    return { icon: EscapeRoomIcon as any, color: '#7c3aed', label: language === 'de' ? 'Escape Room' : 'Escape Room', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-slate-900 to-violet-800' };
   }
   if (tags.includes('entertainment.activity_park.trampoline') || name.includes('trampolin') || name.includes('sprung')) {
     return { icon: TrampolineIcon as any, color: '#6366f1', label: language === 'de' ? 'Trampolinhalle' : 'Trampoline Park', bgClass: 'bg-indigo-50', gradientClass: 'bg-gradient-to-br from-fuchsia-500 to-purple-600' };
   }
-  if (name.includes('minigolf') || name.includes('adventure golf')) {
-    return { icon: LandPlot, color: '#10b981', label: language === 'de' ? 'Minigolf' : 'Minigolf', bgClass: 'bg-emerald-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-teal-400' };
+  if (tags.some((t: string) => t.startsWith('entertainment.activity_park')) || name.includes('aktivitätspark') || name.includes('activity park')) {
+    return { icon: ActivityParkIcon as any, color: '#10b981', label: language === 'de' ? 'Aktivitätspark' : 'Activity Park', bgClass: 'bg-emerald-50', gradientClass: 'bg-gradient-to-br from-emerald-400 to-teal-500' };
+  }
+  if (tags.includes('entertainment.miniature_golf') || name.includes('minigolf') || name.includes('adventure golf')) {
+    return { icon: MinigolfIcon as any, color: '#10b981', label: language === 'de' ? 'Minigolf' : 'Minigolf', bgClass: 'bg-emerald-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-teal-400' };
   }
 
   // --- SAKRALBAUTEN ---
@@ -303,7 +333,9 @@ export const getCleanTags = (tags: string[]): { tag: string, isMain: boolean }[]
   // 3. Filter out low-value/technical tags
   const filtered = deduplicated.filter(tag => {
     const t = tag.toLowerCase();
-    return !['yes', 'no', 'access', 'public', 'fee.yes', 'fee.no', 'building', 'no_fee'].includes(t);
+    return !['yes', 'no', 'access', 'public', 'fee.yes', 'fee.no', 'building', 'no_fee', 'named'].includes(t) && 
+           !t.endsWith('.no') && 
+           !t.endsWith('.yes');
   });
 
   // 4. Classify tags

@@ -23,7 +23,7 @@ export const fetchFriendsProfiles = async (friendIds: string[]): Promise<UserPro
       const q = query(collection(db, "users"), where(documentId(), "in", chunk));
       const snapshot = await getDocs(q);
       snapshot.forEach(doc => {
-        profiles.push(doc.data() as UserProfile);
+        profiles.push({ uid: doc.id, ...doc.data() } as UserProfile);
       });
     } catch (error) {
       console.error("Error fetching profile chunk:", error);

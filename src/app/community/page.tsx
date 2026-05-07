@@ -40,10 +40,11 @@ export default function CommunityPage() {
 
         const result = await findUserByUsername(searchQuery);
         
-        if (result) {
+        if (result && result.uid) {
             setFoundUser(result);
             // Check if a request was already sent
-            if (userProfile?.friendRequestsSent?.includes(result.uid)) {
+            const sentRequests = userProfile?.friendRequestsSent || [];
+            if (sentRequests.includes(result.uid)) {
                 setRequestSent(true);
             }
         } else {
@@ -77,7 +78,8 @@ export default function CommunityPage() {
 
     // Status-Evaluation
     const isSelf = user?.uid === foundUser?.uid;
-    const isAlreadyFriend = userProfile?.friends?.includes(foundUser?.uid || '');
+    const friends = userProfile?.friends || [];
+    const isAlreadyFriend = foundUser?.uid ? friends.includes(foundUser.uid) : false;
 
     return (
         <div className="flex flex-col h-full bg-[#fcfcfb] dark:bg-neutral-950">

@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { voteActivity, trackActivityView, submitReport } from '@/lib/firebase/firestore';
+import { castActivityVote, trackActivityView, submitReport } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { getPrimaryIconData, translateTag } from '@/lib/tag-config';

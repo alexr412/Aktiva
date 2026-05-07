@@ -92,8 +92,25 @@ export default function FriendList({ friendIds }: FriendListProps) {
       friend.lastLocation.lng
     );
 
-    if (dist < 5) return language === 'de' ? "In der Nähe" : "Nearby";
-    if (dist < 20) return language === 'de' ? "Umgebung" : "Area";
+    if (dist < 2) return language === 'de' ? "Ganz nah" : "Very close";
+    if (dist < 10) return language === 'de' ? "In der Nähe" : "Nearby";
+    if (dist < 50) return language === 'de' ? "Umgebung" : "Area";
+    return null;
+  };
+
+  const getActivityStatus = (friend: UserProfile) => {
+    if (!friend.lastLocation?.updatedAt) return null;
+    
+    const lastUpdate = typeof friend.lastLocation.updatedAt === 'object' && 'toMillis' in friend.lastLocation.updatedAt 
+      ? (friend.lastLocation.updatedAt as any).toMillis() 
+      : Date.now();
+      
+    const now = Date.now();
+    const diffMin = Math.floor((now - lastUpdate) / 60000);
+
+    if (diffMin < 5) return language === 'de' ? "Gerade aktiv" : "Active now";
+    if (diffMin < 60) return `${diffMin}m`;
+    if (diffMin < 1440) return `${Math.floor(diffMin / 60)}h`;
     return null;
   };
 
@@ -105,8 +122,8 @@ export default function FriendList({ friendIds }: FriendListProps) {
           <div className="h-4 w-16 bg-slate-50 animate-pulse rounded-lg" />
         </div>
         <div className="flex gap-4 px-4 overflow-x-hidden">
-          {friendIds.slice(0, 2).map((_, i) => (
-            <Skeleton key={i} className="h-36 w-[45%] shrink-0 rounded-[2.5rem] bg-neutral-200" />
+          {friendIds.slice(0, 3).map((_, i) => (
+            <Skeleton key={i} className="h-32 w-[35%] shrink-0 rounded-[2rem] bg-neutral-200" />
           ))}
         </div>
       </div>
@@ -157,7 +174,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
   );
 
   return (
-    <div className="flex flex-col gap-5 mb-12 w-full">
+    <div className="flex flex-col gap-5 mb-1 w-full">
       <div className="flex items-center justify-between px-4">
         <h3 className="">
           {language === 'de' ? 'Freunde' : 'Friends'} 
@@ -174,31 +191,45 @@ export default function FriendList({ friendIds }: FriendListProps) {
         {uniqueFriends.length > 0 ? (
           uniqueFriends.map((friend, index) => {
             const proximity = getProximityLabel(friend);
+            const status = getActivityStatus(friend);
             const friendKey = friend.uid || (friend as any).id || `fallback-${index}`;
             
             return (
-              <Link href={`/profile/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[45%] max-w-[180px]">
-                <div className="flex flex-col items-center gap-3 p-5 border border-slate-100 dark:border-neutral-800 rounded-[2.5rem] bg-white dark:bg-neutral-900 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer relative overflow-hidden group">
+              <Link href={`/profile/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[35%] max-w-[140px]">
+                <div className="flex flex-col items-center gap-2 p-4 rounded-[1.5rem] bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 transition-all cursor-pointer relative overflow-hidden group hover:bg-slate-50 dark:hover:bg-neutral-800/50">
                   <div className="relative">
-                      <Avatar className="h-20 w-20 border-2 border-slate-50 shadow-md">
+                      <Avatar className={cn(
+                        "h-14 w-14 border-0 shadow-none transition-transform group-hover:scale-105",
+                        friend.isCreator
+                          ? "ring-4 ring-slate-900 dark:ring-blue-500"
+                          : friend.isPremium 
+                          ? "ring-4 ring-amber-400 dark:ring-amber-500" 
+                          : friend.isSupporter
+                          ? "ring-4 ring-red-500"
+                          : "ring-4 ring-slate-50 dark:ring-neutral-800/50"
+                      )}>
                         <AvatarImage src={friend.photoURL || undefined} />
-                        <AvatarFallback className="bg-[#f0f9ff] text-[#3b82f6] font-black text-2xl">
+                        <AvatarFallback className="bg-slate-100 text-slate-400 font-black text-xl">
                           {friend.displayName?.charAt(0).toUpperCase() || "U"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="absolute -bottom-1 -right-1 bg-white dark:bg-neutral-800 p-1 rounded-full shadow-sm border border-slate-100">
-                          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                      </div>
+                      {status === (language === 'de' ? "Gerade aktiv" : "Active now") && (
+                        <div className="absolute -bottom-0.5 -right-0.5 bg-white dark:bg-neutral-900 p-0.5 rounded-full border border-slate-100 dark:border-neutral-800">
+                            <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                        </div>
+                      )}
                   </div>
-                  <div className="flex flex-col items-center text-center overflow-hidden w-full">
-                    <span className="font-black text-[#0f172a] dark:text-neutral-100 truncate w-full leading-tight text-base">
+                  <div className="flex flex-col items-center text-center overflow-hidden w-full mt-1">
+                    <span className="font-bold text-slate-900 dark:text-neutral-100 truncate w-full leading-tight text-[13px]">
                       {friend.displayName?.split(' ')[0] || (language === 'de' ? 'Nutzer' : 'User')}
                     </span>
-                    <div className="flex items-center gap-1 mt-1 text-[#f43f5e]">
-                      <MapPin className="h-3 w-3 fill-current" />
-                      <span className="text-[10px] font-black uppercase tracking-tight whitespace-nowrap opacity-80">
-                        {proximity ? proximity : (friend.location?.split(' ')[0] || "Hagen")}
-                      </span>
+                    <div className="flex flex-col items-center gap-0.5 mt-1 w-full">
+                      <div className="flex items-center gap-1 text-slate-400 overflow-hidden w-full justify-center">
+                        <MapPin className="h-2.5 w-2.5 shrink-0 opacity-40" />
+                        <span className="text-[10px] font-bold opacity-70 truncate max-w-[80px]">
+                          {proximity ? proximity : (friend.location?.split(',')[0] || "Aktiva")}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -206,8 +237,8 @@ export default function FriendList({ friendIds }: FriendListProps) {
             );
           })
         ) : isLoading ? (
-          friendIds.slice(0, 2).map((_, i) => (
-            <Skeleton key={i} className="h-36 w-[45%] shrink-0 rounded-[2.5rem] bg-neutral-200" />
+          friendIds.slice(0, 3).map((_, i) => (
+            <Skeleton key={i} className="h-32 w-[35%] shrink-0 rounded-[2rem] bg-neutral-200" />
           ))
         ) : (
           <div className="px-4 w-full">

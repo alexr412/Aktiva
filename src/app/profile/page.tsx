@@ -349,7 +349,7 @@ export default function ProfilePage() {
 
     return (
         <>
-            <div className="relative flex flex-col h-full bg-[#F8FAFC] dark:bg-neutral-950 overflow-y-auto pb-32">
+            <div className="relative flex flex-col h-full bg-[#F8FAFC] dark:bg-neutral-950 overflow-y-auto pb-20">
                 {/* Zonen-Isolierung: Header Color Blocking */}
                 <div className="absolute top-0 left-0 right-0 h-[35vh] bg-gradient-to-b from-emerald-50/50 to-transparent dark:from-emerald-950/10 z-0" />
 
@@ -457,21 +457,20 @@ export default function ProfilePage() {
 
                         {/* Compact Action Button */}
                         <Button
-                            variant="outline"
-                            className="h-10 rounded-full border-slate-200 text-slate-500 font-black text-[11px] uppercase tracking-widest px-8 hover:bg-slate-50 hover:text-primary transition-all"
+                            className="h-11 rounded-full bg-[#10b981] hover:bg-emerald-600 text-white font-black text-[12px] uppercase tracking-widest px-12 transition-all active:scale-95 shadow-lg shadow-emerald-500/10 border-none"
                             onClick={() => router.push('/profile/edit')}
                         >
-                            {language === 'de' ? 'Edit Profile' : 'Edit Profile'}
+                            {language === 'de' ? 'Profil bearbeiten' : 'Edit Profile'}
                         </Button>
                     </div>
                 </div>
 
                 {/* Section: Freunde */}
-                <div className="mt-8">
+                <div className="mt-6">
                     <FriendList friendIds={userData?.friends || []} />
                 </div>
 
-                <div className="w-full mt-8 mb-6">
+                <div className="w-full mt-1 mb-1">
                     <nav className="flex justify-around items-center px-4">
                         <TabButton tabName="activities" label={language === 'de' ? 'Aktivitäten' : 'Activities'} />
                         <TabButton tabName="favorites" label={language === 'de' ? 'Favoriten' : 'Favorites'} />
@@ -481,7 +480,7 @@ export default function ProfilePage() {
                     </nav>
                 </div>
 
-                <div className="flex-1 pb-12 px-2">
+                <div className="flex-1 pb-0 px-2">
                     {activeTab === 'activities' && (
                         <div className="space-y-4">
                             {loadingActivities ? (
@@ -506,7 +505,7 @@ export default function ProfilePage() {
                                         {currentActivities.length > 0 ? currentActivities.map(activity => (
                                             <ProfileActivityCard key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
                                         )) : (
-                                            <div className="text-center p-12 bg-white rounded-[2.5rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
+                                            <div className="text-center p-4 bg-white rounded-[2.5rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
                                                 <p className="text-slate-400 font-bold leading-relaxed">{language === 'de' ? 'Uncharted territory. Start exploring nearby treasures.' : 'Uncharted territory. Start exploring nearby treasures.'}</p>
                                             </div>
                                         )}
@@ -517,23 +516,23 @@ export default function ProfilePage() {
                                                 <ProfileActivityCard activity={activity} user={user} onJoin={handleJoin} />
                                             </div>
                                         )) : (
-                                            <div className="text-center p-12 bg-white rounded-[3rem] border border-slate-100 shadow-sm">
+                                            <div className="text-center p-4 bg-white rounded-[3rem] border border-slate-100 shadow-sm">
                                                 <p className="text-slate-400 font-bold">{language === 'de' ? 'Keine vergangenen Aktivitäten.' : 'No past activities.'}</p>
                                             </div>
                                         )}
                                     </TabsContent>
                                 </Tabs>
                             ) : (
-                                <div className="text-center p-10 flex flex-col items-center justify-center gap-6 bg-white rounded-[2.5rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
-                                    <div className="bg-[#f0fdf4] p-6 rounded-2xl">
-                                        <Search className="h-10 w-10 text-[#10b981]" strokeWidth={2.5} />
+                                <div className="text-center p-4 flex flex-col items-center justify-center gap-6 bg-white rounded-[2.5rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
+                                    <div className="bg-[#f0fdf4] p-3 rounded-2xl">
+                                        <Search className="h-6 w-6 text-[#10b981]" strokeWidth={2.5} />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-1">
                                         <h3 className="text-lg font-black text-slate-900 tracking-tight">{language === 'de' ? 'Start Exploring' : 'Start Exploring'}</h3>
                                         <p className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-[200px] mx-auto">{language === 'de' ? 'Uncharted territory. Start exploring nearby treasures.' : 'Uncharted territory. Start exploring nearby treasures.'}</p>
                                     </div>
                                     <Link href="/" className="w-full max-w-[200px]">
-                                        <Button className="w-full h-11 rounded-full bg-[#10b981] hover:bg-emerald-600 text-white font-black tracking-tight text-[13px] shadow-none border-none">
+                                        <Button className="w-full h-10 rounded-full bg-[#10b981] hover:bg-emerald-600 text-white font-black tracking-tight text-[13px] shadow-none border-none">
                                             {language === 'de' ? 'Discover Places' : 'Discover Places'}
                                         </Button>
                                     </Link>
@@ -544,9 +543,9 @@ export default function ProfilePage() {
                     {activeTab === 'favorites' && (
                         <div className="px-2">
                             {favorites.length === 0 ? (
-                                <div className="text-center p-12 flex flex-col items-center justify-center gap-6 bg-white rounded-[2rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
-                                    <div className="bg-[#f0fdf4] p-6 rounded-3xl"><Bookmark className="h-10 w-10 text-[#10b981]" strokeWidth={2.5} /></div>
-                                    <div className="space-y-1 mb-2">
+                                <div className="text-center p-8 flex flex-col items-center justify-center gap-6 bg-white rounded-[2rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
+                                    <div className="bg-[#f0fdf4] p-4 rounded-3xl"><Bookmark className="h-8 w-8 text-[#10b981]" strokeWidth={2.5} /></div>
+                                    <div className="space-y-1 mb-1">
                                         <h3 className="text-lg font-black text-slate-900 tracking-tight">{language === 'de' ? 'Expand Your Network' : 'Expand Your Network'}</h3>
                                     </div>
                                     <Button onClick={() => router.push('/')} className="rounded-full h-11 px-8 font-black bg-[#10b981] hover:bg-emerald-600 text-white shadow-none border-none uppercase tracking-widest text-[10px]">
@@ -633,7 +632,16 @@ export default function ProfilePage() {
                 <DialogContent className="max-h-[95vh] flex flex-col p-0 w-full max-w-4xl gap-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl dark:bg-neutral-900">
                     <DialogTitle className="sr-only">{language === 'de' ? 'Ort Details' : 'Place Details'}</DialogTitle>
                     <DialogDescription className="sr-only">Profil Ort Details</DialogDescription>
-                    {selectedPlace && <PlaceDetails place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
+                    {selectedPlace && (
+                        <PlaceDetails 
+                            place={selectedPlace} 
+                            onClose={() => setSelectedPlace(null)} 
+                            onCreateActivity={() => {
+                                handleOpenActivityModal(selectedPlace);
+                                setSelectedPlace(null);
+                            }}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
 

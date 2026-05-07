@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import type { Place } from '@/lib/types';
 import {
@@ -60,27 +60,49 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         userVotes: {} as Record<string, 'up' | 'down'>,
         avgRating: 0,
         reviewCount: 0,
-        activityCount: 0
+        activityCount: (place as any).activityCount || 0
     });
+    const [hasLoadedMeta, setHasLoadedMeta] = useState(false);
+
+    // Lazy Load: Firestore-Daten erst laden, wenn die Karte sichtbar wird (IntersectionObserver)
+    // statt sofort bei jedem Mount einen Echtzeit-Listener zu starten.
+    const cardRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!db || !place.id) return;
-        const unsub = onSnapshot(doc(db, 'places', place.id), (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                setPlaceMeta({
-                    upvotes: data.upvotes || 0,
-                    downvotes: data.downvotes || 0,
-                    communityScore: data.communityScore || 0,
-                    userVotes: data.userVotes || {},
-                    avgRating: data.avgRating || 0,
-                    reviewCount: data.reviewCount || 0,
-                    activityCount: data.activityCount || 0
-                });
-            }
-        });
-        return () => unsub();
-    }, [place.id]);
+        if (!db || !place.id || hasLoadedMeta) return;
+        const el = cardRef.current;
+        if (!el) return;
+
+        const io = new IntersectionObserver(
+            async ([entry]) => {
+                if (entry.isIntersecting) {
+                    io.disconnect();
+                    try {
+                        const { getDoc } = await import('firebase/firestore');
+                        const snap = await getDoc(doc(db!, 'places', place.id));
+                        if (snap.exists()) {
+                            const data = snap.data();
+                            setPlaceMeta({
+                                upvotes: data.upvotes || 0,
+                                downvotes: data.downvotes || 0,
+                                communityScore: data.communityScore || 0,
+                                userVotes: data.userVotes || {},
+                                avgRating: data.avgRating || 0,
+                                reviewCount: data.reviewCount || 0,
+                                activityCount: data.activityCount || 0
+                            });
+                        }
+                        setHasLoadedMeta(true);
+                    } catch (e) {
+                        // Silently fail – vote UI will just show defaults
+                    }
+                }
+            },
+            { rootMargin: '200px' } // Pre-load when 200px away from viewport
+        );
+        io.observe(el);
+        return () => io.disconnect();
+    }, [place.id, hasLoadedMeta]);
 
     const userVote = user ? (placeMeta.userVotes?.[user.uid] || 'none') : 'none';
 
@@ -111,6 +133,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
 
     return (
         <Card
+            ref={cardRef}
             onClick={onClick}
             className={cn(
                 "cursor-pointer group overflow-hidden rounded-[2.5rem] bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 flex flex-col relative p-0 h-full dark:shadow-none"
@@ -136,7 +159,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                         <div className="h-5 bg-emerald-500/90 backdrop-blur-md text-white text-[8px] font-black uppercase px-2 rounded-full shadow-lg animate-pulse tracking-widest flex items-center gap-1 border border-white/20">
                             <div className="h-1 w-1 rounded-full bg-white animate-ping" />
                             {(() => {
-                                const activityDate = place.activityDate?.toDate?.() || null;
+                                const activityDate = (place as any).activityDate?.toDate?.() || null;
                                 if (!activityDate) return language === 'de' ? 'Aktiv' : 'Active';
                                 const timeStr = format(activityDate, 'HH:mm');
                                 if (isToday(activityDate)) return `${language === 'de' ? 'Heute' : 'Today'} ${timeStr}`;

@@ -2,7 +2,24 @@
 
 import type { Timestamp } from 'firebase/firestore';
 
-export type ActivityCategory = 'Sport' | 'Tech' | 'Party' | 'Kultur' | 'Outdoor' | 'Gaming' | 'Networking' | 'Sonstiges';
+export type ActivityCategory = 'Sport' | 'Tech' | 'Party' | 'Kultur' | 'Outdoor' | 'Gaming' | 'Networking' | 'Sonstiges' | 'Other';
+
+export interface Notification {
+  id: string;
+  recipientId: string;
+  senderId: string;
+  senderName?: string;
+  senderProfile?: {
+    displayName?: string;
+    photoURL?: string;
+  };
+  type: 'friend_request' | 'activity_invite' | 'system';
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: Timestamp;
+  link?: string;
+}
 
 export type KYCStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
 
@@ -47,6 +64,7 @@ export interface Activity {
   placeAddress?: string;
   lat?: number;
   lon?: number;
+  imageUrl?: string;
   activityDate: Timestamp;
   activityEndDate?: Timestamp;
   isTimeFlexible?: boolean;
@@ -132,6 +150,7 @@ export interface Chat {
     };
     lastMessage: {
         text: string;
+        senderId: string;
         senderName: string | null;
         sentAt: Timestamp;
     } | null;

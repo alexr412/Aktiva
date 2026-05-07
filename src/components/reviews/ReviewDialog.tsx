@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 
-import { submitReviews } from '@/lib/firebase/firestore';
+import { submitMultiReview } from '@/lib/firebase/firestore';
 import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 
@@ -59,7 +59,13 @@ export function ReviewDialog({ open, onOpenChange, activity, currentUser, onRevi
     setIsSubmitting(true);
     try {
         const otherParticipantIds = activity.participantIds.filter(id => id !== currentUser.uid);
-        await submitReviews(activity.id!, currentUser.uid, otherParticipantIds, rating, text);
+        const reviews = otherParticipantIds.map(uid => ({
+            targetId: uid,
+            targetType: 'user' as const,
+            rating: rating,
+            comment: text
+        }));
+        await submitMultiReview(activity.id!, currentUser.uid, reviews);
         toast({
             title: language === 'de' ? 'Bewertung eingereicht!' : 'Review submitted!',
             description: language === 'de' ? 'Vielen Dank für dein Feedback.' : 'Thank you for your feedback.',

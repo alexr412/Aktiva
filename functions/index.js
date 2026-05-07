@@ -251,3 +251,7 @@ exports.syncUserProfileUpdates = users.syncUserProfileUpdates;
 // Telemetry Aggregation & Data Retention
 const aggregation = require('./lib/aggregation');
 exports.telemetryAggregationWorker = aggregation.telemetryAggregationWorker;
+
+// Secure Payments & Escrow
+const payments = require('./lib/payments');
+exports.secureJoinPaidActivity = payments.secureJoinPaidActivity;

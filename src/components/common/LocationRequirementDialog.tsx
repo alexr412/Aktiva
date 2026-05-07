@@ -26,8 +26,13 @@ export function LocationRequirementDialog({
   isLoading,
 }: LocationRequirementDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-none bg-white dark:bg-neutral-900 rounded-[2.5rem] shadow-2xl">
+    <Dialog open={open} onOpenChange={(val) => { if (val) onOpenChange(val); }}>
+      <DialogContent 
+        hideCloseButton={true}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        className="sm:max-w-[420px] p-0 overflow-hidden border-none bg-white dark:bg-neutral-900 rounded-[2.5rem] shadow-2xl"
+      >
         <div className="relative h-48 bg-gradient-to-br from-emerald-400 to-blue-500 flex items-center justify-center overflow-hidden">
           {/* Animated Background Elements */}
           <div className="absolute inset-0 opacity-20">

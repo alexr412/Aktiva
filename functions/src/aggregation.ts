@@ -4,132 +4,121 @@ import * as admin from 'firebase-admin';
 // Berechnet die untere Grenze des Wilson-Score-Konfidenzintervalls (Normalisierung)
 function calculateWilsonScore(clicks: number, impressions: number, z: number = 1.96): number {
   if (impressions === 0) return 0;
-  
-  // Guard-Clause für Fraud-Detection & Crawler: Clicks dürfen logisch max = Impressions sein
   const n = impressions;
   const p = Math.min(clicks, impressions) / n; 
-
   const denominator = 1 + (z * z) / n;
   const term1 = p + (z * z) / (2 * n);
   const term2 = z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n));
-
   return (term1 - term2) / denominator;
 }
 
 /**
  * Worker operiert stündlich: 
- * Sammelt Telemetrie roh, bereinigt Outlier, berechnet statistisch belastbares $I_score$, 
- * und forciert Time-To-Live (TTL) für veraltete Datensätze nach exakt 7 Tagen.
+ * Sammelt Telemetrie roh via Streaming-Pagination, berechnet statistisch belastbares $I_score$, 
+ * und forciert TTL für veraltete Datensätze nach exakt 7 Tagen in sicheren Batches.
  */
-export const telemetryAggregationWorker = onSchedule('every 1 hours', async (event) => {
+export const telemetryAggregationWorker = onSchedule({
+  schedule: 'every 1 hours',
+  memory: '512MiB', // Erhöhter Speicher für Aggregation
+  timeoutSeconds: 300
+}, async (event) => {
   const db = admin.firestore();
-  console.log('Initiating hourly telemetry aggregation and normalization worker...');
+  console.log('Initiating hourly telemetry aggregation worker (Stability Edition)...');
 
   const now = new Date();
-  
-  // 7-Tage Fallback/Retention für ML und Fraud Detection festlegen
   const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
   const retentionTimestampISO = sevenDaysAgo.toISOString();
 
-  // 1. Hole alle Telemetrie-Events, die innerhalb der aktiven Sliding-Window 7-Tage Frist liegen.
-  // Das gewährt ein echtes gleitendes Metrik-Ranking. Altdaten werden im Cleanup-Prozess entfernt.
-  const eventsSnap = await db.collection('telemetry_events').get();
-  
-  if (eventsSnap.empty) {
-    console.log('No active telemetry events found for smoothing.');
-    return;
-  }
-
-  // Gruppierung über entity_id
   const entityStats = new Map<string, {
     impressions: number,
     clicks: number,
-    dwellValues: number[]
+    dwellSum: number,
+    dwellCount: number
   }>();
 
-  eventsSnap.forEach((doc) => {
-    const data = doc.data();
-    const entityId = data.entity_id;
-    if (!entityId) return;
+  // 1. STREAMING AGGREGATION: Verhindert OOM bei großen Datenmengen
+  let lastDoc = null;
+  let hasMore = true;
+  const PAGE_SIZE = 1000;
 
-    if (!entityStats.has(entityId)) {
-      entityStats.set(entityId, { impressions: 0, clicks: 0, dwellValues: [] });
-    }
+  while (hasMore) {
+    let query = db.collection('telemetry_events')
+      .orderBy('timestamp')
+      .where('timestamp', '>=', retentionTimestampISO)
+      .limit(PAGE_SIZE);
     
-    const stats = entityStats.get(entityId)!;
+    if (lastDoc) query = query.startAfter(lastDoc);
     
-    // Ignoriere Events, die bereinigt werden, um keine Geister-Reste zu mappen
-    if (data.timestamp && data.timestamp < retentionTimestampISO) {
-      return; 
+    const snapshot = await query.get();
+    if (snapshot.empty) {
+      hasMore = false;
+      break;
     }
 
-    if (data.event_type === 'impression') {
-      stats.impressions += 1;
-    } else if (data.event_type === 'click') {
-      stats.clicks += 1;
-    } else if (data.event_type === 'dwell') {
-      const ms = data.event_value;
-      // Dwell-Quality (DQ): Statistische Outlier Exklusion
-      if (ms >= 100 && ms <= 3600000) {
-        stats.dwellValues.push(ms);
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const entityId = data.entity_id;
+      if (!entityId) return;
+
+      if (!entityStats.has(entityId)) {
+        entityStats.set(entityId, { impressions: 0, clicks: 0, dwellSum: 0, dwellCount: 0 });
       }
-    }
-  });
+      const stats = entityStats.get(entityId)!;
+      
+      if (data.event_type === 'impression') stats.impressions++;
+      else if (data.event_type === 'click') stats.clicks++;
+      else if (data.event_type === 'dwell') {
+        const ms = data.event_value;
+        if (ms >= 100 && ms <= 3600000) {
+          stats.dwellSum += ms;
+          stats.dwellCount++;
+        }
+      }
+    });
 
-  let updateCount = 0;
-  const updatePromises: Promise<any>[] = [];
+    lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    if (snapshot.size < PAGE_SIZE) hasMore = false;
+  }
 
-  // 2. Mathematische Transformation & Datenbank Injection
-  for (const [entityId, stats] of entityStats.entries()) {
-    if (stats.impressions === 0 && stats.clicks === 0 && stats.dwellValues.length === 0) {
-      continue;
-    }
+  // 2. BATCH UPDATES: In Chunks von 400 (Sicherheitsmarge)
+  const statsArray = Array.from(entityStats.entries());
+  for (let i = 0; i < statsArray.length; i += 400) {
+    const batch = db.batch();
+    const chunk = statsArray.slice(i, i + 400);
 
-    // Statistisch signifikante Normalisierung via Konfidenzintervall
-    const i_score = calculateWilsonScore(stats.clicks, stats.impressions, 1.96);
-
-    // Bereinigtes Arithmetisches Mittel
-    let dq_score = 0;
-    if (stats.dwellValues.length > 0) {
-      const dwellSum = stats.dwellValues.reduce((a, b) => a + b, 0);
-      dq_score = dwellSum / stats.dwellValues.length;
-    }
-
-    const entityRef = db.collection('entities').doc(entityId);
-    
-    updatePromises.push(
-      entityRef.set({
+    chunk.forEach(([entityId, stats]) => {
+      const i_score = calculateWilsonScore(stats.clicks, stats.impressions);
+      const dq_score = stats.dwellCount > 0 ? stats.dwellSum / stats.dwellCount : 0;
+      
+      const entityRef = db.collection('entities').doc(entityId);
+      batch.set(entityRef, {
         metrics: {
-          base_raw_events: stats.impressions + stats.clicks + stats.dwellValues.length,
+          base_raw_events: stats.impressions + stats.clicks + stats.dwellCount,
           i_score: i_score,
           dq_score: dq_score,
           last_aggregated: admin.firestore.FieldValue.serverTimestamp()
         }
-      }, { merge: true })
-    );
+      }, { merge: true });
+    });
 
-    updateCount++;
+    await batch.commit();
   }
 
-  // 3. Batch Delete Job zur konsequenten Durchsetzung der Data Retention Policy
-  const deleteBatch = db.batch();
-  let deletedCount = 0;
-  
-  const obsoleteEventsSnap = await db.collection('telemetry_events')
-    .where('timestamp', '<', retentionTimestampISO)
-    .get();
+  // 3. CHUNKED DELETE: Löscht veraltete Daten ohne Batch-Limit-Fehler
+  let deletedTotal = 0;
+  while (true) {
+    const obsoleteSnap = await db.collection('telemetry_events')
+      .where('timestamp', '<', retentionTimestampISO)
+      .limit(400)
+      .get();
+    
+    if (obsoleteSnap.empty) break;
 
-  obsoleteEventsSnap.forEach(doc => {
-    deleteBatch.delete(doc.ref);
-    deletedCount++;
-  });
+    const deleteBatch = db.batch();
+    obsoleteSnap.forEach(doc => deleteBatch.delete(doc.ref));
+    await deleteBatch.commit();
+    deletedTotal += obsoleteSnap.size;
+  }
 
-  // Alles atomar absenden
-  await Promise.all([
-    ...updatePromises,
-    deleteBatch.commit()
-  ]);
-
-  console.log(`Aggregation successful. Normalization metrics injected for ${updateCount} targets.`);
-  console.log(`GC Data Retention: Truncated ${deletedCount} obsolete historic telemetry events.`);
+  console.log(`Aggregation successful. Metrics updated for ${entityStats.size} entities. Truncated ${deletedTotal} events.`);
 });

@@ -104,16 +104,43 @@ export async function updateUserProfile(userId: string, data: Partial<UserProfil
     await updateDoc(userDocRef, data);
 }
 
-export async function updateUserLocation(userId: string, lat: number, lng: number) {
+export async function updateUserLocation(userId: string, lat: number, lng: number, city?: string) {
   if (!db) return;
   const userDocRef = doc(db, 'users', userId);
-  await setDoc(userDocRef, {
-    lastLocation: {
-      lat,
-      lng,
-      updatedAt: serverTimestamp()
+  
+  try {
+    // Optimierung: Nur updaten wenn die Position sich signifikant geändert hat (> 500m) oder die Stadt neu ist
+    const snap = await getDoc(userDocRef);
+    if (snap.exists()) {
+      const current = snap.data().lastLocation;
+      if (current && current.lat && current.lng) {
+        const R = 6371; // Earth radius in km
+        const dLat = (lat - current.lat) * Math.PI / 180;
+        const dLon = (lng - current.lng) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(current.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * 
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+
+        // Wenn < 500m Unterschied und gleiche Stadt -> Update überspringen
+        if (distance < 0.5 && current.city === (city || null)) {
+          return;
+        }
+      }
     }
-  }, { merge: true });
+
+    await setDoc(userDocRef, {
+      lastLocation: {
+        lat,
+        lng,
+        city: city || null,
+        updatedAt: serverTimestamp()
+      }
+    }, { merge: true });
+  } catch (e) {
+    console.warn("Update user location failed:", e);
+  }
 }
 
 
@@ -528,7 +555,7 @@ export async function joinActivity(activityId: string, user: User, source?: stri
 
       if (referralId && referralId !== user.uid) {
         updates["stats.referralJoins"] = increment(1);
-        const referrerRef = doc(db, 'users', referralId);
+        const referrerRef = doc(db!, 'users', referralId);
         transaction.update(referrerRef, {
           successfulReferrals: increment(1)
         });
@@ -582,107 +609,21 @@ export async function joinActivity(activityId: string, user: User, source?: stri
 
 export async function joinPaidActivity(activityId: string, user: User, transactionToken: string, source?: string | null, referralId?: string | null): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
-  if (!transactionToken) throw new Error("Transaktions-Token fehlt. Beitritt verweigert.");
-
-  const activityRef = doc(db, 'activities', activityId);
-  const chatRef = doc(db, 'chats', activityId);
-  const userRef = doc(db, 'users', user.uid);
-  const pRef = doc(db, 'activities', activityId, 'participants', user.uid);
-  const transactionLogRef = doc(collection(db, 'transactions'));
-
+  
   try {
-    await runTransaction(db, async (transaction) => {
-      const activityDoc = await transaction.get(activityRef);
-      const userDoc = await transaction.get(userRef);
-
-      if (!activityDoc.exists()) throw "Aktivität nicht gefunden.";
-      const activityData = activityDoc.data() as Activity;
-      const userProfileData = userDoc.data() as UserProfile | undefined;
-
-      if (activityData.participantIds.includes(user.uid)) return;
-      if (activityData.maxParticipants && activityData.participantIds.length >= activityData.maxParticipants) {
-        throw `Maximale Teilnehmerzahl von ${activityData.maxParticipants} erreicht.`;
-      }
-
-      const updates: any = {
-        participantIds: arrayUnion(user.uid),
-        lastInteractionAt: serverTimestamp(),
-        [`participantDetails.${user.uid}`]: {
-          displayName: user.displayName || "Unbekannter Teilnehmer",
-          photoURL: user.photoURL || null,
-          isPremium: userProfileData?.isPremium || false,
-          isSupporter: userProfileData?.isSupporter || false,
-          checkInStatus: 'pending',
-          hasReviewed: false
-        },
-      };
-
-      if (source === 'push') {
-        updates["stats.pushJoins"] = increment(1);
-      }
-
-      if (referralId && referralId !== user.uid) {
-        updates["stats.referralJoins"] = increment(1);
-        const referrerRef = doc(db, 'users', referralId);
-        transaction.update(referrerRef, {
-          successfulReferrals: increment(1)
-        });
-      }
-
-      transaction.update(activityRef, updates);
-
-      const netAmount = (activityData.price || 0) * 0.9; 
-      const hostRef = doc(db!, 'users', activityData.hostId);
-      transaction.update(hostRef, {
-        escrowBalance: increment(netAmount)
-      });
-
-      transaction.set(pRef, {
-        uid: user.uid,
-        displayName: user.displayName || "Unbekannter Teilnehmer",
-        photoURL: user.photoURL || null,
-        checkInStatus: 'pending',
-        joinedAt: serverTimestamp(),
-        hasReviewed: false
-      });
-
-      const currentPreviews = activityData.participantsPreview || [];
-      if (currentPreviews.length < 5 && !currentPreviews.some(p => p.uid === user.uid)) {
-        transaction.update(activityRef, {
-          participantsPreview: arrayUnion({
-            uid: user.uid,
-            displayName: user.displayName || "Unbekannter Teilnehmer",
-            photoURL: user.photoURL || null
-          })
-        });
-      }
-
-      transaction.update(chatRef, {
-        participantIds: arrayUnion(user.uid),
-        [`participantDetails.${user.uid}`]: {
-          displayName: user.displayName || "Unbekannter Teilnehmer",
-          photoURL: user.photoURL || null,
-          isPremium: userProfileData?.isPremium || false,
-          isSupporter: userProfileData?.isSupporter || false,
-          checkInStatus: 'pending'
-        },
-        [`unreadCount.${user.uid}`]: 0
-      });
-
-      transaction.set(transactionLogRef, {
-        activityId,
-        userId: user.uid,
-        userName: user.displayName || "Unbekannter Nutzer",
-        amount: activityData.price || 0,
-        currency: 'EUR',
-        status: 'completed',
-        transactionToken,
-        createdAt: serverTimestamp(),
-      });
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const secureJoin = httpsCallable(functions, 'secureJoinPaidActivity');
+    
+    await secureJoin({
+      activityId,
+      transactionToken,
+      source,
+      referralId
     });
   } catch (e: any) {
-    console.error("Join Paid Activity Transaction failed: ", e);
-    throw new Error(typeof e === 'string' ? e : "Zahlungsverifikation fehlgeschlagen.");
+    console.error("Join Paid Activity via Cloud Function failed: ", e);
+    throw new Error(e.message || "Zahlungsverifikation fehlgeschlagen.");
   }
 }
 
@@ -1055,11 +996,11 @@ export const cancelActivity = async (activityId: string, hostId: string): Promis
     const escrowDeduction = totalParticipants * (activity.price * 0.9);
 
     if (escrowDeduction > 0) {
-      batch.update(doc(db, 'users', hostId), { escrowBalance: increment(-escrowDeduction) });
+      batch.update(doc(db!, 'users', hostId), { escrowBalance: increment(-escrowDeduction) });
     }
 
     participantsSnap.forEach((pDoc) => {
-      const refundRef = doc(collection(db, 'refunds'));
+      const refundRef = doc(collection(db!, 'refunds'));
       batch.set(refundRef, {
         activityId,
         userId: pDoc.id,
@@ -1253,7 +1194,7 @@ export async function findUserByUsername(username: string): Promise<UserProfile 
         return null;
     }
 
-    return querySnapshot.docs[0].data() as UserProfile;
+    return { uid: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as UserProfile;
 }
 
 export async function isUsernameTaken(username: string, excludeUserId?: string): Promise<boolean> {

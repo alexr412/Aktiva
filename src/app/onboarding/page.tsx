@@ -277,8 +277,7 @@ function OnboardingContent() {
         categoryAffinities: data.affinities || {},
         proximitySettings: {
           enabled: true,
-          radius: data.radiusKm * 1000,
-          notifications: true
+          radiusKm: data.radiusKm
         }
       });
 
@@ -425,10 +424,12 @@ function OnboardingContent() {
                         {(() => {
                           const affinities = form.watch('affinities') || {};
                           const discreteValues = [0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0];
+                          const defaultIndex = 4; // Index of 1.0
 
                           return categories.map((cat) => {
                             const affinityValue = affinities[cat.id] ?? 1.0;
-                            const currentIndex = discreteValues.indexOf(affinityValue) !== -1 ? discreteValues.indexOf(affinityValue) : 4;
+                            const idx = discreteValues.indexOf(affinityValue);
+                            const currentIndex = idx !== -1 ? idx : defaultIndex;
                             const Icon = cat.icon;
 
                             let accentColor = "#9ca3af";

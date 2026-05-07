@@ -264,7 +264,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-0.5">
                                                      <h4 className="">
-                                                        {activity.title || activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}
+                                                        {activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}
                                                     </h4>
 
                                                 </div>

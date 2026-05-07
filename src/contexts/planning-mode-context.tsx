@@ -48,8 +48,14 @@ export const PlanningModeProvider = ({ children }: { children: ReactNode }) => {
     updateState({ isPlanning: false, destination: null });
   };
 
+  const contextValue = React.useMemo(() => ({ 
+    planningState, 
+    enterPlanningMode, 
+    exitPlanningMode 
+  }), [planningState]);
+
   return (
-    <PlanningModeContext.Provider value={{ planningState, enterPlanningMode, exitPlanningMode }}>
+    <PlanningModeContext.Provider value={contextValue}>
       {children}
     </PlanningModeContext.Provider>
   );

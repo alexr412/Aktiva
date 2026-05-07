@@ -36,7 +36,7 @@ export default function ScannerPage() {
 
     const checkAuth = async () => {
       try {
-        const activitySnap = await getDoc(doc(db, 'activities', activityId));
+        const activitySnap = await getDoc(doc(db!, 'activities', activityId));
         if (activitySnap.exists() && activitySnap.data().hostId === user.uid) {
           setIsAuthorized(true);
         } else {

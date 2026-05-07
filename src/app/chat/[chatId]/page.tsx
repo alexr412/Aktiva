@@ -173,7 +173,7 @@ export default function ChatRoomPage() {
 
     let activityUnsubscribe: (() => void) | undefined;
 
-    const chatUnsubscribe = onSnapshot(doc(db, 'chats', chatId), (chatDoc) => {
+    const chatUnsubscribe = onSnapshot(doc(db!, 'chats', chatId), (chatDoc) => {
       if (chatDoc.exists()) {
         const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
         setChat(chatData);
@@ -192,7 +192,7 @@ export default function ChatRoomPage() {
           setOtherUser(null);
           if (activityUnsubscribe) activityUnsubscribe();
           
-          activityUnsubscribe = onSnapshot(doc(db, 'activities', chatData.activityId!), (activityDoc) => {
+          activityUnsubscribe = onSnapshot(doc(db!, 'activities', chatData.activityId!), (activityDoc) => {
               if (activityDoc.exists()) {
                   const activityData = { id: activityDoc.id, ...activityDoc.data() } as Activity;
                   setActivity(activityData);
@@ -212,7 +212,7 @@ export default function ChatRoomPage() {
       }
     });
 
-    const messagesQuery = query(collection(db, 'chats', chatId, 'messages'), orderBy('sentAt', 'asc'));
+    const messagesQuery = query(collection(db!, 'chats', chatId, 'messages'), orderBy('sentAt', 'asc'));
     const messagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
       const newMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Message));
       setMessages(newMessages);
