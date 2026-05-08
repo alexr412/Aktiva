@@ -65,7 +65,8 @@ export default function ExplorePage() {
                 },
                 (error) => {
                     console.error('Geolocation error:', error);
-                }
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
             );
         }
     }, []);
@@ -366,7 +367,7 @@ export default function ExplorePage() {
                                         <motion.div
                                             key={card.id}
                                             className={cn(
-                                              "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[2.5rem] sm:rounded-[3rem] elevation-high border-none overflow-hidden flex flex-col transition-shadow duration-300"
+                                              "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[2rem] sm:rounded-[2.5rem] elevation-high border-none overflow-hidden flex flex-col transition-shadow duration-300"
                                             )}
                                             style={{ 
                                                 zIndex: isTopCard ? 100 : (10 + index),
@@ -453,7 +454,7 @@ export default function ExplorePage() {
                                                     </div>
 
                                                     {distance !== null && (
-                                                        <div className="absolute top-5 right-5 z-10">
+                                                        <div className="absolute top-5 right-10 z-10">
                                                             <div className="bg-black/50 backdrop-blur-md text-white text-[10px] font-black px-3 h-7 flex items-center rounded-full">
                                                                 {distance < 1 ? '< 1 km' : `${distance.toFixed(1)} km`}
                                                             </div>

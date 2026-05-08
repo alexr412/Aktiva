@@ -40,7 +40,7 @@ const Avatar = React.forwardRef<
         ref={ref}
         className={cn(
           "flex h-full w-full shrink-0 overflow-hidden rounded-full transition-all duration-300",
-          hasStatus ? "border-2 border-white dark:border-neutral-900 bg-background" : ""
+          hasStatus ? "border-transparent" : ""
         )}
         {...props}
       >

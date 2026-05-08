@@ -34,33 +34,42 @@ export default function PrivacyPage() {
                </div>
             </div>
             
-            <div className="prose prose-slate dark:prose-invert max-w-none space-y-6 text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
-              <p>Deine Privatsphäre ist unser höchstes Gut. Hier erfährst du, wie wir deine Daten bei Aktvia schützen.</p>
+            <div className="prose prose-slate dark:prose-invert max-w-none space-y-8 text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
+              <p>Deine Privatsphäre ist unser höchstes Gut. Diese Erklärung informiert über die Verarbeitung personenbezogener Daten in der App Aktvia.</p>
               
               <div className="space-y-4">
-                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">1. Datenerhebung</h3>
-                <p>Wir erheben nur Daten, die für die Funktion der App notwendig sind: E-Mail, Name, Geburtsdatum und Standort (nur bei aktiver Nutzung), um dir Aktivitäten in deiner Nähe anzuzeigen.</p>
+                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">1. Verantwortlicher</h3>
+                <p>Alexander Rötz, E-Mail: roetzbusiness@gmail.com (vollständige Anschrift siehe Impressum).</p>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">2. Standortsicherheit</h3>
-                <p>Dein genauer Standort wird niemals ohne deine explizite Zustimmung mit anderen geteilt. In der App werden nur ungefähre Entfernungen angezeigt, um deine Privatsphäre zu wahren.</p>
+                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">2. Erfasste Datenpunkte & Zweck</h3>
+                <ul className="list-disc pl-5 space-y-2 text-sm">
+                  <li><strong>Identitätsdaten:</strong> Name, E-Mail-Adresse, Profilfoto (Zweck: Authentifizierung via Firebase).</li>
+                  <li><strong>Profildaten:</strong> Benutzername, Bio, Alter, Geschlecht, Interessen, "Social Battery" (Zweck: Personalisierung).</li>
+                  <li><strong>Standortdaten:</strong> Präzise GPS-Koordinaten (Zweck: Ermittlung lokaler Aktivitäten via Geoapify).</li>
+                  <li><strong>Soziale Daten:</strong> Chat-Nachrichten, Freundesliste, Aktivitätsteilnahmen (Zweck: In-App-Interaktion).</li>
+                </ul>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">3. Datenweitergabe</h3>
-                <p>Aktvia verkauft niemals deine persönlichen Daten an Dritte. Daten werden nur geteilt, wenn es für die Erbringung unserer Dienste (z.B. Hosting, Authentifizierung über Firebase) notwendig ist.</p>
+                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">3. Drittanbieter-Technologien</h3>
+                <ul className="list-disc pl-5 space-y-2 text-sm">
+                  <li><strong>Google Firebase:</strong> Hosting der Datenbanken (Firestore) und Authentifizierung. Datenstandort: Primär EU (Frankfurt).</li>
+                  <li><strong>Geoapify:</strong> Kartenmaterial und Geokodierung.</li>
+                  <li><strong>Vercel Inc.:</strong> Hosting der API und Web-Komponenten.</li>
+                </ul>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">4. Deine Rechte</h3>
-                <p>Du hast jederzeit das Recht auf Auskunft, Korrektur oder Löschung deiner Daten. In den Profileinstellungen kannst du dein gesamtes Konto inklusive aller Daten restlos löschen.</p>
+                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">4. Rechtsgrundlage</h3>
+                <p>Die Verarbeitung erfolgt auf Basis von Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung) sowie Art. 6 Abs. 1 lit. a DSGVO (Einwilligung bei Standortdaten).</p>
               </div>
 
-              <div className="pt-8 border-t border-slate-200 dark:border-neutral-800">
-                <div className="flex items-center gap-3 text-[#10b981] font-black text-xs uppercase tracking-widest">
+              <div className="pt-8 border-t border-slate-200 dark:border-neutral-800 flex items-center justify-between">
+                 <div className="flex items-center gap-3 text-[#10b981] font-black text-[10px] uppercase tracking-widest">
                   <Lock className="w-4 h-4" />
-                  <span>End-to-End Encryption for Chats coming soon</span>
+                  <span>Version 2.2 • Stand 08.05.2026</span>
                 </div>
               </div>
             </div>

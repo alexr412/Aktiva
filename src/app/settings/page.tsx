@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2, ShieldBan } from 'lucide-react';
+import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2, ShieldBan, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -518,15 +518,10 @@ export default function SettingsPage() {
                                 </div>
                                 <p className="text-sm text-muted-foreground">1.0.0</p>
                             </div>
-                             <button onClick={() => router.push('/privacy')} className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
+                             <button onClick={() => router.push('/settings/legal')} className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
                                 <div>
-                                    <p className="font-medium">{language === 'de' ? 'Datenschutzerklärung' : 'Privacy Policy'}</p>
-                                </div>
-                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                            </button>
-                             <button onClick={() => router.push('/terms')} className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
-                                <div>
-                                    <p className="font-medium">{language === 'de' ? 'Nutzungsbedingungen' : 'Terms of Service'}</p>
+                                    <p className="font-medium">{language === 'de' ? 'Rechtliches' : 'Legal'}</p>
+                                    <p className="text-sm text-muted-foreground">{language === 'de' ? 'Impressum, Datenschutz, AGB & mehr' : 'Imprint, Privacy, Terms & more'}</p>
                                 </div>
                                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
                             </button>
@@ -567,32 +562,46 @@ export default function SettingsPage() {
                                             </AlertDialogDescription>
 
                                         </AlertDialogHeader>
-                                        <div className="space-y-3">
-                                            {deleteError && (
-                                                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 space-y-2">
+                                         <div className="space-y-4">
+                                            <div className="p-4 bg-muted/50 rounded-2xl space-y-3">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">{language === 'de' ? 'Bestätige dein Passwort' : 'Confirm your password'}</Label>
+                                                <Input 
+                                                    type="password"
+                                                    value={deleteConfirmText}
+                                                    onChange={(e) => {
+                                                        setDeleteConfirmText(e.target.value);
+                                                        if (deleteError) setDeleteError(null);
+                                                    }}
+                                                    placeholder={language === 'de' ? "Passwort eingeben" : "Enter password"}
+                                                    className="h-12 rounded-xl bg-background border-none shadow-sm font-bold focus-visible:ring-emerald-500/20"
+                                                />
+                                            </div>
+
+                                            {deleteError ? (
+                                                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 space-y-2">
                                                     <p className="text-xs font-bold text-destructive text-center">{deleteError}</p>
                                                     <button 
                                                         onClick={() => {
                                                             handlePasswordReset();
                                                             setDeleteError(null);
                                                         }}
-                                                        className="w-full text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+                                                        className="w-full h-10 rounded-lg bg-white/50 dark:bg-black/20 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-white/80 transition-colors"
                                                     >
-                                                        {language === 'de' ? 'Passwort vergessen?' : 'Forgot password?'}
+                                                        {language === 'de' ? 'Passwort jetzt zurücksetzen' : 'Reset password now'}
                                                     </button>
                                                 </div>
+                                            ) : (
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        handlePasswordReset();
+                                                    }}
+                                                    className="w-full text-[10px] font-black uppercase tracking-widest text-primary hover:underline underline-offset-4 text-center opacity-70 hover:opacity-100 transition-all"
+                                                >
+                                                    {language === 'de' ? 'Passwort vergessen?' : 'Forgot password?'}
+                                                </button>
                                             )}
-                                            <Input 
-                                                type="password"
-                                                value={deleteConfirmText}
-                                                onChange={(e) => {
-                                                    setDeleteConfirmText(e.target.value);
-                                                    if (deleteError) setDeleteError(null);
-                                                }}
-                                                placeholder={language === 'de' ? "Dein Passwort" : "Your password"}
-                                                className="bg-muted"
-                                            />
-                                        </div>
+                                         </div>
                                         <AlertDialogFooter>
                                             <AlertDialogCancel onClick={() => {
                                                 setDeleteConfirmText('');

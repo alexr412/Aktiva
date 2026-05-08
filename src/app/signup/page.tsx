@@ -75,8 +75,8 @@ export default function SignupPage() {
       const date = new Date(val);
       const now = new Date();
       const age = now.getFullYear() - date.getFullYear();
-      return age >= 16;
-    }, { message: language === 'de' ? 'Du musst mindestens 16 Jahre alt sein.' : 'You must be at least 16 years old.' }),
+      return age >= 12;
+    }, { message: language === 'de' ? 'Du musst mindestens 12 Jahre alt sein.' : 'You must be at least 12 years old.' }),
     password: z.string()
       .min(8, { message: language === 'de' ? 'Mindestens 8 Zeichen.' : 'Minimum 8 characters.' })
       .max(32, { message: language === 'de' ? 'Maximal 32 Zeichen.' : 'Maximum 32 characters.' })
@@ -510,7 +510,7 @@ export default function SignupPage() {
                 
                 <div className="space-y-2">
                   <h4 className="font-black text-slate-900 uppercase text-xs">1. Nutzung der Plattform</h4>
-                  <p>Aktvia ist eine Plattform zur Vernetzung von Menschen für Freizeitaktivitäten. Die Nutzung ist ab 16 Jahren gestattet. Du bist für die Sicherheit deines Kontos verantwortlich.</p>
+                  <p>Aktvia ist eine Plattform zur Vernetzung von Menschen für Freizeitaktivitäten. Die Nutzung ist ab 12 Jahren gestattet. Du bist für die Sicherheit deines Kontos verantwortlich.</p>
                 </div>
 
                 <div className="space-y-2">

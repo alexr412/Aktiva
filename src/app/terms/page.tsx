@@ -34,31 +34,34 @@ export default function TermsPage() {
                </div>
             </div>
             
-            <div className="prose prose-slate dark:prose-invert max-w-none space-y-6 text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
-              <p>Willkommen bei Aktvia. Durch die Nutzung unserer App erklärst du dich mit den folgenden Bedingungen einverstanden.</p>
-              
+            <div className="prose prose-slate dark:prose-invert max-w-none space-y-8 text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
               <div className="space-y-4">
-                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">1. Nutzung der Plattform</h3>
-                <p>Aktvia ist eine Plattform zur Vernetzung von Menschen für Freizeitaktivitäten. Die Nutzung ist ab 16 Jahren gestattet. Du bist für die Sicherheit deines Kontos und die Richtigkeit deiner Angaben verantwortlich.</p>
+                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">§ 1 Gegenstand</h3>
+                <p>Aktvia vernetzt Nutzer für reale Freizeitaktivitäten. Die App bietet Funktionen zur Ortssuche, Aktivitätserstellung und Kommunikation.</p>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">2. Verhaltenskodex</h3>
-                <p>Respekt und Sicherheit stehen an erster Stelle. Belästigung, Diskriminierung oder illegale Aktivitäten führen zum sofortigen Ausschluss. Aktvia behält sich das Recht vor, Inhalte zu moderieren und Profile bei Verstößen zu sperren.</p>
+                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">§ 2 Zulassung</h3>
+                <p>Das Mindestalter für die Nutzung beträgt 12 Jahre. Mit der Registrierung wird die Einhaltung des Mindestalters zugesichert.</p>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">3. Community-Score & Moderation</h3>
-                <p>Unser System basiert auf Vertrauen. Bewertungen und Community-Feedback beeinflussen die Sichtbarkeit von Profilen und Aktivitäten. Ein negativer Score kann zu Funktionseinschränkungen führen.</p>
+                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">§ 3 Nutzergenerierte Inhalte (UGC)</h3>
+                <p>Hassrede, Gewalt, Pornografie und illegale Inhalte sind untersagt. Aktvia moderiert Inhalte; Verstöße führen zur Entfernung innerhalb von 24 Stunden und zur Accountsperrung.</p>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">4. Haftungsausschluss</h3>
-                <p>Aktvia vermittelt Kontakte, haftet jedoch nicht für Vorfälle, die während physischer Treffen oder Aktivitäten auftreten. Die Teilnahme erfolgt auf eigene Gefahr.</p>
+                <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">§ 4 Haftung</h3>
+                <p>Aktvia haftet nicht für Vorfälle bei physischen Treffen. Die Teilnahme an Aktivitäten erfolgt auf eigene Gefahr.</p>
               </div>
 
-              <div className="pt-8 border-t border-slate-200 dark:border-neutral-800">
-                <p className="text-xs italic text-slate-400">Dies ist eine vereinfachte Darstellung der Nutzungsbedingungen zu Demonstrationszwecken.</p>
+              <div className="pt-8 border-t border-slate-200 dark:border-neutral-800 flex items-center justify-between">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Version 2.2 • Stand 08.05.2026</p>
+                <div className="flex gap-2">
+                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 opacity-50" />
+                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 opacity-20" />
+                </div>
               </div>
             </div>
           </div>

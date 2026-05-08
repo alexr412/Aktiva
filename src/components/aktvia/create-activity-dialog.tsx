@@ -156,7 +156,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
     }, (err) => {
       setIsLocating(false);
       toast({ variant: 'destructive', title: language === 'de' ? 'GPS Fehler' : 'GPS Error', description: language === 'de' ? 'Standort konnte nicht ermittelt werden.' : 'Location could not be determined.' });
-    });
+    }, { enableHighAccuracy: true, timeout: 10000 });
   };
 
   /**

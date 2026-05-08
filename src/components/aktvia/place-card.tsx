@@ -136,7 +136,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             ref={cardRef}
             onClick={onClick}
             className={cn(
-                "cursor-pointer group overflow-hidden rounded-[2.5rem] bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 flex flex-col relative p-0 h-full dark:shadow-none"
+                "cursor-pointer group overflow-hidden rounded-[1.5rem] bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 flex flex-col relative p-0 h-full dark:shadow-none"
             )}
         >
             {/* Oberer Bild/Icon-Bereich */}
@@ -171,7 +171,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                 </div>
 
                 {/* Status & Distanz Badges */}
-                <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                <div className="absolute top-2.5 right-4 flex items-center gap-1.5">
                     {userProfile?.role === 'admin' && place.relevanceScore !== undefined && (
                         <div className="h-5 bg-amber-400 text-white text-[8px] font-black px-2 rounded-2xl shadow-lg flex items-center gap-1 border border-white/20">
                             <Sparkles className="h-2.5 w-2.5" />

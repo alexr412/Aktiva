@@ -228,7 +228,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             updateUserLocation(user.uid, latitude, longitude, cityName);
           },
           (error) => console.warn("Location update failed:", error),
-          { enableHighAccuracy: false, timeout: 15000 }
+          { enableHighAccuracy: true, timeout: 10000 }
         );
       }
     };

@@ -230,9 +230,9 @@ export default function LoginPage() {
                     <button 
                       type="button" 
                       onClick={() => setIsResetDialogOpen(true)}
-                      className="text-[10px] font-black text-[#10b981] hover:opacity-80 transition-opacity uppercase tracking-widest"
+                      className="text-xs font-black text-[#10b981] hover:underline underline-offset-2 transition-all uppercase tracking-widest"
                     >
-                      Forgot?
+                      Forgot Password?
                     </button>
                   </div>
                   <FormControl>

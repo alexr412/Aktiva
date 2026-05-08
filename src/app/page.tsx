@@ -146,7 +146,7 @@ export default function Home() {
         if (user?.uid) {
           updateUserLocation(user.uid, lat, lng, city);
         }
-        
+
         // Cache location for ultra-fast boot on next visit
         localStorage.setItem('aktiva_last_location', JSON.stringify({
           lat, lng, city, timestamp: Date.now()
@@ -589,7 +589,7 @@ export default function Home() {
             });
           }
         },
-        { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
       );
     } else {
       setIsLocationLoading(false);
@@ -921,7 +921,7 @@ export default function Home() {
             <div className="global-header-container">
               <div className="flex items-center gap-3">
                 <Link href="/profile">
-                  <Avatar 
+                  <Avatar
                     className="h-10 w-10 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
                     isPremium={userProfile?.isPremium}
                     isCreator={userProfile?.isCreator}

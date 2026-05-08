@@ -267,14 +267,12 @@ export default function EditProfilePage() {
                 className="relative group cursor-pointer"
                 onClick={() => fileInputRef.current?.click()}
             >
-                <div className="p-1 bg-white rounded-full shadow-lg">
-                    <Avatar className="h-32 w-32 border-4 border-white">
-                        <AvatarImage src={profilePhoto || undefined} />
-                        <AvatarFallback className="bg-secondary text-primary font-black text-2xl">
-                            {formData.displayName?.charAt(0) || 'U'}
-                        </AvatarFallback>
-                    </Avatar>
-                </div>
+                <Avatar className="h-32 w-32">
+                    <AvatarImage src={profilePhoto || undefined} />
+                    <AvatarFallback className="bg-secondary text-primary font-black text-2xl">
+                        {formData.displayName?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                </Avatar>
                 <div className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-white transform group-hover:scale-110 transition-transform">
                     <Camera className="h-5 w-5" />
                 </div>
