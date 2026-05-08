@@ -151,7 +151,13 @@ export default function ChatPage() {
       <div className="px-4 py-2 space-y-3 pb-32">
         {filteredChats.map((chat) => {
           const isDM = !chat.activityId;
-          let otherUser: { displayName: string | null; photoURL: string | null; } | undefined;
+          let otherUser: { 
+            displayName: string | null; 
+            photoURL: string | null; 
+            isPremium?: boolean;
+            isCreator?: boolean;
+            isSupporter?: boolean;
+          } | undefined;
           let chatName = chat.placeName;
           let avatarUrl: string | undefined;
           let avatarFallback = chat.placeName?.charAt(0).toUpperCase() || 'C';
