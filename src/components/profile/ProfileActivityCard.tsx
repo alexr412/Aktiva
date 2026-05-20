@@ -57,6 +57,11 @@ interface ProfileActivityCardProps {
                 {activityDate ? format(activityDate, language === 'de' ? 'eee, d. MMM' : 'eee, MMM d', { locale }) : (language === 'de' ? 'In Kürze' : 'Soon')}
             </span>
           </div>
+          {activity.description && (
+            <p className="mt-2 text-[10px] text-slate-500 font-medium italic border-l-2 border-primary/20 pl-2">
+              "{activity.description}"
+            </p>
+          )}
         </div>
       </div>
 

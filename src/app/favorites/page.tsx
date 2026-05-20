@@ -54,7 +54,7 @@ export default function FavoritesPage() {
         setActivityModalPlace(place);
     };
 
-    const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory): Promise<boolean> => {
+    const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory, description?: string, requirements?: any, joinMode?: 'direct' | 'request'): Promise<boolean> => {
         if (!user || !activityModalPlace) {
             toast({
                 title: language === 'de' ? 'Fehler' : 'Error',
@@ -73,7 +73,10 @@ export default function FavoritesPage() {
                 user,
                 isTimeFlexible,
                 maxParticipants,
-                category: category || (language === 'de' ? 'Sonstiges' : 'Other')
+                category: category || (language === 'de' ? 'Sonstiges' : 'Other') as ActivityCategory,
+                description,
+                requirements,
+                joinMode
             });
             toast({
                 title: language === 'de' ? 'Aktivität erstellt!' : 'Activity Created!',

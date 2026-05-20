@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { signOut } from '@/lib/firebase/auth';
 import { fetchUserActivities, joinActivity, getUserProfile, acceptFriendRequest, declineFriendRequest, createActivity } from '@/lib/firebase/firestore';
-import type { Activity, UserProfile, Place, Review } from '@/lib/types';
+import type { Activity, UserProfile, Place, Review, ActivityCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
@@ -211,9 +211,13 @@ export default function ProfilePage() {
             throw new Error('Login Required');
         }
         try {
-            await joinActivity(activityId, user);
-            setActivities(prev => prev.map(act => act.id === activityId ? { ...act, participantIds: [...act.participantIds, user.uid] } : act));
-            router.push(`/chat/${activityId}`);
+            const status = await joinActivity(activityId, user);
+            if (status === 'joined') {
+                setActivities(prev => prev.map(act => act.id === activityId ? { ...act, participantIds: [...act.participantIds, user.uid] } : act));
+                router.push(`/chat/${activityId}`);
+            } else {
+                toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
+            }
         } catch (error: any) {
             toast({ title: language === 'de' ? 'Fehler beim Beitritt.' : 'Error joining.', variant: 'destructive' });
             throw error;
@@ -256,7 +260,7 @@ export default function ProfilePage() {
         setActivityModalPlace(place);
     };
 
-    const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean): Promise<boolean> => {
+    const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory, description?: string, requirements?: any, joinMode?: 'direct' | 'request'): Promise<boolean> => {
         if (!user || !activityModalPlace) return false;
 
         try {
@@ -268,7 +272,10 @@ export default function ProfilePage() {
                 isTimeFlexible,
                 maxParticipants,
                 isBoosted,
-                category: 'Sonstiges'
+                category: 'Sonstiges',
+                description,
+                requirements,
+                joinMode
             });
             toast({ title: language === 'de' ? 'Aktivität erstellt!' : 'Activity created!' });
             setActivityModalPlace(null);

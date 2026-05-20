@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/client';
-import { sendMessage, checkIfUserReviewed, markChatAsRead, removeUserFromChat } from '@/lib/firebase/firestore';
-import type { Message, Chat, Activity, UserProfile } from '@/lib/types';
+import { sendMessage, checkIfUserReviewed, markChatAsRead, removeUserFromChat, editMessage, pinMessage, unpinMessage } from '@/lib/firebase/firestore';
+import type { Message, Chat, Activity, UserProfile, Place } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
@@ -19,7 +19,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChatInfoSheet } from '@/components/aktvia/chat-info-sheet';
-import { ArrowLeft, Send, MoreVertical, Loader2, Users } from 'lucide-react';
+import { PlaceDetails } from '@/components/aktvia/place-details';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ArrowLeft, Send, MoreVertical, Loader2, Users, Info, Reply, Edit3, Pin, Copy, CornerUpLeft, X, PinOff, Check } from 'lucide-react';
 import { CompletionBanner } from '@/components/aktvia/CompletionBanner';
 import { MultiPeerReviewDialog } from '@/components/aktvia/multi-peer-review-dialog';
 import { UserBadge } from '@/components/common/UserBadge';
@@ -77,6 +79,12 @@ const MessageBubble = ({
   isFirstInGroup,
   language,
   isDirectMessage,
+  activeMenuMessageId,
+  onToggleMenu,
+  onReply,
+  onEdit,
+  onPin,
+  onCopy,
 }: {
   message: Message;
   isOwnMessage: boolean;
@@ -85,6 +93,12 @@ const MessageBubble = ({
   isFirstInGroup: boolean;
   language: string;
   isDirectMessage: boolean;
+  activeMenuMessageId: string | null;
+  onToggleMenu: (messageId: string | null) => void;
+  onReply: (message: Message) => void;
+  onEdit: (message: Message) => void;
+  onPin: (message: Message) => void;
+  onCopy: (message: Message) => void;
 }) => {
   const badgePremium = isOwnMessage 
     ? Boolean(currentUserProfile?.isPremium) 
@@ -120,22 +134,97 @@ const MessageBubble = ({
           </Link>
         )}
         
-        <div className={cn(
-          "max-w-full px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-all inline-block shadow-sm",
-          isOwnMessage 
-            ? "self-end bg-primary text-primary-foreground rounded-tr-sm" 
-            : "self-start bg-slate-100 dark:bg-neutral-800 text-slate-900 dark:text-neutral-100 border border-slate-100 dark:border-neutral-700 rounded-tl-sm"
-        )}>
-          {message.text}
-          <div className="flex justify-end mt-1">
-            <span className={cn(
-              "text-[9px] font-bold uppercase",
-              isOwnMessage ? "text-primary-foreground/60" : "text-muted-foreground"
+        <div 
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleMenu(message.id);
+          }}
+          className={cn(
+            "max-w-full rounded-2xl text-sm whitespace-pre-wrap break-all inline-block shadow-sm relative overflow-hidden cursor-pointer select-none transition-all duration-250 active:scale-[0.99]",
+            isOwnMessage 
+              ? "self-end bg-primary text-primary-foreground rounded-tr-sm" 
+              : "self-start bg-slate-100 dark:bg-neutral-800 text-slate-900 dark:text-neutral-100 border border-slate-100 dark:border-neutral-700 rounded-tl-sm"
+          )}
+        >
+          {/* Reply Quote Block */}
+          {message.replyToText && (
+            <div className={cn(
+              "px-3 py-2 border-l-4 text-xs truncate max-w-full bg-black/10 dark:bg-white/5",
+              isOwnMessage 
+                ? "border-primary-foreground/50 text-primary-foreground/90" 
+                : "border-primary text-slate-700 dark:text-neutral-305"
             )}>
-              {message.sentAt ? format(message.sentAt.toDate(), 'p') : '...'}
-            </span>
+              <div className="font-black uppercase tracking-wider text-[9px] mb-0.5 opacity-80">
+                {message.replyToSenderName}
+              </div>
+              <div className="italic truncate">{message.replyToText}</div>
+            </div>
+          )}
+
+          <div className="px-4 py-2">
+            <div>{message.text}</div>
+            <div className="flex justify-end items-center gap-1.5 mt-1">
+              {message.isEdited && (
+                <span className={cn(
+                  "text-[8px] font-black uppercase opacity-60",
+                  isOwnMessage ? "text-primary-foreground/70" : "text-slate-450 dark:text-neutral-500"
+                )}>
+                  {language === 'de' ? 'bearbeitet' : 'edited'}
+                </span>
+              )}
+              <span className={cn(
+                "text-[9px] font-bold uppercase",
+                isOwnMessage ? "text-primary-foreground/60" : "text-muted-foreground"
+              )}>
+                {message.sentAt ? format(message.sentAt.toDate(), 'p') : '...'}
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* WhatsApp-like Context Action Menu */}
+        {activeMenuMessageId === message.id && (
+          <div className={cn(
+            "flex items-center gap-1.5 p-1 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-neutral-800 z-20 mt-1.5 transition-all animate-in fade-in slide-in-from-top-1 duration-150",
+            isOwnMessage ? "self-end" : "self-start"
+          )}>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onReply(message); }}
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-full text-slate-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
+              title={language === 'de' ? 'Antworten' : 'Reply'}
+            >
+              <CornerUpLeft className="h-3.5 w-3.5" />
+            </button>
+            
+            {isOwnMessage && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onEdit(message); }}
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-full text-slate-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
+                title={language === 'de' ? 'Bearbeiten' : 'Edit'}
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+              </button>
+            )}
+
+            {!isDirectMessage && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onPin(message); }}
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-full text-slate-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
+                title={language === 'de' ? 'Anpinnen' : 'Pin'}
+              >
+                <Pin className="h-3.5 w-3.5" />
+              </button>
+            )}
+
+            <button 
+              onClick={(e) => { e.stopPropagation(); onCopy(message); }}
+              className="p-1.5 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-full text-slate-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
+              title={language === 'de' ? 'Kopieren' : 'Copy'}
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -146,8 +235,14 @@ export default function ChatRoomPage() {
   const language = useLanguage();
   const [chat, setChat] = useState<Chat | null>(null);
   const [activity, setActivity] = useState<Activity | null>(null);
+  const [place, setPlace] = useState<Place | null>(null);
+  const [isPlaceDetailsOpen, setPlaceDetailsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  
+  const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [activeMenuMessageId, setActiveMenuMessageId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isInfoSheetOpen, setInfoSheetOpen] = useState(false);
   const [showMultiReviewDialog, setShowMultiReviewDialog] = useState(false);
@@ -172,6 +267,7 @@ export default function ChatRoomPage() {
     if (!chatId || !user) return;
 
     let activityUnsubscribe: (() => void) | undefined;
+    let placeUnsubscribe: (() => void) | undefined;
 
     const chatUnsubscribe = onSnapshot(doc(db!, 'chats', chatId), (chatDoc) => {
       if (chatDoc.exists()) {
@@ -187,7 +283,9 @@ export default function ChatRoomPage() {
             setOtherUser({ ...chatData.participantDetails[otherUserId], uid: otherUserId });
           }
           setActivity(null);
+          setPlace(null);
           if (activityUnsubscribe) activityUnsubscribe();
+          if (placeUnsubscribe) placeUnsubscribe();
         } else {
           setOtherUser(null);
           if (activityUnsubscribe) activityUnsubscribe();
@@ -200,8 +298,20 @@ export default function ChatRoomPage() {
                   if (activityData.status === 'completed' && activityData.id) {
                       checkIfUserReviewed(activityData.id, user.uid).then(setHasReviewed);
                   }
+
+                  if (placeUnsubscribe) placeUnsubscribe();
+                  if (activityData.placeId) {
+                      placeUnsubscribe = onSnapshot(doc(db!, 'places', activityData.placeId), (placeDoc) => {
+                          if (placeDoc.exists()) {
+                              setPlace({ id: placeDoc.id, ...placeDoc.data() } as Place);
+                          } else {
+                              setPlace(null);
+                          }
+                      });
+                  }
               } else {
                 setActivity(null);
+                setPlace(null);
               }
           });
         }
@@ -233,6 +343,9 @@ export default function ChatRoomPage() {
       if (activityUnsubscribe) {
         activityUnsubscribe();
       }
+      if (placeUnsubscribe) {
+        placeUnsubscribe();
+      }
     };
   }, [chatId, router, toast, user]);
 
@@ -248,22 +361,83 @@ export default function ChatRoomPage() {
     }
   }, [activity, hasReviewed, user]);
 
+  const handlePinMessage = async (msg: Message) => {
+    setActiveMenuMessageId(null);
+    try {
+      await pinMessage(chatId, msg.id, msg.text, msg.senderName || "Anonymer Nutzer");
+      toast({
+        title: language === 'de' ? 'Nachricht angepinnt' : 'Message pinned',
+        description: language === 'de' ? 'Die Nachricht wurde oben angepinnt.' : 'The message was pinned at the top.'
+      });
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? 'Fehler' : 'Error',
+        description: error.message
+      });
+    }
+  };
+
+  const handleCopyMessage = (msg: Message) => {
+    setActiveMenuMessageId(null);
+    navigator.clipboard.writeText(msg.text);
+    toast({
+      title: language === 'de' ? 'Kopiert!' : 'Copied!',
+      description: language === 'de' ? 'Nachricht in Zwischenablage kopiert.' : 'Message copied to clipboard.'
+    });
+  };
+
+  const handleStartEditMessage = (msg: Message) => {
+    setActiveMenuMessageId(null);
+    setReplyingToMessage(null);
+    setEditingMessage(msg);
+    setNewMessage(msg.text);
+  };
+
+  const handleStartReplyMessage = (msg: Message) => {
+    setActiveMenuMessageId(null);
+    setEditingMessage(null);
+    setReplyingToMessage(msg);
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() === '' || !user) return;
 
     const currentMessage = newMessage;
     setNewMessage('');
-    try {
-      await sendMessage(chatId, currentMessage, user, userProfile);
-    } catch (error) {
-      console.error(error);
-      setNewMessage(currentMessage);
-      toast({ 
-        title: language === 'de' ? "Fehler" : "Error", 
-        description: language === 'de' ? "Nachricht konnte nicht gesendet werden." : "Message could not be sent.", 
-        variant: 'destructive'
-      });
+
+    if (editingMessage) {
+      const msgId = editingMessage.id;
+      setEditingMessage(null);
+      try {
+        await editMessage(chatId, msgId, currentMessage);
+      } catch (error) {
+        console.error(error);
+        toast({ 
+          title: language === 'de' ? "Fehler" : "Error", 
+          description: language === 'de' ? "Nachricht konnte nicht bearbeitet werden." : "Message could not be edited.", 
+          variant: 'destructive'
+        });
+      }
+    } else {
+      const replyPayload = replyingToMessage ? {
+        id: replyingToMessage.id,
+        text: replyingToMessage.text,
+        senderName: replyingToMessage.senderName || "Anonymer Nutzer"
+      } : null;
+      setReplyingToMessage(null);
+      try {
+        await sendMessage(chatId, currentMessage, user, userProfile, replyPayload);
+      } catch (error) {
+        console.error(error);
+        setNewMessage(currentMessage);
+        toast({ 
+          title: language === 'de' ? "Fehler" : "Error", 
+          description: language === 'de' ? "Nachricht konnte nicht gesendet werden." : "Message could not be sent.", 
+          variant: 'destructive'
+        });
+      }
     }
   };
 
@@ -308,7 +482,7 @@ export default function ChatRoomPage() {
 
   return (
     <>
-      <div className="flex flex-col h-full bg-slate-50 dark:bg-black/95 overflow-hidden">
+      <div onClick={() => setActiveMenuMessageId(null)} className="flex flex-col h-full bg-slate-50 dark:bg-black/95 overflow-hidden">
         <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-white/90 dark:bg-neutral-900/90 px-2 backdrop-blur-md shadow-sm">
           <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500 dark:text-neutral-400" onClick={() => router.back()}>
             <ArrowLeft className="h-5 w-5" />
@@ -332,7 +506,17 @@ export default function ChatRoomPage() {
                     </div>
                 </Link>
             ) : (
-                <div className="flex items-center gap-2.5 truncate">
+                <div 
+                  onClick={() => {
+                    if (place) {
+                      setPlaceDetailsOpen(true);
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center gap-2.5 truncate",
+                    place ? "cursor-pointer hover:opacity-85 transition-opacity active:scale-[0.98]" : ""
+                  )}
+                >
                   {activity ? (
                     (() => {
                       const primaryStyle = getPrimaryIconData({ 
@@ -351,7 +535,14 @@ export default function ChatRoomPage() {
                       <Users className="h-5 w-5 text-primary" />
                     </div>
                   )}
-                  <h1 className="font-black text-lg text-slate-900 dark:text-neutral-100 truncate">{chat?.placeName}</h1>
+                  <h1 className="font-black text-lg text-slate-900 dark:text-neutral-100 truncate flex items-center gap-1.5">
+                    {chat?.placeName}
+                    {place && (
+                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-450 hover:text-primary transition-colors shrink-0">
+                        <Info className="h-3 w-3" />
+                      </span>
+                    )}
+                  </h1>
                 </div>
             )}
           </div>
@@ -368,6 +559,69 @@ export default function ChatRoomPage() {
           <CompletionBanner activity={activity} currentUser={user} participantDetails={chat.participantDetails} />
         )}
 
+        {/* Pinned Messages Bar */}
+        {chat?.pinnedMessages && chat.pinnedMessages.length > 0 && (
+          <div className="sticky top-0 z-10 w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border-b border-slate-200 dark:border-neutral-800 px-4 py-2 flex items-center justify-between shadow-sm animate-in slide-in-from-top-2 duration-250">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <Pin className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0 flex-1">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  {language === 'de' ? 'Angepinnte Nachricht' : 'Pinned Message'}
+                </span>
+                <span className="block text-xs text-slate-850 dark:text-neutral-250 truncate font-semibold">
+                  <strong>{chat.pinnedMessages[chat.pinnedMessages.length - 1].senderName}:</strong> {chat.pinnedMessages[chat.pinnedMessages.length - 1].text}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2.5 rounded-full text-[10px] font-black uppercase text-primary hover:bg-primary/5"
+                onClick={() => {
+                  const msgId = chat.pinnedMessages![chat.pinnedMessages!.length - 1].id;
+                  const el = document.getElementById(`msg-${msgId}`);
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.classList.add('bg-primary/10', 'dark:bg-primary/20');
+                    setTimeout(() => {
+                      el.classList.remove('bg-primary/10', 'dark:bg-primary/20');
+                    }, 2000);
+                  } else {
+                    toast({
+                      description: language === 'de' ? 'Nachricht ist weiter oben' : 'Message is further up'
+                    });
+                  }
+                }}
+              >
+                {language === 'de' ? 'Anzeigen' : 'View'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 rounded-full text-slate-400 hover:text-rose-500"
+                onClick={async () => {
+                  const lastPin = chat.pinnedMessages![chat.pinnedMessages!.length - 1];
+                  try {
+                    await unpinMessage(chatId, lastPin.id);
+                    toast({
+                      title: language === 'de' ? 'Nachricht losgelöst' : 'Message unpinned'
+                    });
+                  } catch (error: any) {
+                    toast({
+                      variant: 'destructive',
+                      title: language === 'de' ? 'Fehler' : 'Error',
+                      description: error.message
+                    });
+                  }
+                }}
+              >
+                <PinOff className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto pt-4 pb-32">
           <div className="flex flex-col w-full max-w-3xl mx-auto">
             {messages.map((message, index) => {
@@ -378,7 +632,7 @@ export default function ChatRoomPage() {
               const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId || showDateSeparator;
               
               return (
-                <div key={message.id} className="w-full">
+                <div key={message.id} id={`msg-${message.id}`} className="w-full transition-all duration-300 rounded-xl">
                   {showDateSeparator && message.sentAt && <DateSeparator date={message.sentAt.toDate()} language={language} />}
                   <MessageBubble
                     message={message}
@@ -388,6 +642,12 @@ export default function ChatRoomPage() {
                     participantDetails={chat?.participantDetails}
                     language={language}
                     isDirectMessage={isDirectMessage}
+                    activeMenuMessageId={activeMenuMessageId}
+                    onToggleMenu={(id) => setActiveMenuMessageId(activeMenuMessageId === id ? null : id)}
+                    onReply={handleStartReplyMessage}
+                    onEdit={handleStartEditMessage}
+                    onPin={handlePinMessage}
+                    onCopy={handleCopyMessage}
                   />
                 </div>
               );
@@ -398,6 +658,53 @@ export default function ChatRoomPage() {
       </div>
 
       <footer className="fixed bottom-[72px] left-0 right-0 z-10 mx-auto w-full max-w-3xl bg-white dark:bg-neutral-900 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.05)] border-t border-slate-200 dark:border-neutral-800 transition-colors">
+        {/* Reply Preview */}
+        {replyingToMessage && (
+          <div className="px-4 py-2 bg-slate-50 dark:bg-neutral-800/50 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-150">
+            <div className="flex-1 min-w-0 border-l-4 border-primary pl-2.5">
+              <span className="block text-[9px] font-black uppercase text-primary tracking-wider truncate">
+                {language === 'de' ? 'Antworten auf' : 'Replying to'} {replyingToMessage.senderName}
+              </span>
+              <span className="block text-xs text-slate-500 dark:text-neutral-400 truncate">
+                {replyingToMessage.text}
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300"
+              onClick={() => setReplyingToMessage(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Edit Preview */}
+        {editingMessage && (
+          <div className="px-4 py-2 bg-amber-500/5 dark:bg-amber-500/10 border-b border-amber-500/10 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-150">
+            <div className="flex-1 min-w-0 border-l-4 border-amber-500 pl-2.5">
+              <span className="block text-[9px] font-black uppercase text-amber-500 tracking-wider truncate">
+                {language === 'de' ? 'Nachricht bearbeiten' : 'Edit message'}
+              </span>
+              <span className="block text-xs text-slate-500 dark:text-neutral-400 truncate">
+                {editingMessage.text}
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-neutral-300"
+              onClick={() => {
+                setEditingMessage(null);
+                setNewMessage('');
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
         <div className="p-3 sm:p-4">
           <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
             <Input
@@ -464,6 +771,24 @@ export default function ChatRoomPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Place/Spot Details Sheet */}
+      {place && (
+        <Sheet open={isPlaceDetailsOpen} onOpenChange={setPlaceDetailsOpen}>
+          <SheetContent side="bottom" className="p-0 h-[92vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none bg-white dark:bg-neutral-900">
+            <SheetHeader className="sr-only">
+              <SheetTitle>{place.name}</SheetTitle>
+            </SheetHeader>
+            <div className="h-full w-full">
+              <PlaceDetails 
+                place={place} 
+                onClose={() => setPlaceDetailsOpen(false)} 
+                onCreateActivity={() => {}} 
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </>
   );
 }

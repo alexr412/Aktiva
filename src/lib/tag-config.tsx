@@ -25,6 +25,24 @@ import { cn, formatLabel } from './utils';
 /**
  * Custom Icons für Kategorien, die Lucide nicht abdeckt
  */
+const AttractionIcon = ({ className }: { className?: string }) => (
+  <img
+    src="/assets/icons/attraction.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Attraction"
+  />
+);
+
+const SculptureIcon = ({ className }: { className?: string }) => (
+  <img
+    src="/assets/icons/sculpture.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Sculpture"
+  />
+);
+
 const TrampolineIcon = ({ className }: { className?: string }) => (
   <img
     src="/assets/icons/trampoline.png"
@@ -124,9 +142,15 @@ export interface TagStyle {
  */
 export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): TagStyle => {
   const rawTags = place.categories || place.category || place.tags || [];
-  const tags = Array.isArray(rawTags) ? rawTags.filter(Boolean) : (typeof rawTags === 'string' ? [rawTags] : []);
+  const tags = (Array.isArray(rawTags) ? rawTags.filter(Boolean) : (typeof rawTags === 'string' ? [rawTags] : [])).map((t: string) => t.trim().toLowerCase());
   const name = (place.name || '').toLowerCase();
   const n = name;
+
+  if (place.name && place.name.toLowerCase().includes('marien')) {
+    console.log('[DEBUG MARIEN] place:', place);
+    console.log('[DEBUG MARIEN] rawTags:', rawTags);
+    console.log('[DEBUG MARIEN] tags:', tags);
+  }
 
   // --- PRIORITÄT 0: Spezifische Entertainment-Kategorien ---
   if (tags.includes('entertainment.museum') || name.includes('museum')) {
@@ -193,6 +217,26 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   if (tags.includes('entertainment.culture.arts_centre') || tags.includes('entertainment.culture.gallery') || name.includes('galerie') || name.includes('gallery')) {
     return { icon: GalleryIcon as any, color: '#db2777', label: language === 'de' ? 'Galerie' : 'Gallery', bgClass: 'bg-pink-50', gradientClass: 'bg-gradient-to-br from-pink-500 to-purple-600' };
   }
+  if (tags.some((t: string) => t.endsWith('.sculpture') || t.endsWith('.artwork') || t === 'sculpture' || t === 'artwork') || name.includes('skulptur') || name.includes('plastik') || name.includes('denkmal') || name.includes('sculpture')) {
+    return { 
+      icon: SculptureIcon as any, 
+      color: '#db2777', 
+      label: language === 'de' ? 'Kunstwerk' : 'Artwork', 
+      bgClass: 'bg-pink-50', 
+      gradientClass: 'bg-gradient-to-br from-pink-500 to-rose-500',
+      imageUrl: 'https://images.unsplash.com/photo-1605721911519-3dfeb3be25e7?q=80&w=800&auto=format&fit=crop'
+    };
+  }
+  if (tags.some((t: string) => t.endsWith('.attraction') || t === 'attraction') || name.includes('attraktion') || name.includes('attraction')) {
+    return { 
+      icon: AttractionIcon as any, 
+      color: '#e11d48', 
+      label: language === 'de' ? 'Attraktion' : 'Attraction', 
+      bgClass: 'bg-rose-50', 
+      gradientClass: 'bg-gradient-to-br from-rose-500 to-red-600',
+      imageUrl: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=800&auto=format&fit=crop'
+    };
+  }
   if (tags.some((t: string) => t.startsWith('tourism.sights') || t.startsWith('building.historic'))) {
     return { icon: Landmark, color: '#f59e0b', label: language === 'de' ? 'Sehenswürdigkeit' : 'Sight', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-yellow-500 to-orange-600' };
   }
@@ -208,6 +252,29 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   // --- NACHTLEBEN ---
   if (tags.includes('adult.nightclub') || name.includes('club') || name.includes('disco')) {
     return { icon: NightclubIcon as any, color: '#9333ea', label: language === 'de' ? 'Nachtclub' : 'Nightclub', bgClass: 'bg-purple-50', gradientClass: 'bg-gradient-to-br from-pink-600 to-purple-700' };
+  }
+
+  // --- USER EVENT SPECIFIC CATEGORIES ---
+  if (tags.includes('Sport')) {
+    return { icon: Dumbbell, color: '#3b82f6', label: language === 'de' ? 'Sport' : 'Sports', bgClass: 'bg-blue-50', gradientClass: 'bg-gradient-to-br from-blue-500 to-cyan-500' };
+  }
+  if (tags.includes('Outdoor')) {
+    return { icon: Trees, color: '#059669', label: language === 'de' ? 'Outdoor' : 'Outdoor', bgClass: 'bg-green-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-lime-500' };
+  }
+  if (tags.includes('Party')) {
+    return { icon: Flame, color: '#f97316', label: language === 'de' ? 'Party' : 'Party', bgClass: 'bg-orange-50', gradientClass: 'bg-gradient-to-br from-orange-500 to-red-500' };
+  }
+  if (tags.includes('Kultur')) {
+    return { icon: Landmark, color: '#f59e0b', label: language === 'de' ? 'Kultur' : 'Culture', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-amber-500 to-orange-500' };
+  }
+  if (tags.includes('Gaming')) {
+    return { icon: Gamepad2, color: '#8b5cf6', label: language === 'de' ? 'Gaming' : 'Gaming', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-indigo-500 to-violet-600' };
+  }
+  if (tags.includes('Tech')) {
+    return { icon: Zap, color: '#06b6d4', label: language === 'de' ? 'Tech' : 'Tech', bgClass: 'bg-cyan-50', gradientClass: 'bg-gradient-to-br from-cyan-400 to-blue-500' };
+  }
+  if (tags.includes('Networking')) {
+    return { icon: Coffee, color: '#d97706', label: language === 'de' ? 'Networking' : 'Networking', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-orange-400 to-rose-500' };
   }
 
   // --- COMMUNITY & SONSTIGES ---
@@ -262,6 +329,10 @@ export const translateTag = (tag: string, language: 'de' | 'en' = 'de'): string 
     'tourism': 'Tourismus',
     'tourism.sights': 'Sehenswürdigkeit',
     'tourism.attraction': 'Attraktion',
+    'tourism.artwork': 'Kunstwerk',
+    'tourism.artwork.sculpture': 'Skulptur',
+    'sculpture': 'Skulptur',
+    'artwork': 'Kunstwerk',
     'tourism.information': 'Information',
     'catering': 'Gastronomie',
     'catering.restaurant': 'Restaurant',

@@ -133,180 +133,132 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     return (
         <div 
           ref={cardRef}
+          onClick={() => router.push(`/activities/${activity.id}`)}
           className={cn(
-            "p-5 relative group transition-all rounded-[2rem] bg-white dark:bg-neutral-800 shadow-sm border-none dark:border dark:border-neutral-700 mb-4",
-            activity.isBoosted && "border-2 border-orange-400 bg-orange-50/10 dark:bg-orange-950/20 shadow-md ring-4 ring-orange-500/5"
+              "group cursor-pointer overflow-hidden rounded-[1.5rem] bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/50 transition-all duration-500 flex flex-col relative p-0 h-full dark:shadow-none",
+              activity.isBoosted && "ring-4 ring-orange-500/10 shadow-orange-500/20"
           )}
         >
-            {activity.isBoosted && (
-              <div className="absolute -top-3 left-6 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-lg animate-in fade-in slide-in-from-top-1 flex items-center gap-1.5 z-10">
-                <Flame className="h-3 w-3 animate-pulse" />
-                <span>{language === 'de' ? 'Highlight' : 'Highlight'}</span>
-              </div>
-            )}
+            {/* Oberer Bild/Icon-Bereich */}
+            <div className={cn(
+                "w-full h-20 flex items-center justify-center relative transition-transform duration-700 group-hover:scale-105 overflow-hidden",
+                primaryStyle.gradientClass
+            )}>
+                {/* Haupt-Icon & Label */}
+                <div className="flex flex-col items-center gap-1 z-10">
+                    <PrimaryIcon className="text-white h-7 w-7 drop-shadow-2xl" />
+                    <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white/90 drop-shadow-md">{primaryStyle.label}</span>
+                </div>
 
-            <div className="absolute top-4 right-4 flex flex-col items-end gap-2 z-10">
-                <div className="bg-primary/10 text-primary text-[11px] font-black px-3 py-1 rounded-xl border border-primary/20 shadow-sm flex items-center gap-1">
-                    <ArrowUp className="h-3 w-3" />
-                    {activity.communityScore || 0}
+                {/* Status Badges - Left */}
+                <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-20">
+                    {activity.isBoosted && (
+                        <div className="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[8px] font-black px-2 rounded-full uppercase tracking-wider shadow-lg flex items-center gap-1 border border-white/20">
+                            <Flame className="h-2.5 w-2.5 animate-pulse" />
+                            <span>Highlight</span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Status Badges - Right */}
+                <div className="absolute top-2.5 right-2.5 flex flex-col items-end gap-1.5 z-20">
+                    <div className="h-5 bg-white/20 backdrop-blur-md text-white text-[8px] font-black px-2 rounded-full flex items-center gap-1 border border-white/20">
+                        <ArrowUp className="h-2.5 w-2.5" />
+                        {activity.communityScore || 0}
+                    </div>
                 </div>
             </div>
 
-            {isOwnActivity && activity.isBoosted && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                asChild
-                className="absolute top-2 right-2 h-8 rounded-xl bg-orange-100 hover:bg-orange-200 text-orange-700 text-[10px] font-black uppercase"
-              >
-                <Link href={`/activities/${activity.id}/stats`}>
-                  <BarChart3 className="h-3 w-3 mr-1" />
-                  Insights
-                </Link>
-              </Button>
-            )}
-
-            <div className="flex items-start gap-4">
-                <div className={cn(
-                    "flex h-16 w-16 items-center justify-center rounded-2xl flex-shrink-0 transition-transform group-hover:scale-105", 
-                    primaryStyle.gradientClass
-                )}>
-                    <PrimaryIcon className="h-8 w-8 text-white drop-shadow-sm" />
-                </div>
-                
-                <div className="min-w-0 flex-1 pr-14">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <p className="text-lg font-black text-[#0f172a] dark:text-neutral-200 truncate leading-tight">
+            {/* Content Bereich */}
+            <div className="p-3 pb-4 flex flex-col flex-1">
+                <div className="mb-2">
+                    <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-bold text-base truncate flex-1 text-[#0f172a] dark:text-neutral-200">
                             {activity.placeName || (language === 'de' ? "Treffen" : "Meetup")}
-                        </p>
-                        
-                        {/* MODUL 18: Enhanced Rating Display with Fallback */}
-                        <div className="ml-2 flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-lg border border-amber-100 dark:border-amber-800">
-                          <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
-                          {reviewCount > 0 ? (
-                            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400">
-                              {rating.toFixed(1)} <span className="opacity-50">({reviewCount})</span>
-                            </span>
-                          ) : (
-                            <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-500">{language === 'de' ? 'Neu' : 'New'}</span>
-                          )}
-                        </div>
+                        </h3>
                     </div>
                     
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                    <div className="flex items-center gap-1.5 mt-0.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px]">
+                        {activityDate && (
+                            <span className="truncate">
+                                {format(activityDate, language === 'de' ? 'eee, d. MMM HH:mm' : 'eee, MMM d HH:mm', { locale: language === 'de' ? de : enUS })}
+                            </span>
+                        )}
                         {activity.distance !== undefined && activity.distance !== null && (
-                          <div className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400 font-bold text-[10px] tracking-tight">
-                            <MapPin className="h-2.5 w-2.5" />
-                            <span>{activity.distance < 1 ? '< 1 km' : `${activity.distance.toFixed(1)} km`}</span>
-                          </div>
-                        )}
-
-                        {isPaidEvent && (
-                          <div className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-black text-[10px] tracking-tight">
-                            <CreditCard className="h-2.5 w-2.5" />
-                            <span>{activity.price?.toFixed(2)}€</span>
-                          </div>
-                        )}
-                    </div>
-
-                    <div className="mt-3 flex items-center gap-2">
-                      <div className="flex items-center gap-1 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-100/50">
-                        <Layers className="w-2.5 h-2.5" />
-                        <span>{translateTag(activity.categories?.[0] || activity.category || '', language)}</span>
-                      </div>
-                      {activityDate && (
-                        <div className="text-[9px] font-bold text-slate-400 uppercase">
-                            {format(activityDate, language === 'de' ? 'eee, d. MMM' : 'eee, MMM d', { locale: language === 'de' ? de : enUS })}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex -space-x-2 overflow-hidden">
-                          {isPremium ? (
                             <>
-                              {previewList.slice(0, 4).map((p) => (
-                                <Avatar key={p.uid} className="h-6 w-6 border-2 border-background shadow-sm">
-                                  <AvatarImage src={p.photoURL || undefined} />
-                                  <AvatarFallback className="text-[8px] font-black bg-primary/10 text-primary">{p.displayName?.charAt(0) || "U"}</AvatarFallback>
-                                </Avatar>
-                              ))}
-                              {previewList.length > 4 && (
-                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-[8px] font-bold border-2 border-background text-foreground">
-                                  +{previewList.length - 4}
-                                </div>
-                              )}
+                                <span>•</span>
+                                <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" /> {activity.distance < 1 ? '< 1 km' : `${activity.distance.toFixed(1)} km`}</span>
                             </>
-                          ) : (
-                            <div className="flex -space-x-2">
-                               {[1, 2, 3].map(i => (
-                                 <div key={i} className="h-6 w-6 rounded-full bg-muted/50 border-2 border-background border-dashed" />
-                               ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {!isPremium && (
-                          <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
-                            <Crown className="w-3 h-3 text-amber-500" />
-                            Preview
-                          </span>
                         )}
-                      </div>
-                      
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted/30 rounded-full">
-                        <Users className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-[10px] font-bold text-muted-foreground tracking-tight">
-                          {participantIds.length} / {activity.maxParticipants || '∞'}
-                        </span>
-                      </div>
                     </div>
                 </div>
-            </div>
 
-            <div className="card-footer-actions flex justify-between items-center w-full mt-5 pt-4 border-t border-neutral-50 dark:border-neutral-700/50">
-              <div className="flex items-center gap-3">
-                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                    <Users className="h-3 w-3 text-primary/60"/>
-                    <span>{language === 'de' ? 'Veranstalter' : 'Host'}: {activity.hostName?.split(' ')[0] || (language === 'de' ? "Gast" : "Explorer")}</span>
-
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                {isParticipant ? (
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    onClick={(e) => { e.stopPropagation(); handleViewChatClick(activity.id!); }} 
-                    className="h-10 rounded-2xl bg-white shadow-sm border-neutral-100 hover:bg-neutral-50 text-primary font-bold gap-2 px-4"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    <span>Chat</span>
-                  </Button>
-                ) : (
-                  <Button 
-                    size="sm"
-                    onClick={handleJoinClick} 
-                    disabled={isJoining || isFull}
-                    className={cn(
-                        "h-10 rounded-2xl font-black px-6 shadow-lg transition-transform active:scale-95",
-                        isPaidEvent 
-                            ? "bg-slate-900 hover:bg-black text-white shadow-slate-200" 
-                            : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
+                <div className="flex flex-wrap gap-1 mb-2">
+                    <Badge variant="secondary" className="rounded-full text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                        USER EVENT
+                    </Badge>
+                    {isPaidEvent && (
+                        <Badge variant="secondary" className="rounded-full text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            {activity.price?.toFixed(2)}€
+                        </Badge>
                     )}
-                  >
-                    {isJoining ? (
-                        <Loader2 className="animate-spin h-4 w-4" />
-                    ) : isFull ? (
-                        language === 'de' ? 'Voll' : 'Full'
-                    ) : (
-                        language === 'de' ? 'Beitreten' : 'Join'
-                    )}
-                  </Button>
+                </div>
+
+                {activity.description && (
+                    <p className="mb-3 text-[9px] text-slate-500 dark:text-neutral-400 font-medium leading-relaxed italic border-l border-primary/20 pl-2 line-clamp-2 overflow-hidden text-ellipsis break-words">
+                        "{activity.description}"
+                    </p>
                 )}
-              </div>
+
+                <div className="flex items-center gap-2 mb-3">
+                    <div className="flex -space-x-1.5 overflow-hidden">
+                        {previewList.slice(0, 3).map((p) => (
+                            <Avatar key={p.uid} className="h-5 w-5 border border-white shadow-sm">
+                                <AvatarImage src={p.photoURL || undefined} />
+                                <AvatarFallback className="text-[7px] font-black bg-slate-100 text-slate-600">{p.displayName?.charAt(0) || "U"}</AvatarFallback>
+                            </Avatar>
+                        ))}
+                    </div>
+                    <span className="text-[9px] font-bold text-slate-400 ml-1">
+                        {participantIds.length} / {activity.maxParticipants || '∞'}
+                    </span>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="flex items-center gap-2 mt-auto pt-3 border-t border-slate-50 dark:border-neutral-800/50">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <Users className="h-3 w-3 text-slate-300 shrink-0" />
+                        <span className="text-[9px] text-slate-400 font-bold uppercase truncate">
+                            {language === 'de' ? 'Veranstalter:' : 'Host:'} {activity.hostName?.split(' ')[0] || "User"}
+                        </span>
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-2">
+                        {isParticipant ? (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={(e) => { e.stopPropagation(); handleViewChatClick(activity.id!); }} 
+                                className="h-7 rounded-lg text-[9px] font-black text-primary border-primary/20 px-3 flex items-center gap-1.5"
+                            >
+                                <MessageSquare className="h-3 w-3" />
+                                Chat
+                            </Button>
+                        ) : (
+                            <Button 
+                                size="sm"
+                                onClick={handleJoinClick} 
+                                disabled={isJoining || isFull}
+                                className={cn(
+                                    "h-7 rounded-lg text-[9px] font-black px-4",
+                                    isPaidEvent ? "bg-slate-900 text-white" : "bg-primary text-white"
+                                )}
+                            >
+                                {isJoining ? <Loader2 className="animate-spin h-3 w-3" /> : isFull ? (language === 'de' ? 'Voll' : 'Full') : (language === 'de' ? 'Beitreten' : 'Join')}
+                            </Button>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

@@ -39,6 +39,15 @@ type CreateActivityPayload = {
   isPaid?: boolean;
   price?: number;
   category: ActivityCategory;
+  description?: string;
+  requirements?: {
+    ageRange?: { min?: number; max?: number };
+    gender?: string[];
+    requireProfilePicture?: boolean;
+    requireVerification?: boolean;
+    minimumRating?: number;
+  };
+  joinMode?: 'direct' | 'request';
 };
 
 const MAX_FREE_PARTICIPANTS = 4;
@@ -156,6 +165,9 @@ export async function createActivity({
   isPaid = false,
   price = 0,
   category,
+  description,
+  requirements,
+  joinMode = 'request',
 }: CreateActivityPayload) {
   if (!db) {
     throw new Error('Firestore is not initialized.');
@@ -211,6 +223,7 @@ export async function createActivity({
     isTimeFlexible: !!isTimeFlexible,
     category: category || 'Sonstiges',
     categories: ["user_event", category, ...(isCustomActivity ? [] : placeCategories)].filter(Boolean),
+    description: description || null,
     lastInteractionAt: serverTimestamp() as Timestamp,
     status: 'active' as const,
     completionVotes: [],
@@ -245,6 +258,8 @@ export async function createActivity({
     ...(place?.lon && { lon: place.lon }),
     ...(endDate && { activityEndDate: Timestamp.fromDate(endDate) }),
     ...(finalMaxParticipants && finalMaxParticipants > 0 && { maxParticipants: finalMaxParticipants }),
+    ...(requirements && { requirements }),
+    joinMode: joinMode,
   };
   
   batch.set(activityRef, activityData);
@@ -267,6 +282,7 @@ export async function createActivity({
     participantIds: [user.uid],
     lastMessage: null,
     placeName: place?.name || customLocationName || "Aktivität",
+    categories: activityData.categories,
     hostId: user.uid,
     participantDetails: {
       [user.uid]: {
@@ -502,7 +518,7 @@ export async function votePlace(placeId: string, userId: string, type: 'up' | 'd
   });
 }
 
-export async function joinActivity(activityId: string, user: User, source?: string | null, referralId?: string | null): Promise<void> {
+export async function joinActivity(activityId: string, user: User, source?: string | null, referralId?: string | null): Promise<'joined' | 'requested'> {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!user) throw new Error('User is not authenticated.');
 
@@ -512,7 +528,7 @@ export async function joinActivity(activityId: string, user: User, source?: stri
   const pRef = doc(db, 'activities', activityId, 'participants', user.uid);
 
   try {
-    await runTransaction(db, async (transaction) => {
+    const result = await runTransaction(db, async (transaction) => {
       const activityDoc = await transaction.get(activityRef);
       const userDoc = await transaction.get(userRef);
 
@@ -528,8 +544,55 @@ export async function joinActivity(activityId: string, user: User, source?: stri
 
       const userProfileData = userDoc.data() as UserProfile | undefined;
       
+      let forceRequestMode = false;
+      
+      // Validierung der Teilnahmebedingungen
+      if (activityData.requirements && activityData.hostId !== user.uid) {
+        const req = activityData.requirements;
+        
+        if (req.requireProfilePicture && !userProfileData?.photoURL) {
+          throw "Du benötigst ein Profilbild, um an diesem Event teilzunehmen.";
+        }
+        
+        if (req.requireVerification && userProfileData?.kycStatus !== 'verified') {
+          throw "Nur verifizierte Nutzer (KYC) können diesem Event beitreten.";
+        }
+        
+        if (req.minimumRating && (userProfileData?.averageRating || 0) < req.minimumRating) {
+          const hasNoRating = !userProfileData?.ratingCount || userProfileData.ratingCount === 0;
+          if (hasNoRating) {
+            forceRequestMode = true;
+          } else {
+            throw `Dieses Event erfordert eine Mindestbewertung von ${req.minimumRating} Sternen.`;
+          }
+        }
+        
+        if (req.gender && req.gender.length > 0) {
+          const userGender = userProfileData?.gender || 'unbekannt';
+          if (!req.gender.includes(userGender)) {
+             throw "Dieses Event ist nur für bestimmte Geschlechter freigegeben. Bitte überprüfe deine Profileinstellungen.";
+          }
+        }
+        
+        if (req.ageRange) {
+          if (!userProfileData?.age) {
+             throw "Bitte hinterlege dein Alter in den Profileinstellungen, um teilnehmen zu können.";
+          }
+          if (req.ageRange.min && userProfileData.age < req.ageRange.min) {
+             throw `Du musst mindestens ${req.ageRange.min} Jahre alt sein.`;
+          }
+          if (req.ageRange.max && userProfileData.age > req.ageRange.max) {
+             throw `Das Höchstalter für dieses Event ist ${req.ageRange.max} Jahre.`;
+          }
+        }
+      }
+
       if (activityData.participantIds.includes(user.uid)) {
-        return;
+        return 'joined';
+      }
+
+      if ((activityData.joinMode === 'request' || forceRequestMode) && activityData.hostId !== user.uid) {
+        return 'requested';
       }
       
       if (activityData.maxParticipants && activityData.participantIds.length >= activityData.maxParticipants) {
@@ -594,7 +657,14 @@ export async function joinActivity(activityId: string, user: User, source?: stri
         },
         [`unreadCount.${user.uid}`]: 0
       });
+      return 'joined' as const;
     });
+    
+    if (result === 'requested') {
+      await requestJoinActivity(activityId, user);
+      return 'requested';
+    }
+    return 'joined';
   } catch (e: any) {
     console.error("Join Activity Transaction failed: ", e);
     if (typeof e === 'string') {
@@ -605,6 +675,158 @@ export async function joinActivity(activityId: string, user: User, source?: stri
     }
     throw new Error("Could not join the activity. Please try again.");
   }
+}
+
+export async function requestJoinActivity(activityId: string, user: User): Promise<void> {
+  if (!db) throw new Error('Firestore is not initialized.');
+
+  // Check if a request already exists
+  const existingReqsQuery = query(
+    collection(db, 'notifications'),
+    where('activityId', '==', activityId),
+    where('senderId', '==', user.uid),
+    where('type', '==', 'join_request')
+  );
+  const existingReqs = await getDocs(existingReqsQuery);
+  if (!existingReqs.empty) {
+    throw new Error('Du hast bereits eine Anfrage gesendet.');
+  }
+
+  const activityRef = doc(db, 'activities', activityId);
+  const activitySnap = await getDoc(activityRef);
+  if (!activitySnap.exists()) {
+    throw new Error('Activity does not exist.');
+  }
+
+  const activityData = activitySnap.data() as Activity;
+  if (activityData.participantIds.includes(user.uid)) {
+    throw new Error('Du bist bereits in dieser Aktivität.');
+  }
+
+  const userRef = doc(db, 'users', user.uid);
+  const userSnap = await getDoc(userRef);
+  const userProfileData = userSnap.data() as UserProfile | undefined;
+
+  // Run the same requirement validation as joinActivity
+  const req = activityData.requirements;
+  if (req) {
+    if (req.requireProfilePicture && !userProfileData?.photoURL) {
+      throw "Du benötigst ein Profilbild, um an diesem Event teilzunehmen.";
+    }
+    if (req.requireVerification && userProfileData?.kycStatus !== 'verified') {
+      throw "Nur verifizierte Nutzer (KYC) können diesem Event beitreten.";
+    }
+    if (req.minimumRating && (userProfileData?.averageRating || 0) < req.minimumRating) {
+      const hasNoRating = !userProfileData?.ratingCount || userProfileData.ratingCount === 0;
+      if (!hasNoRating) {
+        throw `Dieses Event erfordert eine Mindestbewertung von ${req.minimumRating} Sternen.`;
+      }
+    }
+    if (req.gender && req.gender.length > 0) {
+      const userGender = userProfileData?.gender || 'unbekannt';
+      if (!req.gender.includes(userGender)) {
+          throw "Dieses Event ist nur für bestimmte Geschlechter freigegeben.";
+      }
+    }
+    if (req.ageRange) {
+      if (!userProfileData?.age) {
+          throw "Bitte hinterlege dein Alter in den Profileinstellungen.";
+      }
+      if (req.ageRange.min && userProfileData.age < req.ageRange.min) {
+          throw `Du musst mindestens ${req.ageRange.min} Jahre alt sein.`;
+      }
+      if (req.ageRange.max && userProfileData.age > req.ageRange.max) {
+          throw `Das Höchstalter für dieses Event ist ${req.ageRange.max} Jahre.`;
+      }
+    }
+  }
+
+  // Add the notification for the host
+  const notificationRef = doc(collection(db, 'notifications'));
+  await setDoc(notificationRef, {
+    recipientId: activityData.hostId,
+    senderId: user.uid,
+    senderName: user.displayName,
+    senderProfile: {
+      displayName: user.displayName,
+      photoURL: user.photoURL
+    },
+    type: 'join_request',
+    title: 'Neue Beitrittsanfrage',
+    message: `${user.displayName} möchte an deiner Aktivität "${activityData.placeName}" teilnehmen.`,
+    isRead: false,
+    createdAt: serverTimestamp(),
+    activityId: activityId,
+    link: `/activities/${activityId}`
+  });
+}
+
+export async function acceptJoinRequest(notificationId: string, activityId: string, userIdToJoin: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not initialized.');
+
+  // We need the user profile to pass into joinActivity
+  const userRef = doc(db, 'users', userIdToJoin);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) {
+    throw new Error('User not found.');
+  }
+
+  // Now simply call joinActivity natively (it will bypass duplicate notifications)
+  // But wait, joinActivity accepts a full `User` object. We can mock it since only uid, displayName, photoURL are needed
+  const userData = userSnap.data() as UserProfile;
+  const mockUser = {
+    uid: userData.uid,
+    displayName: userData.displayName,
+    photoURL: userData.photoURL
+  } as User;
+
+  await joinActivity(activityId, mockUser);
+
+  // Send accept notification back
+  const activityRef = doc(db, 'activities', activityId);
+  const activitySnap = await getDoc(activityRef);
+  const activityName = activitySnap.exists() ? activitySnap.data().placeName : 'Aktivität';
+
+  const notificationRef = doc(collection(db, 'notifications'));
+  await setDoc(notificationRef, {
+    recipientId: userIdToJoin,
+    senderId: 'system',
+    type: 'join_response',
+    title: 'Anfrage akzeptiert!',
+    message: `Deine Anfrage für "${activityName}" wurde angenommen. Du bist jetzt dabei!`,
+    isRead: false,
+    createdAt: serverTimestamp(),
+    activityId: activityId,
+    responseStatus: 'accepted',
+    link: `/chat/${activityId}`
+  });
+
+  // Mark original request as read or delete it
+  await deleteDoc(doc(db, 'notifications', notificationId));
+}
+
+export async function declineJoinRequest(notificationId: string, activityId: string, userIdToDecline: string, customMessage: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not initialized.');
+
+  const activityRef = doc(db, 'activities', activityId);
+  const activitySnap = await getDoc(activityRef);
+  const activityName = activitySnap.exists() ? activitySnap.data().placeName : 'Aktivität';
+
+  const notificationRef = doc(collection(db, 'notifications'));
+  await setDoc(notificationRef, {
+    recipientId: userIdToDecline,
+    senderId: 'system',
+    type: 'join_response',
+    title: 'Anfrage abgelehnt',
+    message: `Deine Anfrage für "${activityName}" wurde leider abgelehnt.`,
+    customMessage: customMessage || undefined,
+    isRead: false,
+    createdAt: serverTimestamp(),
+    activityId: activityId,
+    responseStatus: 'declined'
+  });
+
+  await deleteDoc(doc(db, 'notifications', notificationId));
 }
 
 export async function joinPaidActivity(activityId: string, user: User, transactionToken: string, source?: string | null, referralId?: string | null): Promise<void> {
@@ -627,7 +849,13 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
   }
 }
 
-export async function sendMessage(chatId: string, text: string, user: User, userProfile?: UserProfile | null): Promise<void> {
+export async function sendMessage(
+  chatId: string, 
+  text: string, 
+  user: User, 
+  userProfile?: UserProfile | null,
+  replyTo?: { id: string; text: string; senderName: string } | null
+): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!text.trim()) return;
 
@@ -640,7 +868,7 @@ export async function sendMessage(chatId: string, text: string, user: User, user
   const batch = writeBatch(db);
 
   const newMessageRef = doc(messagesRef);
-  batch.set(newMessageRef, {
+  const messagePayload: any = {
     text: text.trim(),
     senderId: user.uid,
     senderName: user.displayName || "Anonymer Nutzer",
@@ -648,7 +876,15 @@ export async function sendMessage(chatId: string, text: string, user: User, user
     sentAt: serverTimestamp(),
     isPremium: userProfile?.isPremium || false,
     isSupporter: userProfile?.isSupporter || false,
-  });
+  };
+
+  if (replyTo) {
+    messagePayload.replyToId = replyTo.id;
+    messagePayload.replyToText = replyTo.text;
+    messagePayload.replyToSenderName = replyTo.senderName;
+  }
+
+  batch.set(newMessageRef, messagePayload);
 
   const updates: any = {
     lastMessage: {
@@ -673,6 +909,41 @@ export async function sendMessage(chatId: string, text: string, user: User, user
     console.error('Error sending message:', error);
     throw new Error('Could not send message.');
   }
+}
+
+export async function editMessage(chatId: string, messageId: string, newText: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const messageRef = doc(db, 'chats', chatId, 'messages', messageId);
+  await updateDoc(messageRef, {
+    text: newText.trim(),
+    isEdited: true,
+    editedAt: serverTimestamp(),
+  });
+}
+
+export async function pinMessage(chatId: string, messageId: string, messageText: string, senderName: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const chatRef = doc(db, 'chats', chatId);
+  await updateDoc(chatRef, {
+    pinnedMessages: arrayUnion({
+      id: messageId,
+      text: messageText,
+      senderName: senderName,
+    })
+  });
+}
+
+export async function unpinMessage(chatId: string, messageId: string): Promise<void> {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const chatRef = doc(db, 'chats', chatId);
+  const chatSnap = await getDoc(chatRef);
+  if (!chatSnap.exists()) return;
+  const chatData = chatSnap.data() as Chat;
+  const pinned = chatData.pinnedMessages || [];
+  const updatedPinned = pinned.filter((msg: any) => msg.id !== messageId);
+  await updateDoc(chatRef, {
+    pinnedMessages: updatedPinned
+  });
 }
 
 export async function markChatAsRead(chatId: string, userId: string): Promise<void> {

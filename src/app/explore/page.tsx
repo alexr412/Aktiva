@@ -137,9 +137,12 @@ export default function ExplorePage() {
         isBoosted?: boolean,
         isPaid?: boolean,
         price?: number,
-        category?: ActivityCategory
-    ) => {
-        if (!user) return false;
+        category?: ActivityCategory,
+        description?: string,
+        requirements?: any,
+        joinMode?: 'direct' | 'request'
+    ): Promise<boolean> => {
+        if (!user || !activityModalPlace) return false;
         try {
             await createActivity({
                 place: activityModalPlace === 'custom' ? undefined : activityModalPlace as Place,
@@ -152,7 +155,10 @@ export default function ExplorePage() {
                 isBoosted,
                 isPaid,
                 price,
-                category: category || (language === 'de' ? 'Sonstiges' : 'Other')
+                category: category || (language === 'de' ? 'Sonstiges' : 'Other') as ActivityCategory,
+                description,
+                requirements,
+                joinMode
             });
             toast({ title: language === 'de' ? "Aktivität erstellt!" : "Activity created!", description: language === 'de' ? "Viel Spaß!" : "Have fun!" });
             setActivityModalPlace(null);

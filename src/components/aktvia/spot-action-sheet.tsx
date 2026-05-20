@@ -89,11 +89,15 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
 
         setJoiningId(activity.id!);
         try {
-            await joinActivity(activity.id!, user);
-            toast({ title: language === 'de' ? 'Erfolgreich beigetreten!' : 'Successfully joined!' });
-            router.push(`/chat/${activity.id}`);
+            const status = await joinActivity(activity.id!, user);
+            if (status === 'joined') {
+                toast({ title: language === 'de' ? 'Erfolgreich beigetreten!' : 'Successfully joined!' });
+                router.push(`/chat/${activity.id}`);
+            } else {
+                toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
+            }
         } catch (error: any) {
-            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message });
+            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message || error });
         } finally {
             setJoiningId(null);
         }

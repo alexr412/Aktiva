@@ -140,14 +140,17 @@ export default function UserProfilePage() {
             throw new Error('Login Required');
         }
         try {
-            await joinActivity(activityId, currentUser);
-            toast({ 
-                title: language === 'de' ? 'Erfolgreich!' : 'Success!', 
-                description: language === 'de' ? 'Du bist beigetreten. Du findest die Aktivität in deinen Chats.' : 'You have joined the activity. You can find it in your chats.' 
-            });
-
-            setActivities(prev => prev.map(act => act.id === activityId ? {...act, participantIds: [...act.participantIds, currentUser.uid]} : act));
-            router.push(`/chat/${activityId}`);
+            const status = await joinActivity(activityId, currentUser);
+            if (status === 'joined') {
+                toast({ 
+                    title: language === 'de' ? 'Erfolgreich!' : 'Success!', 
+                    description: language === 'de' ? 'Du bist beigetreten. Du findest die Aktivität in deinen Chats.' : 'You have joined the activity. You can find it in your chats.' 
+                });
+                setActivities(prev => prev.map(act => act.id === activityId ? {...act, participantIds: [...act.participantIds, currentUser.uid]} : act));
+                router.push(`/chat/${activityId}`);
+            } else {
+                toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
+            }
         } catch (error: any) {
             console.error(error);
             toast({ 

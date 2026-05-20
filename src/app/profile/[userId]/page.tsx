@@ -133,10 +133,14 @@ export default function ExternalUserProfilePage() {
             throw new Error('Login Required');
         }
         try {
-            await joinActivity(activityId, currentUser);
-            toast({ title: 'Success!', description: 'You have joined the activity. You can find it in your chats.' });
-            setActivities(prev => prev.map(act => act.id === activityId ? {...act, participantIds: [...act.participantIds, currentUser.uid]} : act));
-            router.push(`/chat/${activityId}`);
+            const status = await joinActivity(activityId, currentUser);
+            if (status === 'joined') {
+                toast({ title: 'Success!', description: 'You have joined the activity. You can find it in your chats.' });
+                setActivities(prev => prev.map(act => act.id === activityId ? {...act, participantIds: [...act.participantIds, currentUser.uid]} : act));
+                router.push(`/chat/${activityId}`);
+            } else {
+                toast({ title: 'Request sent!', description: 'The host will be notified.' });
+            }
         } catch (error: any) {
             console.error(error);
             toast({ title: 'Error', description: error.message || 'Failed to join activity.', variant: 'destructive' });

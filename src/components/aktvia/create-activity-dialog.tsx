@@ -10,9 +10,11 @@ import {
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import type { Place, ActivityCategory } from '@/lib/types';
-import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users, CreditCard, Lock, MapPin, Search, Navigation, X, Check, AlertTriangle, Dumbbell, Zap, Landmark, Trees, Gamepad2, Coffee, Star, type LucideIcon } from 'lucide-react';
+import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users, CreditCard, Lock, MapPin, Search, Navigation, X, Check, AlertTriangle, Dumbbell, Zap, Landmark, Trees, Gamepad2, Coffee, Star, ShieldCheck, UserCircle, StarHalf, type LucideIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -58,7 +60,16 @@ interface CreateActivityDialogProps {
     isBoosted?: boolean,
     isPaid?: boolean,
     price?: number,
-    category?: ActivityCategory
+    category?: ActivityCategory,
+    description?: string,
+    requirements?: {
+      ageRange?: { min?: number; max?: number };
+      gender?: string[];
+      requireProfilePicture?: boolean;
+      requireVerification?: boolean;
+      minimumRating?: number;
+    },
+    joinMode?: 'direct' | 'request'
   ) => Promise<boolean>;
 }
 
@@ -70,6 +81,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
   const [isCreating, setIsCreating] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<Place | null>(initialPlace);
   const [activityTitle, setActivityTitle] = useState('');
+  const [description, setDescription] = useState('');
   
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,9 +103,18 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
   const [isBoosted, setIsBoosted] = useState(false);
   const [isWatchingAd, setIsWatchingAd] = useState(false);
 
-  // Micro-Ticketing
+    // Micro-Ticketing
   const [isPaid, setIsPaid] = useState(false);
   const [price, setPrice] = useState<number>(0);
+
+  // Requirements State
+  const [requireProfilePicture, setRequireProfilePicture] = useState(false);
+  const [requireVerification, setRequireVerification] = useState(false);
+  const [minAge, setMinAge] = useState<number | ''>('');
+  const [maxAge, setMaxAge] = useState<number | ''>('');
+  const [allowedGenders, setAllowedGenders] = useState<string[]>(['male', 'female', 'diverse']);
+  const [minimumRating, setMinimumRating] = useState<number | ''>('');
+  const [joinMode, setJoinMode] = useState<'direct' | 'request'>('request');
 
   const isPremium = userProfile?.isPremium || false;
   const availableTokens = userProfile?.tokens || 0;
@@ -111,6 +132,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
       setIsCreating(false);
       setSelectedLocation(initialPlace);
       setActivityTitle('');
+      setDescription('');
       setSearchQuery('');
       setSearchResults([]);
       const today = new Date();
@@ -125,8 +147,15 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
       setIsPaid(false);
       setPrice(0);
       setSelectedCategory(language === 'de' ? 'Sonstiges' : 'Sonstiges');
+      setRequireProfilePicture(false);
+      setRequireVerification(false);
+      setMinAge('');
+      setMaxAge('');
+      setAllowedGenders(['male', 'female', 'diverse']);
+      setMinimumRating('');
+      setJoinMode('request');
     }
-  }, [open, initialPlace]);
+  }, [initialPlace, open]);
 
   const handleSearch = async (val: string) => {
     setSearchQuery(val);
@@ -245,6 +274,27 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
     // Automatische Titel-Zuweisung bei festen Orten
     const finalTitle = isSpecificPlaceMode ? (selectedLocation?.name || (language === 'de' ? 'Aktivität' : 'Activity')) : activityTitle;
 
+    const reqs: any = {};
+    if (minAge !== '' || maxAge !== '') {
+      reqs.ageRange = {};
+      if (minAge !== '') reqs.ageRange.min = Number(minAge);
+      if (maxAge !== '') reqs.ageRange.max = Number(maxAge);
+    }
+    if (allowedGenders.length < 3) {
+      reqs.gender = allowedGenders;
+    }
+    if (requireProfilePicture) {
+      reqs.requireProfilePicture = true;
+    }
+    if (requireVerification) {
+      reqs.requireVerification = true;
+    }
+    if (minimumRating !== '') {
+      reqs.minimumRating = Number(minimumRating);
+    }
+
+    const finalRequirements = Object.keys(reqs).length > 0 ? reqs : undefined;
+
     setIsCreating(true);
     const success = await onCreateActivity(
       finalDate, 
@@ -255,7 +305,10 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
       isBoosted,
       isPaid,
       price,
-      derivedCategory
+      derivedCategory,
+      description,
+      finalRequirements,
+      joinMode
     );
     if (!success) {
       setIsCreating(false);
@@ -438,6 +491,21 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                 )
               )}
             </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Zusätzliche Infos (Optional)' : 'Additional Info (Optional)'}</Label>
+              <div className="relative">
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value.slice(0, 150))}
+                  placeholder={language === 'de' ? "Max. 150 Zeichen..." : "Max 150 characters..."}
+                  className="min-h-[80px] resize-none rounded-2xl border-none bg-secondary/50 font-medium text-sm focus-visible:ring-primary/20 pb-6"
+                />
+                <span className="absolute bottom-2 right-3 text-[10px] font-bold text-muted-foreground">
+                  {description.length}/150
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Sektion 2: Datum & Zeit */}
@@ -544,6 +612,129 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
               <Slider value={[maxParticipants]} max={isPremium ? 50 : MAX_FREE_PARTICIPANTS} min={2} onValueChange={(val) => setMaxParticipants(val[0])} className="flex-1" />
               <div className="min-w-[40px] text-center"><span className="text-2xl font-black text-primary">{maxParticipants}</span></div>
             </div>
+
+            {/* Beitritts-Modus */}
+            <div className="space-y-3">
+              <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground pl-1">{language === 'de' ? 'Beitritts-Modus' : 'Join Mode'}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setJoinMode('request')}
+                  className={cn(
+                    "h-14 rounded-2xl font-bold flex flex-col items-center justify-center gap-0.5 border-2 transition-all",
+                    joinMode === 'request' 
+                      ? "border-primary bg-primary/5 text-primary shadow-sm" 
+                      : "border-border/50 text-muted-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <span>{language === 'de' ? 'Auf Anfrage' : 'By Request'}</span>
+                  <span className="text-[10px] opacity-70 font-medium">{language === 'de' ? 'Du entscheidest' : 'You decide'}</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setJoinMode('direct')}
+                  className={cn(
+                    "h-14 rounded-2xl font-bold flex flex-col items-center justify-center gap-0.5 border-2 transition-all",
+                    joinMode === 'direct' 
+                      ? "border-primary bg-primary/5 text-primary shadow-sm" 
+                      : "border-border/50 text-muted-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <span>{language === 'de' ? 'Direkt' : 'Direct'}</span>
+                  <span className="text-[10px] opacity-70 font-medium">{language === 'de' ? 'Jeder kann rein' : 'Anyone can join'}</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Sektion 4: Teilnahmebedingungen (Gating) */}
+            <Accordion type="single" collapsible className="w-full bg-secondary/10 rounded-2xl border border-border/50 px-4">
+              <AccordionItem value="requirements" className="border-none">
+                <AccordionTrigger className="hover:no-underline py-4">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-black uppercase tracking-widest text-slate-800">{language === 'de' ? 'Teilnahmebedingungen' : 'Requirements'}</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4 pt-2 pb-4">
+                  
+                  {/* Profilbild */}
+                  <div className="flex items-center justify-between bg-white/50 p-4 rounded-xl border border-white">
+                    <div className="flex items-center gap-3">
+                      <UserCircle className="h-5 w-5 text-primary" />
+                      <div>
+                        <Label className="font-bold">{language === 'de' ? 'Profilbild erforderlich' : 'Profile picture required'}</Label>
+                        <p className="text-xs text-muted-foreground">{language === 'de' ? 'Nur Nutzer mit Bild' : 'Only users with photo'}</p>
+                      </div>
+                    </div>
+                    <Switch checked={requireProfilePicture} onCheckedChange={setRequireProfilePicture} />
+                  </div>
+
+                  {/* Verifizierung */}
+                  <div className="flex items-center justify-between bg-white/50 p-4 rounded-xl border border-white">
+                    <div className="flex items-center gap-3">
+                      <Check className="h-5 w-5 text-primary" />
+                      <div>
+                        <Label className="font-bold">{language === 'de' ? 'Verifizierung (KYC)' : 'Verified (KYC)'}</Label>
+                        <p className="text-xs text-muted-foreground">{language === 'de' ? 'Echte Identität geprüft' : 'Real identity verified'}</p>
+                      </div>
+                    </div>
+                    <Switch checked={requireVerification} onCheckedChange={setRequireVerification} />
+                  </div>
+
+                  {/* Alter */}
+                  <div className="bg-white/50 p-4 rounded-xl border border-white space-y-3">
+                    <Label className="font-bold text-sm">{language === 'de' ? 'Altersbegrenzung' : 'Age limit'}</Label>
+                    <div className="flex items-center gap-3">
+                      <Input type="number" placeholder="Min" value={minAge} onChange={(e) => setMinAge(e.target.value === '' ? '' : parseInt(e.target.value))} className="bg-white border-none text-center font-bold h-12" />
+                      <span className="text-muted-foreground font-black">-</span>
+                      <Input type="number" placeholder="Max" value={maxAge} onChange={(e) => setMaxAge(e.target.value === '' ? '' : parseInt(e.target.value))} className="bg-white border-none text-center font-bold h-12" />
+                    </div>
+                  </div>
+
+                  {/* Geschlecht */}
+                  <div className="bg-white/50 p-4 rounded-xl border border-white space-y-3">
+                    <Label className="font-bold text-sm">{language === 'de' ? 'Geschlecht' : 'Gender'}</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['male', 'female', 'diverse'].map((g) => {
+                        const labels: any = { male: language === 'de' ? 'Männer' : 'Men', female: language === 'de' ? 'Frauen' : 'Women', diverse: language === 'de' ? 'Divers' : 'Diverse' };
+                        const isSelected = allowedGenders.includes(g);
+                        return (
+                          <Badge 
+                            key={g} 
+                            variant="outline" 
+                            className={cn("cursor-pointer border-none text-xs font-bold py-2 px-4 rounded-xl transition-all", isSelected ? "bg-primary text-white shadow-md shadow-primary/20" : "bg-white text-muted-foreground hover:bg-slate-50")}
+                            onClick={() => {
+                              if (isSelected && allowedGenders.length > 1) {
+                                setAllowedGenders(allowedGenders.filter(x => x !== g));
+                              } else if (!isSelected) {
+                                setAllowedGenders([...allowedGenders, g]);
+                              }
+                            }}
+                          >
+                            {labels[g]}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Bewertung */}
+                  <div className="bg-white/50 p-4 rounded-xl border border-white space-y-3">
+                    <Label className="font-bold flex items-center gap-2 text-sm">
+                      <StarHalf className="h-4 w-4 text-amber-500" />
+                      {language === 'de' ? 'Mindestbewertung' : 'Minimum Rating'}
+                    </Label>
+                    <div className="flex items-center gap-4">
+                      <Slider value={[Number(minimumRating) || 0]} max={5} min={0} step={0.1} onValueChange={(val) => setMinimumRating(val[0] === 0 ? '' : val[0])} className="flex-1" />
+                      <span className="font-black text-lg text-primary w-8 text-right">{minimumRating ? Number(minimumRating).toFixed(1) : '0.0'}</span>
+                    </div>
+                  </div>
+
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             {/* 
             <div className="space-y-3">

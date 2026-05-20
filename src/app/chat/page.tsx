@@ -176,7 +176,10 @@ export default function ChatPage() {
           const hasUnread = unreadCount > 0;
           
           // Mocking category data based on place icons if possible
-          const primaryStyle = chat.placeName ? getPrimaryIconData({ name: chat.placeName } as any, language) : null;
+          const primaryStyle = chat.placeName ? getPrimaryIconData({ 
+              name: chat.placeName,
+              categories: chat.categories || []
+          } as any, language) : null;
           
           // Generate a consistent color for DMs or places without style
           const fallbackColor = isDM ? ['#f43f5e', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'][chat.id.charCodeAt(0) % 5] : '#94a3b8';

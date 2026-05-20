@@ -13,12 +13,15 @@ export interface Notification {
     displayName?: string;
     photoURL?: string;
   };
-  type: 'friend_request' | 'activity_invite' | 'system';
+  type: 'friend_request' | 'activity_invite' | 'system' | 'join_request' | 'join_response';
   title: string;
   message: string;
   isRead: boolean;
   createdAt: Timestamp;
   link?: string;
+  activityId?: string;
+  customMessage?: string;
+  responseStatus?: 'accepted' | 'declined';
 }
 
 export type KYCStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
@@ -67,7 +70,9 @@ export interface Activity {
   imageUrl?: string;
   activityDate: Timestamp;
   activityEndDate?: Timestamp;
-  isTimeFlexible?: boolean;
+  isTimeFlexible: boolean;
+  joinMode?: 'direct' | 'request';
+  category?: string;
   hostId: string;
   hostName: string | null;
   hostPhotoURL: string | null;
@@ -77,7 +82,6 @@ export interface Activity {
   updatedAt?: Timestamp;
   isCustomActivity?: boolean;
   lastInteractionAt?: Timestamp;
-  category?: ActivityCategory;
   categories?: string[];
   tags?: string[];
   status: 'active' | 'open' | 'completed' | 'cancelled' | 'blacklisted';
@@ -112,6 +116,14 @@ export interface Activity {
   reportCount?: number;
   avgRating?: number;
   reviewCount?: number;
+  description?: string;
+  requirements?: {
+    ageRange?: { min?: number; max?: number };
+    gender?: string[]; // e.g. ['male', 'female', 'diverse']
+    requireProfilePicture?: boolean;
+    requireVerification?: boolean; // KYC / verified identity
+    minimumRating?: number;
+  };
   stats?: {
     impressions?: number;
     pushJoins?: number;
@@ -129,12 +141,25 @@ export interface Message {
   isPremium?: boolean;
   isSupporter?: boolean;
   isCreator?: boolean;
+  replyToId?: string;
+  replyToText?: string;
+  replyToSenderName?: string;
+  isEdited?: boolean;
+  editedAt?: Timestamp;
+}
+
+export interface PinnedMessage {
+  id: string;
+  text: string;
+  senderName: string;
+  pinnedAt?: Timestamp | Date;
 }
 
 export interface Chat {
     id: string;
     activityId?: string;
     placeName?: string;
+    categories?: string[];
     hostId?: string;
     participantIds: string[];
     participantDetails: {
@@ -157,6 +182,7 @@ export interface Chat {
     createdAt: Timestamp;
     lastActivityAt?: Timestamp;
     unreadCount?: { [userId: string]: number };
+    pinnedMessages?: PinnedMessage[];
 }
 
 export interface GeoapifyFeature {

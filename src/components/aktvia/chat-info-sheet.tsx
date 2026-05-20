@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
 import { cn } from '@/lib/utils';
+import { getPrimaryIconData } from '@/lib/tag-config';
 
 import {
   Sheet,
@@ -33,7 +34,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Trash2, Users, Calendar, CheckCircle, MapPin, ChevronRight, CheckCircle2, BarChart3 } from 'lucide-react';
+import { Loader2, Trash2, Users, Calendar, CheckCircle, MapPin, ChevronRight, CheckCircle2, BarChart3, HelpCircle, Star, UserCircle, ShieldCheck } from 'lucide-react';
 import type { Chat, Activity } from '@/lib/types';
 
 interface ChatInfoSheetProps {
@@ -75,6 +76,12 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
   
   const activityDate = activity.activityDate?.toDate();
   const isPastOrPresent = activityDate && activityDate <= new Date();
+
+  const primaryStyle = getPrimaryIconData({ 
+      categories: activity.categories || [], 
+      name: activity.placeName || (language === 'de' ? "Aktivität" : "Activity")
+  }, language);
+  const PrimaryIcon = primaryStyle.icon;
 
   const handleLeaveOrDelete = async () => {
     if (!chat?.id || !user?.uid) return;
@@ -144,8 +151,8 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
         <ScrollArea className="flex-1">
           <div className="p-8">
             <div className="flex flex-col items-center text-center pb-8 border-b border-slate-100 dark:border-neutral-800 mb-8">
-              <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-400 to-cyan-400 mb-6 flex items-center justify-center shadow-xl transform rotate-3">
-                <MapPin className="text-white h-10 w-10 drop-shadow-md" />
+              <div className={cn("w-24 h-24 rounded-3xl mb-6 flex items-center justify-center shadow-xl transform rotate-3", primaryStyle.gradientClass)}>
+                <PrimaryIcon className="text-white h-10 w-10 drop-shadow-md" />
               </div>
               
               <h2 className="">
@@ -161,6 +168,14 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                 </span>
               </div>
 
+              {activity.description && (
+                <div className="mt-4 px-4 max-w-sm mx-auto">
+                  <p className="text-xs font-medium text-slate-500 dark:text-neutral-400 italic leading-relaxed border-l-2 border-primary/20 pl-3 text-left">
+                    "{activity.description}"
+                  </p>
+                </div>
+              )}
+
               {isHost && activity.isBoosted && (
                 <Button 
                   variant="outline" 
@@ -174,6 +189,118 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                 </Button>
               )}
             </div>
+
+            {/* Requirements Section */}
+            {activity.requirements && (
+              <div className="space-y-4 mb-8">
+                <div className="flex items-center justify-between px-2">
+                  <h3 className="text-sm font-black text-slate-900 dark:text-neutral-100 uppercase tracking-wider">{language === 'de' ? 'Kriterien zum Beitreten' : 'Join Criteria'}</h3>
+                  <span className="h-1 flex-1 mx-4 bg-slate-50 dark:bg-neutral-800 rounded-full" />
+                </div>
+                <div className="bg-slate-50 dark:bg-neutral-900 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800 space-y-3">
+                  {/* Join Mode */}
+                  <div className="flex items-start gap-3">
+                    <HelpCircle className="h-4 w-4 mt-0.5 text-slate-400 shrink-0" />
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                        {language === 'de' ? 'Beitrittsmethode' : 'Join Method'}
+                      </span>
+                      <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                        {activity.joinMode === 'request'
+                          ? (language === 'de' ? 'Anfrage erforderlich' : 'Request required')
+                          : (language === 'de' ? 'Direkter Beitritt' : 'Direct join')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Rating Requirement */}
+                  {activity.requirements.minimumRating !== undefined && (
+                    <div className="flex items-start gap-3">
+                      <Star className="h-4 w-4 mt-0.5 text-amber-500 fill-amber-500 shrink-0" />
+                      <div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                          {language === 'de' ? 'Mindestbewertung' : 'Minimum Rating'}
+                        </span>
+                        <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                          {activity.requirements.minimumRating.toFixed(1)} {language === 'de' ? 'Sterne' : 'Stars'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Age Requirement */}
+                  {(activity.requirements.ageRange?.min !== undefined || activity.requirements.ageRange?.max !== undefined) && (
+                    <div className="flex items-start gap-3">
+                      <Users className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
+                      <div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                          {language === 'de' ? 'Altersbereich' : 'Age Range'}
+                        </span>
+                        <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                          {activity.requirements.ageRange.min !== undefined && activity.requirements.ageRange.max !== undefined
+                            ? `${activity.requirements.ageRange.min} - ${activity.requirements.ageRange.max} ${language === 'de' ? 'Jahre' : 'years'}`
+                            : activity.requirements.ageRange.min !== undefined
+                            ? `ab ${activity.requirements.ageRange.min} ${language === 'de' ? 'Jahren' : 'years'}`
+                            : `bis ${activity.requirements.ageRange.max} ${language === 'de' ? 'Jahren' : 'years'}`}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Gender Requirement */}
+                  {activity.requirements.gender && activity.requirements.gender.length > 0 && (
+                    <div className="flex items-start gap-3">
+                      <UserCircle className="h-4 w-4 mt-0.5 text-purple-500 shrink-0" />
+                      <div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                          {language === 'de' ? 'Zugelassene Geschlechter' : 'Allowed Genders'}
+                        </span>
+                        <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                          {activity.requirements.gender.map(g => {
+                            const labels: Record<string, string> = {
+                              male: language === 'de' ? 'Männer' : 'Men',
+                              female: language === 'de' ? 'Frauen' : 'Women',
+                              other: language === 'de' ? 'Diverse' : 'Other'
+                            };
+                            return labels[g] || g;
+                          }).join(', ')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Profile Picture Requirement */}
+                  {activity.requirements.requireProfilePicture && (
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" />
+                      <div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                          {language === 'de' ? 'Profilbild' : 'Profile Picture'}
+                        </span>
+                        <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                          {language === 'de' ? 'Profilbild ist erforderlich' : 'Profile picture is required'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Verification Requirement */}
+                  {activity.requirements.requireVerification && (
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                      <div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                          {language === 'de' ? 'Verifizierung' : 'Verification'}
+                        </span>
+                        <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                          {language === 'de' ? 'Verifiziertes Profil (KYC) ist erforderlich' : 'Verified profile (KYC) is required'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-6">
               <div className="flex items-center justify-between px-2">

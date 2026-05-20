@@ -28,6 +28,9 @@ import {
     MapPin,
     Sparkles,
     Plus,
+    Info,
+    Copy,
+    Check,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,6 +40,7 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Place, Activity } from '@/lib/types';
 import { AiRecommendation } from './ai-recommendation';
+import { ActivityInfoSheet } from './activity-info-sheet';
 import { useFavorites } from '@/contexts/favorites-context';
 import { cn } from '@/lib/utils';
 import { getPrimaryIconData, translateTag } from '@/lib/tag-config';
@@ -60,6 +64,20 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loadingActivities, setLoadingActivities] = useState(true);
     const [joiningActivityId, setJoiningActivityId] = useState<string|null>(null);
+    const [selectedInfoActivity, setSelectedInfoActivity] = useState<Activity | null>(null);
+    const [copied, setCopied] = useState(false);
+
+    const handleCopyAddress = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        navigator.clipboard.writeText(place.address || "");
+        setCopied(true);
+        toast({
+            title: language === 'de' ? 'Kopiert!' : 'Copied!',
+            description: language === 'de' ? 'Adresse in Zwischenablage kopiert.' : 'Address copied to clipboard.'
+        });
+        setTimeout(() => setCopied(false), 2000);
+    };
     
     const [placeMeta, setPlaceMeta] = useState({ 
         avgRating: 0, 
@@ -126,10 +144,14 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
         if (activity.isPaid && activity.price && activity.price > 0) { router.push(`/checkout/${activity.id}`); return; }
         setJoiningActivityId(activity.id!);
         try {
-            await joinActivity(activity.id!, user);
-            toast({ title: language === 'de' ? 'Erfolgreich beigetreten!' : 'Successfully joined!' });
+            const status = await joinActivity(activity.id!, user);
+            if (status === 'joined') {
+                toast({ title: language === 'de' ? 'Erfolgreich beigetreten!' : 'Successfully joined!' });
+            } else {
+                toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
+            }
         } catch (error: any) {
-            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message });
+            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message || error });
         } finally { setJoiningActivityId(null); }
     };
 
@@ -181,10 +203,26 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         <h2 className="">
                             {place.name}
                         </h2>
-                        <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 text-rose-500">
-                                <MapPin className="h-4 w-4 fill-current" />
-                                <h4 className="">{place.address}</h4>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <a 
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 text-rose-500 hover:text-rose-600 hover:underline cursor-pointer group"
+                                >
+                                    <MapPin className="h-4 w-4 fill-current group-hover:scale-110 transition-transform shrink-0" />
+                                    <h4 className="text-sm font-bold leading-tight">{place.address}</h4>
+                                </a>
+                                <Button
+                                    onClick={handleCopyAddress}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-400 hover:text-slate-600 transition-all shrink-0"
+                                    title={language === 'de' ? 'Adresse kopieren' : 'Copy address'}
+                                >
+                                    {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                                </Button>
                             </div>
                                 <div className="flex items-start gap-2 text-slate-600 dark:text-neutral-400">
                                     <Clock className="h-4 w-4 mt-0.5 shrink-0" />
@@ -253,7 +291,11 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     const isParticipant = activity.participantIds.includes(user?.uid || '---');
                                     
                                     return (
-                                        <div key={activity.id} className="bg-white dark:bg-neutral-800 rounded-[2rem] p-4 flex items-center gap-4 border border-slate-100 dark:border-neutral-800 hover:shadow-xl transition-all shadow-sm group">
+                                        <div 
+                                            key={activity.id} 
+                                            onClick={() => setSelectedInfoActivity(activity)}
+                                            className="bg-white dark:bg-neutral-800 rounded-[2rem] p-4 flex items-center gap-4 border border-slate-100 dark:border-neutral-800 hover:shadow-xl transition-all shadow-sm group cursor-pointer"
+                                        >
                                             {/* Date Circle */}
                                             <div className="h-16 w-14 bg-accent dark:bg-emerald-950/20 rounded-2xl flex flex-col items-center justify-center shrink-0 border border-emerald-100/50 dark:border-emerald-900/30">
                                                 <span className="text-xl font-black text-primary">{format(actDate, 'd')}</span>
@@ -262,8 +304,8 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
 
                                             {/* Info */}
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-0.5">
-                                                     <h4 className="">
+                                                <div className="flex items-center gap-1.5 mb-0.5">
+                                                     <h4 className="font-bold text-slate-800 dark:text-neutral-200">
                                                         {activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}
                                                     </h4>
 
@@ -278,28 +320,49 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                     </div>
                                                      <span className="text-[11px] font-bold text-slate-400">
                                                         {activity.participantIds.length} {language === 'de' ? 'Teilnehmer' : 'Participants'}
-                                                    </span>
+                                                     </span>
                                                 </div>
                                             </div>
 
-                                            {/* Action */}
-                                            {isParticipant ? (
-                                                <Button 
-                                                    onClick={() => router.push(`/chat/${activity.id}`)}
-                                                    variant="secondary"
-                                                    className="bg-[#f5f3f2] hover:bg-slate-200 text-[#0f172a] rounded-[1.25rem] h-11 px-5 font-black text-sm border-none shadow-none"
+                                            {/* Actions */}
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {/* Info Button */}
+                                                <Button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedInfoActivity(activity);
+                                                    }}
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-11 w-11 rounded-full bg-slate-50 dark:bg-neutral-900 hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-400 hover:text-primary transition-colors border border-slate-150 dark:border-neutral-800"
                                                 >
-                                                    Chat
+                                                    <Info className="h-5 w-5" />
                                                 </Button>
-                                            ) : (
-                                                 <Button 
-                                                    onClick={() => handleJoin(activity)}
-                                                    disabled={joiningActivityId === activity.id}
-                                                    className="bg-primary text-white hover:opacity-90 rounded-[1.25rem] h-11 px-5 min-w-[100px] font-black text-sm border-none shadow-lg shadow-primary/20"
-                                                >
-                                                    {joiningActivityId === activity.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (language === 'de' ? 'Beitreten' : 'Join')}
-                                                </Button>
-                                            )}
+
+                                                {isParticipant ? (
+                                                    <Button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            router.push(`/chat/${activity.id}`);
+                                                        }}
+                                                        variant="secondary"
+                                                        className="bg-[#f5f3f2] hover:bg-slate-200 text-[#0f172a] rounded-[1.25rem] h-11 px-5 font-black text-sm border-none shadow-none"
+                                                    >
+                                                        Chat
+                                                    </Button>
+                                                ) : (
+                                                     <Button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleJoin(activity);
+                                                        }}
+                                                        disabled={joiningActivityId === activity.id}
+                                                        className="bg-primary text-white hover:opacity-90 rounded-[1.25rem] h-11 px-5 min-w-[100px] font-black text-sm border-none shadow-lg shadow-primary/20"
+                                                    >
+                                                        {joiningActivityId === activity.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (language === 'de' ? 'Beitreten' : 'Join')}
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -319,6 +382,15 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
                 </Button>
             </div>
+
+            {/* Reusable ActivityInfoSheet for details view */}
+            <ActivityInfoSheet
+                activity={selectedInfoActivity}
+                open={!!selectedInfoActivity}
+                onOpenChange={(open) => !open && setSelectedInfoActivity(null)}
+                onJoin={handleJoin}
+                isJoining={joiningActivityId === selectedInfoActivity?.id}
+            />
         </div>
     );
 }

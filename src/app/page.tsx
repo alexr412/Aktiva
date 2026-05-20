@@ -217,6 +217,7 @@ export default function Home() {
               if (dRes.ok) {
                 const dData = await dRes.json();
                 categories = dData.features?.[0]?.properties?.categories || categories;
+                console.log('[DEBUG GEO ENRICH]', item.name, 'categories:', categories);
               }
             } catch (e) {
               console.error("Detail enrichment failed for:", item.place_id, e);
@@ -719,26 +720,41 @@ export default function Home() {
   };
   const handleOpenCustomActivityModal = () => { if (!user) { router.push('/login'); return; } setActivityModalPlace('custom'); };
 
-  const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory): Promise<boolean> => {
+  const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory, description?: string, requirements?: any, joinMode?: 'direct' | 'request'): Promise<boolean> => {
     if (!user) return false;
     try {
       const isCustom = activityModalPlace === 'custom';
       const payload = isCustom
-        ? { customLocationName: customLocationName!, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price, category: category! }
-        : { place: activityModalPlace as Place, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price, category: category! };
+        ? { customLocationName: customLocationName!, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price, category: category!, description, requirements, joinMode }
+        : { place: activityModalPlace as Place, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price, category: category!, description, requirements, joinMode };
       const newActivityRef = await createActivity(payload);
       setActivityModalPlace(null);
       router.push(`/chat/${newActivityRef.id}`);
       return true;
-    } catch (error: any) { return false; }
+    } catch (error: any) {
+      console.error("Error creating activity:", error);
+      toast({
+        variant: "destructive",
+        title: language === 'de' ? "Fehler beim Erstellen" : "Error creating activity",
+        description: error.message || String(error),
+      });
+      return false;
+    }
   };
 
   const handleJoin = async (activityId: string) => {
     if (!user) { router.push('/login'); throw new Error('Login Required'); }
     try {
-      await joinActivity(activityId, user);
-      router.push(`/chat/${activityId}`);
-    } catch (error: any) { throw error; }
+      const status = await joinActivity(activityId, user);
+      if (status === 'joined') {
+        router.push(`/chat/${activityId}`);
+      } else {
+        toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
+      }
+    } catch (error: any) { 
+        toast({ variant: 'destructive', title: 'Error', description: error });
+        throw error; 
+    }
   };
 
   const handleMapToggle = () => {
@@ -831,7 +847,7 @@ export default function Home() {
           return (
             <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {sortedList.map((item) => (
-                <div key={item.id} className="min-h-[280px] w-full">
+                <div key={item.id} className="min-h-[210px] w-full">
                   <ActivityListItem activity={item as any} user={user} onJoin={handleJoin} />
                 </div>
               ))}
