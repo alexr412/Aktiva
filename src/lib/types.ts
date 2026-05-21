@@ -260,6 +260,7 @@ export interface UserProfile {
   successfulFreeHosts?: number;
   fiatBalance?: number;
   escrowBalance?: number;
+  balancesInCents?: boolean;
   successfulReferrals?: number;
   averageRating?: number;
   ratingCount?: number;

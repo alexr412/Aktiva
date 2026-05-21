@@ -39,6 +39,32 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(systemFields);
     }
 
+    // Stellt sicher, dass unveränderliche Finanzfelder nach der Erstellung nicht geändert werden können
+    function hasNoImmutableFinancialFieldChanges() {
+      let immutableFields = ['price', 'isPaid', 'hostId', 'currency', 'paymentConfig'];
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(immutableFields);
+    }
+
+    // Stellt sicher, dass Teilnehmer nur erlaubte Felder ändern und nur ihre eigene UID verwenden
+    function isParticipantAllowedUpdate() {
+      let uid = request.auth.uid;
+      let allowedKeys = ['participantIds', 'participantsPreview', 'participantDetails', 'completionVotes', 'lastInteractionAt'];
+      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
+      // Nur erlaubte Keys dürfen sich ändern
+      let onlyAllowedKeys = changedKeys.hasOnly(allowedKeys);
+      // participantIds darf nur die eigene UID des Nutzers hinzufügen oder entfernen
+      let pidsBefore = resource.data.get('participantIds', []);
+      let pidsAfter = request.resource.data.get('participantIds', []);
+      let pidDiff = pidsAfter.removeAll(pidsBefore).concat(pidsBefore.removeAll(pidsAfter));
+      let onlyOwnUidInPids = !changedKeys.hasAny(['participantIds']) || (pidDiff.size() == 1 && pidDiff[0] == uid);
+      // completionVotes darf nur die eigene UID des Nutzers hinzufügen
+      let votesBefore = resource.data.get('completionVotes', []);
+      let votesAfter = request.resource.data.get('completionVotes', []);
+      let voteDiff = votesAfter.removeAll(votesBefore);
+      let onlyOwnUidInVotes = !changedKeys.hasAny(['completionVotes']) || (votesAfter.size() >= votesBefore.size() && voteDiff.size() == 1 && voteDiff[0] == uid);
+      return onlyAllowedKeys && onlyOwnUidInPids && onlyOwnUidInVotes;
+    }
+
     // --- COLLECTION RULES ---
 
     match /users/{userId} {
@@ -54,9 +80,11 @@ service cloud.firestore {
     match /activities/{activityId} {
       allow read: if true; // Öffentlich findbar
       allow create: if isSignedIn() && request.resource.data.hostId == request.auth.uid;
+      // Host: Darf alles ändern außer unveränderliche Finanzfelder
+      // Participant: Darf ausschließlich eigene, erlaubte Felder über Allowlist mutieren
       allow update: if isSignedIn() && (
-        resource.data.hostId == request.auth.uid || 
-        request.resource.data.participantIds.hasAny([request.auth.uid]) ||
+        (resource.data.hostId == request.auth.uid && hasNoImmutableFinancialFieldChanges()) ||
+        (resource.data.participantIds.hasAny([request.auth.uid]) && isParticipantAllowedUpdate()) ||
         isAdmin()
       );
       allow delete: if isSignedIn() && (resource.data.hostId == request.auth.uid || isAdmin());
@@ -120,17 +148,50 @@ service cloud.firestore {
     }
 
     match /payoutRequests/{requestId} {
-      allow create: if isSignedIn();
+      // Erstellung NUR durch Admin SDK (Cloud Functions). Kein direkter Client-Zugriff.
+      allow create: if false;
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     match /refunds/{refundId} {
-      allow create: if isSignedIn();
+      // Erstellung NUR durch Admin SDK (Cloud Functions). Kein direkter Client-Zugriff.
+      allow create: if false;
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    // Append-only Finanzledger: Kein Update/Delete erlaubt, auch nicht für Admins
+    match /financial_ledger/{entryId} {
+      allow create: if false; // Nur via Admin SDK (Cloud Functions)
+      allow read: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Idempotenz-Collections: Nur Admin SDK darf schreiben
+    match /processed_payments/{docId} {
+      allow create: if false;
+      allow read: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /processed_operations/{docId} {
+      allow create: if false;
+      allow read: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Dead-Letter Queue: Nur Admin SDK darf schreiben; Admins dürfen lesen für Forensik
+    match /failed_operations/{docId} {
+      allow create: if false;
+      allow read: if isAdmin();
+      allow update: if false;
+      allow delete: if false;
     }
     
     match /kycRequests/{requestId} {

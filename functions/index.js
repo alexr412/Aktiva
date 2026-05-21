@@ -255,3 +255,13 @@ exports.telemetryAggregationWorker = aggregation.telemetryAggregationWorker;
 // Secure Payments & Escrow
 const payments = require('./lib/payments');
 exports.secureJoinPaidActivity = payments.secureJoinPaidActivity;
+exports.secureCompleteActivity = payments.secureCompleteActivity;
+exports.secureVoteToCompleteActivity = payments.secureVoteToCompleteActivity;
+exports.secureCancelActivity = payments.secureCancelActivity;
+exports.secureRequestPayout = payments.secureRequestPayout;
+exports.secureLeaveActivity = payments.secureLeaveActivity;
+exports.onKycRequestCreated = payments.onKycRequestCreated;
+exports.onPayoutRequestUpdated = payments.onPayoutRequestUpdated;
+exports.onRefundUpdated = payments.onRefundUpdated;
+
+

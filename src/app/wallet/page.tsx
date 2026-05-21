@@ -27,8 +27,12 @@ export default function WalletPage() {
     const [isUploadingKYC, setIsUploadingKYC] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
-    const currentBalance = userProfile?.fiatBalance || 0;
-    const escrowBalance = userProfile?.escrowBalance || 0;
+    const currentBalance = userProfile?.balancesInCents
+        ? (userProfile.fiatBalance || 0) / 100
+        : (userProfile?.fiatBalance || 0);
+    const escrowBalance = userProfile?.balancesInCents
+        ? (userProfile.escrowBalance || 0) / 100
+        : (userProfile?.escrowBalance || 0);
     const kycStatus = userProfile?.kycStatus || 'unverified';
     const canWithdraw = currentBalance >= MIN_PAYOUT && kycStatus === 'verified';
 

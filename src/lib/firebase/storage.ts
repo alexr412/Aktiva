@@ -43,16 +43,14 @@ export const submitKYCDocument = async (userId: string, file: File) => {
     throw new Error("Nicht autorisiert.");
   }
 
-  // 1. Datei-Upload in gesicherten Storage-Pfad
+  // 1. Upload file to secured storage path
   const storageRef = ref(storage, `kyc/${userId}/${Date.now()}_${file.name}`);
   await uploadBytes(storageRef, file);
   const documentUrl = await getDownloadURL(storageRef);
 
-  // 2. Nutzer-Status auf 'pending' setzen
-  const userRef = doc(db!, 'users', userId);
-  await updateDoc(userRef, { kycStatus: 'pending' });
-
-  // 3. Admin-Review-Dokument erstellen
+  // 2. Create admin review document.
+  // The onKycRequestCreated Cloud Function trigger will automatically set
+  // kycStatus = 'pending' on the user profile server-side — no client write needed.
   const kycReqRef = doc(collection(db!, 'kycRequests'));
   await setDoc(kycReqRef, {
     userId,

@@ -79,6 +79,7 @@ export async function createUserProfileDocument(user: User, additionalData?: Par
     successfulFreeHosts: 0,
     fiatBalance: 0, 
     escrowBalance: 0, 
+    balancesInCents: true,
     successfulReferrals: 0, 
     averageRating: 0, 
     ratingCount: 0, 
@@ -959,37 +960,22 @@ export async function markChatAsRead(chatId: string, userId: string): Promise<vo
 }
 
 export async function leaveActivity(activityId: string, userId: string): Promise<void> {
-  if (!db) throw new Error('Firestore is not initialized.');
+  // Generate a deterministic, globally unique operationId for this leave operation.
+  const operationId = `leave_${userId}_${activityId}_${Date.now()}`;
 
-  const activityRef = doc(db, 'activities', activityId);
-  const chatRef = doc(db, 'chats', activityId);
-  const pRef = doc(db, 'activities', activityId, 'participants', userId);
-  
   try {
-    await runTransaction(db, async (transaction) => {
-      const activitySnap = await transaction.get(activityRef);
-      if (!activitySnap.exists()) return;
-      const activityData = activitySnap.data() as Activity;
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const secureLeave = httpsCallable<
+      { activityId: string; operationId: string },
+      { success: boolean }
+    >(functions, 'secureLeaveActivity');
 
-      const updatedPreview = (activityData.participantsPreview || []).filter(p => p.uid !== userId);
-
-      transaction.update(activityRef, {
-        participantIds: arrayRemove(userId),
-        participantsPreview: updatedPreview,
-        [`participantDetails.${userId}`]: deleteField(),
-      });
-
-      transaction.delete(pRef);
-
-      transaction.update(chatRef, {
-        participantIds: arrayRemove(userId),
-        [`participantDetails.${userId}`]: deleteField(),
-        [`unreadCount.${userId}`]: deleteField(),
-      });
-    });
-  } catch (error) {
+    await secureLeave({ activityId, operationId });
+  } catch (error: any) {
     console.error('Error leaving activity:', error);
-    throw new Error('Could not leave activity.');
+    const message = error?.message || 'Could not leave activity.';
+    throw new Error(message);
   }
 }
 
@@ -1168,41 +1154,19 @@ export async function deleteUserDocument(userId: string): Promise<void> {
 
 export async function voteToCompleteActivity(activityId: string, userId: string): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
-  const activityRef = doc(db, 'activities', activityId);
-
+  
   try {
-    await runTransaction(db, async (transaction) => {
-      const activityDoc = await transaction.get(activityRef);
-      if (!activityDoc.exists()) {
-        throw new Error("Activity does not exist!");
-      }
-
-      const activityData = activityDoc.data() as Activity;
-      
-      const currentVotes = activityData.completionVotes || [];
-      const newVotes = [...new Set([...currentVotes, userId])];
-      
-      transaction.update(activityRef, {
-        completionVotes: newVotes
-      });
-      
-      const participantIds = activityData.participantIds;
-      const allVoted = participantIds.every(id => newVotes.includes(id)) && newVotes.length === participantIds.length;
-
-      if (allVoted) {
-        transaction.update(activityRef, {
-          status: 'completed'
-        });
-
-        // Orts-Anker deinkrementieren
-        if (activityData.placeId && activityData.placeId !== 'custom') {
-            const placeRef = doc(db!, 'places', activityData.placeId);
-            transaction.set(placeRef, { activityCount: increment(-1) }, { merge: true });
-        }
-      }
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const secureVote = httpsCallable<{ activityId: string, operationId: string }, { success: boolean, allVoted?: boolean }>(functions, 'secureVoteToCompleteActivity');
+    
+    const operationId = `vote_complete_${activityId}_${userId}_${Date.now()}`;
+    await secureVote({
+      activityId,
+      operationId
     });
   } catch (error: any) {
-    console.error("Vote to complete transaction failed: ", error);
+    console.error("Vote to complete Cloud Function failed: ", error);
     throw new Error(error.message || "Could not process your vote.");
   }
 }
@@ -1210,78 +1174,39 @@ export async function voteToCompleteActivity(activityId: string, userId: string)
 export async function completeActivity(activityId: string, userId: string, isPaid: boolean): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   
-  const activityRef = doc(db, 'activities', activityId);
-  const userRef = doc(db, 'users', userId);
-
-  await runTransaction(db, async (transaction) => {
-    const activitySnap = await transaction.get(activityRef);
-    if (!activitySnap.exists()) throw new Error("Activity not found.");
-    const activityData = activitySnap.data() as Activity;
-
-    transaction.update(activityRef, { status: 'completed' });
-
-    // Orts-Anker deinkrementieren
-    if (activityData.placeId && activityData.placeId !== 'custom') {
-        const placeRef = doc(db!, 'places', activityData.placeId);
-        transaction.set(placeRef, { activityCount: increment(-1) }, { merge: true });
-    }
-
-    if (!isPaid) {
-      transaction.update(userRef, {
-        successfulFreeHosts: increment(1)
-      });
-    } else if (activityData.price) {
-      const payingParticipantsCount = Math.max(0, (activityData.participantIds?.length || 1) - 1);
-      const releaseAmount = payingParticipantsCount * (activityData.price * 0.9);
-
-      if (releaseAmount > 0) {
-        transaction.update(userRef, {
-          escrowBalance: increment(-releaseAmount),
-          fiatBalance: increment(releaseAmount)
-        });
-      }
-    }
-  });
+  try {
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const secureComplete = httpsCallable<{ activityId: string, operationId: string }, { success: boolean }>(functions, 'secureCompleteActivity');
+    
+    const operationId = `complete_${activityId}_${Date.now()}`;
+    await secureComplete({
+      activityId,
+      operationId
+    });
+  } catch (e: any) {
+    console.error("Complete Activity Cloud Function failed: ", e);
+    throw new Error(e.message || "Fehler beim Abschließen der Aktivität.");
+  }
 }
 
 export const cancelActivity = async (activityId: string, hostId: string): Promise<void> => {
   if (!db) throw new Error('Firestore not initialized.');
-  const activityRef = doc(db, 'activities', activityId);
-  const activitySnap = await getDoc(activityRef);
-  if (!activitySnap.exists()) throw new Error("Aktivität nicht gefunden.");
-  const activity = activitySnap.data();
-
-  const batch = writeBatch(db);
-  batch.update(activityRef, { status: 'cancelled', updatedAt: serverTimestamp() });
-
-  // Orts-Anker deinkrementieren
-  if (activity.placeId && activity.placeId !== 'custom') {
-    const placeRef = doc(db, 'places', activity.placeId);
-    batch.set(placeRef, { activityCount: increment(-1) }, { merge: true });
-  }
-
-  if (activity.isPaid && activity.price > 0) {
-    const participantsRef = collection(db, 'activities', activityId, 'participants');
-    const participantsSnap = await getDocs(participantsRef);
-    const totalParticipants = participantsSnap.size;
-    const escrowDeduction = totalParticipants * (activity.price * 0.9);
-
-    if (escrowDeduction > 0) {
-      batch.update(doc(db!, 'users', hostId), { escrowBalance: increment(-escrowDeduction) });
-    }
-
-    participantsSnap.forEach((pDoc) => {
-      const refundRef = doc(collection(db!, 'refunds'));
-      batch.set(refundRef, {
-        activityId,
-        userId: pDoc.id,
-        amount: activity.price,
-        status: 'pending',
-        createdAt: serverTimestamp()
-      });
+  
+  try {
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const secureCancel = httpsCallable<{ activityId: string, operationId: string }, { success: boolean }>(functions, 'secureCancelActivity');
+    
+    const operationId = `cancel_${activityId}_${Date.now()}`;
+    await secureCancel({
+      activityId,
+      operationId
     });
+  } catch (e: any) {
+    console.error("Cancel Activity Cloud Function failed: ", e);
+    throw new Error(e.message || "Fehler beim Stornieren der Aktivität.");
   }
-  await batch.commit();
 };
 
 export async function checkIfUserReviewed(activityId: string, reviewerId: string): Promise<boolean> {
@@ -1634,20 +1559,20 @@ export const requestPayout = async (userId: string, currentBalance: number) => {
   if (!db) throw new Error("Firestore not initialized");
   if (currentBalance < 50) throw new Error("Auszahlungslimit von 50€ nicht erreicht.");
 
-  const batch = writeBatch(db);
-  
-  const userRef = doc(db, 'users', userId);
-  batch.update(userRef, { fiatBalance: 0 }); 
-  
-  const payoutRef = doc(collection(db, 'payoutRequests'));
-  batch.set(payoutRef, {
-    userId,
-    amount: currentBalance,
-    status: 'pending',
-    createdAt: serverTimestamp()
-  });
-
-  await batch.commit();
+  try {
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const securePayout = httpsCallable<{ amount?: number, operationId: string }, { success: boolean, payoutRequestId?: string }>(functions, 'secureRequestPayout');
+    
+    const operationId = `payout_${userId}_${Date.now()}`;
+    await securePayout({
+      amount: currentBalance,
+      operationId
+    });
+  } catch (e: any) {
+    console.error("Request Payout Cloud Function failed: ", e);
+    throw new Error(e.message || "Auszahlungsanforderung fehlgeschlagen.");
+  }
 };
 
 export async function processRefund(refundId: string) {

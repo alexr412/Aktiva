@@ -4,92 +4,88 @@ exports.syncUserProfileUpdates = void 0;
 const firestore_1 = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 /**
- * Cloud Function to fan-out user profile updates (displayName, photoURL)
- * to all activities and chats where the user is a participant or host.
+ * MODUL 23: Production-Grade Fan-Out System.
+ * Synchronisiert Profiländerungen (Name, Photo) sicher über alle Aktivitäten und Chats.
+ * Nutze atomare Chunks zur Vermeidung von Batch-Limit-Fehlern (> 500 Docs).
  */
-exports.syncUserProfileUpdates = (0, firestore_1.onDocumentUpdated)('users/{userId}', async (event) => {
+exports.syncUserProfileUpdates = (0, firestore_1.onDocumentUpdated)({
+    document: 'users/{userId}',
+    retry: true // Retry bei transienten Fehlern (z.B. Transaction Contention)
+}, async (event) => {
     const before = event.data?.before.data();
     const after = event.data?.after.data();
     if (!before || !after)
         return null;
-    // Check if relevant fields changed
+    // Nur triggern wenn Name oder Foto sich ändern
     if (before.displayName === after.displayName && before.photoURL === after.photoURL) {
         return null;
     }
     const userId = event.params.userId;
     const newName = after.displayName;
     const newPhotoURL = after.photoURL;
-    // Use the pre-initialized admin instance (initialized in index.js)
     const db = admin.firestore();
-    const batch = db.batch();
-    let updatesCount = 0;
-    try {
-        // 1. Update Activities
-        // Querying by participantIds ensures we find all relevant activities.
-        // In Firestore, there is a limit of 500 writes per batch. If a user is in >500 activities,
-        // this will fail, but realistically users won't be in 500 active activities.
-        const activitiesSnap = await db.collection('activities')
-            .where('participantIds', 'array-contains', userId)
-            .get();
-        activitiesSnap.forEach(doc => {
-            const data = doc.data();
-            const updates = {};
-            let needsUpdate = false;
-            // Update Host Info if they are the host
-            if (data.hostId === userId) {
-                if (data.hostName !== newName) {
-                    updates.hostName = newName;
-                    needsUpdate = true;
-                }
-                if (data.hostPhotoURL !== newPhotoURL) {
-                    updates.hostPhotoURL = newPhotoURL;
-                    needsUpdate = true;
-                }
-            }
-            // Update Participant Details Map
-            if (data.participantDetails && data.participantDetails[userId]) {
-                updates[`participantDetails.${userId}.displayName`] = newName;
-                updates[`participantDetails.${userId}.photoURL`] = newPhotoURL;
+    // Liste aller Dokument-Referenzen sammeln, die geupdatet werden müssen
+    const targets = [];
+    // 1. Aktivitäten suchen (als Teilnehmer oder Host)
+    const activitiesSnap = await db.collection('activities')
+        .where('participantIds', 'array-contains', userId)
+        .get();
+    activitiesSnap.forEach(doc => {
+        const data = doc.data();
+        const updates = {};
+        let needsUpdate = false;
+        if (data.hostId === userId) {
+            if (data.hostName !== newName) {
+                updates.hostName = newName;
                 needsUpdate = true;
             }
-            // Update participantsPreview array completely
-            if (Array.isArray(data.participantsPreview)) {
-                const previewIndex = data.participantsPreview.findIndex((p) => p.uid === userId);
-                if (previewIndex !== -1) {
-                    const newPreview = [...data.participantsPreview];
-                    newPreview[previewIndex] = { ...newPreview[previewIndex], displayName: newName, photoURL: newPhotoURL };
-                    updates.participantsPreview = newPreview;
-                    needsUpdate = true;
-                }
+            if (data.hostPhotoURL !== newPhotoURL) {
+                updates.hostPhotoURL = newPhotoURL;
+                needsUpdate = true;
             }
-            if (needsUpdate) {
-                batch.update(doc.ref, updates);
-                updatesCount++;
+        }
+        if (data.participantDetails?.[userId]) {
+            updates[`participantDetails.${userId}.displayName`] = newName;
+            updates[`participantDetails.${userId}.photoURL`] = newPhotoURL;
+            needsUpdate = true;
+        }
+        if (Array.isArray(data.participantsPreview)) {
+            const idx = data.participantsPreview.findIndex((p) => p.uid === userId);
+            if (idx !== -1) {
+                const newPreview = [...data.participantsPreview];
+                newPreview[idx] = { ...newPreview[idx], displayName: newName, photoURL: newPhotoURL };
+                updates.participantsPreview = newPreview;
+                needsUpdate = true;
             }
-        });
-        // 2. Update Chats
-        const chatsSnap = await db.collection('chats')
-            .where('participantIds', 'array-contains', userId)
-            .get();
-        chatsSnap.forEach(doc => {
-            // Chat participantDetails is typically a map like participantDetails[userId].displayName
-            const data = doc.data();
-            if (data.participantDetails && data.participantDetails[userId]) {
-                batch.update(doc.ref, {
+        }
+        if (needsUpdate)
+            targets.push({ ref: doc.ref, updates });
+    });
+    // 2. Chats suchen
+    const chatsSnap = await db.collection('chats')
+        .where('participantIds', 'array-contains', userId)
+        .get();
+    chatsSnap.forEach(doc => {
+        const data = doc.data();
+        if (data.participantDetails?.[userId]) {
+            targets.push({
+                ref: doc.ref,
+                updates: {
                     [`participantDetails.${userId}.displayName`]: newName,
                     [`participantDetails.${userId}.photoURL`]: newPhotoURL,
-                });
-                updatesCount++;
-            }
-        });
-        if (updatesCount > 0) {
-            // Chunk batches if over 500? For now, standard commit (assuming < 500 active references)
-            await batch.commit();
-            console.log(`Successfully synced profile updates for ${userId} across ${updatesCount} documents.`);
+                }
+            });
         }
-    }
-    catch (err) {
-        console.error(`Error syncing user profile update for ${userId}:`, err);
+    });
+    // 3. CHUNKED EXECUTION: Max 400 Writes pro Batch (Sicherheitsmarge)
+    if (targets.length > 0) {
+        for (let i = 0; i < targets.length; i += 400) {
+            const batch = db.batch();
+            const chunk = targets.slice(i, i + 400);
+            chunk.forEach(t => batch.update(t.ref, t.updates));
+            await batch.commit();
+        }
+        console.log(`Successfully fan-out profile updates for ${userId} to ${targets.length} documents.`);
     }
     return null;
 });
