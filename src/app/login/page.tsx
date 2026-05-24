@@ -86,7 +86,15 @@ export default function LoginPage() {
       if (!user.emailVerified) {
         await sendEmailVerification(user);
         await signOut(); 
-        throw new Error(language === 'de' ? "Zugriff verweigert: Ein neuer Bestätigungs-Link wurde an deine E-Mail-Adresse gesendet. Bitte prüfe deinen Posteingang und Spam-Ordner." : "Access Denied: A new verification link has been sent. Please check your inbox and spam folder.");
+        toast({
+          variant: 'destructive',
+          title: language === 'de' ? 'E-Mail-Verifizierung erforderlich' : 'Email Verification Required',
+          description: language === 'de' 
+            ? "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Wir haben dir einen neuen Bestätigungs-Link an deine E-Mail-Adresse gesendet. Prüfe bitte auch deinen Spam-Ordner." 
+            : "Please verify your email address to log in. We have sent a new verification link to your email address. Please check your spam folder as well.",
+        });
+        setIsLoading(false);
+        return;
       }
 
       toast({

@@ -636,8 +636,10 @@ export default function Home() {
   }, [planningState, reverseGeocode, language, toast, userProfile]);
 
   useEffect(() => {
-    requestLocation();
-  }, [requestLocation]);
+    if (user) {
+      requestLocation();
+    }
+  }, [requestLocation, user]);
 
   const handleUseHomeLocation = () => {
     if (userProfile?.lastLocation) {

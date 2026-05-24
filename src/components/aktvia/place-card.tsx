@@ -189,7 +189,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             {/* Content Bereich */}
             <div className="p-3 pb-4 flex flex-col flex-1">
                 <div className="mb-2">
-                    <h3 className="">
+                    <h3 className="text-base sm:text-lg font-black tracking-tight line-clamp-2 min-h-[2.5rem] leading-snug">
                         {place.name || (userProfile?.role === 'admin' ? `POI Ref: ${place.id.slice(-6)}` : (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'))}
                     </h3>
                     <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px]">

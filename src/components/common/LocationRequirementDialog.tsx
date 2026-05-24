@@ -8,6 +8,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
+import { useLanguage } from '@/hooks/use-language';
+
 interface LocationRequirementDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -25,6 +27,7 @@ export function LocationRequirementDialog({
   homeCity,
   isLoading,
 }: LocationRequirementDialogProps) {
+  const language = useLanguage();
   return (
     <Dialog open={open} onOpenChange={(val) => { if (val) onOpenChange(val); }}>
       <DialogContent 
@@ -84,7 +87,7 @@ export function LocationRequirementDialog({
               className="w-full h-14 rounded-2xl text-slate-500 hover:text-slate-900 hover:bg-slate-50 font-bold flex items-center justify-center gap-2 transition-all"
             >
               <Home className="h-5 w-5" />
-              {homeCity ? `${homeCity} nutzen` : 'Wohnort nutzen'}
+              {language === 'de' ? 'Standard-Ort nutzen' : 'Use default location'}
             </Button>
           </div>
           

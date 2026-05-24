@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  const publicRoutes = ['/', '/login', '/signup', '/onboarding', '/terms', '/privacy'];
+  const publicRoutes = ['/login', '/signup', '/onboarding', '/terms', '/privacy'];
   const isPublicRoute = publicRoutes.includes(pathname);
 
   useEffect(() => {
