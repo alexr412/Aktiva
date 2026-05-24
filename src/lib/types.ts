@@ -221,6 +221,7 @@ export interface UserProfile {
   location?: string;
   bio?: string;
   interests?: string[];
+  tinderInterests?: string[];
   likedTags: string[];
   dislikedTags: string[];
   categoryAffinities?: Record<string, number>;

@@ -29,7 +29,9 @@ import {
   Lock, 
   Eye, 
   EyeOff, 
-  MapPin
+  MapPin,
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,6 +45,12 @@ export default function LoginPage() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [loginError, setLoginError] = useState<{
+    title: string;
+    description: string;
+    variant: 'error' | 'info';
+  } | null>(null);
 
   const formSchema = z.object({
     email: z.string().min(1, { message: language === 'de' ? 'Email oder Username ist erforderlich.' : 'Email or username is required.' }),
@@ -59,6 +67,7 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
+    setLoginError(null);
     try {
       let loginEmail = values.email.trim();
 
@@ -84,14 +93,27 @@ export default function LoginPage() {
       const user = await signIn(loginEmail, values.password);
 
       if (!user.emailVerified) {
-        await sendEmailVerification(user);
+        let verificationEmailSent = false;
+        try {
+          await sendEmailVerification(user);
+          verificationEmailSent = true;
+        } catch (verifError: any) {
+          console.warn("Could not resend email verification link:", verifError);
+        }
+
+        // ALWAYS sign out to prevent the user from remaining authenticated
         await signOut(); 
-        toast({
-          variant: 'destructive',
-          title: language === 'de' ? 'E-Mail-Verifizierung erforderlich' : 'Email Verification Required',
+
+        setLoginError({
+          title: language === 'de' ? 'Verifizierung erforderlich' : 'Verification Required',
           description: language === 'de' 
-            ? "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Wir haben dir einen neuen Bestätigungs-Link an deine E-Mail-Adresse gesendet. Prüfe bitte auch deinen Spam-Ordner." 
-            : "Please verify your email address to log in. We have sent a new verification link to your email address. Please check your spam folder as well.",
+            ? (verificationEmailSent
+                ? "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Wir haben dir einen neuen Bestätigungs-Link an deine E-Mail-Adresse gesendet. Prüfe bitte auch deinen Spam-Ordner."
+                : "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Ein neuer Bestätigungs-Link konnte erst vor kurzem gesendet werden, bitte prüfe dein Postfach (auch Spam-Ordner).")
+            : (verificationEmailSent
+                ? "Please verify your email address to log in. We have sent a new verification link to your email address. Please check your spam folder as well."
+                : "Please verify your email address to log in. A new verification link could not be sent recently, please check your inbox."),
+          variant: 'info'
         });
         setIsLoading(false);
         return;
@@ -116,10 +138,10 @@ export default function LoginPage() {
         errorMessage = language === 'de' ? 'Benutzername oder E-Mail wurde nicht gefunden.' : 'Username or email not found.';
       }
 
-      toast({
-        variant: 'destructive',
+      setLoginError({
         title: language === 'de' ? 'Login fehlgeschlagen' : 'Login failed',
         description: errorMessage,
+        variant: 'error'
       });
     } finally {
       setIsLoading(false);
@@ -146,6 +168,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    setLoginError(null);
     try {
       await signInWithGoogle();
       toast({
@@ -155,15 +178,16 @@ export default function LoginPage() {
       router.push('/');
     } catch (error: any) {
       console.error(error);
-      toast({
-        variant: 'destructive',
+      setLoginError({
         title: language === 'de' ? 'Login fehlgeschlagen' : 'Login failed',
         description: language === 'de' ? 'Google-Login konnte nicht abgeschlossen werden.' : 'Google login could not be completed.',
+        variant: 'error'
       });
     }
   };
 
   const handleAppleSignIn = async () => {
+    setLoginError(null);
     try {
       await signInWithApple();
       toast({
@@ -173,10 +197,10 @@ export default function LoginPage() {
       router.push('/');
     } catch (error: any) {
       console.error(error);
-      toast({
-        variant: 'destructive',
+      setLoginError({
         title: language === 'de' ? 'Login fehlgeschlagen' : 'Login failed',
         description: language === 'de' ? 'Apple-Login konnte nicht abgeschlossen werden.' : 'Apple login could not be completed.',
+        variant: 'error'
       });
     }
   };
@@ -267,6 +291,34 @@ export default function LoginPage() {
               )}
             />
 
+            {/* Inline Error Alert */}
+            {loginError && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={cn(
+                  "p-4 rounded-3xl flex items-start gap-3 text-sm font-bold transition-all border",
+                  loginError.variant === 'error'
+                    ? "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100/50 dark:border-rose-950/50"
+                    : "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-950/50"
+                )}
+              >
+                {loginError.variant === 'error' ? (
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                ) : (
+                  <Mail className="w-5 h-5 shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1 space-y-1 text-left">
+                  <p className="font-black uppercase tracking-wider text-xs">
+                    {loginError.title}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-neutral-400 font-medium leading-relaxed">
+                    {loginError.description}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
             <div className="pt-4">
               <Button 
                 type="submit" 
@@ -335,16 +387,22 @@ export default function LoginPage() {
 
       {/* Dialog for Reset */}
       <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-        <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl p-8">
+        <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl p-8 bg-white dark:bg-neutral-950">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black text-slate-900 dark:text-white uppercase">Password Recovery</DialogTitle>
+            <DialogTitle className="text-xl font-black text-slate-900 dark:text-white uppercase">
+              {language === 'de' ? 'Passwort zurücksetzen' : 'Password Recovery'}
+            </DialogTitle>
             <DialogDescription className="font-bold text-slate-500 pt-2">
-               Enter your email and we will send you a recovery link.
+               {language === 'de' 
+                 ? 'Gib deine E-Mail-Adresse ein und wir senden dir einen Link zur Wiederherstellung.' 
+                 : 'Enter your email and we will send you a recovery link.'}
             </DialogDescription>
           </DialogHeader>
           <div className="py-6">
-            <FormItem className="space-y-1">
-              <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Your Email</FormLabel>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
+                {language === 'de' ? 'Deine E-Mail-Adresse' : 'Your Email'}
+              </label>
               <div className="relative group mt-2">
                 <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-[#10b981]" />
                 <Input 
@@ -352,10 +410,10 @@ export default function LoginPage() {
                   placeholder="name@example.com" 
                   value={resetEmail} 
                   onChange={(e) => setResetEmail(e.target.value)} 
-                  className="h-14 pl-14 rounded-full bg-slate-100 dark:bg-neutral-900 border-none font-bold text-sm px-4 focus-visible:ring-emerald-500/20"
+                  className="h-14 pl-14 pr-4 rounded-full bg-slate-100 dark:bg-neutral-900 border-none font-bold text-sm focus-visible:ring-emerald-500/20"
                 />
               </div>
-            </FormItem>
+            </div>
           </div>
           <DialogFooter className="flex flex-col sm:flex-row gap-3">
             <Button 
@@ -363,14 +421,18 @@ export default function LoginPage() {
               onClick={() => setIsResetDialogOpen(false)} 
               className="rounded-xl h-14 font-black text-slate-400 hover:bg-slate-50 uppercase tracking-widest"
             >
-              Cancel
+              {language === 'de' ? 'Abbrechen' : 'Cancel'}
             </Button>
             <Button 
               onClick={handlePasswordReset} 
               className="rounded-full h-14 font-black bg-emerald-500 hover:opacity-90 text-white flex-1 uppercase tracking-widest" 
               disabled={isResetting || !resetEmail}
             >
-              {isResetting ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : "Request Link"}
+              {isResetting ? (
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              ) : (
+                language === 'de' ? 'Link anfordern' : 'Request Link'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

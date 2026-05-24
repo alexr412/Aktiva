@@ -157,6 +157,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const isInternalOnboarding = pathname === '/onboarding';
     const isLoginPage = pathname === '/login';
 
+    if (user && !user.emailVerified && !isLoginPage) {
+      console.log("[AuthContext] Safety Redirect: User email not verified, signing out...");
+      import('@/lib/firebase/auth').then(({ signOut: authSignOut }) => {
+        authSignOut().then(() => {
+          router.replace('/login');
+        });
+      });
+      return;
+    }
+
     if (user && userProfile) {
         // Only redirect if email is verified AND onboarding is definitely not completed
         // AND we are not already on the onboarding page

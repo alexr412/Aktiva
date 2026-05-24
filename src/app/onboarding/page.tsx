@@ -65,8 +65,9 @@ const profileSchema = z.object({
   displayName: z.string().min(2, { message: 'Name too short' }).optional(),
   birthDate: z.string().optional(),
   bio: z.string().max(160, { message: 'Bio too long' }).optional(),
-  location: z.string().optional(),
-  interests: z.array(z.string()).min(1, { message: 'Select at least one interest' }),
+  location: z.string().min(1, { message: 'Bitte gib einen Ort ein.' }),
+  interests: z.array(z.string()).default([]),
+  tinderInterests: z.array(z.string()).default([]),
   affinities: z.record(z.string(), z.number()).default({}),
   radiusKm: z.number().min(1).max(100),
   photoURL: z.string().optional(),
@@ -78,8 +79,9 @@ const onboardingSteps = [
   { id: 1, title: { de: "Wo suchst du?", en: "Where are you?" }, fields: ['location', 'radiusKm'] },
   { id: 2, title: { de: "Über dich", en: "About you" }, fields: ['bio'] },
   { id: 3, title: { de: "Deine Interessen", en: "Your interests" }, fields: ['interests'] },
-  { id: 4, title: { de: "Dein Gesicht", en: "Your photo" } },
-  { id: 5, title: { de: "Vorschau", en: "Preview" } }
+  { id: 4, title: { de: "Deine Hobbys", en: "Your Hobbies" }, fields: ['tinderInterests'] },
+  { id: 5, title: { de: "Dein Gesicht", en: "Your photo" } },
+  { id: 6, title: { de: "Vorschau", en: "Preview" } }
 ];
 
 const categories = [
@@ -104,6 +106,36 @@ const categories = [
   { id: 'FastFood', label: { de: "Fast Food", en: "Fast Food" }, icon: Drumstick },
   { id: 'IceCream', label: { de: "Eis", en: "Ice Cream" }, icon: IceCream },
   { id: 'Coworking', label: { de: "Coworking", en: "Coworking" }, icon: Building },
+];
+
+const tinderInterestsList = [
+  { id: 'sport', label: { de: "Sport & Fitness", en: "Sports & Fitness" } },
+  { id: 'running', label: { de: "Laufen", en: "Running" } },
+  { id: 'hiking', label: { de: "Wandern", en: "Hiking" } },
+  { id: 'gaming', label: { de: "Gaming", en: "Gaming" } },
+  { id: 'movies', label: { de: "Filme & Serien", en: "Movies & Shows" } },
+  { id: 'music', label: { de: "Musik", en: "Music" } },
+  { id: 'concerts', label: { de: "Konzerte", en: "Concerts" } },
+  { id: 'festivals', label: { de: "Festivals", en: "Festivals" } },
+  { id: 'cooking', label: { de: "Kochen", en: "Cooking" } },
+  { id: 'foodie', label: { de: "Foodie", en: "Foodie" } },
+  { id: 'coffee', label: { de: "Kaffee", en: "Coffee" } },
+  { id: 'beer', label: { de: "Bier", en: "Beer" } },
+  { id: 'wine', label: { de: "Wein", en: "Wine" } },
+  { id: 'traveling', label: { de: "Reisen", en: "Traveling" } },
+  { id: 'photography', label: { de: "Fotografie", en: "Photography" } },
+  { id: 'camping', label: { de: "Camping", en: "Camping" } },
+  { id: 'reading', label: { de: "Lesen", en: "Reading" } },
+  { id: 'art', label: { de: "Kunst & Malen", en: "Art & Painting" } },
+  { id: 'animals', label: { de: "Tiere", en: "Animals" } },
+  { id: 'nature', label: { de: "Natur", en: "Nature" } },
+  { id: 'shopping', label: { de: "Shopping", en: "Shopping" } },
+  { id: 'fashion', label: { de: "Mode", en: "Fashion" } },
+  { id: 'boardgames', label: { de: "Brettspiele", en: "Board Games" } },
+  { id: 'dancing', label: { de: "Tanzen", en: "Dancing" } },
+  { id: 'baking', label: { de: "Backen", en: "Baking" } },
+  { id: 'wellness', label: { de: "Wellness", en: "Wellness" } },
+  { id: 'comedy', label: { de: "Stand-up Comedy", en: "Stand-up Comedy" } }
 ];
 
 export default function OnboardingPage() {
@@ -138,6 +170,7 @@ function OnboardingContent() {
       bio: '',
       location: userProfile?.location || '',
       interests: [],
+      tinderInterests: userProfile?.tinderInterests || [],
       affinities: {},
       radiusKm: 25,
       photoURL: userProfile?.photoURL || '',
@@ -272,6 +305,7 @@ function OnboardingContent() {
         bio: data.bio || '',
         location: data.location || 'Aachen',
         interests: data.interests || [],
+        tinderInterests: data.tinderInterests || [],
         onboardingCompleted: true,
         photoURL: data.photoURL || userProfile?.photoURL || '',
         categoryAffinities: data.affinities || {},
@@ -527,6 +561,47 @@ function OnboardingContent() {
                   )}
 
                   {step === 4 && (
+                    <div className="space-y-6">
+                      <div className="text-center pb-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                          {language === 'de'
+                            ? "Wähle einige Hobbys und Interessen, die zu dir passen (Tinder-Style)."
+                            : "Choose some hobbies and interests that match you (Tinder-style)."}
+                        </p>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2 justify-center max-h-[320px] overflow-y-auto pr-1 py-2 scrollbar-hide">
+                        {tinderInterestsList.map((interest) => {
+                          const currentSelection = form.watch('tinderInterests') || [];
+                          const isSelected = currentSelection.includes(interest.id);
+                          
+                          return (
+                            <button
+                              key={interest.id}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  form.setValue('tinderInterests', currentSelection.filter(id => id !== interest.id));
+                                } else {
+                                  form.setValue('tinderInterests', [...currentSelection, interest.id]);
+                                }
+                              }}
+                              className={cn(
+                                "px-4 py-2.5 rounded-full border text-[11px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95",
+                                isSelected
+                                  ? "bg-[#10b981] text-white border-none shadow-sm shadow-[#10b981]/20"
+                                  : "bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200"
+                              )}
+                            >
+                              {language === 'de' ? interest.label.de : interest.label.en}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 5 && (
                     <div className="flex flex-col items-center gap-8 py-4">
                       <div className="relative group">
                         <div className="w-40 h-40 rounded-full bg-slate-50 border-none overflow-hidden flex items-center justify-center">
@@ -554,7 +629,7 @@ function OnboardingContent() {
                     </div>
                   )}
 
-                  {step === 5 && (
+                  {step === 6 && (
                     <div className="space-y-8">
                       <div className="flex justify-center">
                         <div className="w-full max-w-sm rounded-[2.5rem] bg-slate-900 border border-slate-800 p-6 shadow-none relative overflow-hidden group">
@@ -591,6 +666,7 @@ function OnboardingContent() {
                             </p>
                           </div>
 
+                          {/* Category Interests Row */}
                           <div className="flex gap-2 mt-6 relative z-10 overflow-x-auto pb-2 scrollbar-hide">
                             {form.watch('interests').slice(0, 3).map((int) => {
                               const cat = categories.find(c => c.id === int);
@@ -604,6 +680,21 @@ function OnboardingContent() {
                               );
                             })}
                           </div>
+
+                          {/* Tinder Interests Row */}
+                          {form.watch('tinderInterests')?.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-white/5 relative z-10">
+                              {form.watch('tinderInterests').slice(0, 5).map((interestId) => {
+                                const interest = tinderInterestsList.find(i => i.id === interestId);
+                                if (!interest) return null;
+                                return (
+                                  <Badge key={interestId} variant="outline" className="bg-[#10b981]/15 text-[#10b981] border-[#10b981]/20 font-black text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-full">
+                                    {language === 'de' ? interest.label.de : interest.label.en}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -618,7 +709,12 @@ function OnboardingContent() {
                   </Button>
                 )}
                 {step < onboardingSteps.length ? (
-                  <Button type="button" onClick={nextStep} className="flex-1 h-14 rounded-full bg-[#10b981] text-white font-black uppercase tracking-widest text-[11px] shadow-none hover:bg-emerald-600 transition-all active:scale-[0.98]">
+                  <Button 
+                    type="button" 
+                    onClick={nextStep} 
+                    disabled={step === 1 && !form.watch('location')?.trim()}
+                    className="flex-1 h-14 rounded-full bg-[#10b981] text-white font-black uppercase tracking-widest text-[11px] shadow-none hover:bg-emerald-600 transition-all active:scale-[0.98] disabled:opacity-50"
+                  >
                     {language === 'de' ? 'WEITER' : 'CONTINUE'}
                   </Button>
                 ) : (
