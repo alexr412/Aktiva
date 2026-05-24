@@ -79,6 +79,15 @@ const ZooIcon = ({ className }: { className?: string }) => (
   />
 );
 
+const BowlingIcon = ({ className }: { className?: string }) => (
+  <img
+    src="/assets/icons/bowling.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Bowling"
+  />
+);
+
 const GalleryIcon = ({ className }: { className?: string }) => (
   <img
     src="/assets/icons/gallery.png"
@@ -170,6 +179,9 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   }
   if (tags.includes('entertainment.miniature_golf') || name.includes('minigolf') || name.includes('adventure golf')) {
     return { icon: MinigolfIcon as any, color: '#10b981', label: language === 'de' ? 'Minigolf' : 'Minigolf', bgClass: 'bg-emerald-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-teal-400' };
+  }
+  if (tags.includes('entertainment.bowling_alley') || name.includes('bowling') || name.includes('kegeln')) {
+    return { icon: BowlingIcon as any, color: '#f43f5e', label: language === 'de' ? 'Bowling' : 'Bowling', bgClass: 'bg-rose-50', gradientClass: 'bg-gradient-to-br from-rose-500 to-pink-600' };
   }
 
   // --- SAKRALBAUTEN ---
@@ -318,6 +330,7 @@ export const translateTag = (tag: string, language: 'de' | 'en' = 'de'): string 
     'entertainment.activity_park': 'Aktivitätspark',
     'entertainment.activity_park.trampoline': 'Trampolinhalle',
     'entertainment.culture.theatre': 'Theater',
+    'entertainment.bowling_alley': 'Bowling',
     'leisure': 'Freizeit',
     'leisure.park': 'Park',
     'leisure.swimming_pool': 'Schwimmbad',

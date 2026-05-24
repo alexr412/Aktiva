@@ -646,12 +646,14 @@ export async function fetchNearbyPlaces(
   limit: number,
   offset: number
 ): Promise<Place[]> {
-  // Synchronisierung: Wir fügen 'building' und 'education' zur API-Anfrage hinzu,
-  // da wir diese in der BASE_WHITELIST erlauben (z.B. für das Klimahaus).
+  // Use broad parent-level categories to maximize data pool for local ranking.
+  // Specific sub-categories are not used here — the veto/whitelist system + relevance scorer
+  // handle prioritization after the fetch.
   let targetCategories: string[] = categories.length === 0 || categories.includes('all')
-    ? ["tourism", "entertainment", "heritage", "building", "education", "adult.nightclub", "catering", "religion", "leisure", "sport"]
+    ? ["entertainment", "leisure", "sport", "tourism", "catering", "heritage", "adult.nightclub"]
     : categories.slice(0, 10);
-  const fetchUrl = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${limit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+  const fetchLimit = Math.max(limit, 500);
+  const fetchUrl = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${fetchLimit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
   try {
     const response = await fetch(fetchUrl);

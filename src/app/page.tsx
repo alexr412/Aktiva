@@ -195,10 +195,40 @@ export default function Home() {
         return result;
       }
 
-      if (type === 'dual_stream') {
-        // Konsolidierung: Eine einzige, effiziente Anfrage für alle Kategorien
-        const result = await fetcher(key.url);
-        return result;
+      if (type === 'multi_fetch_discovery') {
+        // Parallel multi-fetch: 4 requests with broad top-level categories, limit=500 each.
+        // The first bucket is isolated for high-priority VIP categories to prevent API saturation.
+        const { lat, lng, radiusMeters: r } = key;
+        const base = `https://api.geoapify.com/v2/places?filter=circle:${lng},${lat},${r}&bias=proximity:${lng},${lat}&limit=500&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
+
+        const categoryBuckets = [
+          "entertainment.zoo,entertainment.cinema,entertainment.water_park,sport.swimming_pool,entertainment.miniature_golf","entertainment.bowling_alley",
+          "entertainment.aquarium","entertainment,leisure,adult.nightclub","entertainment.escape_game","sport,tourism","entertainment.activity_park",
+          "entertainment.activity_park.trampoline","entertainment.amusement_arcade",
+          "catering,heritage",
+        ];
+
+        const results = await Promise.all(
+          categoryBuckets.map(cats =>
+            fetcher(`${base}&categories=${cats}`).catch(() => ({ features: [] }))
+          )
+        );
+
+        // Deduplicate by place_id across all buckets
+        const seenIds = new Set<string>();
+        const merged: any[] = [];
+        for (const result of results) {
+          const features = result?.features || [];
+          for (const f of features) {
+            const pid = f.properties?.place_id;
+            if (pid && !seenIds.has(pid)) {
+              seenIds.add(pid);
+              merged.push(f);
+            }
+          }
+        }
+
+        return { features: merged };
       }
 
       if (type === 'geocoding') {
@@ -346,35 +376,32 @@ export default function Home() {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // DUAL-STREAM FETCH: Hero-Kategorien + Discovery-Kategorien
+    // MULTI-FETCH PARALLEL DISCOVERY: Broad categories, max limits
     // ═══════════════════════════════════════════════════════════════
 
-    // Wenn ein spezifischer Tab/Kategorie-Filter aktiv ist, nutze Single-Stream
+    // When a specific tab/category filter is active, use single-stream
     if (activeCategory.length > 0) {
-      const queryLimit = pageIndex === 0 ? 100 : 40;
-      const offset = pageIndex === 0 ? 0 : 100 + (pageIndex - 1) * 40;
+      const queryLimit = pageIndex === 0 ? 200 : 50;
+      const offset = pageIndex === 0 ? 0 : 200 + (pageIndex - 1) * 50;
       const categoryString = categoriesToFetch.join(',');
       const url = `https://api.geoapify.com/v2/places?categories=${categoryString}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
       return { type: 'geoapify', url, pageIndex };
     }
 
-    // Discovery-Modus: Single-Stream mit allen Kategorien (Bessere Performance)
+    // Discovery mode: Parallel multi-fetch with broad top-level categories
     if (pageIndex === 0) {
-      const allHeroCategories = [
-        "entertainment.zoo,entertainment.cinema,leisure.spa,adult.nightclub",
-        "entertainment.water_park,entertainment.theme_park,entertainment.escape_game,sport.stadium,entertainment.miniature_golf",
-        "entertainment.bowling_alley,entertainment.aquarium,entertainment.planetarium,entertainment.amusement_arcade,entertainment.activity_park.climbing,sport.ice_rink",
-        "tourism.attraction,tourism.sights,leisure,sport,heritage,entertainment,activity.sport_club"
-      ].join(',');
-
-      const url = `https://api.geoapify.com/v2/places?categories=${allHeroCategories}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=200&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
-
-      return { type: 'dual_stream', url, pageIndex };
+      return {
+        type: 'multi_fetch_discovery',
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        radiusMeters,
+        pageIndex,
+      };
     }
 
-    // Nachfolgende Seiten: Normaler Single-Stream
-    const allCategories = categoriesToFetch.length > 0 ? categoriesToFetch.join(',') : "entertainment,leisure,sport,tourism.attraction";
-    const offset = 200 + (pageIndex - 1) * 50;
+    // Subsequent pages: standard paginated stream with all broad categories
+    const allCategories = "entertainment,leisure,sport,tourism,catering,adult.nightclub";
+    const offset = 500 + (pageIndex - 1) * 50;
     const url = `https://api.geoapify.com/v2/places?categories=${allCategories}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
     return { type: 'geoapify', url, pageIndex };
   }
@@ -457,18 +484,28 @@ export default function Home() {
   const places = useMemo(() => {
     if (basePlaces.length === 0) return [];
 
-    return basePlaces.map(place => {
+    const scored = basePlaces.map(place => {
       const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0 };
-      return {
-        ...place,
-        relevanceScore: calculateRelevance(
-          { ...place, upvotes: votes.upvotes, downvotes: votes.downvotes },
-          userProfile || { role: 'user' } as any,
-          userLocation || { lat: 0, lng: 0 },
-          { debug: false }
-        )
-      };
-    }).sort((a, b) => b.relevanceScore - a.relevanceScore);
+      const rawScore = calculateRelevance(
+        { ...place, upvotes: votes.upvotes, downvotes: votes.downvotes },
+        userProfile || { role: 'user' } as any,
+        userLocation || { lat: 0, lng: 0 },
+        { debug: false }
+      );
+      // Guard: ensure score is always a finite number — prevents string-coercion sort bugs
+      const relevanceScore = typeof rawScore === 'number' && isFinite(rawScore) ? rawScore : 0;
+      return { ...place, relevanceScore };
+    });
+
+    // Strict descending sort by numeric score
+    scored.sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+    // ── TELEMETRY: Top 5 items after scoring ──────────────────────────
+    if (scored.length > 0) {
+      console.log('[Feed Telemetry] Top 5 after scoring:\n' + JSON.stringify(scored.slice(0, 5), null, 2));
+    }
+
+    return scored;
   }, [basePlaces, votesMap, userProfile, userLocation]);
 
   // Batch-Fetch der Vote-Daten: Einmaliger Read statt N Echtzeit-Listener
@@ -867,7 +904,18 @@ export default function Home() {
         }
 
         // SCHRITT 1: Deduplizierung ZUERST (damit die Sortierung danach das letzte Wort hat)
-        const uniqueFiltered = Array.from(new Map(filtered.map(place => [place.id, place])).values());
+        // Da 'filtered' bereits absteigend nach relevanceScore sortiert ist, behalten wir das erste (höchst-scorende) Vorkommen.
+        const uniqueMap = new Map<string, Place>();
+        filtered.forEach((place, index) => {
+          const id = place.id ||
+                     (place as any).place_id ||
+                     (place as any).properties?.place_id ||
+                     (place.name && place.lat !== undefined && place.lon !== undefined ? `${place.name}_${place.lat}_${place.lon}` : `fallback_index_${index}`);
+          if (!uniqueMap.has(id)) {
+            uniqueMap.set(id, place);
+          }
+        });
+        const uniqueFiltered = Array.from(uniqueMap.values());
 
         // SCHRITT 2: Immutable Sort (spread erzeugt neue Array-Referenz, verhindert React-Mutations-Bugs)
         const sorted = [...uniqueFiltered].sort((a, b) => {
