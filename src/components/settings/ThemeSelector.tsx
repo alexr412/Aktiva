@@ -43,10 +43,10 @@ export function ThemeSelector() {
                         <Button 
                             variant="default" 
                             size="sm" 
-                            onClick={() => setIsPremiumModalOpen(true)}
-                            className="px-4 py-2 h-auto text-xs font-bold rounded-lg shadow-lg transition-transform active:scale-95 bg-primary hover:bg-primary/90 text-primary-foreground"
+                            disabled
+                            className="px-4 py-2 h-auto text-xs font-bold rounded-lg shadow-lg bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 opacity-60 cursor-not-allowed"
                         >
-                            Upgrade freischalten
+                            Bald verfügbar
                         </Button>
                     </div>
                 )}

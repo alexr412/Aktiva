@@ -133,6 +133,15 @@ const ActivityParkIcon = ({ className }: { className?: string }) => (
   />
 );
 
+const ArcadeIcon = ({ className }: { className?: string }) => (
+  <img
+    src="/assets/icons/arcade.png"
+    className={cn(className)}
+    style={{ filter: 'brightness(0) invert(1)' }}
+    alt="Arcade"
+  />
+);
+
 /**
  * TagStyle Interface für die visuelle Repräsentation
  */
@@ -152,10 +161,20 @@ export interface TagStyle {
 export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): TagStyle => {
   const rawTags = place.categories || place.category || place.tags || [];
   const tags = (Array.isArray(rawTags) ? rawTags.filter(Boolean) : (typeof rawTags === 'string' ? [rawTags] : [])).map((t: string) => t.trim().toLowerCase());
-  const name = (place.name || '').toLowerCase();
+  let nameStr = '';
+  if (place.name) {
+    if (typeof place.name === 'string') {
+      nameStr = place.name;
+    } else if (typeof place.name === 'object') {
+      nameStr = place.name.de || place.name.en || place.name.name || '';
+    } else {
+      nameStr = String(place.name);
+    }
+  }
+  const name = nameStr.toLowerCase();
   const n = name;
 
-  if (place.name && place.name.toLowerCase().includes('marien')) {
+  if (name.includes('marien')) {
     console.log('[DEBUG MARIEN] place:', place);
     console.log('[DEBUG MARIEN] rawTags:', rawTags);
     console.log('[DEBUG MARIEN] tags:', tags);
@@ -182,6 +201,9 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   }
   if (tags.includes('entertainment.bowling_alley') || name.includes('bowling') || name.includes('kegeln')) {
     return { icon: BowlingIcon as any, color: '#f43f5e', label: language === 'de' ? 'Bowling' : 'Bowling', bgClass: 'bg-rose-50', gradientClass: 'bg-gradient-to-br from-rose-500 to-pink-600' };
+  }
+  if (tags.includes('entertainment.amusement_arcade') || name.includes('arcade') || name.includes('spielhalle')) {
+    return { icon: ArcadeIcon as any, color: '#ec4899', label: language === 'de' ? 'Spielhalle' : 'Arcade', bgClass: 'bg-pink-50', gradientClass: 'bg-gradient-to-br from-pink-500 to-rose-600' };
   }
 
   // --- SAKRALBAUTEN ---

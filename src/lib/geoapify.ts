@@ -599,6 +599,12 @@ export const applyFilters = (
     const isStolperstein = props.datasource?.raw?.memorial === 'stolperstein';
     if (isStolperstein) return false;
 
+    // Filter out unnamed generic areas where fallback name is just a postal code or postal code + city name
+    if (!props.name) {
+      const postalCodeRegex = /^\d{4,5}(\s+[A-Za-zÄÖÜäöüßéèàáíóú\s\-]+)?$/;
+      if (postalCodeRegex.test(name.trim())) return false;
+    }
+
     // --- STUFE 1: POSITIV-PRÜFUNG (UI-KATEGORIE EINSCHLUSS) ---
     // Bypass: Im Globalen Suchmodus (Null-State) oder wenn kein Tab gewählt ist, passiert ALLES diese Stufe.
     const passesCategoryFilter = isGlobalSearch || activeCategories.length === 0 ||

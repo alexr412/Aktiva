@@ -54,10 +54,10 @@ export function PremiumUpgradeModal({ isOpen, onClose }: PremiumUpgradeModalProp
 
         <div className="pt-4 flex flex-col gap-3">
           <Button 
-            onClick={handleUpgrade}
-            className="w-full h-12 text-xs font-black uppercase tracking-widest bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-white border-0 shadow-lg"
+            disabled
+            className="w-full h-12 text-xs font-black uppercase tracking-widest bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border-0 opacity-60 cursor-not-allowed"
           >
-            {language === 'de' ? 'Jetzt Upgrade freischalten' : 'Unlock Upgrade Now'}
+            {language === 'de' ? 'Bald verfügbar' : 'Soon available'}
           </Button>
           <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-bold">
             {language === 'de' ? 'Abo jederzeit in den App-Einstellungen kündbar.' : 'Cancel anytime in your app settings.'}

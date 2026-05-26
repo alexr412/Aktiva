@@ -36,7 +36,7 @@ import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { GLOBAL_EXCLUDE_STRING, applyFilters } from '@/lib/geoapify';
-import { calculateRelevance } from '@/lib/ranking';
+import { calculateRelevance, rankPlacesPipeline } from '@/lib/ranking';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -93,6 +93,8 @@ const DISTANCE_FILTERS = [
 ];
 
 export default function Home() {
+  const ENABLE_NEW_RANKING_PIPELINE = true;
+  const sessionEpochRef = useRef(Date.now());
   const language = useLanguage();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
@@ -483,6 +485,25 @@ export default function Home() {
 
   const places = useMemo(() => {
     if (basePlaces.length === 0) return [];
+
+    if (ENABLE_NEW_RANKING_PIPELINE) {
+      const placesWithVotes = basePlaces.map(place => {
+        const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0 };
+        return {
+          ...place,
+          upvotes: votes.upvotes,
+          downvotes: votes.downvotes
+        };
+      });
+
+      return rankPlacesPipeline(
+        placesWithVotes,
+        userProfile || { role: 'user' } as any,
+        userLocation,
+        sessionEpochRef.current,
+        { debug: true }
+      );
+    }
 
     const scored = basePlaces.map(place => {
       const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0 };
@@ -967,8 +988,8 @@ export default function Home() {
           <div className="flex flex-col items-center justify-center p-10 h-[calc(100%-80px)] text-center space-y-6">
             <div className="bg-white dark:bg-neutral-800 p-8 rounded-full shadow-xl relative"><Lock className="h-12 w-12 text-neutral-400" /></div>
             <h2 className="">{language === 'de' ? 'Kartenansicht gesperrt' : 'Map View Locked'}</h2>
-            <Button onClick={() => setIsPremiumUpsellOpen(true)} className="rounded-2xl px-10 h-14 font-black">
-              {language === 'de' ? 'Premium freischalten' : 'Unlock Premium'}
+            <Button disabled className="rounded-2xl px-10 h-14 font-black bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 opacity-60 cursor-not-allowed">
+              {language === 'de' ? 'Bald verfügbar' : 'Soon available'}
             </Button>
           </div>
         );

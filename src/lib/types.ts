@@ -48,6 +48,7 @@ export interface Place {
   userVotes?: Record<string, 'up' | 'down'>;
   globalScore?: number;
   openingHours?: string | null;
+  rankingContext?: any;
 }
 
 export interface FavoritePlace {
