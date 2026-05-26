@@ -23,6 +23,20 @@ export { auth };
 export async function signUp(name: string, email: string, password: string, username?: string, birthday?: string): Promise<User> {
   if (!auth) throw new Error('Firebase has not been initialized.');
 
+  const domain = email.split('@')[1]?.toLowerCase();
+  const disposableDomains = [
+    'yopmail.com', 'mailinator.com', 'tempmail.com', 'guerrillamail.com', 'sharklasers.com',
+    '10minutemail.com', 'trashmail.com', 'dispostable.com', 'getairmail.com', 'burnermail.io',
+    'temp-mail.org', 'maildrop.cc', 'fakeinbox.com', 'generator.email', 'moakt.com',
+    'pokemail.net', 'temporary-mail.net', 'duck.com', 'yopmail.fr', 'yopmail.net',
+    'cool.fr.nf', 'jetable.org', 'tempmailo.com', 'temp-mail.io', 'mailnesia.com',
+    'mailcatch.com', 'disposable.com', 'tempmailaddress.com', 'mintemail.com',
+    'spambox.us', 'discard.email', 'anonymousemail.me', 'boun.cr'
+  ];
+  if (disposableDomains.includes(domain)) {
+    throw new Error('Temporäre E-Mail-Dienste sind nicht erlaubt.');
+  }
+
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
   await updateProfile(userCredential.user, {

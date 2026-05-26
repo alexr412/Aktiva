@@ -69,7 +69,20 @@ export default function SignupPage() {
       .max(32, { message: language === 'de' ? 'Maximal 32 Zeichen.' : 'Maximum 32 characters.' })
       .regex(/^[a-zA-Z0-9._]+$/, { message: language === 'de' ? 'Nur Buchstaben, Zahlen, Punkte und Unterstriche.' : 'Only letters, numbers, dots and underscores.' })
       .transform(val => val.toLowerCase()),
-    email: z.string().email({ message: language === 'de' ? 'Ungültige E-Mail-Adresse.' : 'Invalid email address.' }),
+    email: z.string().email({ message: language === 'de' ? 'Ungültige E-Mail-Adresse.' : 'Invalid email address.' })
+      .refine((val) => {
+        const domain = val.split('@')[1]?.toLowerCase();
+        const disposableDomains = [
+          'yopmail.com', 'mailinator.com', 'tempmail.com', 'guerrillamail.com', 'sharklasers.com',
+          '10minutemail.com', 'trashmail.com', 'dispostable.com', 'getairmail.com', 'burnermail.io',
+          'temp-mail.org', 'maildrop.cc', 'fakeinbox.com', 'generator.email', 'moakt.com',
+          'pokemail.net', 'temporary-mail.net', 'duck.com', 'yopmail.fr', 'yopmail.net',
+          'cool.fr.nf', 'jetable.org', 'tempmailo.com', 'temp-mail.io', 'mailnesia.com',
+          'mailcatch.com', 'disposable.com', 'tempmailaddress.com', 'mintemail.com',
+          'spambox.us', 'discard.email', 'anonymousemail.me', 'boun.cr'
+        ];
+        return !disposableDomains.includes(domain);
+      }, { message: language === 'de' ? 'Temporäre E-Mail-Dienste sind nicht erlaubt.' : 'Disposable email services are not allowed.' }),
     fullName: z.string().min(2, { message: language === 'de' ? 'Bitte gib deinen Namen an.' : 'Please provide your name.' }),
     birthday: z.string().refine((val) => {
       const date = new Date(val);
