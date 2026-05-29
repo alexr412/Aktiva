@@ -658,7 +658,7 @@ export async function fetchNearbyPlaces(
   let targetCategories: string[] = categories.length === 0 || categories.includes('all')
     ? ["entertainment", "leisure", "sport", "tourism", "catering", "heritage", "adult.nightclub"]
     : categories.slice(0, 10);
-  const fetchLimit = Math.max(limit, 500);
+  const fetchLimit = Math.max(limit, 150);
   const fetchUrl = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${fetchLimit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
 
   try {

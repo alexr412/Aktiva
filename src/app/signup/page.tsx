@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/hooks/use-language';
 import { signUp, signOut } from '@/lib/firebase/auth';
 import { isUsernameTaken } from '@/lib/firebase/firestore';
+import { validateUsername } from '@/lib/moderation/blacklist';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Eye, 
@@ -157,13 +158,16 @@ export default function SignupPage() {
     if (score === 5) return 'bg-lime-500';
     return 'bg-emerald-500';
   };
-
-  const forbiddenWords = ['sex', 'porn', 'fuck', 'bitch', 'schlampe', 'fotze', 'hurensohn', 'wichser', 'nazi', 'hitler', 'admin', 'support']; 
-  const hasProfanity = forbiddenWords.some(word => usernameValue.toLowerCase().includes(word));
+  const isUsernameValid = validateUsername(usernameValue);
 
   useEffect(() => {
-    if (step !== 4 || usernameValue.length < 4 || usernameValue.length > 32 || hasProfanity) {
+    if (step !== 4 || usernameValue.length < 4 || usernameValue.length > 32) {
       if (usernameAvailability !== null) setUsernameAvailability(null);
+      return;
+    }
+
+    if (!isUsernameValid) {
+      setUsernameAvailability('invalid');
       return;
     }
 
@@ -181,11 +185,14 @@ export default function SignupPage() {
 
     const timeoutId = setTimeout(checkAvailability, 600);
     return () => clearTimeout(timeoutId);
-  }, [usernameValue, step, hasProfanity]);
-
+  }, [usernameValue, step, isUsernameValid]);
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setSubmitError('');
     try {
+      if (!validateUsername(values.username)) {
+         setSubmitError(language === 'de' ? 'Dieser Benutzername ist nicht erlaubt.' : 'This username is not allowed.');
+         return;
+      }
       const isTaken = await isUsernameTaken(values.username);
       if (isTaken) {
          setSubmitError(language === 'de' ? 'Dieser Username ist leider schon vergeben.' : 'This username is already taken.');
@@ -410,17 +417,19 @@ export default function SignupPage() {
                               {...field} 
                               className={cn(
                                 "h-16 pl-12 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-emerald-500/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none",
-                                usernameAvailability === 'taken' && "focus-visible:ring-rose-500/50"
+                                (usernameAvailability === 'taken' || usernameAvailability === 'invalid') && "focus-visible:ring-rose-500/50"
                               )} 
                               onChange={(e) => field.onChange(e.target.value.replace(/\s/g, '').toLowerCase())} 
                             />
                             <div className="absolute right-6 top-1/2 -translate-y-1/2">
                               {isUsernameChecking && <Loader2 className="h-5 w-5 animate-spin text-slate-300" />}
                               {!isUsernameChecking && usernameAvailability === 'available' && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-                              {!isUsernameChecking && usernameAvailability === 'taken' && <X className="h-5 w-5 text-rose-500" />}
+                              {!isUsernameChecking && (usernameAvailability === 'taken' || usernameAvailability === 'invalid') && <X className="h-5 w-5 text-rose-500" />}
                             </div>
                           </div>
                         </FormControl>
+                        {usernameAvailability === 'taken' && <p className="text-[10px] font-bold text-rose-500 px-1 mt-1">{language === 'de' ? 'Dieser Username ist leider schon vergeben.' : 'This username is already taken.'}</p>}
+                        {usernameAvailability === 'invalid' && <p className="text-[10px] font-bold text-rose-500 px-1 mt-1">{language === 'de' ? 'Dieser Benutzername ist nicht erlaubt.' : 'This username is not allowed.'}</p>}
                       </FormItem>
                     )}
                   />

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { getUserProfile, isUsernameTaken } from '@/lib/firebase/firestore';
+import { validateUsername } from '@/lib/moderation/blacklist';
 import { doc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { uploadProfileImage } from '@/lib/firebase/storage';
@@ -62,6 +63,7 @@ export default function EditProfilePage() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [originalUsername, setOriginalUsername] = useState<string>('');
   const [lastUsernameChange, setLastUsernameChange] = useState<Timestamp | null>(null);
+  const [usernameChangeHistory, setUsernameChangeHistory] = useState<Timestamp[]>([]);
   const [isUsernameWarningOpen, setIsUsernameWarningOpen] = useState(false);
   const [hasAcknowledgedWarning, setHasAcknowledgedWarning] = useState(false);
 
@@ -88,6 +90,7 @@ export default function EditProfilePage() {
         setProfilePhoto(profile.photoURL || null);
         setOriginalUsername(profile.username || '');
         setLastUsernameChange(profile.usernameLastChangedAt || null);
+        setUsernameChangeHistory(profile.usernameChangeHistory || []);
         setFormData({
           displayName: profile.displayName || '',
           username: profile.username || '',
@@ -175,6 +178,11 @@ export default function EditProfilePage() {
       return;
     }
 
+    if (!validateUsername(formData.username)) {
+      setUsernameAvailability('invalid');
+      return;
+    }
+
     const check = async () => {
       setIsUsernameChecking(true);
       try {
@@ -199,19 +207,42 @@ export default function EditProfilePage() {
     const now = new Date();
     let daysRemaining = 0;
 
-    if (isUsernameChanged && lastUsernameChange) {
-      const lastDate = lastUsernameChange.toDate();
-      const diffTime = now.getTime() - lastDate.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays < 180) {
-        daysRemaining = 180 - diffDays;
+    if (isUsernameChanged) {
+      if (!validateUsername(formData.username!)) {
         toast({ 
           variant: 'destructive', 
-          title: "Username-Sperre", 
-          description: `Du kannst deinen Usernamen erst in ${daysRemaining} Tagen wieder ändern.` 
+          title: "Fehler", 
+          description: "Dieser Benutzername ist nicht erlaubt." 
         });
         return;
+      }
+
+      // Hourly limit: max 2 changes per hour
+      const oneHourAgo = now.getTime() - (60 * 60 * 1000);
+      const recentChanges = usernameChangeHistory.filter(ts => ts.toMillis() > oneHourAgo);
+      if (recentChanges.length >= 2) {
+        toast({
+          variant: 'destructive',
+          title: "Änderungslimit erreicht",
+          description: "Du kannst deinen Usernamen maximal 2-mal pro Stunde ändern."
+        });
+        return;
+      }
+
+      if (lastUsernameChange) {
+        const lastDate = lastUsernameChange.toDate();
+        const diffTime = now.getTime() - lastDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 180) {
+          daysRemaining = 180 - diffDays;
+          toast({ 
+            variant: 'destructive', 
+            title: "Username-Sperre", 
+            description: `Du kannst deinen Usernamen erst in ${daysRemaining} Tagen wieder ändern.` 
+          });
+          return;
+        }
       }
     }
 
@@ -227,8 +258,13 @@ export default function EditProfilePage() {
         };
 
         if (isUsernameChanged) {
-          updateData.username = formData.username?.toLowerCase().replace(/\s/g, '');
+          const cleanUsername = formData.username?.toLowerCase().replace(/\s/g, '');
+          updateData.username = cleanUsername;
           updateData.usernameLastChangedAt = serverTimestamp();
+          
+          const oneHourAgo = now.getTime() - (60 * 60 * 1000);
+          const recentChangeTimestamps = usernameChangeHistory.filter(ts => ts.toMillis() > oneHourAgo);
+          updateData.usernameChangeHistory = [...recentChangeTimestamps, Timestamp.now()];
         }
         
         await setDoc(doc(db!, "users", user.uid), updateData, { merge: true });
@@ -331,7 +367,7 @@ export default function EditProfilePage() {
                                 isUsernameCooldownActive && "opacity-50 grayscale cursor-not-allowed",
                                 !hasAcknowledgedWarning && !isUsernameCooldownActive && "cursor-pointer",
                                 usernameAvailability === 'available' ? "border-emerald-500" : 
-                                usernameAvailability === 'taken' ? "border-rose-500" : "border-slate-100"
+                                (usernameAvailability === 'taken' || usernameAvailability === 'invalid') ? "border-rose-500" : "border-slate-100"
                             )}
                         />
                         <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -346,6 +382,7 @@ export default function EditProfilePage() {
                         </p>
                     )}
                     {usernameAvailability === 'taken' && <p className="text-[10px] font-black text-rose-500 uppercase px-1">Bereits vergeben</p>}
+                    {usernameAvailability === 'invalid' && <p className="text-[10px] font-black text-rose-500 uppercase px-1">Dieser Benutzername ist nicht erlaubt.</p>}
                 </div>
               </div>
               

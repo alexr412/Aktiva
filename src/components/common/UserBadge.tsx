@@ -1,6 +1,6 @@
 'use client';
 
-import { Crown, Heart, Wrench } from 'lucide-react';
+import { Crown, Heart, Wrench, Compass, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -13,12 +13,14 @@ interface UserBadgeProps {
   isPremium?: boolean;
   isSupporter?: boolean;
   isCreator?: boolean;
+  isExplorer?: boolean;
+  isOrganizer?: boolean;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-export function UserBadge({ isPremium, isSupporter, isCreator, size = 'md', className }: UserBadgeProps) {
-  if (!isPremium && !isSupporter && !isCreator) return null;
+export function UserBadge({ isPremium, isSupporter, isCreator, isExplorer, isOrganizer, size = 'md', className }: UserBadgeProps) {
+  if (!isPremium && !isSupporter && !isCreator && !isExplorer && !isOrganizer) return null;
 
   const iconSize = {
     sm: 'h-3 w-3',
@@ -68,6 +70,30 @@ export function UserBadge({ isPremium, isSupporter, isCreator, size = 'md', clas
             </TooltipTrigger>
             <TooltipContent>
               <p className="text-xs font-bold">Official Creator</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {isExplorer && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center justify-center rounded-full bg-sky-100 p-1 text-sky-600 shadow-sm dark:bg-sky-900/30 dark:text-sky-400">
+                <Compass className={cn(iconSize)} />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs font-bold">Explorer</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {isOrganizer && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center justify-center rounded-full bg-emerald-100 p-1 text-emerald-600 shadow-sm dark:bg-emerald-900/30 dark:text-emerald-400">
+                <Users className={cn(iconSize)} />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs font-bold">Organizer</p>
             </TooltipContent>
           </Tooltip>
         )}

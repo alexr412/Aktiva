@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 
 import { submitMultiReview } from '@/lib/firebase/firestore';
+import { validateChatMessage } from '@/lib/moderation/blacklist';
 import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 
@@ -39,6 +40,7 @@ export function ReviewDialog({ open, onOpenChange, activity, currentUser, onRevi
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
 
   const otherParticipants = activity.participantIds
     .filter(id => id !== currentUser.uid)
@@ -55,9 +57,29 @@ export function ReviewDialog({ open, onOpenChange, activity, currentUser, onRevi
 
       return;
     }
+
+    if (text && !validateChatMessage(text)) {
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? "Inhalt blockiert" : "Content Blocked",
+        description: language === 'de' ? "Diese Nachricht enthält nicht erlaubte Inhalte." : "This message contains disallowed content."
+      });
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastSubmitTime < 5000) {
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? "Spam-Schutz" : "Spam Protection",
+        description: language === 'de' ? "Bitte warte einen Moment, bevor du eine weitere Bewertung abgibst." : "Please wait a moment before submitting another review."
+      });
+      return;
+    }
     
     setIsSubmitting(true);
     try {
+        setLastSubmitTime(now);
         const otherParticipantIds = activity.participantIds.filter(id => id !== currentUser.uid);
         const reviews = otherParticipantIds.map(uid => ({
             targetId: uid,

@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase/client';
 import { sendMessage, checkIfUserReviewed, markChatAsRead, removeUserFromChat, editMessage, pinMessage, unpinMessage } from '@/lib/firebase/firestore';
+import { validateChatMessage } from '@/lib/moderation/blacklist';
 import type { Message, Chat, Activity, UserProfile, Place } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
@@ -239,6 +240,7 @@ export default function ChatRoomPage() {
   const [isPlaceDetailsOpen, setPlaceDetailsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [sentMessageTimestamps, setSentMessageTimestamps] = useState<number[]>([]);
   
   const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
@@ -404,6 +406,30 @@ export default function ChatRoomPage() {
     e.preventDefault();
     if (newMessage.trim() === '' || !user) return;
 
+    // 1. Client-side moderation check
+    if (!validateChatMessage(newMessage)) {
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? "Inhalt blockiert" : "Content Blocked",
+        description: language === 'de' ? "Diese Nachricht enthält nicht erlaubte Inhalte." : "This message contains disallowed content."
+      });
+      return;
+    }
+
+    // 2. Chat rate limiting: max 5 messages in 10 seconds
+    const now = Date.now();
+    const tenSecondsAgo = now - 10000;
+    const recentTimestamps = sentMessageTimestamps.filter(t => t > tenSecondsAgo);
+
+    if (recentTimestamps.length >= 5) {
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? "Spam-Schutz" : "Spam Protection",
+        description: language === 'de' ? "Bitte warte einen Moment, bevor du weitere Nachrichten sendest." : "Please wait a moment before sending more messages."
+      });
+      return;
+    }
+
     const currentMessage = newMessage;
     setNewMessage('');
 
@@ -412,11 +438,11 @@ export default function ChatRoomPage() {
       setEditingMessage(null);
       try {
         await editMessage(chatId, msgId, currentMessage);
-      } catch (error) {
+      } catch (error: any) {
         console.error(error);
         toast({ 
           title: language === 'de' ? "Fehler" : "Error", 
-          description: language === 'de' ? "Nachricht konnte nicht bearbeitet werden." : "Message could not be edited.", 
+          description: error.message || (language === 'de' ? "Nachricht konnte nicht bearbeitet werden." : "Message could not be edited."), 
           variant: 'destructive'
         });
       }
@@ -429,12 +455,13 @@ export default function ChatRoomPage() {
       setReplyingToMessage(null);
       try {
         await sendMessage(chatId, currentMessage, user, userProfile, replyPayload);
-      } catch (error) {
+        setSentMessageTimestamps([...recentTimestamps, now]);
+      } catch (error: any) {
         console.error(error);
         setNewMessage(currentMessage);
         toast({ 
           title: language === 'de' ? "Fehler" : "Error", 
-          description: language === 'de' ? "Nachricht konnte nicht gesendet werden." : "Message could not be sent.", 
+          description: error.message || (language === 'de' ? "Nachricht konnte nicht gesendet werden." : "Message could not be sent."), 
           variant: 'destructive'
         });
       }

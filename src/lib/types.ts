@@ -251,6 +251,7 @@ export interface UserProfile {
   onboardingCompleted: boolean;
   username?: string;
   usernameLastChangedAt?: Timestamp;
+  usernameChangeHistory?: Timestamp[];
   birthday?: string;
   language?: 'de' | 'en';
   hiddenEntityIds?: string[];
@@ -273,7 +274,45 @@ export interface UserProfile {
   };
   role?: 'user' | 'admin';
   isBanned?: boolean;
+  isExplorer?: boolean;
+  isOrganizer?: boolean;
+  premiumEntitlements?: string[];
 }
+
+export type PremiumFeature =
+  | 'advanced_filters'
+  | 'extended_radius'
+  | 'collections'
+  | 'boost_tokens'
+  | 'premium_badge'
+  | 'ai_discovery'
+  | 'organizer_analytics';
+
+export function hasPremiumFeature(profile: UserProfile | null, feature: PremiumFeature): boolean {
+  if (!profile) return false;
+  if (profile.isPremium) return true;
+  return !!profile.premiumEntitlements?.includes(feature);
+}
+
+export interface SavedCollection {
+  id: string;
+  name: string;
+  places: string[];
+  createdAt: any;
+  updatedAt: any;
+}
+
+export interface Boost {
+  id: string;
+  userId: string;
+  activityId?: string;
+  placeId?: string;
+  createdAt: any;
+  expiresAt: any;
+  boostLevel: 'standard' | 'high';
+  multiplier: number;
+}
+
 
 export interface Review {
   id?: string;

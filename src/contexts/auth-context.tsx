@@ -125,11 +125,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               ) {
                 return prev;
               }
-              console.log("[AuthContext] User profile updated:", profile.uid, "Onboarding:", profile.onboardingCompleted);
               return profile;
             });
           } else {
-            console.log("[AuthContext] User document does not exist");
             setUserProfile(null);
           }
           setLoading(false);
@@ -158,7 +156,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const isLoginPage = pathname === '/login';
 
     if (user && !user.emailVerified && !isLoginPage) {
-      console.log("[AuthContext] Safety Redirect: User email not verified, signing out...");
       import('@/lib/firebase/auth').then(({ signOut: authSignOut }) => {
         authSignOut().then(() => {
           router.replace('/login');
@@ -171,11 +168,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Only redirect if email is verified AND onboarding is definitely not completed
         // AND we are not already on the onboarding page
         if (user.emailVerified && userProfile.onboardingCompleted === false && !isInternalOnboarding) {
-            console.log("[AuthContext] Safety Redirect: Forcing onboarding from", pathname);
             router.replace('/onboarding');
         }
     } else if (!user && !loading && !isPublicRoute && !isLoginPage) {
-        console.log("[AuthContext] Safety Redirect: Forcing login from", pathname);
         router.replace('/login');
     }
   }, [user, userProfile?.onboardingCompleted, loading, isMounted, pathname, isPublicRoute, router]);
@@ -190,7 +185,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const token = await requestAndGetFCMToken();
         if (isSubscribed && token && token !== userProfile.fcmToken) {
-          console.log("[AuthContext] Updating FCM token...");
           await updateUserProfile(user.uid, { fcmToken: token });
         }
       } catch (err) {

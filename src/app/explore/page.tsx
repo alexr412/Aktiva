@@ -434,6 +434,8 @@ export default function ExplorePage() {
                                                         <img 
                                                             src={card.imageUrl} 
                                                             alt={card.placeName} 
+                                                            loading="lazy"
+                                                            decoding="async"
                                                             className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                                                         />
                                                     ) : (
@@ -494,7 +496,8 @@ export default function ExplorePage() {
                                                                  {(card.maxParticipants || 10) - card.participantIds.length} {language === 'de' ? 'frei' : 'free'}
                                                              </span>
                                                          </div>
-                                                         <div className="flex space-x-3 p-0.5 items-center">
+                                                    </div>
+                                                    <div className="flex justify-center space-x-3 p-0.5 items-center">
                                                             {/* Host Avatar */}
                                                             {(() => {
                                                                 const hostDetails = card.participantDetails?.[card.hostId];
@@ -548,7 +551,6 @@ export default function ExplorePage() {
                                                             })}
                                                         </div>
                                                     </div>
-                                                </div>
                                             </div>
                                         </motion.div>
                                     )

@@ -442,6 +442,22 @@ export function buildRankingContext(place: any, scores: RankingScores): RankingC
   };
 }
 
+export function isEntityBoosted(entity: any): boolean {
+  if (!entity) return false;
+  if (!entity.isBoosted) return false;
+  if (!entity.boostExpiresAt) return true; // Legacy/permanent boost
+  try {
+    const expiresMillis = typeof entity.boostExpiresAt.toMillis === 'function'
+      ? entity.boostExpiresAt.toMillis()
+      : typeof entity.boostExpiresAt.toDate === 'function'
+        ? entity.boostExpiresAt.toDate().getTime()
+        : new Date(entity.boostExpiresAt).getTime();
+    return expiresMillis > Date.now();
+  } catch (e) {
+    return false;
+  }
+}
+
 /**
  * Main unified ranking entry point (Phase 1 -> Phase 2 -> Phase 3).
  */
@@ -482,12 +498,19 @@ export function rankPlacesPipeline(
       placeSigma = Math.max(3.0, Math.min(5.0, placeSigma));
     }
 
+    const hasExtendedRadius = userProfile?.isPremium || (userProfile?.premiumEntitlements && userProfile.premiumEntitlements.includes('extended_radius'));
+    if (hasExtendedRadius) {
+      placeSigma = placeSigma * 1.25;
+    }
+
     const prior = computeBasePrior(categories);
     const decay = computeDistanceDecay(distance, placeSigma);
     const personalization = computePersonalizationMultiplier(categories, userProfile);
     const commScore = computeCommunityScore(place.upvotes || 0, place.downvotes || 0);
 
     const baseScore = computeBaseScore(prior, decay, commScore, personalization);
+    const boostMultiplier = isEntityBoosted(place) ? 1.06 : 1.0;
+    const finalScore = baseScore * boostMultiplier;
 
     const contextScores: RankingScores = {
       basePrior: prior,
@@ -498,12 +521,12 @@ export function rankPlacesPipeline(
       geoPenalty: 1.0,
       consecutivePenalty: 1.0,
       jitterApplied: 1.0,
-      finalRelevance: baseScore
+      finalRelevance: finalScore
     };
 
     return {
       ...place,
-      relevanceScore: baseScore,
+      relevanceScore: finalScore,
       scores: contextScores
     };
   });
@@ -552,15 +575,7 @@ export function rankPlacesPipeline(
 
   // Debug Telemetry
   if (options.debug && allScored.length > 0) {
-    console.log('[New Feed Pipeline] Top 5 spots:', JSON.stringify(
-      allScored.slice(0, 5).map(p => ({
-        name: p.name,
-        finalScore: p.relevanceScore,
-        context: p.rankingContext
-      })),
-      null,
-      2
-    ));
+    // Debug telemetry print disabled
   }
 
   return allScored;
@@ -599,10 +614,16 @@ export function calculateRelevance(
     placeSigma = Math.max(3.0, Math.min(5.0, placeSigma));
   }
 
+  const hasExtendedRadius = userProfile?.isPremium || (userProfile?.premiumEntitlements && userProfile.premiumEntitlements.includes('extended_radius'));
+  if (hasExtendedRadius) {
+    placeSigma = placeSigma * 1.25;
+  }
+
   const prior = computeBasePrior(categories);
   const decay = computeDistanceDecay(item.distance || 0, placeSigma);
   const personalization = computePersonalizationMultiplier(categories, userProfile);
   const commScore = computeCommunityScore(item.upvotes || 0, item.downvotes || 0);
   const baseScore = computeBaseScore(prior, decay, commScore, personalization);
-  return Number(baseScore.toFixed(1));
+  const boostMultiplier = isEntityBoosted(item) ? 1.06 : 1.0;
+  return Number((baseScore * boostMultiplier).toFixed(1));
 }

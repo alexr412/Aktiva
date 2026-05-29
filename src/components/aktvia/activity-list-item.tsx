@@ -10,6 +10,7 @@ import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCar
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserBadge } from '@/components/common/UserBadge';
 import { cn } from '@/lib/utils';
 import { castActivityVote, trackActivityView, submitReport } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
@@ -228,8 +229,18 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 <div className="flex items-center gap-2 mt-auto pt-3 border-t border-slate-50 dark:border-neutral-800/50">
                     <div className="flex items-center gap-1.5 flex-1 min-w-0">
                         <Users className="h-3 w-3 text-slate-300 shrink-0" />
-                        <span className="text-[9px] text-slate-400 font-bold uppercase truncate">
+                        <span className="text-[9px] text-slate-400 font-bold uppercase truncate flex items-center gap-1">
                             {language === 'de' ? 'Veranstalter:' : 'Host:'} {activity.hostName?.split(' ')[0] || "User"}
+                            {activity.participantDetails?.[activity.hostId] && (
+                              <UserBadge
+                                isPremium={activity.participantDetails[activity.hostId].isPremium}
+                                isSupporter={activity.participantDetails[activity.hostId].isSupporter}
+                                isCreator={activity.participantDetails[activity.hostId].isCreator}
+                                isExplorer={(activity.participantDetails[activity.hostId] as any).isExplorer}
+                                isOrganizer={(activity.participantDetails[activity.hostId] as any).isOrganizer}
+                                size="sm"
+                              />
+                            )}
                         </span>
                     </div>
 

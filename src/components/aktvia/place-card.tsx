@@ -28,6 +28,8 @@ import { getPrimaryIconData, translateTag, getCleanTags } from '@/lib/tag-config
 import { formatTags, formatOpeningHours } from '@/lib/tag-parser';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { trackInteraction } from '@/lib/telemetry';
+import { isEntityBoosted } from '@/lib/ranking';
 
 const formatDistance = (distanceInKm?: number) => {
     if (distanceInKm === undefined) return null;
@@ -126,6 +128,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         } else {
             addFavorite(place);
         }
+        trackInteraction(place.id, place.categories, 'favorite', user?.uid);
     };
 
     const categories = (place.categories || []);
@@ -189,8 +192,11 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
             {/* Content Bereich */}
             <div className="p-3 pb-4 flex flex-col flex-1">
                 <div className="mb-2">
-                    <h3 className="text-base sm:text-lg font-black tracking-tight line-clamp-2 min-h-[2.5rem] leading-snug">
-                        {place.name || (userProfile?.role === 'admin' ? `POI Ref: ${place.id.slice(-6)}` : (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'))}
+                    <h3 className="text-base sm:text-lg font-black tracking-tight line-clamp-2 min-h-[2.5rem] leading-snug flex items-center gap-1.5 flex-wrap">
+                        <span>{place.name || (userProfile?.role === 'admin' ? `POI Ref: ${place.id.slice(-6)}` : (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'))}</span>
+                        {isEntityBoosted(place) && (
+                            <Sparkles className="h-4 w-4 text-amber-500 fill-amber-500/20 shrink-0 animate-pulse" />
+                        )}
                     </h3>
                     <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px]">
                         {place.openingHours ? (

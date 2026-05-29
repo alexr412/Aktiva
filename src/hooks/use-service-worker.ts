@@ -10,7 +10,6 @@ export function useServiceWorker() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!('serviceWorker' in navigator)) {
-      console.log('[SW] Service Workers not supported in this browser.');
       return;
     }
 
@@ -19,8 +18,6 @@ export function useServiceWorker() {
         const registration = await navigator.serviceWorker.register('/sw.js', {
           scope: '/',
         });
-
-        console.log('[SW] Registered with scope:', registration.scope);
 
         // Auf Updates prüfen
         registration.addEventListener('updatefound', () => {
@@ -31,7 +28,7 @@ export function useServiceWorker() {
             if (newWorker.state === 'activated') {
               // Neuer SW ist aktiv → ggf. Seite neu laden für frische Assets
               if (navigator.serviceWorker.controller) {
-                console.log('[SW] New version available. Refresh for update.');
+                // New version available
               }
             }
           });

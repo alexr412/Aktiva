@@ -174,12 +174,6 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   const name = nameStr.toLowerCase();
   const n = name;
 
-  if (name.includes('marien')) {
-    console.log('[DEBUG MARIEN] place:', place);
-    console.log('[DEBUG MARIEN] rawTags:', rawTags);
-    console.log('[DEBUG MARIEN] tags:', tags);
-  }
-
   // --- PRIORITÄT 0: Spezifische Entertainment-Kategorien ---
   if (tags.includes('entertainment.museum') || name.includes('museum')) {
     return { icon: Landmark, color: '#4f46e5', label: language === 'de' ? 'Museum' : 'Museum', bgClass: 'bg-indigo-50', gradientClass: 'bg-gradient-to-br from-indigo-600 to-blue-700', imageUrl: 'https://images.unsplash.com/photo-1544333323-c242144ebd53?q=80&w=800&auto=format&fit=crop' };

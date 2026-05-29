@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 
 import { submitMultiReview } from '@/lib/firebase/firestore';
+import { validateChatMessage } from '@/lib/moderation/blacklist';
 import type { Activity } from '@/lib/types';
 import type { User } from 'firebase/auth';
 
@@ -37,6 +38,7 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
   const language = useLanguage();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
   
   // State for activity review
   const [activityRating, setActivityRating] = useState(0);
@@ -62,6 +64,24 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
       return;
     }
 
+    if (activityComment && !validateChatMessage(activityComment)) {
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? "Inhalt blockiert" : "Content Blocked",
+        description: language === 'de' ? "Diese Nachricht enthält nicht erlaubte Inhalte." : "This message contains disallowed content."
+      });
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastSubmitTime < 5000) {
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? "Spam-Schutz" : "Spam Protection",
+        description: language === 'de' ? "Bitte warte einen Moment, bevor du eine weitere Bewertung abgibst." : "Please wait a moment before submitting another review."
+      });
+      return;
+    }
 
     const unratedPeer = Object.entries(peerRatings).find(([_, rating]) => rating === 0);
     if (unratedPeer && peers.length > 0) {
@@ -76,6 +96,7 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
     
     setIsSubmitting(true);
     try {
+        setLastSubmitTime(now);
         const reviews = [];
         
         // 1. Activity Review

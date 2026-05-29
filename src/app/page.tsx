@@ -9,6 +9,7 @@ import { PlaceDetails } from '@/components/aktvia/place-details';
 import { PlaceCard } from '@/components/aktvia/place-card';
 import { SpotActionSheet } from '@/components/aktvia/spot-action-sheet';
 import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
+import { hasPremiumFeature } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
@@ -16,7 +17,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
 } from '@/components/ui/dropdown-menu';
-import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, X, Compass } from 'lucide-react';
+import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, X, Compass, Clock, Trophy, TreePine, VolumeX, Heart, Users2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
 import { useRouter } from 'next/navigation';
@@ -44,6 +45,10 @@ import { UserBadge } from '@/components/common/UserBadge';
 import { calculateDistance } from '@/lib/geo-utils';
 import { useLanguage } from '@/hooks/use-language';
 import { LocationRequirementDialog } from '@/components/common/LocationRequirementDialog';
+import { getFeedCacheKey, getFeedCache, setFeedCache } from '@/lib/feed-cache';
+import { trackInteraction } from '@/lib/telemetry';
+import { isDuplicate } from '@/lib/duplicate-detector';
+import { monitoring } from '@/lib/monitoring';
 
 // Dynamic import for MapView to avoid SSR issues
 const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod => mod.MapView), {
@@ -92,6 +97,18 @@ const DISTANCE_FILTERS = [
   { label: '< 25km', labelEn: '< 25km', value: 25 },
 ];
 
+const PREMIUM_FILTERS = [
+  { id: 'only_open_now', label: 'Jetzt Offen', labelEn: 'Open Now', icon: Clock },
+  { id: 'hidden_gems', label: 'Geheimtipps', labelEn: 'Hidden Gems', icon: Compass },
+  { id: 'high_rated', label: 'Top Bewertet', labelEn: 'Top Rated', icon: Trophy },
+  { id: 'outdoor_only', label: 'Nur Draußen', labelEn: 'Outdoor Only', icon: TreePine },
+  { id: 'quiet_places', label: 'Ruhige Orte', labelEn: 'Quiet Places', icon: VolumeX },
+  { id: 'date_ideas', label: 'Date Ideen', labelEn: 'Date Ideas', icon: Heart },
+  { id: 'group_activities', label: 'Gruppen-Aktivitäten', labelEn: 'Group Activities', icon: Users2 },
+];
+
+const placeDetailsCache = new Map<string, string[]>();
+
 export default function Home() {
   const ENABLE_NEW_RANKING_PIPELINE = true;
   const sessionEpochRef = useRef(Date.now());
@@ -111,13 +128,92 @@ export default function Home() {
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
   const [maxDistance, setMaxDistance] = useState<number | null>(10);
   const [activityCategoryFilter, setActivityCategoryFilter] = useState<ActivityCategory | 'Alle' | 'All'>(language === 'de' ? 'Alle' : 'All');
-  const [visibleCount, setVisibleCount] = useState(25);
+  const [visibleCount, setVisibleCount] = useState(PLACES_PER_PAGE);
   const [actionSheetPlace, setActionSheetPlace] = useState<Place | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [shouldFilterByName, setShouldFilterByName] = useState(false);
   const [isSwitchingTab, setIsSwitchingTab] = useState(false);
   const [showLocationRequirement, setShowLocationRequirement] = useState(false);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
+  const [activePremiumFilters, setActivePremiumFilters] = useState<string[]>([]);
+
+  const isOpenNow = (openingHours: string | null | undefined): boolean => {
+    if (!openingHours) return false;
+    if (openingHours.toLowerCase().includes('24/7')) return true;
+
+    try {
+      const now = new Date();
+      const dayNames = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
+      const currentDay = dayNames[now.getDay()];
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      const parts = openingHours.toLowerCase().split(';');
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (!trimmed) continue;
+
+        let daysMatch = false;
+        const dayRangeRegex = /([a-z]{2})\s*-\s*([a-z]{2})/;
+        const singleDayRegex = /\b([a-z]{2})\b/g;
+
+        const timeMatch = trimmed.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+        if (!timeMatch) continue;
+
+        const startMin = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
+        const endMin = parseInt(timeMatch[3], 10) * 60 + parseInt(timeMatch[4], 10);
+
+        const dayRange = trimmed.match(dayRangeRegex);
+        if (dayRange) {
+          const startDayIdx = dayNames.indexOf(dayRange[1]);
+          const endDayIdx = dayNames.indexOf(dayRange[2]);
+          if (startDayIdx !== -1 && endDayIdx !== -1) {
+            const todayIdx = now.getDay();
+            if (startDayIdx <= endDayIdx) {
+              daysMatch = todayIdx >= startDayIdx && todayIdx <= endDayIdx;
+            } else {
+              daysMatch = todayIdx >= startDayIdx || todayIdx <= endDayIdx;
+            }
+          }
+        } else {
+          const singleDays = Array.from(trimmed.matchAll(singleDayRegex)).map(m => m[1]);
+          if (singleDays.length > 0) {
+            daysMatch = singleDays.includes(currentDay);
+          } else {
+            daysMatch = true;
+          }
+        }
+
+        if (daysMatch) {
+          if (endMin < startMin) {
+            if (currentMinutes >= startMin || currentMinutes <= endMin) {
+              return true;
+            }
+          } else {
+            if (currentMinutes >= startMin && currentMinutes <= endMin) {
+              return true;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error parsing opening hours:', err);
+    }
+    return false;
+  };
+
+  const handlePremiumFilterClick = (filterId: string) => {
+    const isUserPremium = hasPremiumFeature(userProfile, 'advanced_filters');
+    if (!isUserPremium) {
+      setIsPremiumUpsellOpen(true);
+      return;
+    }
+
+    setActivePremiumFilters(prev =>
+      prev.includes(filterId)
+        ? prev.filter(id => id !== filterId)
+        : [...prev, filterId]
+    );
+  };
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -189,24 +285,24 @@ export default function Home() {
   const multiFetcher = async (key: any) => {
     if (!key) return null;
     const { type, cursorValue } = key;
+    const startTime = Date.now();
 
     try {
+      let result: any = null;
       if (type === 'geoapify') {
         const { url } = key;
-        const result = await fetcher(url);
-        return result;
-      }
-
-      if (type === 'multi_fetch_discovery') {
-        // Parallel multi-fetch: 4 requests with broad top-level categories, limit=500 each.
-        // The first bucket is isolated for high-priority VIP categories to prevent API saturation.
+        result = await fetcher(url);
+      } else if (type === 'multi_fetch_discovery') {
+        // Parallel multi-fetch: 3 requests with broad categories, limit=30 each to conserve credits (progressive loading).
         const { lat, lng, radiusMeters: r } = key;
-        const base = `https://api.geoapify.com/v2/places?filter=circle:${lng},${lat},${r}&bias=proximity:${lng},${lat}&limit=500&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
+        const base = `https://api.geoapify.com/v2/places?filter=circle:${lng},${lat},${r}&bias=proximity:${lng},${lat}&limit=30&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
 
         const categoryBuckets = [
-          "entertainment.zoo,entertainment.cinema,entertainment.water_park,sport.swimming_pool,entertainment.miniature_golf","entertainment.bowling_alley",
-          "entertainment.aquarium","entertainment,leisure,adult.nightclub","entertainment.escape_game","sport,tourism","entertainment.activity_park",
-          "entertainment.activity_park.trampoline","entertainment.amusement_arcade",
+          // Bucket 1: Adventure & Specific Entertainment
+          "entertainment.zoo,entertainment.cinema,entertainment.water_park,sport.swimming_pool,entertainment.miniature_golf,entertainment.bowling_alley,entertainment.aquarium,entertainment.escape_game,entertainment.activity_park,entertainment.activity_park.trampoline,entertainment.amusement_arcade",
+          // Bucket 2: General Leisure, Sport & Tourism
+          "entertainment,leisure,adult.nightclub,sport,tourism",
+          // Bucket 3: Catering & Heritage
           "catering,heritage",
         ];
 
@@ -219,8 +315,8 @@ export default function Home() {
         // Deduplicate by place_id across all buckets
         const seenIds = new Set<string>();
         const merged: any[] = [];
-        for (const result of results) {
-          const features = result?.features || [];
+        for (const res of results) {
+          const features = res?.features || [];
           for (const f of features) {
             const pid = f.properties?.place_id;
             if (pid && !seenIds.has(pid)) {
@@ -230,29 +326,31 @@ export default function Home() {
           }
         }
 
-        return { features: merged };
-      }
-
-      if (type === 'geocoding') {
+        result = { features: merged };
+      } else if (type === 'geocoding') {
         const { url } = key;
-        const result = await fetcher(url);
-        const results = result.results || [];
+        const res = await fetcher(url);
+        const results = res.results || [];
 
-        // Enrichment: Geocoding V1 lacks detailed categories. We fetch them for the top 20 results
-        // to ensure correct icons, filtering and ranking.
-        const detailedFeatures = await Promise.all(results.slice(0, 20).map(async (item: any) => {
+        // Enrichment: Geocoding V1 lacks detailed categories. We fetch them for the top 8 results
+        // instead of 20, using a cache to avoid duplicate place details requests.
+        const detailedFeatures = await Promise.all(results.slice(0, 8).map(async (item: any) => {
           let categories = item.categories || [];
           if (item.place_id) {
-            try {
-              const detailsUrl = `https://api.geoapify.com/v2/place-details?id=${item.place_id}&apiKey=${GEOAPIFY_API_KEY}`;
-              const dRes = await fetch(detailsUrl);
-              if (dRes.ok) {
-                const dData = await dRes.json();
-                categories = dData.features?.[0]?.properties?.categories || categories;
-                console.log('[DEBUG GEO ENRICH]', item.name, 'categories:', categories);
+            if (placeDetailsCache.has(item.place_id)) {
+              categories = placeDetailsCache.get(item.place_id)!;
+            } else {
+              try {
+                const detailsUrl = `https://api.geoapify.com/v2/place-details?id=${item.place_id}&apiKey=${GEOAPIFY_API_KEY}`;
+                const dRes = await fetch(detailsUrl);
+                if (dRes.ok) {
+                  const dData = await dRes.json();
+                  categories = dData.features?.[0]?.properties?.categories || categories;
+                  placeDetailsCache.set(item.place_id, categories);
+                }
+              } catch (e) {
+                console.error("Detail enrichment failed for:", item.place_id, e);
               }
-            } catch (e) {
-              console.error("Detail enrichment failed for:", item.place_id, e);
             }
           }
           // Normalize to GeoJSON-like structure for compatibility with places memo
@@ -264,10 +362,8 @@ export default function Home() {
           };
         }));
 
-        return { features: detailedFeatures };
-      }
-
-      if (type === 'activities') {
+        result = { features: detailedFeatures };
+      } else if (type === 'activities') {
         const queryLimit = 300; // Fetch a large batch to avoid needing a composite index for pagination
         const constraints: any[] = [
           where('categories', 'array-contains', 'user_event'),
@@ -276,10 +372,8 @@ export default function Home() {
         // We cannot use startAfter without orderBy, so we just fetch the first 300 and sort locally
         const q = query(collection(db!, 'activities'), ...constraints);
         const snap = await getDocs(q);
-        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      }
-
-      if (type === 'active_places') {
+        result = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } else if (type === 'active_places') {
         const queryLimit = key.pageIndex === 0 ? 50 : 10;
         const constraints: any[] = [
           where('activityCount', '>', 0),
@@ -289,10 +383,8 @@ export default function Home() {
         if (cursorValue !== null) constraints.push(startAfter(cursorValue));
         const q = query(collection(db!, 'places'), ...constraints);
         const snap = await getDocs(q);
-        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      }
-
-      if (type === 'highlights') {
+        result = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } else if (type === 'highlights') {
         const queryLimit = key.pageIndex === 0 ? 50 : 10;
         const constraints: any[] = [
           where('upvotes', '>', 0),
@@ -302,10 +394,18 @@ export default function Home() {
         if (cursorValue !== null) constraints.push(startAfter(cursorValue));
         const q = query(collection(db!, 'places'), ...constraints);
         const snap = await getDocs(q);
-        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        result = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       }
+
+      if (type === 'geoapify' || type === 'multi_fetch_discovery' || type === 'geocoding') {
+        monitoring.logRequest(Date.now() - startTime, true);
+      }
+      return result;
     } catch (error: any) {
       console.error("🔥 FIRESTORE QUERY ERROR:", error.message, "Key:", key);
+      if (type === 'geoapify' || type === 'multi_fetch_discovery' || type === 'geocoding') {
+        monitoring.logRequest(Date.now() - startTime, false);
+      }
       throw error;
     }
 
@@ -381,10 +481,10 @@ export default function Home() {
     // MULTI-FETCH PARALLEL DISCOVERY: Broad categories, max limits
     // ═══════════════════════════════════════════════════════════════
 
-    // When a specific tab/category filter is active, use single-stream
+    // When a specific tab/category filter is active, use single-stream (reduced limits)
     if (activeCategory.length > 0) {
-      const queryLimit = pageIndex === 0 ? 200 : 50;
-      const offset = pageIndex === 0 ? 0 : 200 + (pageIndex - 1) * 50;
+      const queryLimit = pageIndex === 0 ? 50 : 25;
+      const offset = pageIndex === 0 ? 0 : 50 + (pageIndex - 1) * 25;
       const categoryString = categoriesToFetch.join(',');
       const url = `https://api.geoapify.com/v2/places?categories=${categoryString}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
       return { type: 'geoapify', url, pageIndex };
@@ -401,42 +501,78 @@ export default function Home() {
       };
     }
 
-    // Subsequent pages: standard paginated stream with all broad categories
+    // Subsequent pages: standard paginated stream starting at offset 90 (since first page fetches less)
     const allCategories = "entertainment,leisure,sport,tourism,catering,adult.nightclub";
-    const offset = 500 + (pageIndex - 1) * 50;
+    const offset = 90 + (pageIndex - 1) * 50;
     const url = `https://api.geoapify.com/v2/places?categories=${allCategories}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
     return { type: 'geoapify', url, pageIndex };
   }
 
   const { data, size, setSize, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {
     revalidateFirstPage: false,
-    dedupingInterval: 60000,
+    dedupingInterval: 300000, // Increase deduping interval to 5 mins to prevent redundant API queries
   });
 
-  const isLoadingInitialData = !data && !error;
-  const isEmpty = data?.[0]?.features ? data[0].features.length === 0 : (data?.[0]?.length === 0);
-  const isFetchingNextPage = Boolean(size > 0 && data && typeof data[size - 1] === "undefined");
+  const [cachedData, setCachedData] = useState<any[] | undefined>(undefined);
+
+  // Load cached data
+  useEffect(() => {
+    if (!userLocation) return;
+    const cacheKey = getFeedCacheKey({
+      lat: userLocation.lat,
+      lng: userLocation.lng,
+      activeCategory,
+      activeTabId,
+      debouncedSearchQuery,
+    });
+    const entry = getFeedCache(cacheKey);
+    if (entry) {
+      setCachedData(entry.data);
+      monitoring.logCacheHit();
+    } else {
+      setCachedData(undefined);
+    }
+  }, [userLocation, activeCategory, activeTabId, debouncedSearchQuery]);
+
+  // Save SWR data to cache
+  useEffect(() => {
+    if (!data || !userLocation || isValidating) return;
+    const cacheKey = getFeedCacheKey({
+      lat: userLocation.lat,
+      lng: userLocation.lng,
+      activeCategory,
+      activeTabId,
+      debouncedSearchQuery,
+    });
+    setFeedCache(cacheKey, data);
+  }, [data, userLocation, activeCategory, activeTabId, debouncedSearchQuery, isValidating]);
+
+  const displayData = data || cachedData;
+
+  const isLoadingInitialData = !displayData && !error;
+  const isEmpty = displayData?.[0]?.features ? displayData[0].features.length === 0 : (displayData?.[0]?.length === 0);
+  const isFetchingNextPage = Boolean(size > 0 && displayData && typeof displayData[size - 1] === "undefined");
 
   const isReachingEnd = useMemo(() => {
     if (error) return true;
     if (isEmpty) return true;
-    if (!data || data.length === 0) return false;
-    const lastPage = data[data.length - 1];
-    const expectedLimit = (data.length - 1) === 0 ? 50 : 50;
+    if (!displayData || displayData.length === 0) return false;
+    const lastPage = displayData[displayData.length - 1];
+    const expectedLimit = (displayData.length - 1) === 0 ? 50 : 50;
     if (isCommunityCategory || isAktivCategory || isHighlightsCategory) {
       // All three system tabs (Community, Active, Highlights) now fetch 50 initially, then 10.
-      let fbLimit = (data.length - 1) === 0 ? 50 : 10;
+      let fbLimit = (displayData.length - 1) === 0 ? 50 : 10;
       return Boolean(lastPage && lastPage.length < fbLimit);
     }
     return Boolean(lastPage && lastPage.features?.length < expectedLimit);
-  }, [data, isEmpty, error, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
+  }, [displayData, isEmpty, error, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
   const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number }>>({});
 
   const basePlaces = useMemo(() => {
-    if (!data || isCommunityCategory || isFavoritesCategory) return [];
+    if (!displayData || isCommunityCategory || isFavoritesCategory) return [];
     if (isHighlightsCategory || isAktivCategory) {
-      return data.flat().map((place: any) => {
+      return displayData.flat().map((place: any) => {
         let distance = place.distance;
         if (distance === undefined && userLocation && place.lat && place.lon) {
           distance = calculateDistance(userLocation.lat, userLocation.lng, place.lat, place.lon);
@@ -445,7 +581,7 @@ export default function Home() {
       });
     }
 
-    return data.flatMap(page => {
+    return displayData.flatMap(page => {
       const features = page?.features || [];
       const itemsToFilter = features.map((f: any) => ({
         tags: Array.isArray(f.properties.categories) ? f.properties.categories : [f.properties.categories],
@@ -481,11 +617,12 @@ export default function Home() {
         } as Place;
       });
     });
-  }, [data, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory, language, userProfile, userLocation, activeCategory, maxDistance]);
+  }, [displayData, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory, language, userProfile, userLocation, activeCategory, maxDistance]);
 
   const places = useMemo(() => {
     if (basePlaces.length === 0) return [];
 
+    let finalPlaces: Place[] = [];
     if (ENABLE_NEW_RANKING_PIPELINE) {
       const placesWithVotes = basePlaces.map(place => {
         const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0 };
@@ -496,38 +633,89 @@ export default function Home() {
         };
       });
 
-      return rankPlacesPipeline(
+      const ranked = rankPlacesPipeline(
         placesWithVotes,
         userProfile || { role: 'user' } as any,
         userLocation,
         sessionEpochRef.current,
-        { debug: true }
-      );
-    }
-
-    const scored = basePlaces.map(place => {
-      const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0 };
-      const rawScore = calculateRelevance(
-        { ...place, upvotes: votes.upvotes, downvotes: votes.downvotes },
-        userProfile || { role: 'user' } as any,
-        userLocation || { lat: 0, lng: 0 },
         { debug: false }
       );
-      // Guard: ensure score is always a finite number — prevents string-coercion sort bugs
-      const relevanceScore = typeof rawScore === 'number' && isFinite(rawScore) ? rawScore : 0;
-      return { ...place, relevanceScore };
-    });
 
-    // Strict descending sort by numeric score
-    scored.sort((a, b) => b.relevanceScore - a.relevanceScore);
+      // Filter duplicates
+      for (const place of ranked) {
+        if (!finalPlaces.some(u => isDuplicate(u, place))) {
+          finalPlaces.push(place);
+        }
+      }
+    } else {
+      const scored = basePlaces.map(place => {
+        const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0 };
+        const rawScore = calculateRelevance(
+          { ...place, upvotes: votes.upvotes, downvotes: votes.downvotes },
+          userProfile || { role: 'user' } as any,
+          userLocation || { lat: 0, lng: 0 },
+          { debug: false }
+        );
+        // Guard: ensure score is always a finite number — prevents string-coercion sort bugs
+        const relevanceScore = typeof rawScore === 'number' && isFinite(rawScore) ? rawScore : 0;
+        return { ...place, relevanceScore };
+      });
 
-    // ── TELEMETRY: Top 5 items after scoring ──────────────────────────
-    if (scored.length > 0) {
-      console.log('[Feed Telemetry] Top 5 after scoring:\n' + JSON.stringify(scored.slice(0, 5), null, 2));
+      // Strict descending sort by numeric score
+      scored.sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+      // Filter duplicates
+      for (const place of scored) {
+        if (!finalPlaces.some(u => isDuplicate(u, place))) {
+          finalPlaces.push(place);
+        }
+      }
     }
 
-    return scored;
-  }, [basePlaces, votesMap, userProfile, userLocation]);
+    // Apply activePremiumFilters if user is Premium
+    if (activePremiumFilters.length > 0 && hasPremiumFeature(userProfile, 'advanced_filters')) {
+      finalPlaces = finalPlaces.filter(place => {
+        return activePremiumFilters.every(filterId => {
+          if (filterId === 'only_open_now') {
+            return isOpenNow(place.openingHours);
+          }
+          if (filterId === 'hidden_gems') {
+            const hasRatingMatch = typeof place.rating === 'number' && place.rating >= 4.2;
+            const hasVotesMatch = typeof place.upvotes === 'number' && place.upvotes >= 1 && (!place.downvotes || place.downvotes === 0);
+            return (hasRatingMatch || hasVotesMatch) && !place.categories.some(cat => cat.startsWith('tourism.attraction'));
+          }
+          if (filterId === 'high_rated') {
+            return typeof place.rating === 'number' && place.rating >= 4.4;
+          }
+          if (filterId === 'outdoor_only') {
+            return place.categories.some(cat =>
+              cat.includes('outdoor') || cat.includes('nature') || cat.includes('park') || cat.includes('beach') || cat.includes('zoo')
+            );
+          }
+          if (filterId === 'quiet_places') {
+            return place.categories.every(cat =>
+              !['party', 'nightclub', 'bar', 'pub', 'stadium', 'arcade', 'casino', 'entertainment'].some(bad => cat.includes(bad))
+            );
+          }
+          if (filterId === 'date_ideas') {
+            return place.categories.some(cat =>
+              ['catering.restaurant', 'catering.cafe', 'catering.bar', 'entertainment.cinema', 'tourism.sights', 'entertainment.museum', 'leisure.spa'].some(target => cat === target || cat.startsWith(target + '.'))
+            );
+          }
+          if (filterId === 'group_activities') {
+            return place.categories.some(cat =>
+              ['sport', 'entertainment.escape_game', 'entertainment.bowling_alley', 'entertainment.miniature_golf', 'entertainment.theme_park', 'sport.stadium'].some(target => cat === target || cat.startsWith(target + '.'))
+            );
+          }
+          return true;
+        });
+      });
+    }
+
+
+    monitoring.logFeedSize(finalPlaces.length);
+    return finalPlaces;
+  }, [basePlaces, votesMap, userProfile, userLocation, activePremiumFilters]);
 
   // Batch-Fetch der Vote-Daten: Einmaliger Read statt N Echtzeit-Listener
   useEffect(() => {
@@ -585,12 +773,12 @@ export default function Home() {
       if (target.isIntersecting && !isLoadingMore.current) {
         isLoadingMore.current = true;
         if (!isFavoritesCategory && !isCommunityCategory && !isAktivCategory && !isHighlightsCategory) {
-          const totalFetched = data ? data.flat().length : 0;
+          const totalFetched = displayData ? displayData.flat().length : 0;
           if (visibleCount < totalFetched) {
-            setVisibleCount(prev => prev + 25);
+            setVisibleCount(prev => prev + PLACES_PER_PAGE);
           } else {
             setSize(prev => prev + 1);
-            setVisibleCount(prev => prev + 25);
+            setVisibleCount(prev => prev + PLACES_PER_PAGE);
           }
         } else {
           setSize(prev => prev + 1);
@@ -599,7 +787,7 @@ export default function Home() {
       }
     }, options);
     if (node) observer.current.observe(node);
-  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, data, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
+  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, displayData, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
   const requestLocation = useCallback(() => {
     // Check for cached location for instant boot
@@ -702,7 +890,7 @@ export default function Home() {
     setActiveTabId(tabId);
     setSortBy('recommended');
     setActivityCategoryFilter('Alle');
-    setVisibleCount(25);
+    setVisibleCount(PLACES_PER_PAGE);
   };
 
   // ---------------------------------------------------------------------------
@@ -766,10 +954,14 @@ export default function Home() {
   };
 
   useEffect(() => {
-    setVisibleCount(25);
+    setVisibleCount(PLACES_PER_PAGE);
   }, [debouncedSearchQuery]);
 
-  const handlePlaceSelect = (place: Place) => setSelectedPlace(place);
+  const handlePlaceSelect = (place: Place) => {
+    setSelectedPlace(place);
+    trackInteraction(place.id, place.categories, 'card_click', user?.uid);
+    trackInteraction(place.id, place.categories, 'card_open', user?.uid);
+  };
   const handleDialogClose = () => setSelectedPlace(null);
   const handleOpenActivityModal = (place: Place) => {
     if (!user) {
@@ -1038,6 +1230,33 @@ export default function Home() {
 
             <div className="px-6">
               <CategoryFilters activeCategory={activeCategory} activeTabId={activeTabId} onCategoryChange={handleCategoryChange} />
+            </div>
+
+            {/* Premium Advanced Filters Row */}
+            <div className="px-6 -mt-2 pb-2">
+              <div className="flex overflow-x-auto gap-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none max-sm:hide-scrollbar items-center w-full">
+                {PREMIUM_FILTERS.map((f) => {
+                  const isActive = activePremiumFilters.includes(f.id);
+                  const isUserPremium = hasPremiumFeature(userProfile, 'advanced_filters');
+                  return (
+                    <Button
+                      key={f.id}
+                      onClick={() => handlePremiumFilterClick(f.id)}
+                      variant={isActive ? "default" : "outline"}
+                      className={cn(
+                        "flex-shrink-0 flex items-center justify-center rounded-full h-8 px-4 text-[10px] font-black uppercase tracking-wider transition-all",
+                        isActive
+                          ? "bg-amber-500 hover:bg-amber-600 text-white border-none shadow-lg shadow-amber-500/20"
+                          : "bg-white/80 dark:bg-neutral-800/80 border-slate-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300"
+                      )}
+                    >
+                      {!isUserPremium && <Lock className="h-3 w-3 mr-1 text-amber-500 fill-amber-500/10 shrink-0" />}
+                      {f.icon && <f.icon className={cn("h-3.5 w-3.5 mr-1 shrink-0", isActive ? "text-white" : "text-amber-500")} />}
+                      <span className="whitespace-nowrap">{language === 'de' ? f.label : f.labelEn}</span>
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Search and Radius Row */}

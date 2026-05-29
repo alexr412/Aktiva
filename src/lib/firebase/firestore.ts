@@ -26,6 +26,7 @@ import {
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, Activity, Chat, ActivityCategory } from '@/lib/types';
+import { validateChatMessage } from '@/lib/moderation/blacklist';
 
 type CreateActivityPayload = {
   place?: Place;
@@ -173,7 +174,10 @@ export async function createActivity({
   if (!db) {
     throw new Error('Firestore is not initialized.');
   }
-  
+
+  if (description && !validateChatMessage(description)) {
+    throw new Error('Diese Nachricht enthält nicht erlaubte Inhalte.');
+  }
   const isCustomActivity = !place;
   const placeIdValue = isCustomActivity ? "custom" : (place?.id || "unknown");
   
@@ -860,6 +864,10 @@ export async function sendMessage(
   if (!db) throw new Error('Firestore is not initialized.');
   if (!text.trim()) return;
 
+  if (!validateChatMessage(text)) {
+    throw new Error('Diese Nachricht enthält nicht erlaubte Inhalte.');
+  }
+
   const chatRef = doc(db, 'chats', chatId);
   const chatSnap = await getDoc(chatRef);
   if (!chatSnap.exists()) return;
@@ -914,6 +922,9 @@ export async function sendMessage(
 
 export async function editMessage(chatId: string, messageId: string, newText: string): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
+  if (!validateChatMessage(newText)) {
+    throw new Error('Diese Nachricht enthält nicht erlaubte Inhalte.');
+  }
   const messageRef = doc(db, 'chats', chatId, 'messages', messageId);
   await updateDoc(messageRef, {
     text: newText.trim(),
@@ -1224,6 +1235,12 @@ export async function checkIfUserReviewed(activityId: string, reviewerId: string
 export async function submitMultiReview(activityId: string, reviewerId: string, reviews: any[]): Promise<void> {
     if (!db) throw new Error('Firestore is not initialized.');
 
+    for (const review of reviews) {
+        if (review.comment && !validateChatMessage(review.comment)) {
+            throw new Error("Diese Nachricht enthält nicht erlaubte Inhalte.");
+        }
+    }
+
     try {
         await runTransaction(db, async (transaction) => {
             const activityRef = doc(db!, 'activities', activityId);
@@ -1520,6 +1537,69 @@ export async function earnToken(userId: string) {
     tokens: increment(1)
   });
 }
+
+export async function boostEntity(
+  userId: string,
+  entityId: string,
+  durationHours: 6 | 12 | 24,
+  type: 'activity' | 'place'
+): Promise<void> {
+  if (!db) throw new Error('Firestore is not initialized.');
+
+  const userRef = doc(db, 'users', userId);
+  const boostRef = doc(collection(db, 'boosts'));
+  const entityRef = doc(db, type === 'activity' ? 'activities' : 'places', entityId);
+
+  await runTransaction(db, async (transaction) => {
+    const userSnap = await transaction.get(userRef);
+    if (!userSnap.exists()) throw new Error('Nutzerprofil existiert nicht.');
+    const userData = userSnap.data() as UserProfile;
+    const tokens = userData.tokens || 0;
+
+    if (tokens < 1) throw new Error('Ungenügend Token vorhanden.');
+
+    const entitySnap = await transaction.get(entityRef);
+    if (entitySnap.exists()) {
+      const entityData = entitySnap.data() as any;
+      if (entityData.isBoosted && entityData.boostExpiresAt) {
+        const expiresMillis = typeof entityData.boostExpiresAt.toMillis === 'function'
+          ? entityData.boostExpiresAt.toMillis()
+          : typeof entityData.boostExpiresAt.toDate === 'function'
+            ? entityData.boostExpiresAt.toDate().getTime()
+            : new Date(entityData.boostExpiresAt).getTime();
+        if (expiresMillis > Date.now()) {
+          throw new Error('Bereits aktiv geboostet.');
+        }
+      }
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
+
+    // Write boost record
+    transaction.set(boostRef, {
+      userId,
+      entityId,
+      entityType: type,
+      createdAt: serverTimestamp(),
+      expiresAt: Timestamp.fromDate(expiresAt),
+      boostLevel: 'standard',
+      multiplier: 1.06
+    });
+
+    // Deduct token
+    transaction.update(userRef, {
+      tokens: increment(-1)
+    });
+
+    // Update entity
+    transaction.update(entityRef, {
+      isBoosted: true,
+      boostExpiresAt: Timestamp.fromDate(expiresAt)
+    });
+  });
+}
+
 
 export async function runMigrationParticipantsPreview() {
   if (!db) throw new Error("Firestore not initialized");

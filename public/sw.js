@@ -61,6 +61,9 @@ self.addEventListener('fetch', (event) => {
   // Nur GET-Requests cachen (POST, PUT etc. nicht)
   if (request.method !== 'GET') return;
 
+  // Nur http oder https Requests cachen (chrome-extension:// etc. ignorieren)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
   // Firebase/Firestore Requests NICHT cachen (Echtzeit-Daten)
   if (url.hostname.includes('firestore') || 
       url.hostname.includes('firebase') ||

@@ -31,6 +31,9 @@ import {
     Info,
     Copy,
     Check,
+    FolderPlus,
+    Folder,
+    BarChart3,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,9 +45,12 @@ import type { Place, Activity } from '@/lib/types';
 import { AiRecommendation } from './ai-recommendation';
 import { ActivityInfoSheet } from './activity-info-sheet';
 import { useFavorites } from '@/contexts/favorites-context';
+import { SaveToCollectionModal } from '@/components/premium/save-to-collection-modal';
+import { OrganizerAnalyticsSheet } from '@/components/premium/organizer-analytics-sheet';
 import { cn } from '@/lib/utils';
 import { getPrimaryIconData, translateTag } from '@/lib/tag-config';
 import { formatOpeningHours } from '@/lib/tag-parser';
+import { trackInteraction } from '@/lib/telemetry';
 
 type PlaceDetailsProps = {
     place: Place;
@@ -66,6 +72,8 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     const [joiningActivityId, setJoiningActivityId] = useState<string|null>(null);
     const [selectedInfoActivity, setSelectedInfoActivity] = useState<Activity | null>(null);
     const [copied, setCopied] = useState(false);
+    const [isSaveToCollectionOpen, setIsSaveToCollectionOpen] = useState(false);
+    const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
 
     const handleCopyAddress = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -98,6 +106,38 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
         } else {
             addFavorite(place);
         }
+        trackInteraction(place.id, place.categories, 'favorite', user?.uid);
+    };
+
+    const handleSharePlace = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const shareUrl = `${window.location.origin}/?placeId=${place.id}`;
+        const shareData = {
+            title: place.name,
+            text: language === 'de' ? `Schau dir ${place.name} auf Aktiva an!` : `Check out ${place.name} on Aktiva!`,
+            url: shareUrl,
+        };
+
+        trackInteraction(place.id, place.categories, 'share', user?.uid);
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (error) {
+                console.warn("Share failed:", error);
+            }
+        } else {
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+                toast({
+                    title: language === 'de' ? 'Link kopiert!' : 'Link copied!',
+                    description: language === 'de' ? 'Link in Zwischenablage kopiert.' : 'Link copied to clipboard.'
+                });
+            } catch (err) {
+                console.error("Clipboard copy failed:", err);
+            }
+        }
     };
 
     useEffect(() => {
@@ -117,6 +157,12 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
         });
         return () => unsub();
     }, [place.id]);
+
+    useEffect(() => {
+        if (place.id) {
+            trackInteraction(place.id, place.categories, 'card_open', user?.uid);
+        }
+    }, [place.id, user?.uid, place.categories]);
 
     useEffect(() => {
         if (!db || !place.id) return;
@@ -181,19 +227,42 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     </div>
                 </div>
 
-                {/* Save Button */}
-                <Button 
-                    onClick={handleBookmarkToggle}
-                    className={cn(
-                        "absolute bottom-5 sm:bottom-6 right-5 sm:right-6 h-11 sm:h-12 px-5 sm:px-6 rounded-full font-black text-[13px] transition-all z-20 border-white/10 flex items-center gap-2 shadow-xl backdrop-blur-md",
-                        isFavorite 
-                            ? "bg-rose-500 text-white hover:bg-rose-600 border-none" 
-                            : "bg-white text-neutral-800 hover:bg-neutral-50"
-                    )}
-                >
-                    <Bookmark className={cn("h-4 w-4", isFavorite && "fill-current")} />
-                    <span>{language === 'de' ? 'Speichern' : 'Save'}</span>
-                </Button>
+                {/* Save & Share Buttons */}
+                <div className="absolute bottom-5 sm:bottom-6 right-5 sm:right-6 flex items-center gap-2 z-20">
+                    <Button 
+                        onClick={handleSharePlace}
+                        className="bg-white text-neutral-800 hover:bg-neutral-50 h-11 sm:h-12 px-4 rounded-full font-black text-[13px] transition-all border-white/10 flex items-center gap-2 shadow-xl backdrop-blur-md"
+                    >
+                        <Share2 className="h-4 w-4" />
+                        <span>{language === 'de' ? 'Teilen' : 'Share'}</span>
+                    </Button>
+                    <Button 
+                        onClick={() => setIsSaveToCollectionOpen(true)}
+                        className="bg-white text-neutral-800 hover:bg-neutral-50 h-11 sm:h-12 px-4 rounded-full font-black text-[13px] transition-all border-white/10 flex items-center gap-2 shadow-xl backdrop-blur-md"
+                    >
+                        <FolderPlus className="h-4 w-4 text-emerald-500" />
+                        <span>{language === 'de' ? 'Liste' : 'List'}</span>
+                    </Button>
+                    <Button 
+                        onClick={() => setIsAnalyticsOpen(true)}
+                        className="bg-white text-neutral-800 hover:bg-neutral-50 h-11 sm:h-12 px-4 rounded-full font-black text-[13px] transition-all border-white/10 flex items-center gap-2 shadow-xl backdrop-blur-md"
+                    >
+                        <BarChart3 className="h-4 w-4 text-violet-500" />
+                        <span>{language === 'de' ? 'Statistik' : 'Stats'}</span>
+                    </Button>
+                    <Button 
+                        onClick={handleBookmarkToggle}
+                        className={cn(
+                            "h-11 sm:h-12 px-5 sm:px-6 rounded-full font-black text-[13px] transition-all border-white/10 flex items-center gap-2 shadow-xl backdrop-blur-md",
+                            isFavorite 
+                                ? "bg-rose-500 text-white hover:bg-rose-600 border-none" 
+                                : "bg-white text-neutral-800 hover:bg-neutral-50"
+                        )}
+                    >
+                        <Bookmark className={cn("h-4 w-4", isFavorite && "fill-current")} />
+                        <span>{language === 'de' ? 'Speichern' : 'Save'}</span>
+                    </Button>
+                </div>
             </div>
 
             <ScrollArea className="flex-1 bg-white dark:bg-neutral-900 border-t border-slate-100 dark:border-neutral-800/50">
@@ -209,6 +278,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    onClick={() => trackInteraction(place.id, place.categories, 'directions', user?.uid)}
                                     className="flex items-center gap-2 text-rose-500 hover:text-rose-600 hover:underline cursor-pointer group"
                                 >
                                     <MapPin className="h-4 w-4 fill-current group-hover:scale-110 transition-transform shrink-0" />
@@ -314,7 +384,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                     <div className="flex -space-x-1.5">
                                                         {(activity.participantsPreview || []).slice(0, 3).map((p, i) => (
                                                             <div key={i} className="w-5 h-5 rounded-full border-2 border-white dark:border-neutral-800 bg-slate-200 overflow-hidden">
-                                                                <img src={p.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.uid}`} alt="avatar" className="w-full h-full object-cover" />
+                                                                <img src={p.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.uid}`} alt="avatar" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                                             </div>
                                                         ))}
                                                     </div>
@@ -382,6 +452,22 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
                 </Button>
             </div>
+
+            {/* Reusable SaveToCollectionModal */}
+            <SaveToCollectionModal
+                placeId={place.id}
+                placeName={place.name}
+                open={isSaveToCollectionOpen}
+                onOpenChange={setIsSaveToCollectionOpen}
+            />
+
+            {/* Reusable OrganizerAnalyticsSheet */}
+            <OrganizerAnalyticsSheet
+                placeId={place.id}
+                placeName={place.name}
+                open={isAnalyticsOpen}
+                onOpenChange={setIsAnalyticsOpen}
+            />
 
             {/* Reusable ActivityInfoSheet for details view */}
             <ActivityInfoSheet
