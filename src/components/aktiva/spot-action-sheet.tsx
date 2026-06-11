@@ -33,7 +33,7 @@ import { joinActivity } from '@/lib/firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, formatFirstName } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 
 interface SpotActionSheetProps {
@@ -181,7 +181,7 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
                                                         <span>{activity.participantIds.length} {language === 'de' ? 'Teilnehmer' : 'Participants'}</span>
                                                     </div>
                                                     <div className="w-1 h-1 bg-neutral-300 rounded-full" />
-                                                    <p className="truncate">Host: {activity.hostName?.split(' ')[0]}</p>
+                                                    <p className="truncate">Host: {formatFirstName(activity.hostName, 'Host')}</p>
                                                 </div>
                                             </div>
                                             <Button 
@@ -215,7 +215,7 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
                         {language === 'de' ? 'Neue Aktivität planen' : 'Plan new activity'}
                     </Button>
                     <p className="text-[10px] text-center font-bold text-neutral-400 uppercase tracking-[0.2em] pt-2">
-                        Aktvia • Community Driven
+                        Aktiva • Community Driven
                     </p>
                 </SheetFooter>
             </SheetContent>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -16,12 +16,14 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/hooks/use-language';
 import { signIn, signOut, sendPasswordReset, signInWithGoogle, signInWithApple } from '@/lib/firebase/auth';
-import { sendEmailVerification } from 'firebase/auth';
+import { sendEmailVerification, type User } from 'firebase/auth';
+import { debugLog } from '@/lib/debug';
 import { db } from '@/lib/firebase/client';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Loader2, 
@@ -30,15 +32,23 @@ import {
   Eye, 
   EyeOff, 
   MapPin,
-  AlertCircle,
-  Info
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
   const language = useLanguage();
   const { toast } = useToast();
+  const { user, userProfile, loading: authLoading, setSocialLegalConsentPending } = useAuth();
 
   const [resetEmail, setResetEmail] = useState('');
   const [isResetting, setIsResetting] = useState(false);
@@ -51,6 +61,58 @@ export default function LoginPage() {
     description: string;
     variant: 'error' | 'info';
   } | null>(null);
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const isDev = process.env.NODE_ENV === 'development';
+    if (isDev && typeof window !== 'undefined') {
+      import('firebase/auth').then(({ signInWithCustomToken }) => {
+        import('@/lib/firebase/client').then(({ auth }) => {
+          (window as any).__AKTIVA_DEBUG_AUTH__ = {
+            signInWithCustomToken,
+            auth
+          };
+          debugLog("auth", "Exposed __AKTIVA_DEBUG_AUTH__ on window");
+        });
+      });
+    }
+  }, []);
+
+  // Bereits eingeloggte Nutzer weiterleiten
+  useEffect(() => {
+    if (user && userProfile && !authLoading && userProfile.legalAcceptedAt) {
+      if (user.emailVerified) {
+        if (userProfile.onboardingCompleted) {
+          router.replace('/');
+        } else {
+          router.replace('/onboarding');
+        }
+      }
+    }
+  }, [user, userProfile, authLoading, router]);
+
+  useEffect(() => {
+    const registration = searchParams.get('registration');
+    const verification = searchParams.get('verification');
+    if (registration === 'success') {
+      setLoginError({
+        title: language === 'de' ? 'Registrierung erfolgreich' : 'Registration successful',
+        description: language === 'de'
+          ? "Dein Konto wurde erfolgreich erstellt. Bitte bestätige deine E-Mail-Adresse (prüfe auch den Spam-Ordner), um dich einzuloggen."
+          : "Your account was successfully created. Please verify your email address (check your spam folder) to log in.",
+        variant: 'info'
+      });
+    } else if (verification === 'required') {
+      setLoginError({
+        title: language === 'de' ? 'Verifizierung erforderlich' : 'Verification Required',
+        description: language === 'de'
+          ? "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Wir haben dir einen Bestätigungs-Link an deine E-Mail-Adresse gesendet. Prüfe bitte auch deinen Spam-Ordner."
+          : "Please verify your email address to log in. We have sent a verification link to your email address. Please check your spam folder as well.",
+        variant: 'info'
+      });
+    }
+  }, [searchParams, language]);
 
   const formSchema = z.object({
     email: z.string().min(1, { message: language === 'de' ? 'Email oder Username ist erforderlich.' : 'Email or username is required.' }),
@@ -66,6 +128,7 @@ export default function LoginPage() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    
     setIsLoading(true);
     setLoginError(null);
     try {
@@ -95,12 +158,27 @@ export default function LoginPage() {
       if (!user.emailVerified) {
         let verificationEmailSent = false;
         try {
-          await sendEmailVerification(user);
-          verificationEmailSent = true;
+          const { httpsCallable } = await import('firebase/functions');
+          const { functions: clientFunctions } = await import('@/lib/firebase/client');
+          if (clientFunctions) {
+            const checkThrottle = httpsCallable(clientFunctions, 'checkAndRecordVerificationEmail');
+            const res = await checkThrottle();
+            const { allowed } = res.data as { allowed: boolean };
+            if (allowed) {
+              await sendEmailVerification(user);
+              verificationEmailSent = true;
+            }
+          }
         } catch (verifError: any) {
-          console.warn("Could not resend email verification link:", verifError);
+          console.warn("Could not check/resend email verification link:", verifError);
         }
 
+        console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
+          source: "onSubmit credentials login - email unverified",
+          target: "signOut & show verification required error",
+          uid: user.uid,
+          timestamp: Date.now()
+        });
         // ALWAYS sign out to prevent the user from remaining authenticated
         await signOut(); 
 
@@ -119,17 +197,35 @@ export default function LoginPage() {
         return;
       }
 
+      let onboardingCompleted = false;
+      try {
+        const userDocRef = doc(db!, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          onboardingCompleted = !!userDocSnap.data().onboardingCompleted;
+        }
+      } catch (err) {
+        console.warn("Could not fetch onboarding status in onSubmit:", err);
+      }
+
       toast({
         title: language === 'de' ? 'Login erfolgreich' : 'Login successful',
         description: language === 'de' ? "Willkommen zurück!" : "Welcome back!",
       });
-      router.push('/');
+      
+      if (onboardingCompleted) {
+        router.push('/');
+      } else {
+        router.push('/onboarding');
+      }
     } catch (error: any) {
       console.error(error);
       let errorMessage = language === 'de' ? 'Ein unerwarteter Fehler ist aufgetreten.' : 'An unexpected error occurred.';
 
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         errorMessage = language === 'de' ? 'E-Mail oder Passwort ist falsch.' : 'Invalid email or password.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = language === 'de' ? 'Die E-Mail-Adresse ist ungültig.' : 'The email address is invalid.';
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = language === 'de' ? 'Zu viele Fehlversuche. Bitte versuche es später erneut.' : 'Too many attempts. Please try again later.';
       } else if (error.message && error.message.includes(language === 'de' ? "Zugriff verweigert" : "Access Denied")) {
@@ -168,42 +264,222 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (isLoading) return;
+    
+    
     setLoginError(null);
+    setIsLoading(true);
     try {
-      await signInWithGoogle();
+      
+      const { user, isNewUser } = await signInWithGoogle();
+      
+      
+      
+      const userDocRef = doc(db!, 'users', user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      const profileData = userDocSnap.exists() ? userDocSnap.data() : null;
+      const hasAcceptedLegal = !!profileData?.legalAcceptedAt;
+      
+
+      if (isNewUser || !hasAcceptedLegal) {
+        
+        setSocialLegalConsentPending(true);
+        
+        setIsLoading(false);
+        return;
+      }
+
+      await user.reload();
+      
+      if (!user.emailVerified) {
+        let verificationEmailSent = false;
+        try {
+          const { httpsCallable } = await import('firebase/functions');
+          const { functions: clientFunctions } = await import('@/lib/firebase/client');
+          if (clientFunctions) {
+            const checkThrottle = httpsCallable(clientFunctions, 'checkAndRecordVerificationEmail');
+            const res = await checkThrottle();
+            const { allowed } = res.data as { allowed: boolean };
+            if (allowed) {
+              await sendEmailVerification(user);
+              verificationEmailSent = true;
+            }
+          }
+        } catch (verifError: any) {
+          console.warn("Could not check/resend email verification link:", verifError);
+        }
+
+        console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
+          source: "handleGoogleSignIn - email unverified",
+          target: "signOut & redirect /login?verification=required",
+          uid: user.uid,
+          timestamp: Date.now()
+        });
+        await signOut();
+
+        router.replace('/login?verification=required');
+        setLoginError({
+          title: language === 'de' ? 'Verifizierung erforderlich' : 'Verification Required',
+          description: language === 'de' 
+            ? (verificationEmailSent
+                ? "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Wir haben dir einen neuen Bestätigungs-Link an deine E-Mail-Adresse gesendet. Prüfe bitte auch deinen Spam-Ordner."
+                : "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Ein neuer Bestätigungs-Link konnte erst vor kurzem gesendet werden, bitte prüfe dein Postfach (auch Spam-Ordner).")
+            : (verificationEmailSent
+                ? "Please verify your email address to log in. We have sent a new verification link to your email address. Please check your spam folder as well."
+                : "Please verify your email address to log in. A new verification link could not be sent recently, please check your inbox."),
+          variant: 'info'
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const onboardingCompleted = !!profileData?.onboardingCompleted;
+
       toast({
         title: language === 'de' ? 'Login erfolgreich' : 'Login successful',
         description: language === 'de' ? "Willkommen zurück!" : "Welcome back!",
       });
-      router.push('/');
+
+      console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
+        source: "handleGoogleSignIn - flow completed",
+        target: onboardingCompleted ? "/" : "/onboarding",
+        uid: user.uid,
+        onboardingCompleted,
+        timestamp: Date.now()
+      });
+      if (onboardingCompleted) {
+        router.push('/');
+      } else {
+        router.push('/onboarding');
+      }
     } catch (error: any) {
-      console.error(error);
+      console.error("[LEGAL DEBUG] Google login failed", {
+        error: error.message || error,
+        timestamp: Date.now()
+      });
+      let desc = language === 'de' ? 'Google-Login konnte nicht abgeschlossen werden.' : 'Google login could not be completed.';
+      if (error.code === 'auth/popup-closed-by-user') {
+        desc = language === 'de' ? 'Das Anmeldefenster wurde geschlossen.' : 'The sign-in popup was closed.';
+      }
       setLoginError({
         title: language === 'de' ? 'Login fehlgeschlagen' : 'Login failed',
-        description: language === 'de' ? 'Google-Login konnte nicht abgeschlossen werden.' : 'Google login could not be completed.',
+        description: desc,
         variant: 'error'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleAppleSignIn = async () => {
+    if (isLoading) return;
+    
+    
     setLoginError(null);
+    setIsLoading(true);
     try {
-      await signInWithApple();
+      
+      const { user, isNewUser } = await signInWithApple();
+      
+      
+      
+      const userDocRef = doc(db!, 'users', user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      const profileData = userDocSnap.exists() ? userDocSnap.data() : null;
+      const hasAcceptedLegal = !!profileData?.legalAcceptedAt;
+      
+
+      if (isNewUser || !hasAcceptedLegal) {
+        
+        setSocialLegalConsentPending(true);
+        
+        setIsLoading(false);
+        return;
+      }
+
+      await user.reload();
+      
+      if (!user.emailVerified) {
+        let verificationEmailSent = false;
+        try {
+          const { httpsCallable } = await import('firebase/functions');
+          const { functions: clientFunctions } = await import('@/lib/firebase/client');
+          if (clientFunctions) {
+            const checkThrottle = httpsCallable(clientFunctions, 'checkAndRecordVerificationEmail');
+            const res = await checkThrottle();
+            const { allowed } = res.data as { allowed: boolean };
+            if (allowed) {
+              await sendEmailVerification(user);
+              verificationEmailSent = true;
+            }
+          }
+        } catch (verifError: any) {
+          console.warn("Could not check/resend email verification link:", verifError);
+        }
+
+        console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
+          source: "handleAppleSignIn - email unverified",
+          target: "signOut & redirect /login?verification=required",
+          uid: user.uid,
+          timestamp: Date.now()
+        });
+        await signOut();
+
+        router.replace('/login?verification=required');
+        setLoginError({
+          title: language === 'de' ? 'Verifizierung erforderlich' : 'Verification Required',
+          description: language === 'de' 
+            ? (verificationEmailSent
+                ? "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Wir haben dir einen neuen Bestätigungs-Link an deine E-Mail-Adresse gesendet. Prüfe bitte auch deinen Spam-Ordner."
+                : "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Ein neuer Bestätigungs-Link konnte erst vor kurzem gesendet werden, bitte prüfe dein Postfach (auch Spam-Ordner).")
+            : (verificationEmailSent
+                ? "Please verify your email address to log in. We have sent a new verification link to your email address. Please check your spam folder as well."
+                : "Please verify your email address to log in. A new verification link could not be sent recently, please check your inbox."),
+          variant: 'info'
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const onboardingCompleted = !!profileData?.onboardingCompleted;
+
       toast({
         title: language === 'de' ? 'Login erfolgreich' : 'Login successful',
         description: language === 'de' ? "Willkommen zurück!" : "Welcome back!",
       });
-      router.push('/');
+
+      console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
+        source: "handleAppleSignIn - flow completed",
+        target: onboardingCompleted ? "/" : "/onboarding",
+        uid: user.uid,
+        onboardingCompleted,
+        timestamp: Date.now()
+      });
+      if (onboardingCompleted) {
+        router.push('/');
+      } else {
+        router.push('/onboarding');
+      }
     } catch (error: any) {
-      console.error(error);
+      console.error("[LEGAL DEBUG] Apple login failed", {
+        error: error.message || error,
+        timestamp: Date.now()
+      });
+      let desc = language === 'de' ? 'Apple-Login konnte nicht abgeschlossen werden.' : 'Apple login could not be completed.';
+      if (error.code === 'auth/popup-closed-by-user') {
+        desc = language === 'de' ? 'Das Anmeldefenster wurde geschlossen.' : 'The sign-in popup was closed.';
+      }
       setLoginError({
         title: language === 'de' ? 'Login fehlgeschlagen' : 'Login failed',
-        description: language === 'de' ? 'Apple-Login konnte nicht abgeschlossen werden.' : 'Apple login could not be completed.',
+        description: desc,
         variant: 'error'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
+
+
 
 
   return (
@@ -218,8 +494,8 @@ export default function LoginPage() {
           className="mb-16 text-center"
         >
           <div className="flex items-center justify-center gap-2 mb-10">
-              <MapPin className="w-10 h-10 text-[#10b981]" />
-              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">aktiva<span className="text-[#10b981]">.</span></h1>
+              <MapPin className="w-10 h-10 text-primary" />
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">aktiva<span className="text-primary">.</span></h1>
           </div>
           <h1 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-neutral-100 font-heading leading-tight mb-2">EXPLORE MORE</h1>
           <p className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px]">Connect. Explore. Live.</p>
@@ -238,12 +514,12 @@ export default function LoginPage() {
                   </FormLabel>
                   <FormControl>
                     <div className="relative group">
-                      <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#10b981] transition-colors z-10" />
+                      <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-primary transition-colors z-10" />
                       <Input 
-                        placeholder="Email / Username" 
+                        placeholder={language === 'de' ? 'E-Mail / Benutzername' : 'Email / Username'} 
                         autoComplete="username"
                         {...field} 
-                        className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-emerald-500/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm tracking-wider shadow-none" 
+                        className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm tracking-wider shadow-none" 
                       />
                     </div>
                   </FormControl>
@@ -258,29 +534,33 @@ export default function LoginPage() {
               render={({ field }) => (
                 <FormItem className="space-y-1">
                   <div className="flex items-baseline justify-between px-1">
-                    <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Password</FormLabel>
+                    <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{language === 'de' ? 'Passwort' : 'Password'}</FormLabel>
                     <button 
                       type="button" 
-                      onClick={() => setIsResetDialogOpen(true)}
-                      className="text-xs font-black text-[#10b981] hover:underline underline-offset-2 transition-all uppercase tracking-widest"
+                      onClick={() => {
+                        
+                        setIsResetDialogOpen(true);
+                      }}
+                      className="text-xs font-black text-primary hover:underline underline-offset-2 transition-all uppercase tracking-widest"
                     >
-                      Forgot Password?
+                      {language === 'de' ? 'Passwort vergessen?' : 'Forgot Password?'}
                     </button>
                   </div>
                   <FormControl>
                     <div className="relative group">
-                      <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#10b981] transition-colors z-10" />
+                      <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-primary transition-colors z-10" />
                       <Input 
                         type={showPassword ? "text" : "password"} 
                         placeholder="••••••••" 
                         autoComplete="current-password"
                         {...field} 
-                        className="h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-emerald-500/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" 
+                        className="h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" 
                       />
                       <button 
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#10b981] transition-colors"
+                        className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                        aria-label={showPassword ? (language === 'de' ? 'Passwort ausblenden' : 'Hide password') : (language === 'de' ? 'Passwort anzeigen' : 'Show password')}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -322,13 +602,13 @@ export default function LoginPage() {
             <div className="pt-4">
               <Button 
                 type="submit" 
-                className="w-full h-14 text-base font-black rounded-full bg-emerald-500 hover:bg-emerald-600 text-white transition-all active:scale-[0.98] uppercase tracking-widest !shadow-none !border-none" 
+                className="w-full h-14 text-base font-black rounded-full transition-all active:scale-[0.98] uppercase tracking-widest !shadow-none !border-none" 
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin" />
                 ) : (
-                  "Sign in"
+                  language === 'de' ? 'Anmelden' : 'Sign in'
                 )}
               </Button>
             </div>
@@ -338,7 +618,7 @@ export default function LoginPage() {
         {/* Separator */}
         <div className="w-full flex items-center gap-4 my-10 px-4">
           <div className="flex-1 h-[1px] bg-slate-100 dark:bg-neutral-900" />
-          <span className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Or</span>
+          <span className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">{language === 'de' ? 'Oder' : 'Or'}</span>
           <div className="flex-1 h-[1px] bg-slate-100 dark:bg-neutral-900" />
         </div>
 
@@ -347,6 +627,7 @@ export default function LoginPage() {
           <Button 
             variant="outline" 
             onClick={handleAppleSignIn}
+            disabled={isLoading}
             className="h-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 text-slate-900 dark:text-white font-black text-[11px] uppercase tracking-widest hover:bg-zinc-200 dark:hover:bg-neutral-800 transition-all shadow-none flex items-center justify-center"
           >
             <svg className="w-4 h-4 mr-2 shrink-0" viewBox="0 0 384 512">
@@ -357,6 +638,7 @@ export default function LoginPage() {
           <Button 
             variant="outline" 
             onClick={handleGoogleSignIn}
+            disabled={isLoading}
             className="h-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 text-slate-900 dark:text-white font-black text-[11px] uppercase tracking-widest hover:bg-zinc-200 dark:hover:bg-neutral-800 transition-all shadow-none flex items-center justify-center"
           >
             <svg className="w-4 h-4 mr-2 shrink-0" viewBox="0 0 24 24">
@@ -375,8 +657,11 @@ export default function LoginPage() {
           <p className="text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
             {language === 'de' ? 'Neu hier?' : 'New here?'} 
             <button 
-              onClick={() => router.push('/signup')}
-              className="text-[#10b981] ml-2 hover:underline underline-offset-4 font-black"
+              onClick={() => {
+                
+                router.push('/signup');
+              }}
+              className="text-primary ml-2 hover:underline underline-offset-4 font-black"
             >
               {language === 'de' ? 'Registrieren' : 'Sign up'}
             </button>
@@ -404,13 +689,13 @@ export default function LoginPage() {
                 {language === 'de' ? 'Deine E-Mail-Adresse' : 'Your Email'}
               </label>
               <div className="relative group mt-2">
-                <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-[#10b981]" />
+                <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
                 <Input 
                   type="email" 
                   placeholder="name@example.com" 
                   value={resetEmail} 
                   onChange={(e) => setResetEmail(e.target.value)} 
-                  className="h-14 pl-14 pr-4 rounded-full bg-slate-100 dark:bg-neutral-900 border-none font-bold text-sm focus-visible:ring-emerald-500/20"
+                  className="h-14 pl-14 pr-4 rounded-full bg-slate-100 dark:bg-neutral-900 border-none font-bold text-sm focus-visible:ring-primary/20"
                 />
               </div>
             </div>
@@ -425,7 +710,7 @@ export default function LoginPage() {
             </Button>
             <Button 
               onClick={handlePasswordReset} 
-              className="rounded-full h-14 font-black bg-emerald-500 hover:opacity-90 text-white flex-1 uppercase tracking-widest" 
+              className="rounded-full h-14 font-black flex-1 uppercase tracking-widest" 
               disabled={isResetting || !resetEmail}
             >
               {isResetting ? (
@@ -437,6 +722,24 @@ export default function LoginPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+
+
+      {isLoading && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-xl">
+          <div className="mx-6 flex max-w-sm flex-col items-center rounded-3xl border border-white/20 bg-white/10 px-8 py-7 text-center shadow-2xl">
+            <div className="mb-5 h-12 w-12 animate-spin rounded-full border-4 border-white/30 border-t-white" />
+            <h2 className="text-lg font-semibold text-white">
+              {language === 'de' ? 'Verifizierung läuft' : 'Verification in progress'}
+            </h2>
+            <p className="mt-2 text-sm text-white/75">
+              {language === 'de' 
+                ? 'Wir prüfen deine Anmeldung und bereiten die E-Mail-Verifizierung vor.' 
+                : 'We are verifying your credentials and preparing the email verification.'}
+            </p>
+          </div>
+        </div>
+      )}
 
     </main>
   );

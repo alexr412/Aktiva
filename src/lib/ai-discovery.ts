@@ -33,7 +33,12 @@ export function generateDiscoverySuggestions(
       let reasonEn = 'Discovery of the day';
 
       const cats = place.categories.map(c => c.toLowerCase());
-      const name = place.name.toLowerCase();
+      const rawName = place.name;
+      const name = (typeof rawName === 'string'
+        ? rawName
+        : (rawName && typeof rawName === 'object'
+           ? ((rawName as any).de || (rawName as any).en || Object.values(rawName).find(v => typeof v === 'string') || '')
+           : String(rawName || ''))).toLowerCase();
 
       // 1. Wetter-Heuristiken
       const isOutdoor = cats.some(c => c.includes('outdoor') || c.includes('park') || c.includes('nature') || c.includes('zoo') || c.includes('beach'));

@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { signOut } from '@/lib/firebase/auth';
-import { fetchUserActivities, joinActivity, getUserProfile, acceptFriendRequest, declineFriendRequest, createActivity } from '@/lib/firebase/firestore';
+import { fetchUserActivities, joinActivity, getPublicProfileClient, acceptFriendRequest, declineFriendRequest, createActivity, updatePresetAvatar, removeUserAvatar } from '@/lib/firebase/firestore';
+import { DEFAULT_AVATARS } from '@/lib/avatar-options';
 import type { Activity, UserProfile, Place, Review, ActivityCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, onSnapshot } from 'firebase/firestore';
@@ -15,26 +16,30 @@ import { useFavorites } from '@/contexts/favorites-context';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/image-utils';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ActivityListItem } from '@/components/aktvia/activity-list-item';
+import { ActivityListItem } from '@/components/aktiva/activity-list-item';
 import { LogOut, User, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell, Camera, Search, Scale, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
+import { validateAvatarFile } from '@/lib/avatar-utils';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
-import { PlaceCard } from '@/components/aktvia/place-card';
+import { PlaceCard } from '@/components/aktiva/place-card';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
-import { PlaceDetails } from '@/components/aktvia/place-details';
-import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
+import { PlaceDetails } from '@/components/aktiva/place-details';
+import avatarStyles from './avatar-dialog.module.css';
+import { CreateActivityDialog } from '@/components/aktiva/create-activity-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FriendList from '@/components/profile/FriendList';
 import { ProfileActivityCard } from "@/components/profile/ProfileActivityCard";
-import { cn } from '@/lib/utils';
+import { cn, formatFirstName } from '@/lib/utils';
 import { UserBadge } from '@/components/common/UserBadge';
 import { format } from 'date-fns';
 
 
+
+const LEVEL_THRESHOLDS = [0, 50, 150, 300, 500, 800, 1200, 1700, 2300, 3000];
 
 export default function ProfilePage() {
     const { user, userProfile, loading: authLoading } = useAuth();
@@ -68,14 +73,92 @@ export default function ProfilePage() {
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
     const [isUploading, setIsUploading] = useState(false);
 
+    // Dialog States for Avatar Selection
+    const [isAvatarSelectionDialogOpen, setIsAvatarSelectionDialogOpen] = useState(false);
+    const [selectedPresetUrl, setSelectedPresetUrl] = useState<string | null>(null);
+    const [isSavingPreset, setIsSavingPreset] = useState(false);
+    const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+    const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
+
+    const handleOpenAvatarDialog = () => {
+        const currentPhotoUrl = userData?.photoURL || '';
+        const hasPreset = DEFAULT_AVATARS.some(av => av.url === currentPhotoUrl);
+        setSelectedPresetUrl(hasPreset ? currentPhotoUrl : null);
+        setShowRemoveConfirm(false);
+        setIsAvatarSelectionDialogOpen(true);
+    };
+
+    const handleSavePresetAvatar = async () => {
+        if (!selectedPresetUrl || !user?.uid) return;
+        setIsSavingPreset(true);
+        try {
+            await updatePresetAvatar(user.uid, selectedPresetUrl);
+            setUserData((prev: UserProfile | null) => (prev ? { ...prev, photoURL: selectedPresetUrl } : { photoURL: selectedPresetUrl } as UserProfile));
+            setIsAvatarSelectionDialogOpen(false);
+            setShowRemoveConfirm(false);
+            setSelectedPresetUrl(null);
+            toast({ title: language === 'de' ? "Profilbild aktualisiert!" : "Profile picture updated!" });
+        } catch (error: any) {
+            console.error(error);
+            toast({
+                variant: 'destructive',
+                title: language === 'de' ? 'Fehler beim Speichern' : 'Error saving preset',
+                description: error.message
+            });
+        } finally {
+            setIsSavingPreset(false);
+        }
+    };
+
+    const handleRemoveAvatar = async () => {
+        if (!user?.uid) return;
+        setIsRemovingAvatar(true);
+        try {
+            const currentPhotoUrl = userData?.photoURL || null;
+            await removeUserAvatar(user.uid, currentPhotoUrl);
+            setUserData((prev: UserProfile | null) => (prev ? { ...prev, photoURL: null } : { photoURL: null } as UserProfile));
+            
+            setIsAvatarSelectionDialogOpen(false);
+            setShowRemoveConfirm(false);
+            setSelectedPresetUrl(null);
+            
+            toast({ title: language === 'de' ? "Avatar entfernt!" : "Avatar removed!" });
+        } catch (error: any) {
+            console.error(error);
+            toast({
+                variant: 'destructive',
+                title: language === 'de' ? 'Fehler beim Entfernen' : 'Error removing avatar',
+                description: error.message
+            });
+        } finally {
+            setIsRemovingAvatar(false);
+        }
+    };
+
+    const handleTriggerCustomUpload = () => {
+        setIsAvatarSelectionDialogOpen(false);
+        setTimeout(() => {
+            fileInputRef.current?.click();
+        }, 100);
+    };
+
     useEffect(() => {
         if (user) {
             if (userProfile) {
+                if (userProfile.onboardingCompleted === false) {
+                    router.replace('/onboarding');
+                    return;
+                }
                 setUserData(userProfile);
             } else {
                 getDoc(doc(db!, "users", user.uid)).then(snap => {
                     if (snap.exists()) {
-                        setUserData(snap.data() as UserProfile);
+                        const data = snap.data() as UserProfile;
+                        if (data.onboardingCompleted === false) {
+                            router.replace('/onboarding');
+                            return;
+                        }
+                        setUserData(data);
                     }
                 });
             }
@@ -84,7 +167,7 @@ export default function ProfilePage() {
                 const fetchRequestProfiles = async () => {
                     setLoadingRequests(true);
                     const profiles = await Promise.all(
-                        userProfile.friendRequestsReceived!.map(uid => getUserProfile(uid))
+                        userProfile.friendRequestsReceived!.map(uid => getPublicProfileClient(uid).catch(() => null))
                     );
                     setRequestProfiles(profiles.filter(p => p !== null) as UserProfile[]);
                     setLoadingRequests(false);
@@ -113,7 +196,7 @@ export default function ProfilePage() {
             };
             loadActivities();
         } else if (!authLoading) {
-            router.push('/login');
+            router.push('/login?redirect=/profile');
         }
     }, [user, authLoading, router, toast, userProfile]);
 
@@ -141,10 +224,19 @@ export default function ProfilePage() {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+        if (!file) {
+            e.target.value = '';
+            return;
+        }
 
-        if (file.size > 5242880) {
-            toast({ variant: 'destructive', title: language === 'de' ? 'Datei zu groß' : 'File too large', description: language === 'de' ? 'Bitte wähle ein Bild unter 5MB.' : 'Please choose an image under 5MB.' });
+        const validation = validateAvatarFile(file, language);
+        if (!validation.isValid) {
+            toast({
+                variant: 'destructive',
+                title: language === 'de' ? 'Ungültiges Bild' : 'Invalid Image',
+                description: validation.error,
+            });
+            e.target.value = '';
             return;
         }
 
@@ -179,6 +271,9 @@ export default function ProfilePage() {
             toast({ variant: 'destructive', title: language === 'de' ? 'Upload fehlgeschlagen' : 'Upload failed', description: error.message });
         } finally {
             setIsUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         }
     };
 
@@ -313,8 +408,8 @@ export default function ProfilePage() {
         </button>
     );
 
-    const photoUrlToDisplay = userData?.photoURL || user.photoURL || '';
-    const displayName = userData?.displayName || user.displayName || (language === 'de' ? 'Anonymer Nutzer' : 'Anonymous User');
+    const photoUrlToDisplay = userData?.photoURL || '';
+    const displayName = formatFirstName(userData?.displayName || user.displayName, language === 'de' ? 'Anonymer Nutzer' : 'Anonymous User');
 
     const calculateAge = (birthday: string) => {
         if (!birthday) return null;
@@ -381,25 +476,37 @@ export default function ProfilePage() {
                 <div className="relative px-6 w-full max-w-4xl mx-auto z-10 pt-4 flex flex-col items-center">
 
                     {/* Avatar Section */}
-                    <div className="relative mb-10 group">
-
-
-                        <Avatar 
-                            className="h-32 w-32 relative z-10 transition-transform active:scale-95"
-                            isPremium={userData?.isPremium}
-                            isCreator={userData?.isCreator}
-                            isSupporter={userData?.isSupporter}
-                        >
-                            <AvatarImage src={photoUrlToDisplay} alt="Profil" />
-                            <AvatarFallback className="text-5xl bg-neutral-100 dark:bg-neutral-800 text-primary font-black">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                    <div className="flex flex-col items-center mb-10">
+                        <div className="relative group cursor-pointer" onClick={handleOpenAvatarDialog}>
+                            <ProfileAvatar 
+                                className="h-32 w-32 relative z-10 transition-transform group-hover:scale-105 active:scale-95"
+                                photoURL={photoUrlToDisplay}
+                                displayName={displayName}
+                                isPremium={userData?.isPremium}
+                                isCreator={userData?.isCreator}
+                                isSupporter={userData?.isSupporter}
+                            />
+                            {/* Hover overlay */}
+                            <div className="absolute inset-0 z-20 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-black uppercase tracking-widest text-center px-2">
+                                {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
+                            </div>
+                            
+                            <button
+                                type="button"
+                                className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-none hover:scale-110 active:scale-90 transition-all z-30"
+                            >
+                                <Camera className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/jpeg,image/png,image/webp" />
+                        
                         <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-none hover:scale-110 active:scale-90 transition-all z-20"
+                            type="button"
+                            onClick={handleOpenAvatarDialog}
+                            className="mt-3 text-xs font-bold text-primary hover:underline uppercase tracking-widest"
                         >
-                            <Camera className="h-4 w-4" />
+                            {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
                         </button>
-                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                     </div>
 
                     {/* Name & Title */}
@@ -443,6 +550,81 @@ export default function ProfilePage() {
                             </button>
                         ) : <div className="h-4" />}
 
+                        {/* Gamification / Level & XP Card */}
+                        {userData && (
+                            <div className="w-full max-w-2xl bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-850 rounded-[2.5rem] p-6 mb-6 shadow-sm flex flex-col gap-6">
+                                {/* Level info */}
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1 text-left">
+                                        <div className="flex items-center gap-2">
+                                            <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-3 py-1 rounded-full text-xs tracking-wider border-none">
+                                                {language === 'de' ? `LEVEL ${userData.level || 1}` : `LEVEL ${userData.level || 1}`}
+                                            </Badge>
+                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                                {userData.level && userData.level >= 10 
+                                                    ? (language === 'de' ? 'Maximales Level erreicht' : 'Max Level Reached') 
+                                                    : (language === 'de' ? `${(LEVEL_THRESHOLDS[userData.level || 1] || 3000) - (userData.pointsLifetime || 0)} XP bis Level ${(userData.level || 1) + 1}` : `${(LEVEL_THRESHOLDS[userData.level || 1] || 3000) - (userData.pointsLifetime || 0)} XP to Level ${(userData.level || 1) + 1}`)}
+                                            </span>
+                                        </div>
+                                        <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2 mt-1">
+                                            {userData.pointsBalance || 0} <span className="text-sm font-black uppercase text-slate-400 font-heading">Aktiva Points</span>
+                                            <span className="text-slate-300">|</span>
+                                            <span className="text-sm font-bold text-slate-500">{userData.pointsLifetime || 0} XP Lifetime</span>
+                                        </h3>
+                                    </div>
+                                    <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-500 font-black text-lg">
+                                        🏆
+                                    </div>
+                                </div>
+
+                                {/* Progress bar */}
+                                {userData.level && userData.level < 10 && (
+                                    <div className="w-full space-y-2">
+                                        <div className="w-full bg-slate-100 dark:bg-neutral-800 h-3 rounded-full overflow-hidden">
+                                            <div 
+                                                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                                style={{ 
+                                                    width: `${Math.max(0, Math.min(100, 
+                                                        (((userData.pointsLifetime || 0) - LEVEL_THRESHOLDS[(userData.level || 1) - 1]) / 
+                                                        ((LEVEL_THRESHOLDS[userData.level || 1] || 3000) - LEVEL_THRESHOLDS[(userData.level || 1) - 1])) * 100
+                                                    ))}%` 
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                                            <span>{LEVEL_THRESHOLDS[(userData.level || 1) - 1]} XP</span>
+                                            <span>{LEVEL_THRESHOLDS[userData.level || 1] || 3000} XP</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Referral Section */}
+                                {userData.referralCode && (
+                                    <div className="border-t border-slate-100 dark:border-neutral-800 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                {language === 'de' ? 'Freunde einladen' : 'Invite Friends'}
+                                            </p>
+                                            <p className="text-xs font-bold text-slate-600 dark:text-neutral-400">
+                                                {language === 'de' ? 'Teile deinen Code für +25 Punkte pro erfolgreicher Einladung.' : 'Share your code to get +25 points per invite.'}
+                                            </p>
+                                        </div>
+                                        <div 
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(userData.referralCode!);
+                                                toast({ title: language === 'de' ? "Einladungscode kopiert!" : "Invite code copied!" });
+                                            }}
+                                            className="self-start sm:self-center flex items-center gap-2 bg-slate-50 hover:bg-slate-100 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 px-4 py-2.5 rounded-2xl cursor-pointer border border-slate-100 dark:border-neutral-800 transition-colors"
+                                        >
+                                            <span className="font-mono font-black text-sm tracking-widest text-primary">
+                                                {userData.referralCode}
+                                            </span>
+                                            <Copy className="h-4 w-4 text-slate-400 hover:text-primary transition-colors" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Stats - Asymmetric Pastel Tints */}
                         <div className="grid grid-cols-3 gap-4 w-full max-w-2xl mb-8">
@@ -464,13 +646,70 @@ export default function ProfilePage() {
 
                         {/* Compact Action Button */}
                         <Button
-                            className="h-11 rounded-full bg-[#10b981] hover:bg-emerald-600 text-white font-black text-[12px] uppercase tracking-widest px-12 transition-all active:scale-95 shadow-lg shadow-emerald-500/10 border-none"
+                            className="h-11 rounded-full font-black text-[12px] uppercase tracking-widest px-12 transition-all active:scale-95 shadow-lg shadow-primary/10 border-none"
                             onClick={() => router.push('/profile/edit')}
                         >
                             {language === 'de' ? 'Profil bearbeiten' : 'Edit Profile'}
                         </Button>
                     </div>
                 </div>
+
+                {/* Freundschaftsanfragen */}
+                {visibleRequestProfiles.length > 0 && (
+                    <div className="w-full max-w-2xl mx-auto px-6 mb-6">
+                        <div className="flex items-center gap-2 mb-3">
+                            <h3 className="text-slate-800 dark:text-neutral-200 font-bold text-sm uppercase tracking-wider">
+                                {language === 'de' ? 'Freundschaftsanfragen' : 'Friend Requests'}
+                            </h3>
+                            <span className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-[10px] font-black">
+                                {visibleRequestProfiles.length}
+                            </span>
+                        </div>
+                        <div className="space-y-3">
+                            {visibleRequestProfiles.map((reqUser) => (
+                                <div key={reqUser.uid} className="flex items-center justify-between p-4 bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-850 rounded-[2rem] shadow-sm">
+                                    <Link href={`/users/${reqUser.uid}`} className="flex items-center gap-3 hover:opacity-85 transition-opacity">
+                                        <ProfileAvatar 
+                                            className="h-10 w-10"
+                                            photoURL={reqUser.photoURL}
+                                            displayName={reqUser.displayName}
+                                            isPremium={reqUser.isPremium}
+                                            isSupporter={reqUser.isSupporter}
+                                            isCreator={reqUser.isCreator}
+                                        />
+                                        <div className="flex flex-col text-left">
+                                            <span className="font-bold text-slate-900 dark:text-white text-sm leading-tight">
+                                                {formatFirstName(reqUser.displayName, 'User')}
+                                            </span>
+                                            {reqUser.username && (
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                                    @{reqUser.username}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </Link>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            size="sm"
+                                            onClick={() => handleAcceptRequest(reqUser.uid)}
+                                            className="h-8 rounded-full font-black text-[10px] uppercase tracking-wider px-4 bg-emerald-500 hover:bg-emerald-600 text-white border-none"
+                                        >
+                                            {language === 'de' ? 'Annehmen' : 'Accept'}
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => handleDeclineRequest(reqUser.uid)}
+                                            className="h-8 rounded-full font-black text-[10px] uppercase tracking-wider px-4 text-slate-400 hover:bg-slate-100 dark:hover:bg-neutral-850"
+                                        >
+                                            {language === 'de' ? 'Ablehnen' : 'Decline'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Section: Freunde */}
                 <div className="mt-6">
@@ -531,15 +770,15 @@ export default function ProfilePage() {
                                 </Tabs>
                             ) : (
                                 <div className="text-center p-4 flex flex-col items-center justify-center gap-6 bg-white rounded-[2.5rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
-                                    <div className="bg-[#f0fdf4] p-3 rounded-2xl">
-                                        <Search className="h-6 w-6 text-[#10b981]" strokeWidth={2.5} />
+                                    <div className="bg-primary/10 p-3 rounded-2xl">
+                                        <Search className="h-6 w-6 text-primary" strokeWidth={2.5} />
                                     </div>
                                     <div className="space-y-1">
                                         <h3 className="text-lg font-black text-slate-900 tracking-tight">{language === 'de' ? 'Start Exploring' : 'Start Exploring'}</h3>
                                         <p className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-[200px] mx-auto">{language === 'de' ? 'Uncharted territory. Start exploring nearby treasures.' : 'Uncharted territory. Start exploring nearby treasures.'}</p>
                                     </div>
                                     <Link href="/" className="w-full max-w-[200px]">
-                                        <Button className="w-full h-10 rounded-full bg-[#10b981] hover:bg-emerald-600 text-white font-black tracking-tight text-[13px] shadow-none border-none">
+                                        <Button className="w-full h-10 rounded-full font-black tracking-tight text-[13px] shadow-none border-none">
                                             {language === 'de' ? 'Discover Places' : 'Discover Places'}
                                         </Button>
                                     </Link>
@@ -551,11 +790,11 @@ export default function ProfilePage() {
                         <div className="px-2">
                             {favorites.length === 0 ? (
                                 <div className="text-center p-8 flex flex-col items-center justify-center gap-6 bg-white rounded-[2rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
-                                    <div className="bg-[#f0fdf4] p-4 rounded-3xl"><Bookmark className="h-8 w-8 text-[#10b981]" strokeWidth={2.5} /></div>
+                                    <div className="bg-primary/10 p-4 rounded-3xl"><Bookmark className="h-8 w-8 text-primary" strokeWidth={2.5} /></div>
                                     <div className="space-y-1 mb-1">
                                         <h3 className="text-lg font-black text-slate-900 tracking-tight">{language === 'de' ? 'Expand Your Network' : 'Expand Your Network'}</h3>
                                     </div>
-                                    <Button onClick={() => router.push('/')} className="rounded-full h-11 px-8 font-black bg-[#10b981] hover:bg-emerald-600 text-white shadow-none border-none uppercase tracking-widest text-[10px]">
+                                    <Button onClick={() => router.push('/')} className="rounded-full h-11 px-8 font-black shadow-none border-none uppercase tracking-widest text-[10px]">
                                         {language === 'de' ? 'Discover Places' : 'Discover Places'}
                                     </Button>
 
@@ -641,14 +880,28 @@ export default function ProfilePage() {
             </Dialog>
 
             {/* Modal für Bildzuschnitt */}
-            <Dialog open={isCropModalOpen} onOpenChange={(open) => !open && !isUploading && setIsCropModalOpen(false)}>
+            <Dialog open={isCropModalOpen} onOpenChange={(open) => {
+                if (!open && !isUploading) {
+                    setIsCropModalOpen(false);
+                    setImageToCrop(null);
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                    }
+                }
+            }}>
                 <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 rounded-3xl p-6 border-none shadow-2xl overflow-hidden">
                     <DialogHeader><DialogTitle className="">{language === 'de' ? 'Bild zuschneiden' : 'Crop Image'}</DialogTitle></DialogHeader>
                     <div className="relative h-64 w-full bg-slate-900 rounded-2xl overflow-hidden mt-4">
                         {imageToCrop && <Cropper image={imageToCrop} crop={crop} zoom={zoom} aspect={1} cropShape="round" showGrid={false} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />}
                     </div>
                     <DialogFooter className="mt-6 flex gap-2">
-                        <Button variant="ghost" className="rounded-xl font-bold dark:text-neutral-400" onClick={() => { setIsCropModalOpen(false); setImageToCrop(null); }} disabled={isUploading}>{language === 'de' ? 'Abbrechen' : 'Cancel'}</Button>
+                        <Button variant="ghost" className="rounded-xl font-bold dark:text-neutral-400" onClick={() => { 
+                            setIsCropModalOpen(false); 
+                            setImageToCrop(null); 
+                            if (fileInputRef.current) {
+                                fileInputRef.current.value = '';
+                            }
+                        }} disabled={isUploading}>{language === 'de' ? 'Abbrechen' : 'Cancel'}</Button>
                         <Button onClick={handleSaveCroppedImage} className="bg-primary hover:opacity-90 text-white rounded-xl font-black flex-1" disabled={isUploading}>{isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}{language === 'de' ? 'Bild speichern' : 'Save Image'}</Button>
                     </DialogFooter>
                 </DialogContent>
@@ -672,6 +925,140 @@ export default function ProfilePage() {
             </Dialog>
 
             <CreateActivityDialog place={activityModalPlace} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
+
+             {/* Modal für Avatar-Auswahl (Presets + Custom Upload Option) */}
+             <Dialog open={isAvatarSelectionDialogOpen} onOpenChange={(open) => {
+                 setIsAvatarSelectionDialogOpen(open);
+                 if (!open) {
+                     setShowRemoveConfirm(false);
+                     setSelectedPresetUrl(null);
+                     setIsSavingPreset(false);
+                     setIsRemovingAvatar(false);
+                 }
+             }}>
+                <DialogContent className={avatarStyles.dialogContent}>
+                    {showRemoveConfirm ? (
+                        <>
+                            <DialogHeader className={avatarStyles.dialogHeader}>
+                                <DialogTitle className="text-xl font-black text-rose-600">
+                                    {language === 'de' ? 'Avatar entfernen?' : 'Remove Avatar?'}
+                                </DialogTitle>
+                                <DialogDescription className="font-medium text-slate-500 dark:text-neutral-400">
+                                    {language === 'de' 
+                                        ? 'Möchtest du deinen Avatar wirklich entfernen?' 
+                                        : 'Are you sure you want to remove your avatar?'}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter className="mt-6 flex gap-2">
+                                <Button 
+                                    variant="ghost" 
+                                    className="rounded-xl font-bold dark:text-neutral-400" 
+                                    onClick={() => setShowRemoveConfirm(false)}
+                                    disabled={isRemovingAvatar}
+                                >
+                                    {language === 'de' ? 'Abbrechen' : 'Cancel'}
+                                </Button>
+                                <Button 
+                                    onClick={handleRemoveAvatar} 
+                                    className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black flex-1 shadow-lg shadow-rose-100 dark:shadow-none"
+                                    disabled={isRemovingAvatar}
+                                >
+                                    {isRemovingAvatar ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    {language === 'de' ? 'Avatar entfernen' : 'Remove avatar'}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    ) : (
+                        <>
+                            <DialogHeader className={avatarStyles.dialogHeader}>
+                                <DialogTitle className="text-xl font-black text-slate-900 dark:text-white">
+                                    {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
+                                </DialogTitle>
+                                <DialogDescription className="font-medium text-slate-500 dark:text-neutral-400">
+                                    {language === 'de' ? 'Wähle einen vorgefertigten Avatar oder lade ein eigenes Bild hoch.' : 'Choose a preset avatar or upload your own image.'}
+                                </DialogDescription>
+                            </DialogHeader>
+                                 <div className={avatarStyles.previewWrapper}>
+                                     <img src={selectedPresetUrl ?? userData?.photoURL ?? ''} alt="Avatar preview" className={avatarStyles.previewImage} />
+                                 </div>
+
+                            {userData?.photoURL && (
+                                <div className="mt-4">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setShowRemoveConfirm(true)}
+                                        className="w-full h-11 border-rose-200 dark:border-rose-900/40 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all"
+                                    >
+                                        {language === 'de' ? 'Avatar entfernen' : 'Remove avatar'}
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* Presets Grid */}
+                            <div className="space-y-4 my-4">
+                                <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-left">
+                                    {language === 'de' ? 'Vorgefertigten Avatar wählen:' : 'Choose preset avatar:'}
+                                </p>
+                                <div className="grid grid-cols-4 gap-3 justify-items-center">
+                                    {DEFAULT_AVATARS.map((avatar) => {
+                                        const isSelected = selectedPresetUrl === avatar.url;
+                                        return (
+                                            <button
+                                                key={avatar.id}
+                                                type="button"
+                                                onClick={() => setSelectedPresetUrl(avatar.url)}
+                                                className={cn(
+                                                    avatarStyles.presetButton,
+                                                    isSelected && avatarStyles.presetButtonSelected
+                                                )}
+                                            >
+                                                <img src={avatar.url} alt={avatar.label} className="w-full h-full object-cover rounded-full" />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Custom Upload Option */}
+                            <div className="pt-2 border-t border-slate-100 dark:border-neutral-800 flex flex-col items-center">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleTriggerCustomUpload}
+                                    className={avatarStyles.uploadButton}
+                                >
+                                    <Camera className="w-4 h-4 text-slate-500" />
+                                    {language === 'de' ? 'Eigenes Bild hochladen' : 'Upload own image'}
+                                </Button>
+                            </div>
+
+                            {/* Footer Buttons */}
+                            <DialogFooter className={avatarStyles.footer}>
+                                <Button 
+                                    variant="ghost" 
+                                    className={avatarStyles.cancelBtn} 
+                                    onClick={() => {
+                                        setIsAvatarSelectionDialogOpen(false);
+                                        setSelectedPresetUrl(null);
+                                    }}
+                                    disabled={isSavingPreset}
+                                >
+                                    {language === 'de' ? 'Abbrechen' : 'Cancel'}
+                                </Button>
+                                <Button 
+                                    onClick={handleSavePresetAvatar} 
+                                    className={avatarStyles.saveBtn}
+                                    disabled={!selectedPresetUrl || isSavingPreset}
+                                >
+                                    {isSavingPreset ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                    {language === 'de' ? 'Speichern' : 'Save'}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

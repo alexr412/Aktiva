@@ -42,21 +42,21 @@ export type CategoryTab = {
   color: string;
   isSystem?: boolean;
 };
-
 export const coreTabs: CategoryTab[] = [
     { id: "Active", label: "AKTIV", labelEn: "ACTIVE", query: ["has_activities"], icon: MessageSquare, isSystem: true, color: "#22c55e" },
     { id: "Highlights", label: "Highlights", labelEn: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true, color: "#f59e0b" },
     { id: "Favorites", label: "Favoriten", labelEn: "Favorites", query: ["favorites"], icon: Bookmark, isSystem: true, color: "#f43f5e" },
-    { id: "Community", label: "Community", labelEn: "Community", query: ["user_event"], icon: Users, isSystem: true, color: "#8b5cf6" },
+    { id: "Community", label: "Community", labelEn: "Community", query: ["community"], icon: Users, isSystem: true, color: "#8b5cf6" },
 ];
 
 type CategoryFiltersProps = {
   activeCategory: string[];
   activeTabId: string;
   onCategoryChange: (categoryId: string[], tabId: string) => void;
+  vertical?: boolean;
 };
 
-export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange }: CategoryFiltersProps) {
+export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange, vertical = false }: CategoryFiltersProps) {
   const { user, userProfile } = useAuth();
   const language = useLanguage();
   const { toast } = useToast();
@@ -109,7 +109,11 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange 
 
   return (
     <>
-      <div className="flex overflow-x-auto gap-2 pb-3 -mx-4 px-4 sm:mx-0 sm:px-0 sm:scrollbar-thin sm:scrollbar-thumb-neutral-300 dark:sm:scrollbar-thumb-neutral-700 sm:scrollbar-track-transparent max-sm:hide-scrollbar sm:pb-4 items-center w-full">
+      <div className={cn(
+        vertical 
+          ? "flex flex-col gap-2 w-full items-stretch"
+          : "flex flex-nowrap overflow-x-auto md:flex-wrap md:overflow-x-visible gap-2 pb-3 md:pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar sm:pb-4 items-center w-full min-w-0"
+      )}>
         {displayedTabs.map((tab) => {
           const isActive = activeTabId === tab.id;
           return (
@@ -122,19 +126,22 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange 
                   onCategoryChange(tab.query, tab.id);
                 }
               }}
+              aria-pressed={isActive}
               className={cn(
-                "flex-shrink-0 flex items-center justify-center rounded-full h-11 font-black border-none transition-all px-6 text-[11px] uppercase tracking-wider",
+                vertical
+                  ? "w-full flex items-center justify-start rounded-2xl h-12 font-black border-none transition-all px-4 text-[11px] uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98]"
+                  : "flex-shrink-0 flex items-center justify-center rounded-full h-11 font-black border-none transition-all px-6 text-[11px] uppercase tracking-wider hover:scale-105 active:scale-95",
                 isActive 
                     ? "text-white shadow-xl shadow-primary/20" 
-                    : "shadow-md shadow-slate-200/50"
+                    : "elevation-low"
               )}
               style={{ 
                   backgroundColor: isActive ? tab.color : `${tab.color}15`,
                   color: isActive ? '#fff' : tab.color
               }}
             >
-              <tab.icon className="h-4 w-4 mr-2 shrink-0" />
-              <span className="whitespace-nowrap">{formatLabel(language === 'de' ? tab.label : (tab.labelEn || tab.label))}</span>
+              <tab.icon className="h-4 w-4 mr-3 shrink-0" />
+              <span className="whitespace-nowrap truncate">{formatLabel(language === 'de' ? tab.label : (tab.labelEn || tab.label))}</span>
             </Button>
           );
         })}
@@ -143,9 +150,14 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange 
           variant="ghost"
           size="icon"
           onClick={() => setIsConfigOpen(true)}
-          className="flex-shrink-0 rounded-full h-9 w-9 bg-white dark:bg-neutral-800 dark:border dark:border-neutral-700 shadow-sm"
+          className={cn(
+            vertical
+              ? "w-full flex items-center justify-center rounded-2xl h-12 border border-dashed border-slate-200 dark:border-neutral-800 shadow-none hover:bg-slate-50 mt-1 bg-transparent hover:scale-[1.02] active:scale-[0.98]"
+              : "flex-shrink-0 rounded-full h-11 w-11 bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 text-slate-500 dark:text-neutral-400 flex items-center justify-center hover:scale-105 active:scale-95 transition-all elevation-low"
+          )}
         >
-          <Plus className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+          <Plus className={cn("h-4 w-4 text-neutral-500 dark:text-neutral-400 shrink-0", vertical && "mr-2")} />
+          {vertical && <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{language === 'de' ? 'Kategorien anpassen' : 'Customize categories'}</span>}
         </Button>
       </div>
 
@@ -189,7 +201,7 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange 
             })}
           </div>
           <DialogFooter>
-            <Button onClick={saveConfiguration} disabled={isSaving} className="w-full h-12 font-black rounded-xl">
+            <Button onClick={saveConfiguration} disabled={isSaving} className="w-full h-14 font-black uppercase tracking-widest text-[11px] rounded-full transition-all active:scale-[0.98]">
               {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (language === 'de' ? 'Konfiguration übernehmen' : 'Apply configuration')}
             </Button>
           </DialogFooter>

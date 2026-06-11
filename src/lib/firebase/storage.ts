@@ -1,10 +1,12 @@
 'use client';
 
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc, setDoc, serverTimestamp, collection } from "firebase/firestore";
+import { doc, updateDoc, setDoc, serverTimestamp, collection, getDoc } from "firebase/firestore";
 import { db, app } from "./client";
 import { auth } from "./auth";
 import { updateProfile } from "firebase/auth";
+
+import { getExtensionFromMimeType } from "@/lib/avatar-utils";
 
 if (!app) {
     throw new Error("Firebase has not been initialized.");
@@ -16,8 +18,40 @@ export const uploadProfileImage = async (userId: string, file: File): Promise<st
   if (!auth?.currentUser || auth.currentUser.uid !== userId) {
       throw new Error("You are not authorized to perform this action.");
   }
-  const fileRef = ref(storage, `users/${userId}/profile.jpg`);
+
+  // 1. Optional Storage cleanup of old custom avatar before uploading new one
+  try {
+      const userDocRef = doc(db!, "users", userId);
+      const snap = await getDoc(userDocRef);
+      if (snap.exists()) {
+          const currentPhotoURL = snap.data().photoURL;
+          const { isStorageAvatarPath } = await import("@/lib/avatar-utils");
+          if (isStorageAvatarPath(currentPhotoURL, userId)) {
+              const { deleteObject, ref: storageRef } = await import('firebase/storage');
+              const oldFileRef = storageRef(storage, currentPhotoURL);
+              await deleteObject(oldFileRef);
+          }
+      }
+  } catch (storageError) {
+      // Suppress storage cleanup errors
+      console.warn("Firebase Storage old avatar deletion failed:", storageError);
+  }
+
+  const extension = getExtensionFromMimeType(file.type);
+  const fileRef = ref(storage, `users/${userId}/avatar/avatar.${extension}`);
   
+  // 2. Clean up other extensions to prevent clutter
+  const otherExtensions = ['jpg', 'png', 'webp'].filter(ext => ext !== extension);
+  for (const ext of otherExtensions) {
+      try {
+          const oldRef = ref(storage, `users/${userId}/avatar/avatar.${ext}`);
+          const { deleteObject } = await import('firebase/storage');
+          await deleteObject(oldRef);
+      } catch (err) {
+          // Ignore if file doesn't exist
+      }
+  }
+
   await uploadBytes(fileRef, file);
   
   const downloadURL = await getDownloadURL(fileRef);
@@ -43,8 +77,11 @@ export const submitKYCDocument = async (userId: string, file: File) => {
     throw new Error("Nicht autorisiert.");
   }
 
+  const extension = getExtensionFromMimeType(file.type);
+  const fileName = `identity_document.${extension}`;
+
   // 1. Upload file to secured storage path
-  const storageRef = ref(storage, `kyc/${userId}/${Date.now()}_${file.name}`);
+  const storageRef = ref(storage, `kyc/${userId}/${fileName}`);
   await uploadBytes(storageRef, file);
   const documentUrl = await getDownloadURL(storageRef);
 

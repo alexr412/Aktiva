@@ -1,5 +1,6 @@
 import { db } from './firebase/client';
 import { collection, doc, writeBatch } from 'firebase/firestore';
+import { TELEMETRY_EVENTS_COLLECTION } from './firebase/collections';
 
 export interface TelemetryInteraction {
   placeId: string;
@@ -13,6 +14,16 @@ export interface TelemetryInteraction {
 const interactionQueue: TelemetryInteraction[] = [];
 let flushTimeout: NodeJS.Timeout | null = null;
 const FLUSH_INTERVAL_MS = 5000; // Buffer writes for 5 seconds
+
+const EVENT_TYPE_MAP: Record<TelemetryInteraction['interactionType'], string> = {
+  card_click: 'click',
+  impression: 'impression',
+  dwell: 'dwell',
+  card_open: 'card_open',
+  favorite: 'favorite',
+  share: 'share',
+  directions: 'directions',
+};
 
 export function trackInteraction(
   placeId: string,
@@ -46,16 +57,41 @@ async function flushTelemetry() {
   interactionQueue.length = 0; // Clear the queue
 
   try {
-    const colRef = collection(db, 'telemetry_interactions');
+    const colRef = collection(db, TELEMETRY_EVENTS_COLLECTION);
     interactionsToFlush.forEach(interaction => {
       const docRef = doc(colRef);
-      batch.set(docRef, interaction);
+      
+      // Map event type for aggregation.ts expected value using explicit EVENT_TYPE_MAP
+      const eventType = EVENT_TYPE_MAP[interaction.interactionType] || interaction.interactionType;
+
+      const eventData = {
+        // Canonical Fields
+        entity_id: interaction.placeId,
+        event_type: eventType,
+        event_value: interaction.value ?? 0,
+        timestamp: new Date(interaction.timestamp).toISOString(),
+        user_id: interaction.userId ?? null,
+
+        // Legacy Compatibility Fields
+        placeId: interaction.placeId,
+        interactionType: interaction.interactionType,
+        value: interaction.value ?? 0,
+        userId: interaction.userId ?? null,
+
+        // Shared metadata
+        category: interaction.category,
+      };
+
+      batch.set(docRef, eventData);
     });
     await batch.commit();
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Telemetry] Failed to flush interactions:', error);
-    // Put them back in the queue so they aren't lost
-    interactionQueue.unshift(...interactionsToFlush);
+    // Transient error check: do not requeue on permission-denied errors
+    const isPermissionError = error?.code === 'permission-denied' || error?.message?.toLowerCase().includes('permission') || false;
+    if (!isPermissionError) {
+      interactionQueue.unshift(...interactionsToFlush);
+    }
   }
 }
 

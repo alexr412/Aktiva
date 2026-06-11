@@ -3,31 +3,21 @@
 import { useEffect, useState } from "react";
 import { fetchFriendsProfiles } from "@/lib/friends";
 import type { UserProfile } from "@/lib/types";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfileAvatar } from "@/components/ui/profile-avatar";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { MapPin, Compass, UserPlus, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatFirstName } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
 import { db } from "@/lib/firebase/client";
 import { doc, updateDoc, arrayRemove } from "firebase/firestore";
+import { calculateDistance } from "@/lib/geo-utils";
 
 interface FriendListProps {
   friendIds: string[];
-}
-
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; // Radius der Erde in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
 }
 
 export default function FriendList({ friendIds }: FriendListProps) {
@@ -54,7 +44,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
           const missingIds = friendIds.filter(id => !foundIds.has(id));
           
           if (missingIds.length > 0) {
-            console.log("Cleaning up ghost friends:", missingIds);
+            
             const userRef = doc(db!, "users", currentUser.uid);
             for (const mid of missingIds) {
               await updateDoc(userRef, {
@@ -155,7 +145,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
             </p>
             
             <Link href="/community" className="w-full">
-              <Button className="w-full h-11 rounded-full bg-[#10b981] hover:bg-emerald-600 text-white font-black tracking-tight text-[13px] shadow-none border-none transition-all active:scale-[0.98]">
+              <Button className="w-full h-11 rounded-full font-black tracking-tight text-[13px] shadow-none border-none transition-all active:scale-[0.98]">
                 {language === 'de' ? 'Search For New Friends' : 'Search For New Friends'}
               </Button>
             </Link>
@@ -195,20 +185,17 @@ export default function FriendList({ friendIds }: FriendListProps) {
             const friendKey = friend.uid || (friend as any).id || `fallback-${index}`;
             
             return (
-              <Link href={`/profile/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[35%] max-w-[140px]">
+              <Link href={`/users/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[35%] max-w-[140px]">
                 <div className="flex flex-col items-center gap-2 p-4 rounded-[1.5rem] bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 transition-all cursor-pointer relative overflow-hidden group hover:bg-slate-50 dark:hover:bg-neutral-800/50">
                   <div className="relative">
-                      <Avatar 
+                      <ProfileAvatar 
                         className="h-14 w-14 border-0 shadow-none transition-transform group-hover:scale-105"
+                        photoURL={friend.photoURL}
+                        displayName={friend.displayName}
                         isPremium={friend.isPremium}
                         isCreator={friend.isCreator}
                         isSupporter={friend.isSupporter}
-                      >
-                        <AvatarImage src={friend.photoURL || undefined} />
-                        <AvatarFallback className="bg-slate-100 text-slate-400 font-black text-xl">
-                          {friend.displayName?.charAt(0).toUpperCase() || "U"}
-                        </AvatarFallback>
-                      </Avatar>
+                      />
                       {status === (language === 'de' ? "Gerade aktiv" : "Active now") && (
                         <div className="absolute -bottom-0.5 -right-0.5 bg-white dark:bg-neutral-900 p-0.5 rounded-full border border-slate-100 dark:border-neutral-800">
                             <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
@@ -217,7 +204,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
                   </div>
                   <div className="flex flex-col items-center text-center overflow-hidden w-full mt-1">
                     <span className="font-bold text-slate-900 dark:text-neutral-100 truncate w-full leading-tight text-[13px]">
-                      {friend.displayName?.split(' ')[0] || (language === 'de' ? 'Nutzer' : 'User')}
+                      {formatFirstName(friend.displayName, language === 'de' ? 'Nutzer' : 'User')}
                     </span>
                     <div className="flex flex-col items-center gap-0.5 mt-1 w-full">
                       <div className="flex items-center gap-1 text-slate-400 overflow-hidden w-full justify-center">

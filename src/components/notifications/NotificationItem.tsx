@@ -12,11 +12,14 @@ import {
     acceptJoinRequest,
     declineJoinRequest
 } from '@/lib/firebase/firestore';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { ProfileAvatar } from '../ui/profile-avatar';
 import { Button } from '../ui/button';
 import { Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
+import { formatFirstName } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 interface NotificationItemProps {
     notification: Notification;
@@ -24,12 +27,27 @@ interface NotificationItemProps {
 }
 
 export function NotificationItem({ notification, onAction }: NotificationItemProps) {
+    const router = useRouter();
     const { user: currentUser } = useAuth();
     const { toast } = useToast();
     const language = useLanguage();
     const [isLoading, setIsLoading] = useState<'accept' | 'decline' | null>(null);
     const [isDeclining, setIsDeclining] = useState(false);
     const [declineMsg, setDeclineMsg] = useState('');
+
+    const handleClick = async () => {
+        if (notification.type === 'system' || notification.type === 'join_response' || notification.type === 'friend_nearby_activity') {
+            try {
+                await markNotificationAsRead(notification.id);
+                if (notification.link) {
+                    router.push(notification.link);
+                }
+                onAction();
+            } catch (error: any) {
+                console.error("Failed to mark notification as read:", error);
+            }
+        }
+    };
 
     const handleAccept = async () => {
         if (!currentUser) return;
@@ -94,22 +112,29 @@ export function NotificationItem({ notification, onAction }: NotificationItemPro
     const timeAgo = notification.createdAt ? formatDistanceToNow(notification.createdAt.toDate(), { addSuffix: true, locale: localeObj }) : '';
 
     return (
-        <div className="p-2 rounded-lg hover:bg-muted/50">
+        <div 
+            onClick={handleClick}
+            className={cn(
+                "p-2 rounded-lg hover:bg-muted/50 transition-colors",
+                (notification.type === 'system' || notification.type === 'join_response' || notification.type === 'friend_nearby_activity') && "cursor-pointer"
+            )}
+        >
             <div className="flex items-start gap-3">
-                <Avatar className="mt-1">
-                    <AvatarImage src={sender?.photoURL || undefined} />
-                    <AvatarFallback>{sender?.displayName?.charAt(0)}</AvatarFallback>
-                </Avatar>
+                <ProfileAvatar 
+                    className="mt-1"
+                    photoURL={sender?.photoURL}
+                    displayName={sender?.displayName}
+                />
                 <div className="flex-1 space-y-2">
                     <p className="text-sm">
                         {notification.type === 'friend_request' && (
                             <>
-                                <span className="font-semibold">{sender?.displayName || 'Someone'}</span> {language === 'de' ? 'hat dir eine Freundschaftsanfrage gesendet.' : 'sent you a friend request.'}
+                                <span className="font-semibold">{formatFirstName(sender?.displayName, 'Someone')}</span> {language === 'de' ? 'hat dir eine Freundschaftsanfrage gesendet.' : 'sent you a friend request.'}
                             </>
                         )}
                         {notification.type === 'join_request' && (
                             <>
-                                <span className="font-semibold">{sender?.displayName || 'Someone'}</span> {language === 'de' ? 'möchte deiner Aktivität beitreten.' : 'wants to join your activity.'}
+                                <span className="font-semibold">{formatFirstName(sender?.displayName, 'Someone')}</span> {language === 'de' ? 'möchte deiner Aktivität beitreten.' : 'wants to join your activity.'}
                             </>
                         )}
                         {(notification.type === 'system' || notification.type === 'join_response') && (

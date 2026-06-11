@@ -1,4 +1,4 @@
-import { MapPin, Navigation, Home, Loader2 } from 'lucide-react';
+import { MapPin, Navigation, Home, Loader2, Search } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ interface LocationRequirementDialogProps {
   onUseHomeLocation: () => void;
   homeCity?: string;
   isLoading?: boolean;
+  onSearchManually?: () => void;
 }
 
 export function LocationRequirementDialog({
@@ -26,6 +27,7 @@ export function LocationRequirementDialog({
   onUseHomeLocation,
   homeCity,
   isLoading,
+  onSearchManually,
 }: LocationRequirementDialogProps) {
   const language = useLanguage();
   return (
@@ -57,10 +59,12 @@ export function LocationRequirementDialog({
         <div className="p-8 pt-10 text-center">
           <DialogHeader className="p-0 space-y-3">
             <DialogTitle className="text-3xl font-black text-[#0f172a] dark:text-neutral-100 tracking-tight leading-tight">
-              Wo steckst du gerade?
+              {language === 'de' ? 'Wo steckst du gerade?' : 'Where are you right now?'}
             </DialogTitle>
             <DialogDescription className="text-slate-500 dark:text-neutral-400 font-medium text-base leading-relaxed px-2">
-              Aktiva zeigt dir spannende Aktivitäten direkt in deiner Umgebung. Aktiviere deinen Standort für das volle Erlebnis!
+              {language === 'de'
+                ? 'Aktiva zeigt dir spannende Aktivitäten direkt in deiner Umgebung. Aktiviere deinen Standort für das volle Erlebnis!'
+                : 'Aktiva shows you exciting activities directly in your area. Enable your location for the full experience!'}
             </DialogDescription>
           </DialogHeader>
 
@@ -75,11 +79,23 @@ export function LocationRequirementDialog({
               ) : (
                 <>
                   <Navigation className="h-5 w-5 fill-current" />
-                  Standort freigeben
+                  {language === 'de' ? 'Standort freigeben' : 'Share location'}
                 </>
               )}
             </Button>
             
+            {onSearchManually && (
+              <Button 
+                variant="ghost"
+                onClick={onSearchManually}
+                disabled={isLoading}
+                className="w-full h-14 rounded-2xl text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-bold flex items-center justify-center gap-2 transition-all"
+              >
+                <Search className="h-5 w-5" />
+                {language === 'de' ? 'Ort manuell suchen' : 'Search location manually'}
+              </Button>
+            )}
+
             <Button 
               variant="ghost"
               onClick={onUseHomeLocation}
@@ -92,7 +108,7 @@ export function LocationRequirementDialog({
           </div>
           
           <p className="mt-6 text-[11px] font-bold text-slate-300 uppercase tracking-widest">
-            Du kannst deinen Standort jederzeit ändern
+            {language === 'de' ? 'Du kannst deinen Standort jederzeit ändern' : 'You can change your location at any time'}
           </p>
         </div>
       </DialogContent>

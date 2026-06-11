@@ -7,7 +7,8 @@ import { voteToCompleteActivity } from '@/lib/firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { ProfileAvatar } from '../ui/profile-avatar';
+import { formatFirstName } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -64,13 +65,14 @@ export function CompletionBanner({ activity, currentUser, participantDetails }: 
                 {voterDetails.map((voter, index) => (
                     <Tooltip key={index}>
                         <TooltipTrigger asChild>
-                            <Avatar className="inline-block h-6 w-6 rounded-full ring-2 ring-amber-100 dark:ring-amber-900/40">
-                                <AvatarImage src={voter.photoURL || ''} />
-                                <AvatarFallback>{voter.displayName?.charAt(0)}</AvatarFallback>
-                            </Avatar>
+                            <ProfileAvatar 
+                                className="inline-block h-6 w-6 rounded-full ring-2 ring-amber-100 dark:ring-amber-900/40"
+                                photoURL={voter.photoURL}
+                                displayName={voter.displayName}
+                            />
                         </TooltipTrigger>
                         <TooltipContent>
-                            <p>{voter.displayName}</p>
+                            <p>{formatFirstName(voter.displayName, 'User')}</p>
                         </TooltipContent>
                     </Tooltip>
                 ))}

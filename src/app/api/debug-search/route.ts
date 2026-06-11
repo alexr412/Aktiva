@@ -1,12 +1,29 @@
 import { NextResponse } from 'next/server';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function GET(request: Request) {
+  // Strikter Server-Schutz: Im Produktionsmodus wird ein echtes HTTP 404 zurückgegeben
+  if (process.env.NODE_ENV !== 'development') {
+    return new Response('Not Found', { status: 404 });
+  }
+
+  // Rate Limiting (Basisschutz im Dev Mode)
+  const limitCheck = rateLimit(request, 60, 60000); // 60 requests per minute
+  if (!limitCheck.success) {
+    return new Response('Too Many Requests', { status: 429, headers: limitCheck.headers });
+  }
+
   const { searchParams } = new URL(request.url);
   const text = searchParams.get('text');
 
   if (!text) {
     return NextResponse.json({ error: 'Missing search text' }, { status: 400 });
+  }
+
+  // Eingabevalidierung zur Vermeidung von Abuse (max. 200 Zeichen)
+  if (text.length > 200) {
+    return NextResponse.json({ error: 'Search text too long' }, { status: 400 });
   }
 
   const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(text)}&format=json&apiKey=${GEOAPIFY_API_KEY}`;
@@ -42,13 +59,10 @@ export async function GET(request: Request) {
       return item;
     }));
 
-    if (detailedResults.length > 0) {
-      console.log("DEBUG DETAILED RESPONSE (Element 0):", JSON.stringify(detailedResults[0], null, 2));
-    }
-
     return NextResponse.json({ ...initialData, results: detailedResults });
   } catch (error) {
     console.error("Debug Proxy Fetch Error:", error);
+    // Generische Fehlermeldung ohne Details zu leaken
     return NextResponse.json({ error: 'Fetch failed' }, { status: 500 });
   }
 }

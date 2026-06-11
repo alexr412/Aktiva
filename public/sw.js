@@ -86,6 +86,10 @@ self.addEventListener('fetch', (event) => {
   // ── STRATEGIE 1: Cache-First für statische Assets ──
   // Bilder, Fonts, Icons → aus dem Cache, Netzwerk nur als Fallback
   if (isStaticAsset(request)) {
+    // Entwicklungsmodus-Schutz: Next.js-Chunks und Hot-Reloads auf localhost niemals cachen
+    if ((url.hostname === 'localhost' || url.hostname === '127.0.0.1') && url.pathname.startsWith('/_next/')) {
+      return;
+    }
     event.respondWith(cacheFirst(request, IMAGE_CACHE, MAX_IMAGE_CACHE));
     return;
   }

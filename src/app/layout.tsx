@@ -10,15 +10,16 @@ import { PlanningModeBanner } from '@/components/common/PlanningModeBanner';
 import { FavoritesProvider } from '@/contexts/favorites-context';
 import { AppInit } from '@/components/common/AppInit';
 import { StatusBorder } from '@/components/common/StatusBorder';
+import { AdminQuickNavigator } from '@/components/admin/AdminQuickNavigator';
 
 export const metadata: Metadata = {
-  title: 'Aktvia',
+  title: 'Aktiva',
   description: 'Find interesting places near you.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Aktvia',
+    title: 'Aktiva',
   },
   formatDetection: {
     telephone: false,
@@ -47,9 +48,6 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  if (typeof window !== 'undefined') {
-                    window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = window.__REACT_DEVTOOLS_GLOBAL_HOOK__ || { isDisabled: true };
-                  }
                   const ignoreAttrs = ['bis_skin_checked', 'bis-skin-checked'];
                   const orgSet = Element.prototype.setAttribute;
                   Element.prototype.setAttribute = function(name, value) {
@@ -84,6 +82,7 @@ export default function RootLayout({
                     {children}
                   </main>
                   <BottomNav />
+                  <AdminQuickNavigator />
                 </div>
                 <Toaster />
               </PlanningModeProvider>

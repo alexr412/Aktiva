@@ -1,88 +1,12 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onCall } = require("firebase-functions/v2/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
 const getFirestore = admin.firestore;
 
-/**
- * Berechnet die Haversine-Entfernung in km.
- */
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-/**
- * Cloud Function: Informiert Nutzer im Umkreis, wenn eine geboostete Aktivität erstellt wird.
- */
-exports.notifyNearbyUsers = onDocumentCreated("activities/{activityId}", async (event) => {
-  const activity = event.data.data();
-
-  // Nur für geboostete Aktivitäten feuern
-  if (!activity.isBoosted) return null;
-
-  const activityLat = activity.lat;
-  const activityLon = activity.lon;
-
-  if (!activityLat || !activityLon) {
-    console.warn("Activity location missing for boost notification.");
-    return null;
-  }
-
-  const radius = 2; // 2km Radius
-
-  // Suche alle Nutzer mit FCM Token
-  const usersSnap = await getFirestore().collection("users")
-    .where("fcmToken", "!=", null)
-    .get();
-
-  const tokens = [];
-  usersSnap.forEach(doc => {
-    const user = doc.data();
-
-    // Check Opt-In: localHighlights muss aktiv sein
-    if (!user.notificationSettings?.localHighlights) return;
-
-    if (user.lastLocation && user.uid !== activity.creatorId) {
-      const dist = calculateDistance(activityLat, activityLon, user.lastLocation.lat, user.lastLocation.lng);
-      if (dist <= radius) {
-        tokens.push(user.fcmToken);
-      }
-    }
-  });
-
-  if (tokens.length > 0) {
-    const message = {
-      notification: {
-        title: "🔥 Hot in deiner Nähe!",
-        body: `${activity.creatorName} hat gerade ein Highlight gestartet: "${activity.placeName}".`,
-      },
-      data: {
-        activityId: event.params.activityId,
-        source: "push",
-        click_action: "FLUTTER_NOTIFICATION_CLICK"
-      },
-      tokens: tokens
-    };
-
-    try {
-      const response = await admin.messaging().sendEachForMulticast(message);
-      console.log(`Successfully sent ${response.successCount} boost notifications.`);
-    } catch (error) {
-      console.error("Error sending boost notifications:", error);
-    }
-  }
-
-  return null;
-});
+// Cloud Function trigger for nearby/friend notifications is now exported below from TypeScript.
 
 /**
  * Kern-Logik für das Performance-Reporting (Wiederverwendbar)
@@ -150,15 +74,25 @@ exports.weeklyHostReport = onSchedule("every sunday 20:00", async (event) => {
   console.log(`Weekly report finished. Processed ${result.processed} activities, sent ${result.sent} notifications.`);
 });
 
+function hasAdminAccess(data) {
+  return data?.role === "admin" || data?.isAdmin === true;
+}
+
 /**
  * HTTPS Callable: Manueller Trigger für Admin-Diagnostic
  */
 exports.triggerWeeklyReportManual = onCall(async (request) => {
   // RBAC: Nur Admins dürfen manuell triggern
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be authenticated.");
+  }
   const callerUid = request.auth.uid;
   const callerDoc = await getFirestore().collection("users").doc(callerUid).get();
-  if (!callerDoc.exists || !callerDoc.data().isAdmin) {
-    throw new Error("Unauthorized access.");
+  if (!callerDoc.exists) {
+    throw new HttpsError("permission-denied", "Caller profile not found.");
+  }
+  if (!hasAdminAccess(callerDoc.data())) {
+    throw new HttpsError("permission-denied", "Unauthorized access.");
   }
 
   return await aggregateAndSendReports();
@@ -247,6 +181,25 @@ exports.getSearchVector = embeddings.getSearchVector;
 // User Profile Fan-Out Sync
 const users = require('./lib/users');
 exports.syncUserProfileUpdates = users.syncUserProfileUpdates;
+exports.onUserCreated = users.onUserCreated;
+exports.requireSocialEmailVerification = users.requireSocialEmailVerification;
+exports.verifyEmailStatus = users.verifyEmailStatus;
+exports.checkAndRecordVerificationEmail = users.checkAndRecordVerificationEmail;
+exports.cleanupEmptyChats = users.cleanupEmptyChats;
+exports.onUserDeleted = users.onUserDeleted;
+exports.applyReferralCode = users.applyReferralCode;
+exports.processReferralOnboardingCompletion = users.processReferralOnboardingCompletion;
+exports.getPublicProfile = users.getPublicProfile;
+exports.searchUserByUsername = users.searchUserByUsername;
+exports.checkUsernameAvailability = users.checkUsernameAvailability;
+exports.earnToken = users.earnToken;
+
+// Aktiva Points & Referrals Activities Triggers
+const activities = require('./lib/activities');
+exports.onActivityCreated = activities.onActivityCreated;
+exports.onActivityUpdated = activities.onActivityUpdated;
+exports.notifyNearbyUsers = activities.notifyNearbyUsers;
+exports.respondToJoinRequest = activities.respondToJoinRequest;
 
 // Telemetry Aggregation & Data Retention
 const aggregation = require('./lib/aggregation');
@@ -264,4 +217,8 @@ exports.onKycRequestCreated = payments.onKycRequestCreated;
 exports.onPayoutRequestUpdated = payments.onPayoutRequestUpdated;
 exports.onRefundUpdated = payments.onRefundUpdated;
 
+// Secure Voting (Server-Side)
+const votes = require('./lib/votes');
+exports.secureVotePlace = votes.secureVotePlace;
+exports.secureVoteActivity = votes.secureVoteActivity;
 

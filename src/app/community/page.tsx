@@ -8,10 +8,12 @@ import type { UserProfile } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Loader2, Search, UserPlus, Check, Users, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/hooks/use-language';
+import { formatFirstName } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function CommunityPage() {
     const { user, userProfile, loading: authLoading } = useAuth();
@@ -25,10 +27,16 @@ export default function CommunityPage() {
     const [requestSent, setRequestSent] = useState(false);
 
     useEffect(() => {
-        if (!authLoading && !user) {
-            router.push('/login');
+        if (authLoading) return;
+        if (!user) {
+            router.push('/login?redirect=/community');
+            return;
         }
-    }, [user, authLoading, router]);
+        if (userProfile && userProfile.onboardingCompleted === false) {
+            router.replace('/onboarding');
+            return;
+        }
+    }, [user, userProfile, authLoading, router]);
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,7 +72,7 @@ export default function CommunityPage() {
             await sendFriendRequest(user.uid, foundUser.uid);
             toast({
                 title: language === 'de' ? 'Freundschaftsanfrage gesendet!' : 'Friend Request Sent!',
-                description: language === 'de' ? `Deine Anfrage wurde an ${foundUser.displayName} gesendet.` : `Your request has been sent to ${foundUser.displayName}.`,
+                description: language === 'de' ? `Deine Anfrage wurde an ${formatFirstName(foundUser.displayName, 'User')} gesendet.` : `Your request has been sent to ${formatFirstName(foundUser.displayName, 'User')}.`,
             });
         } catch (error: any) {
             setRequestSent(false);
@@ -85,7 +93,7 @@ export default function CommunityPage() {
         <div className="flex flex-col h-full bg-[#fcfcfb] dark:bg-neutral-950">
             <header className="sticky top-0 z-10 w-full border-b bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md">
                 <div className="px-4 flex h-16 items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors">
+                    <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors" aria-label={language === 'de' ? 'Zurück' : 'Back'}>
                         <ArrowLeft className="h-6 w-6" />
                     </Button>
                     <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Community</h1>
@@ -109,7 +117,7 @@ export default function CommunityPage() {
                                 className="h-12 text-base font-bold"
                                 maxLength={32}
                             />
-                            <Button type="submit" size="icon" className="h-12 w-12 flex-shrink-0" disabled={isSearching || !searchQuery}>
+                            <Button type="submit" size="icon" className="h-12 w-12 flex-shrink-0" disabled={isSearching || !searchQuery} aria-label={language === 'de' ? 'Nutzer suchen' : 'Search users'}>
                                 {isSearching ? <Loader2 className="animate-spin" /> : <Search />}
                             </Button>
                         </form>
@@ -117,17 +125,16 @@ export default function CommunityPage() {
                         {foundUser && (
                             <div className="mt-6 rounded-lg border bg-secondary/30 p-4 border-border">
                                 <div className="flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <Avatar
+                                    <Link href={`/users/${foundUser.uid}`} className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity">
+                                        <ProfileAvatar
+                                            photoURL={foundUser.photoURL}
+                                            displayName={foundUser.displayName}
                                             isPremium={foundUser.isPremium}
                                             isCreator={foundUser.isCreator}
                                             isSupporter={foundUser.isSupporter}
-                                        >
-                                            <AvatarImage src={foundUser.photoURL || undefined} />
-                                            <AvatarFallback>{foundUser.displayName?.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="font-bold truncate">{foundUser.displayName}</div>
-                                    </div>
+                                        />
+                                        <div className="font-bold truncate">{formatFirstName(foundUser.displayName, "User")}</div>
+                                    </Link>
                                     
                                     {isSelf ? (
                                         <div className="px-4 py-2 bg-red-500/10 text-red-500 font-bold text-sm rounded-lg flex items-center gap-2">

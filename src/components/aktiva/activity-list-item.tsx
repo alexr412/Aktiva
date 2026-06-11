@@ -9,9 +9,9 @@ import { de, enUS } from 'date-fns/locale';
 import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown, BarChart3, AlertTriangle, Layers, Star, ArrowUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { UserBadge } from '@/components/common/UserBadge';
-import { cn } from '@/lib/utils';
+import { cn, formatFirstName } from '@/lib/utils';
 import { castActivityVote, trackActivityView, submitReport } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
@@ -69,9 +69,32 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const isPremium = userProfile?.isPremium || false;
     const previewList = activity.participantsPreview || [];
 
+    let visualCategories: string[] = [];
+    if (activity.category) {
+      visualCategories.push(activity.category);
+    }
+    if (activity.categories && activity.categories.length > 0) {
+      const cleaned = activity.categories.filter(c => c !== 'user_event');
+      visualCategories.push(...cleaned);
+    }
+    if (visualCategories.length === 0) {
+      if (activity.isUserEvent) {
+        visualCategories.push('user_event');
+      }
+    }
+    
+    // Ensure we don't have duplicates and filter out user_event if we have other categories
+    visualCategories = Array.from(new Set(visualCategories.map(c => c.toLowerCase())));
+    if (visualCategories.length > 1) {
+      visualCategories = visualCategories.filter(c => c !== 'user_event');
+    }
+
     const primaryStyle = getPrimaryIconData({ 
-        categories: activity.categories || [], 
-        name: activity.placeName || (language === 'de' ? "Aktivität" : "Activity")
+        categories: visualCategories.filter(c => c !== 'user_event'), 
+        name: activity.placeName || (language === 'de' ? "Aktivität" : "Activity"),
+        sourceType: activity.sourceType,
+        isUserEvent: activity.isUserEvent,
+        creationSource: activity.creationSource
     }, language);
     const PrimaryIcon = primaryStyle.icon;
 
@@ -195,9 +218,11 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 </div>
 
                 <div className="flex flex-wrap gap-1 mb-2">
-                    <Badge variant="secondary" className="rounded-full text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                        USER EVENT
-                    </Badge>
+                    {activity.sourceType === 'activity' && activity.isUserEvent && (
+                        <Badge variant="secondary" className="rounded-full text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                            USER EVENT
+                        </Badge>
+                    )}
                     {isPaidEvent && (
                         <Badge variant="secondary" className="rounded-full text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
                             {activity.price?.toFixed(2)}€
@@ -214,10 +239,12 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 <div className="flex items-center gap-2 mb-3">
                     <div className="flex -space-x-1.5 overflow-hidden">
                         {previewList.slice(0, 3).map((p) => (
-                            <Avatar key={p.uid} className="h-5 w-5 border border-white shadow-sm">
-                                <AvatarImage src={p.photoURL || undefined} />
-                                <AvatarFallback className="text-[7px] font-black bg-slate-100 text-slate-600">{p.displayName?.charAt(0) || "U"}</AvatarFallback>
-                            </Avatar>
+                            <ProfileAvatar 
+                                key={p.uid} 
+                                photoURL={p.photoURL}
+                                displayName={p.displayName}
+                                className="h-5 w-5 border border-white shadow-sm"
+                            />
                         ))}
                     </div>
                     <span className="text-[9px] font-bold text-slate-400 ml-1">
@@ -230,7 +257,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     <div className="flex items-center gap-1.5 flex-1 min-w-0">
                         <Users className="h-3 w-3 text-slate-300 shrink-0" />
                         <span className="text-[9px] text-slate-400 font-bold uppercase truncate flex items-center gap-1">
-                            {language === 'de' ? 'Veranstalter:' : 'Host:'} {activity.hostName?.split(' ')[0] || "User"}
+                            {language === 'de' ? 'Veranstalter:' : 'Host:'} {formatFirstName(activity.hostName, "User")}
                             {activity.participantDetails?.[activity.hostId] && (
                               <UserBadge
                                 isPremium={activity.participantDetails[activity.hostId].isPremium}

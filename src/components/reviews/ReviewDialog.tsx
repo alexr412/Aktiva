@@ -22,7 +22,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { StarRating } from './StarRating';
 import { Loader2 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { ProfileAvatar } from '../ui/profile-avatar';
+import { formatFirstName } from '@/lib/utils';
 
 interface ReviewDialogProps {
   open: boolean;
@@ -125,11 +126,12 @@ export function ReviewDialog({ open, onOpenChange, activity, currentUser, onRevi
                 <div className="flex flex-wrap gap-2">
                     {otherParticipants.map(p => p && (
                         <div key={p.displayName} className="flex items-center gap-2 bg-muted p-1 pr-2 rounded-full">
-                            <Avatar className="h-6 w-6">
-                                <AvatarImage src={p.photoURL || undefined} />
-                                <AvatarFallback>{p.displayName?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium">{p.displayName}</span>
+                            <ProfileAvatar 
+                                className="h-6 w-6"
+                                photoURL={p.photoURL}
+                                displayName={p.displayName}
+                            />
+                            <span className="text-sm font-medium">{formatFirstName(p.displayName, 'User')}</span>
                         </div>
                     ))}
                 </div>

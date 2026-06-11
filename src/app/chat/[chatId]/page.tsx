@@ -8,25 +8,26 @@ import { db } from '@/lib/firebase/client';
 import { sendMessage, checkIfUserReviewed, markChatAsRead, removeUserFromChat, editMessage, pinMessage, unpinMessage } from '@/lib/firebase/firestore';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
 import type { Message, Chat, Activity, UserProfile, Place } from '@/lib/types';
-import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, doc, onSnapshot, orderBy, query, limitToLast } from 'firebase/firestore';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
 import Link from 'next/link';
-import { getPrimaryIconData } from '@/lib/tag-config';
+import { getPrimaryIconData, getRoomVisualCategory } from '@/lib/tag-config';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChatInfoSheet } from '@/components/aktvia/chat-info-sheet';
-import { PlaceDetails } from '@/components/aktvia/place-details';
+import { ChatInfoSheet } from '@/components/aktiva/chat-info-sheet';
+import { PlaceDetails } from '@/components/aktiva/place-details';
+import { RoomInfoSheet } from '@/components/chat/room-info-sheet';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ArrowLeft, Send, MoreVertical, Loader2, Users, Info, Reply, Edit3, Pin, Copy, CornerUpLeft, X, PinOff, Check } from 'lucide-react';
-import { CompletionBanner } from '@/components/aktvia/CompletionBanner';
-import { MultiPeerReviewDialog } from '@/components/aktvia/multi-peer-review-dialog';
+import { CompletionBanner } from '@/components/aktiva/CompletionBanner';
+import { MultiPeerReviewDialog } from '@/components/aktiva/multi-peer-review-dialog';
 import { UserBadge } from '@/components/common/UserBadge';
-import { cn } from '@/lib/utils';
+import { cn, formatFirstName } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -125,11 +126,11 @@ const MessageBubble = ({
       )}>
         {isFirstInGroup && !isDirectMessage && !isOwnMessage && (
           <Link 
-            href={`/profile/${message.senderId}`} 
+            href={`/users/${message.senderId}`} 
             className="flex items-center gap-1 mb-1 mx-1 hover:opacity-80 transition-opacity cursor-pointer group h-4"
           >
             <span className={cn("text-[10px] font-black uppercase tracking-wider group-hover:underline leading-none flex items-center", getColorForUser(message.senderId))}>
-              {message.senderName}
+              {formatFirstName(message.senderName, "User")}
             </span>
             <UserBadge isPremium={badgePremium} isSupporter={badgeSupporter} isCreator={badgeCreator} size="sm" />
           </Link>
@@ -238,6 +239,7 @@ export default function ChatRoomPage() {
   const [activity, setActivity] = useState<Activity | null>(null);
   const [place, setPlace] = useState<Place | null>(null);
   const [isPlaceDetailsOpen, setPlaceDetailsOpen] = useState(false);
+  const [showRoomInfo, setShowRoomInfo] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sentMessageTimestamps, setSentMessageTimestamps] = useState<number[]>([]);
@@ -260,6 +262,20 @@ export default function ChatRoomPage() {
   const chatId = params.chatId as string;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [isSending, setIsSending] = useState(false);
+
+  // Auth & Onboarding Guards
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push(`/login?redirect=/chat/${chatId}`);
+      return;
+    }
+    if (userProfile && !userProfile.onboardingCompleted) {
+      router.push('/onboarding');
+      return;
+    }
+  }, [user, userProfile, authLoading, chatId, router]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
@@ -274,6 +290,19 @@ export default function ChatRoomPage() {
     const chatUnsubscribe = onSnapshot(doc(db!, 'chats', chatId), (chatDoc) => {
       if (chatDoc.exists()) {
         const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
+
+        // Access Control: Only allow participants of the chat to enter
+        const isParticipant = chatData.participantIds?.includes(user?.uid || '');
+        if (!isParticipant) {
+          toast({
+            variant: "destructive",
+            title: language === "de" ? "Zugriff verweigert" : "Access Denied",
+            description: language === "de" ? "Du bist kein Teilnehmer dieses Chats." : "You are not a participant in this chat."
+          });
+          router.replace("/chat");
+          return;
+        }
+
         setChat(chatData);
 
         const isDM = !chatData.activityId;
@@ -324,7 +353,11 @@ export default function ChatRoomPage() {
       }
     });
 
-    const messagesQuery = query(collection(db!, 'chats', chatId, 'messages'), orderBy('sentAt', 'asc'));
+    const messagesQuery = query(
+      collection(db!, 'chats', chatId, 'messages'), 
+      orderBy('sentAt', 'asc'), 
+      limitToLast(100)
+    );
     const messagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
       const newMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Message));
       setMessages(newMessages);
@@ -404,7 +437,16 @@ export default function ChatRoomPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === '' || !user) return;
+    if (newMessage.trim() === '' || !user || isSending) return;
+
+    if (newMessage.trim().length > 2000) {
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? "Nachricht zu lang" : "Message too long",
+        description: language === 'de' ? "Die Nachricht darf maximal 2000 Zeichen lang sein." : "The message cannot exceed 2000 characters."
+      });
+      return;
+    }
 
     // 1. Client-side moderation check
     if (!validateChatMessage(newMessage)) {
@@ -433,6 +475,7 @@ export default function ChatRoomPage() {
     const currentMessage = newMessage;
     setNewMessage('');
 
+    setIsSending(true);
     if (editingMessage) {
       const msgId = editingMessage.id;
       setEditingMessage(null);
@@ -445,6 +488,8 @@ export default function ChatRoomPage() {
           description: error.message || (language === 'de' ? "Nachricht konnte nicht bearbeitet werden." : "Message could not be edited."), 
           variant: 'destructive'
         });
+      } finally {
+        setIsSending(false);
       }
     } else {
       const replyPayload = replyingToMessage ? {
@@ -464,6 +509,8 @@ export default function ChatRoomPage() {
           description: error.message || (language === 'de' ? "Nachricht konnte nicht gesendet werden." : "Message could not be sent."), 
           variant: 'destructive'
         });
+      } finally {
+        setIsSending(false);
       }
     }
   };
@@ -517,43 +564,32 @@ export default function ChatRoomPage() {
           
           <div className="flex items-center gap-3 flex-1 truncate">
             {isDirectMessage && otherUser ? (
-                <Link href={`/profile/${otherUser.uid}`} className="flex items-center gap-2.5 truncate hover:opacity-80 transition-opacity cursor-pointer">
-                    <Avatar 
+                <Link href={`/users/${otherUser.uid}`} className="flex items-center gap-2.5 truncate hover:opacity-80 transition-opacity cursor-pointer">
+                    <ProfileAvatar 
                       className="h-9 w-9 shadow-sm border border-white dark:border-neutral-800"
+                      photoURL={otherUser.photoURL}
+                      displayName={otherUser.displayName}
                       isPremium={otherUser.isPremium}
                       isCreator={otherUser.isCreator}
                       isSupporter={otherUser.isSupporter}
-                    >
-                        <AvatarImage src={otherUser.photoURL || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">{otherUser.displayName?.charAt(0)}</AvatarFallback>
-                    </Avatar>
+                    />
                     <div className="flex items-center gap-1.5 truncate">
-                      <h1 className="">{otherUser.displayName}</h1>
+                      <h1 className="">{formatFirstName(otherUser.displayName, "User")}</h1>
                       <UserBadge isPremium={otherUser.isPremium} isSupporter={otherUser.isSupporter} isCreator={otherUser.isCreator} size="sm" />
                     </div>
                 </Link>
             ) : (
                 <div 
-                  onClick={() => {
-                    if (place) {
-                      setPlaceDetailsOpen(true);
-                    }
-                  }}
-                  className={cn(
-                    "flex items-center gap-2.5 truncate",
-                    place ? "cursor-pointer hover:opacity-85 transition-opacity active:scale-[0.98]" : ""
-                  )}
+                  className="flex items-center gap-2.5 truncate"
                 >
                   {activity ? (
                     (() => {
-                      const primaryStyle = getPrimaryIconData({ 
-                          categories: activity.categories || [], 
-                          name: activity.placeName || ""
-                      }, language);
+                      const visualCategoryData = getRoomVisualCategory({ activity, place, chat });
+                      const primaryStyle = getPrimaryIconData(visualCategoryData, language);
                       const PrimaryIcon = primaryStyle.icon;
                       return (
                         <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm", primaryStyle.gradientClass || "bg-primary/10")}>
-                          <PrimaryIcon className="h-5 w-5 text-white drop-shadow-sm" />
+                          <PrimaryIcon className="text-white h-5 w-5 text-white drop-shadow-sm" />
                         </div>
                       );
                     })()
@@ -565,9 +601,16 @@ export default function ChatRoomPage() {
                   <h1 className="font-black text-lg text-slate-900 dark:text-neutral-100 truncate flex items-center gap-1.5">
                     {chat?.placeName}
                     {place && (
-                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-450 hover:text-primary transition-colors shrink-0">
-                        <Info className="h-3 w-3" />
-                      </span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowRoomInfo(true);
+                        }}
+                        className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-450 hover:text-primary hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors shrink-0 outline-none"
+                        title={language === 'de' ? 'Raum-Info' : 'Room Info'}
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
                     )}
                   </h1>
                 </div>
@@ -596,7 +639,7 @@ export default function ChatRoomPage() {
                   {language === 'de' ? 'Angepinnte Nachricht' : 'Pinned Message'}
                 </span>
                 <span className="block text-xs text-slate-850 dark:text-neutral-250 truncate font-semibold">
-                  <strong>{chat.pinnedMessages[chat.pinnedMessages.length - 1].senderName}:</strong> {chat.pinnedMessages[chat.pinnedMessages.length - 1].text}
+                  <strong>{formatFirstName(chat.pinnedMessages[chat.pinnedMessages.length - 1].senderName, "User")}:</strong> {chat.pinnedMessages[chat.pinnedMessages.length - 1].text}
                 </span>
               </div>
             </div>
@@ -690,7 +733,7 @@ export default function ChatRoomPage() {
           <div className="px-4 py-2 bg-slate-50 dark:bg-neutral-800/50 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-150">
             <div className="flex-1 min-w-0 border-l-4 border-primary pl-2.5">
               <span className="block text-[9px] font-black uppercase text-primary tracking-wider truncate">
-                {language === 'de' ? 'Antworten auf' : 'Replying to'} {replyingToMessage.senderName}
+                {language === 'de' ? 'Antworten auf' : 'Replying to'} {formatFirstName(replyingToMessage.senderName, "User")}
               </span>
               <span className="block text-xs text-slate-500 dark:text-neutral-400 truncate">
                 {replyingToMessage.text}
@@ -733,25 +776,37 @@ export default function ChatRoomPage() {
         )}
 
         <div className="p-3 sm:p-4">
-          <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder={language === 'de' ? "Nachricht schreiben..." : "Write a message..."}
-              autoComplete="off"
-              className="w-full rounded-full bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 pr-12 h-12 text-sm font-medium focus-visible:ring-primary/20 text-foreground"
-              disabled={activity?.status === 'completed'}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!newMessage.trim() || activity?.status === 'completed'}
-              className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 flex-shrink-0 transition-transform active:scale-95"
-            >
-              <Send className="h-4 w-4" />
-              <span className="sr-only">{language === 'de' ? 'Senden' : 'Send'}</span>
-            </Button>
-          </form>
+          {activity && (activity.status === 'completed' || activity.status === 'cancelled' || activity.status === 'blacklisted') ? (
+            <div className="text-center text-xs font-bold text-slate-400 py-3 bg-slate-50 dark:bg-neutral-850/20 rounded-2xl border border-slate-100 dark:border-neutral-800">
+              {language === 'de'
+                ? 'Dieser Chat ist archiviert, da die Aktivität beendet oder abgesagt wurde.'
+                : 'This chat is archived because the activity has ended or been cancelled.'}
+            </div>
+          ) : (
+            <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
+              <Input
+                value={newMessage}
+                onChange={(e) => {
+                  if (e.target.value.length <= 2000) {
+                    setNewMessage(e.target.value);
+                  }
+                }}
+                placeholder={language === 'de' ? "Nachricht schreiben..." : "Write a message..."}
+                autoComplete="off"
+                className="w-full rounded-full bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 pr-12 h-12 text-sm font-medium focus-visible:ring-primary/20 text-foreground"
+                disabled={isSending}
+              />
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!newMessage.trim() || isSending}
+                className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 flex-shrink-0 transition-transform active:scale-95"
+              >
+                <Send className="h-4 w-4" />
+                <span className="sr-only">{language === 'de' ? 'Senden' : 'Send'}</span>
+              </Button>
+            </form>
+          )}
         </div>
       </footer>
 
@@ -799,6 +854,23 @@ export default function ChatRoomPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Room specific Info Sheet */}
+      {!isDirectMessage && chat && (
+        <RoomInfoSheet
+          open={showRoomInfo}
+          onOpenChange={setShowRoomInfo}
+          chat={chat}
+          activity={activity}
+          place={place}
+          participants={chat.participantDetails}
+          currentUserId={user?.uid}
+          onViewPlace={() => {
+            setShowRoomInfo(false);
+            setPlaceDetailsOpen(true);
+          }}
+        />
+      )}
+
       {/* Place/Spot Details Sheet */}
       {place && (
         <Sheet open={isPlaceDetailsOpen} onOpenChange={setPlaceDetailsOpen}>
@@ -807,11 +879,13 @@ export default function ChatRoomPage() {
               <SheetTitle>{place.name}</SheetTitle>
             </SheetHeader>
             <div className="h-full w-full">
-              <PlaceDetails 
-                place={place} 
-                onClose={() => setPlaceDetailsOpen(false)} 
-                onCreateActivity={() => {}} 
-              />
+              {isPlaceDetailsOpen && (
+                <PlaceDetails 
+                  place={place} 
+                  onClose={() => setPlaceDetailsOpen(false)} 
+                  onCreateActivity={() => {}} 
+                />
+              )}
             </div>
           </SheetContent>
         </Sheet>

@@ -62,26 +62,29 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         userVotes: {} as Record<string, 'up' | 'down'>,
         avgRating: 0,
         reviewCount: 0,
-        activityCount: (place as any).activityCount || 0
+        activityCount: (place as any).activityCount || 0,
+        weightedUpvotes: 0,
+        weightedDownvotes: 0
     });
-    const [hasLoadedMeta, setHasLoadedMeta] = useState(false);
+    const [hasStartedListener, setHasStartedListener] = useState(false);
 
-    // Lazy Load: Firestore-Daten erst laden, wenn die Karte sichtbar wird (IntersectionObserver)
-    // statt sofort bei jedem Mount einen Echtzeit-Listener zu starten.
+    // Lazy Load: Real-time onSnapshot listener, started when card becomes visible.
+    // Once the listener starts, vote data stays live (updates immediately after voting).
     const cardRef = useRef<HTMLDivElement>(null);
+    const unsubRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
-        if (!db || !place.id || hasLoadedMeta) return;
+        if (!db || !place.id || hasStartedListener) return;
         const el = cardRef.current;
         if (!el) return;
 
         const io = new IntersectionObserver(
-            async ([entry]) => {
+            ([entry]) => {
                 if (entry.isIntersecting) {
                     io.disconnect();
-                    try {
-                        const { getDoc } = await import('firebase/firestore');
-                        const snap = await getDoc(doc(db!, 'places', place.id));
+                    setHasStartedListener(true);
+                    // Start real-time listener
+                    unsubRef.current = onSnapshot(doc(db!, 'places', place.id), (snap) => {
                         if (snap.exists()) {
                             const data = snap.data();
                             setPlaceMeta({
@@ -91,20 +94,42 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                                 userVotes: data.userVotes || {},
                                 avgRating: data.avgRating || 0,
                                 reviewCount: data.reviewCount || 0,
-                                activityCount: data.activityCount || 0
+                                activityCount: data.activityCount || 0,
+                                weightedUpvotes: data.weightedUpvotes || 0,
+                                weightedDownvotes: data.weightedDownvotes || 0
                             });
                         }
-                        setHasLoadedMeta(true);
-                    } catch (e) {
-                        // Silently fail – vote UI will just show defaults
-                    }
+                    });
                 }
             },
             { rootMargin: '200px' } // Pre-load when 200px away from viewport
         );
         io.observe(el);
         return () => io.disconnect();
-    }, [place.id, hasLoadedMeta]);
+    }, [place.id, hasStartedListener]);
+
+    // Reset state & unsubscribe when place.id changes or on unmount
+    useEffect(() => {
+        setHasStartedListener(false);
+        setPlaceMeta({
+            upvotes: 0,
+            downvotes: 0,
+            communityScore: 0,
+            userVotes: {},
+            avgRating: 0,
+            reviewCount: 0,
+            activityCount: (place as any).activityCount || 0,
+            weightedUpvotes: 0,
+            weightedDownvotes: 0
+        });
+
+        return () => {
+            if (unsubRef.current) {
+                unsubRef.current();
+                unsubRef.current = null;
+            }
+        };
+    }, [place.id]);
 
     const userVote = user ? (placeMeta.userVotes?.[user.uid] || 'none') : 'none';
 
@@ -112,10 +137,37 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         e.stopPropagation();
         if (!user || isVoting) return;
         setIsVoting(true);
+
+        // Optimistic UI update — reflect the vote change immediately
+        setPlaceMeta(prev => {
+            const prevVote = prev.userVotes?.[user.uid] || 'none';
+            let upDelta = 0;
+            let downDelta = 0;
+            const newUserVotes = { ...prev.userVotes };
+
+            // Revert previous vote
+            if (prevVote === 'up') upDelta -= 1;
+            else if (prevVote === 'down') downDelta -= 1;
+
+            // Apply new vote
+            if (type === 'up') { upDelta += 1; newUserVotes[user.uid] = 'up'; }
+            else if (type === 'down') { downDelta += 1; newUserVotes[user.uid] = 'down'; }
+            else { delete newUserVotes[user.uid]; }
+
+            return {
+                ...prev,
+                upvotes: Math.max(0, prev.upvotes + upDelta),
+                downvotes: Math.max(0, prev.downvotes + downDelta),
+                userVotes: newUserVotes
+            };
+        });
+
         try {
             await votePlace(place.id, user.uid, type, userProfile?.role, place);
+            // onSnapshot will reconcile with server truth automatically
         } catch (error) {
             console.error("Voting failed:", error);
+            // onSnapshot will revert to server state on next update
         } finally {
             setIsVoting(false);
         }
@@ -235,21 +287,33 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                         <button
                             onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
                             className={cn(
-                                "h-7 w-7 rounded-xl flex items-center justify-center transition-all",
+                                "h-7 rounded-xl flex items-center justify-center transition-all text-[11px] font-black leading-none gap-1 shrink-0",
+                                (userProfile?.role === 'admin' || userProfile?.role === 'supporter') ? "px-2" : "w-7",
                                 userVote === 'up' ? "bg-white text-emerald-500 shadow-sm" : "text-emerald-500/40 hover:text-emerald-500"
                             )}
                         >
                             <ThumbsUp className="h-3.5 w-3.5" />
+                            {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
+                                <span className="opacity-70 text-[10px]">
+                                    {(placeMeta.weightedUpvotes || 0) > 0 ? `+${placeMeta.weightedUpvotes}` : '0'}
+                                </span>
+                            )}
                         </button>
 
                         <button
                             onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
                             className={cn(
-                                "h-7 w-7 rounded-xl flex items-center justify-center transition-all",
+                                "h-7 rounded-xl flex items-center justify-center transition-all text-[11px] font-black leading-none gap-1 shrink-0",
+                                (userProfile?.role === 'admin' || userProfile?.role === 'supporter') ? "px-2" : "w-7",
                                 userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-red-500/40 hover:text-red-500"
                             )}
                         >
                             <ThumbsDown className="h-3.5 w-3.5" />
+                            {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
+                                <span className="opacity-70 text-[10px]">
+                                    {(placeMeta.weightedDownvotes || 0) > 0 ? `-${placeMeta.weightedDownvotes}` : '0'}
+                                </span>
+                            )}
                         </button>
                     </div>
 

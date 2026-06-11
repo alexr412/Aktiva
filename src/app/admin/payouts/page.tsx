@@ -11,24 +11,29 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function AdminPayoutsPage() {
+  const { userProfile, loading: authLoading } = useAuth();
   const [payouts, setPayouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!db) return;
+    if (!db || authLoading || !userProfile || userProfile.role !== 'admin') return;
     const q = query(collection(db, 'payoutRequests'), where('status', '==', 'pending'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setPayouts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [userProfile, authLoading]);
 
   const handleConfirmPayout = async (requestId: string) => {
     if (!db) return;
+    if (!window.confirm("Bist du sicher, dass du diese Auszahlung als ausgezahlt markieren möchtest? Der Status wird permanent auf 'completed' gesetzt.")) {
+      return;
+    }
     try {
       const reqRef = doc(db, 'payoutRequests', requestId);
       await updateDoc(reqRef, { 
@@ -41,21 +46,25 @@ export default function AdminPayoutsPage() {
     }
   };
 
-  if (loading) return (
+  if (authLoading || loading) return (
     <div className="flex flex-col items-center justify-center p-20 gap-4">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
       <p className="text-sm font-black uppercase text-slate-400">Synchronisiere Ledger...</p>
     </div>
   );
 
+  if (!userProfile || userProfile.role !== 'admin') {
+    return null;
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild className="rounded-full">
+        <Button variant="ghost" size="icon" asChild className="rounded-full" aria-label="Zurück zum Admin-Dashboard">
           <Link href="/admin"><ArrowLeft className="h-5 w-5" /></Link>
         </Button>
         <div>
-          <h2 className="">Auszahlungen</h2>
+          <h2>Auszahlungen</h2>
           <p className="text-slate-500 font-medium">Finanz-Clearing und Treasury-Management.</p>
         </div>
       </div>

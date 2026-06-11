@@ -10,11 +10,12 @@ import { validateUsername } from '@/lib/moderation/blacklist';
 import { doc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { uploadProfileImage } from '@/lib/firebase/storage';
+import { validateAvatarFile } from '@/lib/avatar-utils';
 import type { UserProfile } from '@/lib/types';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/image-utils';
 import { UserPreferenceSlider } from '@/components/profile/user-preference-slider';
-import { availableTabs } from '@/components/aktvia/category-filters-data';
+import { availableTabs } from '@/components/aktiva/category-filters-data';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Loader2, ArrowLeft, UserCircle, MapPin, Sparkles, Camera, Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -31,7 +32,7 @@ type FormData = Omit<UserProfile, 'uid' | 'email' | 'onboardingCompleted' | 'pho
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,8 +79,15 @@ export default function EditProfilePage() {
     : 0;
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (!user?.uid) {
-      router.replace('/login');
+      router.replace('/login?redirect=/profile/edit');
+      return;
+    }
+
+    if (userProfile && userProfile.onboardingCompleted === false) {
+      router.replace('/onboarding');
       return;
     }
 
@@ -87,6 +95,10 @@ export default function EditProfilePage() {
       setIsLoading(true);
       const profile = await getUserProfile(user.uid);
       if (profile) {
+        if (profile.onboardingCompleted === false) {
+          router.replace('/onboarding');
+          return;
+        }
         setProfilePhoto(profile.photoURL || null);
         setOriginalUsername(profile.username || '');
         setLastUsernameChange(profile.usernameLastChangedAt || null);
@@ -108,15 +120,24 @@ export default function EditProfilePage() {
     };
 
     fetchUserData();
-  }, [user, router]);
+  }, [user, userProfile, authLoading, router]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      e.target.value = '';
+      return;
+    }
 
-    if (file.size > 5242880) {
-        toast({ variant: 'destructive', title: 'Datei zu groß', description: 'Bitte wähle ein Bild unter 5MB.' });
-        return;
+    const validation = validateAvatarFile(file, 'de');
+    if (!validation.isValid) {
+      toast({
+        variant: 'destructive',
+        title: 'Ungültiges Bild',
+        description: validation.error,
+      });
+      e.target.value = '';
+      return;
     }
 
     const reader = new FileReader();
@@ -147,9 +168,12 @@ export default function EditProfilePage() {
         toast({ title: "Profilbild aktualisiert!" });
     } catch (error: any) {
         console.error(error);
-        toast({ variant: 'destructive', title: 'Upload fehlgeschlagen', description: error.message });
+        toast({ variant: 'destructive', title: 'Upload failed', description: error.message });
     } finally {
         setIsUploading(false);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
     }
   };
 
@@ -303,12 +327,11 @@ export default function EditProfilePage() {
                 className="relative group cursor-pointer"
                 onClick={() => fileInputRef.current?.click()}
             >
-                <Avatar className="h-32 w-32">
-                    <AvatarImage src={profilePhoto || undefined} />
-                    <AvatarFallback className="bg-secondary text-primary font-black text-2xl">
-                        {formData.displayName?.charAt(0) || 'U'}
-                    </AvatarFallback>
-                </Avatar>
+                <ProfileAvatar
+                    className="h-32 w-32"
+                    photoURL={profilePhoto}
+                    displayName={formData.displayName}
+                />
                 <div className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-white transform group-hover:scale-110 transition-transform">
                     <Camera className="h-5 w-5" />
                 </div>
@@ -454,9 +477,9 @@ export default function EditProfilePage() {
           
           {/* Categories & Interests Section */}
           <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden mt-6">
-            <CardHeader className="bg-emerald-500/5 pb-8">
+            <CardHeader className="bg-primary/5 pb-8">
               <div className="flex items-center gap-3 mb-2">
-                <Sparkles className="h-6 w-6 text-emerald-500" />
+                <Sparkles className="h-6 w-6 text-primary" />
                 <CardTitle className="">Interessen-Gewichtung</CardTitle>
               </div>
               <CardDescription className="text-base font-medium">
@@ -497,7 +520,15 @@ export default function EditProfilePage() {
       </main>
 
       {/* Modal für Bildzuschnitt */}
-      <Dialog open={isCropModalOpen} onOpenChange={(open) => !open && !isUploading && setIsCropModalOpen(false)}>
+      <Dialog open={isCropModalOpen} onOpenChange={(open) => {
+          if (!open && !isUploading) {
+              setIsCropModalOpen(false);
+              setImageToCrop(null);
+              if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+              }
+          }
+      }}>
           <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 overflow-hidden">
               <DialogHeader>
                   <DialogTitle className="text-xl font-black">Bild zuschneiden</DialogTitle>
@@ -524,14 +555,20 @@ export default function EditProfilePage() {
                   <Button 
                       variant="ghost" 
                       className="rounded-xl font-bold" 
-                      onClick={() => { setIsCropModalOpen(false); setImageToCrop(null); }}
+                      onClick={() => { 
+                          setIsCropModalOpen(false); 
+                          setImageToCrop(null); 
+                          if (fileInputRef.current) {
+                              fileInputRef.current.value = '';
+                          }
+                      }}
                       disabled={isUploading}
                   >
                       Abbrechen
                   </Button>
                   <Button 
                       onClick={handleSaveCroppedImage} 
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-black flex-1 shadow-lg shadow-emerald-100"
+                      className="rounded-xl font-black flex-1 shadow-lg shadow-primary/10"
                       disabled={isUploading}
                   >
                       {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}

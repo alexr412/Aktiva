@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
-import { cn } from '@/lib/utils';
+import { cn, formatFirstName } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import type { Activity } from '@/lib/types';
 
@@ -18,7 +18,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -71,8 +71,11 @@ export function ActivityInfoSheet({
 
   const primaryStyle = getPrimaryIconData(
     {
-      categories: activity.categories || [],
+      categories: (activity.categories || []).filter(c => c !== 'user_event'),
       name: activity.placeName || (language === 'de' ? 'Aktivität' : 'Activity'),
+      sourceType: activity.sourceType,
+      isUserEvent: activity.isUserEvent,
+      creationSource: activity.creationSource,
     },
     language
   );
@@ -338,16 +341,18 @@ export function ActivityInfoSheet({
                 <ul className="space-y-3">
                   {Object.entries(activity.participantDetails || {}).map(([uid, p]) => (
                     <li key={uid} className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-sm">
-                        <AvatarImage src={p.photoURL || undefined} />
-                        <AvatarFallback className="bg-primary/5 text-primary text-xs font-black">
-                          {p.displayName?.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <ProfileAvatar 
+                        className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-sm"
+                        photoURL={p.photoURL}
+                        displayName={p.displayName}
+                        isPremium={p.isPremium}
+                        isCreator={p.isCreator}
+                        isSupporter={p.isSupporter}
+                      />
                       <div className="flex-1 min-w-0 flex flex-col">
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-bold text-slate-800 dark:text-neutral-200 truncate">
-                            {p.displayName}
+                            {formatFirstName(p.displayName, 'User')}
                           </span>
                           {uid === activity.hostId && (
                             <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tight">

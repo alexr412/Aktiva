@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { useLanguage } from '@/hooks/use-language';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -10,11 +11,26 @@ import { Bell } from 'lucide-react';
 import type { Notification } from '@/lib/types';
 import { NotificationItem } from './NotificationItem';
 import { Separator } from '../ui/separator';
+import { markAllNotificationsAsRead } from '@/lib/firebase/firestore';
 
 export function NotificationBell() {
     const { user } = useAuth();
+    const language = useLanguage();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isOpen, setIsOpen] = useState(false);
+    const [isMarking, setIsMarking] = useState(false);
+
+    const handleMarkAllAsRead = async () => {
+        if (!user || isMarking) return;
+        setIsMarking(true);
+        try {
+            await markAllNotificationsAsRead(user.uid);
+        } catch (error) {
+            console.error("Failed to mark all as read:", error);
+        } finally {
+            setIsMarking(false);
+        }
+    };
 
     useEffect(() => {
         if (!user || !db) return;
@@ -56,11 +72,24 @@ export function NotificationBell() {
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0">
-                <div className="p-4 pb-2">
-                    <h4 className="">Notifications</h4>
-                    <p className="text-sm text-muted-foreground">
-                        You have {unreadCount} unread message{unreadCount !== 1 ? 's' : ''}.
-                    </p>
+                <div className="p-4 pb-2 flex items-center justify-between">
+                    <div>
+                        <h4 className="font-semibold text-sm leading-none">Notifications</h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            You have {unreadCount} unread message{unreadCount !== 1 ? 's' : ''}.
+                        </p>
+                    </div>
+                    {unreadCount > 0 && (
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={handleMarkAllAsRead}
+                            disabled={isMarking}
+                            className="text-xs h-8 px-2 text-primary hover:text-primary/80 font-medium"
+                        >
+                            {language === 'de' ? 'Alle lesen' : 'Read all'}
+                        </Button>
+                    )}
                 </div>
                 <Separator />
                 <div className="p-2 max-h-80 overflow-y-auto">

@@ -17,8 +17,9 @@ export function BottomNav() {
     { href: '/profile', label: language === 'de' ? 'Profil' : 'Profile', icon: User, activeColor: '#10b981' },
   ];
 
-  const hideOnPaths = ['/login', '/signup', '/onboarding'];
-  if (hideOnPaths.includes(pathname)) {
+  const bottomNavVisiblePaths = ['/', '/explore', '/chat', '/profile'];
+  const shouldShowBottomNav = bottomNavVisiblePaths.includes(pathname);
+  if (!shouldShowBottomNav) {
     return null;
   }
   

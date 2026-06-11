@@ -3,9 +3,11 @@
 import { usePlanningMode } from '@/contexts/planning-mode-context';
 import { Button } from '../ui/button';
 import { MapPin, X } from 'lucide-react';
+import { useLanguage } from '@/hooks/use-language';
 
 export function PlanningModeBanner() {
   const { planningState, exitPlanningMode } = usePlanningMode();
+  const language = useLanguage();
 
   if (!planningState.isPlanning) {
     return null;
@@ -17,7 +19,7 @@ export function PlanningModeBanner() {
             <div className="flex items-center gap-2 text-sm font-semibold truncate text-primary">
                 <MapPin className="h-5 w-5" />
                 <span className="truncate">
-                    Planning for: {planningState.destination?.name}
+                    {language === 'de' ? 'Planung für:' : 'Planning for:'} {planningState.destination?.name}
                 </span>
             </div>
             <Button
@@ -27,7 +29,7 @@ export function PlanningModeBanner() {
                 className="h-8 w-8 text-primary hover:bg-primary/20 hover:text-primary"
             >
                 <X className="h-5 w-5" />
-                <span className="sr-only">Exit planning mode</span>
+                <span className="sr-only">{language === 'de' ? 'Planungsmodus beenden' : 'Exit planning mode'}</span>
             </Button>
         </div>
     </div>

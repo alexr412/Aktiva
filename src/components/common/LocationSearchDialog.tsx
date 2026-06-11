@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { usePlanningMode } from '@/contexts/planning-mode-context';
 import { searchLocation } from '@/lib/nominatim';
 import type { Destination } from '@/lib/types';
+import { useLanguage } from '@/hooks/use-language';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ interface LocationSearchDialogProps {
 
 export function LocationSearchDialog({ open, onOpenChange }: LocationSearchDialogProps) {
   const { enterPlanningMode } = usePlanningMode();
+  const language = useLanguage();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Destination[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,11 +41,11 @@ export function LocationSearchDialog({ open, onOpenChange }: LocationSearchDialo
     try {
         const searchResults = await searchLocation(query);
         if (searchResults.length === 0) {
-            setError("No locations found for your search.");
+            setError(language === 'de' ? "Keine Orte für deine Suche gefunden." : "No locations found for your search.");
         }
         setResults(searchResults);
     } catch (e) {
-        setError("Could not perform search. Please try again.");
+        setError(language === 'de' ? "Suche konnte nicht durchgeführt werden. Bitte versuche es erneut." : "Could not perform search. Please try again.");
     } finally {
         setIsLoading(false);
     }
@@ -68,17 +70,19 @@ export function LocationSearchDialog({ open, onOpenChange }: LocationSearchDialo
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Plan a Trip</DialogTitle>
+          <DialogTitle>{language === 'de' ? 'Ort suchen' : 'Plan a Trip'}</DialogTitle>
           <DialogDescription>
-            Search for a city or place to see what's happening there.
+            {language === 'de'
+              ? 'Suche nach einer Stadt oder einem Ort, um zu sehen, was dort los ist.'
+              : 'Search for a city or place to see what\'s happening there.'}
           </DialogDescription>
         </DialogHeader>
         <div className="pt-4">
             <form onSubmit={handleSearch} className="flex gap-2">
                 <Input 
-                    placeholder="E.g., Berlin, Germany"
+                    placeholder={language === 'de' ? 'Z. B. Berlin, Deutschland' : 'E.g., Berlin, Germany'}
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => setQuery(e.target.value.slice(0, 100))}
                 />
                 <Button type="submit" size="icon" disabled={isLoading || !query.trim()}>
                     {isLoading ? <Loader2 className="animate-spin" /> : <Search />}

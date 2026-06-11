@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { rateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,12 +77,23 @@ Eingabe: 'Cinestar' → { "categories": ["entertainment.cinema"], "filterByName"
 Eingabe: 'essen' → { "categories": ["catering.restaurant", "catering.cafe"], "filterByName": false }`;
 
 export async function POST(req: NextRequest) {
+  // Rate Limiting
+  const limitCheck = rateLimit(req, 30, 60000); // 30 requests per minute
+  if (!limitCheck.success) {
+    return new Response('Too Many Requests', { status: 429, headers: limitCheck.headers });
+  }
+
   try {
     const body = await req.json();
     const query: string = (body?.query ?? '').trim();
 
     if (!query) {
       return NextResponse.json({ categories: [], filterByName: false });
+    }
+
+    // Eingabevalidierung (max. 200 Zeichen)
+    if (query.length > 200) {
+      return NextResponse.json({ error: 'Query too long' }, { status: 400 });
     }
 
     // 3-second timeout via Promise.race

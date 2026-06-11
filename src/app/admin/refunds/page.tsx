@@ -11,24 +11,29 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function AdminRefundsPage() {
+  const { userProfile, loading: authLoading } = useAuth();
   const [refunds, setRefunds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!db) return;
+    if (!db || authLoading || !userProfile || userProfile.role !== 'admin') return;
     const q = query(collection(db, 'refunds'), where('status', '==', 'pending'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setRefunds(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [userProfile, authLoading]);
 
   const handleConfirmRefund = async (refundId: string) => {
     if (!db) return;
+    if (!window.confirm("Bist du sicher, dass du diese Rückzahlung als erstattet markieren möchtest? Der Status wird permanent auf 'completed' gesetzt.")) {
+      return;
+    }
     try {
       const refundRef = doc(db, 'refunds', refundId);
       await updateDoc(refundRef, { 
@@ -41,21 +46,25 @@ export default function AdminRefundsPage() {
     }
   };
 
-  if (loading) return (
+  if (authLoading || loading) return (
     <div className="flex flex-col items-center justify-center p-20 gap-4">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
       <p className="text-sm font-black uppercase text-slate-400">Initialisiere Refund-Pipeline...</p>
     </div>
   );
 
+  if (!userProfile || userProfile.role !== 'admin') {
+    return null;
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild className="rounded-full">
+        <Button variant="ghost" size="icon" asChild className="rounded-full" aria-label="Zurück zum Admin-Dashboard">
           <Link href="/admin"><ArrowLeft className="h-5 w-5" /></Link>
         </Button>
         <div>
-          <h2 className="">Rückzahlungen</h2>
+          <h2>Rückzahlungen</h2>
           <p className="text-slate-500 font-medium">Verwaltung von Erstattungen stornierter Aktivitäten.</p>
         </div>
       </div>

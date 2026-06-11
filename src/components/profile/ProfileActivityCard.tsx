@@ -3,7 +3,7 @@
 import { format, formatDistanceToNow } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { Users, Star, Flame } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { useLanguage } from '@/hooks/use-language';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { cn } from '@/lib/utils';
@@ -20,8 +20,11 @@ interface ProfileActivityCardProps {
   const locale = language === 'de' ? de : enUS;
 
   const iconData = getPrimaryIconData({ 
-    categories: activity.categories || [], 
-    name: activity.placeName || (language === 'de' ? "Aktivität" : "Activity")
+    categories: (activity.categories || []).filter(c => c !== 'user_event'), 
+    name: activity.placeName || (language === 'de' ? "Aktivität" : "Activity"),
+    sourceType: activity.sourceType,
+    isUserEvent: activity.isUserEvent,
+    creationSource: activity.creationSource
   }, language);
   const Icon = iconData.icon;
   
@@ -70,12 +73,12 @@ interface ProfileActivityCardProps {
         <div className="flex items-center gap-2">
              <div className="flex -space-x-2">
                 {previewList.slice(0, 3).map((p, i) => (
-                    <Avatar key={i} className="h-7 w-7 border-2 border-white ring-2 ring-slate-50">
-                        <AvatarImage src={p.photoURL || undefined} />
-                        <AvatarFallback className="bg-slate-100 text-[8px] font-black text-slate-600">
-                            {p.displayName?.charAt(0)}
-                        </AvatarFallback>
-                    </Avatar>
+                    <ProfileAvatar 
+                        key={i} 
+                        className="h-7 w-7 border-2 border-white ring-2 ring-slate-50"
+                        photoURL={p.photoURL}
+                        displayName={p.displayName}
+                    />
                 ))}
             </div>
             <span className="text-[11px] font-bold text-slate-600 ml-1">

@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { sendFriendRequest } from '@/lib/firebase/firestore';
-import { db } from '@/lib/firebase/client';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { sendFriendRequest, findUserByUsername } from '@/lib/firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { formatFirstName } from '@/lib/utils';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import {
   Dialog,
   DialogContent,
@@ -41,19 +41,15 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
     setRequestSentLocally(false);
 
     try {
-      if (!db) throw new Error("Firestore not initialized");
-      const q = query(collection(db, "users"), where("username", "==", searchCode.trim().toLowerCase()));
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
-        setSearchedUser({ id: doc.id, ...doc.data() });
+      const userProfile = await findUserByUsername(searchCode.trim().toLowerCase());
+      if (userProfile) {
+        setSearchedUser({ id: userProfile.uid, ...userProfile });
       } else {
         setError("Nutzer nicht gefunden.");
       }
     } catch (err) {
       console.error(err);
-      setError("Datenbank-Fehler bei der Suche.");
+      setError("Fehler bei der Suche.");
     } finally {
       setIsSearching(false);
     }
@@ -66,7 +62,7 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
       await sendFriendRequest(currentUser.uid, targetUserId);
       toast({
         title: 'Anfrage gesendet!',
-        description: `Deine Anfrage wurde an ${searchedUser.displayName} gesendet.`,
+        description: `Deine Anfrage wurde an ${formatFirstName(searchedUser.displayName, 'User')} gesendet.`,
       });
     } catch (err: any) {
       setRequestSentLocally(false);
@@ -117,14 +113,12 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
           {searchedUser && (
             <div className="flex items-center justify-between mt-4 p-3 bg-secondary/20 border border-border rounded-xl">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-secondary rounded-full overflow-hidden flex items-center justify-center">
-                  {searchedUser.photoURL ? (
-                    <img src={searchedUser.photoURL} alt={searchedUser.displayName} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="font-bold">{searchedUser.displayName?.charAt(0) || "U"}</span>
-                  )}
-                </div>
-                <span className="font-bold">{searchedUser.displayName || "Unbekannt"}</span>
+                <ProfileAvatar 
+                  className="w-10 h-10"
+                  photoURL={searchedUser.photoURL}
+                  displayName={searchedUser.displayName}
+                />
+                <span className="font-bold">{formatFirstName(searchedUser.displayName, "Unbekannt")}</span>
               </div>
 
               {(() => {

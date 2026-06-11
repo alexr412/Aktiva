@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
-import { cn } from '@/lib/utils';
+import { cn, formatFirstName } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 
 import {
@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Trash2, Users, Calendar, CheckCircle, MapPin, ChevronRight, CheckCircle2, BarChart3, HelpCircle, Star, UserCircle, ShieldCheck } from 'lucide-react';
@@ -78,8 +78,11 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
   const isPastOrPresent = activityDate && activityDate <= new Date();
 
   const primaryStyle = getPrimaryIconData({ 
-      categories: activity.categories || [], 
-      name: activity.placeName || (language === 'de' ? "Aktivität" : "Activity")
+      categories: (activity.categories || []).filter(c => c !== 'user_event'), 
+      name: activity.placeName || (language === 'de' ? "Aktivität" : "Activity"),
+      sourceType: activity.sourceType,
+      isUserEvent: activity.isUserEvent,
+      creationSource: activity.creationSource
   }, language);
   const PrimaryIcon = primaryStyle.icon;
 
@@ -312,23 +315,22 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                 {Object.entries(chat.participantDetails).map(([uid, p]) => (
                    <li key={uid}>
                       <Link
-                          href={user?.uid === uid ? '/profile' : `/profile/${uid}`}
+                          href={user?.uid === uid ? '/profile' : `/users/${uid}`}
                           className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-neutral-800/50 transition-all group"
                           onClick={() => onOpenChange(false)}
                       >
-                          <Avatar 
+                          <ProfileAvatar 
                               className="h-12 w-12 border-2 border-white dark:border-neutral-800 shadow-sm ring-2 ring-transparent group-hover:ring-primary/20 transition-all"
+                              photoURL={p.photoURL}
+                              displayName={p.displayName}
                               isPremium={p.isPremium}
                               isCreator={p.isCreator}
                               isSupporter={p.isSupporter}
-                          >
-                              <AvatarImage src={p.photoURL || undefined} />
-                              <AvatarFallback className="bg-primary/5 text-primary font-black">{p.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-                          </Avatar>
+                          />
                           <div className="flex-1 flex flex-col min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-slate-900 dark:text-neutral-100 truncate">
-                                    {p.displayName}
+                                    {formatFirstName(p.displayName, 'User')}
                                 </span>
                                 {uid === chat.hostId && (
                                   <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tight">{language === 'de' ? 'Creator' : 'Creator'}</span>

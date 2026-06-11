@@ -18,7 +18,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { StarRating } from './StarRating';
 import { Loader2, Star } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { ProfileAvatar } from '../ui/profile-avatar';
+import { formatFirstName } from '@/lib/utils';
 
 interface HostRatingDialogProps {
   open: boolean;
@@ -50,7 +51,7 @@ export function HostRatingDialog({ open, onOpenChange, activity, currentUser, on
         await submitHostRating(activity.id!, activity.hostId, currentUser.uid, rating);
         toast({
             title: 'Bewertung eingereicht!',
-            description: `Vielen Dank für dein Feedback zu ${hostDetails?.displayName || 'dem Host'}.`,
+            description: `Vielen Dank für dein Feedback zu ${formatFirstName(hostDetails?.displayName, 'dem Host')}.`,
         });
         onRatingSubmitted();
         onOpenChange(false);
@@ -76,17 +77,18 @@ export function HostRatingDialog({ open, onOpenChange, activity, currentUser, on
           </div>
           <SheetTitle className="text-2xl font-black tracking-tight">Host bewerten</SheetTitle>
           <SheetDescription className="text-sm font-medium text-slate-500 px-4">
-            Wie war deine Erfahrung mit <strong>{hostDetails?.displayName}</strong> bei der Aktivität "{activity.placeName}"?
+            Wie war deine Erfahrung mit <strong>{formatFirstName(hostDetails?.displayName, 'User')}</strong> bei der Aktivität "{activity.placeName}"?
           </SheetDescription>
         </SheetHeader>
         
         <div className="px-8 py-6 space-y-8 flex flex-col items-center">
             <div className="flex flex-col items-center gap-3">
-                <Avatar className="h-20 w-20 border-4 border-slate-50 shadow-sm">
-                    <AvatarImage src={hostDetails?.photoURL || undefined} />
-                    <AvatarFallback className="text-2xl font-black bg-primary/10 text-primary">{hostDetails?.displayName?.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <span className="font-black text-slate-900">{hostDetails?.displayName}</span>
+                <ProfileAvatar 
+                    className="h-20 w-20 border-4 border-slate-50 shadow-sm"
+                    photoURL={hostDetails?.photoURL}
+                    displayName={hostDetails?.displayName}
+                />
+                <span className="font-black text-slate-900">{formatFirstName(hostDetails?.displayName, 'User')}</span>
             </div>
 
             <div className="space-y-2 flex flex-col items-center w-full">

@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onDocumentUpdated, onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
+import * as StripeModule from "stripe";
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -9,7 +10,8 @@ import * as admin from "firebase-admin";
  * to prevent floating-point inaccuracy. Supports seamless backwards compatibility
  * by auto-converting Euro values on-the-fly.
  */
-function getUserBalancesInCents(userData: any): { fiatBalanceCents: number; escrowBalanceCents: number } {
+// Exported for regression tests. Keep production semantics unchanged.
+export function getUserBalancesInCents(userData: any): { fiatBalanceCents: number; escrowBalanceCents: number } {
   if (userData.balancesInCents) {
     return {
       fiatBalanceCents: userData.fiatBalance || 0,
@@ -56,7 +58,8 @@ function writeLedgerEntry(
  * Asserts that balance values are non-negative. Throws immediately if violated.
  * Call before committing any transaction that modifies balances.
  */
-function assertBalanceInvariants(label: string, fiatCents: number, escrowCents: number): void {
+// Exported for regression tests. Keep production semantics unchanged.
+export function assertBalanceInvariants(label: string, fiatCents: number, escrowCents: number): void {
   if (fiatCents < 0) {
     throw new HttpsError("internal", `[INVARIANT VIOLATION] ${label}: fiatBalance would be negative (${fiatCents} cents).`);
   }
@@ -171,6 +174,21 @@ async function releaseEscrow(
  * Processes payments server-side to prevent balance manipulation.
  * Idempotency check is inside the transaction (race-safe).
  */
+let stripeInstance: any = null;
+function getStripe(): any {
+  if (!stripeInstance) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new HttpsError("failed-precondition", "Stripe Secret Key ist auf dem Server nicht konfiguriert.");
+    }
+    const StripeConstructor = (StripeModule as any).default || StripeModule;
+    stripeInstance = new StripeConstructor(key, {
+      apiVersion: "2023-10-30" as any,
+    });
+  }
+  return stripeInstance;
+}
+
 export const secureJoinPaidActivity = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Der Nutzer muss eingeloggt sein.");
@@ -181,6 +199,68 @@ export const secureJoinPaidActivity = onCall(async (request) => {
 
   if (!activityId || !transactionToken) {
     throw new HttpsError("invalid-argument", "Pflichtfelder (activityId, transactionToken) fehlen.");
+  }
+
+  const isSandbox = transactionToken.startsWith("txn_sandbox_");
+  const isDev = process.env.NODE_ENV === "development" || process.env.FUNCTIONS_EMULATOR === "true";
+
+  if (isSandbox && !isDev) {
+    throw new HttpsError("permission-denied", "Sandbox-Zahlungen sind in Production nicht erlaubt.");
+  }
+
+  let stripeAmount = 0;
+  let stripeCurrency = "eur";
+
+  if (!isSandbox) {
+    const isPI = transactionToken.startsWith("pi_");
+    const isCS = transactionToken.startsWith("cs_");
+
+    if (!isPI && !isCS) {
+      throw new HttpsError("invalid-argument", "Ungültige Zahlungs-ID.");
+    }
+
+    try {
+      const stripe = getStripe();
+      if (isPI) {
+        const pi = await stripe.paymentIntents.retrieve(transactionToken);
+        if (pi.status !== "succeeded") {
+          throw new HttpsError("failed-precondition", `Zahlung nicht erfolgreich (Status: ${pi.status}).`);
+        }
+        if (pi.currency.toLowerCase() !== "eur") {
+          throw new HttpsError("failed-precondition", "Zahlungswährung muss EUR sein.");
+        }
+        stripeAmount = pi.amount;
+        stripeCurrency = pi.currency;
+
+        if (pi.metadata?.activityId && pi.metadata.activityId !== activityId) {
+          throw new HttpsError("failed-precondition", "Aktivitäts-ID der Zahlung stimmt nicht überein.");
+        }
+        if (pi.metadata?.userId && pi.metadata.userId !== uid) {
+          throw new HttpsError("failed-precondition", "Nutzer-ID der Zahlung stimmt nicht überein.");
+        }
+      } else {
+        const session = await stripe.checkout.sessions.retrieve(transactionToken);
+        if (session.payment_status !== "paid") {
+          throw new HttpsError("failed-precondition", `Zahlung nicht erfolgreich (Status: ${session.payment_status}).`);
+        }
+        if (session.currency?.toLowerCase() !== "eur") {
+          throw new HttpsError("failed-precondition", "Zahlungswährung muss EUR sein.");
+        }
+        stripeAmount = session.amount_total || 0;
+        stripeCurrency = session.currency;
+
+        if (session.metadata?.activityId && session.metadata.activityId !== activityId) {
+          throw new HttpsError("failed-precondition", "Aktivitäts-ID der Zahlung stimmt nicht überein.");
+        }
+        if (session.metadata?.userId && session.metadata.userId !== uid) {
+          throw new HttpsError("failed-precondition", "Nutzer-ID der Zahlung stimmt nicht überein.");
+        }
+      }
+    } catch (e: any) {
+      if (e instanceof HttpsError) throw e;
+      console.error("[Stripe verification failed]:", e);
+      throw new HttpsError("internal", "Zahlungsverifikation fehlgeschlagen.");
+    }
   }
 
   const db = admin.firestore();
@@ -194,23 +274,42 @@ export const secureJoinPaidActivity = onCall(async (request) => {
         return { success: true, duplicated: true };
       }
 
+      // ── Refund check INSIDE transaction ──────────────────────────────────
+      const refundRef = db.collection("refund_requests").doc(transactionToken);
+      const refundSnap = await transaction.get(refundRef);
+      if (refundSnap.exists) {
+        throw new Error("validation:payment_refunded");
+      }
+
       const activityRef = db.collection("activities").doc(activityId);
       const activitySnap = await transaction.get(activityRef);
 
       if (!activitySnap.exists) {
-        throw new HttpsError("not-found", "Aktivität nicht gefunden.");
+        throw new Error("validation:activity_not_found");
       }
 
       const activityData = activitySnap.data();
-      if (!activityData) throw new HttpsError("internal", "Datenfehler.");
+      if (!activityData) throw new Error("validation:data_error");
 
       // ── CAS: block join on terminal activity state ────────────────────────
-      if (activityData.status === "cancelled" || activityData.status === "completed") {
-        throw new HttpsError("failed-precondition", "Diese Aktivität ist nicht mehr aktiv.");
+      if (activityData.status === "cancelled" || activityData.status === "completed" || activityData.status === "blacklisted") {
+        throw new Error("validation:activity_inactive");
       }
 
       if (!activityData.isPaid) {
-        throw new HttpsError("failed-precondition", "Diese Aktivität erfordert keine Zahlung.");
+        throw new Error("validation:activity_free");
+      }
+
+      const dateObj = activityData.activityDate && typeof activityData.activityDate.toDate === "function"
+        ? activityData.activityDate.toDate()
+        : (activityData.activityDate ? new Date(activityData.activityDate) : null);
+      if (dateObj && dateObj.getTime() < Date.now()) {
+        throw new Error("validation:activity_past");
+      }
+
+      const hostId = activityData.hostId;
+      if (hostId === uid) {
+        throw new Error("validation:host_cannot_join");
       }
 
       // Already a participant — idempotent success
@@ -220,13 +319,14 @@ export const secureJoinPaidActivity = onCall(async (request) => {
 
       // Capacity check
       if (activityData.maxParticipants && activityData.participantIds.length >= activityData.maxParticipants) {
-        throw new HttpsError("resource-exhausted", "Aktivität ist bereits voll.");
+        throw new Error("validation:activity_full");
       }
 
-      const price = activityData.price || 0;
-      const priceCents = Math.round(price * 100);
-      const netAmountCents = Math.round(priceCents * 0.9); // 10% platform fee
-      const hostId = activityData.hostId;
+      // Amount check
+      const expectedCents = Math.round((activityData.price || 0) * 100);
+      if (!isSandbox && stripeAmount !== expectedCents) {
+        throw new Error("validation:amount_mismatch");
+      }
 
       const userRef = db.collection("users").doc(uid);
       const hostRef = db.collection("users").doc(hostId);
@@ -238,6 +338,25 @@ export const secureJoinPaidActivity = onCall(async (request) => {
 
       const userData = userDoc.data() || {};
       const hostData = hostDoc.data() || {};
+
+      // ── Host blocked / user blocked / hidden checks ────────────────────────
+      if (hostData.isBanned) {
+        throw new Error("validation:host_banned");
+      }
+      if (hostData.blacklist?.hard?.includes(uid) || hostData.blacklist?.soft?.includes(uid)) {
+        throw new Error("validation:user_blocked_by_host");
+      }
+      if (userData.blacklist?.hard?.includes(hostId) || userData.blacklist?.soft?.includes(hostId)) {
+        throw new Error("validation:host_blocked_by_user");
+      }
+      if (userData.hiddenEntityIds?.includes(activityId)) {
+        throw new Error("validation:activity_hidden");
+      }
+
+      const price = activityData.price || 0;
+      const priceCents = Math.round(price * 100);
+      const netAmountCents = Math.round(priceCents * 0.9); // 10% platform fee
+
       const hostBalances = getUserBalancesInCents(hostData);
       const userBalances = getUserBalancesInCents(userData);
 
@@ -331,8 +450,31 @@ export const secureJoinPaidActivity = onCall(async (request) => {
 
       return { success: true };
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("secureJoinPaidActivity failed:", error);
+
+    const isValidationError = error instanceof Error && error.message.startsWith("validation:");
+
+    if (isValidationError && !isSandbox) {
+      const reason = error.message.replace("validation:", "");
+      try {
+        await db.collection("refund_requests").doc(transactionToken).set({
+          userId: uid,
+          activityId,
+          stripePaymentId: transactionToken,
+          amount: stripeAmount / 100,
+          amountCents: stripeAmount,
+          currency: stripeCurrency,
+          status: "pending",
+          reason: reason,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        console.log(`[REFUND] Created refund request for token ${transactionToken} due to ${reason}`);
+      } catch (refundError) {
+        console.error("[REFUND] Failed to write refund request:", refundError);
+      }
+    }
+
     await writeDLQ(db, {
       operationId: transactionToken,
       userId: uid,
@@ -342,6 +484,38 @@ export const secureJoinPaidActivity = onCall(async (request) => {
       errorStack: error instanceof Error ? error.stack : undefined,
       inputPayload: { activityId, transactionToken, referralId },
     });
+
+    if (isValidationError) {
+      const reason = error.message.replace("validation:", "");
+      let code: any = "failed-precondition";
+      let msg = "Beitritt nicht möglich.";
+
+      if (reason === "activity_full") {
+        code = "resource-exhausted";
+        msg = "Die Aktivität ist bereits voll.";
+      } else if (reason === "activity_inactive") {
+        msg = "Diese Aktivität ist nicht mehr aktiv.";
+      } else if (reason === "activity_past") {
+        msg = "Diese Aktivität liegt in der Vergangenheit.";
+      } else if (reason === "host_cannot_join") {
+        msg = "Als Host kannst du deiner eigenen Aktivität nicht beitreten.";
+      } else if (reason === "amount_mismatch") {
+        msg = "Zahlungsbetrag stimmt nicht mit Aktivitätspreis überein.";
+      } else if (reason === "payment_refunded") {
+        msg = "Diese Zahlung wurde bereits storniert oder zurückerstattet.";
+      } else if (reason === "activity_not_found") {
+        code = "not-found";
+        msg = "Aktivität nicht gefunden.";
+      } else if (reason === "activity_free") {
+        msg = "Diese Aktivität erfordert keine Zahlung.";
+      } else if (reason === "host_banned" || reason === "user_blocked_by_host" || reason === "host_blocked_by_user" || reason === "activity_hidden") {
+        code = "permission-denied";
+        msg = "Diese Aktivität ist für dich nicht verfügbar.";
+      }
+
+      throw new HttpsError(code, msg);
+    }
+
     if (error instanceof HttpsError) throw error;
     throw new HttpsError("internal", "Transaktionsfehler beim Beitritt.");
   }

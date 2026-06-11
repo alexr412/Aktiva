@@ -1,0 +1,473 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
+import { GEOAPIFY_API_KEY } from '@/lib/config';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2, Search, Activity, MapPin, Lock, Database, CheckCircle2, FileBarChart, Send } from 'lucide-react';
+import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
+import { runMigrationParticipantsPreview } from '@/lib/firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { functions, db } from '@/lib/firebase/client';
+import { httpsCallable } from 'firebase/functions';
+import { TELEMETRY_EVENTS_COLLECTION } from '@/lib/firebase/collections';
+
+export default function TestClient() {
+  const { userProfile, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
+  
+  const [testCity, setTestCity] = useState<string>("Bremerhaven");
+  const [testCategory, setTestCategory] = useState<string>("tourism,entertainment,heritage");
+  const [coordinates, setCoordinates] = useState<{lat: number, lng: number}>({ lat: 53.5395845, lng: 8.5809341 });
+  const [results, setResults] = useState<any[]>([]);
+  const [isFetching, setIsFetching] = useState<boolean>(false);
+  
+  // Migration State
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [isTriggeringReport, setIsTriggeringReport] = useState(false);
+
+  // Telemetry Diagnostic State
+  const [isTestingTelemetry, setIsTestingTelemetry] = useState(false);
+  const [telemetryResult, setTelemetryResult] = useState<{
+    authSuccess: boolean | null;
+    unauthFail: boolean | null;
+    sameCollection: boolean | null;
+    errorMsg?: string;
+  }>({ authSuccess: null, unauthFail: null, sameCollection: null });
+
+  const runTelemetryDiagnostic = async () => {
+    if (!db) {
+      toast({ variant: "destructive", title: "Fehler", description: "Firestore ist nicht initialisiert." });
+      return;
+    }
+    setIsTestingTelemetry(true);
+    setTelemetryResult({ authSuccess: null, unauthFail: null, sameCollection: null });
+    
+    try {
+      // 1. Same collection check
+      const same = TELEMETRY_EVENTS_COLLECTION === 'telemetry_events';
+
+      // 2. Authenticated telemetry write
+      const testEvent = {
+        entity_id: 'test-diagnostic-place-id',
+        placeId: 'test-diagnostic-place-id',
+        category: ['test-diagnostic'],
+        event_type: 'click',
+        interactionType: 'card_click',
+        timestamp: new Date().toISOString(),
+        event_value: 0,
+        value: 0,
+        userId: userProfile?.uid || 'anonymous'
+      };
+
+      const { collection, addDoc } = await import('firebase/firestore');
+      const docRef = await addDoc(collection(db, TELEMETRY_EVENTS_COLLECTION), testEvent);
+      const authSuccess = !!docRef.id;
+
+      // 3. Unauthenticated telemetry write (simulate by calling REST API without token)
+      let unauthFail = false;
+      const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+      if (projectId) {
+        try {
+          const restUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${TELEMETRY_EVENTS_COLLECTION}`;
+          const res = await fetch(restUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                entity_id: { stringValue: 'unauth-test' },
+                timestamp: { stringValue: new Date().toISOString() }
+              }
+            })
+          });
+          if (res.status === 403 || res.status === 401) {
+            unauthFail = true;
+          }
+        } catch (e) {
+          unauthFail = true;
+        }
+      } else {
+        unauthFail = true;
+      }
+
+      setTelemetryResult({
+        authSuccess,
+        unauthFail,
+        sameCollection: same
+      });
+
+      toast({
+        title: "Diagnose abgeschlossen",
+        description: "Status der Telemetrie wurde erhoben.",
+      });
+    } catch (err: any) {
+      console.error("Telemetry diagnostic failed:", err);
+      setTelemetryResult({
+        authSuccess: false,
+        unauthFail: null,
+        sameCollection: TELEMETRY_EVENTS_COLLECTION === 'telemetry_events',
+        errorMsg: err.message || String(err)
+      });
+      toast({
+        variant: "destructive",
+        title: "Diagnose fehlgeschlagen",
+        description: err.message,
+      });
+    } finally {
+      setIsTestingTelemetry(false);
+    }
+  };
+
+  // RBAC Route Guard: Only admins allowed
+  useEffect(() => {
+    if (!authLoading && (!userProfile || userProfile.role !== 'admin')) {
+      router.replace('/');
+    }
+  }, [userProfile, authLoading, router]);
+
+  if (authLoading) {
+    return <div className="flex h-dvh items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  }
+
+  if (userProfile?.role !== 'admin') {
+    return null; // Will redirect via useEffect
+  }
+
+  const handleMigration = async () => {
+    setIsMigrating(true);
+    try {
+      const count = await runMigrationParticipantsPreview();
+      toast({
+        title: "Migration abgeschlossen",
+        description: `${count} Aktivitäten wurden erfolgreich aktualisiert.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Migration fehlgeschlagen",
+        description: err.message,
+      });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
+  const handleTriggerWeeklyReport = async () => {
+    if (!functions) return;
+    setIsTriggeringReport(true);
+    try {
+      const triggerReport = httpsCallable(functions, 'triggerWeeklyReportManual');
+      const result = await triggerReport();
+      const data = result.data as any;
+      toast({
+        title: "Wochenbericht gesendet",
+        description: `${data.sent} Berichte wurden an Hosts übermittelt (${data.processed} Aktivitäten analysiert).`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Fehler beim Reporting",
+        description: err.message,
+      });
+    } finally {
+      setIsTriggeringReport(false);
+    }
+  };
+
+  const resolveCoordinates = async (cityName: string) => {
+    const geoUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(cityName)}&limit=1&apiKey=${GEOAPIFY_API_KEY}`;
+    const response = await fetch(geoUrl);
+    if (!response.ok) throw new Error("Geocoding service unavailable");
+    
+    const data = await response.json();
+    if (data.features && data.features.length > 0) {
+      const { lat, lon } = data.features[0].properties;
+      setCoordinates({ lat, lng: lon });
+      return { lat, lng: lon };
+    }
+    throw new Error("City not found");
+  };
+
+  const executeTestQuery = async () => {
+    const sanitizedCategory = testCategory.trim().replace(/\s+/g, '');
+    if (!sanitizedCategory || !testCity.trim()) return;
+    
+    setIsFetching(true);
+    
+    try {
+      const { lat, lng } = await resolveCoordinates(testCity);
+
+      const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${lng},${lat},5000&limit=100&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
+      
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      
+      const data = await response.json();
+      const rawFeatures = data.features || [];
+      
+      const combinedSoftVetoList = [...BASE_SOFT_VETO];
+
+      const safeFeatures = rawFeatures.filter((feature: any) => {
+        const isStolperstein = feature.properties?.datasource?.raw?.memorial === 'stolperstein';
+        if (isStolperstein) return false;
+
+        const allTags: string[] = Array.isArray(feature.properties?.categories) 
+          ? feature.properties.categories 
+          : [feature.properties?.categories];
+
+        const violatesHardVeto = allTags.some(tag => 
+          BASE_HARD_VETO.some(veto => tag === veto || tag.startsWith(`${veto}.`))
+        );
+        if (violatesHardVeto) return false;
+
+        const coreTags = allTags.filter(tag => 
+          !CONDITION_PREFIXES.some(prefix => tag === prefix || tag.startsWith(`${prefix}.`)) &&
+          (!tag.startsWith("building") || combinedSoftVetoList.includes(tag))
+        );
+
+        const specificCoreTags = coreTags.filter(tag => 
+          !coreTags.some(otherTag => otherTag !== tag && otherTag.startsWith(`${tag}.`))
+        );
+
+        if (specificCoreTags.length > 0) {
+          const isSolelyExcludedIdentity = specificCoreTags.every(specificTag => 
+            combinedSoftVetoList.includes(specificTag)
+          );
+          
+          if (isSolelyExcludedIdentity) return false;
+        }
+
+        return true; 
+      });
+
+      setResults(safeFeatures);
+    } catch (error: any) {
+      console.error("Test pipeline failed:", error);
+      alert(error.message || "An error occurred during the test.");
+      setResults([]);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-dvh bg-background">
+      <header className="p-6 border-b shrink-0 bg-card">
+        <h1 className="text-2xl font-bold flex items-center gap-2 text-primary">
+          <Lock className="h-6 w-6" />
+          Admin Diagnostic Console
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Zugriff exklusiv für Administratoren. Pipeline #031 aktiv.
+        </p>
+      </header>
+
+      <div className="flex flex-col gap-4 p-6 border-b bg-muted/30 shrink-0">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Database Maintenance Section */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="p-4 flex items-center justify-between gap-4 h-full">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                  <Database className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Teilnehmer-Migration</h3>
+                  <p className="text-xs text-muted-foreground">Synchronisiert Teilnehmer-Vorschauen.</p>
+                </div>
+              </div>
+              <Button 
+                onClick={handleMigration} 
+                disabled={isMigrating}
+                variant="default"
+                size="sm"
+                className="font-bold gap-2 shrink-0"
+              >
+                {isMigrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Start
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* System Reporting Section */}
+          <Card className="border-orange-200 bg-orange-50/30">
+            <CardContent className="p-4 flex items-center justify-between gap-4 h-full">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+                  <FileBarChart className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Wochenbericht (Manual)</h3>
+                  <p className="text-xs text-muted-foreground">Triggered den CRON-Job sofort.</p>
+                </div>
+              </div>
+              <Button 
+                onClick={handleTriggerWeeklyReport} 
+                disabled={isTriggeringReport}
+                variant="outline"
+                size="sm"
+                className="font-bold gap-2 border-orange-200 text-orange-700 hover:bg-orange-100 shrink-0"
+              >
+                {isTriggeringReport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Trigger
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Telemetry Diagnostic Section */}
+          <Card className="border-teal-200 bg-teal-50/30">
+            <CardContent className="p-4 flex flex-col justify-between h-full gap-2">
+              <div className="flex items-center justify-between gap-4 w-full">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-teal-100 rounded-lg text-teal-600">
+                    <Activity className="h-5 w-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">Telemetrie-Diagnose</h3>
+                    <p className="text-xs text-muted-foreground">Prüft Berechtigungen & Schema.</p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={runTelemetryDiagnostic} 
+                  disabled={isTestingTelemetry}
+                  variant="outline"
+                  size="sm"
+                  className="font-teal-700 border-teal-200 text-teal-700 hover:bg-teal-100 font-bold gap-2 shrink-0"
+                >
+                  {isTestingTelemetry ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
+                  Test
+                </Button>
+              </div>
+              
+              {/* Diagnostic Results Display */}
+              {(telemetryResult.authSuccess !== null || telemetryResult.unauthFail !== null || telemetryResult.sameCollection !== null) && (
+                <div className="mt-2 p-2 bg-background/80 rounded border text-[10px] font-mono flex flex-col gap-1 w-full shrink-0">
+                  <div className="flex justify-between">
+                    <span>Authentifiziertes Schreiben:</span>
+                    <span className={telemetryResult.authSuccess ? "text-emerald-600 font-bold" : "text-destructive font-bold"}>
+                      {telemetryResult.authSuccess ? "Erfolgreich" : "Fehlgeschlagen"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Unauthentifizierter Block (403):</span>
+                    <span className={telemetryResult.unauthFail ? "text-emerald-600 font-bold" : "text-destructive font-bold"}>
+                      {telemetryResult.unauthFail ? "Erfolgreich blocked" : "Fehlgeschlagen"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Gleiche Collection:</span>
+                    <span className={telemetryResult.sameCollection ? "text-emerald-600 font-bold" : "text-destructive font-bold"}>
+                      {telemetryResult.sameCollection ? "Ja (telemetry_events)" : "Nein"}
+                    </span>
+                  </div>
+                  {telemetryResult.errorMsg && (
+                    <div className="text-destructive mt-1 max-w-full truncate">
+                      Err: {telemetryResult.errorMsg}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-4 pt-2">
+          <div className="relative">
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              type="text" 
+              value={testCity} 
+              onChange={(e) => setTestCity(e.target.value)} 
+              placeholder="Stadt eingeben"
+              className="pl-10 bg-background h-12 font-medium"
+            />
+          </div>
+          
+          <div className="flex gap-2">
+            <Input 
+              type="text" 
+              value={testCategory} 
+              onChange={(e) => setTestCategory(e.target.value)} 
+              placeholder="Kategorien"
+              className="flex-1 font-mono text-sm bg-background h-12"
+            />
+            <Button 
+              onClick={executeTestQuery} 
+              disabled={isFetching || !testCategory.trim() || !testCity.trim()}
+              className="h-12 px-6 font-bold"
+            >
+              {isFetching ? <Loader2 className="animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+              {isFetching ? "Resolving..." : "Run Test"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1 px-1 bg-background/50 p-3 rounded-lg border border-border/50">
+          <div className="flex justify-between text-xs font-mono">
+            <span className="text-muted-foreground">Coordinates:</span>
+            <span className="text-primary font-bold">{coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}</span>
+          </div>
+          <div className="text-sm font-semibold whitespace-nowrap mt-2">
+            Results: <span className="text-primary">{results.length}</span>
+          </div>
+        </div>
+      </div>
+
+      <main className="flex-1 overflow-y-auto p-6 bg-secondary/20">
+        <div className="max-w-4xl mx-auto space-y-3 pb-20">
+          {results.length > 0 ? (
+            results.map((feature, index) => (
+              <Card key={index} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start gap-4">
+                    <div>
+                      <h3 className="font-bold text-base">{feature.properties.name || "UNNAMED ENTITY"}</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">{feature.properties.address_line2}</p>
+                    </div>
+                    <div className="text-[10px] bg-muted px-2 py-1 rounded font-mono">
+                      {feature.properties.place_id.slice(0, 8)}...
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {feature.properties.categories?.map((cat: string) => {
+                      const isHardVeto = BASE_HARD_VETO.some(veto => cat === veto || cat.startsWith(`${veto}.`));
+                      const isSoftVeto = BASE_SOFT_VETO.includes(cat);
+                      
+                      return (
+                        <span 
+                          key={cat} 
+                          className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${
+                            isHardVeto 
+                              ? 'bg-red-100 text-red-700 border-red-200' 
+                              : isSoftVeto
+                                ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                : 'bg-primary/10 text-primary border-primary/20'
+                          }`}
+                        >
+                          {cat}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+              <div className="bg-muted p-4 rounded-full">
+                <Search className="h-10 w-10 text-muted-foreground/50" />
+              </div>
+              <div>
+                <p className="text-muted-foreground">Keine Daten...</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

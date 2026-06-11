@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
+import { formatFirstName } from '@/lib/utils';
 
 import { submitMultiReview } from '@/lib/firebase/firestore';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
@@ -21,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { StarRating } from '../reviews/StarRating';
 import { Loader2, Users, Sparkles, Star, UserCheck } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { ProfileAvatar } from '../ui/profile-avatar';
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 
@@ -120,7 +121,7 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
         await submitMultiReview(activity.id!, currentUser.uid, reviews);
         toast({ 
             title: language === 'de' ? 'Feedback gesendet!' : 'Feedback sent!', 
-            description: language === 'de' ? 'Danke, dass du die Aktvia Community stärkst.' : 'Thank you for strengthening the Aktvia community.' 
+            description: language === 'de' ? 'Danke, dass du die Aktiva Community stärkst.' : 'Thank you for strengthening the Aktiva community.' 
         });
 
         onReviewSubmitted();
@@ -187,11 +188,12 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
                   {peers.map((peer) => (
                     <div key={peer.uid} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-primary/20">
                       <div className="flex items-center gap-3 min-w-0">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={peer.photoURL || undefined} />
-                          <AvatarFallback className="bg-primary/5 text-primary font-black text-xs">{peer.displayName?.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-bold text-slate-900 truncate text-sm">{peer.displayName}</span>
+                        <ProfileAvatar 
+                          className="h-10 w-10"
+                          photoURL={peer.photoURL}
+                          displayName={peer.displayName}
+                        />
+                        <span className="font-bold text-slate-900 truncate text-sm">{formatFirstName(peer.displayName, 'Teilnehmer')}</span>
                       </div>
                       <StarRating 
                         rating={peerRatings[peer.uid] || 0} 

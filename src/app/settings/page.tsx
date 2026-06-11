@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2, ShieldBan, Scale } from 'lucide-react';
+import { ArrowLeft, User, Bell, Users, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2, ShieldBan, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -38,6 +38,7 @@ type NotificationSettings = {
     activityInvites: boolean;
     chatMessages: boolean;
     localHighlights: boolean;
+    nearbyFriendActivityNotifications: boolean;
 };
 
 const REQUIRED_ACTIVITIES = 20;
@@ -45,10 +46,22 @@ const REQUIRED_RATING = 4.4;
 
 export default function SettingsPage() {
     const router = useRouter();
-    const { user, userProfile } = useAuth();
+    const { user, userProfile, loading: authLoading } = useAuth();
     const language = useLanguage();
     const { toast } = useToast();
     
+    useEffect(() => {
+        if (authLoading) return;
+        if (!user) {
+            router.replace('/login?redirect=/settings');
+            return;
+        }
+        if (userProfile && userProfile.onboardingCompleted === false) {
+            router.replace('/onboarding');
+            return;
+        }
+    }, [user, userProfile, authLoading, router]);
+
     const [isSendingReset, setIsSendingReset] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -58,13 +71,25 @@ export default function SettingsPage() {
     const [activitiesCount, setActivitiesCount] = useState(0);
     const [isApplying, setIsApplying] = useState(false);
     const [hasApplication, setHasApplication] = useState(false);
-
     const [notifications, setNotifications] = useState<NotificationSettings>({
         friendRequests: userProfile?.notificationSettings?.friendRequests ?? true,
         activityInvites: userProfile?.notificationSettings?.activityInvites ?? true,
         chatMessages: userProfile?.notificationSettings?.chatMessages ?? true,
         localHighlights: userProfile?.notificationSettings?.localHighlights ?? false,
+        nearbyFriendActivityNotifications: userProfile?.notificationSettings?.nearbyFriendActivityNotifications ?? true,
     });
+
+    useEffect(() => {
+        if (userProfile?.notificationSettings) {
+            setNotifications({
+                friendRequests: userProfile.notificationSettings.friendRequests ?? true,
+                activityInvites: userProfile.notificationSettings.activityInvites ?? true,
+                chatMessages: userProfile.notificationSettings.chatMessages ?? true,
+                localHighlights: userProfile.notificationSettings.localHighlights ?? false,
+                nearbyFriendActivityNotifications: userProfile.notificationSettings.nearbyFriendActivityNotifications ?? true,
+            });
+        }
+    }, [userProfile]);
 
     useEffect(() => {
       if (!user || !db) return;
@@ -236,10 +261,18 @@ export default function SettingsPage() {
 
     const canApply = activitiesCount >= REQUIRED_ACTIVITIES && (userProfile?.averageRating || 0) >= REQUIRED_RATING;
 
+    if (authLoading || !user || (userProfile && userProfile.onboardingCompleted === false)) {
+        return (
+            <div className="flex h-screen w-screen items-center justify-center bg-background">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col h-full w-full bg-secondary overflow-y-auto pb-32">
             <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background px-4 shrink-0">
-                <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()}>
+                <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()} aria-label={language === 'de' ? 'Zurück' : 'Back'}>
                     <ArrowLeft />
                 </Button>
                 <h1 className="text-xl font-bold">{language === 'de' ? 'Einstellungen' : 'Settings'}</h1>
@@ -254,9 +287,9 @@ export default function SettingsPage() {
 
                         </h2>
                         <div className="space-y-2">
-                            <button onClick={() => window.open('https://paypal.me/aktvia', '_blank')} className="flex w-full items-center justify-between rounded-lg border-2 border-red-500/20 bg-red-500/5 p-4 text-left transition-colors hover:bg-red-500/10">
+                            <button onClick={() => window.open('https://paypal.me/aktiva', '_blank')} className="flex w-full items-center justify-between rounded-lg border-2 border-red-500/20 bg-red-500/5 p-4 text-left transition-colors hover:bg-red-500/10">
                                 <div>
-                                    <p className="font-bold text-red-600">{language === 'de' ? 'Unterstütze Aktvia' : 'Support Aktvia'}</p>
+                                    <p className="font-bold text-red-600">{language === 'de' ? 'Unterstütze Aktiva' : 'Support Aktiva'}</p>
                                     <p className="text-sm text-red-600/70">{language === 'de' ? 'Spende einen kleinen Betrag & erhalte das Supporter-Badge.' : 'Donate a small amount & get the supporter badge.'}</p>
                                 </div>
                                 <ChevronRight className="h-5 w-5 text-red-500" />
@@ -327,6 +360,21 @@ export default function SettingsPage() {
                                     id="local-highlights"
                                     checked={notifications.localHighlights}
                                     onCheckedChange={(checked) => handleNotificationChange('localHighlights', checked)}
+                                />
+                            </div>
+                            <Separator className="my-4"/>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label htmlFor="nearby-friend-activities" className="font-medium flex items-center gap-2">
+                                      <Users className="h-3.5 w-3.5 text-primary" />
+                                      {language === 'de' ? 'Aktivitäten von Freunden in der Nähe' : 'Nearby Friend Activities'}
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">{language === 'de' ? 'Benachrichtigung, wenn Freunde eine Aktivität im Umkreis erstellen.' : 'Notify when friends create an activity nearby.'}</p>
+                                </div>
+                                <Switch
+                                    id="nearby-friend-activities"
+                                    checked={notifications.nearbyFriendActivityNotifications}
+                                    onCheckedChange={(checked) => handleNotificationChange('nearbyFriendActivityNotifications', checked)}
                                 />
                             </div>
                             <Separator className="my-4"/>
@@ -564,8 +612,9 @@ export default function SettingsPage() {
                                         </AlertDialogHeader>
                                          <div className="space-y-4">
                                             <div className="p-4 bg-muted/50 rounded-2xl space-y-3">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">{language === 'de' ? 'Bestätige dein Passwort' : 'Confirm your password'}</Label>
+                                                <Label htmlFor="delete-account-password" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">{language === 'de' ? 'Bestätige dein Passwort' : 'Confirm your password'}</Label>
                                                 <Input 
+                                                    id="delete-account-password"
                                                     type="password"
                                                     value={deleteConfirmText}
                                                     onChange={(e) => {

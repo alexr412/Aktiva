@@ -1,29 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from './use-auth';
 import { fetchFriendsProfiles } from '@/lib/friends';
 import type { UserProfile } from '@/lib/types';
 import { useToast } from './use-toast';
-
-function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-    Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) *
-    Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
+import { calculateDistance } from '@/lib/geo-utils';
 
 export function useProximityRadar() {
   const { userProfile } = useAuth();
   const { toast } = useToast();
   const [nearbyFriends, setNearbyFriends] = useState<UserProfile[]>([]);
+
+  const friendsKey = useMemo(
+    () => userProfile?.friends?.slice().sort().join(",") ?? "",
+    [userProfile?.friends]
+  );
 
   useEffect(() => {
     if (!userProfile?.proximitySettings?.enabled || !userProfile.lastLocation || !userProfile.friends || userProfile.friends.length === 0) {
@@ -43,7 +35,7 @@ export function useProximityRadar() {
           const updatedAtMs = friend.lastLocation.updatedAt.toMillis();
           if (now - updatedAtMs > maxAgeMs) return false;
 
-          const dist = getDistance(
+          const dist = calculateDistance(
             userProfile.lastLocation!.lat,
             userProfile.lastLocation!.lng,
             friend.lastLocation.lat,
@@ -77,7 +69,16 @@ export function useProximityRadar() {
     checkNearby();
     const interval = setInterval(checkNearby, 5 * 60 * 1000); // Alle 5 Min prüfen
     return () => clearInterval(interval);
-  }, [userProfile, nearbyFriends.length, toast]);
+  }, [
+    userProfile?.uid,
+    userProfile?.proximitySettings?.enabled,
+    userProfile?.proximitySettings?.radiusKm,
+    userProfile?.lastLocation?.lat,
+    userProfile?.lastLocation?.lng,
+    friendsKey,
+    nearbyFriends.length,
+    toast
+  ]);
 
   return nearbyFriends;
 }

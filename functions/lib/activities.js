@@ -1,0 +1,607 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.respondToJoinRequest = exports.notifyNearbyUsers = exports.onActivityUpdated = exports.onActivityCreated = void 0;
+const firestore_1 = require("firebase-functions/v2/firestore");
+const https_1 = require("firebase-functions/v2/https");
+const admin = require("firebase-admin");
+const users_1 = require("./users");
+/**
+ * Triggers when an activity is created. Awards +10 points to the host (daily cap of 2).
+ */
+exports.onActivityCreated = (0, firestore_1.onDocumentCreated)({
+    document: 'activities/{activityId}',
+    retry: true
+}, async (event) => {
+    const snapshot = event.data;
+    if (!snapshot)
+        return null;
+    const activity = snapshot.data();
+    const activityId = event.params.activityId;
+    const hostId = activity.hostId;
+    if (!hostId) {
+        console.warn(`Activity ${activityId} has no hostId.`);
+        return null;
+    }
+    const db = admin.firestore();
+    try {
+        await db.runTransaction(async (transaction) => {
+            // 1. Idempotency check
+            const ledgerRef = db.collection('users').doc(hostId).collection('pointsLedger').doc(`event_created_${activityId}`);
+            const ledgerSnap = await transaction.get(ledgerRef);
+            if (ledgerSnap.exists) {
+                console.log(`Event created points already awarded for activity ${activityId}`);
+                return;
+            }
+            // 2. Query for event_created entries in the last 24 hours to enforce daily cap (max 2)
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            const query = db.collection('users').doc(hostId).collection('pointsLedger')
+                .where('type', '==', 'event_created')
+                .where('createdAt', '>=', oneDayAgo);
+            const querySnap = await transaction.get(query);
+            if (querySnap.size >= 2) {
+                console.log(`Host ${hostId} has reached the daily limit of 2 event creation bonuses.`);
+                return;
+            }
+            // 3. Retrieve host profile to update points and level
+            const hostRef = db.collection('users').doc(hostId);
+            const hostSnap = await transaction.get(hostRef);
+            if (!hostSnap.exists) {
+                console.warn(`Host profile for ${hostId} not found.`);
+                return;
+            }
+            const hostData = hostSnap.data();
+            const hostLifetime = (hostData.pointsLifetime || 0) + 10;
+            const hostBalance = (hostData.pointsBalance || 0) + 10;
+            const hostNewLevel = (0, users_1.calculateLevel)(hostLifetime);
+            // 4. Award +10 points to host ledger
+            transaction.set(ledgerRef, {
+                type: 'event_created',
+                points: 10,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                sourceId: activityId,
+                metadata: {
+                    message: `Event erstellt: ${activity.title || 'Aktivität'}`
+                }
+            });
+            // 5. Update host user profile
+            transaction.update(hostRef, {
+                pointsBalance: hostBalance,
+                pointsLifetime: hostLifetime,
+                level: hostNewLevel
+            });
+            console.log(`Awarded +10 event creation points to host ${hostId}. New balance: ${hostBalance}, level: ${hostNewLevel}`);
+        });
+    }
+    catch (error) {
+        console.error(`Error processing event creation bonus for activity ${activityId}:`, error);
+    }
+    return null;
+});
+/**
+ * Triggers when an activity document is updated. Handles:
+ * 1. First participant joining the event (+20 host points).
+ * 2. Host and joiner First Activity Bonus (+50 points, once-in-a-lifetime).
+ */
+exports.onActivityUpdated = (0, firestore_1.onDocumentUpdated)({
+    document: 'activities/{activityId}',
+    retry: true
+}, async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after)
+        return null;
+    const beforeParticipants = before.participantIds || [];
+    const afterParticipants = after.participantIds || [];
+    const hostId = after.hostId;
+    const activityId = event.params.activityId;
+    if (!hostId)
+        return null;
+    const db = admin.firestore();
+    // A. Detect transition of first participant joining (length goes from 1 to 2)
+    const justJoinedFirst = (beforeParticipants.length === 1 && afterParticipants.length === 2);
+    if (justJoinedFirst) {
+        try {
+            await db.runTransaction(async (transaction) => {
+                // Idempotency check for first join bonus
+                const ledgerRef = db.collection('users').doc(hostId).collection('pointsLedger').doc(`event_first_join_${activityId}`);
+                const ledgerSnap = await transaction.get(ledgerRef);
+                if (ledgerSnap.exists) {
+                    console.log(`First participant joined bonus already awarded to host ${hostId} for activity ${activityId}`);
+                    return;
+                }
+                // Retrieve host profile
+                const hostRef = db.collection('users').doc(hostId);
+                const hostSnap = await transaction.get(hostRef);
+                if (!hostSnap.exists)
+                    return;
+                const hostData = hostSnap.data();
+                const hostLifetime = (hostData.pointsLifetime || 0) + 20;
+                const hostBalance = (hostData.pointsBalance || 0) + 20;
+                const hostNewLevel = (0, users_1.calculateLevel)(hostLifetime);
+                // Award +20 points to host ledger
+                transaction.set(ledgerRef, {
+                    type: 'event_joined_first',
+                    points: 20,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    sourceId: activityId,
+                    metadata: {
+                        message: `Erster Teilnehmer beigetreten: ${after.title || 'Aktivität'}`
+                    }
+                });
+                // Update host user profile
+                transaction.update(hostRef, {
+                    pointsBalance: hostBalance,
+                    pointsLifetime: hostLifetime,
+                    level: hostNewLevel
+                });
+                console.log(`Awarded +20 points to host ${hostId} for first participant joining.`);
+            });
+        }
+        catch (error) {
+            console.error(`Error awarding first join points to host:`, error);
+        }
+    }
+    // B. Detect First Activity Bonus (+50)
+    // 1. Host first activity bonus when event gets first joiner
+    if (justJoinedFirst) {
+        try {
+            await db.runTransaction(async (transaction) => {
+                const hostLedgerRef = db.collection('users').doc(hostId).collection('pointsLedger').doc(`first_activity_bonus_${hostId}`);
+                const hostLedgerSnap = await transaction.get(hostLedgerRef);
+                if (hostLedgerSnap.exists) {
+                    // Already received
+                    return;
+                }
+                const hostRef = db.collection('users').doc(hostId);
+                const hostSnap = await transaction.get(hostRef);
+                if (!hostSnap.exists)
+                    return;
+                const hostData = hostSnap.data();
+                const hostLifetime = (hostData.pointsLifetime || 0) + 50;
+                const hostBalance = (hostData.pointsBalance || 0) + 50;
+                const hostNewLevel = (0, users_1.calculateLevel)(hostLifetime);
+                transaction.set(hostLedgerRef, {
+                    type: 'first_activity_bonus',
+                    points: 50,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    sourceId: activityId,
+                    metadata: {
+                        message: 'Erste Aktivität (Erstes eigenes Event mit Teilnehmern)'
+                    }
+                });
+                transaction.update(hostRef, {
+                    pointsBalance: hostBalance,
+                    pointsLifetime: hostLifetime,
+                    level: hostNewLevel
+                });
+                console.log(`First Activity Bonus (+50) awarded to host ${hostId}`);
+            });
+        }
+        catch (error) {
+            console.error(`Error awarding First Activity Bonus to host:`, error);
+        }
+    }
+    // 2. Joiner(s) first activity bonus on joining any event
+    const newParticipants = afterParticipants.filter((id) => !beforeParticipants.includes(id));
+    for (const joinerId of newParticipants) {
+        // Don't award to host (already handled by host condition, plus host is in beforeParticipants anyway)
+        if (joinerId === hostId)
+            continue;
+        try {
+            await db.runTransaction(async (transaction) => {
+                const joinerLedgerRef = db.collection('users').doc(joinerId).collection('pointsLedger').doc(`first_activity_bonus_${joinerId}`);
+                const joinerLedgerSnap = await transaction.get(joinerLedgerRef);
+                if (joinerLedgerSnap.exists) {
+                    // Already received
+                    return;
+                }
+                const joinerRef = db.collection('users').doc(joinerId);
+                const joinerSnap = await transaction.get(joinerRef);
+                if (!joinerSnap.exists)
+                    return;
+                const joinerData = joinerSnap.data();
+                const joinerLifetime = (joinerData.pointsLifetime || 0) + 50;
+                const joinerBalance = (joinerData.pointsBalance || 0) + 50;
+                const joinerNewLevel = (0, users_1.calculateLevel)(joinerLifetime);
+                transaction.set(joinerLedgerRef, {
+                    type: 'first_activity_bonus',
+                    points: 50,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    sourceId: activityId,
+                    metadata: {
+                        message: 'Erste Aktivität (Teilnahme an einem Event)'
+                    }
+                });
+                transaction.update(joinerRef, {
+                    pointsBalance: joinerBalance,
+                    pointsLifetime: joinerLifetime,
+                    level: joinerNewLevel
+                });
+                console.log(`First Activity Bonus (+50) awarded to joiner ${joinerId}`);
+            });
+        }
+        catch (error) {
+            console.error(`Error awarding First Activity Bonus to joiner ${joinerId}:`, error);
+        }
+    }
+    return null;
+});
+/**
+ * Berechnet die Haversine-Entfernung in km.
+ */
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+/**
+ * Extrahiert den Vornamen.
+ */
+function formatFirstName(displayName) {
+    if (!displayName)
+        return "Ein Freund";
+    const parts = displayName.trim().split(/\s+/);
+    return parts[0];
+}
+/**
+ * Cloud Function: Informiert Nutzer im Umkreis bei geboosteten Aktivitäten oder Aktivitäten von Freunden.
+ */
+exports.notifyNearbyUsers = (0, firestore_1.onDocumentCreated)({
+    document: 'activities/{activityId}',
+    retry: true
+}, async (event) => {
+    const snapshot = event.data;
+    if (!snapshot)
+        return null;
+    const activity = snapshot.data();
+    const activityId = event.params.activityId;
+    const activityLat = activity.lat;
+    const activityLon = activity.lon;
+    if (activityLat === undefined || activityLat === null || activityLon === undefined || activityLon === null) {
+        console.warn(`Activity ${activityId} location coordinates (lat/lon) missing. Skipping notification.`);
+        return null;
+    }
+    const hostId = activity.hostId || activity.creatorId;
+    if (!hostId) {
+        console.warn(`Activity ${activityId} has no hostId/creatorId. Skipping notification.`);
+        return null;
+    }
+    const db = admin.firestore();
+    // --- PATH A: Boosted Activity Notification (Public) ---
+    if (activity.isBoosted) {
+        const radius = 2; // 2km Radius
+        try {
+            // Suche alle Nutzer mit FCM Token
+            const usersSnap = await db.collection("users")
+                .where("fcmToken", "!=", null)
+                .get();
+            const tokens = [];
+            usersSnap.forEach(doc => {
+                const user = doc.data();
+                // Check Opt-In: localHighlights muss aktiv sein
+                if (!user.notificationSettings?.localHighlights)
+                    return;
+                if (user.lastLocation && user.lastLocation.lat && user.lastLocation.lng && doc.id !== hostId) {
+                    const dist = calculateDistance(activityLat, activityLon, user.lastLocation.lat, user.lastLocation.lng);
+                    if (dist <= radius) {
+                        tokens.push(user.fcmToken);
+                    }
+                }
+            });
+            if (tokens.length > 0) {
+                const hostName = activity.hostName || activity.creatorName || "Ein Nutzer";
+                const placeName = activity.placeName || activity.title || "ein Highlight";
+                const message = {
+                    notification: {
+                        title: "🔥 Hot in deiner Nähe!",
+                        body: `${hostName} hat gerade ein Highlight gestartet: "${placeName}".`,
+                    },
+                    data: {
+                        activityId: activityId,
+                        source: "push",
+                        click_action: "FLUTTER_NOTIFICATION_CLICK"
+                    },
+                    tokens: tokens
+                };
+                const response = await admin.messaging().sendEachForMulticast(message);
+                console.log(`Successfully sent ${response.successCount} boost notifications.`);
+            }
+        }
+        catch (error) {
+            console.error("Error sending boost notifications:", error);
+        }
+    }
+    // --- PATH B: Friend Proximity Notification ---
+    try {
+        const hostDoc = await db.collection('users').doc(hostId).get();
+        if (!hostDoc.exists) {
+            console.warn(`Host profile for ${hostId} not found. Skipping friend notification.`);
+            return null;
+        }
+        const hostProfile = hostDoc.data();
+        const hostFriends = hostProfile.friends || [];
+        const hostBlacklist = [...(hostProfile.blacklist?.hard || []), ...(hostProfile.blacklist?.soft || [])];
+        // Filter out blocklists and self
+        const friendsToNotify = hostFriends.filter(id => id !== hostId && !hostBlacklist.includes(id));
+        if (friendsToNotify.length > 0) {
+            // Load all friend profiles in parallel
+            const friendDocs = await Promise.all(friendsToNotify.map(friendId => db.collection('users').doc(friendId).get()));
+            const qualifiedFriends = [];
+            for (const doc of friendDocs) {
+                if (!doc.exists)
+                    continue;
+                const friendProfile = doc.data();
+                const friendId = doc.id;
+                // Check if friend has blocked host
+                const friendBlacklist = [...(friendProfile.blacklist?.hard || []), ...(friendProfile.blacklist?.soft || [])];
+                if (friendBlacklist.includes(hostId))
+                    continue;
+                // Check toggle preference (default is true, so nearbyFriendActivityNotifications !== false)
+                if (friendProfile.notificationSettings?.nearbyFriendActivityNotifications === false)
+                    continue;
+                // Check location
+                if (!friendProfile.lastLocation || typeof friendProfile.lastLocation.lat !== 'number' || typeof friendProfile.lastLocation.lng !== 'number')
+                    continue;
+                // Calculate distance
+                const dist = calculateDistance(activityLat, activityLon, friendProfile.lastLocation.lat, friendProfile.lastLocation.lng);
+                // Determine radius threshold
+                let allowedRadius = 10;
+                if (friendProfile.proximitySettings && friendProfile.proximitySettings.enabled && typeof friendProfile.proximitySettings.radiusKm === 'number') {
+                    allowedRadius = friendProfile.proximitySettings.radiusKm;
+                }
+                if (dist <= allowedRadius) {
+                    qualifiedFriends.push({ friendId, friendProfile });
+                }
+            }
+            if (qualifiedFriends.length > 0) {
+                const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                // Perform async database checks in parallel (rate limits & idempotency)
+                const checks = await Promise.all(qualifiedFriends.map(async (f) => {
+                    const friendId = f.friendId;
+                    const notifId = `friend_nearby_activity_${activityId}_${friendId}`;
+                    const notifRef = db.collection('notifications').doc(notifId);
+                    // Idempotency check
+                    const notifSnap = await notifRef.get();
+                    if (notifSnap.exists)
+                        return null;
+                    // Rate limit check
+                    const notifsSnap = await db.collection('notifications')
+                        .where('recipientId', '==', friendId)
+                        .where('type', '==', 'friend_nearby_activity')
+                        .where('createdAt', '>=', oneDayAgo)
+                        .get();
+                    if (notifsSnap.size >= 5) {
+                        console.log(`User ${friendId} has reached the daily limit of 5 nearby friend activity notifications.`);
+                        return null;
+                    }
+                    return { ...f, notifId, notifRef };
+                }));
+                const friendsToNotifyFinal = checks.filter((c) => c !== null);
+                if (friendsToNotifyFinal.length > 0) {
+                    const friendPushTokens = [];
+                    const hostName = hostProfile.displayName || "Ein Freund";
+                    const hostFirstName = formatFirstName(hostName);
+                    const activityTitle = activity.title || activity.placeName || "eine Aktivität";
+                    const messageText = `${hostFirstName} plant gerade "${activityTitle}" in deiner Nähe.`;
+                    const batch = db.batch();
+                    for (const f of friendsToNotifyFinal) {
+                        batch.set(f.notifRef, {
+                            recipientId: f.friendId,
+                            senderId: hostId,
+                            senderName: hostProfile.displayName || "Ein Freund",
+                            senderProfile: {
+                                displayName: hostProfile.displayName || "Ein Freund",
+                                photoURL: hostProfile.photoURL || null
+                            },
+                            type: 'friend_nearby_activity',
+                            title: 'Neue Aktivität in deiner Nähe',
+                            message: messageText,
+                            isRead: false,
+                            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                            activityId: activityId,
+                            link: `/activities/${activityId}`
+                        });
+                        if (f.friendProfile.fcmToken) {
+                            friendPushTokens.push(f.friendProfile.fcmToken);
+                        }
+                    }
+                    await batch.commit();
+                    console.log(`Successfully saved ${friendsToNotifyFinal.length} friend notifications.`);
+                    if (friendPushTokens.length > 0) {
+                        const pushMessage = {
+                            notification: {
+                                title: "Neue Aktivität in deiner Nähe",
+                                body: messageText,
+                            },
+                            data: {
+                                activityId: activityId,
+                                source: "push",
+                                click_action: "FLUTTER_NOTIFICATION_CLICK"
+                            },
+                            tokens: friendPushTokens
+                        };
+                        const response = await admin.messaging().sendEachForMulticast(pushMessage);
+                        console.log(`Successfully sent ${response.successCount} friend push notifications.`);
+                    }
+                }
+            }
+        }
+    }
+    catch (error) {
+        console.error("Error processing friend nearby notifications:", error);
+    }
+    return null;
+});
+/**
+ * HTTPS Callable: Beantwortet eine Beitrittsanfrage für eine Aktivität (durch den Host).
+ */
+exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'User must be authenticated.');
+    }
+    const hostId = request.auth.uid;
+    const { notificationId, activityId, userIdToJoin, action, customMessage } = request.data;
+    if (typeof notificationId !== 'string' || !notificationId ||
+        typeof activityId !== 'string' || !activityId ||
+        typeof userIdToJoin !== 'string' || !userIdToJoin ||
+        typeof action !== 'string' || !action) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing or invalid required arguments.');
+    }
+    if (action !== 'accept' && action !== 'decline') {
+        throw new https_1.HttpsError('invalid-argument', 'Invalid action. Must be accept or decline.');
+    }
+    const db = admin.firestore();
+    try {
+        const result = await db.runTransaction(async (transaction) => {
+            // 1. Get and verify the activity
+            const activityRef = db.collection('activities').doc(activityId);
+            const activitySnap = await transaction.get(activityRef);
+            if (!activitySnap.exists) {
+                throw new https_1.HttpsError('not-found', 'Activity not found.');
+            }
+            const activity = activitySnap.data();
+            if (activity.hostId !== hostId) {
+                throw new https_1.HttpsError('permission-denied', 'Only the activity host can respond to join requests.');
+            }
+            // Check if activity is joinable
+            const status = activity.status || 'active';
+            if (status !== 'active' && status !== 'open') {
+                throw new https_1.HttpsError('failed-precondition', 'Activity is no longer active.');
+            }
+            if (activity.isCancelled || activity.isDeleted || activity.isBlacklisted) {
+                throw new https_1.HttpsError('failed-precondition', 'Activity is cancelled, deleted, or blacklisted.');
+            }
+            // 2. Get and verify the notification
+            const notifRef = db.collection('notifications').doc(notificationId);
+            const notifSnap = await transaction.get(notifRef);
+            if (!notifSnap.exists) {
+                throw new https_1.HttpsError('not-found', 'Join request notification not found.');
+            }
+            const notif = notifSnap.data();
+            if (notif.type !== 'join_request' || notif.activityId !== activityId || notif.senderId !== userIdToJoin || notif.recipientId !== hostId) {
+                throw new https_1.HttpsError('invalid-argument', 'Notification mismatch.');
+            }
+            // 3. Get and verify the user to join
+            const userRef = db.collection('users').doc(userIdToJoin);
+            const userSnap = await transaction.get(userRef);
+            if (!userSnap.exists) {
+                throw new https_1.HttpsError('not-found', 'User profile not found.');
+            }
+            const userProfile = userSnap.data();
+            if (userProfile.isBanned) {
+                throw new https_1.HttpsError('failed-precondition', 'User is banned.');
+            }
+            // 4. Verify if already participant
+            const participantIds = activity.participantIds || [];
+            if (participantIds.includes(userIdToJoin)) {
+                // If already joined, we should resolve/delete the request to maintain idempotency
+                transaction.delete(notifRef);
+                return { success: true, alreadyParticipant: true };
+            }
+            if (action === 'accept') {
+                // Enforce capacity/maxParticipants limit
+                if (activity.maxParticipants && participantIds.length >= activity.maxParticipants) {
+                    throw new https_1.HttpsError('resource-exhausted', 'This activity has reached its maximum participants limit.');
+                }
+                const displayNameToUse = userProfile.displayName || "User";
+                const photoURLToUse = userProfile.photoURL || null;
+                // Update activity
+                transaction.update(activityRef, {
+                    participantIds: admin.firestore.FieldValue.arrayUnion(userIdToJoin),
+                    lastInteractionAt: admin.firestore.FieldValue.serverTimestamp(),
+                    [`participantDetails.${userIdToJoin}`]: {
+                        displayName: displayNameToUse,
+                        photoURL: photoURLToUse,
+                        isPremium: userProfile.isPremium || false,
+                        isSupporter: userProfile.isSupporter || false,
+                        checkInStatus: 'pending',
+                        hasReviewed: false
+                    }
+                });
+                // Update participantsPreview (max 5)
+                const currentPreviews = activity.participantsPreview || [];
+                if (currentPreviews.length < 5 && !currentPreviews.some((p) => p.uid === userIdToJoin)) {
+                    transaction.update(activityRef, {
+                        participantsPreview: admin.firestore.FieldValue.arrayUnion({
+                            uid: userIdToJoin,
+                            displayName: displayNameToUse,
+                            photoURL: photoURLToUse
+                        })
+                    });
+                }
+                // Update chat
+                const chatRef = db.collection('chats').doc(activityId);
+                transaction.update(chatRef, {
+                    participantIds: admin.firestore.FieldValue.arrayUnion(userIdToJoin),
+                    [`participantDetails.${userIdToJoin}`]: {
+                        displayName: displayNameToUse,
+                        photoURL: photoURLToUse,
+                        isPremium: userProfile.isPremium || false,
+                        isSupporter: userProfile.isSupporter || false,
+                        checkInStatus: 'pending'
+                    },
+                    [`unreadCount.${userIdToJoin}`]: 0
+                });
+                // Add to participants subcollection
+                const pSubRef = activityRef.collection('participants').doc(userIdToJoin);
+                transaction.set(pSubRef, {
+                    uid: userIdToJoin,
+                    displayName: displayNameToUse,
+                    photoURL: photoURLToUse,
+                    checkInStatus: 'pending',
+                    joinedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    hasReviewed: false
+                });
+                // Create exactly one join_response notification
+                const responseNotifRef = db.collection('notifications').doc();
+                transaction.set(responseNotifRef, {
+                    recipientId: userIdToJoin,
+                    senderId: 'system',
+                    type: 'join_response',
+                    title: 'Anfrage akzeptiert!',
+                    message: `Deine Anfrage für "${activity.placeName || 'Aktivität'}" wurde angenommen. Du bist jetzt dabei!`,
+                    isRead: false,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    activityId: activityId,
+                    responseStatus: 'accepted',
+                    link: `/chat/${activityId}`
+                });
+                // Delete original join request
+                transaction.delete(notifRef);
+            }
+            else {
+                // action === 'decline'
+                // Create exactly one join_response notification
+                const responseNotifRef = db.collection('notifications').doc();
+                transaction.set(responseNotifRef, {
+                    recipientId: userIdToJoin,
+                    senderId: 'system',
+                    type: 'join_response',
+                    title: 'Anfrage abgelehnt',
+                    message: `Deine Anfrage für "${activity.placeName || 'Aktivität'}" wurde leider abgelehnt.`,
+                    customMessage: customMessage || null,
+                    isRead: false,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    activityId: activityId,
+                    responseStatus: 'declined'
+                });
+                // Delete original join request
+                transaction.delete(notifRef);
+            }
+            return { success: true };
+        });
+        return result;
+    }
+    catch (error) {
+        console.error("Error in respondToJoinRequest transaction:", error);
+        if (error instanceof https_1.HttpsError) {
+            throw error;
+        }
+        throw new https_1.HttpsError('internal', error.message || 'Internal error responding to join request.');
+    }
+});
+//# sourceMappingURL=activities.js.map

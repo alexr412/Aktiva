@@ -106,7 +106,7 @@ export default function ScannerPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex h-full w-full items-center justify-center bg-slate-50">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -115,7 +115,7 @@ export default function ScannerPage() {
   if (!isAuthorized) return null;
 
   return (
-    <div className="flex flex-col h-screen bg-slate-900 text-white overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-900 text-white overflow-hidden">
       <header className="flex h-16 shrink-0 items-center justify-between px-4 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-20">
         <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full text-slate-400 hover:text-white hover:bg-slate-800">
           <ArrowLeft className="h-5 w-5" />

@@ -15,16 +15,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!loading) {
-      // Wir prüfen auf 'role'
-      if (!userProfile || userProfile.role !== 'admin') {
+      if (!userProfile) {
+        router.push(`/login?redirect=${pathname}`);
+        return;
+      }
+      if (userProfile.onboardingCompleted === false) {
+        router.replace("/onboarding");
+        return;
+      }
+      if (userProfile.role !== 'admin') {
         router.replace("/");
+        return;
       }
     }
-  }, [userProfile, loading, router]);
+  }, [userProfile, loading, router, pathname]);
 
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-50 dark:bg-neutral-950 font-mono text-muted-foreground">
+      <div className="flex h-full w-full items-center justify-center bg-slate-50 dark:bg-neutral-950 font-mono text-muted-foreground">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span>Verifiziere Administrator-Berechtigung...</span>
@@ -46,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
-    <div className="flex h-screen flex-col bg-slate-50 dark:bg-neutral-950 overflow-hidden">
+    <div className="flex h-full flex-col bg-slate-50 dark:bg-neutral-950 overflow-hidden">
       <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b dark:border-neutral-800 pb-4 pt-4 px-4 sm:px-6 bg-white dark:bg-neutral-900 shrink-0 z-20">
         <div className="flex items-center gap-3">
           <div className="bg-red-500 p-1.5 rounded-lg text-white">

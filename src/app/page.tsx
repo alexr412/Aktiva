@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { CategoryFilters } from '@/components/aktvia/category-filters';
-import { PlaceDetails } from '@/components/aktvia/place-details';
-import { PlaceCard } from '@/components/aktvia/place-card';
-import { SpotActionSheet } from '@/components/aktvia/spot-action-sheet';
+import { CategoryFilters } from '@/components/aktiva/category-filters';
+import { PlaceDetails } from '@/components/aktiva/place-details';
+import { PlaceCard } from '@/components/aktiva/place-card';
+import { SpotActionSheet } from '@/components/aktiva/spot-action-sheet';
 import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
 import { hasPremiumFeature } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -19,14 +19,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, X, Compass, Clock, Trophy, TreePine, VolumeX, Heart, Users2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
+import { CreateActivityDialog } from '@/components/aktiva/create-activity-dialog';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { createActivity, joinActivity, searchActivitiesBySemanticVector, castActivityVote, votePlace, updateUserLocation } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter, doc, documentId } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
-import { ActivityListItem } from "@/components/aktvia/activity-list-item";
+import { debugWarn, debugError } from '@/lib/debug';
+import { ActivityListItem } from "@/components/aktiva/activity-list-item";
 import { PremiumUpgradeModal } from '@/components/premium/PremiumUpgradeModal';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,8 +40,8 @@ import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { GLOBAL_EXCLUDE_STRING, applyFilters } from '@/lib/geoapify';
 import { calculateRelevance, rankPlacesPipeline } from '@/lib/ranking';
 import { Slider } from '@/components/ui/slider';
-import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn, formatFirstName } from '@/lib/utils';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { UserBadge } from '@/components/common/UserBadge';
 import { calculateDistance } from '@/lib/geo-utils';
 import { useLanguage } from '@/hooks/use-language';
@@ -51,7 +52,7 @@ import { isDuplicate } from '@/lib/duplicate-detector';
 import { monitoring } from '@/lib/monitoring';
 
 // Dynamic import for MapView to avoid SSR issues
-const MapView = dynamic(() => import('@/components/aktvia/map-view').then(mod => mod.MapView), {
+const MapView = dynamic(() => import('@/components/aktiva/map-view').then(mod => mod.MapView), {
   ssr: false,
   loading: () => <div className="flex h-full w-full items-center justify-center bg-muted"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
 });
@@ -224,6 +225,14 @@ export default function Home() {
 
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
+
+  useEffect(() => {
+    const isUserPremium = hasPremiumFeature(userProfile, 'advanced_filters');
+    if (!isUserPremium && activePremiumFilters.length > 0) {
+      setActivePremiumFilters([]);
+    }
+  }, [userProfile, activePremiumFilters]);
+
   const router = useRouter();
   const { planningState } = usePlanningMode();
   const { favorites } = useFavorites();
@@ -567,7 +576,7 @@ export default function Home() {
     return Boolean(lastPage && lastPage.features?.length < expectedLimit);
   }, [displayData, isEmpty, error, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
-  const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number }>>({});
+  const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number; weightedUpvotes: number; weightedDownvotes: number; voteBoostScore: number }>>({});
 
   const basePlaces = useMemo(() => {
     if (!displayData || isCommunityCategory || isFavoritesCategory) return [];
@@ -625,11 +634,12 @@ export default function Home() {
     let finalPlaces: Place[] = [];
     if (ENABLE_NEW_RANKING_PIPELINE) {
       const placesWithVotes = basePlaces.map(place => {
-        const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0 };
+        const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0, weightedUpvotes: 0, weightedDownvotes: 0, voteBoostScore: 0 };
         return {
           ...place,
           upvotes: votes.upvotes,
-          downvotes: votes.downvotes
+          downvotes: votes.downvotes,
+          voteBoostScore: votes.voteBoostScore
         };
       });
 
@@ -649,9 +659,9 @@ export default function Home() {
       }
     } else {
       const scored = basePlaces.map(place => {
-        const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0 };
+        const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0, weightedUpvotes: 0, weightedDownvotes: 0, voteBoostScore: 0 };
         const rawScore = calculateRelevance(
-          { ...place, upvotes: votes.upvotes, downvotes: votes.downvotes },
+          { ...place, upvotes: votes.upvotes, downvotes: votes.downvotes, voteBoostScore: votes.voteBoostScore },
           userProfile || { role: 'user' } as any,
           userLocation || { lat: 0, lng: 0 },
           { debug: false }
@@ -717,50 +727,61 @@ export default function Home() {
     return finalPlaces;
   }, [basePlaces, votesMap, userProfile, userLocation, activePremiumFilters]);
 
-  // Batch-Fetch der Vote-Daten: Einmaliger Read statt N Echtzeit-Listener
+  // Live Vote-Daten: onSnapshot-Listener für alle sichtbaren Spot-IDs.
+  // Wenn ein Vote eingeht (auch von anderen Usern/Admins), wird votesMap live aktualisiert
+  // → places memo recalculated → Startseite automatisch neu sortiert.
+  const basePlaceIdsKey = useMemo(() => {
+    if (basePlaces.length === 0) return '';
+    return [...new Set(basePlaces.map(p => p.id).filter(Boolean))].sort().join(',');
+  }, [basePlaces]);
+
   useEffect(() => {
-    if (!db || places.length === 0) return;
-    const placeIds = [...new Set(places.map(p => p.id).filter(Boolean))];
+    if (!db || !basePlaceIdsKey) return;
+    const placeIds = basePlaceIdsKey.split(',');
     if (placeIds.length === 0) return;
 
-    let cancelled = false;
+    const unsubscribes: (() => void)[] = [];
+    const batchSize = 30; // Firestore 'in' query limit
 
-    const fetchVotes = async () => {
-      const { getDoc } = await import('firebase/firestore');
-      const batchSize = 30;
-      const newVotes: Record<string, { upvotes: number; downvotes: number }> = {};
+    for (let i = 0; i < placeIds.length; i += batchSize) {
+      const batch = placeIds.slice(i, i + batchSize);
+      const q = query(collection(db!, 'places'), where(documentId(), 'in', batch));
 
-      for (let i = 0; i < placeIds.length; i += batchSize) {
-        if (cancelled) return;
-        const batch = placeIds.slice(i, i + batchSize);
-        try {
-          const q = query(collection(db!, 'places'), where(documentId(), 'in', batch));
-          const snap = await getDocs(q);
+      const unsub = onSnapshot(q, (snap) => {
+        setVotesMap(prev => {
+          const updated = { ...prev };
+          let changed = false;
           snap.forEach(docSnap => {
             const d = docSnap.data();
-            newVotes[docSnap.id] = { upvotes: d.upvotes || 0, downvotes: d.downvotes || 0 };
+            const newEntry = {
+              upvotes: d.upvotes || 0,
+              downvotes: d.downvotes || 0,
+              weightedUpvotes: d.weightedUpvotes ?? d.upvotes ?? 0,
+              weightedDownvotes: d.weightedDownvotes ?? d.downvotes ?? 0,
+              voteBoostScore: d.voteBoostScore ?? ((d.weightedUpvotes ?? d.upvotes ?? 0) - (d.weightedDownvotes ?? d.downvotes ?? 0))
+            };
+            const existing = prev[docSnap.id];
+            if (!existing ||
+                existing.upvotes !== newEntry.upvotes ||
+                existing.downvotes !== newEntry.downvotes ||
+                existing.weightedUpvotes !== newEntry.weightedUpvotes ||
+                existing.weightedDownvotes !== newEntry.weightedDownvotes ||
+                existing.voteBoostScore !== newEntry.voteBoostScore) {
+              updated[docSnap.id] = newEntry;
+              changed = true;
+            }
           });
-        } catch (e) {
-          console.error("Batch vote fetch failed:", e);
-        }
-      }
-
-      if (!cancelled) {
-        setVotesMap(prev => {
-          // Nur updaten wenn sich wirklich was geändert hat
-          const hasChanges = Object.keys(newVotes).some(id => {
-            const p = prev[id];
-            const n = newVotes[id];
-            return !p || p.upvotes !== n.upvotes || p.downvotes !== n.downvotes;
-          });
-          return hasChanges ? { ...prev, ...newVotes } : prev;
+          return changed ? updated : prev;
         });
-      }
-    };
+      }, (error) => {
+        console.error("Vote snapshot listener error:", error);
+      });
 
-    fetchVotes();
-    return () => { cancelled = true; };
-  }, [data]);
+      unsubscribes.push(unsub);
+    }
+
+    return () => unsubscribes.forEach(unsub => unsub());
+  }, [basePlaceIdsKey]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const isLoadingMore = useRef(false);
@@ -898,10 +919,13 @@ export default function Home() {
   // ---------------------------------------------------------------------------
 
   const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+    setSearchQuery(e.target.value.slice(0, 100));
   };
 
   useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const performSearch = async () => {
       const query = debouncedSearchQuery.trim();
 
@@ -922,9 +946,14 @@ export default function Home() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query }),
+          signal,
         });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+          const err = new Error(`HTTP ${response.status}`);
+          (err as any).status = response.status;
+          throw err;
+        }
         const { categories, filterByName } = await response.json();
 
         // 1. Set the filter flag (determines if we do local .includes(name) filtering)
@@ -934,20 +963,41 @@ export default function Home() {
         if (Array.isArray(categories) && categories.length > 0) {
           setActiveCategory(categories);
         } else {
-          console.warn('⚠️ [Live Search] LLM returned no categories. Falling back to default category pool.');
+          debugWarn('live-search', 'LLM returned no categories. Falling back to default category pool.');
           setActiveCategory([]);
         }
-      } catch (err) {
-        console.error('❌ [Live Search] Intent Parsing Failed:', err);
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+        debugError('live-search', 'Intent Parsing Failed:', err);
         setShouldFilterByName(true); // Fallback to name filtering
         setActiveCategory([]);
+
+        // User-friendly error message depending on error status
+        let title = language === 'de' ? "Suche eingeschränkt" : "Search limited";
+        let description = language === 'de' 
+          ? "Wir konnten deine Suchanfrage nicht intelligent verarbeiten. Die Suche filtert nun nach dem Namen."
+          : "We could not process your search query intelligently. Search is now filtering by name.";
+
+        if (err.status === 429 || err.message?.includes('429')) {
+          title = language === 'de' ? "Zu viele Anfragen" : "Too many requests";
+          description = language === 'de'
+            ? "Bitte warte einen Moment, bevor du erneut suchst."
+            : "Please wait a moment before searching again.";
+        }
+
+        toast({
+          variant: "destructive",
+          title,
+          description,
+        });
       } finally {
         setIsSearching(false);
       }
     };
 
     performSearch();
-  }, [debouncedSearchQuery]);
+    return () => controller.abort();
+  }, [debouncedSearchQuery, language, toast]);
 
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); // Handled automatically by Live-Search useEffect
@@ -957,19 +1007,21 @@ export default function Home() {
     setVisibleCount(PLACES_PER_PAGE);
   }, [debouncedSearchQuery]);
 
-  const handlePlaceSelect = (place: Place) => {
+  const handlePlaceSelect = useCallback((place: Place) => {
     setSelectedPlace(place);
     trackInteraction(place.id, place.categories, 'card_click', user?.uid);
     trackInteraction(place.id, place.categories, 'card_open', user?.uid);
-  };
+  }, [user?.uid]);
+
   const handleDialogClose = () => setSelectedPlace(null);
-  const handleOpenActivityModal = (place: Place) => {
+
+  const handleOpenActivityModal = useCallback((place: Place) => {
     if (!user) {
       router.push('/login');
       return;
     }
     setActionSheetPlace(place);
-  };
+  }, [user, router]);
   const handleOpenCustomActivityModal = () => { if (!user) { router.push('/login'); return; } setActivityModalPlace('custom'); };
 
   const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory, description?: string, requirements?: any, joinMode?: 'direct' | 'request'): Promise<boolean> => {
@@ -1077,6 +1129,25 @@ export default function Home() {
           const filteredList = list.filter((item: any) => {
             if (!item) return false;
 
+            // Filter out cancelled, completed, or blacklisted activities
+            if (item.status === 'cancelled' || item.status === 'completed' || item.status === 'blacklisted') {
+              return false;
+            }
+
+            // Filter out activities hosted by soft/hard blacklisted users, or in hiddenEntityIds
+            const hostId = item.hostId;
+            if (hostId && userProfile?.blacklist) {
+              const hardBlocked = userProfile.blacklist.hard || [];
+              const softBlocked = userProfile.blacklist.soft || [];
+              if (hardBlocked.includes(hostId) || softBlocked.includes(hostId)) {
+                return false;
+              }
+            }
+
+            if (item.id && userProfile?.hiddenEntityIds?.includes(item.id)) {
+              return false;
+            }
+
             // Check end date or start date to ensure it's not in the past
             if (item.activityEndDate?.toMillis) {
               if (item.activityEndDate.toMillis() < now) return false;
@@ -1108,8 +1179,14 @@ export default function Home() {
         }
 
         let filtered = places.filter(place => {
+          if (userProfile?.hiddenEntityIds?.includes(place.id)) return false;
           if (!debouncedSearchQuery || !shouldFilterByName) return true;
-          const name = place.name || "";
+          const rawName = place.name;
+          const name = typeof rawName === 'string'
+            ? rawName
+            : (rawName && typeof rawName === 'object'
+               ? ((rawName as any).de || (rawName as any).en || Object.values(rawName).find(v => typeof v === 'string') || '')
+               : String(rawName || ''));
           return name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
         });
 
@@ -1192,40 +1269,119 @@ export default function Home() {
 
   return (
     <>
-      <div className="flex flex-col h-full bg-white/40 dark:bg-neutral-900/40 relative">
+      <div className="flex flex-col h-full bg-transparent relative">
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
-        <header className="global-viewport-header pb-4">
-          <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
-            <div className="global-header-container">
-              <div className="flex items-center gap-3">
-                <Link href="/profile">
-                  <Avatar
-                    className="h-10 w-10 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
-                    isPremium={userProfile?.isPremium}
-                    isCreator={userProfile?.isCreator}
-                    isSupporter={userProfile?.isSupporter}
+        <header className="global-viewport-header pb-4 md:pb-3">
+          <div className="flex flex-col gap-6 md:gap-4 max-w-7xl mx-auto w-full">
+            {/* Mobile Header Layout */}
+            <div className="md:hidden flex flex-col gap-6">
+              <div className="global-header-container">
+                <div className="flex items-center gap-3">
+                  <Link href="/profile">
+                    <ProfileAvatar
+                      className="h-10 w-10 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
+                      photoURL={userProfile?.photoURL}
+                      displayName={userProfile?.displayName}
+                      isPremium={userProfile?.isPremium}
+                      isCreator={userProfile?.isCreator}
+                      isSupporter={userProfile?.isSupporter}
+                    />
+                  </Link>
+                  <h1 className="">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
+                </div>
+                <div className="flex items-center gap-3">
+                  <NotificationBell />
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="secondary-header-button" 
+                    onClick={handleMapToggle}
+                    aria-label={viewMode === 'list' ? (language === 'de' ? 'Zur Kartenansicht wechseln' : 'Switch to map view') : (language === 'de' ? 'Zur Listenansicht wechseln' : 'Switch to list view')}
                   >
-                    <AvatarImage src={userProfile?.photoURL || user?.photoURL || undefined} alt="Avatar" />
-                    <AvatarFallback className="bg-emerald-50 text-emerald-600 font-black text-xs">{userProfile?.displayName ? userProfile.displayName.charAt(0) : 'U'}</AvatarFallback>
-                  </Avatar>
-                </Link>
-                <h1 className="">{language === "de" ? `Hallo, ${userProfile?.displayName?.split(' ')[0] || 'Du'} 👋` : `Hi, ${userProfile?.displayName?.split(' ')[0] || 'You'} 👋`}</h1>
+                    {viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <NotificationBell />
-                <Button variant="ghost" size="icon" className="secondary-header-button" onClick={handleMapToggle}>{viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}</Button>
+
+              {/* Mobile Location Row */}
+              <div className="px-6 flex items-center justify-start">
+                <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-2 px-4 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest">{cityName}</span>
+                  <ChevronDown className="h-3 w-3 text-neutral-400" />
+                </button>
               </div>
             </div>
 
-            {/* Secondary Header Row: Context & Location */}
-            {/* Secondary Header Row: Location context */}
-            <div className="px-6 flex items-center justify-start">
-              <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-2 px-4 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest">{cityName}</span>
-                <ChevronDown className="h-3 w-3 text-neutral-400" />
-              </button>
+            {/* Desktop Unified Header Row */}
+            <div className="hidden md:flex items-center justify-between gap-6 px-6 w-full">
+              {/* Left: Avatar, Name & Location Dropdown Inline */}
+              <div className="flex items-center gap-3 shrink-0">
+                <Link href="/profile">
+                  <ProfileAvatar
+                    className="h-10 w-10 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
+                    photoURL={userProfile?.photoURL}
+                    displayName={userProfile?.displayName}
+                    isPremium={userProfile?.isPremium}
+                    isCreator={userProfile?.isCreator}
+                    isSupporter={userProfile?.isSupporter}
+                  />
+                </Link>
+                <div className="flex flex-col">
+                  <h1 className="text-xl font-black leading-tight">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
+                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 mt-0.5 self-start hover:opacity-80 transition-opacity">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[9px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">{cityName}</span>
+                    <ChevronDown className="h-2.5 w-2.5 text-neutral-400" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Center: Search input & Radius selector */}
+              <div className="flex items-center gap-3 flex-1 max-w-md">
+                <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
+                  {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
+                  <Input 
+                    type="search" 
+                    id="search-input-desktop"
+                    aria-label={language === "de" ? "Aktivitätssuche" : "Activity search"}
+                    placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} 
+                    value={searchQuery} 
+                    onChange={handleSearchInput} 
+                    disabled={isSearching} 
+                    className="w-full pl-9 h-11 rounded-full border-none bg-white font-bold text-xs shadow-md shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none disabled:opacity-70 placeholder:text-neutral-400" 
+                  />
+                </form>
+                <div className="relative group">
+                  <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" className="h-11 px-3 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-md shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Radius' : 'Radius'}</span><span className="text-sm font-black">{maxDistance === null ? '∞' : `${maxDistance} km`}</span></div>
+                        <input type="range" min="1" max="100" value={maxDistance || 100} onChange={(e) => setMaxDistance(parseInt(e.target.value) === 100 ? null : parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                        <div className="grid grid-cols-4 gap-2">{[5, 10, 25, null].map((r) => <button key={r === null ? 'all' : r} onClick={() => setMaxDistance(r)} className={cn("py-2 rounded-xl text-[10px] font-black transition-all", maxDistance === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>{r === null ? 'Alle' : `${r}k`}</button>)}</div>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+
+              {/* Right: Actions */}
+              <div className="flex items-center gap-3 shrink-0">
+                <NotificationBell />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="secondary-header-button" 
+                  onClick={handleMapToggle}
+                  aria-label={viewMode === 'list' ? (language === 'de' ? 'Zur Kartenansicht wechseln' : 'Switch to map view') : (language === 'de' ? 'Zur Listenansicht wechseln' : 'Switch to list view')}
+                >
+                  {viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}
+                </Button>
+              </div>
             </div>
 
             <div className="px-6">
@@ -1234,17 +1390,18 @@ export default function Home() {
 
             {/* Premium Advanced Filters Row */}
             <div className="px-6 -mt-2 pb-2">
-              <div className="flex overflow-x-auto gap-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none max-sm:hide-scrollbar items-center w-full">
+              <div className="flex flex-nowrap overflow-x-auto md:flex-wrap md:overflow-x-visible gap-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-center w-full">
                 {PREMIUM_FILTERS.map((f) => {
-                  const isActive = activePremiumFilters.includes(f.id);
                   const isUserPremium = hasPremiumFeature(userProfile, 'advanced_filters');
+                  const isActive = activePremiumFilters.includes(f.id) && isUserPremium;
                   return (
                     <Button
                       key={f.id}
                       onClick={() => handlePremiumFilterClick(f.id)}
                       variant={isActive ? "default" : "outline"}
+                      aria-pressed={isActive}
                       className={cn(
-                        "flex-shrink-0 flex items-center justify-center rounded-full h-8 px-4 text-[10px] font-black uppercase tracking-wider transition-all",
+                        "flex-shrink-0 flex items-center justify-center rounded-full h-8 px-4 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95 duration-200",
                         isActive
                           ? "bg-amber-500 hover:bg-amber-600 text-white border-none shadow-lg shadow-amber-500/20"
                           : "bg-white/80 dark:bg-neutral-800/80 border-slate-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300"
@@ -1259,12 +1416,21 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Search and Radius Row */}
-            <div className="px-6">
+            {/* Search and Radius Row (Mobile only) */}
+            <div className="px-6 md:hidden">
               <div className="flex items-center gap-3 w-full">
                 <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
                   {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
-                  <Input type="search" placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} value={searchQuery} onChange={handleSearchInput} disabled={isSearching} className="w-full pl-9 h-14 rounded-full border-none bg-white font-bold text-xs shadow-xl shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none disabled:opacity-70 placeholder:text-neutral-400" />
+                  <Input 
+                    type="search" 
+                    id="search-input-mobile"
+                    aria-label={language === "de" ? "Aktivitätssuche" : "Activity search"}
+                    placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} 
+                    value={searchQuery} 
+                    onChange={handleSearchInput} 
+                    disabled={isSearching} 
+                    className="w-full pl-9 h-14 rounded-full border-none bg-white font-bold text-xs shadow-xl shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none disabled:opacity-70 placeholder:text-neutral-400" 
+                  />
                 </form>
                 <div className="relative group">
                   <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
@@ -1284,7 +1450,7 @@ export default function Home() {
             </div>
           </div>
         </header>
-        <div className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden scroll-smooth'}`}><div className="max-w-7xl mx-auto w-full">{renderContent()}</div></div>
+        <main className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden scroll-smooth'}`}><div className="max-w-7xl mx-auto w-full">{renderContent()}</div></main>
       </div>
       <div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500"><Button variant="default" size="icon" className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 transition-transform hover:scale-105 active:scale-95" onClick={handleOpenCustomActivityModal}><Plus className="h-7 w-7" strokeWidth={3} /></Button></div>
       {isMobile ? (
@@ -1302,6 +1468,10 @@ export default function Home() {
         onUseHomeLocation={handleUseHomeLocation}
         homeCity="Bremerhaven"
         isLoading={isLocationLoading}
+        onSearchManually={() => {
+          setShowLocationRequirement(false);
+          setIsLocationSearchOpen(true);
+        }}
       />
       <PremiumUpgradeModal
         isOpen={isPremiumUpsellOpen}

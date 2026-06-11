@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, Globe } from 'lucide-react';
+import { ArrowLeft, Check, Globe, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -12,10 +12,30 @@ import { cn } from '@/lib/utils';
 
 export default function LanguageSettingsPage() {
     const router = useRouter();
-    const { user, userProfile } = useAuth();
+    const { user, userProfile, loading: authLoading } = useAuth();
     const { toast } = useToast();
     const [isSaving, setIsSaving] = useState(false);
     const currentLanguage = useLanguage();
+
+    useEffect(() => {
+        if (authLoading) return;
+        if (!user) {
+            router.replace('/login?redirect=/settings/language');
+            return;
+        }
+        if (userProfile && userProfile.onboardingCompleted === false) {
+            router.replace('/onboarding');
+            return;
+        }
+    }, [user, userProfile, authLoading, router]);
+
+    if (authLoading || !user || (userProfile && userProfile.onboardingCompleted === false)) {
+        return (
+            <div className="flex h-screen w-screen items-center justify-center bg-background">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     const handleSelectLanguage = async (lang: 'de' | 'en') => {
         if (!user || lang === currentLanguage) return;
@@ -40,7 +60,7 @@ export default function LanguageSettingsPage() {
     return (
         <div className="flex flex-col h-full w-full bg-secondary overflow-y-auto pb-32">
             <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background px-4 shrink-0">
-                <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()}>
+                <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()} aria-label={currentLanguage === 'de' ? 'Zurück' : 'Back'}>
                     <ArrowLeft />
                 </Button>
                 <h1 className="flex items-center gap-2">

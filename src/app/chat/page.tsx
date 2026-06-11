@@ -18,7 +18,7 @@ import { Users, UserPlus, Search, Bell, MessageCircle, MoreHorizontal, User, Bui
 import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Input } from '@/components/ui/input';
-import { cn, formatLabel } from '@/lib/utils';
+import { cn, formatLabel, formatFirstName } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 
 const ChatListItemSkeleton = () => (
@@ -61,7 +61,11 @@ export default function ChatPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      router.push('/login');
+      router.push('/login?redirect=/chat');
+      return;
+    }
+    if (userProfile && !userProfile.onboardingCompleted) {
+      router.push('/onboarding');
       return;
     }
 
@@ -166,7 +170,7 @@ export default function ChatPage() {
               const otherUserId = chat.participantIds.find(id => id !== user.uid);
               if (otherUserId && chat.participantDetails) {
                   otherUser = chat.participantDetails[otherUserId];
-                  chatName = otherUser?.displayName || 'Chat';
+                  chatName = formatFirstName(otherUser?.displayName, 'Chat');
                   avatarUrl = otherUser?.photoURL || undefined;
                   avatarFallback = otherUser?.displayName?.charAt(0).toUpperCase() || 'U';
               }
@@ -178,7 +182,8 @@ export default function ChatPage() {
           // Mocking category data based on place icons if possible
           const primaryStyle = chat.placeName ? getPrimaryIconData({ 
               name: chat.placeName,
-              categories: chat.categories || []
+              categories: (chat.categories || []).filter(c => c !== 'user_event'),
+              isUserEvent: chat.categories?.includes('user_event')
           } as any, language) : null;
           
           // Generate a consistent color for DMs or places without style

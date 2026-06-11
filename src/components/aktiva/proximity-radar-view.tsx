@@ -1,13 +1,15 @@
 'use client';
 
 import { useProximityRadar } from '@/hooks/use-proximity-radar';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Badge } from '@/components/ui/badge';
 import { Radar } from 'lucide-react';
+import { useLanguage } from '@/hooks/use-language';
 import Link from 'next/link';
 
 export function ProximityRadarView() {
   const nearbyFriends = useProximityRadar();
+  const language = useLanguage();
 
   if (nearbyFriends.length === 0) return null;
 
@@ -22,14 +24,16 @@ export function ProximityRadarView() {
         {nearbyFriends.map(friend => (
           <Link 
             key={friend.uid} 
-            href={`/profile/${friend.uid}`}
+            href={`/users/${friend.uid}`}
+            aria-label={language === 'de' ? `Profil von ${friend.displayName} ansehen` : `View profile of ${friend.displayName}`}
             className="flex-shrink-0 flex flex-col items-center gap-1 group"
           >
             <div className="relative">
-              <Avatar className="h-10 w-10 ring-2 ring-primary/20 group-hover:ring-primary transition-all">
-                <AvatarImage src={friend.photoURL || undefined} />
-                <AvatarFallback>{friend.displayName?.charAt(0)}</AvatarFallback>
-              </Avatar>
+              <ProfileAvatar 
+                className="h-10 w-10 ring-2 ring-primary/20 group-hover:ring-primary transition-all"
+                photoURL={friend.photoURL}
+                displayName={friend.displayName}
+              />
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 bg-green-500 border-2 border-background rounded-full" />
             </div>
             <span className="text-[10px] font-medium max-w-[50px] truncate">{friend.displayName?.split(' ')[0]}</span>

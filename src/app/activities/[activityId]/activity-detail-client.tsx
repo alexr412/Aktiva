@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { joinActivity, cancelActivity } from '@/lib/firebase/firestore';
+import { joinActivity, cancelActivity, leaveActivity, getPublicProfileClient } from '@/lib/firebase/firestore';
 import type { Activity, Place } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,33 +29,60 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { cn, formatLabel } from '@/lib/utils';
+import { cn, formatLabel, formatFirstName } from '@/lib/utils';
 import Link from 'next/link';
 
 interface ActivityDetailClientProps {
   activityId: string;
 }
 
+const isValidCoordinate = (lat: any, lng: any) => {
+  return (
+    typeof lat === "number" &&
+    typeof lng === "number" &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+};
+
 export default function ActivityDetailClient({ activityId }: ActivityDetailClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const referralId = searchParams.get('ref');
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const language = useLanguage();
   const { toast } = useToast();
 
   const [activity, setActivity] = useState<Activity | null>(null);
   const [place, setPlace] = useState<Place | null>(null);
   const [hostProfile, setHostProfile] = useState<any>(null);
+  const [hostError, setHostError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+
+  // Authentication and onboarding guards
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push(`/login?redirect=/activities/${activityId}`);
+      return;
+    }
+    if (userProfile && !userProfile.onboardingCompleted) {
+      router.push('/onboarding');
+      return;
+    }
+  }, [user, userProfile, authLoading, activityId, router]);
 
   useEffect(() => {
     if (!activityId || !db) return;
 
     let placeUnsubscribe: () => void;
-    let hostUnsubscribe: () => void;
 
     const unsubscribe = onSnapshot(doc(db!, 'activities', activityId), (docSnap) => {
       if (docSnap.exists()) {
@@ -69,28 +96,42 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
               if (pSnap.exists()) {
                 setPlace({ id: pSnap.id, ...pSnap.data() } as Place);
               }
+            }, (err) => {
+              console.error("Error subscribing to place:", err);
             });
           }
         }
 
-        // Listener für den Host
-        if (data.hostId && !hostUnsubscribe) {
-          hostUnsubscribe = onSnapshot(doc(db!, 'users', data.hostId), (uSnap) => {
-            if (uSnap.exists()) {
-              setHostProfile(uSnap.data());
+        // Load host profile via secure Cloud Function wrapper
+        if (data.hostId && !hostProfile && !hostError) {
+          getPublicProfileClient(data.hostId).then((profile) => {
+            if (profile) {
+              setHostProfile(profile);
             }
+          }).catch((err) => {
+            console.error("Error fetching host profile:", err);
+            setHostError(true);
           });
         }
+      } else {
+        setActivity(null);
       }
+      setLoading(false);
+    }, (err) => {
+      console.error("Error subscribing to activity:", err);
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? 'Fehler' : 'Error',
+        description: language === 'de' ? 'Fehler beim Laden der Aktivität.' : 'Error loading activity.'
+      });
       setLoading(false);
     });
 
     return () => {
       unsubscribe();
       if (placeUnsubscribe) placeUnsubscribe();
-      if (hostUnsubscribe) hostUnsubscribe();
     };
-  }, [activityId]);
+  }, [activityId, language, toast, hostProfile, hostError]);
 
   const handleJoin = async () => {
     if (!user) {
@@ -105,6 +146,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
       return;
     }
 
+    if (isJoining) return;
     setIsJoining(true);
     try {
       const status = await joinActivity(activity.id!, user, null, referralId);
@@ -126,6 +168,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
   const handleCancel = async () => {
     if (!activity?.id || !user) return;
+    if (isCancelling) return;
     setIsCancelling(true);
     try {
       await cancelActivity(activity.id, user.uid);
@@ -140,12 +183,36 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
     }
   };
 
+  const handleLeave = async () => {
+    if (!activity?.id || !user) return;
+    if (isLeaving) return;
+    setIsLeaving(true);
+    try {
+      await leaveActivity(activity.id, user.uid);
+      toast({ 
+        title: language === 'de' ? "Aktivität verlassen" : "Left activity", 
+        description: language === 'de' ? "Du hast dich erfolgreich abgemeldet." : "You have successfully signed out." 
+      });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: language === 'de' ? "Fehler" : "Error", description: error.message });
+    } finally {
+      setIsLeaving(false);
+    }
+  };
+
   const handleShare = async () => {
     if (!activity) return;
     const shareUrl = `${window.location.origin}/activities/${activity.id}?ref=${user?.uid || 'guest'}`;
+    const shareTitle = language === 'de' 
+      ? `Treffen bei ${activity.placeName}`
+      : `Meeting at ${activity.placeName}`;
+    const shareText = language === 'de'
+      ? `Komm vorbei zum Event in der Kategorie ${activity.category || 'Sonstiges'} bei ${activity.placeName}!`
+      : `Join me for ${activity.category || 'this event'} at ${activity.placeName}!`;
+
     const shareData = {
-      title: `Check out ${activity.placeName}`,
-      text: `Join me for ${activity.category || 'this event'} at ${activity.placeName}!`,
+      title: shareTitle,
+      text: shareText,
       url: shareUrl,
     };
 
@@ -172,8 +239,25 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   if (!activity) {
     return (
       <div className="flex h-screen flex-col items-center justify-center p-6 text-center">
-        <h1 className="">{language === 'de' ? 'Nicht gefunden' : 'Not Found'}</h1>
+        <h1 className="text-xl font-bold mb-2">{language === 'de' ? 'Aktivität nicht gefunden' : 'Activity Not Found'}</h1>
         <p className="text-slate-500 mb-6">{language === 'de' ? 'Diese Aktivität existiert nicht mehr oder ist privat.' : 'This activity no longer exists or is private.'}</p>
+        <Button onClick={() => router.push('/')} className="rounded-2xl h-12 px-8 font-black">{language === 'de' ? 'Zurück zum Feed' : 'Back to Feed'}</Button>
+      </div>
+    );
+  }
+
+  // Blocklist and Privacy checks (Client-side)
+  const isHostBlacklisted = userProfile?.blacklist?.hard?.includes(activity.hostId) || 
+                            userProfile?.blacklist?.soft?.includes(activity.hostId);
+  const isHidden = userProfile?.hiddenEntityIds?.includes(activity.id || '');
+  const isGlobalBlacklisted = activity.status === 'blacklisted';
+  const isNotAccessible = isHostBlacklisted || isHidden || isGlobalBlacklisted;
+
+  if (isNotAccessible) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center p-6 text-center">
+        <h1 className="text-xl font-bold mb-2">{language === 'de' ? 'Aktivität nicht verfügbar' : 'Activity Not Available'}</h1>
+        <p className="text-slate-500 mb-6">{language === 'de' ? 'Diese Aktivität ist nicht mehr verfügbar.' : 'This activity is no longer available.'}</p>
         <Button onClick={() => router.push('/')} className="rounded-2xl h-12 px-8 font-black">{language === 'de' ? 'Zurück zum Feed' : 'Back to Feed'}</Button>
       </div>
     );
@@ -184,7 +268,14 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
   const checkInStatus = user ? activity.participantDetails?.[user.uid]?.checkInStatus : 'pending';
   const isCancelled = activity.status === 'cancelled';
+  const isCompleted = activity.status === 'completed';
   const isActive = activity.status === 'active';
+  
+  const dateObj = activity.activityDate && typeof activity.activityDate.toDate === 'function'
+    ? activity.activityDate.toDate()
+    : null;
+  const isPast = dateObj ? dateObj.getTime() < Date.now() : false;
+  const isClosed = isCancelled || isCompleted || isPast;
 
   // Formatierung der Opening Hours
   const openingHours = place?.openingHours || activity.participantDetails?.[activity.hostId]?.isCreator ? 'Datenabfrage läuft...' : null;
@@ -192,11 +283,23 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   return (
     <div className="flex flex-col h-screen bg-slate-50 overflow-y-auto">
       <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between px-4 bg-white/80 border-b border-slate-100 backdrop-blur-md">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => router.back()} 
+          className="rounded-full"
+          aria-label={language === 'de' ? 'Zurück' : 'Back'}
+        >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1 text-center font-bold text-slate-800">{language === 'de' ? 'Community Event' : 'Community Event'}</div>
-        <Button variant="ghost" size="icon" onClick={handleShare} className="rounded-full">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={handleShare} 
+          className="rounded-full"
+          aria-label={language === 'de' ? 'Teilen' : 'Share'}
+        >
           <Share2 className="h-5 w-5" />
         </Button>
       </header>
@@ -221,13 +324,10 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
           activity.isBoosted && !isCancelled ? "ring-4 ring-orange-500/10 shadow-orange-500/20 bg-orange-50/10" : ""
         )}>
           <div className="relative z-10">
-            <div className="flex justify-between items-start mb-3">
-              <Badge className={cn(
-                "border-none px-3 py-1 font-black uppercase tracking-widest text-[9px]",
-                "bg-blue-50 text-blue-600"
-              )}>
-                {formatLabel(activity.category || (language === 'de' ? 'Aktivität' : 'Activity'))}
-              </Badge>
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                {language === 'de' ? 'Aktivität Details' : 'Activity Details'}
+              </span>
               {activity.isBoosted && (
                 <div className="bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-1 rounded-full flex items-center gap-1 shadow-md">
                   <Flame className="w-3 h-3 text-white animate-pulse"/>
@@ -236,12 +336,19 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
               )}
             </div>
             
-            <h2 className="text-2xl font-black mb-2 leading-tight text-slate-900">{activity.placeName}</h2>
+            <h1 className="text-2xl font-black mb-2 leading-tight text-slate-900">
+              {formatLabel(activity.category || (language === 'de' ? 'Aktivität' : 'Activity'))}
+            </h1>
             
-            <p className="text-slate-500 font-medium mb-4 flex items-center gap-1.5 text-xs">
-              <MapPin className="h-3.5 w-3.5 shrink-0" /> 
-              <span className="truncate">{activity.placeAddress || (language === 'de' ? 'Ort wird im Chat bekannt gegeben' : 'Location will be announced in chat')}</span>
-            </p>
+            <div className="text-slate-700 font-bold mb-1 flex items-center gap-1.5 text-sm">
+              <MapPin className="h-4 w-4 text-primary shrink-0" /> 
+              <span>{activity.placeName}</span>
+            </div>
+            {activity.placeAddress && (
+              <p className="text-slate-400 font-medium mb-4 text-xs pl-5.5 truncate">
+                {activity.placeAddress}
+              </p>
+            )}
 
             {activity.description && (
               <div className="bg-primary/5 rounded-xl p-3 mb-4 border-l-2 border-primary/30">
@@ -309,13 +416,13 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-1">
-                    <p className="font-black text-slate-900 text-sm leading-none">{activity.hostName}</p>
+                    <p className="font-black text-slate-900 text-sm leading-none">{formatFirstName(activity.hostName, 'Host')}</p>
                     <UserBadge isPremium={activity.participantDetails?.[activity.hostId]?.isPremium} size="sm" />
                   </div>
                   <p className="text-[9px] font-bold text-slate-400 uppercase mt-1 leading-none">{language === 'de' ? 'Veranstalter' : 'Host'}</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => router.push(`/profile/${activity.hostId}`)} className="rounded-xl font-bold h-8 text-xs">{language === 'de' ? 'Profil' : 'Profile'}</Button>
+              <Button variant="outline" size="sm" onClick={() => router.push(`/users/${activity.hostId}`)} className="rounded-xl font-bold h-8 text-xs">{language === 'de' ? 'Profil' : 'Profile'}</Button>
             </div>
           </CardContent>
         </Card>
@@ -337,6 +444,107 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
             <p className="text-[9px] font-bold text-slate-400 uppercase">{language === 'de' ? `Host Bewertung (${hostProfile?.ratingCount || 0})` : `Host Rating (${hostProfile?.ratingCount || 0})`}</p>
           </Card>
         </div>
+
+        {/* Participants List Section */}
+        <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2 text-slate-400">
+              <Users className="h-4 w-4" />
+              <CardTitle className="text-base font-black text-slate-850 dark:text-neutral-200">
+                {language === 'de' ? 'Teilnehmerliste' : 'Participants'}
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 pt-2">
+            <ul className="space-y-3">
+              {activity.participantIds.map((uid) => {
+                const details = activity.participantDetails?.[uid];
+                const displayName = details?.displayName || (uid === activity.hostId ? activity.hostName : null) || (language === 'de' ? 'Entdecker' : 'Explorer');
+                const photoURL = details?.photoURL || (uid === activity.hostId ? activity.hostPhotoURL : null);
+                const isHostUser = uid === activity.hostId;
+                
+                return (
+                  <li key={uid} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-none">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar 
+                        className="h-8 w-8 border border-slate-100"
+                        isPremium={details?.isPremium}
+                        isCreator={details?.isCreator}
+                        isSupporter={details?.isSupporter}
+                      >
+                        <AvatarImage src={photoURL || undefined} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">
+                          {displayName.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-bold text-slate-850 dark:text-neutral-200">
+                            {formatFirstName(displayName, 'User')}
+                          </span>
+                          <UserBadge isPremium={details?.isPremium} size="sm" />
+                          {isHostUser && (
+                            <Badge variant="secondary" className="px-1.5 py-0 text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-none leading-none">
+                              Host
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {user?.uid !== uid && (
+                      <Button asChild variant="ghost" size="sm" className="h-7 rounded-lg text-[10px] font-bold text-slate-500 hover:text-slate-900">
+                        <Link href={`/users/${uid}`}>
+                          {language === 'de' ? 'Profil' : 'Profile'}
+                        </Link>
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+
+        {/* Map & Navigation Section */}
+        {isValidCoordinate(activity.lat, activity.lon) && (
+          <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2 text-slate-400">
+                <MapPin className="h-4 w-4" />
+                <CardTitle className="text-base font-black text-slate-850 dark:text-neutral-200">
+                  {language === 'de' ? 'Karten-Pin & Navigation' : 'Map Pin & Navigation'}
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-5 pt-2">
+              <div className="bg-slate-50 dark:bg-neutral-900 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800 flex flex-col gap-3">
+                <div className="text-xs font-bold text-slate-800 dark:text-neutral-200">
+                  {activity.placeName}
+                </div>
+                {activity.placeAddress && (
+                  <div className="text-xs text-slate-500">
+                    {activity.placeAddress}
+                  </div>
+                )}
+                <Button 
+                  asChild
+                  variant="outline" 
+                  className="w-full rounded-xl font-bold h-10 text-xs border-primary/20 hover:bg-primary/5 text-primary gap-1.5"
+                >
+                  <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${activity.lat},${activity.lon}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    aria-label={language === 'de' ? 'Ort auf Google Maps anzeigen' : 'Show location on Google Maps'}
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                    {language === 'de' ? 'In Google Maps öffnen' : 'Open in Google Maps'}
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Join Criteria / Kriterien */}
         {activity.requirements && (
@@ -546,14 +754,56 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100 z-nav elevation-mid">
             <div className="max-w-md mx-auto">
               {isParticipant ? (
-                <Button onClick={() => router.push(`/chat/${activity.id}`)} className="w-full h-14 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20">
-                  <MessageSquare className="mr-2 h-5 w-5" />
-                  {language === 'de' ? 'Zum Gruppenchat' : 'To Group Chat'}
-                </Button>
+                <div className="flex gap-2 w-full">
+                  <Button 
+                    onClick={() => router.push(`/chat/${activity.id}`)} 
+                    className="flex-1 h-14 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20"
+                  >
+                    <MessageSquare className="mr-2 h-5 w-5" />
+                    {language === 'de' ? 'Zum Gruppenchat' : 'To Group Chat'}
+                  </Button>
+                  {!isHost && !isClosed && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          className="h-14 px-4 rounded-2xl font-bold border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                          title={language === 'de' ? 'Aktivität verlassen' : 'Leave activity'}
+                        >
+                          <Ban className="h-5 w-5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="text-xl font-black text-center">
+                            {language === 'de' ? 'Aktivität verlassen?' : 'Leave activity?'}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="text-center text-sm font-medium">
+                            {language === 'de' 
+                              ? 'Möchtest du dich wirklich von dieser Aktivität abmelden?' 
+                              : 'Do you really want to sign out from this activity?'}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="flex flex-col gap-2 sm:gap-0 mt-4">
+                          <AlertDialogCancel className="rounded-xl font-bold h-10">
+                            {language === 'de' ? 'Abbrechen' : 'Cancel'}
+                          </AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={handleLeave} 
+                            disabled={isLeaving} 
+                            className="rounded-xl font-black h-10 bg-red-500 hover:bg-red-600 shadow-lg shadow-red-100"
+                          >
+                            {isLeaving ? <Loader2 className="h-4 w-4 animate-spin" /> : (language === 'de' ? 'Ja, verlassen' : 'Yes, leave')}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               ) : (
                 <Button 
                   onClick={handleJoin} 
-                  disabled={isJoining || isFull}
+                  disabled={isJoining || isFull || isClosed}
                   className={cn(
                     "w-full h-14 rounded-2xl font-black text-lg transition-all shadow-xl",
                     activity.isPaid 
@@ -566,6 +816,8 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                       {activity.isPaid ? <CreditCard className="mr-2 h-5 w-5" /> : <Users className="mr-2 h-5 w-5" />}
                       {isFull 
                         ? (language === 'de' ? 'Aktivität ist voll' : 'Activity is full') 
+                        : isClosed
+                        ? (language === 'de' ? 'Aktivität beendet' : 'Activity ended')
                         : (activity.isPaid 
                             ? (language === 'de' ? `Beitreten (€${activity.price?.toFixed(2)})` : `Join (€${activity.price?.toFixed(2)})`) 
                             : (language === 'de' ? 'Jetzt beitreten' : 'Join now')

@@ -1,6 +1,6 @@
 'use client';
 
-import { db } from './client';
+import { db, app } from './client';
 import {
   collection,
   doc,
@@ -23,6 +23,7 @@ import {
   increment,
   documentId,
 } from 'firebase/firestore';
+import { calculateDistance } from '../geo-utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, Activity, Chat, ActivityCategory } from '@/lib/types';
@@ -49,6 +50,7 @@ type CreateActivityPayload = {
     minimumRating?: number;
   };
   joinMode?: 'direct' | 'request';
+  creationSource?: 'community' | 'place_activity';
 };
 
 const MAX_FREE_PARTICIPANTS = 4;
@@ -58,13 +60,17 @@ const SMOOTHING_FACTOR = 5;
 export async function createUserProfileDocument(user: User, additionalData?: Partial<UserProfile>) {
   if (!db) throw new Error('Firestore is not initialized.');
   const userDocRef = doc(db, 'users', user.uid);
+  
+  // Safely filter out server-side referral/points properties
+  const { referralCode, referredBy, pointsBalance, pointsLifetime, level, ...filteredAdditionalData } = additionalData || {};
+
   const userProfile: UserProfile = {
     uid: user.uid,
     displayName: user.displayName,
     email: user.email,
-    photoURL: user.photoURL,
+    photoURL: null,
     onboardingCompleted: false,
-    ...additionalData,
+    ...filteredAdditionalData,
     friends: [],
     friendRequestsSent: [],
     friendRequestsReceived: [],
@@ -82,6 +88,9 @@ export async function createUserProfileDocument(user: User, additionalData?: Par
     escrowBalance: 0, 
     balancesInCents: true,
     successfulReferrals: 0, 
+    pointsBalance: 0,
+    pointsLifetime: 0,
+    level: 1,
     averageRating: 0, 
     ratingCount: 0, 
     kycStatus: 'unverified', 
@@ -93,10 +102,17 @@ export async function createUserProfileDocument(user: User, additionalData?: Par
       enabled: false,
       radiusKm: 5
     },
+    notificationSettings: {
+      localHighlights: false,
+      nearbyFriendActivityNotifications: true,
+      friendRequests: true,
+      activityInvites: true,
+      chatMessages: true
+    },
     role: 'user',
     isBanned: false
   };
-  await setDoc(userDocRef, userProfile);
+  await setDoc(userDocRef, userProfile, { merge: true });
 }
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
@@ -109,10 +125,99 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   return null;
 }
 
+export async function getPublicProfileClient(targetUserId: string): Promise<UserProfile | null> {
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const functions = getFunctions(app || undefined, 'us-central1');
+  const getProfileFn = httpsCallable<{ targetUserId: string }, UserProfile>(functions, 'getPublicProfile');
+  try {
+    const result = await getProfileFn({ targetUserId });
+    return result.data;
+  } catch (error: any) {
+    console.error("Error in getPublicProfileClient:", error);
+    throw error;
+  }
+}
+
 export async function updateUserProfile(userId: string, data: Partial<UserProfile>) {
     if (!db) throw new Error('Firestore is not initialized.');
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, data);
+}
+
+export async function updatePresetAvatar(userId: string, avatarUrl: string) {
+    if (!db) throw new Error('Firestore is not initialized.');
+    
+    const { auth } = await import('./auth');
+    const { updateProfile } = await import('firebase/auth');
+
+    if (!auth?.currentUser || auth.currentUser.uid !== userId) {
+        throw new Error("You are not authorized to perform this action.");
+    }
+
+    const userDocRef = doc(db, 'users', userId);
+
+    // Optional Storage cleanup of old custom avatar before overwriting
+    try {
+        const snap = await getDoc(userDocRef);
+        if (snap.exists()) {
+            const currentPhotoURL = snap.data().photoURL;
+            const { isStorageAvatarPath } = await import('@/lib/avatar-utils');
+            if (isStorageAvatarPath(currentPhotoURL, userId)) {
+                const { getStorage, ref: storageRef, deleteObject } = await import('firebase/storage');
+                const storage = getStorage();
+                const fileRef = storageRef(storage, currentPhotoURL);
+                await deleteObject(fileRef);
+            }
+        }
+    } catch (storageError) {
+        // Suppress storage cleanup errors
+        console.warn("Firebase Storage old avatar deletion failed:", storageError);
+    }
+
+    await updateDoc(userDocRef, {
+        photoURL: avatarUrl
+    });
+
+    await updateProfile(auth.currentUser, {
+        photoURL: avatarUrl
+    });
+}
+
+export async function removeUserAvatar(userId: string, currentPhotoURL: string | null) {
+    if (!db) throw new Error('Firestore is not initialized.');
+
+    const { auth } = await import('./auth');
+    const { updateProfile } = await import('firebase/auth');
+
+    if (!auth?.currentUser || auth.currentUser.uid !== userId) {
+        throw new Error("You are not authorized to perform this action.");
+    }
+
+    // 1. Update Firestore (photoURL to null, and updatedAt)
+    const userDocRef = doc(db, 'users', userId);
+    await updateDoc(userDocRef, {
+        photoURL: null,
+        updatedAt: serverTimestamp()
+    });
+
+    // 2. Update Firebase Auth Profile
+    await updateProfile(auth.currentUser, {
+        photoURL: null
+    });
+
+    // 3. Optional storage cleanup: decode and verify storage path before deleting
+    const { isStorageAvatarPath } = await import('@/lib/avatar-utils');
+    if (isStorageAvatarPath(currentPhotoURL, userId)) {
+        try {
+            const { getStorage, ref: storageRef, deleteObject } = await import('firebase/storage');
+            const storage = getStorage();
+            const fileRef = storageRef(storage, currentPhotoURL!);
+            await deleteObject(fileRef);
+        } catch (storageError) {
+            // Suppress storage cleanup errors, only log
+            console.warn("Firebase Storage avatar file deletion failed:", storageError);
+        }
+    }
 }
 
 export async function updateUserLocation(userId: string, lat: number, lng: number, city?: string) {
@@ -125,14 +230,7 @@ export async function updateUserLocation(userId: string, lat: number, lng: numbe
     if (snap.exists()) {
       const current = snap.data().lastLocation;
       if (current && current.lat && current.lng) {
-        const R = 6371; // Earth radius in km
-        const dLat = (lat - current.lat) * Math.PI / 180;
-        const dLon = (lng - current.lng) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(current.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * 
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distance = R * c;
+        const distance = calculateDistance(lat, lng, current.lat, current.lng);
 
         // Wenn < 500m Unterschied und gleiche Stadt -> Update überspringen
         if (distance < 0.5 && current.city === (city || null)) {
@@ -154,6 +252,78 @@ export async function updateUserLocation(userId: string, lat: number, lng: numbe
   }
 }
 
+export const APP_ONLY_CATEGORIES = new Set(["community", "user_event", "favorites", "highlights"]);
+
+export function isGeoapifyCategory(c: string): boolean {
+  const geoapifyPrefixes = [
+    'accommodation', 'activity', 'airport', 'amenity', 'area', 'building',
+    'catering', 'commercial', 'education', 'entertainment', 'leisure',
+    'natural', 'office', 'parking', 'pet', 'power', 'railway', 'rental',
+    'route', 'service', 'shopping', 'sport', 'tourism', 'public_transport',
+    'religion', 'highway', 'man_made', 'waterway', 'wheelchair'
+  ];
+  const lower = c.toLowerCase();
+  return lower.includes('.') || geoapifyPrefixes.includes(lower);
+}
+
+export function getNormalizedCategory(categories: string[]): string {
+  if (!categories || !Array.isArray(categories)) return 'other';
+  const cats = categories.map(c => c.toLowerCase());
+  
+  if (cats.some(c => c === 'community' || c.startsWith('community.'))) {
+    return 'community';
+  }
+  if (cats.some(c => c === 'entertainment.cinema' || c.startsWith('entertainment.cinema.'))) {
+    return 'cinema';
+  }
+  if (cats.some(c => c === 'entertainment.miniature_golf' || c.startsWith('entertainment.miniature_golf.'))) {
+    return 'minigolf';
+  }
+  if (cats.some(c => c === 'sport' || c.startsWith('sport.'))) {
+    return 'sport';
+  }
+  if (cats.some(c => c === 'catering.restaurant' || c.startsWith('catering.restaurant.'))) {
+    return 'restaurant';
+  }
+  if (cats.some(c => c === 'catering.cafe' || c.startsWith('catering.cafe.'))) {
+    return 'cafe';
+  }
+  if (cats.some(c => c === 'catering.bar' || c.startsWith('catering.bar.'))) {
+    return 'bar';
+  }
+  if (cats.some(c => c === 'catering.pub' || c.startsWith('catering.pub.'))) {
+    return 'pub';
+  }
+  
+  const firstTag = categories.find(c => c !== 'user_event') || '';
+  if (firstTag) {
+    const lastPart = firstTag.split('.').pop() || firstTag;
+    return lastPart.toLowerCase();
+  }
+  return 'other';
+}
+
+export function normalizeActivityDocument(data: Partial<Activity> & Record<string, unknown>, docId?: string): Activity {
+  const categories = Array.isArray(data.categories) ? data.categories : [];
+  const category = (data.category as string) || '';
+  
+  const hasUserEvent = categories.includes("user_event");
+  const hasPlaceId = Boolean(data.placeId);
+  
+  const isUserEvent = hasUserEvent && !hasPlaceId;
+  const normalizedCategory = isUserEvent ? "community" : (getNormalizedCategory(categories) || category.toLowerCase() || "other");
+  const visibleCategories = categories.filter(c => c !== "user_event" && !isGeoapifyCategory(c));
+  
+  return {
+    ...data,
+    id: data.id || docId,
+    isUserEvent,
+    normalizedCategory,
+    categories: visibleCategories,
+    category: data.category || 'Sonstiges',
+    sourceType: 'activity' as const,
+  } as Activity;
+}
 
 export async function createActivity({
   place,
@@ -170,6 +340,7 @@ export async function createActivity({
   description,
   requirements,
   joinMode = 'request',
+  creationSource: creationSourceParam,
 }: CreateActivityPayload) {
   if (!db) {
     throw new Error('Firestore is not initialized.');
@@ -178,23 +349,29 @@ export async function createActivity({
   if (description && !validateChatMessage(description)) {
     throw new Error('Diese Nachricht enthält nicht erlaubte Inhalte.');
   }
-  const isCustomActivity = !place;
-  const placeIdValue = isCustomActivity ? "custom" : (place?.id || "unknown");
-  
-  if (!isCustomActivity && placeIdValue === "unknown") {
-      throw new Error("Fehler: Orts-Identifikator konnte nicht aus dem Objekt extrahiert werden.");
-  }
 
+  const isPlaceBasedActivity = Boolean(place?.id);
+  const placeIdValue = isPlaceBasedActivity ? place!.id : "custom";
+  
   const userRef = doc(db, 'users', user.uid);
   const userSnap = await getDoc(userRef);
   const userProfileData = userSnap.data() as UserProfile | undefined;
+  
+  const displayNameToUse = userProfileData?.displayName ?? "User";
+  const photoURLToUse = userProfileData?.photoURL ?? null;
   
   if (isBoosted && (userProfileData?.tokens || 0) < 1) {
     throw new Error('Insufficient tokens to boost activity.');
   }
 
-  if (isPaid && (userProfileData?.successfulFreeHosts || 0) < 5) {
-    throw new Error('Proof of Community nicht erfüllt. Bezahlte Aktivitäten sind gesperrt.');
+  if (isPaid) {
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (!isLocal) {
+      throw new Error('Bezahlte Aktivitäten sind in dieser Version deaktiviert.');
+    }
+    if ((userProfileData?.successfulFreeHosts || 0) < 5) {
+      throw new Error('Proof of Community nicht erfüllt. Bezahlte Aktivitäten sind gesperrt.');
+    }
   }
 
   const isUserPremium = userProfileData?.isPremium || false;
@@ -210,24 +387,22 @@ export async function createActivity({
   const batch = writeBatch(db);
   const activityRef = doc(collection(db, 'activities'));
   
-  const placeCategories = place?.categories ? (Array.isArray(place.categories) ? place.categories : [place.categories]) : [];
-  
-  const activityData = {
-    placeId: placeIdValue,
+  const finalCategory = category || 'Sonstiges';
+
+  const activityData: any = {
     placeName: place?.name || customLocationName || "Aktivität",
     activityDate: Timestamp.fromDate(startDate),
     hostId: user.uid,
-    hostName: user.displayName || "Anonymer Host",
-    hostPhotoURL: user.photoURL || null,
+    hostName: displayNameToUse,
+    hostPhotoURL: photoURLToUse,
     participantIds: [user.uid],
     participantsPreview: [
-      { uid: user.uid, displayName: user.displayName, photoURL: user.photoURL }
+      { uid: user.uid, displayName: displayNameToUse, photoURL: photoURLToUse }
     ],
     createdAt: serverTimestamp() as Timestamp,
-    isCustomActivity: isCustomActivity,
+    isCustomActivity: !isPlaceBasedActivity,
     isTimeFlexible: !!isTimeFlexible,
-    category: category || 'Sonstiges',
-    categories: ["user_event", category, ...(isCustomActivity ? [] : placeCategories)].filter(Boolean),
+    category: finalCategory,
     description: description || null,
     lastInteractionAt: serverTimestamp() as Timestamp,
     status: 'active' as const,
@@ -250,8 +425,8 @@ export async function createActivity({
     },
     participantDetails: {
       [user.uid]: {
-        displayName: user.displayName || "Anonymer Host",
-        photoURL: user.photoURL || null,
+        displayName: displayNameToUse,
+        photoURL: photoURLToUse,
         isPremium: isUserPremium,
         isSupporter: isUserSupporter,
         checkInStatus: 'pending',
@@ -266,14 +441,31 @@ export async function createActivity({
     ...(requirements && { requirements }),
     joinMode: joinMode,
   };
+
+  const resolvedCreationSource = creationSourceParam || (isPlaceBasedActivity ? 'place_activity' : 'community');
+
+  if (isPlaceBasedActivity) {
+    activityData.placeId = placeIdValue;
+    activityData.categories = [finalCategory];
+    activityData.isUserEvent = false;
+    activityData.sourceType = "activity";
+    activityData.creationSource = resolvedCreationSource;
+  } else {
+    // Free Community Event
+    activityData.categories = ["user_event", finalCategory];
+    activityData.isUserEvent = true;
+    activityData.sourceType = "activity";
+    activityData.creationSource = resolvedCreationSource;
+    activityData.normalizedCategory = "community";
+  }
   
   batch.set(activityRef, activityData);
 
   const pRef = doc(db, 'activities', activityRef.id, 'participants', user.uid);
   batch.set(pRef, {
     uid: user.uid,
-    displayName: user.displayName || "Anonymer Host",
-    photoURL: user.photoURL || null,
+    displayName: displayNameToUse,
+    photoURL: photoURLToUse,
     checkInStatus: 'pending',
     joinedAt: serverTimestamp(),
     hasReviewed: false
@@ -291,8 +483,8 @@ export async function createActivity({
     hostId: user.uid,
     participantDetails: {
       [user.uid]: {
-        displayName: user.displayName || "Anonymer Host",
-        photoURL: user.photoURL || null,
+        displayName: displayNameToUse,
+        photoURL: photoURLToUse,
         isPremium: isUserPremium,
         isSupporter: isUserSupporter,
         checkInStatus: 'pending'
@@ -303,19 +495,23 @@ export async function createActivity({
     }
   });
 
-  if (!isCustomActivity && placeIdValue !== "unknown") {
+  if (isPlaceBasedActivity) {
     const placeRef = doc(db, 'places', placeIdValue);
     
     // We MUST save the full place data here so the ACTIVE tab can query the places collection directly!
     const placeUpdate: any = { 
       activityCount: increment(1),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      lastActivityId: activityRef.id
     };
     
     if (place) {
       if (place.name) placeUpdate.name = place.name;
       if (place.address) placeUpdate.address = place.address;
-      if (place.categories) placeUpdate.categories = place.categories;
+      if (place.categories) {
+        placeUpdate.categories = (Array.isArray(place.categories) ? place.categories : [place.categories])
+          .filter((c: string) => c !== 'user_event');
+      }
       if (place.lat) placeUpdate.lat = place.lat;
       if (place.lon) placeUpdate.lon = place.lon;
       if (place.openingHours) placeUpdate.openingHours = place.openingHours;
@@ -339,188 +535,36 @@ export async function createActivity({
   }
 }
 
+
 /**
  * MODUL 18: The Balance Engine Core logic for Activities.
  * Berechnet globalScore ($S_coll$) und Category-Affinity ($V_user$).
  */
-export async function castActivityVote(activityId: string, userId: string, type: 'up' | 'down' | 'superboost', userRole?: string): Promise<number> {
-  if (!db) throw new Error('Firestore is not initialized.');
-  const activityRef = doc(db, 'activities', activityId);
+export async function castActivityVote(activityId: string, userId: string, type: 'up' | 'down' | 'none', userRole?: string): Promise<number> {
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const functions = getFunctions(app || undefined, 'us-central1');
+  const secureVote = httpsCallable<
+    { activityId: string; type: string },
+    { communityScore: number }
+  >(functions, 'secureVoteActivity');
 
-  return await runTransaction(db, async (transaction) => {
-    const activitySnap = await transaction.get(activityRef);
-    if (!activitySnap.exists()) throw new Error("Activity not found.");
-
-    const activityData = activitySnap.data() as Activity;
-    const userVotes = activityData.userVotes || {};
-    const previousVote = userVotes[userId];
-    const isAdmin = userRole === 'admin';
-    const weight = isAdmin ? 10 : 1;
-
-    let scoreAdjustment = 0;
-
-    // 1. Handle Toggle-Off (Identical Click)
-    if (previousVote === type) {
-      if (type === 'up') scoreAdjustment = -weight;
-      else if (type === 'down') scoreAdjustment = weight;
-      else if (type === 'superboost') scoreAdjustment = -10; // Superboost is always 10
-
-      const finalScore = (activityData.communityScore || 0) + scoreAdjustment;
-      transaction.update(activityRef, {
-        [`userVotes.${userId}`]: deleteField(),
-        communityScore: finalScore,
-        updatedAt: serverTimestamp()
-      });
-      return finalScore;
-    }
-
-    // 2. Handle Vote Change or New Vote
-    // Revert previous
-    if (previousVote === 'up') scoreAdjustment -= weight;
-    else if (previousVote === 'down') scoreAdjustment += weight;
-    else if (previousVote === 'superboost') scoreAdjustment -= 10;
-
-    // Apply new
-    if (type === 'up') scoreAdjustment += weight;
-    else if (type === 'down') scoreAdjustment -= weight;
-    else if (type === 'superboost') {
-      if (!isAdmin) throw new Error("Nur Administratoren können den Super-Boost nutzen.");
-      scoreAdjustment += 10;
-    }
-
-    const newCommunityScore = (activityData.communityScore || 0) + scoreAdjustment;
-
-    transaction.update(activityRef, {
-      communityScore: newCommunityScore,
-      [`userVotes.${userId}`]: type,
-      updatedAt: serverTimestamp()
-    });
-
-    // ADMIN TRIGGER LOGIK (Beibehalten für automatische Moderation)
-    if (newCommunityScore <= -5 && !activityData.isVerified) {
-      const reportRef = doc(collection(db!, 'reports'));
-      transaction.set(reportRef, {
-        reportedEntityId: activityId,
-        entityType: 'activity',
-        reason: 'Automated Moderation Trigger: Critical Community Score',
-        status: 'moderation_review',
-        createdAt: serverTimestamp()
-      });
-    }
-    return newCommunityScore;
-  });
+  const result = await secureVote({ activityId, type });
+  return result.data.communityScore;
 }
 
 /**
  * MODUL 18: The Balance Engine Core logic for Places.
  */
-export async function votePlace(placeId: string, userId: string, type: 'up' | 'down' | 'superboost' | 'none', userRole?: string, placeData?: Partial<Place>): Promise<number> {
-  if (!db) throw new Error('Firestore is not initialized.');
-  const placeRef = doc(db, 'places', placeId);
+export async function votePlace(placeId: string, userId: string, type: 'up' | 'down' | 'none', userRole?: string, placeData?: Partial<Place>): Promise<number> {
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const functions = getFunctions(app || undefined, 'us-central1');
+  const secureVote = httpsCallable<
+    { placeId: string; type: string; placeData?: Partial<Place> },
+    { weightedCommunityScore: number }
+  >(functions, 'secureVotePlace');
 
-  return await runTransaction(db, async (transaction) => {
-    const placeSnap = await transaction.get(placeRef);
-    
-    let data: any = { upvotes: 0, downvotes: 0, communityScore: 0, userVotes: {} };
-    if (placeSnap.exists()) {
-      data = placeSnap.data();
-    }
-
-    const userVotes = data.userVotes || {};
-    const previousVote = userVotes[userId];
-    const isAdmin = userRole === 'admin';
-    const weight = isAdmin ? 10 : 1;
-
-    if (previousVote === type) {
-      // Toggle Off
-      let scoreCorrection = 0;
-      let uChange = 0;
-      let dChange = 0;
-
-      if (type === 'up') { scoreCorrection = -weight; uChange = -1; }
-      else if (type === 'down') { scoreCorrection = weight; dChange = -1; }
-      else if (type === 'superboost') { scoreCorrection = -10; }
-
-      const finalScore = (data.communityScore || 0) + scoreCorrection;
-      transaction.update(placeRef, {
-        [`userVotes.${userId}`]: deleteField(),
-        communityScore: finalScore,
-        upvotes: increment(uChange),
-        downvotes: increment(dChange)
-      });
-      return finalScore;
-    }
-
-    let upvoteChange = 0;
-    let downvoteChange = 0;
-    let scoreAdjustment = 0;
-
-    // Revert previous
-    if (previousVote === 'up') { upvoteChange -= 1; scoreAdjustment -= weight; }
-    else if (previousVote === 'down') { downvoteChange -= 1; scoreAdjustment += weight; }
-    else if (previousVote === 'superboost') { scoreAdjustment -= 10; }
-
-    // Apply new
-    if (type === 'up') {
-      upvoteChange += 1;
-      scoreAdjustment += weight;
-    } else if (type === 'down') {
-      downvoteChange += 1;
-      scoreAdjustment -= weight;
-    } else if (type === 'superboost') {
-      if (!isAdmin) throw new Error("Nur Administratoren können den Super-Boost nutzen.");
-      scoreAdjustment += 10;
-    }
-
-    const newU = (data.upvotes || 0) + upvoteChange;
-    const newD = (data.downvotes || 0) + downvoteChange;
-    const globalScore = (newU - newD) / (newU + newD + SMOOTHING_FACTOR);
-    const finalScore = (data.communityScore || 0) + scoreAdjustment;
-
-    const updates: any = {
-      upvotes: newU,
-      downvotes: newD,
-      communityScore: finalScore,
-      globalScore: globalScore
-    };
-
-    if (placeSnap.exists()) {
-      if (type === 'none') {
-        updates[`userVotes.${userId}`] = deleteField();
-      } else {
-        updates[`userVotes.${userId}`] = type;
-      }
-      
-      // Update metadata if provided (Snapshotting)
-      if (placeData) {
-        if (placeData.name) updates.name = placeData.name;
-        if (placeData.address) updates.address = placeData.address;
-        if (placeData.categories) updates.categories = placeData.categories;
-        if (placeData.lat) updates.lat = placeData.lat;
-        if (placeData.lon) updates.lon = placeData.lon;
-        if (placeData.openingHours) updates.openingHours = placeData.openingHours;
-      }
-
-      transaction.update(placeRef, updates);
-    } else {
-      if (type !== 'none') {
-        updates.userVotes = { [userId]: type };
-        
-        // Initial Metadata Snapshot
-        if (placeData) {
-           updates.name = placeData.name || "";
-           updates.address = placeData.address || "";
-           updates.categories = placeData.categories || [];
-           updates.lat = placeData.lat || 0;
-           updates.lon = placeData.lon || 0;
-           updates.openingHours = placeData.openingHours || null;
-        }
-
-        transaction.set(placeRef, updates);
-      }
-    }
-    return finalScore;
-  });
+  const result = await secureVote({ placeId, type, placeData });
+  return result.data.weightedCommunityScore;
 }
 
 export async function joinActivity(activityId: string, user: User, source?: string | null, referralId?: string | null): Promise<'joined' | 'requested'> {
@@ -548,6 +592,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
       }
 
       const userProfileData = userDoc.data() as UserProfile | undefined;
+      const displayNameToUse = userProfileData?.displayName ?? "User";
+      const photoURLToUse = userProfileData?.photoURL ?? null;
       
       let forceRequestMode = false;
       
@@ -608,8 +654,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
         participantIds: arrayUnion(user.uid),
         lastInteractionAt: serverTimestamp(),
         [`participantDetails.${user.uid}`]: {
-          displayName: user.displayName || "Unbekannter Teilnehmer",
-          photoURL: user.photoURL || null,
+          displayName: displayNameToUse,
+          photoURL: photoURLToUse,
           isPremium: userProfileData?.isPremium || false,
           isSupporter: userProfileData?.isSupporter || false,
           checkInStatus: 'pending',
@@ -633,8 +679,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
 
       transaction.set(pRef, {
         uid: user.uid,
-        displayName: user.displayName || "Unbekannter Teilnehmer",
-        photoURL: user.photoURL || null,
+        displayName: displayNameToUse,
+        photoURL: photoURLToUse,
         checkInStatus: 'pending',
         joinedAt: serverTimestamp(),
         hasReviewed: false
@@ -645,8 +691,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
         transaction.update(activityRef, {
           participantsPreview: arrayUnion({
             uid: user.uid,
-            displayName: user.displayName || "Unbekannter Teilnehmer",
-            photoURL: user.photoURL || null
+            displayName: displayNameToUse,
+            photoURL: photoURLToUse
           })
         });
       }
@@ -654,8 +700,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
       transaction.update(chatRef, {
         participantIds: arrayUnion(user.uid),
         [`participantDetails.${user.uid}`]: {
-          displayName: user.displayName || "Unbekannter Teilnehmer",
-          photoURL: user.photoURL || null,
+          displayName: displayNameToUse,
+          photoURL: photoURLToUse,
           isPremium: userProfileData?.isPremium || false,
           isSupporter: userProfileData?.isSupporter || false,
           checkInStatus: 'pending'
@@ -711,7 +757,9 @@ export async function requestJoinActivity(activityId: string, user: User): Promi
   const userRef = doc(db, 'users', user.uid);
   const userSnap = await getDoc(userRef);
   const userProfileData = userSnap.data() as UserProfile | undefined;
-
+  const displayNameToUse = userProfileData?.displayName ?? "User";
+  const photoURLToUse = userProfileData?.photoURL ?? null;
+  
   // Run the same requirement validation as joinActivity
   const req = activityData.requirements;
   if (req) {
@@ -751,14 +799,14 @@ export async function requestJoinActivity(activityId: string, user: User): Promi
   await setDoc(notificationRef, {
     recipientId: activityData.hostId,
     senderId: user.uid,
-    senderName: user.displayName,
+    senderName: displayNameToUse,
     senderProfile: {
-      displayName: user.displayName,
-      photoURL: user.photoURL
+      displayName: displayNameToUse,
+      photoURL: photoURLToUse
     },
     type: 'join_request',
     title: 'Neue Beitrittsanfrage',
-    message: `${user.displayName} möchte an deiner Aktivität "${activityData.placeName}" teilnehmen.`,
+    message: `${displayNameToUse} möchte an deiner Aktivität "${activityData.placeName}" teilnehmen.`,
     isRead: false,
     createdAt: serverTimestamp(),
     activityId: activityId,
@@ -767,71 +815,28 @@ export async function requestJoinActivity(activityId: string, user: User): Promi
 }
 
 export async function acceptJoinRequest(notificationId: string, activityId: string, userIdToJoin: string): Promise<void> {
-  if (!db) throw new Error('Firestore is not initialized.');
-
-  // We need the user profile to pass into joinActivity
-  const userRef = doc(db, 'users', userIdToJoin);
-  const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) {
-    throw new Error('User not found.');
-  }
-
-  // Now simply call joinActivity natively (it will bypass duplicate notifications)
-  // But wait, joinActivity accepts a full `User` object. We can mock it since only uid, displayName, photoURL are needed
-  const userData = userSnap.data() as UserProfile;
-  const mockUser = {
-    uid: userData.uid,
-    displayName: userData.displayName,
-    photoURL: userData.photoURL
-  } as User;
-
-  await joinActivity(activityId, mockUser);
-
-  // Send accept notification back
-  const activityRef = doc(db, 'activities', activityId);
-  const activitySnap = await getDoc(activityRef);
-  const activityName = activitySnap.exists() ? activitySnap.data().placeName : 'Aktivität';
-
-  const notificationRef = doc(collection(db, 'notifications'));
-  await setDoc(notificationRef, {
-    recipientId: userIdToJoin,
-    senderId: 'system',
-    type: 'join_response',
-    title: 'Anfrage akzeptiert!',
-    message: `Deine Anfrage für "${activityName}" wurde angenommen. Du bist jetzt dabei!`,
-    isRead: false,
-    createdAt: serverTimestamp(),
-    activityId: activityId,
-    responseStatus: 'accepted',
-    link: `/chat/${activityId}`
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const functions = getFunctions(app || undefined, 'us-central1');
+  const respond = httpsCallable(functions, 'respondToJoinRequest');
+  await respond({
+    notificationId,
+    activityId,
+    userIdToJoin,
+    action: 'accept'
   });
-
-  // Mark original request as read or delete it
-  await deleteDoc(doc(db, 'notifications', notificationId));
 }
 
 export async function declineJoinRequest(notificationId: string, activityId: string, userIdToDecline: string, customMessage: string): Promise<void> {
-  if (!db) throw new Error('Firestore is not initialized.');
-
-  const activityRef = doc(db, 'activities', activityId);
-  const activitySnap = await getDoc(activityRef);
-  const activityName = activitySnap.exists() ? activitySnap.data().placeName : 'Aktivität';
-
-  const notificationRef = doc(collection(db, 'notifications'));
-  await setDoc(notificationRef, {
-    recipientId: userIdToDecline,
-    senderId: 'system',
-    type: 'join_response',
-    title: 'Anfrage abgelehnt',
-    message: `Deine Anfrage für "${activityName}" wurde leider abgelehnt.`,
-    customMessage: customMessage || undefined,
-    isRead: false,
-    createdAt: serverTimestamp(),
-    activityId: activityId,
-    responseStatus: 'declined'
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const functions = getFunctions(app || undefined, 'us-central1');
+  const respond = httpsCallable(functions, 'respondToJoinRequest');
+  await respond({
+    notificationId,
+    activityId,
+    userIdToJoin: userIdToDecline,
+    action: 'decline',
+    customMessage: customMessage || undefined
   });
-
-  await deleteDoc(doc(db, 'notifications', notificationId));
 }
 
 export async function joinPaidActivity(activityId: string, user: User, transactionToken: string, source?: string | null, referralId?: string | null): Promise<void> {
@@ -839,7 +844,7 @@ export async function joinPaidActivity(activityId: string, user: User, transacti
   
   try {
     const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const functions = getFunctions();
+    const functions = getFunctions(app || undefined, 'us-central1');
     const secureJoin = httpsCallable(functions, 'secureJoinPaidActivity');
     
     await secureJoin({
@@ -880,8 +885,8 @@ export async function sendMessage(
   const messagePayload: any = {
     text: text.trim(),
     senderId: user.uid,
-    senderName: user.displayName || "Anonymer Nutzer",
-    senderPhotoURL: user.photoURL || null,
+    senderName: userProfile?.displayName || "User",
+    senderPhotoURL: userProfile?.photoURL || null,
     sentAt: serverTimestamp(),
     isPremium: userProfile?.isPremium || false,
     isSupporter: userProfile?.isSupporter || false,
@@ -898,7 +903,7 @@ export async function sendMessage(
   const updates: any = {
     lastMessage: {
       text: text.trim(),
-      senderName: user.displayName || "Anonymer Nutzer",
+      senderName: userProfile?.displayName || "User",
       sentAt: serverTimestamp(),
     },
     lastActivityAt: serverTimestamp(),
@@ -976,7 +981,7 @@ export async function leaveActivity(activityId: string, userId: string): Promise
 
   try {
     const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const functions = getFunctions();
+    const functions = getFunctions(app || undefined, 'us-central1');
     const secureLeave = httpsCallable<
       { activityId: string; operationId: string },
       { success: boolean }
@@ -1043,7 +1048,8 @@ export async function deleteActivity(activityId: string): Promise<void> {
   if (activityData.placeId && activityData.placeId !== 'custom') {
     const placeRef = doc(db, 'places', activityData.placeId);
     batch.set(placeRef, { 
-      activityCount: increment(-1) 
+      activityCount: increment(-1),
+      lastActivityId: activityId
     }, { merge: true });
   }
 
@@ -1064,7 +1070,7 @@ export async function fetchUserActivities(userId: string): Promise<Activity[]> {
   );
 
   const querySnapshot = await getDocs(q);
-  const activities = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Activity[];
+  const activities = querySnapshot.docs.map(doc => normalizeActivityDocument(doc.data(), doc.id));
   
   return activities.sort((a, b) => {
     const timeA = a.activityDate?.toMillis() || 0;
@@ -1168,7 +1174,7 @@ export async function voteToCompleteActivity(activityId: string, userId: string)
   
   try {
     const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const functions = getFunctions();
+    const functions = getFunctions(app || undefined, 'us-central1');
     const secureVote = httpsCallable<{ activityId: string, operationId: string }, { success: boolean, allVoted?: boolean }>(functions, 'secureVoteToCompleteActivity');
     
     const operationId = `vote_complete_${activityId}_${userId}_${Date.now()}`;
@@ -1187,7 +1193,7 @@ export async function completeActivity(activityId: string, userId: string, isPai
   
   try {
     const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const functions = getFunctions();
+    const functions = getFunctions(app || undefined, 'us-central1');
     const secureComplete = httpsCallable<{ activityId: string, operationId: string }, { success: boolean }>(functions, 'secureCompleteActivity');
     
     const operationId = `complete_${activityId}_${Date.now()}`;
@@ -1206,7 +1212,7 @@ export const cancelActivity = async (activityId: string, hostId: string): Promis
   
   try {
     const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const functions = getFunctions();
+    const functions = getFunctions(app || undefined, 'us-central1');
     const secureCancel = httpsCallable<{ activityId: string, operationId: string }, { success: boolean }>(functions, 'secureCancelActivity');
     
     const operationId = `cancel_${activityId}_${Date.now()}`;
@@ -1393,41 +1399,55 @@ export const verifyTicket = async (activityId: string, scannedUserId: string) =>
 };
 
 export async function findUserByUsername(username: string): Promise<UserProfile | null> {
-    if (!db) throw new Error('Firestore is not initialized.');
-    
-    const userQuery = query(
-        collection(db, 'users'), 
-        where('username', '==', username.toLowerCase()),
-        limit(1)
-    );
-
-    const querySnapshot = await getDocs(userQuery);
-
-    if (querySnapshot.empty) {
-        return null;
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions(app || undefined, 'us-central1');
+    const searchUser = httpsCallable<{ username: string }, UserProfile>(functions, 'searchUserByUsername');
+    try {
+        const result = await searchUser({ username });
+        return result.data;
+    } catch (err: any) {
+        if (err.code === 'permission-denied' || err.code === 'not-found') {
+            return null;
+        }
+        throw err;
     }
-
-    return { uid: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as UserProfile;
 }
 
 export async function isUsernameTaken(username: string, excludeUserId?: string): Promise<boolean> {
-  if (!db) return true;
-  const userQuery = query(collection(db, 'users'), where('username', '==', username.toLowerCase()), limit(1));
-  const snap = await getDocs(userQuery);
-  
-  if (snap.empty) return false;
-  
-  if (excludeUserId) {
-    return snap.docs[0].id !== excludeUserId;
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const functions = getFunctions(app || undefined, 'us-central1');
+  const checkUsername = httpsCallable<{ username: string }, { available: boolean }>(functions, 'checkUsernameAvailability');
+  try {
+    const result = await checkUsername({ username });
+    return !result.data.available;
+  } catch (error) {
+    console.error("Error checking username availability:", error);
+    return true; // Fallback to safe default
   }
-  
-  return true;
 }
 
 export async function markNotificationAsRead(notificationId: string) {
     if (!db) throw new Error('Firestore is not initialized.');
     const notificationRef = doc(db, 'notifications', notificationId);
-    await updateDoc(notificationRef, { isRead: true });
+    await updateDoc(notificationRef, { isRead: true, readAt: serverTimestamp() });
+}
+
+export async function markAllNotificationsAsRead(userId: string): Promise<void> {
+    if (!db) throw new Error('Firestore is not initialized.');
+    const q = query(
+        collection(db, 'notifications'),
+        where('recipientId', '==', userId),
+        where('isRead', '==', false),
+        limit(100)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return;
+
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((docSnap) => {
+        batch.update(docSnap.ref, { isRead: true, readAt: serverTimestamp() });
+    });
+    await batch.commit();
 }
 
 export async function getOrCreateDirectChat(user1Id: string, user2Id: string): Promise<string> {
@@ -1438,14 +1458,29 @@ export async function getOrCreateDirectChat(user1Id: string, user2Id: string): P
   const chatSnap = await getDoc(chatRef);
 
   if (!chatSnap.exists()) {
-    const user1Profile = await getUserProfile(user1Id);
-    const user2Profile = await getUserProfile(user2Id);
+    const { auth } = await import('./auth');
+    const currentUid = auth?.currentUser?.uid;
+
+    let user1Profile: UserProfile | null = null;
+    let user2Profile: UserProfile | null = null;
+
+    if (user1Id === currentUid) {
+      user1Profile = await getUserProfile(user1Id);
+      user2Profile = await getPublicProfileClient(user2Id);
+    } else if (user2Id === currentUid) {
+      user1Profile = await getPublicProfileClient(user1Id);
+      user2Profile = await getUserProfile(user2Id);
+    } else {
+      user1Profile = await getPublicProfileClient(user1Id);
+      user2Profile = await getPublicProfileClient(user2Id);
+    }
 
     if (!user1Profile || !user2Profile) {
         throw new Error("Could not find user profiles to start chat.");
     }
 
     await setDoc(chatRef, {
+      type: 'direct',
       participantIds: [user1Id, user2Id],
       createdAt: serverTimestamp(),
       lastActivityAt: serverTimestamp(),
@@ -1462,12 +1497,6 @@ export async function getOrCreateDirectChat(user1Id: string, user2Id: string): P
           isPremium: user2Profile.isPremium || false,
           isSupporter: user2Profile.isSupporter || false
         }
-      },
-      lastMessage: null,
-      hostId: user1Id, 
-      unreadCount: {
-        [user1Id]: 0,
-        [user2Id]: 0
       }
     });
   }
@@ -1530,12 +1559,16 @@ export async function submitReport(activityId: string, reporterId: string, reaso
   await batch.commit();
 }
 
-export async function earnToken(userId: string) {
-  if (!db) throw new Error('Firestore is not initialized.');
-  const userRef = doc(db, 'users', userId);
-  await updateDoc(userRef, {
-    tokens: increment(1)
-  });
+export async function earnToken(userId: string, adWatchId: string) {
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const functions = getFunctions(app || undefined, 'us-central1');
+  const secureEarn = httpsCallable<{ adWatchId: string }, { success: boolean }>(functions, 'earnToken');
+  try {
+    await secureEarn({ adWatchId });
+  } catch (err: any) {
+    console.error("Earn Token Cloud Function failed:", err);
+    throw new Error(err.message || "Token-Erwerb fehlgeschlagen.");
+  }
 }
 
 export async function boostEntity(
@@ -1641,7 +1674,7 @@ export const requestPayout = async (userId: string, currentBalance: number) => {
 
   try {
     const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const functions = getFunctions();
+    const functions = getFunctions(app || undefined, 'us-central1');
     const securePayout = httpsCallable<{ amount?: number, operationId: string }, { success: boolean, payoutRequestId?: string }>(functions, 'secureRequestPayout');
     
     const operationId = `payout_${userId}_${Date.now()}`;
@@ -1713,7 +1746,7 @@ export async function resolveModerationTask(reportId: string, activityId: string
         const actData = actSnap.data();
         if (actData.placeId && actData.placeId !== 'custom' && (actData.status === 'active' || actData.status === 'open')) {
             const placeRef = doc(db, 'places', actData.placeId);
-            batch.set(placeRef, { activityCount: increment(-1) }, { merge: true });
+            batch.set(placeRef, { activityCount: increment(-1), lastActivityId: activityId }, { merge: true });
         }
     }
     batch.update(activityRef, { status: 'blacklisted' });
@@ -1731,7 +1764,7 @@ export async function resolveModerationTask(reportId: string, activityId: string
 export async function searchActivitiesBySemanticVector(queryText: string, hardBlacklist: string[] = []): Promise<Activity[]> {
   if (!db) throw new Error('Firestore is not initialized.');
   
-  const functions = getFunctions();
+  const functions = getFunctions(app || undefined, 'us-central1');
   const getSearchVector = httpsCallable<{queryText: string}, {results: Activity[]}>(functions, 'getSearchVector');
   const response = await getSearchVector({ queryText });
   const results = response.data.results || [];
@@ -1742,83 +1775,9 @@ export async function searchActivitiesBySemanticVector(queryText: string, hardBl
 }
 
 export async function deleteUserData(userId: string) {
-  if (!db) throw new Error('Firestore is not initialized.');
-  
-  // 1. Aktivitäten bereinigen, in denen der Nutzer Teilnehmer ist
-  const activitiesQuery = query(collection(db, 'activities'), where('participantIds', 'array-contains', userId));
-  const activitiesSnap = await getDocs(activitiesQuery);
-  const batch = writeBatch(db);
-  
-  for (const docSnap of activitiesSnap.docs) {
-    const actData = docSnap.data();
-    if (actData.hostId === userId) {
-       // Wenn der Nutzer der Host war, storniere die Aktivität
-       batch.update(docSnap.ref, { status: 'cancelled' });
-    } else {
-       // Entferne den Nutzer aus der Teilnehmerliste und der Preview
-       const newPreview = (actData.participantsPreview || []).filter((p: any) => p.uid !== userId);
-       batch.update(docSnap.ref, {
-         participantIds: arrayRemove(userId),
-         participantsPreview: newPreview
-       });
-    }
-  }
-  
-  // 3. Chats bereinigen
-  const chatsQuery = query(collection(db, 'chats'), where('participants', 'array-contains', userId));
-  const chatsSnap = await getDocs(chatsQuery);
-  
-  for (const docSnap of chatsSnap.docs) {
-     batch.update(docSnap.ref, {
-        participants: arrayRemove(userId),
-        // Auch participantIds falls vorhanden
-        participantIds: arrayRemove(userId)
-     });
-  }
-
-  // 4. Freundschaften und Anfragen bereinigen
-  const userRef = doc(db, 'users', userId);
-  const userSnap = await getDoc(userRef);
-  if (userSnap.exists()) {
-    const userData = userSnap.data();
-    const friends = userData.friends || [];
-    const sent = userData.friendRequestsSent || [];
-    const received = userData.friendRequestsReceived || [];
-
-    // Aus Freundeslisten anderer entfernen
-    for (const friendId of friends) {
-      batch.update(doc(db, 'users', friendId), {
-        friends: arrayRemove(userId)
-      });
-    }
-
-    // Freundschaftsanfragen bei anderen bereinigen
-    for (const otherId of sent) {
-      batch.update(doc(db, 'users', otherId), {
-        friendRequestsReceived: arrayRemove(userId)
-      });
-    }
-    for (const otherId of received) {
-      batch.update(doc(db, 'users', otherId), {
-        friendRequestsSent: arrayRemove(userId)
-      });
-    }
-  }
-
-  // 5. Benachrichtigungen löschen (wo der Nutzer Empfänger oder Sender war)
-  const notificationsQuery = query(collection(db, 'notifications'), where('recipientId', '==', userId));
-  const notifsSnap = await getDocs(notificationsQuery);
-  notifsSnap.forEach(d => batch.delete(d.ref));
-
-  const sentNotificationsQuery = query(collection(db, 'notifications'), where('senderId', '==', userId));
-  const sentNotifsSnap = await getDocs(sentNotificationsQuery);
-  sentNotifsSnap.forEach(d => batch.delete(d.ref));
-
-  // 6. Benutzer-Profil löschen (am Ende, damit Batch/Transaction sauber ist)
-  batch.delete(doc(db, 'users', userId));
-
-  // Alles in einer Transaktion/Batch ausführen
-  await batch.commit();
+  // Deprecated: All cascading deletion is handled securely on the server-side
+  // via the onUserDeleted Firebase Auth onDelete trigger.
+  console.log(`deleteUserData called client-side for ${userId} (no-op: handled by server trigger).`);
 }
 
 export async function cleanupGhostUsers() {
@@ -1895,4 +1854,28 @@ export async function cleanupGhostUsers() {
   }
   return changesCount;
 }
+
+export interface CleanupChatsResult {
+  chatsDeleted: number;
+  messagesDeleted: number;
+  activitiesDeleted: number;
+  activityParticipantsDeleted: number;
+  placeCountersUpdated: number;
+  skipped: number;
+  errors: number;
+}
+
+export async function triggerCleanupEmptyChats(): Promise<CleanupChatsResult> {
+  try {
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions(app || undefined, 'us-central1');
+    const cleanup = httpsCallable<void, CleanupChatsResult>(functions, 'cleanupEmptyChats');
+    const res = await cleanup();
+    return res.data;
+  } catch (error: any) {
+    console.error("Cleanup Empty Chats Cloud Function failed: ", error);
+    throw new Error(error.message || "Fehler beim Bereinigen der leeren Chats.");
+  }
+}
+
 

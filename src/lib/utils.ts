@@ -20,3 +20,17 @@ export function formatLabel(label: string | undefined | null): string {
     .toUpperCase()
     .trim();
 }
+
+export function formatFirstName(
+  name?: string | null,
+  fallback = "User"
+): string {
+  const trimmed = name?.trim();
+
+  if (!trimmed) {
+    return fallback;
+  }
+
+  return trimmed.split(/\s+/)[0] || fallback;
+}
+

@@ -6,26 +6,26 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase/client';
-import { joinActivity, createActivity } from '@/lib/firebase/firestore';
+import { joinActivity, createActivity, normalizeActivityDocument } from '@/lib/firebase/firestore';
 import type { Activity, Place, ActivityCategory } from '@/lib/types';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
-import { Compass, X, Check, Info, MapPin, Star, Building2, ArrowLeft, ArrowRight, PlusCircle, Plus, RefreshCw, ChevronDown } from 'lucide-react';
+import { Compass, X, Check, Info, MapPin, Star, PlusCircle, Plus, RefreshCw, ChevronDown, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
-import { CategoryFilters } from '@/components/aktvia/category-filters';
-import { ProximityRadarView } from '@/components/aktvia/proximity-radar-view';
+import { CategoryFilters } from '@/components/aktiva/category-filters';
+import { ProximityRadarView } from '@/components/aktiva/proximity-radar-view';
 import { cn, formatLabel } from '@/lib/utils';
 import { calculateDistance } from '@/lib/geo-utils';
-import { PlaceDetails } from '@/components/aktvia/place-details';
-import { CreateActivityDialog } from '@/components/aktvia/create-activity-dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { PlaceDetails } from '@/components/aktiva/place-details';
+import { CreateActivityDialog } from '@/components/aktiva/create-activity-dialog';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { getPrimaryIconData } from '@/lib/tag-config';
+import { usePlanningMode } from '@/contexts/planning-mode-context';
+import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 
 const QUARANTINE_THRESHOLD = 3;
 
@@ -34,6 +34,7 @@ export default function ExplorePage() {
     const language = useLanguage();
     const { toast } = useToast();
     const router = useRouter();
+    const { planningState } = usePlanningMode();
 
     const [allCards, setAllCards] = useState<Activity[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +42,8 @@ export default function ExplorePage() {
     const animationControls = useAnimation();
     
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [isLocationLoading, setIsLocationLoading] = useState(true);
+    const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
     const [activeTabId, setActiveTabId] = useState<string>('all');
     const [radiusKm, setRadiusKm] = useState<number | null>(null);
@@ -54,22 +57,68 @@ export default function ExplorePage() {
         setRadiusKm(null);
     };
 
+    // React to manual search destination selection
     useEffect(() => {
+        if (planningState.isPlanning && planningState.destination) {
+            setUserLocation(planningState.destination);
+            setIsLocationLoading(false);
+        }
+    }, [planningState]);
+
+    useEffect(() => {
+        if (userLocation) return;
+
+        // 1. Check cached location for instant boot
+        const cached = localStorage.getItem('aktiva_last_location');
+        if (cached) {
+            try {
+                const { lat, lng } = JSON.parse(cached);
+                if (typeof lat === 'number' && typeof lng === 'number') {
+                    setUserLocation({ lat, lng });
+                    setIsLocationLoading(false);
+                    return;
+                }
+            } catch (e) {
+                localStorage.removeItem('aktiva_last_location');
+            }
+        }
+
+        // 2. Fallback to profile location
+        if (userProfile?.lastLocation) {
+            const { lat, lng } = userProfile.lastLocation;
+            if (typeof lat === 'number' && typeof lng === 'number') {
+                setUserLocation({ lat, lng });
+                setIsLocationLoading(false);
+                return;
+            }
+        }
+
+        // 3. Try Geolocation
+        setIsLocationLoading(true);
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    setUserLocation({
+                    const loc = {
                         lat: position.coords.latitude,
                         lng: position.coords.longitude,
-                    });
+                    };
+                    setUserLocation(loc);
+                    localStorage.setItem('aktiva_last_location', JSON.stringify({
+                        ...loc,
+                        timestamp: Date.now()
+                    }));
+                    setIsLocationLoading(false);
                 },
                 (error) => {
-                    console.error('Geolocation error:', error);
+                    console.warn('Geolocation error in /explore, no fallback available:', error);
+                    setIsLocationLoading(false);
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
             );
+        } else {
+            setIsLocationLoading(false);
         }
-    }, []);
+    }, [userProfile?.lastLocation, userLocation]);
 
     useEffect(() => {
         if (!db || !user) return;
@@ -79,7 +128,7 @@ export default function ExplorePage() {
         try {
             const collectionRef = collection(db, 'activities');
             const constraints: any[] = [];
-            const isCommunityMode = activeCategory.includes('user_event');
+            const isCommunityMode = activeCategory.includes('community');
 
             if (isCommunityMode) {
                 constraints.push(where('isCustomActivity', '==', true));
@@ -90,14 +139,42 @@ export default function ExplorePage() {
             const activitiesQuery = query(collectionRef, ...constraints);
 
             const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
+                const now = Date.now();
                 const fetchedActivities = snapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() } as Activity))
-                    .filter(act => 
-                      !act.participantIds.includes(user.uid) && 
-                      act.status !== 'completed' && 
-                      act.status !== 'cancelled' &&
-                      (act.reportCount || 0) < QUARANTINE_THRESHOLD
-                    );
+                    .map(doc => normalizeActivityDocument(doc.data(), doc.id))
+                    .filter(act => {
+                        if (!act) return false;
+
+                        // Filter out user's own joined activities
+                        if (act.participantIds?.includes(user.uid)) return false;
+
+                        // Filter out completed, cancelled, blacklisted status
+                        if (act.status === 'completed' || act.status === 'cancelled' || act.status === 'blacklisted') {
+                            return false;
+                        }
+
+                        // Filter out hosts that the user blocked (soft/hard blacklist)
+                        const hostId = act.hostId;
+                        if (hostId && userProfile?.blacklist) {
+                            const hardBlocked = userProfile.blacklist.hard || [];
+                            const softBlocked = userProfile.blacklist.soft || [];
+                            if (hardBlocked.includes(hostId) || softBlocked.includes(hostId)) {
+                                return false;
+                            }
+                        }
+
+                        // Filter out past activities
+                        if (act.activityEndDate?.toMillis) {
+                            if (act.activityEndDate.toMillis() < now) return false;
+                        } else if (act.activityDate?.toMillis) {
+                            if (act.activityDate.toMillis() + 86400000 < now) return false;
+                        }
+
+                        // Quarantine threshold
+                        if ((act.reportCount || 0) >= QUARANTINE_THRESHOLD) return false;
+
+                        return true;
+                    });
                 
                 fetchedActivities.sort((a, b) => {
                     if (a.isBoosted && !b.isBoosted) return -1;
@@ -118,6 +195,11 @@ export default function ExplorePage() {
                 setIsLoading(false);
             }, (error) => {
                 console.error("FIRESTORE ERROR:", error.message);
+                toast({
+                    variant: "destructive",
+                    title: language === 'de' ? "Fehler beim Laden" : "Error loading activities",
+                    description: language === 'de' ? "Aktivitäten konnten nicht geladen werden." : "Failed to load activities."
+                });
                 setIsLoading(false);
             });
 
@@ -126,7 +208,7 @@ export default function ExplorePage() {
             console.error("Activities listener failed:", err.message);
             setIsLoading(false);
         }
-    }, [user, activeCategory, userLocation]);
+    }, [user, activeCategory, userLocation, userProfile, language, toast]);
     
     const handleCreateActivity = async (
         startDate: Date, 
@@ -271,12 +353,12 @@ export default function ExplorePage() {
                         <div className="h-10 w-10 rounded-2xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
                             <Compass className="h-6 w-6 text-white" />
                         </div>
-                        <h1 className="">Community</h1>
+                        <h1 className="">{language === 'de' ? 'Erkunden' : 'Explore'}</h1>
                     </div>
 
                     <div className="space-y-6">
                         <div className="flex items-center justify-between px-2">
-                            <h3 className="">Aktvia Radar</h3>
+                            <h3 className="">Aktiva Radar</h3>
                             <div className="h-2 w-2 rounded-full bg-emerald-500" />
                         </div>
                         <div className="bg-slate-50/50 dark:bg-neutral-800/30 rounded-[2.25rem] p-5 border border-slate-50 dark:border-neutral-800/50">
@@ -294,6 +376,7 @@ export default function ExplorePage() {
                                     setActiveCategory(cats);
                                     setActiveTabId(tabId);
                                 }} 
+                                vertical
                             />
                         </div>
                     </div>
@@ -340,7 +423,7 @@ export default function ExplorePage() {
                                         <input type="range" min="1" max="100" value={radiusKm || 100} onChange={(e) => setRadiusKm(parseInt(e.target.value) === 100 ? null : parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
                                         <div className="grid grid-cols-4 gap-2">
                                             {[5, 10, 25, null].map((r) => (
-                                                <button key={r === null ? 'all' : r} onClick={() => setRadiusKm(r)} className={cn("py-2 rounded-xl text-[10px] font-black transition-all", radiusKm === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>{r === null ? 'Alle' : `${r}k`}</button>
+                                                <button key={r === null ? 'all' : r} onClick={() => setRadiusKm(r)} aria-pressed={radiusKm === r} className={cn("py-2 rounded-xl text-[10px] font-black transition-all", radiusKm === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>{r === null ? 'Alle' : `${r}k`}</button>
                                             ))}
                                         </div>
                                     </div>
@@ -353,244 +436,316 @@ export default function ExplorePage() {
                          </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col items-center justify-start relative min-h-0 pt-4 pb-36">
-                          <div className="relative w-full max-w-[400px] aspect-[3.6/5] max-h-[540px]">
-                            <AnimatePresence mode="popLayout">
-                                {cards.slice(-3).map((card, index) => {
-                                    const displayedIndex = cards.length - cards.slice(-3).length + index;
-                                    const isTopCard = displayedIndex === cards.length - 1;
-                                    const distance = (userLocation && card.lat && card.lon) 
-                                      ? calculateDistance(userLocation.lat, userLocation.lng, card.lat, card.lon)
-                                      : null;
-
-                                    const primaryStyle = getPrimaryIconData({ 
-                                        categories: card.categories || [], 
-                                        name: card.placeName || ""
-                                    }, language);
-                                    const PrimaryIcon = primaryStyle.icon;
-
-                                    return (
-                                        <motion.div
-                                            key={card.id}
-                                            className={cn(
-                                              "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[2rem] sm:rounded-[2.5rem] elevation-high border-none overflow-hidden flex flex-col transition-shadow duration-300"
-                                            )}
-                                            style={{ 
-                                                zIndex: isTopCard ? 100 : (10 + index),
-                                                x: isTopCard ? 0 : (cards.length - 1 - displayedIndex) * 8,
-                                                rotate: isTopCard ? 0 : (cards.length - 1 - displayedIndex) * 2,
-                                                scale: isTopCard ? 1 : 1 - (cards.length - 1 - displayedIndex) * 0.04
-                                            }}
-                                            initial={{ scale: 0.9, opacity: 0 }}
-                                            animate={isTopCard ? { 
-                                                opacity: 1, 
-                                                scale: 1, 
-                                                x: 0, 
-                                                y: 0,
-                                                rotate: 0,
-                                                transition: { duration: 0.2 } 
-                                            } : {
-                                                opacity: 1,
-                                                scale: 1 - (cards.length - 1 - displayedIndex) * 0.04,
-                                                y: (cards.length - 1 - displayedIndex) * 15,
-                                                x: (cards.length - 1 - displayedIndex) * (index % 2 === 0 ? 5 : -5),
-                                                rotate: (cards.length - 1 - displayedIndex) * (index % 2 === 0 ? 2 : -2),
-                                            }}
-                                            whileDrag={{ scale: 1.02, opacity: 1, zIndex: 200 }}
-                                            exit={{ x: dragX > 0 ? 1000 : -1000, opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
-                                            transition={{ type: "spring", stiffness: 400, damping: 40 }}
-                                            drag={isTopCard ? "x" : false}
-                                            dragConstraints={{ left: 0, right: 0 }}
-                                            onDrag={(e, info) => isTopCard && setDragX(info.offset.x)}
-                                            onDragEnd={isTopCard ? (e, info) => {
-                                                setDragX(0);
-                                                onDragEnd(e, info);
-                                            } : undefined}
-                                        >
-                                            {/* Swipe Overlays */}
-                                            {isTopCard && (
-                                                <>
-                                                    <motion.div 
-                                                        style={{ opacity: Math.min(dragX / 150, 0.8) }}
-                                                        className="absolute inset-0 z-50 pointer-events-none bg-emerald-500/20 flex items-center justify-center"
-                                                    >
-                                                        <div className="border-8 border-emerald-500 rounded-2xl px-8 py-4 rotate-[-15deg] scale-125">
-                                                            <span className="text-5xl font-black text-emerald-500 uppercase tracking-tighter">LIKE</span>
-                                                        </div>
-                                                    </motion.div>
-                                                    <motion.div 
-                                                        style={{ opacity: Math.min(-dragX / 150, 0.8) }}
-                                                        className="absolute inset-0 z-50 pointer-events-none bg-rose-500/20 flex items-center justify-center"
-                                                    >
-                                                        <div className="border-8 border-rose-500 rounded-2xl px-8 py-4 rotate-[15deg] scale-125">
-                                                            <span className="text-5xl font-black text-rose-500 uppercase tracking-tighter">NOPE</span>
-                                                        </div>
-                                                    </motion.div>
-                                                </>
-                                            )}
-                                            <div className={cn("flex-1 flex flex-col bg-white dark:bg-neutral-900", !isTopCard && "pointer-events-none")}>
-                                            <div className={cn("h-[62%] w-full relative overflow-hidden bg-slate-200", !isTopCard && "pointer-events-none")}>
-                                                    {card.imageUrl ? (
-                                                        <img 
-                                                            src={card.imageUrl} 
-                                                            alt={card.placeName} 
-                                                            loading="lazy"
-                                                            decoding="async"
-                                                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                                                        />
-                                                    ) : (
-                                                        <div className={cn("absolute inset-0 flex items-center justify-center overflow-hidden", primaryStyle.gradientClass || "bg-gradient-to-br from-[#bfc6e8] to-[#9fa9d1]")}>
-                                                            <div className="absolute inset-0 opacity-[0.15] flex items-center justify-center transform scale-150">
-                                                                <PrimaryIcon className="w-64 h-64 text-white" />
-                                                            </div>
-                                                            <div className="absolute inset-0 bg-black/10 mix-blend-overlay" />
-                                                            <div className="relative z-10 p-5 bg-white/20 backdrop-blur-md rounded-3xl border border-white/30 shadow-xl flex flex-col items-center gap-2 transform -translate-y-4 transition-transform group-hover:scale-105 group-hover:-translate-y-6">
-                                                                <PrimaryIcon className="h-12 w-12 text-white drop-shadow-md" />
-                                                                <span className="text-white font-black text-[10px] tracking-[0.2em] uppercase drop-shadow">{primaryStyle.label}</span>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="absolute top-5 left-5 flex gap-2 z-10">
-                                                        <div className="bg-amber-400 text-white text-[10px] font-black px-3 h-7 flex items-center rounded-full shadow-lg">
-                                                            <Star className="h-3 w-3 fill-current mr-1" />
-                                                            {language === 'de' ? 'Neu' : 'New'}
-                                                        </div>
-                                                        <div className="bg-white/90 backdrop-blur-md text-neutral-600 text-[10px] font-bold px-3 h-7 flex items-center rounded-full shadow-sm capitalize">
-                                                            {formatLabel(card.categories?.[0] || (language === 'de' ? 'Aktivität' : 'Activity'))}
-                                                        </div>
-                                                    </div>
-
-                                                    {distance !== null && (
-                                                        <div className="absolute top-5 right-10 z-10">
-                                                            <div className="bg-black/50 backdrop-blur-md text-white text-[10px] font-black px-3 h-7 flex items-center rounded-full">
-                                                                {distance < 1 ? '< 1 km' : `${distance.toFixed(1)} km`}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="absolute inset-x-0 bottom-0 p-6 pb-8 pt-24 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10 pointer-events-none">
-                                                        <h2 className="text-white font-black drop-shadow-md">{card.placeName}</h2>
-                                                        <div className="flex items-center gap-2 text-white/90 font-bold mt-1">
-                                                            <MapPin className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
-                                                            <p className="text-[12px] truncate tracking-wide">{card.placeAddress || (language === 'de' ? 'In deiner Umgebung' : 'In your area')}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex-1 p-6 flex flex-col justify-around bg-white dark:bg-neutral-900">
-                                                    <div className="grid grid-cols-3 gap-2 px-1">
-                                                         <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
-                                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Wann' : 'When'}</span>
-                                                             <span className="text-[11px] font-black text-[#0f172a] dark:text-neutral-200">
-                                                                 {format(card.activityDate.toDate(), language === 'de' ? "eee, d. MMM" : "eee, MMM d", { locale: language === 'de' ? de : enUS })}
-                                                             </span>
-                                                         </div>
-                                                         <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
-                                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Uhrzeit' : 'Time'}</span>
-                                                             <span className="text-[11px] font-black text-[#0f172a] dark:text-neutral-200">{language === 'de' ? 'Flexibel' : 'Flexible'}</span>
-                                                         </div>
-                                                         <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
-                                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Plätze' : 'Spots'}</span>
-                                                             <span className="text-[11px] font-black text-emerald-600">
-                                                                 {(card.maxParticipants || 10) - card.participantIds.length} {language === 'de' ? 'frei' : 'free'}
-                                                             </span>
-                                                         </div>
-                                                    </div>
-                                                    <div className="flex justify-center space-x-3 p-0.5 items-center">
-                                                            {/* Host Avatar */}
-                                                            {(() => {
-                                                                const hostDetails = card.participantDetails?.[card.hostId];
-                                                                return (
-                                                                    <Avatar 
-                                                                        className="h-10 w-10 border-2 border-white dark:border-neutral-900 shadow-md"
-                                                                        isPremium={hostDetails?.isPremium}
-                                                                        isCreator={hostDetails?.isCreator}
-                                                                        isSupporter={hostDetails?.isSupporter}
-                                                                    >
-                                                                        <AvatarImage src={card.hostPhotoURL || undefined} alt={card.hostName || 'Host'} />
-                                                                        <AvatarFallback className="bg-orange-100 text-orange-700 text-xs font-bold">
-                                                                            {card.hostName?.charAt(0) || 'H'}
-                                                                        </AvatarFallback>
-                                                                    </Avatar>
-                                                                )
-                                                            })()}
-                                                            
-                                                            {/* Participant Avatars (max 3 slots) */}
-                                                            {[0, 1, 2].map((i) => {
-                                                                const participant = (card.participantsPreview || [])
-                                                                    .filter(p => p.uid !== card.hostId)[i];
-                                                                
-                                                                if (participant) {
-                                                                    const pDetails = card.participantDetails?.[participant.uid];
-                                                                    return (
-                                                                        <Avatar 
-                                                                            key={participant.uid} 
-                                                                            className="h-10 w-10 border-2 border-white dark:border-neutral-900 shadow-md"
-                                                                            isPremium={pDetails?.isPremium}
-                                                                            isCreator={pDetails?.isCreator}
-                                                                            isSupporter={pDetails?.isSupporter}
-                                                                        >
-                                                                            <AvatarImage src={participant.photoURL || undefined} alt={participant.displayName || 'Participant'} />
-                                                                            <AvatarFallback className={cn(
-                                                                                "text-[10px] font-bold text-white",
-                                                                                i === 0 ? "bg-indigo-400" : i === 1 ? "bg-emerald-500" : "bg-purple-500"
-                                                                            )}>
-                                                                                {participant.displayName?.charAt(0) || '?'}
-                                                                            </AvatarFallback>
-                                                                        </Avatar>
-                                                                    );
-                                                                }
-
-                                                                {/* Placeholder for empty slots */}
-                                                                return (
-                                                                    <div key={`empty-${i}`} className="h-10 w-10 rounded-full border-2 border-white dark:border-neutral-900 bg-neutral-50 dark:bg-neutral-800 flex items-center justify-center shadow-sm">
-                                                                        <Plus className="h-4 w-4 text-neutral-300" />
-                                                                    </div>
-                                                                )
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                            </div>
-                                        </motion.div>
-                                    )
-                                })}
-                            </AnimatePresence>
-
-                            {!isLoading && cards.length === 0 && (
+                    <div className="flex-1 flex flex-col items-center justify-start relative min-h-0 pt-4 pb-36 w-full">
+                        {!userLocation ? (
+                            isLocationLoading ? (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                    <p className="mt-4 text-sm font-semibold text-slate-500 dark:text-neutral-400">
+                                        {language === 'de' ? 'Standort wird ermittelt...' : 'Determining location...'}
+                                    </p>
+                                </div>
+                            ) : (
                                 <motion.div 
                                     initial={{ opacity: 0, scale: 0.95 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
                                 >
-                                    <div className="w-24 h-24 bg-orange-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                                        <PlusCircle className="h-10 w-10 text-orange-500" strokeWidth={1.5} />
+                                    <div className="w-24 h-24 bg-rose-50 dark:bg-rose-950/20 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                                        <MapPin className="h-10 w-10 text-rose-500" strokeWidth={1.5} />
                                     </div>
-                                    <h3 className="">{language === 'de' ? 'Alles entdeckt!' : 'Everything discovered!'}</h3>
-                                    <p className="text-sm text-slate-500 dark:text-neutral-400 mb-8 max-w-[240px]">
-                                        {language === 'de' ? 'Aktuell gibt es keine weiteren Aktivitäten in deiner Nähe. Starte doch einfach selbst etwas!' : 'Currently there are no more activities near you. Why not start something yourself!'}
+                                    <h3 className="text-xl font-black mb-2 text-slate-800 dark:text-neutral-200">
+                                        {language === 'de' ? 'Standort erforderlich' : 'Location Required'}
+                                    </h3>
+                                    <p className="text-sm text-slate-500 dark:text-neutral-400 mb-8 max-w-[260px]">
+                                        {language === 'de' 
+                                          ? 'Aktiva benötigt deinen Standort, um spannende Aktivitäten in deiner Nähe anzuzeigen.' 
+                                          : 'Aktiva requires your location to display exciting activities near you.'}
                                     </p>
-                                    <Button 
-                                        onClick={() => setActivityModalPlace('custom')}
-                                        className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-8 py-6 h-auto text-base font-bold shadow-lg shadow-orange-500/20 active:scale-95 transition-all w-full max-w-[200px]"
-                                    >
-                                        {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
-                                    </Button>
-                                    <button 
-                                        onClick={() => window.location.reload()}
-                                        className="mt-6 text-xs font-bold text-slate-400 flex items-center gap-2 hover:text-slate-600 transition-colors"
-                                    >
-                                        <RefreshCw className="h-3 w-3" />
-                                        {language === 'de' ? 'Liste aktualisieren' : 'Refresh list'}
-                                    </button>
+                                    
+                                    <div className="w-full max-w-[240px] space-y-3">
+                                        <Button 
+                                            onClick={() => setIsLocationSearchOpen(true)}
+                                            className="bg-primary hover:bg-primary/95 text-white rounded-full px-8 py-5 h-auto text-sm font-bold shadow-lg shadow-emerald-200/50 w-full"
+                                        >
+                                            {language === 'de' ? 'Ort manuell suchen' : 'Search location manually'}
+                                        </Button>
+                                        
+                                        <Button 
+                                            variant="ghost"
+                                            onClick={() => {
+                                                setIsLocationLoading(true);
+                                                if (navigator.geolocation) {
+                                                    navigator.geolocation.getCurrentPosition(
+                                                        (position) => {
+                                                            const loc = {
+                                                                lat: position.coords.latitude,
+                                                                lng: position.coords.longitude,
+                                                            };
+                                                            setUserLocation(loc);
+                                                            localStorage.setItem('aktiva_last_location', JSON.stringify({
+                                                                ...loc,
+                                                                timestamp: Date.now()
+                                                            }));
+                                                            setIsLocationLoading(false);
+                                                        },
+                                                        (error) => {
+                                                            console.warn('Geolocation retry error:', error);
+                                                            setIsLocationLoading(false);
+                                                            toast({
+                                                                variant: "destructive",
+                                                                title: language === 'de' ? "Standort blockiert" : "Location blocked",
+                                                                description: language === 'de' 
+                                                                  ? "Bitte aktiviere den Standortzugriff in deinen Einstellungen." 
+                                                                  : "Please enable location access in your settings."
+                                                            });
+                                                        },
+                                                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+                                                    );
+                                                } else {
+                                                    setIsLocationLoading(false);
+                                                }
+                                            }}
+                                            className="w-full h-12 rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-neutral-200 font-bold"
+                                        >
+                                            {language === 'de' ? 'GPS erneut versuchen' : 'Retry GPS'}
+                                        </Button>
+                                    </div>
                                 </motion.div>
-                            )}
-                         </div>
+                            )
+                        ) : (
+                            <div className="relative w-full max-w-[400px] aspect-[3.6/5] max-h-[540px]">
+                              <AnimatePresence mode="popLayout">
+                                  {cards.slice(-3).map((card, index) => {
+                                      const displayedIndex = cards.length - cards.slice(-3).length + index;
+                                      const isTopCard = displayedIndex === cards.length - 1;
+                                      const distance = (userLocation && card.lat && card.lon) 
+                                        ? calculateDistance(userLocation.lat, userLocation.lng, card.lat, card.lon)
+                                        : null;
+
+                                      const primaryStyle = getPrimaryIconData({ 
+                                          categories: (card.categories || []).filter(c => c !== 'user_event'), 
+                                          name: card.placeName || "",
+                                          sourceType: card.sourceType,
+                                          isUserEvent: card.isUserEvent,
+                                          creationSource: card.creationSource
+                                      }, language);
+                                      const PrimaryIcon = primaryStyle.icon;
+
+                                      return (
+                                          <motion.div
+                                              key={card.id}
+                                              className={cn(
+                                                "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[2rem] sm:rounded-[2.5rem] elevation-high border-none overflow-hidden flex flex-col transition-shadow duration-300"
+                                              )}
+                                              style={{ 
+                                                  zIndex: isTopCard ? 100 : (10 + index),
+                                                  x: isTopCard ? 0 : (cards.length - 1 - displayedIndex) * 8,
+                                                  rotate: isTopCard ? 0 : (cards.length - 1 - displayedIndex) * 2,
+                                                  scale: isTopCard ? 1 : 1 - (cards.length - 1 - displayedIndex) * 0.04
+                                              }}
+                                              initial={{ scale: 0.9, opacity: 0 }}
+                                              animate={isTopCard ? { 
+                                                  opacity: 1, 
+                                                  scale: 1, 
+                                                  x: 0, 
+                                                  y: 0,
+                                                  rotate: 0,
+                                                  transition: { duration: 0.2 } 
+                                              } : {
+                                                  opacity: 1,
+                                                  scale: 1 - (cards.length - 1 - displayedIndex) * 0.04,
+                                                  y: (cards.length - 1 - displayedIndex) * 15,
+                                                  x: (cards.length - 1 - displayedIndex) * (index % 2 === 0 ? 5 : -5),
+                                                  rotate: (cards.length - 1 - displayedIndex) * (index % 2 === 0 ? 2 : -2),
+                                              }}
+                                              whileDrag={{ scale: 1.02, opacity: 1, zIndex: 200 }}
+                                              exit={{ x: dragX > 0 ? 1000 : -1000, opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
+                                              transition={{ type: "spring", stiffness: 400, damping: 40 }}
+                                              drag={isTopCard ? "x" : false}
+                                              dragConstraints={{ left: 0, right: 0 }}
+                                              onDrag={(e, info) => isTopCard && setDragX(info.offset.x)}
+                                              onDragEnd={isTopCard ? (e, info) => {
+                                                  setDragX(0);
+                                                  onDragEnd(e, info);
+                                              } : undefined}
+                                          >
+                                              {/* Swipe Overlays */}
+                                              {isTopCard && (
+                                                  <>
+                                                      <motion.div 
+                                                          style={{ opacity: Math.min(dragX / 150, 0.8) }}
+                                                          className="absolute inset-0 z-50 pointer-events-none bg-emerald-500/20 flex items-center justify-center"
+                                                      >
+                                                          <div className="border-8 border-emerald-500 rounded-2xl px-8 py-4 rotate-[-15deg] scale-125">
+                                                              <span className="text-5xl font-black text-emerald-500 uppercase tracking-tighter">LIKE</span>
+                                                          </div>
+                                                      </motion.div>
+                                                      <motion.div 
+                                                          style={{ opacity: Math.min(-dragX / 150, 0.8) }}
+                                                          className="absolute inset-0 z-50 pointer-events-none bg-rose-500/20 flex items-center justify-center"
+                                                      >
+                                                          <div className="border-8 border-rose-500 rounded-2xl px-8 py-4 rotate-[15deg] scale-125">
+                                                              <span className="text-5xl font-black text-rose-500 uppercase tracking-tighter">NOPE</span>
+                                                          </div>
+                                                      </motion.div>
+                                                  </>
+                                              )}
+                                              <div className={cn("flex-1 flex flex-col bg-white dark:bg-neutral-900", !isTopCard && "pointer-events-none")}>
+                                              <div className={cn("h-[62%] w-full relative overflow-hidden bg-slate-200", !isTopCard && "pointer-events-none")}>
+                                                      {card.imageUrl ? (
+                                                          <img 
+                                                              src={card.imageUrl} 
+                                                              alt={card.placeName} 
+                                                              loading="lazy"
+                                                              decoding="async"
+                                                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                                                          />
+                                                      ) : (
+                                                          <div className={cn("absolute inset-0 flex items-center justify-center overflow-hidden", primaryStyle.gradientClass || "bg-gradient-to-br from-[#bfc6e8] to-[#9fa9d1]")}>
+                                                              <div className="absolute inset-0 opacity-[0.15] flex items-center justify-center transform scale-150">
+                                                                  <PrimaryIcon className="w-64 h-64 text-white" />
+                                                              </div>
+                                                              <div className="absolute inset-0 bg-black/10 mix-blend-overlay" />
+                                                              <div className="relative z-10 p-5 bg-white/20 backdrop-blur-md rounded-3xl border border-white/30 shadow-xl flex flex-col items-center gap-2 transform -translate-y-4 transition-transform group-hover:scale-105 group-hover:-translate-y-6">
+                                                                  <PrimaryIcon className="h-12 w-12 text-white drop-shadow-md" />
+                                                                  <span className="text-white font-black text-[10px] tracking-[0.2em] uppercase drop-shadow">{primaryStyle.label}</span>
+                                                              </div>
+                                                          </div>
+                                                      )}
+
+                                                      <div className="absolute top-5 left-5 flex gap-2 z-10">
+                                                          <div className="bg-amber-400 text-white text-[10px] font-black px-3 h-7 flex items-center rounded-full shadow-lg">
+                                                              <Star className="h-3 w-3 fill-current mr-1" />
+                                                              {language === 'de' ? 'Neu' : 'New'}
+                                                          </div>
+                                                          <div className="bg-white/90 backdrop-blur-md text-neutral-600 text-[10px] font-bold px-3 h-7 flex items-center rounded-full shadow-sm capitalize">
+                                                              {formatLabel(card.categories?.[0] || (language === 'de' ? 'Aktivität' : 'Activity'))}
+                                                          </div>
+                                                      </div>
+
+                                                      {distance !== null && (
+                                                          <div className="absolute top-5 right-10 z-10">
+                                                              <div className="bg-black/50 backdrop-blur-md text-white text-[10px] font-black px-3 h-7 flex items-center rounded-full">
+                                                                  {distance < 1 ? '< 1 km' : `${distance.toFixed(1)} km`}
+                                                              </div>
+                                                          </div>
+                                                      )}
+
+                                                      <div className="absolute inset-x-0 bottom-0 p-6 pb-8 pt-24 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10 pointer-events-none">
+                                                          <h2 className="text-white font-black drop-shadow-md">{card.placeName}</h2>
+                                                          <div className="flex items-center gap-2 text-white/90 font-bold mt-1">
+                                                              <MapPin className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
+                                                              <p className="text-[12px] truncate tracking-wide">{card.placeAddress || (language === 'de' ? 'In deiner Umgebung' : 'In your area')}</p>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+
+                                                  <div className="flex-1 p-6 flex flex-col justify-around bg-white dark:bg-neutral-900">
+                                                      <div className="grid grid-cols-3 gap-2 px-1">
+                                                           <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
+                                                               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Wann' : 'When'}</span>
+                                                               <span className="text-[11px] font-black text-[#0f172a] dark:text-neutral-200">
+                                                                   {format(card.activityDate.toDate(), language === 'de' ? "eee, d. MMM" : "eee, MMM d", { locale: language === 'de' ? de : enUS })}
+                                                               </span>
+                                                           </div>
+                                                           <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
+                                                               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Uhrzeit' : 'Time'}</span>
+                                                               <span className="text-[11px] font-black text-[#0f172a] dark:text-neutral-200">{language === 'de' ? 'Flexibel' : 'Flexible'}</span>
+                                                           </div>
+                                                           <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
+                                                               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Plätze' : 'Spots'}</span>
+                                                               <span className="text-[11px] font-black text-emerald-600">
+                                                                   {(card.maxParticipants || 10) - card.participantIds.length} {language === 'de' ? 'frei' : 'free'}
+                                                               </span>
+                                                           </div>
+                                                      </div>
+                                                      <div className="flex justify-center space-x-3 p-0.5 items-center">
+                                                              {/* Host Avatar */}
+                                                              {(() => {
+                                                                  const hostDetails = card.participantDetails?.[card.hostId];
+                                                                  return (
+                                                                      <ProfileAvatar 
+                                                                          className="h-10 w-10 border-2 border-white dark:border-neutral-900 shadow-md"
+                                                                          photoURL={card.hostPhotoURL}
+                                                                          displayName={card.hostName}
+                                                                          isPremium={hostDetails?.isPremium}
+                                                                          isCreator={hostDetails?.isCreator}
+                                                                          isSupporter={hostDetails?.isSupporter}
+                                                                      />
+                                                                  )
+                                                              })()}
+                                                              
+                                                              {/* Participant Avatars (max 3 slots) */}
+                                                              {[0, 1, 2].map((i) => {
+                                                                  const participant = (card.participantsPreview || [])
+                                                                      .filter(p => p.uid !== card.hostId)[i];
+                                                                  
+                                                                  if (participant) {
+                                                                      const pDetails = card.participantDetails?.[participant.uid];
+                                                                      return (
+                                                                          <ProfileAvatar 
+                                                                              key={participant.uid} 
+                                                                              className="h-10 w-10 border-2 border-white dark:border-neutral-900 shadow-md"
+                                                                              photoURL={participant.photoURL}
+                                                                              displayName={participant.displayName}
+                                                                              isPremium={pDetails?.isPremium}
+                                                                              isCreator={pDetails?.isCreator}
+                                                                              isSupporter={pDetails?.isSupporter}
+                                                                          />
+                                                                      );
+                                                                  }
+
+                                                                  {/* Placeholder for empty slots */}
+                                                                  return (
+                                                                      <div key={`empty-${i}`} className="h-10 w-10 rounded-full border-2 border-white dark:border-neutral-900 bg-neutral-50 dark:bg-neutral-800 flex items-center justify-center shadow-sm">
+                                                                          <Plus className="h-4 w-4 text-neutral-300" />
+                                                                      </div>
+                                                                  )
+                                                              })}
+                                                          </div>
+                                                      </div>
+                                              </div>
+                                          </motion.div>
+                                      )
+                                  })}
+                              </AnimatePresence>
+
+                              {!isLoading && cards.length === 0 && (
+                                  <motion.div 
+                                      initial={{ opacity: 0, scale: 0.95 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
+                                  >
+                                      <div className="w-24 h-24 bg-orange-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                                          <PlusCircle className="h-10 w-10 text-orange-500" strokeWidth={1.5} />
+                                      </div>
+                                      <h3 className="">{language === 'de' ? 'Alles entdeckt!' : 'Everything discovered!'}</h3>
+                                      <p className="text-sm text-slate-500 dark:text-neutral-400 mb-8 max-w-[240px]">
+                                          {language === 'de' ? 'Aktuell gibt es keine weiteren Aktivitäten in deiner Nähe. Starte doch einfach selbst etwas!' : 'Currently there are no more activities near you. Why not start something yourself!'}
+                                      </p>
+                                      <Button 
+                                          onClick={() => setActivityModalPlace('custom')}
+                                          className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-8 py-6 h-auto text-base font-bold shadow-lg shadow-orange-500/20 active:scale-95 transition-all w-full max-w-[200px]"
+                                      >
+                                          {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
+                                      </Button>
+                                      <button 
+                                          onClick={() => window.location.reload()}
+                                          className="mt-6 text-xs font-bold text-slate-400 flex items-center gap-2 hover:text-slate-600 transition-colors"
+                                      >
+                                          <RefreshCw className="h-3 w-3" />
+                                          {language === 'de' ? 'Liste aktualisieren' : 'Refresh list'}
+                                      </button>
+                                  </motion.div>
+                              )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Floating Action Buttons */}
                     {cards.length > 0 && !isLoading && (
-                        <div className="absolute bottom-[11.5%] left-0 right-0 z-[150] flex items-center justify-center gap-6 pointer-events-none">
+                        <div className="absolute bottom-[calc(76px+env(safe-area-inset-bottom,0px)+1.25rem)] left-0 right-0 z-[150] flex items-center justify-center gap-6 pointer-events-none">
                             <motion.div 
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
@@ -600,6 +755,7 @@ export default function ExplorePage() {
                                     whileHover={{ scale: 1.15 }}
                                     whileTap={{ scale: 0.9 }}
                                     onClick={() => handleSwipe('left')}
+                                    aria-label={language === 'de' ? 'Aktivität ablehnen' : 'Reject activity'}
                                     className="h-14 w-14 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center shadow-inner transition-colors hover:bg-rose-100"
                                 >
                                     <X className="h-6 w-6 stroke-[3]"/>
@@ -612,6 +768,7 @@ export default function ExplorePage() {
                                         const topCard = cards[cards.length - 1];
                                         if (topCard) setSelectedPlace(topCard);
                                     }}
+                                    aria-label={language === 'de' ? 'Details anzeigen' : 'Show details'}
                                     className="h-12 w-12 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-400 flex items-center justify-center transition-colors hover:bg-slate-200"
                                 >
                                     <Info className="h-5 w-5 stroke-[3]"/>
@@ -621,6 +778,7 @@ export default function ExplorePage() {
                                     whileHover={{ scale: 1.15 }}
                                     whileTap={{ scale: 0.9 }}
                                     onClick={() => handleSwipe('right')}
+                                    aria-label={language === 'de' ? 'Aktivität beitreten' : 'Join activity'}
                                     className="h-14 w-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-[0_10px_25px_rgba(16,185,129,0.3)] transition-all hover:bg-emerald-600 active:shadow-none"
                                 >
                                     <Check className="h-7 w-7 stroke-[3]"/>
@@ -648,6 +806,10 @@ export default function ExplorePage() {
                 open={!!activityModalPlace} 
                 onOpenChange={(open) => !open && setActivityModalPlace(null)} 
                 onCreateActivity={handleCreateActivity} 
+            />
+            <LocationSearchDialog 
+                open={isLocationSearchOpen} 
+                onOpenChange={setIsLocationSearchOpen} 
             />
         </div>
     );

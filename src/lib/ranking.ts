@@ -1,6 +1,40 @@
 'use client';
 
 import { calculateDistance } from './geo-utils';
+import { availableTabs } from '../components/aktiva/category-filters-data';
+import { debugLog } from './debug';
+
+// Dynamically derive categoryIdToQueries from availableTabs.
+// This mapping matches tab.id (e.g. Sights) to tag prefix patterns (e.g. tourism.sights)
+// and must be kept in sync via category-filters-data.
+const categoryIdToQueries: Record<string, string[]> = availableTabs.reduce((acc, tab) => {
+  acc[tab.id] = tab.query || [];
+  return acc;
+}, {} as Record<string, string[]>);
+
+export function getPlaceAffinities(categories: string[], categoryAffinities: Record<string, number> | undefined): number {
+  if (!categoryAffinities) return 1.0;
+  
+  const matchedAffinities: number[] = [];
+  
+  for (const [catId, queries] of Object.entries(categoryIdToQueries)) {
+    const isMatch = categories.some(tag => 
+      queries.some(q => tag === q || tag.startsWith(q + '.'))
+    );
+    if (isMatch) {
+      const weight = categoryAffinities[catId];
+      if (typeof weight === 'number') {
+        matchedAffinities.push(weight);
+      }
+    }
+  }
+  
+  if (matchedAffinities.length === 0) return 1.0;
+  
+  // Return the maximum affinity to prioritize user's high-interest matches.
+  return Math.max(...matchedAffinities);
+}
+
 
 export interface RankingScores {
   basePrior: number;
@@ -459,6 +493,359 @@ export function isEntityBoosted(entity: any): boolean {
 }
 
 /**
+ * Normalizes city names to handle typos, diacritics, and casing consistently.
+ */
+export function normalizeCity(city: string | null | undefined): string {
+  if (!city) return "";
+  return city
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove diacritics
+    .replace(/[^a-z0-9]/g, ""); // Keep only alphanumeric
+}
+
+/**
+ * Normalizes categories into a primaryCategory and subCategory according to the spec.
+ */
+/**
+ * Checks if a place name is generic (very short, a street name, a single word, or matches standard landmark naming patterns).
+ */
+export function isGenericPlaceName(name: string | null | undefined): boolean {
+  if (!name) return true;
+  const clean = name.trim();
+  if (clean.length === 0) return true;
+
+  // 1. Sehr kurze Namen
+  if (clean.length <= 3) return true;
+
+  // 2. Reines Einwortname
+  const words = clean.split(/\s+/);
+  if (words.length === 1) return true;
+
+  // 3. Mustermatchings für Straßen, Brunnen, Kunst, Denkmäler etc.
+  const genericPatterns = [
+    /strasse/i, /straße/i, /str\./i, /weg/i, /gasse/i, /allee/i, /platz/i,
+    /brunnen/i, /denkmal/i, /skulptur/i, /statue/i, /objekt/i, /monument/i,
+    /memorial/i, /artwork/i, /kunst/i, /figur/i, /stele/i, /tafel/i,
+    /gedenk/i, /grab/i, /kreuz/i, /bildstock/i, /säule/i
+  ];
+  if (genericPatterns.some(regex => regex.test(clean))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Computes feed quality adjustments: quality penalties for generic/boring POIs, and activity boosts for active categories.
+ */
+export function computeAdjustments(
+  categories: string[],
+  name: string,
+  voteBoostScore: number,
+  baseRankingScore: number,
+  isFromFirestore: boolean
+): { qualityPenalty: number; activityBoost: number } {
+  const norm = normalizeCategory(categories);
+  const prim = norm.primaryCategory;
+  const sub = norm.subCategory;
+
+  let qualityPenalty = 0;
+  let activityBoost = 0;
+
+  // 1. Quality Penalties
+  if (sub === "other") {
+    qualityPenalty += 10;
+  }
+  if (prim === "tourism" && sub === "other") {
+    qualityPenalty += 15;
+  }
+  // Landmark vorsichtig abwerten
+  if (
+    sub === "landmark" &&
+    voteBoostScore <= 0 &&
+    baseRankingScore < 70
+  ) {
+    qualityPenalty += 10;
+  }
+  // Generische Namen abwerten (nur für other/landmark ohne Firestore-Signale)
+  if (
+    (sub === "other" || sub === "landmark") &&
+    isGenericPlaceName(name) &&
+    voteBoostScore <= 0 &&
+    !isFromFirestore
+  ) {
+    qualityPenalty += 15;
+  }
+
+  // 2. Activity Boosts
+  const activityBoostBySubCategory: Record<string, number> = {
+    cinema: 8,
+    minigolf: 8,
+    bowling: 8,
+    swimming_pool: 8,
+    zoo: 8,
+    museum: 8,
+    park: 8,
+    restaurant: 5,
+    cafe: 5,
+    bar: 3,
+  };
+
+  if (activityBoostBySubCategory[sub] !== undefined) {
+    activityBoost += activityBoostBySubCategory[sub];
+  }
+  if (prim === "sports") {
+    activityBoost += 8;
+  }
+
+  return { qualityPenalty, activityBoost };
+}
+
+/**
+ * Normalizes categories into a primaryCategory and subCategory according to the spec.
+ */
+export function normalizeCategory(categories: string[]): { primaryCategory: string; subCategory: string } {
+  if (!categories || categories.length === 0) {
+    return { primaryCategory: 'other', subCategory: 'other' };
+  }
+
+  // Phase 1: High Priority (swimming_pool & spa)
+  for (const cat of categories) {
+    const clean = cat.toLowerCase();
+    if (
+      clean.includes('swimming_pool') ||
+      clean.includes('swimming') ||
+      clean === 'sport.swimming' ||
+      clean.includes('pool') ||
+      clean.includes('bath') ||
+      clean.includes('freibad') ||
+      clean.includes('hallenbad') ||
+      clean.includes('naturbad') ||
+      clean.includes('wasserpark') ||
+      clean.includes('water_park') ||
+      clean.includes('aquatic')
+    ) {
+      return { primaryCategory: 'sports', subCategory: 'swimming_pool' };
+    }
+    if (
+      clean.includes('spa') ||
+      clean.includes('sauna') ||
+      clean.includes('therme') ||
+      clean.includes('thermal') ||
+      clean.includes('wellness')
+    ) {
+      return { primaryCategory: 'wellness', subCategory: 'spa' };
+    }
+  }
+
+  // Phase 2: Clear Activity Categories
+  for (const cat of categories) {
+    const clean = cat.toLowerCase();
+    if (clean.includes('cinema')) {
+      return { primaryCategory: 'entertainment', subCategory: 'cinema' };
+    }
+    if (clean.includes('miniature_golf') || clean.includes('minigolf')) {
+      return { primaryCategory: 'entertainment', subCategory: 'minigolf' };
+    }
+    if (clean.includes('bowling_alley') || clean.includes('bowling')) {
+      return { primaryCategory: 'entertainment', subCategory: 'bowling' };
+    }
+    if (clean.includes('zoo')) {
+      return { primaryCategory: 'nature', subCategory: 'zoo' };
+    }
+    if (clean.includes('museum')) {
+      return { primaryCategory: 'tourism', subCategory: 'museum' };
+    }
+    if (clean === 'catering.cafe' || clean.includes('.cafe') || clean === 'cafe') {
+      return { primaryCategory: 'food', subCategory: 'cafe' };
+    }
+    if (clean === 'catering.restaurant' || clean.includes('.restaurant') || clean === 'restaurant') {
+      return { primaryCategory: 'food', subCategory: 'restaurant' };
+    }
+    if (clean === 'catering.bar' || clean === 'catering.pub' || clean.includes('.bar') || clean.includes('.pub') || clean === 'bar' || clean === 'pub' || clean === 'adult.nightclub' || clean.includes('nightclub')) {
+      return { primaryCategory: 'nightlife', subCategory: 'bar' };
+    }
+    if (clean.includes('park') || clean.includes('garden')) {
+      return { primaryCategory: 'leisure', subCategory: 'park' };
+    }
+  }
+
+  // Phase 3: Landmark Mapping
+  for (const cat of categories) {
+    const clean = cat.toLowerCase();
+    if (
+      clean.includes('attraction') ||
+      clean.includes('sights') ||
+      clean.includes('sightseeing') ||
+      clean.includes('monument') ||
+      clean.includes('memorial') ||
+      clean.includes('artwork') ||
+      clean.includes('fountain') ||
+      clean.includes('statue') ||
+      clean.includes('sculpture') ||
+      clean.includes('historic')
+    ) {
+      return { primaryCategory: 'tourism', subCategory: 'landmark' };
+    }
+  }
+
+  // Fallback parsing for general tags
+  for (const cat of categories) {
+    const parts = cat.toLowerCase().split('.');
+    const root = parts[0];
+    const sub = parts.slice(1).join('_') || 'other';
+
+    if (root === 'catering') {
+      return { primaryCategory: 'food', subCategory: sub };
+    }
+    if (root === 'entertainment') {
+      return { primaryCategory: 'entertainment', subCategory: sub };
+    }
+    if (root === 'sport') {
+      return { primaryCategory: 'sports', subCategory: sub };
+    }
+    if (root === 'natural' || (root === 'leisure' && (sub.includes('park') || sub.includes('garden') || sub.includes('nature')))) {
+      return { primaryCategory: 'nature', subCategory: sub };
+    }
+    if (root === 'leisure') {
+      return { primaryCategory: 'leisure', subCategory: sub };
+    }
+    if (root === 'tourism') {
+      return { primaryCategory: 'tourism', subCategory: sub };
+    }
+    if (root === 'adult') {
+      return { primaryCategory: 'nightlife', subCategory: sub };
+    }
+  }
+
+  // General fallback
+  const first = categories[0].toLowerCase();
+  const parts = first.split('.');
+  return {
+    primaryCategory: parts[0] || 'other',
+    subCategory: parts.slice(1).join('_') || 'other'
+  };
+}
+
+/**
+ * Greedy diversification algorithm using additive penalties.
+ */
+export function diversifyFeed(
+  candidates: any[],
+  options: { debug?: boolean } = {}
+): any[] {
+  const sorted = [...candidates].sort((a, b) => b.relevanceScore - a.relevanceScore);
+  const placed: any[] = [];
+  const remaining = [...sorted];
+
+  while (remaining.length > 0) {
+    let bestIndex = -1;
+    let bestAdjustedScore = -Infinity;
+    const k = placed.length; // Next position to fill
+
+    for (let i = 0; i < remaining.length; i++) {
+      const item = remaining[i];
+      const { primaryCategory: prim, subCategory: sub } = normalizeCategory(item.categories || []);
+
+      let countSubInPlaced = 0;
+      let countPrimInPlaced = 0;
+
+      for (const p of placed) {
+        const pNorm = normalizeCategory(p.categories || []);
+        if (pNorm.subCategory === sub) countSubInPlaced++;
+        if (pNorm.primaryCategory === prim) countPrimInPlaced++;
+      }
+
+      let penalty = 0;
+
+      // Rule 1: max 1 spot of same subCategory in Top 5 (indices 0 to 4)
+      if (k < 5 && countSubInPlaced >= 1) {
+        penalty += 15;
+      }
+
+      // Rule 2: max 2 spots of same primaryCategory in Top 10 (indices 0 to 9)
+      if (k < 10 && countPrimInPlaced >= 2) {
+        penalty += 10;
+      }
+
+      // Rule 3: max 4 spots of same subCategory in Top 20 (indices 0 to 19)
+      if (countSubInPlaced >= 4) {
+        penalty += 300; // Enforce hard cap of max 4
+      } else if (k < 20 && countSubInPlaced === 3) {
+        penalty += 15;
+      }
+
+      // Rule 4: max 5 spots of same primaryCategory in Top 20 (indices 0 to 19)
+      if (countPrimInPlaced >= 5) {
+        penalty += 300; // Enforce hard cap of max 5
+      } else if (k < 20 && countPrimInPlaced === 4) {
+        penalty += 12;
+      }
+
+      // Rule 4.5: other and landmark max 3 in Top 20 (indices 0 to 19)
+      if (k < 20) {
+        if (sub === 'other' && countSubInPlaced >= 3) {
+          penalty += 300;
+        }
+        if (sub === 'landmark' && countSubInPlaced >= 3) {
+          penalty += 300;
+        }
+      }
+
+      // Special progressive repetition penalties for bar, swimming_pool, cinema, bowling in Top 20
+      if (k < 20 && ['bar', 'swimming_pool', 'cinema', 'bowling'].includes(sub)) {
+        if (countSubInPlaced >= 4) {
+          penalty += 45;
+        } else if (countSubInPlaced === 3) {
+          penalty += 25;
+        } else if (countSubInPlaced === 2) {
+          penalty += 15;
+        } else if (countSubInPlaced === 1) {
+          penalty += 5;
+        }
+      }
+
+      // Rule 5: no direct repetition of same subCategory within 5 positions (last 4 placed spots)
+      let consecutivePenalty = 0;
+      for (let j = 1; j <= 4; j++) {
+        if (k - j >= 0) {
+          const prevItem = placed[k - j];
+          const prevNorm = normalizeCategory(prevItem.categories || []);
+          if (prevNorm.subCategory === sub) {
+            const distPenalty = [20, 12, 6, 3][j - 1];
+            consecutivePenalty = Math.max(consecutivePenalty, distPenalty);
+          }
+        }
+      }
+      penalty += consecutivePenalty;
+
+      // Additive score adjustment (compare unclamped to keep penalty resolution)
+      const adjustedScore = item.relevanceScore - penalty;
+
+      if (adjustedScore > bestAdjustedScore) {
+        bestAdjustedScore = adjustedScore;
+        bestIndex = i;
+      }
+    }
+
+    if (bestIndex === -1) break;
+
+    const selected = remaining.splice(bestIndex, 1)[0];
+    selected.scores = selected.scores || {};
+    const clampedScore = Math.max(0.1, bestAdjustedScore);
+    selected.scores.adjustedRelevance = clampedScore;
+    selected.scores.diversityPenalty = selected.relevanceScore - clampedScore; // Additive penalty amount
+
+    selected.relevanceScore = clampedScore;
+    placed.push(selected);
+  }
+
+  return placed;
+}
+
+/**
  * Main unified ranking entry point (Phase 1 -> Phase 2 -> Phase 3).
  */
 export function rankPlacesPipeline(
@@ -506,20 +893,34 @@ export function rankPlacesPipeline(
     const prior = computeBasePrior(categories);
     const decay = computeDistanceDecay(distance, placeSigma);
     const personalization = computePersonalizationMultiplier(categories, userProfile);
-    const commScore = computeCommunityScore(place.upvotes || 0, place.downvotes || 0);
+    const commScore = 0; // Bypassed
 
-    const baseScore = computeBaseScore(prior, decay, commScore, personalization);
+    const baseScoreVal = computeBaseScore(prior, decay, commScore, personalization);
+    const interestWeight = getPlaceAffinities(categories, userProfile?.categoryAffinities);
     const boostMultiplier = isEntityBoosted(place) ? 1.06 : 1.0;
-    const finalScore = baseScore * boostMultiplier;
+    const unadjustedBaseRankingScore = baseScoreVal * boostMultiplier * interestWeight;
+
+    const isFromFirestore = !!(place.isFromFirestore || place.source === 'firestore');
+    const { qualityPenalty, activityBoost } = computeAdjustments(
+      categories,
+      place.name || "",
+      place.voteBoostScore || 0,
+      unadjustedBaseRankingScore,
+      isFromFirestore
+    );
+
+    const baseScore = baseScoreVal + activityBoost - qualityPenalty;
+    const baseRankingScore = baseScore * boostMultiplier * interestWeight;
+    const finalScore = baseRankingScore + (place.voteBoostScore || 0);
 
     const contextScores: RankingScores = {
       basePrior: prior,
       distanceDecay: decay,
       personalizationBoost: personalization,
       communityQuality: commScore,
-      diversityPenalty: 1.0,
+      diversityPenalty: 0.0,
       geoPenalty: 1.0,
-      consecutivePenalty: 1.0,
+      consecutivePenalty: 0.0,
       jitterApplied: 1.0,
       finalRelevance: finalScore
     };
@@ -527,7 +928,10 @@ export function rankPlacesPipeline(
     return {
       ...place,
       relevanceScore: finalScore,
-      scores: contextScores
+      scores: contextScores,
+      qualityPenalty,
+      activityBoost,
+      isGenericName: isGenericPlaceName(place.name)
     };
   });
 
@@ -538,10 +942,9 @@ export function rankPlacesPipeline(
   const topK = baseScored.slice(0, K);
   const tail = baseScored.slice(K);
 
-  // Phase 2: Diversity Re-Ranking
-  let reranked = applyCategoryDiversityRerank(topK, 0.70, 0.15);
+  // Phase 2: Diversity Re-Ranking (using our new diversifyFeed algorithm)
+  let reranked = diversifyFeed(topK, { debug: options.debug });
   reranked = applyGeoDiversityPenalty(reranked, 0.2, 0.50);
-  reranked = applyDiversityShift(reranked, 0.95);
 
   // Phase 3: Post-Processing (Jitter & Stable Ordering)
   const userId = userProfile?.uid || 'anonymous';
@@ -574,8 +977,13 @@ export function rankPlacesPipeline(
   });
 
   // Debug Telemetry
-  if (options.debug && allScored.length > 0) {
-    // Debug telemetry print disabled
+  if (allScored.length > 0) {
+    debugLog('ranking', `Top 5 spot relevance adjustments:`);
+    allScored.slice(0, 5).forEach((spot, idx) => {
+      const cats = spot.categories || [];
+      const interestWeight = getPlaceAffinities(cats, userProfile?.categoryAffinities);
+      debugLog('ranking', `  #${idx + 1}: ${spot.name || spot.id} (Category: ${cats[0] || 'unknown'}), Base: ${(spot.relevanceScore / (interestWeight || 1.0)).toFixed(2)}, Weight: ${interestWeight.toFixed(2)}, Final: ${spot.relevanceScore.toFixed(2)}`);
+    });
   }
 
   return allScored;
@@ -622,8 +1030,22 @@ export function calculateRelevance(
   const prior = computeBasePrior(categories);
   const decay = computeDistanceDecay(item.distance || 0, placeSigma);
   const personalization = computePersonalizationMultiplier(categories, userProfile);
-  const commScore = computeCommunityScore(item.upvotes || 0, item.downvotes || 0);
-  const baseScore = computeBaseScore(prior, decay, commScore, personalization);
+  const commScore = 0; // Bypassed
+  const baseScoreVal = computeBaseScore(prior, decay, commScore, personalization);
+  const interestWeight = getPlaceAffinities(categories, userProfile?.categoryAffinities);
   const boostMultiplier = isEntityBoosted(item) ? 1.06 : 1.0;
-  return Number((baseScore * boostMultiplier).toFixed(1));
+
+  const unadjustedBaseRankingScore = baseScoreVal * boostMultiplier * interestWeight;
+  const isFromFirestore = !!(item.isFromFirestore || item.source === 'firestore');
+  const { qualityPenalty, activityBoost } = computeAdjustments(
+    categories,
+    item.name || "",
+    item.voteBoostScore || 0,
+    unadjustedBaseRankingScore,
+    isFromFirestore
+  );
+
+  const baseScore = baseScoreVal + activityBoost - qualityPenalty;
+  const baseRankingScore = baseScore * boostMultiplier * interestWeight;
+  return Number((baseRankingScore + (item.voteBoostScore || 0)).toFixed(1));
 }

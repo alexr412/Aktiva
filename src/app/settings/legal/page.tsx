@@ -26,7 +26,7 @@ export default function LegalSettingsPage() {
             title: language === 'de' ? 'AGB / Nutzungsbedingungen' : 'Terms of Service',
             icon: Gavel,
             href: '/terms',
-            description: language === 'de' ? 'Die rechtliche Basis für die Nutzung von Aktvia.' : 'The legal basis for using Aktvia.'
+            description: language === 'de' ? 'Die rechtliche Basis für die Nutzung von Aktiva.' : 'The legal basis for using Aktiva.'
         },
         {
             title: language === 'de' ? 'Widerrufsbelehrung' : 'Cancellation Policy',
@@ -51,7 +51,7 @@ export default function LegalSettingsPage() {
     return (
         <div className="flex flex-col h-full w-full bg-secondary overflow-y-auto pb-32">
             <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background px-4 shrink-0">
-                <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()}>
+                <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()} aria-label={language === 'de' ? 'Zurück' : 'Back'}>
                     <ArrowLeft />
                 </Button>
                 <h1 className="flex items-center gap-2 text-xl font-bold">
@@ -84,7 +84,7 @@ export default function LegalSettingsPage() {
 
                 <div className="pt-8 text-center">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                        Aktvia Version 1.0.0 • 2026
+                        Aktiva Version 1.0.0 • 2026
                     </p>
                 </div>
             </div>

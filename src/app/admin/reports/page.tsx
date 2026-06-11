@@ -11,24 +11,29 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function AdminReportsPage() {
+  const { userProfile, loading: authLoading } = useAuth();
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!db) return;
+    if (!db || authLoading || !userProfile || userProfile.role !== 'admin') return;
     const q = query(collection(db, 'reports'), where('status', '==', 'open'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setReports(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [userProfile, authLoading]);
 
   const handleResolveDelete = async (reportId: string, activityId: string) => {
     if (!db) return;
+    if (!window.confirm("Bist du sicher, dass du diese Aktivität permanent löschen und die Meldung als gelöst markieren möchtest?")) {
+      return;
+    }
     try {
       const batch = writeBatch(db);
       // Delete activity
@@ -47,6 +52,9 @@ export default function AdminReportsPage() {
 
   const handleRejectReport = async (reportId: string, activityId: string) => {
     if (!db) return;
+    if (!window.confirm("Bist du sicher, dass du diese Meldung abweisen möchtest? Die Aktivität bleibt bestehen.")) {
+      return;
+    }
     try {
       const batch = writeBatch(db);
       // Reduce report count
@@ -65,17 +73,21 @@ export default function AdminReportsPage() {
     }
   };
 
-  if (loading) return (
+  if (authLoading || loading) return (
     <div className="flex flex-col items-center justify-center p-20 gap-4">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
       <p className="text-sm font-black uppercase text-slate-400">Lade Moderations-Pipeline...</p>
     </div>
   );
 
+  if (!userProfile || userProfile.role !== 'admin') {
+    return null;
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild className="rounded-full">
+        <Button variant="ghost" size="icon" asChild className="rounded-full" aria-label="Zurück zum Admin-Dashboard">
           <Link href="/admin"><ArrowLeft className="h-5 w-5" /></Link>
         </Button>
         <div>

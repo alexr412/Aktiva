@@ -21,6 +21,7 @@ import {
   type LucideIcon
 } from 'lucide-react';
 import { cn, formatLabel } from './utils';
+import type { Activity, Place, Chat } from '@/lib/types';
 
 /**
  * Custom Icons für Kategorien, die Lucide nicht abdeckt
@@ -159,10 +160,10 @@ export interface TagStyle {
  * Löst visuelle Prioritäten deterministisch nach einer definierten Kaskade auf.
  */
 export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): TagStyle => {
-  const rawTags = place.categories || place.category || place.tags || [];
+  const rawTags = place?.categories || place?.category || place?.tags || [];
   const tags = (Array.isArray(rawTags) ? rawTags.filter(Boolean) : (typeof rawTags === 'string' ? [rawTags] : [])).map((t: string) => t.trim().toLowerCase());
   let nameStr = '';
-  if (place.name) {
+  if (place?.name) {
     if (typeof place.name === 'string') {
       nameStr = place.name;
     } else if (typeof place.name === 'object') {
@@ -173,6 +174,66 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   }
   const name = nameStr.toLowerCase();
   const n = name;
+
+  const normalizeCommunityCategory = (cat: string): string => {
+    const c = cat.trim().toLowerCase();
+    if (c === 'sports' || c === 'sport') return 'sports';
+    if (c === 'outdoor' || c === 'outdoors') return 'outdoor';
+    if (c === 'party') return 'party';
+    if (c === 'culture' || c === 'kultur') return 'culture';
+    if (c === 'gaming') return 'gaming';
+    if (c === 'tech' || c === 'technology') return 'tech';
+    if (c === 'networking') return 'networking';
+    if (c === 'other' || c === 'sonstiges' || c === 'andere') return 'other';
+    return c;
+  };
+
+  const isFreeCommunityEvent = place?.isUserEvent === true || place?.creationSource === 'community' || tags.includes('user_event');
+
+  if (isFreeCommunityEvent) {
+    const cleanTags = tags.filter((t: string) => t !== 'user_event');
+    let matchedCategory = '';
+    for (const t of cleanTags) {
+      const normalized = normalizeCommunityCategory(t);
+      if (['sports', 'outdoor', 'party', 'culture', 'gaming', 'tech', 'networking', 'other'].includes(normalized)) {
+        matchedCategory = normalized;
+        break;
+      }
+    }
+
+    if (matchedCategory === 'sports') {
+      return { icon: Dumbbell, color: '#3b82f6', label: language === 'de' ? 'Sport' : 'Sports', bgClass: 'bg-blue-50', gradientClass: 'bg-gradient-to-br from-blue-500 to-cyan-500' };
+    }
+    if (matchedCategory === 'outdoor') {
+      return { icon: Trees, color: '#059669', label: language === 'de' ? 'Outdoor' : 'Outdoor', bgClass: 'bg-green-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-lime-500' };
+    }
+    if (matchedCategory === 'party') {
+      return { icon: Flame, color: '#f97316', label: language === 'de' ? 'Party' : 'Party', bgClass: 'bg-orange-50', gradientClass: 'bg-gradient-to-br from-orange-500 to-red-500' };
+    }
+    if (matchedCategory === 'culture') {
+      return { icon: Landmark, color: '#f59e0b', label: language === 'de' ? 'Kultur' : 'Culture', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-amber-500 to-orange-500' };
+    }
+    if (matchedCategory === 'gaming') {
+      return { icon: Gamepad2, color: '#8b5cf6', label: language === 'de' ? 'Gaming' : 'Gaming', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-indigo-500 to-violet-600' };
+    }
+    if (matchedCategory === 'tech') {
+      return { icon: Zap, color: '#06b6d4', label: language === 'de' ? 'Tech' : 'Tech', bgClass: 'bg-cyan-50', gradientClass: 'bg-gradient-to-br from-cyan-400 to-blue-500' };
+    }
+    if (matchedCategory === 'networking') {
+      return { icon: Coffee, color: '#d97706', label: language === 'de' ? 'Networking' : 'Networking', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-orange-400 to-rose-500' };
+    }
+    if (matchedCategory === 'other') {
+      return { icon: Star, color: '#eab308', label: language === 'de' ? 'Sonstiges' : 'Other', bgClass: 'bg-yellow-50', gradientClass: 'bg-gradient-to-br from-yellow-400 to-amber-500' };
+    }
+
+    return { 
+      icon: Users, 
+      color: '#8b5cf6', 
+      label: formatLabel(language === 'de' ? 'Community' : 'Community'), 
+      bgClass: 'bg-purple-50', 
+      gradientClass: 'bg-gradient-to-br from-blue-400 to-fuchsia-500' 
+    };
+  }
 
   // --- PRIORITÄT 0: Spezifische Entertainment-Kategorien ---
   if (tags.includes('entertainment.museum') || name.includes('museum')) {
@@ -283,26 +344,29 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   }
 
   // --- USER EVENT SPECIFIC CATEGORIES ---
-  if (tags.includes('Sport')) {
+  if (tags.includes('sport')) {
     return { icon: Dumbbell, color: '#3b82f6', label: language === 'de' ? 'Sport' : 'Sports', bgClass: 'bg-blue-50', gradientClass: 'bg-gradient-to-br from-blue-500 to-cyan-500' };
   }
-  if (tags.includes('Outdoor')) {
+  if (tags.includes('outdoor')) {
     return { icon: Trees, color: '#059669', label: language === 'de' ? 'Outdoor' : 'Outdoor', bgClass: 'bg-green-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-lime-500' };
   }
-  if (tags.includes('Party')) {
+  if (tags.includes('party')) {
     return { icon: Flame, color: '#f97316', label: language === 'de' ? 'Party' : 'Party', bgClass: 'bg-orange-50', gradientClass: 'bg-gradient-to-br from-orange-500 to-red-500' };
   }
-  if (tags.includes('Kultur')) {
+  if (tags.includes('kultur') || tags.includes('culture')) {
     return { icon: Landmark, color: '#f59e0b', label: language === 'de' ? 'Kultur' : 'Culture', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-amber-500 to-orange-500' };
   }
-  if (tags.includes('Gaming')) {
+  if (tags.includes('gaming')) {
     return { icon: Gamepad2, color: '#8b5cf6', label: language === 'de' ? 'Gaming' : 'Gaming', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-indigo-500 to-violet-600' };
   }
-  if (tags.includes('Tech')) {
+  if (tags.includes('tech')) {
     return { icon: Zap, color: '#06b6d4', label: language === 'de' ? 'Tech' : 'Tech', bgClass: 'bg-cyan-50', gradientClass: 'bg-gradient-to-br from-cyan-400 to-blue-500' };
   }
-  if (tags.includes('Networking')) {
+  if (tags.includes('networking')) {
     return { icon: Coffee, color: '#d97706', label: language === 'de' ? 'Networking' : 'Networking', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-orange-400 to-rose-500' };
+  }
+  if (tags.includes('sonstiges') || tags.includes('other') || tags.includes('andere')) {
+    return { icon: Star, color: '#eab308', label: language === 'de' ? 'Sonstiges' : 'Other', bgClass: 'bg-yellow-50', gradientClass: 'bg-gradient-to-br from-yellow-400 to-amber-500' };
   }
 
   // --- COMMUNITY & SONSTIGES ---
@@ -433,7 +497,7 @@ export const getCleanTags = (tags: string[]): { tag: string, isMain: boolean }[]
   // 3. Filter out low-value/technical tags
   const filtered = deduplicated.filter(tag => {
     const t = tag.toLowerCase();
-    return !['yes', 'no', 'access', 'public', 'fee.yes', 'fee.no', 'building', 'no_fee', 'named'].includes(t) && 
+    return !['yes', 'no', 'access', 'public', 'fee.yes', 'fee.no', 'building', 'no_fee', 'named', 'user_event'].includes(t) && 
            !t.endsWith('.no') && 
            !t.endsWith('.yes');
   });
@@ -455,3 +519,50 @@ export const getCleanTags = (tags: string[]): { tag: string, isMain: boolean }[]
     };
   });
 };
+
+export function getRoomVisualCategory({
+  activity,
+  place,
+  chat
+}: {
+  activity: Activity | null;
+  place: Place | null;
+  chat?: Chat | null;
+}) {
+  const isPlaceBased =
+    Boolean(activity?.placeId && activity?.placeId !== 'custom') ||
+    activity?.creationSource === 'place_activity' ||
+    Boolean(place);
+
+  let categories: string[] = [];
+  let name = place?.name || activity?.placeName || chat?.placeName || '';
+
+  if (isPlaceBased) {
+    if (place?.categories && place.categories.length > 0) {
+      categories = place.categories;
+    } else if (place?.category) {
+      categories = [place.category];
+    } else if (activity?.category) {
+      categories = [activity.category];
+    } else if (activity?.categories && activity.categories.length > 0) {
+      categories = activity.categories.filter(c => c !== 'user_event');
+    } else if (chat?.categories && chat.categories.length > 0) {
+      categories = chat.categories.filter(c => c !== 'user_event');
+    }
+  } else {
+    // Free Community Event
+    if (activity?.category) {
+      categories = [activity.category];
+    } else if (activity?.categories && activity.categories.length > 0) {
+      categories = activity.categories.filter(c => c !== 'user_event');
+    } else if (chat?.categories && chat.categories.length > 0) {
+      categories = chat.categories.filter(c => c !== 'user_event');
+    }
+  }
+
+  const isUserEvent = activity?.isUserEvent ?? (chat?.isUserEvent ?? !isPlaceBased);
+  const creationSource = activity?.creationSource ?? chat?.creationSource;
+
+  return { categories, name, isUserEvent, creationSource };
+}
+

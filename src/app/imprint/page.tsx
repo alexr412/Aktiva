@@ -1,76 +1,51 @@
-'use client';
+import { Metadata } from 'next';
+import { FileText, Info } from 'lucide-react';
+import { LegalLayout } from '@/components/legal/LegalLayout';
 
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, FileText, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useLanguage } from '@/hooks/use-language';
+export const metadata: Metadata = {
+  title: 'Impressum - Aktiva',
+  description: 'Impressum und Anbieterkennzeichnung für die Aktiva App gemäß § 5 TMG.',
+};
 
 export default function ImprintPage() {
-  const router = useRouter();
-  const language = useLanguage();
-
   return (
-    <div className="flex flex-col h-full w-full bg-background overflow-y-auto pb-32">
-      <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background px-4 shrink-0">
-        <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()}>
-          <ArrowLeft />
-        </Button>
-        <h1 className="flex items-center gap-2 text-xl font-bold">
-          <FileText className="h-6 w-6 text-primary shrink-0" />
-          <span className="truncate">{language === 'de' ? 'Impressum' : 'Imprint'}</span>
-        </h1>
-      </header>
+    <LegalLayout
+      title="Impressum"
+      versionText="Angaben gemäß § 5 TMG"
+      icon={FileText}
+    >
+      <section className="space-y-2">
+        <h3 className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-widest mb-2">Diensteanbieter</h3>
+        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 font-medium">
+          Alexander Rötz<br />
+          Prioreier Straße 4<br />
+          58091 Hagen<br />
+          Deutschland
+        </p>
+      </section>
 
-      <div className="p-4 md:p-8 space-y-6">
-        <div className="max-w-3xl mx-auto space-y-12">
-          <div className="p-8 bg-slate-50 dark:bg-neutral-900 rounded-[2rem] border-none">
-            <div className="flex gap-4 mb-6">
-               <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-primary" />
-               </div>
-               <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Impressum</h2>
-                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Angaben gemäß § 5 TMG</p>
-               </div>
-            </div>
-            
-            <div className="prose prose-slate dark:prose-invert max-w-none space-y-8 text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
-              <section className="space-y-2">
-                <h3 className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-widest mb-2">Diensteanbieter</h3>
-                <p className="text-sm">
-                  Alexander Rötz<br />
-                  Prioreier Straße 4<br />
-                  58091 Hagen<br />
-                  Deutschland
-                </p>
-              </section>
+      <section className="space-y-2">
+        <h3 className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-widest mb-2">Kontakt</h3>
+        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 font-medium">
+          E-Mail: roetzbusiness@gmail.com
+        </p>
+      </section>
 
-              <section className="space-y-2">
-                <h3 className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-widest mb-2">Kontakt</h3>
-                <p className="text-sm">
-                  E-Mail: roetzbusiness@gmail.com
-                </p>
-              </section>
+      <section className="space-y-2">
+        <h3 className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-widest mb-2">Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h3>
+        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 font-medium">
+          Alexander Rötz<br />
+          Prioreier Straße 4<br />
+          58091 Hagen
+        </p>
+      </section>
 
-              <section className="space-y-2">
-                <h3 className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-widest mb-2">Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h3>
-                <p className="text-sm">
-                  Alexander Rötz<br />
-                  Prioreier Straße 4<br />
-                  58091 Hagen
-                </p>
-              </section>
-
-              <div className="pt-8 border-t border-slate-200 dark:border-neutral-800 flex items-start gap-3">
-                <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                <p className="text-[10px] leading-relaxed italic opacity-70">
-                  Haftungsausschluss: Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="pt-8 border-t border-slate-200 dark:border-neutral-800 flex items-start gap-3">
+        <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+        <p className="text-[10px] leading-relaxed italic text-slate-400 dark:text-slate-500 font-bold">
+          Haftungsausschluss: Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.
+        </p>
       </div>
-    </div>
+    </LegalLayout>
   );
 }

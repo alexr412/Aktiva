@@ -1,7 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Ban } from 'lucide-react';
+import { ArrowLeft, Ban, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
 import { useAuth } from '@/hooks/use-auth';
@@ -9,14 +10,34 @@ import { useAuth } from '@/hooks/use-auth';
 export default function BlockedUsersPage() {
     const router = useRouter();
     const language = useLanguage();
-    const { userProfile } = useAuth();
+    const { user, userProfile, loading: authLoading } = useAuth();
+
+    useEffect(() => {
+        if (authLoading) return;
+        if (!user) {
+            router.replace('/login?redirect=/settings/blocked');
+            return;
+        }
+        if (userProfile && userProfile.onboardingCompleted === false) {
+            router.replace('/onboarding');
+            return;
+        }
+    }, [user, userProfile, authLoading, router]);
+
+    if (authLoading || !user || (userProfile && userProfile.onboardingCompleted === false)) {
+        return (
+            <div className="flex h-screen w-screen items-center justify-center bg-background">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     const blockedCount = (userProfile?.blacklist?.hard?.length || 0) + (userProfile?.blacklist?.soft?.length || 0);
 
     return (
         <div className="flex flex-col h-full w-full bg-secondary overflow-y-auto pb-32">
             <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background px-4 shrink-0">
-                <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()}>
+                <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()} aria-label={language === 'de' ? 'Zurück' : 'Back'}>
                     <ArrowLeft />
                 </Button>
                 <h1 className="flex items-center gap-2 text-xl font-bold">

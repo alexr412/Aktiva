@@ -45,7 +45,7 @@ export default function ActivityStatsPage() {
 
     if (loading) {
         return (
-            <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+            <div className="flex h-full w-full items-center justify-center bg-slate-50">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
@@ -59,7 +59,7 @@ export default function ActivityStatsPage() {
     const conversionRate = impressions > 0 ? (participants / impressions) * 100 : 0;
 
     return (
-        <div className="flex flex-col h-screen bg-slate-50 overflow-y-auto">
+        <div className="flex flex-col h-full bg-slate-50 overflow-y-auto">
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center px-4 bg-white border-b border-slate-100 backdrop-blur-md">
                 <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2 rounded-full">
                     <ArrowLeft className="h-5 w-5" />

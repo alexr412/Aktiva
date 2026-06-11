@@ -10,6 +10,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { hasPremiumFeature } from '@/lib/types';
 import { PremiumUpgradeModal } from './PremiumUpgradeModal';
 import { cn } from '@/lib/utils';
+import { TELEMETRY_EVENTS_COLLECTION } from '@/lib/firebase/collections';
 
 interface OrganizerAnalyticsSheetProps {
   placeId: string;
@@ -38,8 +39,9 @@ export function OrganizerAnalyticsSheet({ placeId, placeName, open, onOpenChange
     const fetchAnalytics = async () => {
       setLoading(true);
       try {
-        const colRef = collection(db!, 'telemetry_interactions');
-        const q = query(colRef, where('placeId', '==', placeId));
+        const colRef = collection(db!, TELEMETRY_EVENTS_COLLECTION);
+        // Prefer canonical fields: query by entity_id instead of placeId
+        const q = query(colRef, where('entity_id', '==', placeId));
         const snap = await getDocs(q);
 
         let opens = 0;
@@ -49,7 +51,8 @@ export function OrganizerAnalyticsSheet({ placeId, placeName, open, onOpenChange
 
         snap.forEach((doc) => {
           const data = doc.data();
-          const type = data.interactionType;
+          // Prefer canonical fields: event_type over interactionType
+          const type = data.event_type || data.interactionType;
           if (type === 'card_open') opens++;
           else if (type === 'favorite') saves++;
           else if (type === 'share') shares++;

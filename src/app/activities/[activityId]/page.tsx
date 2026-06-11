@@ -15,7 +15,7 @@ type Props = {
  */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { activityId } = await params;
-  if (!db) return { title: 'Aktivität Details' };
+  if (!db || !activityId) return { title: 'Aktivität Details | Aktiva' };
 
   try {
     const activityRef = doc(db, 'activities', activityId);
@@ -29,22 +29,54 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const activitySnap = await fetchWithTimeout as any;
 
     if (!activitySnap || !activitySnap.exists()) {
-      return { title: 'Aktivität nicht gefunden' };
+      return { title: 'Aktivität nicht gefunden | Aktiva' };
     }
 
     const activity = activitySnap.data();
-    
+
+    // Check for global blacklisted status
+    if (activity.status === 'blacklisted') {
+      return {
+        title: 'Aktivität nicht verfügbar | Aktiva',
+        description: 'Diese Aktivität ist nicht mehr verfügbar.',
+      };
+    }
+
+    const dateObj = activity.activityDate && typeof activity.activityDate.toDate === 'function'
+      ? activity.activityDate.toDate()
+      : null;
+    const dateStr = dateObj ? dateObj.toLocaleDateString('de-DE') : '';
+    const isPast = dateObj ? dateObj.getTime() < Date.now() : false;
+
+    // Check for cancelled or completed status
+    const isCancelled = activity.status === 'cancelled';
+    const isCompleted = activity.status === 'completed' || isPast;
+
+    let titlePrefix = '';
+    if (isCancelled) {
+      titlePrefix = '[Abgesagt] ';
+    } else if (isCompleted) {
+      titlePrefix = '[Beendet] ';
+    }
+
+    const title = `${titlePrefix}${activity.placeName || 'Treffen'} | Aktiva`;
+    const description = isCancelled
+      ? `Die Aktivität bei ${activity.placeName || 'uns'} am ${dateStr} wurde abgesagt.`
+      : isCompleted
+      ? `Diese Aktivität bei ${activity.placeName || 'uns'} fand am ${dateStr} statt.`
+      : `Wird veranstaltet von ${activity.hostName || 'einem Entdecker'}. Sei dabei am ${dateStr}!`;
+
     return {
-      title: `${activity.placeName} | Aktvia`,
-      description: `Wird veranstaltet von ${activity.hostName || 'einem Entdecker'}. Sei dabei am ${activity.activityDate?.toDate().toLocaleDateString('de-DE')}!`,
+      title,
+      description,
       openGraph: {
-        title: `Einladung: Treffen bei ${activity.placeName}`,
-        description: `Join uns auf Aktvia für ein Event in der Kategorie ${activity.category || 'Sonstiges'}.`,
-        url: `https://aktvia.app/activities/${activityId}`,
-        siteName: 'Aktvia',
+        title: `Einladung: Treffen bei ${activity.placeName || 'Aktiva'}`,
+        description: `Join uns auf Aktiva für ein Event in der Kategorie ${activity.category || 'Sonstiges'}.`,
+        url: `https://aktiva.app/activities/${activityId}`,
+        siteName: 'Aktiva',
         images: [
           {
-            url: activity.hostPhotoURL || 'https://picsum.photos/seed/aktvia/1200/630',
+            url: activity.hostPhotoURL || 'https://picsum.photos/seed/aktiva/1200/630',
             width: 1200,
             height: 630,
           },
@@ -53,7 +85,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     };
   } catch (err) {
-    return { title: 'Aktivität Details' };
+    return { title: 'Aktivität Details | Aktiva' };
   }
 }
 

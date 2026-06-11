@@ -13,10 +13,12 @@ import {
   signInWithPopup,
   EmailAuthProvider,
   reauthenticateWithCredential,
+  getAdditionalUserInfo,
   type User,
 } from 'firebase/auth';
 import { auth } from './client';
-import { createUserProfileDocument, getUserProfile, deleteUserData } from './firestore';
+import { createUserProfileDocument, getUserProfile, updateUserProfile } from './firestore';
+import { deleteFCMToken } from './messaging';
 
 export { auth };
 
@@ -62,6 +64,22 @@ export async function signIn(email: string, password: string): Promise<User> {
 export async function signOut(): Promise<void> {
   if (!auth) throw new Error('Firebase has not been initialized.');
   
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      // Best-effort delete client-side FCM token
+      await deleteFCMToken();
+    } catch (e) {
+      console.warn("deleteFCMToken failed during signOut:", e);
+    }
+    try {
+      // Clear Firestore token
+      await updateUserProfile(currentUser.uid, { fcmToken: null });
+    } catch (e) {
+      console.warn("Failed to clear fcmToken in Firestore during signOut:", e);
+    }
+  }
+  
   await firebaseSignOut(auth);
 }
 
@@ -82,7 +100,7 @@ export async function deleteAccount(password?: string): Promise<void> {
         await reauthenticateWithCredential(auth.currentUser, credential);
     }
     
-    await deleteUserData(auth.currentUser.uid);
+    // Cascading deletion is handled asynchronously by the server-side onDelete Auth trigger (onUserDeleted)
     await deleteUser(auth.currentUser);
   } catch (error: any) {
     // Handle cases where recent login is required
@@ -92,10 +110,12 @@ export async function deleteAccount(password?: string): Promise<void> {
     throw error;
   }
 }
-export async function signInWithGoogle(): Promise<User> {
+export async function signInWithGoogle(): Promise<{ user: User; isNewUser: boolean }> {
   if (!auth) throw new Error('Firebase has not been initialized.');
   const provider = new GoogleAuthProvider();
   const userCredential = await signInWithPopup(auth, provider);
+  const additionalInfo = getAdditionalUserInfo(userCredential);
+  const isNewUser = !!additionalInfo?.isNewUser;
   
   // Check if profile exists, if not create it
   const profile = await getUserProfile(userCredential.user.uid);
@@ -103,13 +123,15 @@ export async function signInWithGoogle(): Promise<User> {
     await createUserProfileDocument(userCredential.user);
   }
   
-  return userCredential.user;
+  return { user: userCredential.user, isNewUser };
 }
 
-export async function signInWithApple(): Promise<User> {
+export async function signInWithApple(): Promise<{ user: User; isNewUser: boolean }> {
   if (!auth) throw new Error('Firebase has not been initialized.');
   const provider = new OAuthProvider('apple.com');
   const userCredential = await signInWithPopup(auth, provider);
+  const additionalInfo = getAdditionalUserInfo(userCredential);
+  const isNewUser = !!additionalInfo?.isNewUser;
   
   // Check if profile exists, if not create it
   const profile = await getUserProfile(userCredential.user.uid);
@@ -117,5 +139,5 @@ export async function signInWithApple(): Promise<User> {
     await createUserProfileDocument(userCredential.user);
   }
   
-  return userCredential.user;
+  return { user: userCredential.user, isNewUser };
 }

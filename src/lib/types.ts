@@ -13,7 +13,7 @@ export interface Notification {
     displayName?: string;
     photoURL?: string;
   };
-  type: 'friend_request' | 'activity_invite' | 'system' | 'join_request' | 'join_response';
+  type: 'friend_request' | 'activity_invite' | 'system' | 'join_request' | 'join_response' | 'friend_nearby_activity';
   title: string;
   message: string;
   isRead: boolean;
@@ -49,6 +49,15 @@ export interface Place {
   globalScore?: number;
   openingHours?: string | null;
   rankingContext?: any;
+  voteBoostScore?: number;
+  isFromFirestore?: boolean;
+  qualityPenalty?: number;
+  activityBoost?: number;
+  isGenericName?: boolean;
+  sourceType?: 'place' | 'activity';
+  isUserEvent?: boolean;
+  category?: string;
+  normalizedCategory?: string;
 }
 
 export interface FavoritePlace {
@@ -109,9 +118,10 @@ export interface Activity {
   isPaid?: boolean;
   price?: number;
   upvotes?: number;
-  userVotes?: Record<string, 'up' | 'down' | 'superboost'>;
+  userVotes?: Record<string, 'up' | 'down'>;
   globalScore?: number;
   communityScore: number;
+  voteBoostScore?: number;
   votedUserIds?: string[];
   isVerified?: boolean;
   reportCount?: number;
@@ -130,6 +140,10 @@ export interface Activity {
     pushJoins?: number;
     referralJoins?: number;
   };
+  sourceType?: 'place' | 'activity';
+  isUserEvent?: boolean;
+  normalizedCategory?: string;
+  creationSource?: 'community' | 'place_activity';
 }
 
 export interface Message {
@@ -158,6 +172,7 @@ export interface PinnedMessage {
 
 export interface Chat {
     id: string;
+    type?: 'direct' | 'activity';
     activityId?: string;
     placeName?: string;
     categories?: string[];
@@ -184,6 +199,8 @@ export interface Chat {
     lastActivityAt?: Timestamp;
     unreadCount?: { [userId: string]: number };
     pinnedMessages?: PinnedMessage[];
+    isUserEvent?: boolean;
+    creationSource?: 'community' | 'place_activity';
 }
 
 export interface GeoapifyFeature {
@@ -237,6 +254,7 @@ export interface UserProfile {
     activityInvites: boolean;
     chatMessages: boolean;
     localHighlights: boolean;
+    nearbyFriendActivityNotifications?: boolean;
   };
   proximitySettings?: {
     enabled: boolean;
@@ -247,13 +265,26 @@ export interface UserProfile {
     lng: number;
     updatedAt: Timestamp;
   };
-  fcmToken?: string;
+  fcmToken?: string | null;
+  legalAcceptedAt?: Timestamp | null;
+  termsAcceptedAt?: Timestamp | null;
+  useTermsAcceptedAt?: Timestamp | null;
+  privacyAcceptedAt?: Timestamp | null;
+  cookiesAcceptedAt?: Timestamp | null;
+  legalVersion?: string;
+  legalLocale?: string;
   onboardingCompleted: boolean;
   username?: string;
   usernameLastChangedAt?: Timestamp;
   usernameChangeHistory?: Timestamp[];
   birthday?: string;
   language?: 'de' | 'en';
+  emailVerificationRequired?: boolean;
+  emailVerificationProvider?: string;
+  emailVerificationReason?: string;
+  emailVerificationCreatedAt?: Timestamp | null;
+  emailVerifiedAt?: Timestamp | null;
+  verificationEmailLastSentAt?: Timestamp | null;
   hiddenEntityIds?: string[];
   activeTabs?: string[];
   isPremium?: boolean;
@@ -265,6 +296,11 @@ export interface UserProfile {
   escrowBalance?: number;
   balancesInCents?: boolean;
   successfulReferrals?: number;
+  pointsBalance?: number;
+  pointsLifetime?: number;
+  level?: number;
+  referralCode?: string;
+  referredBy?: string | null;
   averageRating?: number;
   ratingCount?: number;
   kycStatus?: KYCStatus;
@@ -272,7 +308,7 @@ export interface UserProfile {
     soft: string[];
     hard: string[];
   };
-  role?: 'user' | 'admin';
+  role?: 'user' | 'admin' | 'supporter';
   isBanned?: boolean;
   isExplorer?: boolean;
   isOrganizer?: boolean;

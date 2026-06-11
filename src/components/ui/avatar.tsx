@@ -29,7 +29,7 @@ const Avatar = React.forwardRef<
   );
 
   const wrapperClasses = cn(
-    "relative inline-flex shrink-0 transition-all duration-500",
+    "relative inline-flex shrink-0 transition-all duration-500 rounded-full",
     hasStatus ? statusWrapperClasses : className,
     !className?.includes('h-') && !className?.includes('w-') && "h-10 w-10"
   );

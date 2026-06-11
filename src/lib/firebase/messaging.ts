@@ -1,7 +1,9 @@
 'use client';
 
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getMessaging, getToken, onMessage, deleteToken } from "firebase/messaging";
 import { app } from "./client";
+
+// NOTE: Single-Device-Limitation: FCM token is stored as a single string field on the user profile document (users/{uid}.fcmToken). Multiple active devices are not concurrently supported.
 
 /**
  * Fordert Berechtigungen für Benachrichtigungen an und gibt den FCM-Token zurück.
@@ -24,6 +26,20 @@ export const requestAndGetFCMToken = async (): Promise<string | null> => {
     console.warn("FCM Token retrieval failed:", error);
   }
   return null;
+};
+
+/**
+ * Löscht das aktuelle FCM-Token best-effort aus dem FCM-Backend.
+ */
+export const deleteFCMToken = async (): Promise<boolean> => {
+  if (typeof window === 'undefined' || !app) return false;
+  try {
+    const messaging = getMessaging(app);
+    return await deleteToken(messaging);
+  } catch (error) {
+    console.warn("FCM Token deletion failed:", error);
+    return false;
+  }
 };
 
 /**

@@ -56,7 +56,7 @@ const placeRecommendationPrompt = ai.definePrompt({
   name: 'placeRecommendationPrompt',
   input: {schema: PlaceRecommendationInputSchema},
   output: {schema: PlaceRecommendationOutputSchema},
-  prompt: `You are an AI assistant for the Aktvia app, helping users discover nearby places.
+  prompt: `You are an AI assistant for the Aktiva app, helping users discover nearby places.
 Generate a brief, engaging, and personalized recommendation or description for the following place.
 Consider its characteristics and user preferences if provided. Keep it concise, about 1-2 sentences.
 

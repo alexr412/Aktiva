@@ -8,7 +8,7 @@ import { useLanguage } from '@/hooks/use-language';
 import {
   fetchUserActivities,
   joinActivity,
-  getUserProfile,
+  getPublicProfileClient,
   sendFriendRequest,
   cancelFriendRequest,
   removeFriend,
@@ -19,10 +19,10 @@ import {
 import type { Activity, UserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ActivityListItem } from '@/components/aktvia/activity-list-item';
+import { ActivityListItem } from '@/components/aktiva/activity-list-item';
 import {
   ArrowLeft,
   Compass,
@@ -39,7 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EntityMoreOptions } from '@/components/common/EntityMoreOptions';
 import { UserBadge } from '@/components/common/UserBadge';
-import { cn } from '@/lib/utils';
+import { cn, formatFirstName } from '@/lib/utils';
 
 
 export default function UserProfilePage() {
@@ -49,7 +49,6 @@ export default function UserProfilePage() {
     const language = useLanguage();
     const { toast } = useToast();
 
-
     const userId = params.userId as string;
 
     const [userData, setUserData] = useState<UserProfile | null>(null);
@@ -57,9 +56,22 @@ export default function UserProfilePage() {
     const [loading, setLoading] = useState(true);
     const [isFriendActionLoading, setIsFriendActionLoading] = useState(false);
     const [isCreatingChat, setIsCreatingChat] = useState(false);
+    const [isBlockedOrUnavailable, setIsBlockedOrUnavailable] = useState(false);
     const [friendshipStatus, setFriendshipStatus] = useState<'loading' | 'is_self' | 'friends' | 'request_sent' | 'request_received' | 'not_friends'>('loading');
 
     useEffect(() => {
+        if (authLoading) return;
+
+        if (!currentUser) {
+            router.push(`/login?redirect=/users/${userId}`);
+            return;
+        }
+
+        if (userProfile && !userProfile.onboardingCompleted) {
+            router.push('/onboarding');
+            return;
+        }
+
         if (!userId) return;
         
         if (userProfile?.hiddenEntityIds?.includes(userId)) {
@@ -68,17 +80,24 @@ export default function UserProfilePage() {
                 title: language === 'de' ? "Nutzer nicht sichtbar" : "User cannot be viewed", 
                 description: language === 'de' ? "Dieser Nutzer ist verborgen." : "This user is hidden." 
             });
-
             return;
         }
 
-        if (currentUser?.uid === userId) {
+        if (currentUser.uid === userId) {
             setFriendshipStatus('is_self');
             router.replace('/profile');
             return;
         }
 
-        if (userProfile && !authLoading) {
+        // Check if we blocked the target user
+        const isBlockingTarget = userProfile?.blacklist?.hard?.includes(userId) || userProfile?.blacklist?.soft?.includes(userId);
+        if (isBlockingTarget) {
+            setIsBlockedOrUnavailable(true);
+            setLoading(false);
+            return;
+        }
+
+        if (userProfile) {
             if (userProfile.friends?.includes(userId)) {
                 setFriendshipStatus('friends');
             } else if (userProfile.friendRequestsSent?.includes(userId)) {
@@ -88,46 +107,76 @@ export default function UserProfilePage() {
             } else {
                 setFriendshipStatus('not_friends');
             }
-        } else if (!authLoading) {
+        } else {
             setFriendshipStatus('not_friends');
         }
-
 
         const loadData = async () => {
             setLoading(true);
             try {
                 const [profile, userActivities] = await Promise.all([
-                    getUserProfile(userId),
+                    getPublicProfileClient(userId),
                     fetchUserActivities(userId)
                 ]);
 
                 if (profile) {
-                    setUserData(profile);
-                    setActivities(userActivities as Activity[]);
+                    if (profile.isBanned) {
+                        setIsBlockedOrUnavailable(true);
+                        return;
+                    }
+
+                    // Explicit sanitization to completely strip private user fields before storing in local state
+                    const sanitized: UserProfile = {
+                        uid: profile.uid,
+                        displayName: profile.displayName,
+                        photoURL: profile.photoURL,
+                        age: profile.age,
+                        location: profile.location,
+                        bio: profile.bio,
+                        interests: profile.interests,
+                        isPremium: profile.isPremium,
+                        isSupporter: profile.isSupporter,
+                        isCreator: profile.isCreator,
+                        ratingCount: profile.ratingCount,
+                        averageRating: profile.averageRating,
+                        onboardingCompleted: profile.onboardingCompleted,
+                    } as UserProfile;
+
+                    setUserData(sanitized);
+                    
+                    const mappedActivities = (userActivities as Activity[]).map(act => ({
+                        ...act,
+                        sourceType: 'activity' as const,
+                        isUserEvent: true
+                    }));
+                    setActivities(mappedActivities);
                 } else {
                     toast({ 
                         title: language === 'de' ? "Nutzer nicht gefunden" : "User not found", 
                         description: language === 'de' ? "Dieses Profil konnte nicht geladen werden." : "This user profile could not be loaded.", 
                         variant: "destructive" 
                     });
-
                     router.back();
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Failed to fetch user data:", error);
-                toast({
-                    title: language === 'de' ? "Fehler" : "Error",
-                    description: language === 'de' ? "Profil konnte nicht geladen werden." : "Could not load this user's profile.",
-                    variant: "destructive",
-                });
-
+                const isPermissionError = error?.code === 'permission-denied' || error?.message?.includes('permission-denied');
+                if (isPermissionError) {
+                    setIsBlockedOrUnavailable(true);
+                } else {
+                    toast({
+                        title: language === 'de' ? "Fehler" : "Error",
+                        description: language === 'de' ? "Profil konnte nicht geladen werden." : "Could not load this user's profile.",
+                        variant: "destructive",
+                    });
+                }
             } finally {
                 setLoading(false);
             }
         };
         
         loadData();
-    }, [userId, currentUser, router, toast, userProfile, authLoading]);
+    }, [userId, currentUser, router, toast, userProfile, authLoading, language]);
 
     const handleJoin = async (activityId: string) => {
         if (!currentUser) {
@@ -135,9 +184,16 @@ export default function UserProfilePage() {
                 title: language === 'de' ? 'Login erforderlich' : 'Login Required', 
                 description: language === 'de' ? 'Bitte logge dich ein, um beizutreten.' : 'You must be logged in to join an activity.' 
             });
-
             router.push('/login');
             throw new Error('Login Required');
+        }
+        if (isBlockedOrUnavailable) {
+            toast({
+                variant: 'destructive',
+                title: language === 'de' ? 'Aktion nicht möglich' : 'Action not possible',
+                description: language === 'de' ? 'Dieser Nutzer ist nicht verfügbar.' : 'This user is unavailable.',
+            });
+            return;
         }
         try {
             const status = await joinActivity(activityId, currentUser);
@@ -158,13 +214,21 @@ export default function UserProfilePage() {
                 description: error.message || (language === 'de' ? 'Beitritt fehlgeschlagen.' : 'Failed to join activity.'), 
                 variant: 'destructive' 
             });
-
             throw error;
         }
     };
     
     const handleFriendAction = async (action: 'send' | 'cancel' | 'remove' | 'accept' | 'decline') => {
         if (!currentUser?.uid) return;
+        if (isBlockedOrUnavailable) {
+            toast({
+                variant: 'destructive',
+                title: language === 'de' ? 'Aktion nicht möglich' : 'Action not possible',
+                description: language === 'de' ? 'Dieser Nutzer ist nicht verfügbar.' : 'This user is unavailable.',
+            });
+            return;
+        }
+        if (isFriendActionLoading) return;
         setIsFriendActionLoading(true);
         try {
             switch(action) {
@@ -172,31 +236,26 @@ export default function UserProfilePage() {
                     await sendFriendRequest(currentUser.uid, userId);
                     setFriendshipStatus('request_sent');
                     toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Friend request sent!' });
-
                     break;
                 case 'cancel':
                     await cancelFriendRequest(currentUser.uid, userId);
                     setFriendshipStatus('not_friends');
                     toast({ title: language === 'de' ? 'Anfrage zurückgezogen.' : 'Friend request cancelled.' });
-
                     break;
                 case 'remove':
                     await removeFriend(currentUser.uid, userId);
                     setFriendshipStatus('not_friends');
                     toast({ title: language === 'de' ? 'Freund entfernt.' : 'Friend removed.' });
-
                     break;
                 case 'accept':
                     await acceptFriendRequest(currentUser.uid, userId);
                     setFriendshipStatus('friends');
                     toast({ title: language === 'de' ? 'Anfrage bestätigt!' : 'Friend request accepted!' });
-
                     break;
                 case 'decline':
                     await declineFriendRequest(currentUser.uid, userId);
                     setFriendshipStatus('not_friends');
                     toast({ title: language === 'de' ? 'Anfrage abgelehnt.' : 'Friend request declined.' });
-
                     break;
             }
         } catch (error) {
@@ -206,7 +265,6 @@ export default function UserProfilePage() {
                 title: language === 'de' ? 'Fehler' : 'Error', 
                 description: language === 'de' ? 'Aktion konnte nicht ausgeführt werden.' : 'Could not complete the action.' 
             });
-
         } finally {
             setIsFriendActionLoading(false);
         }
@@ -214,6 +272,15 @@ export default function UserProfilePage() {
     
     const handleMessage = async () => {
         if (!currentUser?.uid) return;
+        if (isBlockedOrUnavailable) {
+            toast({
+                variant: 'destructive',
+                title: language === 'de' ? 'Aktion nicht möglich' : 'Action not possible',
+                description: language === 'de' ? 'Dieser Nutzer ist nicht verfügbar.' : 'This user is unavailable.',
+            });
+            return;
+        }
+        if (isCreatingChat) return;
         setIsCreatingChat(true);
         try {
             const chatId = await getOrCreateDirectChat(currentUser.uid, userId);
@@ -225,12 +292,10 @@ export default function UserProfilePage() {
                 title: language === 'de' ? 'Fehler' : 'Error',
                 description: language === 'de' ? 'Chat konnte nicht gestartet werden.' : 'Could not start a chat.',
             });
-
         } finally {
             setIsCreatingChat(false);
         }
     }
-
 
     if (loading) {
         return (
@@ -240,10 +305,34 @@ export default function UserProfilePage() {
         );
     }
     
+    if (isBlockedOrUnavailable) {
+        return (
+            <div className="flex h-screen flex-col items-center justify-center p-6 text-center">
+                <h1 className="text-xl font-bold mb-2">
+                    {language === 'de' ? 'Profil nicht verfügbar' : 'Profile Not Available'}
+                </h1>
+                <p className="text-slate-500 mb-6">
+                    {language === 'de' ? 'Dieses Profil kann nicht angezeigt werden.' : 'This profile cannot be viewed.'}
+                </p>
+                <Button onClick={() => router.push('/')} aria-label={language === 'de' ? 'Zurück zum Feed' : 'Back to Feed'} className="rounded-2xl h-12 px-8 font-black">
+                    {language === 'de' ? 'Zurück zum Feed' : 'Back to Feed'}
+                </Button>
+            </div>
+        );
+    }
+
     if (!userData) {
          return (
-            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                User not found.
+            <div className="flex h-screen flex-col items-center justify-center p-6 text-center">
+                <h1 className="text-xl font-bold mb-2">
+                    {language === 'de' ? 'Nutzer nicht gefunden' : 'User Not Found'}
+                </h1>
+                <p className="text-slate-500 mb-6">
+                    {language === 'de' ? 'Dieses Benutzerprofil existiert nicht.' : 'This user profile does not exist.'}
+                </p>
+                <Button onClick={() => router.push('/')} aria-label={language === 'de' ? 'Zurück zum Feed' : 'Back to Feed'} className="rounded-2xl h-12 px-8 font-black">
+                    {language === 'de' ? 'Zurück zum Feed' : 'Back to Feed'}
+                </Button>
             </div>
         );
     }
@@ -257,47 +346,41 @@ export default function UserProfilePage() {
             case 'friends':
                 return (
                     <div className="w-full flex gap-4">
-                        <Button onClick={handleMessage} disabled={isCreatingChat} className="flex-1">
+                        <Button onClick={handleMessage} disabled={isCreatingChat} aria-label={language === 'de' ? 'Nachricht senden' : 'Send message'} className="flex-1">
                             {isCreatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
                             {language === 'de' ? 'Nachricht' : 'Message'}
-
                         </Button>
-                        <Button onClick={() => handleFriendAction('remove')} disabled={isFriendActionLoading} variant="outline" className="flex-1">
+                        <Button onClick={() => handleFriendAction('remove')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freund entfernen' : 'Remove friend'} variant="outline" className="flex-1">
                             {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserMinus className="mr-2 h-4 w-4" />}
                             {language === 'de' ? 'Entfernen' : 'Remove'}
-
                         </Button>
                     </div>
                 );
             case 'request_sent':
                 return (
-                    <Button onClick={() => handleFriendAction('cancel')} disabled={isFriendActionLoading} variant="secondary">
+                    <Button onClick={() => handleFriendAction('cancel')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freundschaftsanfrage zurückziehen' : 'Cancel friend request'} variant="secondary">
                         {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
                         {language === 'de' ? 'Anfrage gesendet' : 'Request Sent'}
-
                     </Button>
                 );
             case 'request_received':
                 return (
                     <div className="flex gap-2">
-                         <Button onClick={() => handleFriendAction('accept')} disabled={isFriendActionLoading} className="flex-1">
+                         <Button onClick={() => handleFriendAction('accept')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freundschaftsanfrage annehmen' : 'Accept friend request'} className="flex-1">
                             {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
                             {language === 'de' ? 'Annehmen' : 'Accept'}
-
                         </Button>
-                        <Button onClick={() => handleFriendAction('decline')} disabled={isFriendActionLoading} variant="outline" className="flex-1">
+                        <Button onClick={() => handleFriendAction('decline')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freundschaftsanfrage ablehnen' : 'Decline friend request'} variant="outline" className="flex-1">
                              <X className="mr-2 h-4 w-4" />
                             {language === 'de' ? 'Ablehnen' : 'Decline'}
-
                         </Button>
                     </div>
                 );
             case 'not_friends':
                 return (
-                    <Button onClick={() => handleFriendAction('send')} disabled={isFriendActionLoading}>
+                    <Button onClick={() => handleFriendAction('send')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freund hinzufügen' : 'Add friend'}>
                         {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
                         {language === 'de' ? 'Freund hinzufügen' : 'Add Friend'}
-
                     </Button>
                 );
             default:
@@ -305,21 +388,29 @@ export default function UserProfilePage() {
         }
     };
 
-
     const photoUrlToDisplay = userData.photoURL || '';
-    const displayName = userData.displayName || (language === 'de' ? 'Anonymer Nutzer' : 'Anonymous User');
-
+    const displayName = formatFirstName(userData.displayName, language === 'de' ? 'Anonymer Nutzer' : 'Anonymous User');
     
-    const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
+    const isHostBlocked = (hostId: string) => {
+        return userProfile?.blacklist?.hard?.includes(hostId) || userProfile?.blacklist?.soft?.includes(hostId);
+    };
+
+    // Keep activities filtered: exclude blacklisted, cancelled, hidden, or hosted by a blocked user
+    const visibleActivities = activities.filter(act => 
+        act.status !== 'blacklisted' &&
+        act.status !== 'cancelled' &&
+        !userProfile?.hiddenEntityIds?.includes(act.id!) &&
+        !isHostBlocked(act.hostId)
+    );
     
     // --- ARCHITEKTUR UPDATE: AKTIVITÄTEN ARCHIV ---
     const pastActivities = visibleActivities.filter(a => a.status === 'completed');
-    const currentActivities = visibleActivities.filter(a => a.status !== 'completed' && a.status !== 'cancelled');
+    const currentActivities = visibleActivities.filter(a => a.status !== 'completed');
 
     return (
         <div className="flex flex-col h-full bg-background overflow-y-auto pb-20">
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background/80 px-4 backdrop-blur-sm">
-                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()}>
+                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()} aria-label={language === 'de' ? 'Zurück' : 'Back'}>
                     <ArrowLeft />
                 </Button>
                 <h1 className="truncate">{language === 'de' ? `Profil von ${displayName}` : `${displayName}'s Profile`}</h1>
@@ -332,23 +423,20 @@ export default function UserProfilePage() {
             </header>
 
             <div className="p-6 flex flex-col items-center justify-center text-center space-y-4">
-                <Avatar 
+                <ProfileAvatar 
                     className="h-24 w-24 border-4 border-white"
+                    photoURL={photoUrlToDisplay}
+                    displayName={displayName}
                     isPremium={userData.isPremium}
                     isCreator={userData.isCreator}
                     isSupporter={userData.isSupporter}
-                >
-                    <AvatarImage src={photoUrlToDisplay} alt="Profil" />
-                    <AvatarFallback className="text-3xl bg-muted">
-                        {displayName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                </Avatar>
+                />
 
                 <div className="flex flex-col items-center">
                     <div className="flex items-center justify-center gap-2">
-                        <h1 className="">
+                        <h2 className="text-2xl font-bold">
                             {displayName}
-                        </h1>
+                        </h2>
                         {userData.age && <span className="text-muted-foreground text-2xl font-bold">, {userData.age}</span>}
                         <UserBadge isPremium={userData.isPremium} isSupporter={userData.isSupporter} />
                     </div>

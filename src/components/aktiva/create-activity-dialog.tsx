@@ -124,6 +124,11 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
   const currentFreeHosts = userProfile?.successfulFreeHosts || 0;
   const canMonetize = currentFreeHosts >= REQUIRED_FREE_HOSTS;
 
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const isUnauthenticated = !user;
+  const isOnboardingIncomplete = user && userProfile?.onboardingCompleted !== true;
+  const isBanned = user && userProfile?.isBanned === true;
+
   // Kontext-Entscheidung
   const isSpecificPlaceMode = !!initialPlace;
 
@@ -320,10 +325,15 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
     setIsWatchingAd(true);
     setTimeout(async () => {
       try {
-        await earnToken(user.uid);
+        const adWatchId = `ad_${user.uid}_${Date.now()}`;
+        await earnToken(user.uid, adWatchId);
         toast({ title: language === 'de' ? "Token erhalten!" : "Token earned!" });
-      } catch (err) {
-        toast({ variant: "destructive", title: language === 'de' ? "Fehler" : "Error" });
+      } catch (err: any) {
+        toast({ 
+          variant: "destructive", 
+          title: language === 'de' ? "Fehler" : "Error",
+          description: err.message || (language === 'de' ? "Konnte Token nicht gutschreiben." : "Could not award token.")
+        });
       } finally {
         setIsWatchingAd(false);
       }
@@ -338,7 +348,13 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
     end: endOfWeek(lastDayOfMonth, { weekStartsOn: 1 }),
   });
 
-  const isCreateDisabled = isCreating || !selectedLocation || (!isSpecificPlaceMode && !activityTitle.trim()) || (isDateFlexible ? !selectedRange.from : !selectedDate);
+  const isCreateDisabled = isCreating || 
+    isUnauthenticated || 
+    isOnboardingIncomplete || 
+    isBanned || 
+    !selectedLocation || 
+    (!isSpecificPlaceMode && !activityTitle.trim()) || 
+    (isDateFlexible ? !selectedRange.from : !selectedDate);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -369,8 +385,9 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
             {!isSpecificPlaceMode && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Was hast du vor?' : 'What are you planning?'}</Label>
+                  <Label htmlFor="activity-title-input" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Was hast du vor?' : 'What are you planning?'}</Label>
                   <Input
+                    id="activity-title-input"
                     value={activityTitle}
                     onChange={(e) => setActivityTitle(e.target.value)}
                     placeholder={language === 'de' ? "z.B. Street-Photography oder Yoga" : "e.g. Street Photography or Yoga"}
@@ -417,7 +434,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
             )}
 
             <div className="space-y-2">
-              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Wo treffen wir uns?' : 'Where do we meet?'}</Label>
+              <Label htmlFor="place-search-input" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Wo treffen wir uns?' : 'Where do we meet?'}</Label>
               
               {isSpecificPlaceMode ? (
                 <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 rounded-2xl p-4 flex items-center justify-between">
@@ -437,6 +454,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                     <div className="relative">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                       <Input
+                        id="place-search-input"
                         value={searchQuery}
                         onChange={(e) => handleSearch(e.target.value)}
                         placeholder={language === 'de' ? "Ort oder Adresse suchen..." : "Search place or address..."}
@@ -520,11 +538,11 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
 
             <div className="rounded-2xl border border-border p-4 bg-card/50 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <Button variant="ghost" size="icon" onClick={() => setCurrentMonthDate(subMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
+                <Button variant="ghost" size="icon" aria-label={language === 'de' ? 'Vorheriger Monat' : 'Previous month'} onClick={() => setCurrentMonthDate(subMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <h3 className="text-sm font-black uppercase tracking-widest">{format(currentMonthDate, language === 'de' ? 'MMMM yyyy' : 'MMMM yyyy', { locale: language === 'de' ? de : enUS })}</h3>
-                <Button variant="ghost" size="icon" onClick={() => setCurrentMonthDate(addMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
+                <Button variant="ghost" size="icon" aria-label={language === 'de' ? 'Nächster Monat' : 'Next month'} onClick={() => setCurrentMonthDate(addMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -685,11 +703,11 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
 
                   {/* Alter */}
                   <div className="bg-white/50 p-4 rounded-xl border border-white space-y-3">
-                    <Label className="font-bold text-sm">{language === 'de' ? 'Altersbegrenzung' : 'Age limit'}</Label>
+                    <Label htmlFor="min-age-input" className="font-bold text-sm">{language === 'de' ? 'Altersbegrenzung' : 'Age limit'}</Label>
                     <div className="flex items-center gap-3">
-                      <Input type="number" placeholder="Min" value={minAge} onChange={(e) => setMinAge(e.target.value === '' ? '' : parseInt(e.target.value))} className="bg-white border-none text-center font-bold h-12" />
+                      <Input id="min-age-input" type="number" placeholder="Min" aria-label="Mindestalter" value={minAge} onChange={(e) => setMinAge(e.target.value === '' ? '' : parseInt(e.target.value))} className="bg-white border-none text-center font-bold h-12" />
                       <span className="text-muted-foreground font-black">-</span>
-                      <Input type="number" placeholder="Max" value={maxAge} onChange={(e) => setMaxAge(e.target.value === '' ? '' : parseInt(e.target.value))} className="bg-white border-none text-center font-bold h-12" />
+                      <Input id="max-age-input" type="number" placeholder="Max" aria-label="Maximalalter" value={maxAge} onChange={(e) => setMaxAge(e.target.value === '' ? '' : parseInt(e.target.value))} className="bg-white border-none text-center font-bold h-12" />
                     </div>
                   </div>
 
@@ -736,24 +754,23 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
               </AccordionItem>
             </Accordion>
 
-            {/* 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-2xl border border-border p-4 bg-card/50">
-                <div className="space-y-0.5">
-                  <Label className="text-base font-bold flex items-center gap-2">{language === 'de' ? 'Bezahltes Event' : 'Paid event'} {!canMonetize && <Lock className="h-3 w-3" />}</Label>
-                  <p className="text-xs text-muted-foreground">{language === 'de' ? 'Proof of Community' : 'Proof of Community'}: {currentFreeHosts}/{REQUIRED_FREE_HOSTS}</p>
+            {isLocal && (
+              <div className="space-y-3 pt-4 border-t border-border/50">
+                <div className="flex items-center justify-between rounded-2xl border border-border p-4 bg-card/50">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="is-paid-switch" className="text-base font-bold flex items-center gap-2">{language === 'de' ? 'Bezahltes Event' : 'Paid event'} {!canMonetize && <Lock className="h-3 w-3" />}</Label>
+                    <p className="text-xs text-muted-foreground">{language === 'de' ? 'Proof of Community' : 'Proof of Community'}: {currentFreeHosts}/{REQUIRED_FREE_HOSTS}</p>
+                  </div>
+                  <Switch id="is-paid-switch" checked={isPaid} onCheckedChange={setIsPaid} disabled={!canMonetize} />
                 </div>
-
-                <Switch checked={isPaid} onCheckedChange={setIsPaid} disabled={!canMonetize} />
+                {isPaid && (
+                  <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-2xl border border-dashed border-border">
+                    <span className="text-2xl font-black text-primary">€</span>
+                    <Input id="activity-price-input" type="number" value={price || ''} onChange={(e) => setPrice(Number(e.target.value))} className="text-2xl font-black w-32 h-14 bg-white border-none text-center" />
+                  </div>
+                )}
               </div>
-              {isPaid && (
-                <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-2xl border border-dashed border-border">
-                  <span className="text-2xl font-black text-primary">€</span>
-                  <Input type="number" value={price || ''} onChange={(e) => setPrice(Number(e.target.value))} className="text-2xl font-black w-32 h-14 bg-white border-none text-center" />
-                </div>
-              )}
-            </div>
-            */}
+            )}
           </div>
 
           {/* Sektion 4: Booster */}
@@ -775,6 +792,21 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
         </div>
 
         <SheetFooter className="sticky bottom-0 bg-background pt-4 pb-8 px-6 border-t border-border/50 shrink-0">
+          {isUnauthenticated && (
+            <p className="text-xs text-destructive font-bold text-center mb-3">
+              {language === 'de' ? 'Bitte melde dich an, um eine Aktivität zu erstellen.' : 'Please log in to create an activity.'}
+            </p>
+          )}
+          {isOnboardingIncomplete && (
+            <p className="text-xs text-destructive font-bold text-center mb-3">
+              {language === 'de' ? 'Bitte schließe zuerst dein Onboarding ab.' : 'Please complete your onboarding first.'}
+            </p>
+          )}
+          {isBanned && (
+            <p className="text-xs text-destructive font-bold text-center mb-3">
+              {language === 'de' ? 'Dein Account ist gesperrt. Du kannst keine Aktivitäten erstellen.' : 'Your account is banned. You cannot create activities.'}
+            </p>
+          )}
           <Button 
             onClick={handleCreate} 
             disabled={isCreateDisabled}

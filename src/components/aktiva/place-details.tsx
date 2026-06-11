@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
-import { joinActivity } from '@/lib/firebase/firestore';
+import { joinActivity, votePlace, normalizeActivityDocument } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -34,6 +34,8 @@ import {
     FolderPlus,
     Folder,
     BarChart3,
+    ThumbsUp,
+    ThumbsDown,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -92,7 +94,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
         reviewCount: 0,
         upvotes: 0,
         downvotes: 0,
-        communityScore: 0
+        communityScore: 0,
+        userVotes: {} as Record<string, 'up' | 'down'>,
+        weightedUpvotes: 0,
+        weightedDownvotes: 0
     });
     const [loadingMeta, setLoadingMeta] = useState(true);
     
@@ -107,6 +112,44 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
             addFavorite(place);
         }
         trackInteraction(place.id, place.categories, 'favorite', user?.uid);
+    };
+
+    const userVote = user ? (placeMeta.userVotes?.[user.uid] || 'none') : 'none';
+    const [isVoting, setIsVoting] = useState(false);
+
+    const handleVoteClick = async (e: React.MouseEvent, type: 'up' | 'down' | 'none') => {
+        e.stopPropagation();
+        if (!user || isVoting) return;
+        setIsVoting(true);
+
+        setPlaceMeta(prev => {
+            const prevVote = prev.userVotes?.[user.uid] || 'none';
+            let upDelta = 0;
+            let downDelta = 0;
+            const newUserVotes = { ...prev.userVotes };
+
+            if (prevVote === 'up') upDelta -= 1;
+            else if (prevVote === 'down') downDelta -= 1;
+
+            if (type === 'up') { upDelta += 1; newUserVotes[user.uid] = 'up'; }
+            else if (type === 'down') { downDelta += 1; newUserVotes[user.uid] = 'down'; }
+            else { delete newUserVotes[user.uid]; }
+
+            return {
+                ...prev,
+                upvotes: Math.max(0, prev.upvotes + upDelta),
+                downvotes: Math.max(0, prev.downvotes + downDelta),
+                userVotes: newUserVotes
+            };
+        });
+
+        try {
+            await votePlace(place.id, user.uid, type, userProfile?.role, place);
+        } catch (error) {
+            console.error("Voting failed:", error);
+        } finally {
+            setIsVoting(false);
+        }
     };
 
     const handleSharePlace = async (e: React.MouseEvent) => {
@@ -150,7 +193,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     reviewCount: data.reviewCount || 0,
                     upvotes: data.upvotes || 0,
                     downvotes: data.downvotes || 0,
-                    communityScore: data.communityScore || 0
+                    communityScore: data.communityScore || 0,
+                    userVotes: data.userVotes || {},
+                    weightedUpvotes: data.weightedUpvotes || 0,
+                    weightedDownvotes: data.weightedDownvotes || 0
                 });
             }
             setLoadingMeta(false);
@@ -174,7 +220,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
         );
 
         const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-            const fetchedActivities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
+            const fetchedActivities = snapshot.docs.map(doc => normalizeActivityDocument(doc.data(), doc.id));
             setActivities(fetchedActivities.sort((a,b) => b.activityDate.toMillis() - a.activityDate.toMillis()));
             setLoadingActivities(false);
         }, (error) => {
@@ -299,6 +345,43 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     <span className="text-[13px] font-bold leading-tight">
                                         {formatOpeningHours(place.openingHours)}
                                     </span>
+                                </div>
+
+                                {/* Voting Widget */}
+                                <div className="flex items-center gap-3 pt-2">
+                                    <div className="flex items-center bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-0.5 gap-0.5 border border-neutral-100 dark:border-neutral-800">
+                                        <button
+                                            onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
+                                            className={cn(
+                                                "h-7 rounded-xl flex items-center justify-center transition-all text-[11px] font-black leading-none gap-1 shrink-0",
+                                                (userProfile?.role === 'admin' || userProfile?.role === 'supporter') ? "px-2" : "w-7",
+                                                userVote === 'up' ? "bg-white text-emerald-500 shadow-sm" : "text-emerald-500/40 hover:text-emerald-500"
+                                            )}
+                                        >
+                                            <ThumbsUp className="h-3.5 w-3.5" />
+                                            {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
+                                                <span className="opacity-70 text-[10px]">
+                                                    {(placeMeta.weightedUpvotes || 0) > 0 ? `+${placeMeta.weightedUpvotes}` : '0'}
+                                                </span>
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
+                                            className={cn(
+                                                "h-7 rounded-xl flex items-center justify-center transition-all text-[11px] font-black leading-none gap-1 shrink-0",
+                                                (userProfile?.role === 'admin' || userProfile?.role === 'supporter') ? "px-2" : "w-7",
+                                                userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-red-500/40 hover:text-red-500"
+                                            )}
+                                        >
+                                            <ThumbsDown className="h-3.5 w-3.5" />
+                                            {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
+                                                <span className="opacity-70 text-[10px]">
+                                                    {(placeMeta.weightedDownvotes || 0) > 0 ? `-${placeMeta.weightedDownvotes}` : '0'}
+                                                </span>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                         </div>
                     </div>

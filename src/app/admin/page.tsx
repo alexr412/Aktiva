@@ -5,9 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { processRefund, banUser, approveCreator, resolveModerationTask, cleanupGhostUsers } from '@/lib/firebase/firestore';
+import { processRefund, banUser, approveCreator, resolveModerationTask, cleanupGhostUsers, triggerCleanupEmptyChats } from '@/lib/firebase/firestore';
 import type { UserProfile, Refund, CreatorApplication, Report } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RotateCcw, Loader2, Ban, ShieldAlert, TrendingDown, UserCheck, Star, Activity, ShieldCheck, Check } from "lucide-react";
+import { formatFirstName } from '@/lib/utils';
 
 export default function AdminDashboardPage() {
   const { userProfile, loading: authLoading } = useAuth();
@@ -68,6 +80,7 @@ export default function AdminDashboardPage() {
   }, [userProfile, authLoading, router]);
 
   const handleProcessRefund = async (refundId: string) => {
+    if (!window.confirm("Möchtest du diese Rückerstattung verarbeiten? Der Status wird permanent auf abgeschlossen gesetzt.")) return;
     setActionLoading(refundId);
     try {
       await processRefund(refundId);
@@ -80,7 +93,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleBanUser = async (userId: string) => {
-    if (!window.confirm("Nutzer permanent sperren?")) return;
+    if (!window.confirm("Nutzer permanent sperren? Diese Aktion kann nicht rückgängig gemacht werden.")) return;
     
     setActionLoading(userId);
     try {
@@ -94,6 +107,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleApproveCreator = async (appId: string, userId: string) => {
+    if (!window.confirm("Möchtest du diese Creator-Bewerbung genehmigen und den Nutzer zum Creator befördern?")) return;
     setActionLoading(appId);
     try {
       await approveCreator(appId, userId);
@@ -106,6 +120,10 @@ export default function AdminDashboardPage() {
   };
 
   const handleResolveMod = async (reportId: string, activityId: string, action: 'keep' | 'blacklist') => {
+    const confirmationText = action === 'keep' 
+      ? "Möchtest du diese Aktivität freigeben und als geprüft markieren?" 
+      : "Möchtest du diese Aktivität auf die Blacklist setzen? Der Status wird permanent geändert.";
+    if (!window.confirm(confirmationText)) return;
     setActionLoading(reportId);
     try {
       await resolveModerationTask(reportId, activityId, action);
@@ -117,13 +135,32 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const [isCleanupConfirmOpen, setIsCleanupConfirmOpen] = useState(false);
+
   const handleCleanupGhosts = async () => {
+    if (!window.confirm("Bist du sicher, dass du alle verwaisten Einträge (Geister-User) in der Datenbank bereinigen möchtest? Dies scannt und aktualisiert mehrere Collections.")) return;
     setActionLoading('cleanup');
     try {
       const count = await cleanupGhostUsers();
       toast({ title: "Datenbank bereinigt", description: `${count} verwaiste Einträge korrigiert.` });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Fehler", description: err.message });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCleanupChats = async () => {
+    setIsCleanupConfirmOpen(false);
+    setActionLoading('cleanup-chats');
+    try {
+      const result = await triggerCleanupEmptyChats();
+      toast({
+        title: "Bereinigung abgeschlossen",
+        description: `Chats gelöscht: ${result.chatsDeleted}, Nachrichten gelöscht: ${result.messagesDeleted}, Aktivitäten gelöscht: ${result.activitiesDeleted}, Place-Zähler korrigiert: ${result.placeCountersUpdated}, Übersprungen: ${result.skipped}, Fehler: ${result.errors}`,
+      });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Fehler bei der Bereinigung", description: err.message });
     } finally {
       setActionLoading(null);
     }
@@ -147,7 +184,7 @@ export default function AdminDashboardPage() {
         <p className="text-slate-500 dark:text-neutral-400 font-medium">Zentrale Steuerung der Plattform-Integrität und Monetarisierung.</p>
         
         {/* Wartungs-Aktionen */}
-        <div className="flex gap-2 mt-2">
+        <div className="flex flex-wrap gap-2 mt-2">
             <Button 
               variant="outline" 
               onClick={handleCleanupGhosts} 
@@ -157,6 +194,36 @@ export default function AdminDashboardPage() {
               {actionLoading === 'cleanup' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
               Datenbank: Geister-User bereinigen
             </Button>
+
+            <AlertDialog open={isCleanupConfirmOpen} onOpenChange={setIsCleanupConfirmOpen}>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  disabled={actionLoading === 'cleanup-chats'}
+                  className="rounded-xl border-dashed border-2 border-slate-300 dark:border-neutral-700 bg-slate-50/50 hover:bg-slate-100 dark:bg-neutral-900 font-bold"
+                >
+                  {actionLoading === 'cleanup-chats' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+                  Datenbank: Leere Chats bereinigen
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="rounded-3xl border-none shadow-2xl dark:bg-neutral-900">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Leere Chats bereinigen?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-sm font-medium dark:text-neutral-400">
+                    Diese Aktion löscht permanent alle Chats ohne Teilnehmer (participantIds == []), deren Nachrichten sowie verknüpfte, verwaiste Aktivitäten. Diese Aktion kann nicht rückgängig gemacht werden.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                  <AlertDialogCancel className="rounded-xl font-bold h-11 border-none bg-slate-100 dark:bg-neutral-800 dark:text-neutral-300">Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleCleanupChats}
+                    className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-black h-11 border-none shadow-lg shadow-red-200"
+                  >
+                    Jetzt bereinigen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </div>
       </header>
 
@@ -223,7 +290,7 @@ export default function AdminDashboardPage() {
                 <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-xl font-black text-slate-900 dark:text-neutral-100">{app.userDisplayName}</CardTitle>
+                      <CardTitle className="text-xl font-black text-slate-900 dark:text-neutral-100">{formatFirstName(app.userDisplayName, "User")}</CardTitle>
                       <CardDescription className="text-[10px] font-bold uppercase text-slate-400 dark:text-neutral-500 mt-1">ID: {app.userId.slice(0,8)}...</CardDescription>
                     </div>
                     <Badge className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-black text-[10px] uppercase">Pending</Badge>
@@ -323,7 +390,7 @@ export default function AdminDashboardPage() {
                     <AvatarFallback className="font-black bg-red-50 dark:bg-red-950/30 text-red-500">{u.displayName?.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <CardTitle className="text-lg font-black text-slate-900 dark:text-neutral-100 truncate">{u.displayName}</CardTitle>
+                    <CardTitle className="text-lg font-black text-slate-900 dark:text-neutral-100 truncate">{formatFirstName(u.displayName, "User")}</CardTitle>
                     <CardDescription className="text-[10px] font-bold uppercase text-slate-400 dark:text-neutral-500">UID: {u.uid.slice(0,8)}...</CardDescription>
                   </div>
                 </div>
