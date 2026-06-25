@@ -229,10 +229,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         
+        router.replace('/login?verification=required');
         const { signOut: authSignOut } = await import('@/lib/firebase/auth');
         await authSignOut();
-
-        router.replace('/login?verification=required');
         toast({
           title: language === 'de' ? 'Verifizierung erforderlich' : 'Verification Required',
           description: language === 'de'
@@ -446,6 +445,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         setUser(null);
         setDbProfile(null);
+        setSocialLegalConsentPending(false);
         setLoading(false);
       }
       
@@ -493,8 +493,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    if (socialLegalConsentPending && (pathname === '/login' || pathname === '/signup')) {
-      
+    if (socialLegalConsentPending) {
       return;
     }
 
@@ -520,10 +519,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           ? 'Bitte verifiziere deine E-Mail-Adresse, um Aktiva zu nutzen.'
           : 'Please verify your email address to use Aktiva.',
       });
+      router.replace('/login?verification=required');
       import('@/lib/firebase/auth').then(({ signOut: authSignOut }) => {
-        authSignOut().then(() => {
-          router.replace('/login');
-        });
+        authSignOut();
       });
       return;
     }
@@ -663,7 +661,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={contextValue}>
-      {loading || isSyncingVerification ? (
+      {(loading || isSyncingVerification) && !socialLegalConsentPending ? (
         <div className="flex items-center justify-center min-h-screen bg-white dark:bg-neutral-950">
           <Loader2 className="w-8 h-8 animate-spin text-[#10b981]" />
         </div>

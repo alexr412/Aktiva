@@ -511,8 +511,13 @@ export function normalizeCity(city: string | null | undefined): string {
 /**
  * Checks if a place name is generic (very short, a street name, a single word, or matches standard landmark naming patterns).
  */
-export function isGenericPlaceName(name: string | null | undefined): boolean {
-  if (!name) return true;
+export function isGenericPlaceName(name: unknown): boolean {
+  if (typeof name !== 'string') {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn("[RANKING WARNING] isGenericPlaceName: place name is not a string", name);
+    }
+    return true;
+  }
   const clean = name.trim();
   if (clean.length === 0) return true;
 
@@ -865,6 +870,21 @@ export function rankPlacesPipeline(
     const categories = place.categories || [];
     const distance = typeof place.distance === 'number' ? place.distance : 0;
 
+    let rawName = place.name;
+    if (typeof rawName !== 'string') {
+      rawName = place.placeName;
+    }
+    if (typeof rawName !== 'string') {
+      rawName = place.title;
+    }
+    if (typeof rawName !== 'string') {
+      rawName = "";
+      if (process.env.NODE_ENV === 'development') {
+        console.warn("[RANKING WARNING] rankPlacesPipeline: place name is not a string", place);
+      }
+    }
+    const name: string = rawName;
+
     let placeSigma = sigma_u;
     const isPremium = categories.some((cat: string) => 
       cat.startsWith('entertainment') || 
@@ -903,7 +923,7 @@ export function rankPlacesPipeline(
     const isFromFirestore = !!(place.isFromFirestore || place.source === 'firestore');
     const { qualityPenalty, activityBoost } = computeAdjustments(
       categories,
-      place.name || "",
+      name,
       place.voteBoostScore || 0,
       unadjustedBaseRankingScore,
       isFromFirestore
@@ -931,7 +951,7 @@ export function rankPlacesPipeline(
       scores: contextScores,
       qualityPenalty,
       activityBoost,
-      isGenericName: isGenericPlaceName(place.name)
+      isGenericName: isGenericPlaceName(name)
     };
   });
 
