@@ -781,6 +781,61 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place | 
   return null;
 }
 
+export function formatOnboardingLocationDisplay(location: {
+  postalCode?: string | null;
+  postcode?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  town?: string | null;
+  village?: string | null;
+  municipality?: string | null;
+  region?: string | null;
+  address?: string | null;
+  label?: string | null;
+  state?: string | null;
+  country?: string | null;
+  name?: string | null;
+  county?: string | null;
+}): string {
+  if (!location) return "";
+  const postalCode = location.postalCode || location.postcode || location.postal_code || "";
+  const city =
+    location.city ||
+    location.town ||
+    location.village ||
+    location.municipality ||
+    "";
+
+  const display = [postalCode, city].filter(Boolean).join(" ").trim();
+  return display || location.region || location.county || location.state || location.name || "";
+}
+
+export async function geocodeAddress(text: string): Promise<Place | null> {
+  if (!text) return null;
+  const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(text)}&limit=1&apiKey=${GEOAPIFY_API_KEY}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.features && data.features.length > 0) {
+      const props = data.features[0].properties;
+      return {
+        id: props.place_id,
+        name: props.name || props.address_line1,
+        address: props.address_line2,
+        categories: props.categories || [],
+        lat: props.lat,
+        lon: props.lon,
+        openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null,
+        _rawProperties: props
+      } as Place;
+    }
+  } catch (error) {
+    console.error("Geocode Address failed:", error);
+  }
+  return null;
+}
+
 export async function autocompletePlaces(text: string): Promise<Place[]> {
   if (!text || text.length < 3) return [];
   const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(text)}&limit=5&apiKey=${GEOAPIFY_API_KEY}`;

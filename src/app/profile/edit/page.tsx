@@ -5,7 +5,7 @@ import { useState, useEffect, useTransition, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { getUserProfile, isUsernameTaken } from '@/lib/firebase/firestore';
+import { getUserProfile, isUsernameTaken, claimUsernameServer } from '@/lib/firebase/firestore';
 import { validateUsername } from '@/lib/moderation/blacklist';
 import { doc, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
@@ -203,7 +203,7 @@ export default function EditProfilePage() {
     }
 
     if (!validateUsername(formData.username)) {
-      setUsernameAvailability('invalid');
+      setUsernameAvailability('taken');
       return;
     }
 
@@ -236,7 +236,7 @@ export default function EditProfilePage() {
         toast({ 
           variant: 'destructive', 
           title: "Fehler", 
-          description: "Dieser Benutzername ist nicht erlaubt." 
+          description: "Dieser Benutzername ist nicht verfügbar." 
         });
         return;
       }
@@ -282,13 +282,13 @@ export default function EditProfilePage() {
         };
 
         if (isUsernameChanged) {
-          const cleanUsername = formData.username?.toLowerCase().replace(/\s/g, '');
-          updateData.username = cleanUsername;
-          updateData.usernameLastChangedAt = serverTimestamp();
-          
-          const oneHourAgo = now.getTime() - (60 * 60 * 1000);
-          const recentChangeTimestamps = usernameChangeHistory.filter(ts => ts.toMillis() > oneHourAgo);
-          updateData.usernameChangeHistory = [...recentChangeTimestamps, Timestamp.now()];
+          try {
+            await claimUsernameServer(formData.username!);
+          } catch (claimErr: any) {
+            console.error('Failed to claim username:', claimErr);
+            toast({ variant: 'destructive', title: "Fehler", description: "Dieser Benutzername ist nicht verfügbar." });
+            return;
+          }
         }
         
         await setDoc(doc(db!, "users", user.uid), updateData, { merge: true });
@@ -404,8 +404,8 @@ export default function EditProfilePage() {
                             Änderung möglich in {daysRemaining} Tagen
                         </p>
                     )}
-                    {usernameAvailability === 'taken' && <p className="text-[10px] font-black text-rose-500 uppercase px-1">Bereits vergeben</p>}
-                    {usernameAvailability === 'invalid' && <p className="text-[10px] font-black text-rose-500 uppercase px-1">Dieser Benutzername ist nicht erlaubt.</p>}
+                    {usernameAvailability === 'taken' && <p className="text-[10px] font-black text-rose-500 uppercase px-1">Dieser Benutzername ist nicht verfügbar.</p>}
+                    {usernameAvailability === 'invalid' && <p className="text-[10px] font-black text-rose-500 uppercase px-1">Dieser Benutzername ist nicht verfügbar.</p>}
                 </div>
               </div>
               

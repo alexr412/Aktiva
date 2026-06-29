@@ -4,6 +4,7 @@ exports.respondToJoinRequest = exports.notifyNearbyUsers = exports.onActivityUpd
 const firestore_1 = require("firebase-functions/v2/firestore");
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
+const firestore_2 = require("firebase-admin/firestore");
 const users_1 = require("./users");
 /**
  * Triggers when an activity is created. Awards +10 points to the host (daily cap of 2).
@@ -57,7 +58,7 @@ exports.onActivityCreated = (0, firestore_1.onDocumentCreated)({
             transaction.set(ledgerRef, {
                 type: 'event_created',
                 points: 10,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: firestore_2.FieldValue.serverTimestamp(),
                 sourceId: activityId,
                 metadata: {
                     message: `Event erstellt: ${activity.title || 'Aktivität'}`
@@ -122,7 +123,7 @@ exports.onActivityUpdated = (0, firestore_1.onDocumentUpdated)({
                 transaction.set(ledgerRef, {
                     type: 'event_joined_first',
                     points: 20,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: firestore_2.FieldValue.serverTimestamp(),
                     sourceId: activityId,
                     metadata: {
                         message: `Erster Teilnehmer beigetreten: ${after.title || 'Aktivität'}`
@@ -163,7 +164,7 @@ exports.onActivityUpdated = (0, firestore_1.onDocumentUpdated)({
                 transaction.set(hostLedgerRef, {
                     type: 'first_activity_bonus',
                     points: 50,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: firestore_2.FieldValue.serverTimestamp(),
                     sourceId: activityId,
                     metadata: {
                         message: 'Erste Aktivität (Erstes eigenes Event mit Teilnehmern)'
@@ -206,7 +207,7 @@ exports.onActivityUpdated = (0, firestore_1.onDocumentUpdated)({
                 transaction.set(joinerLedgerRef, {
                     type: 'first_activity_bonus',
                     points: 50,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: firestore_2.FieldValue.serverTimestamp(),
                     sourceId: activityId,
                     metadata: {
                         message: 'Erste Aktivität (Teilnahme an einem Event)'
@@ -401,7 +402,7 @@ exports.notifyNearbyUsers = (0, firestore_1.onDocumentCreated)({
                             title: 'Neue Aktivität in deiner Nähe',
                             message: messageText,
                             isRead: false,
-                            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                            createdAt: firestore_2.FieldValue.serverTimestamp(),
                             activityId: activityId,
                             link: `/activities/${activityId}`
                         });
@@ -511,8 +512,8 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                 const photoURLToUse = userProfile.photoURL || null;
                 // Update activity
                 transaction.update(activityRef, {
-                    participantIds: admin.firestore.FieldValue.arrayUnion(userIdToJoin),
-                    lastInteractionAt: admin.firestore.FieldValue.serverTimestamp(),
+                    participantIds: firestore_2.FieldValue.arrayUnion(userIdToJoin),
+                    lastInteractionAt: firestore_2.FieldValue.serverTimestamp(),
                     [`participantDetails.${userIdToJoin}`]: {
                         displayName: displayNameToUse,
                         photoURL: photoURLToUse,
@@ -526,7 +527,7 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                 const currentPreviews = activity.participantsPreview || [];
                 if (currentPreviews.length < 5 && !currentPreviews.some((p) => p.uid === userIdToJoin)) {
                     transaction.update(activityRef, {
-                        participantsPreview: admin.firestore.FieldValue.arrayUnion({
+                        participantsPreview: firestore_2.FieldValue.arrayUnion({
                             uid: userIdToJoin,
                             displayName: displayNameToUse,
                             photoURL: photoURLToUse
@@ -536,7 +537,7 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                 // Update chat
                 const chatRef = db.collection('chats').doc(activityId);
                 transaction.update(chatRef, {
-                    participantIds: admin.firestore.FieldValue.arrayUnion(userIdToJoin),
+                    participantIds: firestore_2.FieldValue.arrayUnion(userIdToJoin),
                     [`participantDetails.${userIdToJoin}`]: {
                         displayName: displayNameToUse,
                         photoURL: photoURLToUse,
@@ -553,7 +554,7 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                     displayName: displayNameToUse,
                     photoURL: photoURLToUse,
                     checkInStatus: 'pending',
-                    joinedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    joinedAt: firestore_2.FieldValue.serverTimestamp(),
                     hasReviewed: false
                 });
                 // Create exactly one join_response notification
@@ -565,7 +566,7 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                     title: 'Anfrage akzeptiert!',
                     message: `Deine Anfrage für "${activity.placeName || 'Aktivität'}" wurde angenommen. Du bist jetzt dabei!`,
                     isRead: false,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: firestore_2.FieldValue.serverTimestamp(),
                     activityId: activityId,
                     responseStatus: 'accepted',
                     link: `/chat/${activityId}`
@@ -585,7 +586,7 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                     message: `Deine Anfrage für "${activity.placeName || 'Aktivität'}" wurde leider abgelehnt.`,
                     customMessage: customMessage || null,
                     isRead: false,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: firestore_2.FieldValue.serverTimestamp(),
                     activityId: activityId,
                     responseStatus: 'declined'
                 });

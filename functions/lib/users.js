@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.earnToken = exports.checkUsernameAvailability = exports.searchUserByUsername = exports.getPublicProfile = exports.processReferralOnboardingCompletion = exports.applyReferralCode = exports.onUserDeleted = exports.cleanupEmptyChats = exports.checkAndRecordVerificationEmail = exports.verifyEmailStatus = exports.requireSocialEmailVerification = exports.onUserCreated = exports.syncUserProfileUpdates = void 0;
+exports.resolveLoginIdentifier = exports.earnToken = exports.claimUsername = exports.checkUsernameAvailability = exports.searchUserByUsername = exports.getPublicProfile = exports.processReferralOnboardingCompletion = exports.applyReferralCode = exports.onUserDeleted = exports.cleanupEmptyChats = exports.checkAndRecordVerificationEmail = exports.verifyEmailStatus = exports.requireSocialEmailVerification = exports.onUserCreated = exports.syncUserProfileUpdates = void 0;
 exports.calculateLevel = calculateLevel;
 const firestore_1 = require("firebase-functions/v2/firestore");
 const https_1 = require("firebase-functions/v2/https");
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
+const firestore_2 = require("firebase-admin/firestore");
+const reserved_usernames_1 = require("./reserved-usernames");
 /**
  * MODUL 23: Production-Grade Fan-Out System.
  * Synchronisiert Profiländerungen (Name, Photo) sicher über alle Aktivitäten und Chats.
@@ -123,7 +125,7 @@ exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
                 emailVerificationRequired: true,
                 emailVerificationProvider: "firebase",
                 emailVerificationReason: "social_signup",
-                emailVerificationCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                emailVerificationCreatedAt: firestore_2.FieldValue.serverTimestamp(),
                 emailVerifiedAt: null
             }, { merge: true });
             console.log(`Set Firestore email verification requirements for social user via backstop: ${user.uid}`);
@@ -160,9 +162,9 @@ exports.requireSocialEmailVerification = (0, https_1.onCall)(async (request) => 
             emailVerificationRequired: true,
             emailVerificationProvider: "firebase",
             emailVerificationReason: "social_signup",
-            emailVerificationCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            emailVerificationCreatedAt: firestore_2.FieldValue.serverTimestamp(),
             emailVerifiedAt: null,
-            verificationEmailLastSentAt: admin.firestore.FieldValue.serverTimestamp()
+            verificationEmailLastSentAt: firestore_2.FieldValue.serverTimestamp()
         }, { merge: true });
         console.log(`Set Firestore email verification requirements for social user ${uid}`);
         return { success: true };
@@ -190,7 +192,7 @@ exports.verifyEmailStatus = (0, https_1.onCall)(async (request) => {
         const userRef = db.collection('users').doc(uid);
         await userRef.update({
             emailVerificationRequired: false,
-            emailVerifiedAt: admin.firestore.FieldValue.serverTimestamp()
+            emailVerifiedAt: firestore_2.FieldValue.serverTimestamp()
         });
         console.log(`Successfully cleared email verification requirement for user ${uid}`);
         return { success: true };
@@ -232,7 +234,7 @@ exports.checkAndRecordVerificationEmail = (0, https_1.onCall)(async (request) =>
         }
         // Update the timestamp to current server time
         await userRef.update({
-            verificationEmailLastSentAt: admin.firestore.FieldValue.serverTimestamp()
+            verificationEmailLastSentAt: firestore_2.FieldValue.serverTimestamp()
         });
         console.log(`Verification email check passed and timestamp updated for user ${uid}`);
         return { allowed: true };
@@ -427,17 +429,46 @@ exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
     const userId = user.uid;
     const db = admin.firestore();
     console.log(`Starting cascading delete for deleted Auth user: ${userId}`);
+    // We read the user profile document first to get the friends and request arrays before deleting it.
+    let friends = [];
+    let sent = [];
+    let received = [];
+    try {
+        const userRef = db.collection('users').doc(userId);
+        const userSnap = await userRef.get();
+        if (userSnap.exists) {
+            const userData = userSnap.data();
+            friends = userData?.friends || [];
+            sent = userData?.friendRequestsSent || [];
+            received = userData?.friendRequestsReceived || [];
+        }
+    }
+    catch (err) {
+        console.error(`Error reading user document for cleanup of user ${userId}:`, err);
+    }
+    // Helper to commit and reset batch
     let batch = db.batch();
     let batchCount = 0;
-    const commitBatchIfNeeded = async (force = false) => {
-        if (batchCount >= 400 || (force && batchCount > 0)) {
+    const commitBatch = async () => {
+        if (batchCount > 0) {
             await batch.commit();
             batch = db.batch();
             batchCount = 0;
         }
     };
+    // 1. Guaranteed deletion of user profile document first
     try {
-        // 1.a Clean up activities where the user is a participant
+        const userRef = db.collection('users').doc(userId);
+        batch.delete(userRef);
+        batchCount++;
+        await commitBatch();
+        console.log(`Successfully deleted user profile document /users/${userId}`);
+    }
+    catch (err) {
+        console.error(`Failed to delete user profile document /users/${userId}:`, err);
+    }
+    // 2. Clean up activities where the user is a participant
+    try {
         const activitiesSnap = await db.collection('activities')
             .where('participantIds', 'array-contains', userId)
             .get();
@@ -445,14 +476,26 @@ exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
             const actData = docSnap.data();
             const newPreview = (actData.participantsPreview || []).filter((p) => p.uid !== userId);
             batch.update(docSnap.ref, {
-                participantIds: admin.firestore.FieldValue.arrayRemove(userId),
+                participantIds: firestore_2.FieldValue.arrayRemove(userId),
                 participantsPreview: newPreview,
-                [`participantDetails.${userId}`]: admin.firestore.FieldValue.delete()
+                [`participantDetails.${userId}`]: firestore_2.FieldValue.delete()
             });
             batchCount++;
-            await commitBatchIfNeeded();
+            // Delete participant subcollection document
+            const participantRef = docSnap.ref.collection('participants').doc(userId);
+            batch.delete(participantRef);
+            batchCount++;
+            if (batchCount >= 400)
+                await commitBatch();
         }
-        // 1.b Clean up activities hosted by the user (cancel and anonymize host)
+        await commitBatch();
+        console.log(`Cleaned up user ${userId} from participant activities`);
+    }
+    catch (err) {
+        console.error(`Error cleaning up participant activities for user ${userId}:`, err);
+    }
+    // 3. Clean up activities hosted by the user (cancel and anonymize host)
+    try {
         const hostedActivitiesSnap = await db.collection('activities')
             .where('hostId', '==', userId)
             .get();
@@ -463,71 +506,85 @@ exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
                 hostPhotoURL: null
             });
             batchCount++;
-            await commitBatchIfNeeded();
-        }
-        // 2. Clean up participant subcollection documents for this user
-        const participantsSnap = await db.collectionGroup('participants')
-            .where('uid', '==', userId)
-            .get();
-        for (const pDoc of participantsSnap.docs) {
-            batch.delete(pDoc.ref);
+            // Delete participant subcollection document (host is also a participant)
+            const participantRef = docSnap.ref.collection('participants').doc(userId);
+            batch.delete(participantRef);
             batchCount++;
-            await commitBatchIfNeeded();
+            if (batchCount >= 400)
+                await commitBatch();
         }
-        // 3. Clean up chats where the user is a participant
+        await commitBatch();
+        console.log(`Cleaned up hosted activities for user ${userId}`);
+    }
+    catch (err) {
+        console.error(`Error cleaning up hosted activities for user ${userId}:`, err);
+    }
+    // 4. Clean up chats where the user is a participant
+    try {
         const chatsSnap = await db.collection('chats')
             .where('participantIds', 'array-contains', userId)
             .get();
         for (const docSnap of chatsSnap.docs) {
             batch.update(docSnap.ref, {
-                participants: admin.firestore.FieldValue.arrayRemove(userId),
-                participantIds: admin.firestore.FieldValue.arrayRemove(userId),
-                [`participantDetails.${userId}`]: admin.firestore.FieldValue.delete(),
-                [`unreadCount.${userId}`]: admin.firestore.FieldValue.delete()
+                participants: firestore_2.FieldValue.arrayRemove(userId),
+                participantIds: firestore_2.FieldValue.arrayRemove(userId),
+                [`participantDetails.${userId}`]: firestore_2.FieldValue.delete(),
+                [`unreadCount.${userId}`]: firestore_2.FieldValue.delete()
             });
             batchCount++;
-            await commitBatchIfNeeded();
+            if (batchCount >= 400)
+                await commitBatch();
         }
-        // 4. Clean up friendships and requests
-        const userRef = db.collection('users').doc(userId);
-        const userSnap = await userRef.get();
-        if (userSnap.exists) {
-            const userData = userSnap.data();
-            const friends = userData?.friends || [];
-            const sent = userData?.friendRequestsSent || [];
-            const received = userData?.friendRequestsReceived || [];
-            // Remove from friends list of others
-            for (const friendId of friends) {
-                batch.update(db.collection('users').doc(friendId), {
-                    friends: admin.firestore.FieldValue.arrayRemove(userId)
-                });
-                batchCount++;
-                await commitBatchIfNeeded();
-            }
-            // Clean up friend requests for others
-            for (const otherId of sent) {
-                batch.update(db.collection('users').doc(otherId), {
-                    friendRequestsReceived: admin.firestore.FieldValue.arrayRemove(userId)
-                });
-                batchCount++;
-                await commitBatchIfNeeded();
-            }
-            for (const otherId of received) {
-                batch.update(db.collection('users').doc(otherId), {
-                    friendRequestsSent: admin.firestore.FieldValue.arrayRemove(userId)
-                });
-                batchCount++;
-                await commitBatchIfNeeded();
-            }
+        await commitBatch();
+        console.log(`Cleaned up chats for user ${userId}`);
+    }
+    catch (err) {
+        console.error(`Error cleaning up chats for user ${userId}:`, err);
+    }
+    // 5. Clean up friendships and requests in other user documents
+    try {
+        // Remove from friends list of others
+        for (const friendId of friends) {
+            batch.update(db.collection('users').doc(friendId), {
+                friends: firestore_2.FieldValue.arrayRemove(userId)
+            });
+            batchCount++;
+            if (batchCount >= 400)
+                await commitBatch();
         }
-        // 5. Delete notifications (sent or received by the user)
+        // Clean up friend requests for others
+        for (const otherId of sent) {
+            batch.update(db.collection('users').doc(otherId), {
+                friendRequestsReceived: firestore_2.FieldValue.arrayRemove(userId)
+            });
+            batchCount++;
+            if (batchCount >= 400)
+                await commitBatch();
+        }
+        for (const otherId of received) {
+            batch.update(db.collection('users').doc(otherId), {
+                friendRequestsSent: firestore_2.FieldValue.arrayRemove(userId)
+            });
+            batchCount++;
+            if (batchCount >= 400)
+                await commitBatch();
+        }
+        await commitBatch();
+        console.log(`Cleaned up friendships for user ${userId}`);
+    }
+    catch (err) {
+        console.error(`Error cleaning up friendships for user ${userId}:`, err);
+    }
+    // 6. Delete notifications (sent or received by the user)
+    try {
         const receivedNotifsSnap = await db.collection('notifications')
             .where('recipientId', '==', userId)
             .get();
         for (const docSnap of receivedNotifsSnap.docs) {
             batch.delete(docSnap.ref);
             batchCount++;
-            await commitBatchIfNeeded();
+            if (batchCount >= 400)
+                await commitBatch();
         }
         const sentNotifsSnap = await db.collection('notifications')
             .where('senderId', '==', userId)
@@ -535,38 +592,42 @@ exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
         for (const docSnap of sentNotifsSnap.docs) {
             batch.delete(docSnap.ref);
             batchCount++;
-            await commitBatchIfNeeded();
+            if (batchCount >= 400)
+                await commitBatch();
         }
-        // 6. Delete reviews written by the user
+        await commitBatch();
+        console.log(`Cleaned up notifications for user ${userId}`);
+    }
+    catch (err) {
+        console.error(`Error cleaning up notifications for user ${userId}:`, err);
+    }
+    // 7. Delete reviews written by the user
+    try {
         const reviewsSnap = await db.collection('reviews')
             .where('authorId', '==', userId)
             .get();
         for (const docSnap of reviewsSnap.docs) {
             batch.delete(docSnap.ref);
             batchCount++;
-            await commitBatchIfNeeded();
+            if (batchCount >= 400)
+                await commitBatch();
         }
-        // 7. Finally, delete the user profile document in Firestore
-        batch.delete(userRef);
-        batchCount++;
-        // Force commit remaining database writes
-        await commitBatchIfNeeded(true);
-        console.log(`Firestore cascading delete completed for user ${userId}`);
-        // 8. Best-effort Storage cleanup for user's avatar folder (users/{uid}/)
-        // KYC folder (kyc/{uid}/) is explicitly excluded due to legal retention requirements
-        try {
-            const bucket = admin.storage().bucket();
-            await bucket.deleteFiles({ prefix: `users/${userId}/` });
-            console.log(`Successfully cleaned up Storage files for user ${userId}`);
-        }
-        catch (storageErr) {
-            console.warn(`Storage cleanup failed for user ${userId} (best-effort):`, storageErr);
-        }
-        console.log(`Successfully completed cascading delete for user ${userId}`);
+        await commitBatch();
+        console.log(`Cleaned up reviews for user ${userId}`);
     }
-    catch (error) {
-        console.error(`Error in cascading delete for user ${userId}:`, error);
+    catch (err) {
+        console.error(`Error cleaning up reviews for user ${userId}:`, err);
     }
+    // 8. Best-effort Storage cleanup for user's avatar folder (users/{uid}/)
+    try {
+        const bucket = admin.storage().bucket();
+        await bucket.deleteFiles({ prefix: `users/${userId}/` });
+        console.log(`Successfully cleaned up Storage files for user ${userId}`);
+    }
+    catch (storageErr) {
+        console.warn(`Storage cleanup failed for user ${userId} (best-effort):`, storageErr);
+    }
+    console.log(`Successfully completed cascading delete for user ${userId}`);
 });
 /**
  * Helper to generate a unique random referral code and lock it in referralCodes collection
@@ -588,7 +649,7 @@ async function generateUniqueReferralCode(db, uid) {
                 }
                 transaction.set(codeRef, {
                     uid,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                    createdAt: firestore_2.FieldValue.serverTimestamp()
                 });
                 return true;
             });
@@ -735,7 +796,7 @@ exports.processReferralOnboardingCompletion = (0, firestore_1.onDocumentUpdated)
             transaction.set(referrerLedgerRef, {
                 type: 'friend_invite_completed',
                 points: 25,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: firestore_2.FieldValue.serverTimestamp(),
                 sourceId: userId,
                 metadata: {
                     message: `Freund geworben: ${after.displayName || 'User'}`
@@ -746,14 +807,14 @@ exports.processReferralOnboardingCompletion = (0, firestore_1.onDocumentUpdated)
                 pointsBalance: referrerBalance,
                 pointsLifetime: referrerLifetime,
                 level: referrerNewLevel,
-                successfulReferrals: admin.firestore.FieldValue.increment(1)
+                successfulReferrals: firestore_2.FieldValue.increment(1)
             });
             // 5. Award +10 to referred user pointsLedger
             const referredLedgerRef = db.collection('users').doc(userId).collection('pointsLedger').doc(`invite_signup_bonus_${userId}`);
             transaction.set(referredLedgerRef, {
                 type: 'invite_signup_bonus',
                 points: 10,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: firestore_2.FieldValue.serverTimestamp(),
                 sourceId: referredBy,
                 metadata: {
                     message: 'Willkommensbonus für Einladung'
@@ -896,9 +957,22 @@ exports.checkUsernameAvailability = (0, https_1.onCall)(async (request) => {
     if (!username || typeof username !== 'string') {
         throw new https_1.HttpsError('invalid-argument', 'Missing or invalid username.');
     }
+    const trimmed = username.trim().toLowerCase();
+    // Check reserved usernames — return unavailable (same as taken)
+    if ((0, reserved_usernames_1.isReservedUsername)(trimmed)) {
+        return { available: false };
+    }
     const db = admin.firestore();
+    // Check the usernames lock collection first
+    const lockDoc = await db.collection('usernames').doc(trimmed).get();
+    if (lockDoc.exists) {
+        const lockData = lockDoc.data();
+        const isSelf = lockData?.uid === request.auth.uid;
+        return { available: isSelf };
+    }
+    // Fallback: also check users collection for legacy usernames without lock docs
     const querySnapshot = await db.collection('users')
-        .where('username', '==', username.trim().toLowerCase())
+        .where('username', '==', trimmed)
         .limit(1)
         .get();
     if (querySnapshot.empty) {
@@ -907,6 +981,92 @@ exports.checkUsernameAvailability = (0, https_1.onCall)(async (request) => {
     const existingUserDoc = querySnapshot.docs[0];
     const isSelf = existingUserDoc.id === request.auth.uid;
     return { available: isSelf };
+});
+/**
+ * claimUsername – Server-side username claiming/updating.
+ *
+ * Validates the username (length, pattern, moderation, reserved list),
+ * ensures uniqueness via a transactional lock in the `usernames` collection,
+ * and atomically updates `users/{uid}.username` + `users/{uid}.usernameLowercase`.
+ *
+ * The `usernames/{usernameLower}` lock document stores { uid, username, claimedAt }
+ * and guarantees no two users can hold the same username.
+ */
+exports.claimUsername = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'User must be authenticated.');
+    }
+    const uid = request.auth.uid;
+    const rawUsername = request.data?.username;
+    if (!rawUsername || typeof rawUsername !== 'string') {
+        throw new https_1.HttpsError('invalid-argument', 'Missing or invalid username.');
+    }
+    const cleanUsername = rawUsername.trim().toLowerCase().replace(/\s+/g, '');
+    // Full server-side validation: length, pattern, moderation, reserved
+    if (!(0, reserved_usernames_1.isValidUsername)(cleanUsername)) {
+        throw new https_1.HttpsError('invalid-argument', 'USERNAME_NOT_AVAILABLE');
+    }
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(uid);
+    const newLockRef = db.collection('usernames').doc(cleanUsername);
+    await db.runTransaction(async (transaction) => {
+        // 1. Read the user document to get the current username (if any)
+        const userSnap = await transaction.get(userRef);
+        if (!userSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'User profile not found.');
+        }
+        const userData = userSnap.data() || {};
+        const currentUsername = userData.username;
+        const currentUsernameLower = (currentUsername || '').trim().toLowerCase() || undefined;
+        // If the username hasn't changed, no-op
+        if (currentUsernameLower === cleanUsername) {
+            return;
+        }
+        // 2. Check if the new username lock doc already exists
+        const newLockSnap = await transaction.get(newLockRef);
+        if (newLockSnap.exists) {
+            const lockData = newLockSnap.data();
+            if (lockData?.uid !== uid) {
+                // Another user owns this username
+                throw new https_1.HttpsError('already-exists', 'USERNAME_NOT_AVAILABLE');
+            }
+            // We already own this lock (shouldn't happen given the no-op above, but handle gracefully)
+        }
+        // 3. Delete the old lock doc if user had a previous username
+        if (currentUsernameLower && currentUsernameLower !== cleanUsername) {
+            const oldLockRef = db.collection('usernames').doc(currentUsernameLower);
+            const oldLockSnap = await transaction.get(oldLockRef);
+            if (oldLockSnap.exists && oldLockSnap.data()?.uid === uid) {
+                transaction.delete(oldLockRef);
+            }
+        }
+        // 4. Create the new lock doc
+        transaction.set(newLockRef, {
+            uid: uid,
+            username: cleanUsername,
+            claimedAt: firestore_2.FieldValue.serverTimestamp(),
+        });
+        // 5. Update the user document with the new username
+        const updateFields = {
+            username: cleanUsername,
+            usernameLowercase: cleanUsername,
+        };
+        // Track username change history (for rate limiting)
+        if (currentUsername) {
+            updateFields.usernameLastChangedAt = firestore_2.FieldValue.serverTimestamp();
+            // Keep recent change timestamps (last hour) for hourly rate limiting
+            const existingHistory = userData.usernameChangeHistory || [];
+            const oneHourAgo = Date.now() - (60 * 60 * 1000);
+            const recentChanges = existingHistory.filter((ts) => {
+                const millis = ts?.toMillis ? ts.toMillis() : (ts?._seconds ? ts._seconds * 1000 : 0);
+                return millis > oneHourAgo;
+            });
+            recentChanges.push(admin.firestore.Timestamp.now());
+            updateFields.usernameChangeHistory = recentChanges;
+        }
+        transaction.update(userRef, updateFields);
+    });
+    return { success: true, username: cleanUsername };
 });
 exports.earnToken = (0, https_1.onCall)(async (request) => {
     if (!request.auth) {
@@ -966,10 +1126,38 @@ exports.earnToken = (0, https_1.onCall)(async (request) => {
             userId: uid,
             type: "earn_ad_watch",
             amount: 1,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: firestore_2.FieldValue.serverTimestamp(),
             sourceEventId: trimmedAdWatchId
         });
     });
     return { success: true };
+});
+exports.resolveLoginIdentifier = (0, https_1.onCall)(async (request) => {
+    const username = request.data?.username;
+    if (!username || typeof username !== 'string') {
+        throw new https_1.HttpsError('invalid-argument', 'Missing or invalid username.');
+    }
+    const trimmedUsername = username.trim().toLowerCase();
+    if (trimmedUsername.length < 4 || trimmedUsername.length > 32 || !/^[a-zA-Z0-9._]+$/.test(trimmedUsername)) {
+        return { email: null };
+    }
+    const db = admin.firestore();
+    // 1. Try querying against usernameLowercase
+    let querySnapshot = await db.collection('users')
+        .where('usernameLowercase', '==', trimmedUsername)
+        .limit(1)
+        .get();
+    // 2. Fallback to username
+    if (querySnapshot.empty) {
+        querySnapshot = await db.collection('users')
+            .where('username', '==', trimmedUsername)
+            .limit(1)
+            .get();
+    }
+    if (querySnapshot.empty) {
+        return { email: null };
+    }
+    const userData = querySnapshot.docs[0].data();
+    return { email: userData.email || null };
 });
 //# sourceMappingURL=users.js.map

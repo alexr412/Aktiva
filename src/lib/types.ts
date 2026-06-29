@@ -58,6 +58,7 @@ export interface Place {
   isUserEvent?: boolean;
   category?: string;
   normalizedCategory?: string;
+  _rawProperties?: any;
 }
 
 export interface FavoritePlace {
@@ -263,6 +264,7 @@ export interface UserProfile {
   lastLocation?: {
     lat: number;
     lng: number;
+    city?: string | null;
     updatedAt: Timestamp;
   };
   fcmToken?: string | null;

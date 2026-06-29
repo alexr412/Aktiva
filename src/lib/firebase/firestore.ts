@@ -56,6 +56,17 @@ type CreateActivityPayload = {
 const MAX_FREE_PARTICIPANTS = 4;
 const SMOOTHING_FACTOR = 5;
 
+export function removeUndefinedFields<T extends object>(obj: T): T {
+  const newObj = { ...obj } as any;
+  Object.keys(newObj).forEach(key => {
+    if (newObj[key] === undefined) {
+      delete newObj[key];
+    } else if (newObj[key] !== null && typeof newObj[key] === 'object' && newObj[key].constructor === Object) {
+      newObj[key] = removeUndefinedFields(newObj[key]);
+    }
+  });
+  return newObj;
+}
 
 export async function createUserProfileDocument(user: User, additionalData?: Partial<UserProfile>) {
   if (!db) throw new Error('Firestore is not initialized.');
@@ -112,7 +123,7 @@ export async function createUserProfileDocument(user: User, additionalData?: Par
     role: 'user',
     isBanned: false
   };
-  await setDoc(userDocRef, userProfile, { merge: true });
+  await setDoc(userDocRef, removeUndefinedFields(userProfile), { merge: true });
 }
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
@@ -141,7 +152,7 @@ export async function getPublicProfileClient(targetUserId: string): Promise<User
 export async function updateUserProfile(userId: string, data: Partial<UserProfile>) {
     if (!db) throw new Error('Firestore is not initialized.');
     const userDocRef = doc(db, 'users', userId);
-    await updateDoc(userDocRef, data);
+    await updateDoc(userDocRef, removeUndefinedFields(data));
 }
 
 export async function updatePresetAvatar(userId: string, avatarUrl: string) {
@@ -1422,8 +1433,31 @@ export async function isUsernameTaken(username: string, excludeUserId?: string):
     return !result.data.available;
   } catch (error) {
     console.error("Error checking username availability:", error);
-    return true; // Fallback to safe default
+    // Propagate error to let caller handle infrastructure issues
+    throw error;
   }
+}
+
+/**
+ * Claims or updates a username via the claimUsername Cloud Function.
+ * The server validates the username (length, pattern, moderation, reserved list),
+ * ensures uniqueness via a transactional lock in the `usernames` collection,
+ * and atomically writes `users/{uid}.username` + `users/{uid}.usernameLowercase`.
+ *
+ * Throws on failure (reserved, taken, invalid, etc.).
+ */
+export async function claimUsernameServer(username: string): Promise<{ success: boolean; username: string }> {
+  // Import getFunctions and httpsCallable; conditionally connect emulator based on strict env flag
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const functions = getFunctions(app || undefined, 'us-central1');
+  if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true") {
+    const { connectFunctionsEmulator } = await import('firebase/functions');
+    // Connect to emulator only when explicitly enabled
+    connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+  }
+  const claimFn = httpsCallable<{ username: string }, { success: boolean; username: string }>(functions, 'claimUsername');
+  const result = await claimFn({ username });
+  return result.data;
 }
 
 export async function markNotificationAsRead(notificationId: string) {

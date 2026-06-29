@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.telemetryAggregationWorker = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
+const firestore_1 = require("firebase-admin/firestore");
 // Berechnet die untere Grenze des Wilson-Score-Konfidenzintervalls (Normalisierung)
 function calculateWilsonScore(clicks, impressions, z = 1.96) {
     if (impressions === 0)
@@ -85,7 +86,7 @@ exports.telemetryAggregationWorker = (0, scheduler_1.onSchedule)({
                     base_raw_events: stats.impressions + stats.clicks + stats.dwellCount,
                     i_score: i_score,
                     dq_score: dq_score,
-                    last_aggregated: admin.firestore.FieldValue.serverTimestamp()
+                    last_aggregated: firestore_1.FieldValue.serverTimestamp()
                 }
             }, { merge: true });
         });

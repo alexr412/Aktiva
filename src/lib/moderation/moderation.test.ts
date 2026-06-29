@@ -119,6 +119,24 @@ function testSpamCooldownLogic() {
   console.log('✅ testSpamCooldownLogic passed');
 }
 
+function testReservedUsernameIntegration() {
+  console.log('Running testReservedUsernameIntegration...');
+  // Reserved names should be blocked by validateUsername
+  assert.strictEqual(validateUsername('alex'), false);
+  assert.strictEqual(validateUsername('aktiva'), false);
+  assert.strictEqual(validateUsername('admin1'), false);
+  assert.strictEqual(validateUsername('support24'), false);
+  assert.strictEqual(validateUsername('hamburg'), false);
+  assert.strictEqual(validateUsername('instagram'), false);
+  assert.strictEqual(validateUsername('firebase'), false);
+
+  // Normal names should still pass
+  assert.strictEqual(validateUsername('alexander'), true);
+  assert.strictEqual(validateUsername('alexr412'), true);
+  assert.strictEqual(validateUsername('coolguy99'), true);
+  console.log('✅ testReservedUsernameIntegration passed');
+}
+
 // Run all test groups
 try {
   testNormalization();
@@ -128,6 +146,7 @@ try {
   testChatValidation();
   testFalsePositivePrevention();
   testSpamCooldownLogic();
+  testReservedUsernameIntegration();
   console.log('🎉 ALL MODERATION TESTS PASSED SUCCESSFULLY! 🎉');
 } catch (error) {
   console.error('❌ MODERATION TEST FAILED:', error);

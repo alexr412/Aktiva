@@ -104,17 +104,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (user && dbProfile && !dbProfile.legalAcceptedAt && !loading) {
-      
-      setSocialLegalConsentPending(true);
+      const providers = user.providerData.map(p => p.providerId);
+      const isSocial = providers.includes('google.com') || providers.includes('apple.com');
+      if (isSocial) {
+        setSocialLegalConsentPending(true);
+      }
     }
   }, [user, dbProfile, loading]);
 
   useEffect(() => {
-    if (user && dbProfile && dbProfile.legalAcceptedAt) {
-      
-      setSocialLegalConsentPending(false);
+    if (user) {
+      const providers = user.providerData.map(p => p.providerId);
+      const isSocial = providers.includes('google.com') || providers.includes('apple.com');
+      if (!isSocial && socialLegalConsentPending) {
+        setSocialLegalConsentPending(false);
+      } else if (dbProfile?.legalAcceptedAt) {
+        setSocialLegalConsentPending(false);
+      }
     }
-  }, [user, dbProfile]);
+  }, [user, dbProfile, socialLegalConsentPending]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

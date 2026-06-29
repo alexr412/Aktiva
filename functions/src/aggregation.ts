@@ -1,5 +1,6 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Berechnet die untere Grenze des Wilson-Score-Konfidenzintervalls (Normalisierung)
 function calculateWilsonScore(clicks: number, impressions: number, z: number = 1.96): number {
@@ -96,7 +97,7 @@ export const telemetryAggregationWorker = onSchedule({
           base_raw_events: stats.impressions + stats.clicks + stats.dwellCount,
           i_score: i_score,
           dq_score: dq_score,
-          last_aggregated: admin.firestore.FieldValue.serverTimestamp()
+          last_aggregated: FieldValue.serverTimestamp()
         }
       }, { merge: true });
     });

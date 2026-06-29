@@ -1,18 +1,18 @@
 'use client';
 
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, updateDoc, setDoc, serverTimestamp, collection, getDoc } from "firebase/firestore";
-import { db, app } from "./client";
+import { db, app, storage as storageInstance } from "./client";
 import { auth } from "./auth";
 import { updateProfile } from "firebase/auth";
 
 import { getExtensionFromMimeType } from "@/lib/avatar-utils";
 
-if (!app) {
+if (!app || !storageInstance) {
     throw new Error("Firebase has not been initialized.");
 }
 
-const storage = getStorage(app);
+const storage = storageInstance;
 
 export const uploadProfileImage = async (userId: string, file: File): Promise<string> => {
   if (!auth?.currentUser || auth.currentUser.uid !== userId) {

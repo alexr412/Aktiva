@@ -7,6 +7,18 @@ interface NominatimResult {
     lat: string;
     lon: string;
     importance: number;
+    address?: {
+        postcode?: string;
+        city?: string;
+        town?: string;
+        village?: string;
+        municipality?: string;
+        suburb?: string;
+        state?: string;
+        country?: string;
+        road?: string;
+        house_number?: string;
+    };
 }
 
 export async function searchLocation(query: string): Promise<Destination[]> {
@@ -28,11 +40,20 @@ export async function searchLocation(query: string): Promise<Destination[]> {
         // Sort by importance and map to the Destination type
         return data
             .sort((a, b) => b.importance - a.importance)
-            .map(item => ({
-                name: item.display_name,
-                lat: parseFloat(item.lat),
-                lng: parseFloat(item.lon),
-            }));
+            .map(item => {
+                const postcode = item.address?.postcode || "";
+                const city = item.address?.city || item.address?.town || item.address?.village || item.address?.municipality || item.address?.suburb || "";
+                
+                // If it's a specific address (e.g. road or house_number exists), we format as PLZ + Ort
+                // Otherwise, if postcode and city are present we format as PLZ + Ort as well.
+                const formattedName = [postcode, city].filter(Boolean).join(" ").trim() || item.display_name;
+                
+                return {
+                    name: formattedName,
+                    lat: parseFloat(item.lat),
+                    lng: parseFloat(item.lon),
+                };
+            });
 
     } catch (error) {
         console.error("Error fetching location from Nominatim:", error);

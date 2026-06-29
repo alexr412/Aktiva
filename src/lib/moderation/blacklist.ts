@@ -3,6 +3,8 @@
  * Handles text normalization, username validation, and chat moderation rules.
  */
 
+import { isReservedUsername } from '../reserved-usernames';
+
 // Hard blacklist of usernames that are exact matches or system-reserved terms
 export const USERNAME_BLACKLIST = [
   'admin',
@@ -161,6 +163,11 @@ export function validateUsername(username: string): boolean {
 
   // Check exact system reserves and username blacklist
   if (USERNAME_BLACKLIST.includes(normalized) || USERNAME_BLACKLIST.includes(username.toLowerCase())) {
+    return false;
+  }
+
+  // Check reserved usernames
+  if (isReservedUsername(username)) {
     return false;
   }
 

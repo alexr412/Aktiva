@@ -216,6 +216,7 @@ const mockAdmin = {
 
 // Mock firebase-admin
 mockModule("firebase-admin", mockAdmin);
+mockModule("firebase-admin/firestore", { FieldValue: mockFieldValue });
 
 // ─── FIREBASE FUNCTIONS IN-MEMORY MOCK ────────────────────────────────────────
 

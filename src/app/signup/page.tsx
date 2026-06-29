@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/hooks/use-language';
 import { signUp, signOut, signInWithGoogle, signInWithApple } from '@/lib/firebase/auth';
 import { isUsernameTaken } from '@/lib/firebase/firestore';
@@ -56,7 +56,16 @@ import {
 } from '@/components/ui/dialog';
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupPageContent />
+    </Suspense>
+  );
+}
+
+function SignupPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const language = useLanguage();
   const { toast } = useToast();
   const { user, userProfile, loading: authLoading, setSocialLegalConsentPending } = useAuth();
@@ -76,11 +85,6 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const formSchema = z.object({
-    username: z.string()
-      .min(4, { message: language === 'de' ? 'Mindestens 4 Zeichen.' : 'Minimum 4 characters.' })
-      .max(32, { message: language === 'de' ? 'Maximal 32 Zeichen.' : 'Maximum 32 characters.' })
-      .regex(/^[a-zA-Z0-9._]+$/, { message: language === 'de' ? 'Nur Buchstaben, Zahlen, Punkte und Unterstriche.' : 'Only letters, numbers, dots and underscores.' })
-      .transform(val => val.toLowerCase()),
     email: z.string().email({ message: language === 'de' ? 'Ungültige E-Mail-Adresse.' : 'Invalid email address.' })
       .refine((val) => {
         const domain = val.split('@')[1]?.toLowerCase();
@@ -129,7 +133,6 @@ export default function SignupPage() {
       .regex(/[0-9]/, { message: language === 'de' ? 'Eine Zahl.' : 'One number.' })
       .regex(/[^A-Za-z0-9]/, { message: language === 'de' ? 'Ein Sonderzeichen.' : 'One special character.' }),
     confirmPassword: z.string(),
-    referralCode: z.string().optional(),
     termsAccepted: z.boolean().refine(val => val === true, { message: language === 'de' ? 'Bitte akzeptiere die AGB.' : 'Please accept the Terms of Service.' }),
     useTermsAccepted: z.boolean().refine(val => val === true, { message: language === 'de' ? 'Bitte akzeptiere die Nutzungsbedingungen.' : 'Please accept the Terms of Use.' }),
     privacyAccepted: z.boolean().refine(val => val === true, { message: language === 'de' ? 'Bitte akzeptiere die Datenschutzerklärung.' : 'Please accept the Privacy Policy.' }),
@@ -142,13 +145,11 @@ export default function SignupPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: '',
       email: '',
       fullName: '',
       birthday: '',
       password: '',
       confirmPassword: '',
-      referralCode: '',
       termsAccepted: false,
       useTermsAccepted: false,
       privacyAccepted: false,
@@ -157,11 +158,9 @@ export default function SignupPage() {
   });
 
   const passwordValue = form.watch('password');
-  const usernameValue = form.watch('username') || '';
   const fullNameValue = form.watch('fullName') || '';
   const birthdayValue = form.watch('birthday') || '';
   const emailValue = form.watch('email') || '';
-  const referralCodeValue = form.watch('referralCode') || '';
   const termsAcceptedValue = form.watch('termsAccepted');
   const useTermsAcceptedValue = form.watch('useTermsAccepted');
   const privacyAcceptedValue = form.watch('privacyAccepted');
@@ -198,7 +197,21 @@ export default function SignupPage() {
     if (score === 5) return 'bg-lime-500';
     return 'bg-emerald-500';
   };
-  const isUsernameValid = validateUsername(usernameValue);
+  // E-Mail aus Query-Parameter vorausfüllen falls syntaktisch plausibel
+  useEffect(() => {
+    const emailParam = searchParams.get('email');
+    if (emailParam) {
+      try {
+        const decoded = decodeURIComponent(emailParam).trim();
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (emailRegex.test(decoded) && decoded.length <= 254) {
+          form.setValue('email', decoded, { shouldValidate: true });
+        }
+      } catch (e) {
+        // Ignoriere fehlerhafte URI-Komponenten
+      }
+    }
+  }, [searchParams, form]);
 
   // Bereits eingeloggte Nutzer weiterleiten
   useEffect(() => {
@@ -213,42 +226,6 @@ export default function SignupPage() {
     }
   }, [user, userProfile, authLoading, router]);
 
-  useEffect(() => {
-    if (step !== 4 || usernameValue.length < 4 || usernameValue.length > 32) {
-      if (usernameAvailability !== null) setUsernameAvailability(null);
-      return;
-    }
-
-    if (!isUsernameValid) {
-      setUsernameAvailability('invalid');
-      return;
-    }
-
-    let active = true;
-
-    const checkAvailability = async () => {
-      setIsUsernameChecking(true);
-      try {
-        const isTaken = await isUsernameTaken(usernameValue);
-        if (active) {
-          setUsernameAvailability(isTaken ? 'taken' : 'available');
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        if (active) {
-          setIsUsernameChecking(false);
-        }
-      }
-    };
-
-    const timeoutId = setTimeout(checkAvailability, 600);
-    return () => {
-      active = false;
-      clearTimeout(timeoutId);
-    };
-  }, [usernameValue, step, isUsernameValid]);
-
   const handleStep1Next = async () => {
     const isValid = await form.trigger(['email', 'termsAccepted', 'useTermsAccepted', 'privacyAccepted', 'cookiesAccepted']);
     if (isValid) {
@@ -260,13 +237,6 @@ export default function SignupPage() {
     const isValid = await form.trigger(['password', 'confirmPassword']);
     if (isValid) {
       setStep(3);
-    }
-  };
-
-  const handleStep3Next = async () => {
-    const isValid = await form.trigger(['fullName', 'birthday']);
-    if (isValid) {
-      setStep(4);
     }
   };
 
@@ -479,21 +449,11 @@ export default function SignupPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setSubmitError('');
     try {
-      if (!validateUsername(values.username)) {
-         setSubmitError(language === 'de' ? 'Dieser Benutzername ist nicht erlaubt.' : 'This username is not allowed.');
-         return;
-      }
-      const isTaken = await isUsernameTaken(values.username);
-      if (isTaken) {
-         setSubmitError(language === 'de' ? 'Dieser Username ist leider schon vergeben.' : 'This username is already taken.');
-         return;
-      }
-
       const newUser = await signUp(
         values.fullName, 
         values.email, 
         values.password,
-        values.username,
+        undefined,
         values.birthday
       );
 
@@ -525,25 +485,6 @@ export default function SignupPage() {
         legalLocale: language
       }, { merge: true });
       
-      if (values.referralCode) {
-        try {
-          const { functions: clientFunctions } = await import('@/lib/firebase/client');
-          if (clientFunctions) {
-            const { httpsCallable } = await import('firebase/functions');
-            const applyReferralCodeFn = httpsCallable<{ code: string }, { success: boolean }>(clientFunctions, 'applyReferralCode');
-            await applyReferralCodeFn({ code: values.referralCode });
-            
-          }
-        } catch (refErr: any) {
-          console.error('Failed to apply referral code during signup:', refErr);
-          toast({
-            variant: 'destructive',
-            title: language === 'de' ? 'Referral-Code Fehler' : 'Referral Code Error',
-            description: refErr.message || (language === 'de' ? 'Konnte den Referral-Code nicht anwenden.' : 'Could not apply referral code.'),
-          });
-        }
-      }
-      
       console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
         source: "signup page onSubmit (credentials signup) - signing out for email verification",
         target: "signOut & redirect /login?verification=required",
@@ -569,7 +510,15 @@ export default function SignupPage() {
       } else if (error.code === 'auth/too-many-requests') {
         setSubmitError(language === 'de' ? 'Zu viele Fehlversuche. Bitte versuche es später erneut.' : 'Too many attempts. Please try again later.');
       } else if (error.code === 'auth/network-request-failed') {
-        setSubmitError(language === 'de' ? 'Netzwerkfehler. Bitte überprüfe deine Internetverbindung.' : 'Network error. Please check your internet connection.');
+        const isEmulatorEnabled = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true' || 
+                                  process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true';
+        if (isEmulatorEnabled) {
+          setSubmitError(language === 'de' 
+            ? 'Auth emulator nicht erreichbar. Bitte Emulator starten oder Emulator-Modus deaktivieren.' 
+            : 'Auth emulator not reachable. Please start the emulator or disable emulator mode.');
+        } else {
+          setSubmitError(language === 'de' ? 'Netzwerkfehler. Bitte überprüfe deine Internetverbindung.' : 'Network error. Please check your internet connection.');
+        }
       } else {
         setSubmitError(language === 'de' ? 'Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es später erneut.' : 'An unexpected error occurred. Please try again later.');
       }
@@ -594,13 +543,12 @@ export default function SignupPage() {
           
           <div className="mb-4">
              <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">
-                {language === 'de' ? 'SCHRITT' : 'STEP'} <span className="text-primary">{step}</span> {language === 'de' ? 'VON' : 'OF'} <span className="text-primary">4</span>
+                {language === 'de' ? 'SCHRITT' : 'STEP'} <span className="text-primary">{step}</span> {language === 'de' ? 'VON' : 'OF'} <span className="text-primary">3</span>
              </p>
              <h1 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-neutral-100 font-heading leading-tight">
                 {step === 1 && (language === 'de' ? "Willkommen!" : "Welcome!")}
                 {step === 2 && (language === 'de' ? "Sicherheit" : "Security")}
                 {step === 3 && (language === 'de' ? "Über dich" : "About You")}
-                {step === 4 && "@handle"}
              </h1>
           </div>
           <p className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px]">Connect. Explore. Live.</p>
@@ -898,69 +846,8 @@ export default function SignupPage() {
                   />
                   <div className="pt-4 flex gap-4">
                     <Button type="button" variant="ghost" onClick={() => setStep(2)} className="flex-1 h-14 rounded-full font-black text-slate-400 uppercase tracking-widest text-[11px]">{language === 'de' ? 'ZURÜCK' : 'BACK'}</Button>
-                    <Button type="button" onClick={handleStep3Next} className="flex-[2] h-14 rounded-full font-black uppercase tracking-widest" disabled={fullNameValue.length < 2 || birthdayValue.length !== 10}>{language === 'de' ? 'WEITER' : 'CONTINUE'}</Button>
-                  </div>
-                </motion.div>
-              )}
-
-              {step === 4 && (
-                <motion.div key="step4" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1">
-                        <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">{language === 'de' ? 'Username wählen' : 'Choose Username'}</FormLabel>
-                        <FormControl>
-                          <div className="relative group">
-                            <div className="absolute left-6 top-1/2 -translate-y-1/2">
-                              <span className="text-primary font-black text-lg">@</span>
-                            </div>
-                            <Input 
-                              placeholder="username" 
-                              {...field} 
-                              className={cn(
-                                "h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none",
-                                (usernameAvailability === 'taken' || usernameAvailability === 'invalid') && "focus-visible:ring-rose-500/50"
-                              )} 
-                              onChange={(e) => field.onChange(e.target.value.replace(/\s/g, '').toLowerCase())} 
-                            />
-                            <div className="absolute right-6 top-1/2 -translate-y-1/2">
-                              {isUsernameChecking && <Loader2 className="h-5 w-5 animate-spin text-slate-300" />}
-                              {!isUsernameChecking && usernameAvailability === 'available' && <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
-                              {!isUsernameChecking && (usernameAvailability === 'taken' || usernameAvailability === 'invalid') && <X className="h-5 w-5 text-rose-500" />}
-                            </div>
-                          </div>
-                        </FormControl>
-                        {usernameAvailability === 'taken' && <p className="text-[10px] font-bold text-rose-500 px-1 mt-1">{language === 'de' ? 'Dieser Username ist leider schon vergeben.' : 'This username is already taken.'}</p>}
-                        {usernameAvailability === 'invalid' && <p className="text-[10px] font-bold text-rose-500 px-1 mt-1">{language === 'de' ? 'Dieser Benutzername ist nicht erlaubt.' : 'This username is not allowed.'}</p>}
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="referralCode"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1">
-                        <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">{language === 'de' ? 'Referral-Code (Optional)' : 'Referral Code (Optional)'}</FormLabel>
-                        <FormControl>
-                          <div className="relative group">
-                            <User className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-primary transition-colors z-10" />
-                            <Input 
-                              placeholder="CODE1234" 
-                              {...field} 
-                              className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none uppercase"
-                              onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                            />
-                          </div>
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <div className="pt-4 flex gap-4">
-                    <Button type="button" variant="ghost" onClick={() => setStep(3)} className="flex-1 h-14 rounded-full font-black text-slate-400 uppercase tracking-widest text-[11px]">{language === 'de' ? 'ZURÜCK' : 'BACK'}</Button>
-                    <Button type="submit" className="flex-[2] h-14 rounded-full font-black uppercase tracking-widest" disabled={form.formState.isSubmitting || usernameValue.length < 4 || usernameAvailability !== 'available' || isUsernameChecking}>
-                      {form.formState.isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : (language === 'de' ? "FERTIGSTELLEN" : "FINISH")}
+                    <Button type="submit" className="flex-[2] h-14 rounded-full font-black uppercase tracking-widest" disabled={form.formState.isSubmitting || fullNameValue.length < 2 || birthdayValue.length !== 10}>
+                      {form.formState.isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : (language === 'de' ? "KONTO ERSTELLEN" : "CREATE ACCOUNT")}
                     </Button>
                   </div>
                   {submitError && <p className="text-[10px] font-black text-rose-500 text-center uppercase tracking-widest">{submitError}</p>}

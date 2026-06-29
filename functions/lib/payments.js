@@ -6,6 +6,7 @@ exports.assertBalanceInvariants = assertBalanceInvariants;
 const https_1 = require("firebase-functions/v2/https");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
+const firestore_2 = require("firebase-admin/firestore");
 const StripeModule = require("stripe");
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 /**
@@ -36,7 +37,7 @@ function writeLedgerEntry(transaction, db, entry) {
     const ledgerRef = db.collection("financial_ledger").doc();
     transaction.set(ledgerRef, {
         ...entry,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: firestore_2.FieldValue.serverTimestamp(),
     });
 }
 /**
@@ -60,7 +61,7 @@ async function writeDLQ(db, params) {
     try {
         await db.collection("failed_operations").add({
             ...params,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            timestamp: firestore_2.FieldValue.serverTimestamp(),
         });
     }
     catch (e) {
@@ -123,7 +124,7 @@ async function releaseEscrow(transaction, db, activityData, activityId, hostId, 
     else {
         // Free activity: increment successfulFreeHosts counter
         transaction.update(hostRef, {
-            successfulFreeHosts: admin.firestore.FieldValue.increment(1)
+            successfulFreeHosts: firestore_2.FieldValue.increment(1)
         });
     }
 }
@@ -297,7 +298,7 @@ exports.secureJoinPaidActivity = (0, https_1.onCall)(async (request) => {
             assertBalanceInvariants("secureJoinPaidActivity/host", hostBalances.fiatBalanceCents, newHostEscrow);
             // Add participant to activity
             transaction.update(activityRef, {
-                participantIds: admin.firestore.FieldValue.arrayUnion(uid),
+                participantIds: firestore_2.FieldValue.arrayUnion(uid),
                 [`participantDetails.${uid}`]: {
                     displayName: userData.displayName || "Teilnehmer",
                     photoURL: userData.photoURL || null,
@@ -305,7 +306,7 @@ exports.secureJoinPaidActivity = (0, https_1.onCall)(async (request) => {
                     checkInStatus: "pending",
                     hasReviewed: false
                 },
-                lastInteractionAt: admin.firestore.FieldValue.serverTimestamp()
+                lastInteractionAt: firestore_2.FieldValue.serverTimestamp()
             });
             // Write participant subcollection document
             const pRef = db.collection("activities").doc(activityId).collection("participants").doc(uid);
@@ -314,7 +315,7 @@ exports.secureJoinPaidActivity = (0, https_1.onCall)(async (request) => {
                 displayName: userData.displayName || "Teilnehmer",
                 photoURL: userData.photoURL || null,
                 checkInStatus: "pending",
-                joinedAt: admin.firestore.FieldValue.serverTimestamp(),
+                joinedAt: firestore_2.FieldValue.serverTimestamp(),
                 hasReviewed: false
             });
             // Credit host escrow
@@ -336,13 +337,13 @@ exports.secureJoinPaidActivity = (0, https_1.onCall)(async (request) => {
                 activityId,
                 amount: price,
                 status: "completed",
-                processedAt: admin.firestore.FieldValue.serverTimestamp(),
+                processedAt: firestore_2.FieldValue.serverTimestamp(),
                 expiresAt: idempotencyExpiresAt(),
             });
             // Add user to chat
             const chatRef = db.collection("chats").doc(activityId);
             transaction.update(chatRef, {
-                participantIds: admin.firestore.FieldValue.arrayUnion(uid),
+                participantIds: firestore_2.FieldValue.arrayUnion(uid),
                 [`participantDetails.${uid}`]: {
                     displayName: userData.displayName || "Teilnehmer",
                     photoURL: userData.photoURL || null,
@@ -367,7 +368,7 @@ exports.secureJoinPaidActivity = (0, https_1.onCall)(async (request) => {
             if (referralId && referralId !== uid && referralId !== hostId) {
                 const referrerRef = db.collection("users").doc(referralId);
                 transaction.update(referrerRef, {
-                    successfulReferrals: admin.firestore.FieldValue.increment(1)
+                    successfulReferrals: firestore_2.FieldValue.increment(1)
                 });
             }
             return { success: true };
@@ -388,7 +389,7 @@ exports.secureJoinPaidActivity = (0, https_1.onCall)(async (request) => {
                     currency: stripeCurrency,
                     status: "pending",
                     reason: reason,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: firestore_2.FieldValue.serverTimestamp(),
                 });
                 console.log(`[REFUND] Created refund request for token ${transactionToken} due to ${reason}`);
             }
@@ -490,12 +491,12 @@ exports.secureCompleteActivity = (0, https_1.onCall)(async (request) => {
             // Set status
             transaction.update(activityRef, {
                 status: "completed",
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firestore_2.FieldValue.serverTimestamp(),
             });
             // Decrement place anchor
             if (activityData.placeId && activityData.placeId !== "custom") {
                 const placeRef = db.collection("places").doc(activityData.placeId);
-                transaction.set(placeRef, { activityCount: admin.firestore.FieldValue.increment(-1) }, { merge: true });
+                transaction.set(placeRef, { activityCount: firestore_2.FieldValue.increment(-1) }, { merge: true });
             }
             // Release escrow
             await releaseEscrow(transaction, db, activityData, activityId, uid, operationId, uid, "secureCompleteActivity");
@@ -503,7 +504,7 @@ exports.secureCompleteActivity = (0, https_1.onCall)(async (request) => {
             transaction.set(opRef, {
                 operationType: "complete_activity",
                 activityId,
-                processedAt: admin.firestore.FieldValue.serverTimestamp(),
+                processedAt: firestore_2.FieldValue.serverTimestamp(),
                 expiresAt: idempotencyExpiresAt(),
             });
             return { success: true };
@@ -575,17 +576,17 @@ exports.secureVoteToCompleteActivity = (0, https_1.onCall)(async (request) => {
             const newVotes = [...new Set([...currentVotes, uid])];
             transaction.update(activityRef, {
                 completionVotes: newVotes,
-                lastInteractionAt: admin.firestore.FieldValue.serverTimestamp(),
+                lastInteractionAt: firestore_2.FieldValue.serverTimestamp(),
             });
             const allVoted = participantIds.every((id) => newVotes.includes(id)) && newVotes.length === participantIds.length;
             if (allVoted) {
                 transaction.update(activityRef, {
                     status: "completed",
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firestore_2.FieldValue.serverTimestamp(),
                 });
                 if (activityData.placeId && activityData.placeId !== "custom") {
                     const placeRef = db.collection("places").doc(activityData.placeId);
-                    transaction.set(placeRef, { activityCount: admin.firestore.FieldValue.increment(-1) }, { merge: true });
+                    transaction.set(placeRef, { activityCount: firestore_2.FieldValue.increment(-1) }, { merge: true });
                 }
                 await releaseEscrow(transaction, db, activityData, activityId, activityData.hostId, operationId, uid, "secureVoteToCompleteActivity");
             }
@@ -595,7 +596,7 @@ exports.secureVoteToCompleteActivity = (0, https_1.onCall)(async (request) => {
                 activityId,
                 voterId: uid,
                 allVotedCompleted: allVoted,
-                processedAt: admin.firestore.FieldValue.serverTimestamp(),
+                processedAt: firestore_2.FieldValue.serverTimestamp(),
                 expiresAt: idempotencyExpiresAt(),
             });
             return { success: true, allVoted };
@@ -661,11 +662,11 @@ exports.secureCancelActivity = (0, https_1.onCall)(async (request) => {
             }
             transaction.update(activityRef, {
                 status: "cancelled",
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firestore_2.FieldValue.serverTimestamp(),
             });
             if (activityData.placeId && activityData.placeId !== "custom") {
                 const placeRef = db.collection("places").doc(activityData.placeId);
-                transaction.set(placeRef, { activityCount: admin.firestore.FieldValue.increment(-1) }, { merge: true });
+                transaction.set(placeRef, { activityCount: firestore_2.FieldValue.increment(-1) }, { merge: true });
             }
             if (activityData.isPaid && activityData.price > 0) {
                 const hostRef = db.collection("users").doc(uid);
@@ -699,7 +700,7 @@ exports.secureCancelActivity = (0, https_1.onCall)(async (request) => {
                         amount: activityData.price, // float Euro for UI display
                         amountCents: priceCents,
                         status: "pending",
-                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                        createdAt: firestore_2.FieldValue.serverTimestamp(),
                     });
                     writeLedgerEntry(transaction, db, {
                         operationType: "refund_created",
@@ -719,7 +720,7 @@ exports.secureCancelActivity = (0, https_1.onCall)(async (request) => {
             transaction.set(opRef, {
                 operationType: "cancel_activity",
                 activityId,
-                processedAt: admin.firestore.FieldValue.serverTimestamp(),
+                processedAt: firestore_2.FieldValue.serverTimestamp(),
                 expiresAt: idempotencyExpiresAt(),
             });
             return { success: true };
@@ -796,7 +797,7 @@ exports.secureRequestPayout = (0, https_1.onCall)(async (request) => {
                 amount: amountCents / 100, // Euro for UI display
                 amountCents,
                 status: "pending",
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: firestore_2.FieldValue.serverTimestamp(),
             });
             writeLedgerEntry(transaction, db, {
                 operationType: "payout_request",
@@ -814,7 +815,7 @@ exports.secureRequestPayout = (0, https_1.onCall)(async (request) => {
             transaction.set(opRef, {
                 operationType: "payout_request",
                 amountCents,
-                processedAt: admin.firestore.FieldValue.serverTimestamp(),
+                processedAt: firestore_2.FieldValue.serverTimestamp(),
                 expiresAt: idempotencyExpiresAt(),
             });
             return { success: true, payoutRequestId: payoutRef.id };
@@ -889,8 +890,8 @@ exports.secureLeaveActivity = (0, https_1.onCall)(async (request) => {
             transaction.update(activityRef, {
                 participantIds: updatedParticipantIds,
                 participantsPreview: updatedPreview,
-                [`participantDetails.${uid}`]: admin.firestore.FieldValue.delete(),
-                lastInteractionAt: admin.firestore.FieldValue.serverTimestamp(),
+                [`participantDetails.${uid}`]: firestore_2.FieldValue.delete(),
+                lastInteractionAt: firestore_2.FieldValue.serverTimestamp(),
             });
             // Remove from participant subcollection
             const pRef = db.collection("activities").doc(activityId).collection("participants").doc(uid);
@@ -898,9 +899,9 @@ exports.secureLeaveActivity = (0, https_1.onCall)(async (request) => {
             // Remove from chat
             const chatRef = db.collection("chats").doc(activityId);
             transaction.update(chatRef, {
-                participantIds: admin.firestore.FieldValue.arrayRemove(uid),
-                [`participantDetails.${uid}`]: admin.firestore.FieldValue.delete(),
-                [`unreadCount.${uid}`]: admin.firestore.FieldValue.delete(),
+                participantIds: firestore_2.FieldValue.arrayRemove(uid),
+                [`participantDetails.${uid}`]: firestore_2.FieldValue.delete(),
+                [`unreadCount.${uid}`]: firestore_2.FieldValue.delete(),
             });
             // Handle refund if paid activity
             if (activityData.isPaid && activityData.price > 0) {
@@ -932,7 +933,7 @@ exports.secureLeaveActivity = (0, https_1.onCall)(async (request) => {
                     amount: activityData.price,
                     amountCents: priceCents,
                     status: "pending",
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: firestore_2.FieldValue.serverTimestamp(),
                 });
                 writeLedgerEntry(transaction, db, {
                     operationType: "refund_created",
@@ -952,7 +953,7 @@ exports.secureLeaveActivity = (0, https_1.onCall)(async (request) => {
                 operationType: "leave_activity",
                 activityId,
                 userId: uid,
-                processedAt: admin.firestore.FieldValue.serverTimestamp(),
+                processedAt: firestore_2.FieldValue.serverTimestamp(),
                 expiresAt: idempotencyExpiresAt(),
             });
             return { success: true };
@@ -1024,7 +1025,7 @@ exports.onPayoutRequestUpdated = (0, firestore_1.onDocumentUpdated)("payoutReque
             operationId: `${event.params.requestId}_completed`,
             initiatedBy: "admin",
             executionSource: "onPayoutRequestUpdated",
-            timestamp: admin.firestore.FieldValue.serverTimestamp()
+            timestamp: firestore_2.FieldValue.serverTimestamp()
         });
     }
     return null;
@@ -1052,7 +1053,7 @@ exports.onRefundUpdated = (0, firestore_1.onDocumentUpdated)("refunds/{refundId}
             operationId: `${event.params.refundId}_completed`,
             initiatedBy: "admin",
             executionSource: "onRefundUpdated",
-            timestamp: admin.firestore.FieldValue.serverTimestamp()
+            timestamp: firestore_2.FieldValue.serverTimestamp()
         });
     }
     return null;

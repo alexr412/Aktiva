@@ -53,11 +53,11 @@ import {
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { updateUserProfile, isUsernameTaken } from '@/lib/firebase/firestore';
+import { updateUserProfile, isUsernameTaken, claimUsernameServer } from '@/lib/firebase/firestore';
 import { validateUsername } from '@/lib/moderation/blacklist';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { validateAvatarFile } from '@/lib/avatar-utils';
-import { reverseGeocode } from '@/lib/geoapify';
+import { reverseGeocode, geocodeAddress, formatOnboardingLocationDisplay } from '@/lib/geoapify';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { serverTimestamp } from 'firebase/firestore';
@@ -74,13 +74,14 @@ const profileSchema = z.object({
   affinities: z.record(z.string(), z.number()).default({}),
   photoURL: z.string().nullable().optional(),
   username: z.string().optional(),
+  referralCode: z.string().max(32, { message: 'Referral code too long' }).optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 const onboardingSteps = [
   { id: 1, title: { de: "Wo suchst du?", en: "Where are you?" }, fields: ['location'] },
-  { id: 2, title: { de: "Über dich", en: "About you" }, fields: ['username', 'bio'] },
+  { id: 2, title: { de: "Über dich", en: "About you" }, fields: ['username', 'bio', 'referralCode'] },
   { id: 3, title: { de: "Deine Interessen", en: "Your interests" }, fields: ['interests'] },
   { id: 4, title: { de: "Deine Hobbys", en: "Your Hobbies" }, fields: ['tinderInterests'] },
   { id: 5, title: { de: "Dein Gesicht", en: "Your photo" }, fields: ['photoURL'] }
@@ -194,6 +195,7 @@ function OnboardingContent() {
       affinities: {},
       photoURL: userProfile?.photoURL || null,
       username: userProfile?.username || '',
+      referralCode: '',
     },
   });
 
@@ -268,7 +270,7 @@ function OnboardingContent() {
     }
 
     if (!isUsernameValid) {
-      setUsernameAvailability('invalid');
+      setUsernameAvailability('taken');
       return;
     }
 
@@ -302,6 +304,28 @@ function OnboardingContent() {
         return;
       }
     }
+
+    if (step === 1) {
+      const locationValue = form.getValues('location');
+      if (locationValue && locationValue.trim()) {
+        setIsLocating(true);
+        try {
+          const resolvedPlace = await geocodeAddress(locationValue.trim());
+          if (resolvedPlace) {
+            const formatted = formatOnboardingLocationDisplay(resolvedPlace._rawProperties || resolvedPlace);
+            if (formatted) {
+              form.setValue('location', formatted, { shouldValidate: true, shouldDirty: true });
+              setCoordinates({ lat: resolvedPlace.lat, lng: resolvedPlace.lon });
+            }
+          }
+        } catch (err) {
+          console.error("Geocoding manual input failed:", err);
+        } finally {
+          setIsLocating(false);
+        }
+      }
+    }
+
     if (step === 2 && needsUsername) {
       if (usernameValue.length < 4 || usernameValue.length > 32) {
         form.setError('username', { 
@@ -325,7 +349,7 @@ function OnboardingContent() {
       }
       if (!isUsernameValid) {
         form.setError('username', {
-          message: language === 'de' ? 'Dieser Benutzername ist nicht erlaubt.' : 'This username is not allowed.'
+          message: language === 'de' ? 'Dieser Benutzername ist nicht verfügbar.' : 'This username is not available.'
         });
         setTimeout(() => {
           const element = document.getElementsByName('username')[0];
@@ -335,7 +359,7 @@ function OnboardingContent() {
       }
       if (usernameAvailability === 'taken') {
         form.setError('username', {
-          message: language === 'de' ? 'Dieser Username ist bereits vergeben.' : 'This username is already taken.'
+          message: language === 'de' ? 'Dieser Benutzername ist nicht verfügbar.' : 'This username is not available.'
         });
         setTimeout(() => {
           const element = document.getElementsByName('username')[0];
@@ -345,7 +369,7 @@ function OnboardingContent() {
       }
       if (usernameAvailability === 'invalid') {
         form.setError('username', {
-          message: language === 'de' ? 'Dieser Benutzername ist ungültig.' : 'This username is invalid.'
+          message: language === 'de' ? 'Dieser Benutzername ist nicht verfügbar.' : 'This username is not available.'
         });
         setTimeout(() => {
           const element = document.getElementsByName('username')[0];
@@ -360,7 +384,7 @@ function OnboardingContent() {
           if (isTaken) {
             setUsernameAvailability('taken');
             form.setError('username', {
-              message: language === 'de' ? 'Dieser Username ist bereits vergeben.' : 'This username is already taken.'
+              message: language === 'de' ? 'Dieser Benutzername ist nicht verfügbar.' : 'This username is not available.'
             });
             setTimeout(() => {
               const element = document.getElementsByName('username')[0];
@@ -458,7 +482,7 @@ function OnboardingContent() {
           const { latitude, longitude } = position.coords;
           const result = await reverseGeocode(latitude, longitude);
           if (result) {
-            const cityName = result.address?.split(',')[0] || result.name || "";
+            const cityName = formatOnboardingLocationDisplay(result._rawProperties || result);
             form.setValue('location', cityName, { shouldValidate: true, shouldDirty: true });
             setCoordinates({ lat: latitude, lng: longitude });
             toast({
@@ -527,7 +551,7 @@ function OnboardingContent() {
         const isTaken = await isUsernameTaken(usernameVal);
         if (isTaken) {
           form.setError('username', {
-            message: language === 'de' ? 'Dieser Username ist bereits vergeben.' : 'This username is already taken.'
+            message: language === 'de' ? 'Dieser Benutzername ist nicht verfügbar.' : 'This username is not available.'
           });
           setStep(2);
           setTimeout(() => {
@@ -571,7 +595,21 @@ function OnboardingContent() {
       };
 
       if (needsUsername && data.username) {
-        updateData.username = data.username.toLowerCase();
+        try {
+          await claimUsernameServer(data.username);
+        } catch (claimErr: any) {
+          console.error('Failed to claim username:', claimErr);
+          form.setError('username', {
+            message: language === 'de' ? 'Dieser Benutzername ist nicht verfügbar.' : 'This username is not available.'
+          });
+          setStep(2);
+          setTimeout(() => {
+            const el = document.getElementsByName('username')[0];
+            if (el) (el as any).focus();
+          }, 10);
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       if (coordinates) {
@@ -584,6 +622,24 @@ function OnboardingContent() {
       }
 
       await updateUserProfile(user.uid, updateData);
+
+      if (data.referralCode && data.referralCode.trim()) {
+        try {
+          const { functions: clientFunctions } = await import('@/lib/firebase/client');
+          if (clientFunctions) {
+            const { httpsCallable } = await import('firebase/functions');
+            const applyReferralCodeFn = httpsCallable<{ code: string }, { success: boolean }>(clientFunctions, 'applyReferralCode');
+            await applyReferralCodeFn({ code: data.referralCode.trim() });
+          }
+        } catch (refErr: any) {
+          console.error('Failed to apply referral code during onboarding:', refErr);
+          toast({
+            variant: 'destructive',
+            title: language === 'de' ? 'Referral-Code Fehler' : 'Referral Code Error',
+            description: refErr.message || (language === 'de' ? 'Konnte den Referral-Code nicht anwenden.' : 'Could not apply referral code.'),
+          });
+        }
+      }
 
       toast({
         title: language === 'de' ? "Willkommen!" : "Welcome!",
@@ -749,58 +805,94 @@ function OnboardingContent() {
                   {step === 2 && (
                     <div className="space-y-6">
                       {needsUsername && (
-                        <FormField
-                          control={form.control}
-                          name="username"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-[11px] font-black uppercase tracking-widest text-primary">
-                                {language === 'de' ? "Dein @name" : "Your @name"}
-                              </FormLabel>
-                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed mb-1">
-                                {language === 'de'
-                                  ? "So können dich Freunde finden."
-                                  : "How friends can find you."}
-                              </div>
-                              <FormControl>
-                                <div className="relative group">
-                                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black pointer-events-none">@</span>
-                                  <Input
-                                    placeholder={language === 'de' ? "benutzername" : "username"}
-                                    {...field}
-                                    onChange={(e) => {
-                                      const val = e.target.value.toLowerCase().replace(/\s+/g, '');
-                                      field.onChange(val);
-                                      if (form.formState.errors.username) {
-                                        form.clearErrors('username');
-                                      }
-                                    }}
-                                    className={cn(
-                                      "h-16 pl-16 pr-14 rounded-full border-none bg-slate-50 font-black focus-visible:ring-0",
-                                      usernameAvailability === 'available' && "focus-visible:ring-2 focus-visible:ring-emerald-500",
-                                      usernameAvailability === 'taken' && "focus-visible:ring-2 focus-visible:ring-red-500"
-                                    )}
-                                  />
-                                  <div className="absolute right-5 top-1/2 -translate-y-1/2" aria-live="polite">
-                                    {isUsernameChecking && (
-                                      <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
-                                    )}
-                                    {!isUsernameChecking && usernameAvailability === 'available' && (
-                                      <span className="text-xs font-black uppercase text-emerald-500">{language === 'de' ? 'Frei' : 'Available'}</span>
-                                    )}
-                                    {!isUsernameChecking && usernameAvailability === 'taken' && (
-                                      <span className="text-xs font-black uppercase text-red-500">{language === 'de' ? 'Vergeben' : 'Taken'}</span>
-                                    )}
-                                    {!isUsernameChecking && usernameAvailability === 'invalid' && (
-                                      <span className="text-xs font-black uppercase text-red-500">{language === 'de' ? 'Ungültig' : 'Invalid'}</span>
-                                    )}
-                                  </div>
+                        <>
+                          <FormField
+                            control={form.control}
+                            name="username"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-[11px] font-black uppercase tracking-widest text-primary">
+                                  {language === 'de' ? "Dein @name" : "Your @name"}
+                                </FormLabel>
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed mb-1">
+                                  {language === 'de'
+                                    ? "So können dich Freunde finden."
+                                    : "How friends can find you."}
                                 </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                                <FormControl>
+                                  <div className="relative group">
+                                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black pointer-events-none">@</span>
+                                    <Input
+                                      placeholder={language === 'de' ? "benutzername" : "username"}
+                                      {...field}
+                                      onChange={(e) => {
+                                        const val = e.target.value.toLowerCase().replace(/\s+/g, '');
+                                        field.onChange(val);
+                                        if (form.formState.errors.username) {
+                                          form.clearErrors('username');
+                                        }
+                                      }}
+                                      className={cn(
+                                        "h-16 pl-16 pr-14 rounded-full border-none bg-slate-50 font-black focus-visible:ring-0",
+                                        usernameAvailability === 'available' && "focus-visible:ring-2 focus-visible:ring-emerald-500",
+                                        usernameAvailability === 'taken' && "focus-visible:ring-2 focus-visible:ring-red-500"
+                                      )}
+                                    />
+                                    <div className="absolute right-5 top-1/2 -translate-y-1/2" aria-live="polite">
+                                      {isUsernameChecking && (
+                                        <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+                                      )}
+                                      {!isUsernameChecking && usernameAvailability === 'available' && (
+                                        <span className="text-xs font-black uppercase text-emerald-500">{language === 'de' ? 'Frei' : 'Available'}</span>
+                                      )}
+                                      {!isUsernameChecking && usernameAvailability === 'taken' && (
+                                        <span className="text-xs font-black uppercase text-red-500">{language === 'de' ? 'Vergeben' : 'Taken'}</span>
+                                      )}
+                                      {!isUsernameChecking && usernameAvailability === 'invalid' && (
+                                        <span className="text-xs font-black uppercase text-red-500">{language === 'de' ? 'Vergeben' : 'Taken'}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="referralCode"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel htmlFor="onboarding-referral" className="text-[11px] font-black uppercase tracking-widest text-primary">
+                                  {language === 'de' ? "Referral-Code (Optional)" : "Referral Code (Optional)"}
+                                </FormLabel>
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed mb-1">
+                                  {language === 'de'
+                                    ? "Falls dich ein Freund eingeladen hat."
+                                    : "If a friend invited you."}
+                                </div>
+                                <FormControl>
+                                  <div className="relative group">
+                                    <User className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
+                                    <Input
+                                      id="onboarding-referral"
+                                      placeholder="CODE1234"
+                                      {...field}
+                                      maxLength={32}
+                                      onChange={(e) => {
+                                        const val = e.target.value.toUpperCase().replace(/\s+/g, '');
+                                        field.onChange(val);
+                                      }}
+                                      className="h-16 pl-14 rounded-full border-none bg-slate-50 font-black focus-visible:ring-0 uppercase"
+                                    />
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
                       )}
 
                       <FormField

@@ -3,11 +3,12 @@ import * as admin from '../functions/node_modules/firebase-admin';
 // Configure admin SDK to connect to emulators
 process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
 process.env.FIREBASE_STORAGE_EMULATOR_HOST = '127.0.0.1:9199';
-process.env.GCLOUD_PROJECT = 'aktiva-rules-test';
+process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099';
+process.env.GCLOUD_PROJECT = 'activa-444220';
 
 // Initialize firebase admin SDK
 admin.initializeApp({
-  storageBucket: 'aktiva-rules-test.appspot.com'
+  storageBucket: 'activa-444220.firebasestorage.app'
 });
 
 async function runTests() {
@@ -180,11 +181,47 @@ async function runTests() {
 
   console.log('Seed completed successfully.');
 
-  console.log('\n--- 3. Running onUserDeleted trigger ---');
-  await onUserDeleted.run({ uid: userId } as any, {} as any);
+  console.log('\n--- 3. Running real Auth Trigger via Auth User Deletion ---');
+  // Create user in Auth emulator first
+  try {
+    await admin.auth().createUser({
+      uid: userId,
+      email: 'test_user@example.com',
+      displayName: 'Test User'
+    });
+    console.log('Auth user created in emulator.');
+  } catch (err) {
+    try { await admin.auth().deleteUser(userId); } catch (e) {}
+    await admin.auth().createUser({
+      uid: userId,
+      email: 'test_user@example.com',
+      displayName: 'Test User'
+    });
+  }
+
+  // Delete user from Auth emulator, firing the onUserDeleted background trigger in Functions emulator
+  await admin.auth().deleteUser(userId);
+  console.log('Auth user deleted. Waiting up to 30 seconds for background cascading trigger to run...');
+
+  let testsPassed = true;
+  let triggerRanSuccessfully = false;
+  
+  for (let i = 0; i < 30; i++) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      triggerRanSuccessfully = true;
+      console.log(`Trigger completed and deleted the Firestore user document after ${i + 1} seconds.`);
+      break;
+    }
+  }
+
+  if (!triggerRanSuccessfully) {
+    console.error('❌ [FAIL] Auth onDelete trigger did not run or fail to delete user document within 30s');
+    testsPassed = false;
+  }
 
   console.log('\n--- 4. Verifying results ---');
-  let testsPassed = true;
 
   const assert = (condition: boolean, message: string) => {
     if (condition) {

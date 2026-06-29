@@ -64,6 +64,15 @@ function LoginPageContent() {
 
   const searchParams = useSearchParams();
 
+  const handleNavigateToSignup = () => {
+    const currentEmail = form.getValues('email')?.trim();
+    if (currentEmail) {
+      router.push(`/signup?email=${encodeURIComponent(currentEmail)}`);
+    } else {
+      router.push('/signup');
+    }
+  };
+
   useEffect(() => {
     const isDev = process.env.NODE_ENV === 'development';
     if (isDev && typeof window !== 'undefined') {
@@ -135,22 +144,36 @@ function LoginPageContent() {
       let loginEmail = values.email.trim();
 
       if (!loginEmail.includes('@')) {
-        if (!db) throw new Error("Database not initialized");
-        const usersRef = collection(db, 'users');
-        // Search exact username
-        const q = query(usersRef, where('username', '==', loginEmail));
-        const querySnapshot = await getDocs(q);
+        const { httpsCallable } = await import('firebase/functions');
+        const { functions: clientFunctions } = await import('@/lib/firebase/client');
+        if (!clientFunctions) throw new Error("Functions not initialized");
         
-        if (querySnapshot.empty) {
-          // Fallback check: maybe it's saved in lowercase or some other way, but mostly exact match.
+        const resolveFn = httpsCallable<{ username: string }, { email: string | null }>(
+          clientFunctions, 
+          'resolveLoginIdentifier'
+        );
+        let res;
+        try {
+          res = await resolveFn({ username: loginEmail });
+        } catch (fnErr: any) {
+          const isEmulatorEnabled = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true' || 
+                                    process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true';
+          const isNetworkError = fnErr.message?.includes('fetch') || 
+                                 fnErr.message?.includes('Network') ||
+                                 fnErr.message?.includes('Failed to fetch') ||
+                                 fnErr.code === 'internal' ||
+                                 fnErr.code === 'functions/internal';
+          if (isEmulatorEnabled && isNetworkError) {
+            console.error("Functions emulator not reachable:", fnErr);
+            throw new Error('functions-emulator-not-reachable');
+          }
+          throw fnErr;
+        }
+        
+        if (!res.data || !res.data.email) {
           throw new Error('auth/user-not-found');
         }
-        
-        const userData = querySnapshot.docs[0].data();
-        if (!userData.email) {
-           throw new Error('auth/user-not-found');
-        }
-        loginEmail = userData.email;
+        loginEmail = res.data.email;
       }
 
       const user = await signIn(loginEmail, values.password);
@@ -219,19 +242,23 @@ function LoginPageContent() {
         router.push('/onboarding');
       }
     } catch (error: any) {
-      console.error(error);
-      let errorMessage = language === 'de' ? 'Ein unerwarteter Fehler ist aufgetreten.' : 'An unexpected error occurred.';
+      if (process.env.NODE_ENV === "development") console.error(error);
+      let errorMessage = language === 'de' ? 'Prüfe E-Mail und Passwort.' : 'Check email and password.';
+      const isEmulatorEnabled = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true' || 
+                                process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true';
 
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        errorMessage = language === 'de' ? 'E-Mail oder Passwort ist falsch.' : 'Invalid email or password.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = language === 'de' ? 'Die E-Mail-Adresse ist ungültig.' : 'The email address is invalid.';
+      if (error.message === 'functions-emulator-not-reachable') {
+        errorMessage = language === 'de' 
+          ? 'Functions emulator nicht erreichbar. Bitte Emulator starten oder Emulator-Modus deaktivieren.' 
+          : 'Functions emulator not reachable. Please start the emulator or disable emulator mode.';
+      } else if (error.code === 'auth/network-request-failed' && isEmulatorEnabled) {
+        errorMessage = language === 'de' 
+          ? 'Auth emulator nicht erreichbar. Bitte Emulator starten oder Emulator-Modus deaktivieren.' 
+          : 'Auth emulator not reachable. Please start the emulator or disable emulator mode.';
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = language === 'de' ? 'Zu viele Fehlversuche. Bitte versuche es später erneut.' : 'Too many attempts. Please try again later.';
       } else if (error.message && error.message.includes(language === 'de' ? "Zugriff verweigert" : "Access Denied")) {
         errorMessage = error.message;
-      } else if (error.message === 'auth/user-not-found') {
-        errorMessage = language === 'de' ? 'Benutzername oder E-Mail wurde nicht gefunden.' : 'Username or email not found.';
       }
 
       setLoginError({
@@ -483,43 +510,43 @@ function LoginPageContent() {
 
 
   return (
-    <main className="min-h-screen w-full bg-white dark:bg-neutral-950 flex flex-col items-center justify-center p-6 antialiased">
+    <main className="min-h-dvh w-full bg-white dark:bg-neutral-950 flex flex-col items-center justify-start sm:justify-center px-4 py-8 sm:py-12 antialiased overflow-y-auto">
       
-      <div className="w-full max-w-[400px] flex flex-col items-center relative z-10">
+      <div className="w-full max-w-[400px] flex flex-col items-center relative z-10 my-auto">
         
         {/* Logo Section */}
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-16 text-center"
+          className="mb-8 sm:mb-12 text-center"
         >
-          <div className="flex items-center justify-center gap-2 mb-10">
-              <MapPin className="w-10 h-10 text-primary" />
-              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">aktiva<span className="text-primary">.</span></h1>
+          <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
+              <MapPin className="w-9 h-9 sm:w-10 sm:h-10 text-primary" />
+              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">aktiva<span className="text-primary">.</span></h1>
           </div>
-          <h1 className="text-3xl font-black tracking-tighter text-slate-900 dark:text-neutral-100 font-heading leading-tight mb-2">EXPLORE MORE</h1>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tighter text-slate-900 dark:text-neutral-100 font-heading leading-tight mb-2">EXPLORE MORE</h1>
           <p className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px]">Connect. Explore. Live.</p>
         </motion.div>
 
         {/* Form */}
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="w-full space-y-6 sm:space-y-8">
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem className="space-y-1">
                   <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
-                    {language === 'de' ? 'Email oder Username' : 'Email or Username'}
+                    {language === 'de' ? 'E-Mail' : 'Email'}
                   </FormLabel>
                   <FormControl>
                     <div className="relative group">
                       <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-primary transition-colors z-10" />
                       <Input 
-                        placeholder={language === 'de' ? 'E-Mail / Benutzername' : 'Email / Username'} 
+                        placeholder={language === 'de' ? 'E-Mail-Adresse' : 'Email address'} 
                         autoComplete="username"
                         {...field} 
-                        className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm tracking-wider shadow-none" 
+                        className="h-14 sm:h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm tracking-wider shadow-none" 
                       />
                     </div>
                   </FormControl>
@@ -554,7 +581,7 @@ function LoginPageContent() {
                         placeholder="••••••••" 
                         autoComplete="current-password"
                         {...field} 
-                        className="h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" 
+                        className="h-14 sm:h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" 
                       />
                       <button 
                         type="button"
@@ -571,35 +598,63 @@ function LoginPageContent() {
               )}
             />
 
-            {/* Inline Error Alert */}
+            {/* Inline Error Alert & Prominent Signup CTA */}
             {loginError && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className={cn(
-                  "p-4 rounded-3xl flex items-start gap-3 text-sm font-bold transition-all border",
-                  loginError.variant === 'error'
-                    ? "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100/50 dark:border-rose-950/50"
-                    : "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-950/50"
+              <div className="space-y-3 sm:space-y-4 w-full">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className={cn(
+                    "p-4 rounded-3xl flex items-start gap-3 text-sm font-bold transition-all border",
+                    loginError.variant === 'error'
+                      ? "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100/50 dark:border-rose-950/50"
+                      : "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-950/50"
+                  )}
+                >
+                  {loginError.variant === 'error' ? (
+                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                  ) : (
+                    <Mail className="w-5 h-5 shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1 space-y-1 text-left">
+                    <p className="font-black uppercase tracking-wider text-xs">
+                      {loginError.title}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-neutral-400 font-medium leading-relaxed">
+                      {loginError.description}
+                    </p>
+                  </div>
+                </motion.div>
+
+                {loginError.variant === 'error' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 sm:p-5 rounded-3xl bg-zinc-100/80 dark:bg-neutral-900/50 border border-slate-200/60 dark:border-neutral-800/60 text-left space-y-3 shadow-sm"
+                  >
+                    <div className="space-y-1">
+                      <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                        {language === 'de' ? 'Noch kein Konto?' : 'No account yet?'}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-neutral-400 font-medium leading-relaxed">
+                        {language === 'de' 
+                          ? 'Erstelle dein Konto in wenigen Sekunden und finde Aktivitäten in deiner Nähe.' 
+                          : 'Create your account in seconds and find activities near you.'}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleNavigateToSignup}
+                      className="w-full h-11 sm:h-12 text-xs font-black rounded-full transition-all active:scale-[0.98] uppercase tracking-widest bg-primary text-white hover:bg-primary/90 shadow-none border-none"
+                    >
+                      {language === 'de' ? 'Konto erstellen' : 'Create account'}
+                    </Button>
+                  </motion.div>
                 )}
-              >
-                {loginError.variant === 'error' ? (
-                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                ) : (
-                  <Mail className="w-5 h-5 shrink-0 mt-0.5" />
-                )}
-                <div className="flex-1 space-y-1 text-left">
-                  <p className="font-black uppercase tracking-wider text-xs">
-                    {loginError.title}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-neutral-400 font-medium leading-relaxed">
-                    {loginError.description}
-                  </p>
-                </div>
-              </motion.div>
+              </div>
             )}
 
-            <div className="pt-4">
+            <div className="pt-2 sm:pt-4">
               <Button 
                 type="submit" 
                 className="w-full h-14 text-base font-black rounded-full transition-all active:scale-[0.98] uppercase tracking-widest !shadow-none !border-none" 
@@ -608,7 +663,7 @@ function LoginPageContent() {
                 {isLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin" />
                 ) : (
-                  language === 'de' ? 'Anmelden' : 'Sign in'
+                  language === 'de' ? 'Einloggen' : 'Sign in'
                 )}
               </Button>
             </div>
@@ -616,7 +671,7 @@ function LoginPageContent() {
         </Form>
 
         {/* Separator */}
-        <div className="w-full flex items-center gap-4 my-10 px-4">
+        <div className="w-full flex items-center gap-4 my-6 sm:my-8 px-4">
           <div className="flex-1 h-[1px] bg-slate-100 dark:bg-neutral-900" />
           <span className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">{language === 'de' ? 'Oder' : 'Or'}</span>
           <div className="flex-1 h-[1px] bg-slate-100 dark:bg-neutral-900" />
@@ -628,7 +683,7 @@ function LoginPageContent() {
             variant="outline" 
             onClick={handleAppleSignIn}
             disabled={isLoading}
-            className="h-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 text-slate-900 dark:text-white font-black text-[11px] uppercase tracking-widest hover:bg-zinc-200 dark:hover:bg-neutral-800 transition-all shadow-none flex items-center justify-center"
+            className="h-12 sm:h-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 text-slate-900 dark:text-white font-black text-[11px] uppercase tracking-widest hover:bg-zinc-200 dark:hover:bg-neutral-800 transition-all shadow-none flex items-center justify-center"
           >
             <svg className="w-4 h-4 mr-2 shrink-0" viewBox="0 0 384 512">
               <path fill="currentColor" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
@@ -639,7 +694,7 @@ function LoginPageContent() {
             variant="outline" 
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="h-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 text-slate-900 dark:text-white font-black text-[11px] uppercase tracking-widest hover:bg-zinc-200 dark:hover:bg-neutral-800 transition-all shadow-none flex items-center justify-center"
+            className="h-12 sm:h-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 text-slate-900 dark:text-white font-black text-[11px] uppercase tracking-widest hover:bg-zinc-200 dark:hover:bg-neutral-800 transition-all shadow-none flex items-center justify-center"
           >
             <svg className="w-4 h-4 mr-2 shrink-0" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -653,20 +708,20 @@ function LoginPageContent() {
 
 
         {/* Footer */}
-        <div className="mt-16 text-center">
-          <p className="text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-            {language === 'de' ? 'Neu hier?' : 'New here?'} 
-            <button 
-              onClick={() => {
-                
-                router.push('/signup');
-              }}
-              className="text-primary ml-2 hover:underline underline-offset-4 font-black"
-            >
-              {language === 'de' ? 'Registrieren' : 'Sign up'}
-            </button>
-          </p>
-        </div>
+        {(!loginError || loginError.variant !== 'error') && (
+          <div className="mt-8 sm:mt-12 text-center pb-4">
+            <p className="text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+              {language === 'de' ? 'Noch kein Konto?' : 'No account yet?'} 
+              <button 
+                type="button"
+                onClick={handleNavigateToSignup}
+                className="text-primary ml-2 hover:underline underline-offset-4 font-black"
+              >
+                {language === 'de' ? 'Konto erstellen' : 'Create account'}
+              </button>
+            </p>
+          </div>
+        )}
 
       </div>
 

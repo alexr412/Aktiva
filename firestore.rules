@@ -242,7 +242,8 @@ service cloud.firestore {
         'isPremium', 'isSupporter', 'isCreator', 'premiumEntitlements', 'successfulReferrals', 'blacklist',
         'emailVerificationRequired', 'emailVerificationProvider', 'emailVerificationReason', 
         'emailVerificationCreatedAt', 'emailVerifiedAt', 'verificationEmailLastSentAt',
-        'pointsBalance', 'pointsLifetime', 'level', 'referralCode', 'referredBy'
+        'pointsBalance', 'pointsLifetime', 'level', 'referralCode', 'referredBy',
+        'username', 'usernameLowercase', 'usernameLastChangedAt', 'usernameChangeHistory'
       ];
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(systemFields) &&
         (
@@ -383,6 +384,10 @@ service cloud.firestore {
         (!('level' in request.resource.data) || request.resource.data.level == 1) &&
         (!('referralCode' in request.resource.data)) &&
         (!('referredBy' in request.resource.data)) &&
+        (!('username' in request.resource.data)) &&
+        (!('usernameLowercase' in request.resource.data)) &&
+        (!('usernameLastChangedAt' in request.resource.data)) &&
+        (!('usernameChangeHistory' in request.resource.data)) &&
         validateOwnerUpdate();
       allow update: if (isOwner(userId) && hasNoSystemFieldChanges() && validateOwnerUpdate()) || 
                        (!isOwner(userId) && isAllowedSocialUpdate(userId)) || 
@@ -402,6 +407,13 @@ service cloud.firestore {
 
     match /referralCodes/{code} {
       allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Username lock collection — managed exclusively by Cloud Functions / Admin SDK.
+    // Prevents client-side creation, update, or deletion of username locks.
+    match /usernames/{usernameLower} {
+      allow read: if false;
       allow write: if false;
     }
 

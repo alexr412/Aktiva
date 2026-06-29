@@ -13,9 +13,11 @@
     "test:ranking": "npx tsx src/lib/ranking.test.ts",
     "test:duplicate": "npx tsx src/lib/duplicate-detector.test.ts",
     "test:moderation": "npx tsx src/lib/moderation/moderation.test.ts",
+    "test:reserved": "npx tsx src/lib/reserved-usernames.test.ts",
     "test:backend": "npm --prefix functions run test",
     "test:rules": "npx firebase-tools emulators:exec --only firestore,storage \"npx tsx firestore.rules.test.ts\"",
-    "test:all": "npm run test:ranking && npm run test:duplicate && npm run test:moderation && npm run test:backend"
+    "emulators": "npx firebase-tools emulators:start --only auth,firestore,functions,storage",
+    "test:all": "npm run test:ranking && npm run test:duplicate && npm run test:moderation && npm run test:reserved && npm run test:backend"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.28.0",

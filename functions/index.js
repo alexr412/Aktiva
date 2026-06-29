@@ -1,3 +1,9 @@
+// Stub functions.config() for compatibility with older dependencies in firebase-functions v7+
+const functionsPkg = require("firebase-functions");
+if (typeof functionsPkg.config !== 'function') {
+  functionsPkg.config = () => ({});
+}
+
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
@@ -192,7 +198,9 @@ exports.processReferralOnboardingCompletion = users.processReferralOnboardingCom
 exports.getPublicProfile = users.getPublicProfile;
 exports.searchUserByUsername = users.searchUserByUsername;
 exports.checkUsernameAvailability = users.checkUsernameAvailability;
+exports.claimUsername = users.claimUsername;
 exports.earnToken = users.earnToken;
+exports.resolveLoginIdentifier = users.resolveLoginIdentifier;
 
 // Aktiva Points & Referrals Activities Triggers
 const activities = require('./lib/activities');
