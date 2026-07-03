@@ -11,6 +11,8 @@ import type { Activity, Place, ActivityCategory } from '@/lib/types';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Compass, X, Check, Info, MapPin, Star, PlusCircle, Plus, RefreshCw, ChevronDown, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
@@ -50,6 +52,13 @@ export default function ExplorePage() {
     const [lastSwipedCard, setLastSwipedCard] = useState<Activity | null>(null);
     const [selectedPlace, setSelectedPlace] = useState<Activity | null>(null);
     const [swipedIds, setSwipedIds] = useState<Set<string>>(new Set());
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 640);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     const resetFilters = () => {
         setActiveCategory(['all']);
@@ -313,9 +322,13 @@ export default function ExplorePage() {
                 return;
             }
 
-             joinActivity(topCardId, user)
-                .then(() => {
-                    toast({ title: language === 'de' ? 'Aktivität beigetreten!' : 'Activity joined!', description: language === 'de' ? 'Du findest sie jetzt in deinen Chats.' : 'You can find it in your chats now.' });
+             joinActivity(topCardId, user, null, null, topCard.joinMode)
+                .then((status) => {
+                    if (status === 'requested') {
+                        toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
+                    } else {
+                        toast({ title: language === 'de' ? 'Aktivität beigetreten!' : 'Activity joined!', description: language === 'de' ? 'Du findest sie jetzt in deinen Chats.' : 'You can find it in your chats now.' });
+                    }
                     setTimeout(removeCard, 200);
                 })
                 .catch((error) => {
@@ -345,7 +358,7 @@ export default function ExplorePage() {
     const [dragX, setDragX] = useState(0);
 
     return (
-        <div className="flex h-[100dvh] flex-col lg:flex-row bg-[#fdfdfd] dark:bg-neutral-950 overflow-hidden font-jakarta">
+        <div className="flex h-full pb-bottom-nav-safe lg:pb-0 flex-col lg:flex-row bg-[#fdfdfd] dark:bg-neutral-950 overflow-hidden font-jakarta">
             {/* Desktop Sidebar */}
             <aside className="hidden lg:flex w-[320px] shrink-0 border-r border-slate-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 flex-col overflow-y-auto">
                 <div className="p-8 space-y-12">
@@ -633,7 +646,7 @@ export default function ExplorePage() {
                                                       )}
 
                                                       <div className="absolute inset-x-0 bottom-0 p-6 pb-8 pt-24 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10 pointer-events-none">
-                                                          <h2 className="text-white font-black drop-shadow-md">{card.placeName}</h2>
+                                                          <h2 className="text-white font-black drop-shadow-md">{card.title || card.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}</h2>
                                                           <div className="flex items-center gap-2 text-white/90 font-bold mt-1">
                                                               <MapPin className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
                                                               <p className="text-[12px] truncate tracking-wide">{card.placeAddress || (language === 'de' ? 'In deiner Umgebung' : 'In your area')}</p>
@@ -745,7 +758,7 @@ export default function ExplorePage() {
 
                     {/* Floating Action Buttons */}
                     {cards.length > 0 && !isLoading && (
-                        <div className="absolute bottom-[calc(76px+env(safe-area-inset-bottom,0px)+1.25rem)] left-0 right-0 z-[150] flex items-center justify-center gap-6 pointer-events-none">
+                        <div className="absolute bottom-5 left-0 right-0 z-sticky flex items-center justify-center gap-6 pointer-events-none">
                             <motion.div 
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
@@ -790,16 +803,60 @@ export default function ExplorePage() {
             </main>
 
             {/* Place Details Overlay */}
-            {selectedPlace && (
-                <PlaceDetails
-                    place={selectedPlace as any}
-                    onClose={() => setSelectedPlace(null)}
-                    onCreateActivity={() => {
-                        setActivityModalPlace(selectedPlace as any);
-                        setSelectedPlace(null);
-                    }}
-                />
-            )}
+            {(() => {
+                if (!selectedPlace) return null;
+                const mappedPlace = {
+                    id: selectedPlace.placeId || selectedPlace.id || '',
+                    name: selectedPlace.placeName || (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'),
+                    address: selectedPlace.placeAddress || '',
+                    lat: selectedPlace.lat || 0,
+                    lon: selectedPlace.lon || 0,
+                    categories: selectedPlace.categories || [],
+                    distance: (userLocation && selectedPlace.lat && selectedPlace.lon) 
+                      ? calculateDistance(userLocation.lat, userLocation.lng, selectedPlace.lat, selectedPlace.lon)
+                      : undefined,
+                    openingHours: (selectedPlace as any).openingHours || null
+                } as Place;
+
+                if (isMobile) {
+                    return (
+                        <Sheet open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
+                            <SheetContent side="bottom" className="p-0 h-[92vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none bg-white dark:bg-neutral-900">
+                                <SheetHeader className="sr-only">
+                                    <SheetTitle>{mappedPlace.name}</SheetTitle>
+                                </SheetHeader>
+                                <div className="h-full w-full">
+                                    <PlaceDetails
+                                        place={mappedPlace}
+                                        onClose={() => setSelectedPlace(null)}
+                                        onCreateActivity={() => {
+                                            setActivityModalPlace(mappedPlace);
+                                            setSelectedPlace(null);
+                                        }}
+                                    />
+                                </div>
+                            </SheetContent>
+                        </Sheet>
+                    );
+                } else {
+                    return (
+                        <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
+                            <DialogContent className="p-0 w-full max-w-4xl max-h-[92vh] gap-0 overflow-hidden border-none outline-none dark:bg-neutral-900">
+                                <DialogTitle className="sr-only">{mappedPlace.name || (language === 'de' ? 'Ort Details' : 'Place Details')}</DialogTitle>
+                                <DialogDescription className="sr-only">{language === 'de' ? 'Details zum ausgewählten Ort' : 'Details about the selected place'}</DialogDescription>
+                                <PlaceDetails
+                                    place={mappedPlace}
+                                    onClose={() => setSelectedPlace(null)}
+                                    onCreateActivity={() => {
+                                        setActivityModalPlace(mappedPlace);
+                                        setSelectedPlace(null);
+                                    }}
+                                />
+                            </DialogContent>
+                        </Dialog>
+                    );
+                }
+            })()}
 
             <CreateActivityDialog 
                 place={activityModalPlace === 'custom' ? null : activityModalPlace} 

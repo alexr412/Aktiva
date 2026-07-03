@@ -977,6 +977,33 @@ export const secureRequestPayout = onCall(async (request) => {
 /**
  * Server-authoritative leave activity.
  * Handles refunds for paid activities atomically with escrow correction.
+/**
+ * Helper to delete a collection or subcollection in batches of 100 docs.
+ */
+async function deleteCollectionInBatches(
+  db: admin.firestore.Firestore,
+  collectionRef: admin.firestore.CollectionReference,
+  batchSize = 100
+): Promise<void> {
+  let hasMore = true;
+  while (hasMore) {
+    const snap = await collectionRef.limit(batchSize).get();
+    if (snap.empty) {
+      hasMore = false;
+      break;
+    }
+    const batch = db.batch();
+    snap.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+    if (snap.size < batchSize) {
+      hasMore = false;
+    }
+  }
+}
+
+/**
  * State-machine lock: cannot leave completed or cancelled activities.
  * Anti-self-refund and escrow lower-bound checks included.
  */
@@ -994,9 +1021,10 @@ export const secureLeaveActivity = onCall(async (request) => {
 
   const db = admin.firestore();
   const opRef = db.collection("processed_operations").doc(operationId);
+  let isLastParticipantVal = false;
 
   try {
-    return await db.runTransaction(async (transaction) => {
+    const result = await db.runTransaction(async (transaction) => {
       // ── Idempotency check INSIDE transaction ─────────────────────────────
       const opSnap = await transaction.get(opRef);
       if (opSnap.exists) {
@@ -1013,51 +1041,99 @@ export const secureLeaveActivity = onCall(async (request) => {
       const activityData = activitySnap.data();
       if (!activityData) throw new HttpsError("internal", "Datenfehler.");
 
-      // ── CAS: no leave after terminal state ───────────────────────────────
-      if (activityData.status === "completed" || activityData.status === "cancelled") {
-        throw new HttpsError("failed-precondition", "Du kannst eine abgeschlossene oder stornierte Aktivität nicht verlassen.");
-      }
-
       // ── Member revalidation INSIDE transaction ────────────────────────────
       const participantIds: string[] = activityData.participantIds || [];
       if (!participantIds.includes(uid)) {
         throw new HttpsError("not-found", "Du bist kein Teilnehmer dieser Aktivität.");
       }
 
-      // Host cannot leave own activity via this route
-      if (activityData.hostId === uid) {
-        throw new HttpsError("failed-precondition", "Als Host kannst du deine Aktivität nicht verlassen. Storniere sie stattdessen.");
-      }
+      const remainingParticipantIds = participantIds.filter((id: string) => id !== uid);
+      const isLastParticipant = remainingParticipantIds.length === 0;
+      isLastParticipantVal = isLastParticipant;
+      const hostTransferFrom = activityData.hostId === uid && !isLastParticipant ? uid : null;
+      const hostTransferTo = hostTransferFrom ? remainingParticipantIds[0] : null;
 
-      const updatedParticipantIds = participantIds.filter((id: string) => id !== uid);
-      const updatedPreview = (activityData.participantsPreview || []).filter((p: any) => p.uid !== uid);
+      console.log(`[LEAVE_ROOM_DEBUG] uid: ${uid}`);
+      console.log(`[LEAVE_ROOM_DEBUG] chatId/activityId: ${activityId}`);
+      console.log(`[LEAVE_ROOM_DEBUG] participantIds before: ${JSON.stringify(participantIds)}`);
+      console.log(`[LEAVE_ROOM_DEBUG] remainingParticipantIds after: ${JSON.stringify(remainingParticipantIds)}`);
+      console.log(`[LEAVE_ROOM_DEBUG] isLastParticipant: ${isLastParticipant}`);
+      console.log(`[LEAVE_ROOM_DEBUG] hostTransferFrom: ${hostTransferFrom} / hostTransferTo: ${hostTransferTo}`);
+      console.log(`[LEAVE_ROOM_DEBUG] cleanupMode: "hard-delete"`);
+      console.log(`[LEAVE_ROOM_DEBUG] deleteActivity: ${isLastParticipant}`);
+      console.log(`[LEAVE_ROOM_DEBUG] deleteChat: ${isLastParticipant}`);
+      console.log(`[LEAVE_ROOM_DEBUG] deleteSubcollections: ${isLastParticipant}`);
 
-      // ── Participant-count invariant ───────────────────────────────────────
-      if (updatedParticipantIds.length < 0) {
-        throw new HttpsError("internal", "[INVARIANT VIOLATION] Participant count would be negative.");
-      }
-
-      transaction.update(activityRef, {
-        participantIds: updatedParticipantIds,
-        participantsPreview: updatedPreview,
-        [`participantDetails.${uid}`]: FieldValue.delete(),
-        lastInteractionAt: FieldValue.serverTimestamp(),
-      });
-
-      // Remove from participant subcollection
-      const pRef = db.collection("activities").doc(activityId).collection("participants").doc(uid);
-      transaction.delete(pRef);
-
-      // Remove from chat
       const chatRef = db.collection("chats").doc(activityId);
-      transaction.update(chatRef, {
-        participantIds: FieldValue.arrayRemove(uid),
-        [`participantDetails.${uid}`]: FieldValue.delete(),
-        [`unreadCount.${uid}`]: FieldValue.delete(),
-      });
 
-      // Handle refund if paid activity
-      if (activityData.isPaid && activityData.price > 0) {
+      if (isLastParticipant) {
+        // Last participant leaving -> clean up the whole room (hard-delete)
+        const shouldDecrementCount = activityData.status !== "completed" && activityData.status !== "cancelled";
+        if (shouldDecrementCount && activityData.placeId && activityData.placeId !== "custom") {
+          const placeRef = db.collection("places").doc(activityData.placeId);
+          transaction.set(placeRef, { activityCount: FieldValue.increment(-1) }, { merge: true });
+        }
+
+        // Delete parent documents
+        transaction.delete(activityRef);
+        transaction.delete(chatRef);
+
+        // Delete participant subcollection document
+        const pRef = db.collection("activities").doc(activityId).collection("participants").doc(uid);
+        transaction.delete(pRef);
+      } else {
+        // More participants remain -> remove current user
+        const updatedPreview = (activityData.participantsPreview || []).filter((p: any) => p.uid !== uid);
+
+        let newHostName = null;
+        let newHostPhotoURL = null;
+
+        if (hostTransferTo) {
+          const newHostRef = db.collection("users").doc(hostTransferTo);
+          const newHostSnap = await transaction.get(newHostRef);
+          if (newHostSnap.exists) {
+            const newHostData = newHostSnap.data() || {};
+            newHostName = newHostData.displayName || "Teilnehmer";
+            newHostPhotoURL = newHostData.photoURL || null;
+          }
+        }
+
+        const activityUpdate: any = {
+          participantIds: remainingParticipantIds,
+          participantsPreview: updatedPreview,
+          [`participantDetails.${uid}`]: FieldValue.delete(),
+          lastInteractionAt: FieldValue.serverTimestamp(),
+        };
+
+        if (hostTransferTo) {
+          activityUpdate.hostId = hostTransferTo;
+          activityUpdate.hostName = newHostName;
+          activityUpdate.hostPhotoURL = newHostPhotoURL;
+        }
+
+        transaction.update(activityRef, activityUpdate);
+
+        // Delete participant subcollection document
+        const pRef = db.collection("activities").doc(activityId).collection("participants").doc(uid);
+        transaction.delete(pRef);
+
+        const chatUpdate: any = {
+          participantIds: FieldValue.arrayRemove(uid),
+          [`participantDetails.${uid}`]: FieldValue.delete(),
+          [`unreadCount.${uid}`]: FieldValue.delete(),
+        };
+
+        if (hostTransferTo) {
+          chatUpdate.hostId = hostTransferTo;
+          chatUpdate.hostName = newHostName;
+          chatUpdate.hostPhotoURL = newHostPhotoURL;
+        }
+
+        transaction.update(chatRef, chatUpdate);
+      }
+
+      // Handle refund if paid activity and the leaving user is not the host
+      if (activityData.isPaid && activityData.price > 0 && activityData.hostId !== uid) {
         const hostId = activityData.hostId;
         const priceCents = Math.round(activityData.price * 100);
         const netAmountCents = Math.round(priceCents * 0.9); // the amount the host received for this slot
@@ -1119,6 +1195,15 @@ export const secureLeaveActivity = onCall(async (request) => {
 
       return { success: true };
     });
+
+    if (result && result.success && isLastParticipantVal) {
+      const chatRef = db.collection("chats").doc(activityId);
+      const activityRef = db.collection("activities").doc(activityId);
+      await deleteCollectionInBatches(db, chatRef.collection("messages"));
+      await deleteCollectionInBatches(db, activityRef.collection("participants"));
+    }
+
+    return result;
   } catch (error) {
     console.error("secureLeaveActivity failed:", error);
     await writeDLQ(db, {

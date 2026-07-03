@@ -1,4 +1,4 @@
-rules_version = '2';
+﻿rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -47,10 +47,10 @@ service cloud.firestore {
           'isPaid', 'price', 'upvotes', 'downvotes', 'userVotes', 'globalScore', 'reportCount', 'avgRating',
           'reviewCount', 'stats', 'participantDetails', 'placeAddress', 'lat', 'lon', 'maxParticipants',
           'requirements', 'joinMode', 'placeId', 'categories', 'isUserEvent', 'sourceType', 'creationSource',
-          'normalizedCategory', 'isDateFlexible', 'city', 'postalCode'
+          'normalizedCategory', 'isDateFlexible'
         ]) &&
         
-        // 3. Typ- und Wertprüfungen
+        // 3. Typ- und Wertpr├╝fungen
         request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 100 &&
         request.resource.data.placeName is string && request.resource.data.placeName.size() > 0 && request.resource.data.placeName.size() <= 100 &&
         request.resource.data.hostName is string && request.resource.data.hostName.size() > 0 &&
@@ -85,7 +85,7 @@ service cloud.firestore {
           request.resource.data.activityEndDate <= request.resource.data.activityDate + duration.value(30, 'd')
         )) &&
         
-        // 5. Kapazitätsvalidierung
+        // 5. Kapazit├ñtsvalidierung
         (!('maxParticipants' in request.resource.data) || (
           request.resource.data.maxParticipants is int && 
           request.resource.data.maxParticipants >= 2 && 
@@ -95,16 +95,11 @@ service cloud.firestore {
         // 6. Orts- und Koordinatenvalidierung
         (!('lat' in request.resource.data) || (request.resource.data.lat is number && request.resource.data.lat >= -90.0 && request.resource.data.lat <= 90.0)) &&
         (!('lon' in request.resource.data) || (request.resource.data.lon is number && request.resource.data.lon >= -180.0 && request.resource.data.lon <= 180.0)) &&
-        (!('city' in request.resource.data) || (request.resource.data.city is string && request.resource.data.city.size() <= 100)) &&
-        (!('postalCode' in request.resource.data) || (request.resource.data.postalCode is string && request.resource.data.postalCode.size() <= 20)) &&
-        (!('placeAddress' in request.resource.data) || (request.resource.data.placeAddress is string && request.resource.data.placeAddress.size() <= 200)) &&
-        (!('joinMode' in request.resource.data) || request.resource.data.joinMode in ['direct', 'request']) &&
         
         (request.resource.data.get('placeId', 'custom') == 'custom' || (
-          request.resource.data.placeId is string &&
-          existsAfter(/databases/$(database)/documents/places/$(request.resource.data.placeId)) && 
-          getAfter(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.get('isDeleted', false) == false && 
-          getAfter(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.get('isBlacklisted', false) == false
+          exists(/databases/$(database)/documents/places/$(request.resource.data.placeId)) && 
+          get(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.get('isDeleted', false) == false && 
+          get(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.get('isBlacklisted', false) == false
         )) &&
         
         (request.resource.data.get('placeId', 'custom') == 'custom' || (
@@ -138,16 +133,19 @@ service cloud.firestore {
         resource.data.hostId == request.auth.uid && 
         isUserOnboardedAndActive(request.auth.uid) &&
                    
-        // 2. Keine Manipulation von Vote-, System-, Status-, oder Zahlungsfeldern (Cloud Function owned)
+        // 2. Keine Manipulation von Vote- und Systemfeldern
         hasNoActivityVoteFieldChanges() &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'hostId', 'createdAt', 'sourceType', 'isPaid', 'price',
           'upvotes', 'downvotes', 'userVotes', 'globalScore', 'reportCount', 'avgRating', 'reviewCount',
-          'participantIds', 'participantsPreview', 'participantDetails', 'completionVotes', 'stats',
-          'status', 'cancelledAt', 'cancelledBy', 'completedAt'
+          'participantIds', 'participantsPreview', 'participantDetails', 'completionVotes', 'stats'
         ]) &&
       
-        // 3. Boost-Transition (false -> true)
+        // 3. Status-├£bergang: Host darf Status nur zu 'cancelled' ├ñndern
+        (request.resource.data.status == resource.data.status || 
+          (resource.data.status in ['active', 'open'] && request.resource.data.status == 'cancelled')) &&
+        
+        // 4. Boost-Transition (false -> true)
         ((resource.data.get('isBoosted', false) == request.resource.data.get('isBoosted', false) && request.resource.data.get('boostedAt', null) == resource.data.get('boostedAt', null)) ||
           (
             resource.data.get('isBoosted', false) == false && 
@@ -157,165 +155,27 @@ service cloud.firestore {
             getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.tokens == getUserData().tokens - 1
           )) &&
         
-        // 4. Einschränkungen nach Teilnehmer-Beitritt
+        // 5. Einschr├ñnkungen nach Teilnehmer-Beitritt
         (resource.data.participantIds.size() <= 1 || (
-          // Ort unveränderlich
+          // Ort unver├ñnderlich
           request.resource.data.get('placeId', null) == resource.data.get('placeId', null) &&
           request.resource.data.get('placeName', null) == resource.data.get('placeName', null) &&
           (!('placeAddress' in request.resource.data) && !('placeAddress' in resource.data) || request.resource.data.get('placeAddress', '') == resource.data.get('placeAddress', '')) &&
           (!('lat' in request.resource.data) && !('lat' in resource.data) || request.resource.data.get('lat', 0.0) == resource.data.get('lat', 0.0)) &&
           (!('lon' in request.resource.data) && !('lon' in resource.data) || request.resource.data.get('lon', 0.0) == resource.data.get('lon', 0.0)) &&
-          // Zeit unveränderlich
+          // Zeit unver├ñnderlich
           request.resource.data.get('activityDate', null) == resource.data.get('activityDate', null) &&
           (!('activityEndDate' in request.resource.data) && !('activityEndDate' in resource.data) || request.resource.data.get('activityEndDate', null) == resource.data.get('activityEndDate', null)) &&
           request.resource.data.get('isTimeFlexible', null) == resource.data.get('isTimeFlexible', null) &&
           request.resource.data.get('isDateFlexible', false) == resource.data.get('isDateFlexible', false)
         )) &&
       
-        // Kapazität nicht verringerbar oder unter aktuelle Teilnehmerzahl
+        // Kapazit├ñt nicht verringerbar oder unter aktuelle Teilnehmerzahl
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['maxParticipants']) || (
           request.resource.data.maxParticipants is int &&
           request.resource.data.maxParticipants >= resource.data.get('maxParticipants', 0) &&
           request.resource.data.maxParticipants >= resource.data.participantIds.size()
         ))
-      );
-    }
-
-    function isValidDirectJoin() {
-      let uid = request.auth.uid;
-      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
-      
-      let addedParticipants = request.resource.data.get('participantIds', []).removeAll(resource.data.get('participantIds', []));
-      let removedParticipants = resource.data.get('participantIds', []).removeAll(request.resource.data.get('participantIds', []));
-
-      let addedPreviews = request.resource.data.get('participantsPreview', []).removeAll(resource.data.get('participantsPreview', []));
-      let removedPreviews = resource.data.get('participantsPreview', []).removeAll(request.resource.data.get('participantsPreview', []));
-
-      return (
-        isSignedIn() &&
-        isUserOnboardedAndActive(uid) &&
-        'joinMode' in resource.data && resource.data.joinMode == 'direct' &&
-        resource.data.status == 'active' &&
-        resource.data.isPaid == false &&
-        !(uid in resource.data.participantIds) &&
-        (!('maxParticipants' in resource.data) || resource.data.participantIds.size() < resource.data.maxParticipants) &&
-        
-        changedKeys.hasOnly(['participantIds', 'participantsPreview', 'participantDetails', 'lastInteractionAt', 'stats']) &&
-        
-        // Exact participantIds mutation (append only, no removal)
-        removedParticipants.size() == 0 &&
-        addedParticipants.size() == 1 &&
-        addedParticipants[0] == uid &&
-        
-        // Exact participantsPreview mutation (append only)
-        removedPreviews.size() == 0 &&
-        (!changedKeys.hasAny(['participantsPreview']) || (
-          addedPreviews.size() == 1 &&
-          addedPreviews[0].keys().hasOnly(['uid', 'displayName', 'photoURL']) &&
-          addedPreviews[0].uid == uid
-        )) &&
-        
-        // Exact participantDetails mutation (caller's entry added)
-        request.resource.data.participantDetails.keys().hasAll(resource.data.participantDetails.keys()) &&
-        request.resource.data.participantDetails.keys().size() == resource.data.participantDetails.keys().size() + 1 &&
-        uid in request.resource.data.participantDetails &&
-        request.resource.data.participantDetails.get(uid, {}).keys().hasOnly(['displayName', 'photoURL', 'isPremium', 'isSupporter', 'checkInStatus', 'hasReviewed']) &&
-        request.resource.data.participantDetails.get(uid, {}).get('checkInStatus', 'pending') == 'pending' &&
-        request.resource.data.participantDetails.get(uid, {}).get('hasReviewed', false) == false &&
-        
-        // Stats can only increment pushJoins or referralJoins
-        (!changedKeys.hasAny(['stats']) || (
-          request.resource.data.stats.diff(resource.data.get('stats', {})).affectedKeys().hasOnly(['pushJoins', 'referralJoins']) &&
-          (!request.resource.data.stats.diff(resource.data.get('stats', {})).affectedKeys().hasAny(['pushJoins']) || request.resource.data.stats.pushJoins == resource.data.stats.get('pushJoins', 0) + 1) &&
-          (!request.resource.data.stats.diff(resource.data.get('stats', {})).affectedKeys().hasAny(['referralJoins']) || request.resource.data.stats.referralJoins == resource.data.stats.get('referralJoins', 0) + 1)
-        ))
-      );
-    }
-
-    function isParticipantAllowedUpdate() {
-      let uid = request.auth.uid;
-      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
-      
-      let addedVotes = request.resource.data.get('completionVotes', []).removeAll(resource.data.get('completionVotes', []));
-      let removedVotes = resource.data.get('completionVotes', []).removeAll(request.resource.data.get('completionVotes', []));
-         
-      return (
-        isSignedIn() &&
-        resource.data.participantIds.hasAny([uid]) &&
-        changedKeys.hasOnly(['completionVotes', 'lastInteractionAt']) &&
-        removedVotes.size() == 0 &&
-        addedVotes.size() == 1 &&
-        addedVotes[0] == uid
-      );
-    }
-
-    function isValidChatMessageMetadataUpdate(chatId) {
-      let uid = request.auth.uid;
-      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
-      let isParticipant = resource.data.participantIds.hasAny([uid]);
-      
-      // Restrict pinnedMessages changes to chat host or admin
-      let isPinAllowed = !changedKeys.hasAny(['pinnedMessages']) || 
-                         resource.data.get('hostId', '') == uid;
-      
-      return isSignedIn() &&
-             isParticipant &&
-             changedKeys.hasOnly(['lastMessage', 'lastActivityAt', 'lastMessageAt', 'unreadCount', 'pinnedMessages']) &&
-             isPinAllowed;
-    }
-
-    function isValidChatDirectJoin(chatId) {
-      let uid = request.auth.uid;
-      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
-      
-      let isActivityChat = 'activityId' in resource.data && resource.data.activityId == chatId;
-      let isParticipantInActivity = existsAfter(/databases/$(database)/documents/activities/$(chatId)) &&
-                                     getAfter(/databases/$(database)/documents/activities/$(chatId)).data.participantIds.hasAny([uid]);
-      
-      return (
-        isSignedIn() &&
-        isActivityChat &&
-        isParticipantInActivity &&
-        !(uid in resource.data.participantIds) &&
-        
-        changedKeys.hasOnly(['participantIds', 'participantDetails', 'unreadCount', 'lastActivityAt']) &&
-        
-        request.resource.data.participantIds.size() == resource.data.participantIds.size() + 1 &&
-        request.resource.data.participantIds.hasAll(resource.data.participantIds) &&
-        uid in request.resource.data.participantIds &&
-        
-        request.resource.data.participantDetails.keys().hasAll(resource.data.participantDetails.keys()) &&
-        request.resource.data.participantDetails.keys().size() == resource.data.participantDetails.keys().size() + 1 &&
-        uid in request.resource.data.participantDetails &&
-        request.resource.data.participantDetails.get(uid, {}).keys().hasOnly(['displayName', 'photoURL', 'isPremium', 'isSupporter', 'checkInStatus']) &&
-        request.resource.data.participantDetails.get(uid, {}).get('checkInStatus', 'pending') == 'pending' &&
-        
-        request.resource.data.unreadCount.keys().hasAll(resource.data.unreadCount.keys()) &&
-        request.resource.data.unreadCount.keys().size() == resource.data.unreadCount.keys().size() + 1 &&
-        uid in request.resource.data.unreadCount &&
-        request.resource.data.unreadCount.get(uid, 0) == 0
-      );
-    }
-
-    function isValidChatOwnCleanup(chatId) {
-      let uid = request.auth.uid;
-      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
-      
-      let isParticipant = resource.data.participantIds.hasAny([uid]);
-
-      return (
-        isSignedIn() &&
-        isParticipant &&
-        changedKeys.hasOnly(['participantIds', 'participantDetails', 'unreadCount']) &&
-        
-        !(uid in request.resource.data.participantIds) &&
-        request.resource.data.participantIds.size() == resource.data.participantIds.size() - 1 &&
-        
-        !(uid in request.resource.data.participantDetails) &&
-        request.resource.data.participantDetails.size() == resource.data.participantDetails.size() - 1 &&
-        
-        !(uid in request.resource.data.unreadCount) &&
-        request.resource.data.unreadCount.size() == resource.data.unreadCount.size() - 1
       );
     }
 
@@ -374,7 +234,7 @@ service cloud.firestore {
       );
     }
 
-    // Verhindert das Ändern von Systemfeldern durch den Client
+    // Verhindert das ├ändern von Systemfeldern durch den Client
     function hasNoSystemFieldChanges() {
       let systemFields = [
         'role', 'isAdmin', 'isBanned', 'escrowBalance', 'fiatBalance', 'balancesInCents',
@@ -383,8 +243,7 @@ service cloud.firestore {
         'emailVerificationRequired', 'emailVerificationProvider', 'emailVerificationReason', 
         'emailVerificationCreatedAt', 'emailVerifiedAt', 'verificationEmailLastSentAt',
         'pointsBalance', 'pointsLifetime', 'level', 'referralCode', 'referredBy',
-        'username', 'usernameLowercase', 'usernameLastChangedAt', 'usernameChangeHistory',
-        'friends', 'friendRequestsSent', 'friendRequestsReceived'
+        'username', 'usernameLowercase', 'usernameLastChangedAt', 'usernameChangeHistory'
       ];
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(systemFields) &&
         (
@@ -398,11 +257,13 @@ service cloud.firestore {
         );
     }
 
+    // Stellt sicher, dass unver├ñnderliche Finanzfelder nach der Erstellung nicht ge├ñndert werden k├Ânnen
     function hasNoImmutableFinancialFieldChanges() {
       let immutableFields = ['price', 'isPaid', 'hostId', 'currency', 'paymentConfig'];
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(immutableFields);
     }
 
+    // Stellt sicher, dass bei bezahlten Events wichtige Teilnehmer- und Finanzfelder nicht direkt ge├ñndert werden
     function hasNoPaidActivityFieldChanges() {
       let forbiddenKeys = [
         'participantIds', 'participantsPreview', 'participantDetails', 
@@ -412,12 +273,69 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(forbiddenKeys);
     }
 
+    // Verhindert direkte Client-Manipulation von Vote- und Score-Feldern bei Activities
     function hasNoActivityVoteFieldChanges() {
       let voteFields = [
         'communityScore', 'userVotes', 'userVoteWeights', 'globalScore',
         'weightedUpvotes', 'weightedDownvotes', 'voteBoostScore'
       ];
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(voteFields);
+    }
+
+    // Stellt sicher, dass Teilnehmer nur erlaubte Felder ├ñndern und nur ihre eigene UID verwenden
+    function isParticipantAllowedUpdate() {
+      let uid = request.auth.uid;
+      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
+      
+      // participantIds darf nur die eigene UID des Nutzers hinzuf├╝gen oder entfernen
+      let pidDiff = request.resource.data.get('participantIds', []).removeAll(resource.data.get('participantIds', []))
+        .concat(resource.data.get('participantIds', []).removeAll(request.resource.data.get('participantIds', [])));
+      
+      // completionVotes darf nur die eigene UID des Nutzers hinzuf├╝gen
+      let voteDiff = request.resource.data.get('completionVotes', []).removeAll(resource.data.get('completionVotes', []));
+         
+      return changedKeys.hasOnly(['participantIds', 'participantsPreview', 'participantDetails', 'completionVotes', 'lastInteractionAt']) && 
+             (!changedKeys.hasAny(['participantIds']) || (pidDiff.size() == 1 && pidDiff[0] == uid)) && 
+             (!changedKeys.hasAny(['completionVotes']) || 
+               (request.resource.data.get('completionVotes', []).size() >= resource.data.get('completionVotes', []).size() && 
+                voteDiff.size() == 1 && voteDiff[0] == uid));
+    }
+
+    function isAllowedSocialUpdate(userId) {
+      let uid = request.auth.uid;
+      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
+      let actorData = getUserData();
+      let targetPath = /databases/$(database)/documents/users/$(userId);
+      let targetExists = exists(targetPath);
+      let targetData = targetExists ? get(targetPath).data : {};
+      
+      let canConnect = 
+        targetExists &&
+        targetData.get('isBanned', false) == false &&
+        !(uid in targetData.get('blacklist', {}).get('hard', [])) &&
+        !(uid in targetData.get('blacklist', {}).get('soft', [])) &&
+        actorData.get('isBanned', false) == false &&
+        !(userId in actorData.get('blacklist', {}).get('hard', [])) &&
+        !(userId in actorData.get('blacklist', {}).get('soft', []));
+
+      let receivedDiff = changedKeys.hasAny(['friendRequestsReceived']) ? 
+        request.resource.data.get('friendRequestsReceived', []).removeAll(resource.data.get('friendRequestsReceived', []))
+        .concat(resource.data.get('friendRequestsReceived', []).removeAll(request.resource.data.get('friendRequestsReceived', []))) : [];
+        
+      let sentDiff = changedKeys.hasAny(['friendRequestsSent']) ? 
+        request.resource.data.get('friendRequestsSent', []).removeAll(resource.data.get('friendRequestsSent', []))
+        .concat(resource.data.get('friendRequestsSent', []).removeAll(request.resource.data.get('friendRequestsSent', []))) : [];
+        
+      let friendsDiff = changedKeys.hasAny(['friends']) ? 
+        request.resource.data.get('friends', []).removeAll(resource.data.get('friends', []))
+        .concat(resource.data.get('friends', []).removeAll(request.resource.data.get('friends', []))) : [];
+        
+      return canConnect &&
+             changedKeys.size() > 0 &&
+             changedKeys.hasOnly(['friendRequestsReceived', 'friendRequestsSent', 'friends']) &&
+             (!changedKeys.hasAny(['friendRequestsReceived']) || (receivedDiff.size() == 1 && receivedDiff[0] == uid)) &&
+             (!changedKeys.hasAny(['friendRequestsSent']) || (sentDiff.size() == 1 && sentDiff[0] == uid)) &&
+             (!changedKeys.hasAny(['friends']) || (friendsDiff.size() == 1 && friendsDiff[0] == uid));
     }
 
     function isValidDirectChat(participantIds, participantDetails) {
@@ -471,10 +389,8 @@ service cloud.firestore {
         (!('usernameLastChangedAt' in request.resource.data)) &&
         (!('usernameChangeHistory' in request.resource.data)) &&
         validateOwnerUpdate();
-      
-      // Removed social update bypass completely.
-      // System fields list in hasNoSystemFieldChanges now strictly covers friends, friendRequestsSent, and friendRequestsReceived.
       allow update: if (isOwner(userId) && hasNoSystemFieldChanges() && validateOwnerUpdate()) || 
+                       (!isOwner(userId) && isAllowedSocialUpdate(userId)) || 
                        isAdmin();
       allow delete: if isAdmin();
 
@@ -494,7 +410,8 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Username lock collection — managed exclusively by Cloud Functions / Admin SDK.
+    // Username lock collection ÔÇö managed exclusively by Cloud Functions / Admin SDK.
+    // Prevents client-side creation, update, or deletion of username locks.
     match /usernames/{usernameLower} {
       allow read: if false;
       allow write: if false;
@@ -505,12 +422,20 @@ service cloud.firestore {
       allow create: if isValidActivityCreate(activityId);
       allow update: if isSignedIn() && (
         isValidActivityUpdate() ||
-        isValidDirectJoin() ||
-        isParticipantAllowedUpdate() ||
+        (
+          (
+            resource.data.participantIds.hasAny([request.auth.uid]) ||
+            (
+              resource.data.get('joinMode', 'request') == 'direct' &&
+              request.resource.data.participantIds.hasAny([request.auth.uid])
+            )
+          ) &&
+          isParticipantAllowedUpdate() &&
+          resource.data.isPaid == false
+        ) ||
         isAdmin()
       );
-      // Activity deletion is cloud function / admin sdk owned. Client delete restricted to isAdmin().
-      allow delete: if isAdmin();
+      allow delete: if isSignedIn() && (resource.data.hostId == request.auth.uid || isAdmin());
       
       match /participants/{participantId} {
         allow read: if isSignedIn();
@@ -542,15 +467,22 @@ service cloud.firestore {
             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checkInStatus', 'checkInTime'])
           )
         );
-        // Leaving participants delete is cloud function owned. Client delete restricted to isAdmin().
-        allow delete: if isAdmin();
+        allow delete: if isSignedIn() && (
+          isAdmin() ||
+          (
+            request.auth.uid == participantId &&
+            get(/databases/$(database)/documents/activities/$(activityId)).data.hostId != request.auth.uid
+          )
+        );
       }
     }
 
     match /chats/{chatId} {
+      // Nur Teilnehmer d├╝rfen den Chat-Metadaten-Doc lesen
       allow read: if isSignedIn() && (
         resource.data.participantIds.hasAny([request.auth.uid]) || isAdmin()
       );
+      // Erstellung nur wenn man selbst Teilnehmer ist (entweder Gruppenchat im Batch mit Activity-Erstellung, oder DM unter strengen Validierungsregeln)
       allow create: if isSignedIn() && (
         // Case 1: Activity-based chat
         (
@@ -576,21 +508,24 @@ service cloud.firestore {
           isValidDirectChat(request.resource.data.participantIds, request.resource.data.participantDetails)
         )
       );
-      // Chat update uses granular, secure helpers.
+      // Update nur f├╝r Teilnehmer, HostId, ActivityId, und CreatedAt d├╝rfen nicht ver├ñndert werden
       allow update: if isSignedIn() && (
-        isValidChatMessageMetadataUpdate(chatId) ||
-        isValidChatDirectJoin(chatId) ||
-        isValidChatOwnCleanup(chatId) || 
+        (
+          resource.data.participantIds.hasAny([request.auth.uid]) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hostId', 'activityId', 'createdAt'])
+        ) || 
         isAdmin()
       );
-      allow delete: if false;
+      allow delete: if isAdmin();
       
       match /messages/{messageId} {
+        // Nur Teilnehmer d├╝rfen Nachrichten lesen (oder Admin)
         allow read: if isSignedIn() && (
           get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds.hasAny([request.auth.uid]) || 
           isAdmin()
         );
         
+        // Nur Teilnehmer d├╝rfen neue Nachrichten unter ihrer eigenen UID erstellen
         allow create: if isSignedIn() && 
           get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds.hasAny([request.auth.uid]) &&
           isChatActive(chatId) &&
@@ -606,6 +541,7 @@ service cloud.firestore {
             'replyToId', 'replyToText', 'replyToSenderName'
           ]);
           
+        // Nur der Absender darf seine eigene Nachricht bearbeiten
         allow update: if isSignedIn() && 
           get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds.hasAny([request.auth.uid]) &&
           resource.data.senderId == request.auth.uid &&
@@ -617,6 +553,7 @@ service cloud.firestore {
           request.resource.data.text.size() <= 2000 &&
           request.resource.data.text.matches('.*\\S.*');
           
+        // Absender oder Host der Aktivit├ñt oder Admin d├╝rfen Nachrichten l├Âschen
         allow delete: if isSignedIn() && (
           (
             get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds.hasAny([request.auth.uid]) &&
@@ -639,7 +576,30 @@ service cloud.firestore {
         resource.data.recipientId == request.auth.uid || isAdmin()
       );
 
-      allow create: if false;
+      allow create: if isSignedIn() && (
+        // Case 1: friend_request
+        (request.resource.data.type == 'friend_request' &&
+         request.resource.data.senderId == request.auth.uid &&
+         request.resource.data.recipientId != request.auth.uid &&
+         request.resource.data.isRead == false &&
+         !('readAt' in request.resource.data) &&
+         request.resource.data.createdAt == request.time &&
+         request.resource.data.keys().hasOnly(['recipientId', 'senderId', 'senderProfile', 'type', 'isRead', 'createdAt']) &&
+         request.resource.data.senderProfile.keys().hasOnly(['displayName', 'photoURL']) &&
+         isValidNotificationLink(request.resource.data.get('link', null))
+        ) ||
+        // Case 2: join_request
+        (request.resource.data.type == 'join_request' &&
+         request.resource.data.senderId == request.auth.uid &&
+         request.resource.data.recipientId == get(/databases/$(database)/documents/activities/$(request.resource.data.activityId)).data.hostId &&
+         request.resource.data.isRead == false &&
+         !('readAt' in request.resource.data) &&
+         request.resource.data.createdAt == request.time &&
+         request.resource.data.keys().hasOnly(['recipientId', 'senderId', 'senderName', 'senderProfile', 'type', 'title', 'message', 'isRead', 'createdAt', 'activityId', 'link']) &&
+         request.resource.data.senderProfile.keys().hasOnly(['displayName', 'photoURL']) &&
+         isValidNotificationLink(request.resource.data.get('link', null))
+        )
+      );
 
       allow update: if isSignedIn() && (
         (resource.data.recipientId == request.auth.uid &&
@@ -695,18 +655,19 @@ service cloud.firestore {
     }
 
     match /places/{placeId} {
-      // Places require authenticated/onboarded read.
-      allow read: if isSignedIn() && isUserOnboardedAndActive(request.auth.uid);
-      
+      allow read: if true;
+      // Alle Vote- und Score-Felder sind server-only (Cloud Function).
+      // KEIN Admin-Override: Auch Admins m├╝ssen ├╝ber die Cloud Function voten.
       allow create: if isSignedIn() && 
         !request.resource.data.keys().hasAny([
           'upvotes', 'downvotes', 'weightedUpvotes', 'weightedDownvotes',
           'weightedCommunityScore', 'communityScore', 'globalScore',
           'userVotes', 'userVoteWeights', 'voteBoostScore'
         ]) &&
-        request.resource.data.get('activityCount', 0) == 1 &&
-        existsAfter(/databases/$(database)/documents/activities/$(request.resource.data.get('lastActivityId', ''))) &&
-        getAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId)).data.get('placeId', '') == placeId;
+        (
+          !('activityCount' in request.resource.data) || 
+          (request.resource.data.activityCount == 1 || request.resource.data.activityCount == 0)
+        );
 
       allow update: if isSignedIn() && 
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
@@ -718,42 +679,51 @@ service cloud.firestore {
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['activityCount']) ||
           (
             request.resource.data.activityCount is int &&
-            request.resource.data.activityCount == resource.data.get('activityCount', 0) + 1 &&
+            request.resource.data.activityCount >= 0 &&
             'lastActivityId' in request.resource.data &&
             request.resource.data.lastActivityId is string &&
-            existsAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId)) &&
-            getAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId)).data.get('placeId', '') == placeId &&
-            getAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId)).data.get('hostId', '') == request.auth.uid
+            (
+              (
+                (!('activityCount' in resource.data) || request.resource.data.activityCount == resource.data.activityCount + 1) &&
+                existsAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId)) &&
+                getAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId)).data.get('placeId', '') == placeId &&
+                getAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId)).data.get('hostId', '') == request.auth.uid
+              ) ||
+              (
+                'activityCount' in resource.data &&
+                request.resource.data.activityCount == resource.data.activityCount - 1 &&
+                !existsAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId))
+              )
+            )
           )
-        ) &&
-        // Do not allow arbitrary overwrites of existing name/address/lat/lon/categories on update without increments (creating activity)
-        (
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['name', 'address', 'categories', 'lat', 'lon', 'openingHours']) ||
-          request.resource.data.diff(resource.data).affectedKeys().hasAny(['activityCount'])
         );
     }
 
     match /payoutRequests/{requestId} {
-      allow create: if false; // Cloud Functions owned
+      // Erstellung NUR durch Admin SDK (Cloud Functions). Kein direkter Client-Zugriff.
+      allow create: if false;
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     match /refunds/{refundId} {
-      allow create: if false; // Cloud Functions owned
+      // Erstellung NUR durch Admin SDK (Cloud Functions). Kein direkter Client-Zugriff.
+      allow create: if false;
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
+    // Append-only Finanzledger: Kein Update/Delete erlaubt, auch nicht f├╝r Admins
     match /financial_ledger/{entryId} {
-      allow create: if false; // Cloud Functions owned
+      allow create: if false; // Nur via Admin SDK (Cloud Functions)
       allow read: if isAdmin();
       allow update: if false;
       allow delete: if false;
     }
 
+    // Idempotenz-Collections: Nur Admin SDK darf schreiben
     match /processed_payments/{docId} {
       allow create: if false;
       allow read: if isAdmin();
@@ -768,6 +738,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Dead-Letter Queue: Nur Admin SDK darf schreiben; Admins d├╝rfen lesen f├╝r Forensik
     match /failed_operations/{docId} {
       allow create: if false;
       allow read: if isAdmin();

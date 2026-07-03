@@ -851,7 +851,8 @@ export async function autocompletePlaces(text: string): Promise<Place[]> {
         categories: f.properties.categories || [],
         lat: f.properties.lat,
         lon: f.properties.lon,
-        openingHours: f.properties.opening_hours || f.properties.datasource?.raw?.opening_hours || null
+        openingHours: f.properties.opening_hours || f.properties.datasource?.raw?.opening_hours || null,
+        _rawProperties: f.properties
       } as Place));
     }
   } catch (error) {

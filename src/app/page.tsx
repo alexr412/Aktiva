@@ -1024,14 +1024,14 @@ export default function Home() {
   }, [user, router]);
   const handleOpenCustomActivityModal = () => { if (!user) { router.push('/login'); return; } setActivityModalPlace('custom'); };
 
-  const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory, description?: string, requirements?: any, joinMode?: 'direct' | 'request'): Promise<boolean> => {
+  const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory, description?: string, requirements?: any, joinMode?: 'direct' | 'request', selectedPlace?: Place | null): Promise<boolean> => {
     if (!user) return false;
     try {
       const isCustom = activityModalPlace === 'custom';
       const payload = isCustom
         ? { customLocationName: customLocationName!, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price, category: category!, description, requirements, joinMode }
         : { place: activityModalPlace as Place, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price, category: category!, description, requirements, joinMode };
-      const newActivityRef = await createActivity(payload);
+      const newActivityRef = await createActivity(payload, isCustom ? selectedPlace : undefined);
       setActivityModalPlace(null);
       router.push(`/chat/${newActivityRef.id}`);
       return true;
@@ -1046,17 +1046,23 @@ export default function Home() {
     }
   };
 
-  const handleJoin = async (activityId: string) => {
+  const handleJoin = async (activity: Activity) => {
     if (!user) { router.push('/login'); throw new Error('Login Required'); }
     try {
-      const status = await joinActivity(activityId, user);
+      const status = await joinActivity(activity.id!, user, null, null, activity.joinMode);
       if (status === 'joined') {
-        router.push(`/chat/${activityId}`);
+        router.push(`/chat/${activity.id}`);
+      } else if (status === 'already_requested') {
+        toast({
+          title: language === 'de' ? 'Du hast bereits eine Anfrage gesendet.' : 'You already sent a request.',
+          description: language === 'de' ? 'Der Host hat deine Anfrage bereits erhalten.' : 'The host has already received your request.'
+        });
       } else {
         toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
       }
+      return status;
     } catch (error: any) { 
-        toast({ variant: 'destructive', title: 'Error', description: error });
+        toast({ variant: 'destructive', title: 'Error', description: error.message || String(error) });
         throw error; 
     }
   };

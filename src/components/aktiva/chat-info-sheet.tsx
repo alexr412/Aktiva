@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { leaveActivity, deleteActivity, voteToCompleteActivity, completeActivity } from '@/lib/firebase/firestore';
+import { leaveActivity, voteToCompleteActivity, completeActivity } from '@/lib/firebase/firestore';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
 import { cn, formatFirstName } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
+import { MemberFriendActionButton } from '@/components/chat/member-friend-action-button';
 
 import {
   Sheet,
@@ -42,9 +43,11 @@ interface ChatInfoSheetProps {
   activity: Activity | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onBeforeLeave?: () => void;
+  onLeaveError?: () => void;
 }
 
-export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSheetProps) {
+export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeave, onLeaveError }: ChatInfoSheetProps) {
   const [isActing, setIsActing] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
   const { user } = useAuth();
@@ -101,16 +104,26 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
     setTimeout(async () => {
       setIsActing(true);
       try {
-        if (isOnlyParticipant) {
-          await deleteActivity(chat.id);
-        } else {
-          await leaveActivity(chat.id, user.uid);
+        if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
         }
+        onBeforeLeave?.();
+        await leaveActivity(chat.id, user.uid);
+        toast({
+          title: language === 'de' ? "Aktivität verlassen" : "Activity left",
+          description: language === 'de' ? "Du hast die Aktivität verlassen." : "You have left the activity."
+        });
         
         // 4. Weiterleitung nach dem Cleanup
         router.replace('/chat');
       } catch (error: any) {
+        onLeaveError?.();
         console.error('Operation failed:', error);
+        toast({
+          variant: 'destructive',
+          title: language === 'de' ? "Fehler" : "Error",
+          description: error.message || (language === 'de' ? "Aktion fehlgeschlagen." : "Action failed.")
+        });
         setIsActing(false);
       }
     }, 500); 
@@ -148,7 +161,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
         {/* Versteckter Header für Accessibility (Radix Warning Fix) */}
         <SheetHeader className="sr-only">
           <SheetTitle>{language === 'de' ? 'Chat Info' : 'Chat Info'}</SheetTitle>
-          <SheetDescription>{language === 'de' ? `Chat Einstellungen und Löschoptionen für ${chat.placeName}` : `Chat settings and deletion options for ${chat.placeName}`}</SheetDescription>
+          <SheetDescription>{language === 'de' ? `Chat Einstellungen und Löschoptionen für ${activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.title || chat.placeName) : chat.placeName}` : `Chat settings and deletion options for ${activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.title || chat.placeName) : chat.placeName}`}</SheetDescription>
         </SheetHeader>
 
         <ScrollArea className="flex-1">
@@ -159,7 +172,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
               </div>
               
               <h2 className="">
-                {chat.placeName}
+                {activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.title || chat.placeName) : chat.placeName}
               </h2>
               
               <div className="flex flex-wrap justify-center gap-2">
@@ -314,33 +327,41 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
               <ul className="space-y-2">
                 {Object.entries(chat.participantDetails).map(([uid, p]) => (
                    <li key={uid}>
-                      <Link
-                          href={user?.uid === uid ? '/profile' : `/users/${uid}`}
-                          className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-neutral-800/50 transition-all group"
-                          onClick={() => onOpenChange(false)}
-                      >
-                          <ProfileAvatar 
-                              className="h-12 w-12 border-2 border-white dark:border-neutral-800 shadow-sm ring-2 ring-transparent group-hover:ring-primary/20 transition-all"
-                              photoURL={p.photoURL}
-                              displayName={p.displayName}
-                              isPremium={p.isPremium}
-                              isCreator={p.isCreator}
-                              isSupporter={p.isSupporter}
-                          />
-                          <div className="flex-1 flex flex-col min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-900 dark:text-neutral-100 truncate">
-                                    {formatFirstName(p.displayName, 'User')}
-                                </span>
-                                {uid === chat.hostId && (
-                                  <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tight">{language === 'de' ? 'Creator' : 'Creator'}</span>
-                                )}
-                              </div>
-                              {uid === user?.uid && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{language === 'de' ? 'Du' : 'You'}</span>}
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-primary transition-colors" />
-                      </Link>
-                  </li>
+                     <div className="flex items-center justify-between p-1 rounded-2xl hover:bg-slate-50 dark:hover:bg-neutral-800/50 transition-all group">
+                       <Link
+                           href={user?.uid === uid ? '/profile' : `/users/${uid}`}
+                           className="flex items-center gap-4 flex-1 p-2 min-w-0"
+                           onClick={() => onOpenChange(false)}
+                       >
+                           <ProfileAvatar 
+                               className="h-12 w-12 border-2 border-white dark:border-neutral-800 shadow-sm ring-2 ring-transparent group-hover:ring-primary/20 transition-all"
+                               photoURL={p.photoURL}
+                               displayName={p.displayName}
+                               isPremium={p.isPremium}
+                               isCreator={p.isCreator}
+                               isSupporter={p.isSupporter}
+                           />
+                           <div className="flex-1 flex flex-col min-w-0">
+                               <div className="flex items-center gap-2">
+                                 <span className="font-bold text-slate-900 dark:text-neutral-100 truncate">
+                                     {formatFirstName(p.displayName, 'User')}
+                                 </span>
+                                 {uid === chat.hostId && (
+                                   <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tight">{language === 'de' ? 'Creator' : 'Creator'}</span>
+                                 )}
+                               </div>
+                               {uid === user?.uid && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{language === 'de' ? 'Du' : 'You'}</span>}
+                           </div>
+                       </Link>
+                       <div className="flex items-center gap-2 pr-2">
+                           <MemberFriendActionButton
+                               targetUserId={uid}
+                               currentUserId={user?.uid || ''}
+                           />
+                           <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-primary transition-colors" />
+                       </div>
+                     </div>
+                   </li>
                 ))}
               </ul>
             </div>
@@ -377,19 +398,17 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
               <AlertDialogTrigger asChild>
                  <Button variant="destructive" className="w-full h-12 rounded-2xl font-black bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 border-none shadow-none transition-all gap-2">
                    {isActing ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
-                   {isOnlyParticipant ? (language === 'de' ? 'Aktivität löschen' : 'Delete activity') : (language === 'de' ? 'Chat verlassen' : 'Leave chat')}
+                   {language === 'de' ? 'Chat verlassen' : 'Leave chat'}
                  </Button>
               </AlertDialogTrigger>
               <AlertDialogContent className="rounded-3xl border-none shadow-2xl dark:bg-neutral-900">
                 <AlertDialogHeader>
                    <AlertDialogTitle className="">
-                     {isOnlyParticipant
-                       ? (language === 'de' ? 'Wirklich löschen?' : 'Really delete?')
-                       : (language === 'de' ? 'Wirklich verlassen?' : 'Really leave?')}
+                     {language === 'de' ? 'Wirklich verlassen?' : 'Really leave?'}
                    </AlertDialogTitle>
                    <AlertDialogDescription className="text-sm font-medium dark:text-neutral-400">
-                     {isOnlyParticipant
-                       ? (language === 'de' ? 'Diese Aktion kann nicht rückgängig gemacht werden. Alle Nachrichten werden dauerhaft gelöscht.' : 'This action cannot be undone. All messages will be permanently deleted.')
+                     {isHost 
+                       ? (language === 'de' ? 'Da du der Host bist, wird die Host-Rolle auf ein anderes Mitglied übertragen. Falls du der letzte Teilnehmer bist, wird die Aktivität gelöscht.' : 'Since you are the host, host ownership will be transferred to another member. If you are the last participant, the activity will be deleted.')
                        : (language === 'de' ? 'Du kannst später wieder beitreten, solange die Aktivität noch existiert.' : 'You can join again later as long as the activity still exists.')}
                    </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -401,7 +420,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange }: ChatInfoSh
                      onClick={handleLeaveOrDelete}
                    >
                      {isActing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                     {isOnlyParticipant ? (language === 'de' ? 'Endgültig löschen' : 'Delete permanently') : (language === 'de' ? 'Jetzt verlassen' : 'Leave now')}
+                     {language === 'de' ? 'Jetzt verlassen' : 'Leave now'}
                    </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

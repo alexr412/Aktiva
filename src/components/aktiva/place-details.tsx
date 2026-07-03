@@ -72,6 +72,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loadingActivities, setLoadingActivities] = useState(true);
     const [joiningActivityId, setJoiningActivityId] = useState<string|null>(null);
+    const [requestedActivityIds, setRequestedActivityIds] = useState<Record<string, boolean>>({});
     const [selectedInfoActivity, setSelectedInfoActivity] = useState<Activity | null>(null);
     const [copied, setCopied] = useState(false);
     const [isSaveToCollectionOpen, setIsSaveToCollectionOpen] = useState(false);
@@ -234,16 +235,32 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     const handleJoin = async (activity: Activity) => {
         if (!user) { router.push('/login'); return; }
         if (activity.isPaid && activity.price && activity.price > 0) { router.push(`/checkout/${activity.id}`); return; }
+        if (joiningActivityId === activity.id || requestedActivityIds[activity.id!]) return;
+        
         setJoiningActivityId(activity.id!);
         try {
-            const status = await joinActivity(activity.id!, user);
+            const status = await joinActivity(activity.id!, user, null, null, activity.joinMode);
             if (status === 'joined') {
                 toast({ title: language === 'de' ? 'Erfolgreich beigetreten!' : 'Successfully joined!' });
+            } else if (status === 'already_requested') {
+                setRequestedActivityIds(prev => ({
+                    ...prev,
+                    [activity.id!]: true
+                }));
+                toast({
+                    title: language === 'de' ? 'Du hast bereits eine Anfrage gesendet.' : 'You already sent a request.',
+                    description: language === 'de' ? 'Der Host hat deine Anfrage bereits erhalten.' : 'The host has already received your request.'
+                });
             } else {
+                setRequestedActivityIds(prev => ({
+                    ...prev,
+                    [activity.id!]: true
+                }));
                 toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
             }
+            return status;
         } catch (error: any) {
-            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message || error });
+            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message || String(error) });
         } finally { setJoiningActivityId(null); }
     };
 
@@ -257,6 +274,17 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                 primaryStyle.gradientClass
             )}
             >
+                {/* Close Button */}
+                {onClose && (
+                    <button
+                        onClick={onClose}
+                        className="absolute top-4 right-4 z-30 h-11 w-11 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+                        aria-label={language === 'de' ? 'Schließen' : 'Close'}
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                )}
+
                 {/* Main Dynamic Icon (Reduced Scale) */}
                 <div className="relative z-20 drop-shadow-[0_15px_30px_rgba(0,0,0,0.4)] transform transition-transform duration-700 hover:scale-110">
                     <div className="absolute inset-0 blur-2xl opacity-40 scale-150" style={{ color: primaryStyle.color }}>
@@ -271,43 +299,6 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     <div className="bg-white/90 backdrop-blur-md text-neutral-800 px-4 h-7 flex items-center rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border border-white/30 leading-none">
                         {translateTag(categories[0] || '', language)}
                     </div>
-                </div>
-
-                {/* Save & Share Buttons */}
-                <div className="absolute bottom-5 sm:bottom-6 right-5 sm:right-6 flex items-center gap-2 z-20">
-                    <Button 
-                        onClick={handleSharePlace}
-                        className="bg-white text-neutral-800 hover:bg-neutral-50 h-11 sm:h-12 px-4 rounded-full font-black text-[13px] transition-all border-white/10 flex items-center gap-2 shadow-xl backdrop-blur-md"
-                    >
-                        <Share2 className="h-4 w-4" />
-                        <span>{language === 'de' ? 'Teilen' : 'Share'}</span>
-                    </Button>
-                    <Button 
-                        onClick={() => setIsSaveToCollectionOpen(true)}
-                        className="bg-white text-neutral-800 hover:bg-neutral-50 h-11 sm:h-12 px-4 rounded-full font-black text-[13px] transition-all border-white/10 flex items-center gap-2 shadow-xl backdrop-blur-md"
-                    >
-                        <FolderPlus className="h-4 w-4 text-emerald-500" />
-                        <span>{language === 'de' ? 'Liste' : 'List'}</span>
-                    </Button>
-                    <Button 
-                        onClick={() => setIsAnalyticsOpen(true)}
-                        className="bg-white text-neutral-800 hover:bg-neutral-50 h-11 sm:h-12 px-4 rounded-full font-black text-[13px] transition-all border-white/10 flex items-center gap-2 shadow-xl backdrop-blur-md"
-                    >
-                        <BarChart3 className="h-4 w-4 text-violet-500" />
-                        <span>{language === 'de' ? 'Statistik' : 'Stats'}</span>
-                    </Button>
-                    <Button 
-                        onClick={handleBookmarkToggle}
-                        className={cn(
-                            "h-11 sm:h-12 px-5 sm:px-6 rounded-full font-black text-[13px] transition-all border-white/10 flex items-center gap-2 shadow-xl backdrop-blur-md",
-                            isFavorite 
-                                ? "bg-rose-500 text-white hover:bg-rose-600 border-none" 
-                                : "bg-white text-neutral-800 hover:bg-neutral-50"
-                        )}
-                    >
-                        <Bookmark className={cn("h-4 w-4", isFavorite && "fill-current")} />
-                        <span>{language === 'de' ? 'Speichern' : 'Save'}</span>
-                    </Button>
                 </div>
             </div>
 
@@ -386,6 +377,43 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         </div>
                     </div>
 
+                    {/* Action Buttons Row */}
+                    <div className="flex flex-wrap gap-2.5 mb-8">
+                        <Button 
+                            onClick={handleBookmarkToggle}
+                            className={cn(
+                                "flex-1 min-w-[100px] h-11 rounded-2xl font-black text-[13px] transition-all flex items-center justify-center gap-2 shadow-sm border",
+                                isFavorite 
+                                    ? "bg-rose-500 hover:bg-rose-600 text-white border-transparent" 
+                                    : "bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-slate-100 dark:border-neutral-800"
+                            )}
+                        >
+                            <Bookmark className={cn("h-4 w-4", isFavorite && "fill-current")} />
+                            <span className="whitespace-nowrap">{isFavorite ? (language === 'de' ? 'Gespeichert' : 'Saved') : (language === 'de' ? 'Speichern' : 'Save')}</span>
+                        </Button>
+                        <Button 
+                            onClick={() => setIsSaveToCollectionOpen(true)}
+                            className="flex-1 min-w-[100px] h-11 rounded-2xl bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-slate-100 dark:border-neutral-800 font-black text-[13px] transition-all flex items-center justify-center gap-2 shadow-sm"
+                        >
+                            <FolderPlus className="h-4 w-4 text-emerald-500" />
+                            <span className="whitespace-nowrap">{language === 'de' ? 'Liste' : 'List'}</span>
+                        </Button>
+                        <Button 
+                            onClick={() => setIsAnalyticsOpen(true)}
+                            className="flex-1 min-w-[100px] h-11 rounded-2xl bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-slate-100 dark:border-neutral-800 font-black text-[13px] transition-all flex items-center justify-center gap-2 shadow-sm"
+                        >
+                            <BarChart3 className="h-4 w-4 text-violet-500" />
+                            <span className="whitespace-nowrap">{language === 'de' ? 'Statistik' : 'Stats'}</span>
+                        </Button>
+                        <Button 
+                            onClick={handleSharePlace}
+                            className="flex-1 min-w-[100px] h-11 rounded-2xl bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-slate-100 dark:border-neutral-800 font-black text-[13px] transition-all flex items-center justify-center gap-2 shadow-sm"
+                        >
+                            <Share2 className="h-4 w-4 text-sky-500" />
+                            <span className="whitespace-nowrap">{language === 'de' ? 'Teilen' : 'Share'}</span>
+                        </Button>
+                    </div>
+
                     {/* Horizontal Stats */}
                     <div className="grid grid-cols-3 gap-3 mb-8">
                         <div className="bg-[#fff7ed] dark:bg-amber-950/20 p-4 rounded-[2rem] flex flex-col items-center justify-center gap-0.5 text-center border border-amber-100/50 dark:border-amber-900/30">
@@ -442,6 +470,8 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                 {activities.map(activity => {
                                     const actDate = activity.activityDate.toDate();
                                     const isParticipant = activity.participantIds.includes(user?.uid || '---');
+                                    const isFull = activity.maxParticipants ? activity.participantIds.length >= activity.maxParticipants : false;
+                                    const hasRequested = activity.id ? requestedActivityIds[activity.id] : false;
                                     
                                     return (
                                         <div 
@@ -459,7 +489,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-1.5 mb-0.5">
                                                      <h4 className="font-bold text-slate-800 dark:text-neutral-200">
-                                                        {activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}
+                                                        {activity.isCustomActivity ? (activity.title || activity.placeName) : (activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup'))}
                                                     </h4>
 
                                                 </div>
@@ -473,6 +503,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                     </div>
                                                      <span className="text-[11px] font-bold text-slate-400">
                                                         {activity.participantIds.length} {language === 'de' ? 'Teilnehmer' : 'Participants'}
+                                                        {activity.isCustomActivity && activity.placeName && ` • ${activity.placeName}`}
                                                      </span>
                                                 </div>
                                             </div>
@@ -504,15 +535,28 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                         Chat
                                                     </Button>
                                                 ) : (
-                                                     <Button 
+                                                    <Button 
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             handleJoin(activity);
                                                         }}
-                                                        disabled={joiningActivityId === activity.id}
-                                                        className="bg-primary text-white hover:opacity-90 rounded-[1.25rem] h-11 px-5 min-w-[100px] font-black text-sm border-none shadow-lg shadow-primary/20"
+                                                        disabled={joiningActivityId === activity.id || hasRequested || isFull || activity.status !== 'active'}
+                                                        className={cn(
+                                                            hasRequested
+                                                              ? "bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 hover:opacity-100 cursor-not-allowed shadow-none"
+                                                              : "bg-primary text-white hover:opacity-90 shadow-lg shadow-primary/20",
+                                                            "rounded-[1.25rem] h-11 px-5 min-w-[100px] font-black text-sm border-none transition-all"
+                                                        )}
                                                     >
-                                                        {joiningActivityId === activity.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (language === 'de' ? 'Beitreten' : 'Join')}
+                                                        {joiningActivityId === activity.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : hasRequested ? (
+                                                            language === 'de' ? 'Angefragt' : 'Requested'
+                                                        ) : activity.joinMode !== 'direct' ? (
+                                                            language === 'de' ? 'Anfrage' : 'Request'
+                                                        ) : (
+                                                            language === 'de' ? 'Beitreten' : 'Join'
+                                                        )}
                                                     </Button>
                                                 )}
                                             </div>

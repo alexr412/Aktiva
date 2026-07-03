@@ -24,6 +24,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { earnToken } from '@/lib/firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { reverseGeocode, autocompletePlaces } from '@/lib/geoapify';
+import { buildApproximateLocationData } from '@/lib/geo-utils';
 import Link from 'next/link';
 import {
   format,
@@ -69,7 +70,8 @@ interface CreateActivityDialogProps {
       requireVerification?: boolean;
       minimumRating?: number;
     },
-    joinMode?: 'direct' | 'request'
+    joinMode?: 'direct' | 'request',
+    selectedPlace?: Place | null
   ) => Promise<boolean>;
 }
 
@@ -313,7 +315,8 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
       derivedCategory,
       description,
       finalRequirements,
-      joinMode
+      joinMode,
+      selectedLocation
     );
     if (!success) {
       setIsCreating(false);
@@ -434,7 +437,11 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="place-search-input" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Wo treffen wir uns?' : 'Where do we meet?'}</Label>
+              <Label htmlFor="place-search-input" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
+                {isSpecificPlaceMode 
+                  ? (language === 'de' ? 'Wo treffen wir uns?' : 'Where do we meet?') 
+                  : (language === 'de' ? 'Wo soll die Aktivität erscheinen?' : 'Where should it appear?')}
+              </Label>
               
               {isSpecificPlaceMode ? (
                 <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 rounded-2xl p-4 flex items-center justify-between">
@@ -457,7 +464,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                         id="place-search-input"
                         value={searchQuery}
                         onChange={(e) => handleSearch(e.target.value)}
-                        placeholder={language === 'de' ? "Ort oder Adresse suchen..." : "Search place or address..."}
+                        placeholder={language === 'de' ? "Ort oder PLZ suchen..." : "Search city or postal code..."}
                         className="h-14 pl-12 rounded-2xl border-none bg-secondary/50 font-bold"
                       />
                       {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
@@ -473,8 +480,8 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                           >
                             <MapPin className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                             <div>
-                              <p className="font-bold text-sm text-slate-900">{res.name}</p>
-                              <p className="text-xs text-slate-500">{res.address}</p>
+                              {/* Show only postcode + city in autocomplete results for privacy */}
+                              <p className="font-bold text-sm text-slate-900">{buildApproximateLocationData(res).label}</p>
                             </div>
                           </button>
                         ))}
@@ -498,8 +505,9 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                         <MapPin className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <p className="font-black text-sm text-slate-900 leading-tight">{selectedLocation.name}</p>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">{selectedLocation.address}</p>
+                        <p className="font-black text-sm text-slate-900 leading-tight">
+                          {buildApproximateLocationData(selectedLocation).label}
+                        </p>
                       </div>
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => setSelectedLocation(null)} className="rounded-full text-slate-400">

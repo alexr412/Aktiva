@@ -47,6 +47,7 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(false);
     const [joiningId, setJoiningId] = useState<string | null>(null);
+    const [requestedActivityIds, setRequestedActivityIds] = useState<Record<string, boolean>>({});
     const { user } = useAuth();
     const language = useLanguage();
     const router = useRouter();
@@ -87,17 +88,33 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
             return;
         }
 
+        if (joiningId === activity.id || requestedActivityIds[activity.id!]) return;
+
         setJoiningId(activity.id!);
         try {
-            const status = await joinActivity(activity.id!, user);
+            const status = await joinActivity(activity.id!, user, null, null, activity.joinMode);
             if (status === 'joined') {
                 toast({ title: language === 'de' ? 'Erfolgreich beigetreten!' : 'Successfully joined!' });
                 router.push(`/chat/${activity.id}`);
+            } else if (status === 'already_requested') {
+                setRequestedActivityIds(prev => ({
+                    ...prev,
+                    [activity.id!]: true
+                }));
+                toast({
+                    title: language === 'de' ? 'Du hast bereits eine Anfrage gesendet.' : 'You already sent a request.',
+                    description: language === 'de' ? 'Der Host hat deine Anfrage bereits erhalten.' : 'The host has already received your request.'
+                });
             } else {
+                setRequestedActivityIds(prev => ({
+                    ...prev,
+                    [activity.id!]: true
+                }));
                 toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
             }
+            return status;
         } catch (error: any) {
-            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message || error });
+            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message || String(error) });
         } finally {
             setJoiningId(null);
         }
@@ -160,8 +177,16 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
                                 activities.map((activity) => (
                                     <div 
                                         key={activity.id}
-                                        onClick={() => handleJoin(activity)}
-                                        className="group bg-neutral-50 dark:bg-neutral-800/80 hover:bg-neutral-100 dark:hover:bg-neutral-800 p-4 rounded-3xl transition-all cursor-pointer border border-transparent hover:border-primary/20 relative overflow-hidden"
+                                        onClick={() => {
+                                            if (joiningId === activity.id || requestedActivityIds[activity.id!]) return;
+                                            handleJoin(activity);
+                                        }}
+                                        className={cn(
+                                            "group bg-neutral-50 dark:bg-neutral-800/80 p-4 rounded-3xl transition-all border border-transparent relative overflow-hidden",
+                                            (joiningId === activity.id || requestedActivityIds[activity.id!]) 
+                                              ? "cursor-not-allowed opacity-80" 
+                                              : "hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer hover:border-primary/20"
+                                        )}
                                     >
                                         <div className="flex items-center justify-between gap-4 relative z-10">
                                             <div className="flex-1 min-w-0">
@@ -186,12 +211,20 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
                                             </div>
                                             <Button 
                                                 size="icon" 
-                                                className="h-12 w-12 rounded-2xl bg-white dark:bg-neutral-700 text-primary shadow-sm group-hover:bg-primary group-hover:text-white transition-all shadow-primary/5 border-none"
+                                                disabled={joiningId === activity.id || requestedActivityIds[activity.id!]}
+                                                className={cn(
+                                                    "h-12 w-12 rounded-2xl transition-all shadow-sm border-none flex items-center justify-center shrink-0",
+                                                    requestedActivityIds[activity.id!]
+                                                      ? "bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 cursor-not-allowed shadow-none"
+                                                      : "bg-white dark:bg-neutral-700 text-primary shadow-primary/5 group-hover:bg-primary group-hover:text-white"
+                                                )}
                                             >
                                                 {joiningId === activity.id ? (
                                                     <Loader2 className="h-5 w-5 animate-spin" />
                                                 ) : activity.participantIds.includes(user?.uid || '') ? (
                                                     <MessageSquare className="h-5 w-5" />
+                                                ) : requestedActivityIds[activity.id!] ? (
+                                                    <Check className="h-5 w-5 text-emerald-500" />
                                                 ) : (
                                                     <ArrowRight className="h-5 w-5" />
                                                 )}

@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
-import { leaveActivity, deleteActivity } from '@/lib/firebase/firestore';
+import { leaveActivity } from '@/lib/firebase/firestore';
 import { format, isToday } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { cn, formatFirstName } from '@/lib/utils';
 import { getPrimaryIconData, getRoomVisualCategory } from '@/lib/tag-config';
+import { MemberFriendActionButton } from './member-friend-action-button';
 
 import {
   Sheet,
@@ -44,6 +45,8 @@ interface RoomInfoSheetProps {
   participants: Chat['participantDetails'] | null | undefined;
   currentUserId?: string;
   onViewPlace?: () => void;
+  onBeforeLeave?: () => void;
+  onLeaveError?: () => void;
 }
 
 export function RoomInfoSheet({
@@ -55,6 +58,8 @@ export function RoomInfoSheet({
   participants,
   currentUserId,
   onViewPlace,
+  onBeforeLeave,
+  onLeaveError,
 }: RoomInfoSheetProps) {
   const [copied, setCopied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -230,7 +235,7 @@ export function RoomInfoSheet({
     }
   };
 
-  // Verlassen/Löschen Handler
+
   const handleLeaveOrDelete = async () => {
     if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
@@ -241,13 +246,18 @@ export function RoomInfoSheet({
     setTimeout(async () => {
       setIsActing(true);
       try {
-        if (isHost || isOnlyParticipant) {
-          await deleteActivity(chat.id);
-        } else {
-          await leaveActivity(chat.id, currentUserId);
+        if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
         }
+        onBeforeLeave?.();
+        await leaveActivity(chat.id, currentUserId);
+        toast({
+          title: language === 'de' ? 'Raum verlassen' : 'Room left',
+          description: language === 'de' ? 'Du hast den Raum verlassen.' : 'You have left the room.',
+        });
         router.replace('/chat');
       } catch (error: any) {
+        onLeaveError?.();
         console.error('Operation failed:', error);
         toast({
           variant: 'destructive',
@@ -271,7 +281,7 @@ export function RoomInfoSheet({
         className="p-0 h-[85vh] max-h-[85vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none bg-white dark:bg-neutral-900 flex flex-col"
       >
         <SheetHeader className="sr-only">
-          <SheetTitle>{chat.placeName || 'Chat Info'}</SheetTitle>
+          <SheetTitle>{activity?.title || chat?.placeName || 'Chat Info'}</SheetTitle>
           <SheetDescription>
             {language === 'de'
               ? 'Raumspezifische Details und Einstellungen'
@@ -292,7 +302,7 @@ export function RoomInfoSheet({
             </div>
             <div>
               <h2 className="text-lg font-black text-slate-900 dark:text-neutral-100 leading-snug">
-                {chat.placeName}
+                {activity?.title || chat?.placeName}
               </h2>
               <span
                 className={cn(
@@ -312,17 +322,17 @@ export function RoomInfoSheet({
         <ScrollArea className="flex-1">
           <div className="p-6 space-y-6 pb-12">
             {/* Ort Sektion */}
-            {(place || activity?.placeAddress || chat.placeName) && (
+            {(place || activity?.placeAddress || chat?.placeName) && (
               <div className="bg-slate-50 dark:bg-neutral-800/50 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800">
                 <h3 className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-widest mb-1 flex items-center gap-1">
                   <Info className="h-3.5 w-3.5" />
                   <span>{language === 'de' ? 'Ort' : 'Location'}</span>
                 </h3>
                 <div className="font-bold text-slate-900 dark:text-neutral-100">
-                  {place?.name || activity?.placeName || chat.placeName}
+                  {place?.name || activity?.placeName || chat?.placeName}
                 </div>
                 <div className="text-xs text-slate-500 dark:text-neutral-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                  <span>{place?.address || activity?.placeAddress || ''}</span>
+                  <span>{activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.placeAddress || '') : (place?.address || activity?.placeAddress || '')}</span>
                   {place?.distance !== undefined && (
                     <span className="bg-slate-200 dark:bg-neutral-750 px-1.5 py-0.5 rounded text-[10px] font-bold">
                       {place.distance < 1
@@ -461,6 +471,10 @@ export function RoomInfoSheet({
                               Host
                             </span>
                           )}
+                          <MemberFriendActionButton
+                            targetUserId={uid}
+                            currentUserId={currentUserId || ''}
+                          />
                         </div>
                       </div>
                     );
@@ -504,47 +518,27 @@ export function RoomInfoSheet({
                   </Button>
                 )}
 
+                {/* Normal Leave Button for everyone (host and non-host) */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    {isHost || isOnlyParticipant ? (
-                      <Button
-                        variant="destructive"
-                        disabled={isActing}
-                        className="w-full h-11 rounded-2xl font-black bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-900/30 flex items-center justify-center gap-2 shadow-none border-none mt-2"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span>{language === 'de' ? 'Treffen absagen & löschen' : 'Cancel & Delete Meetup'}</span>
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="destructive"
-                        disabled={isActing}
-                        className="w-full h-11 rounded-2xl font-black bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-900/30 flex items-center justify-center gap-2 shadow-none border-none mt-2"
-                      >
-                        <LogOut className="h-4 w-4" />
-                        <span>{language === 'de' ? 'Raum verlassen' : 'Leave Room'}</span>
-                      </Button>
-                    )}
+                    <Button
+                      variant="destructive"
+                      disabled={isActing}
+                      className="w-full h-11 rounded-2xl font-black bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-900/30 flex items-center justify-center gap-2 shadow-none border-none mt-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>{language === 'de' ? 'Raum verlassen' : 'Leave Room'}</span>
+                    </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="rounded-3xl border-none shadow-2xl dark:bg-neutral-900">
                     <AlertDialogHeader>
                       <AlertDialogTitle className="text-lg font-black dark:text-neutral-100">
-                        {isHost || isOnlyParticipant
-                          ? language === 'de'
-                            ? 'Treffen wirklich absagen?'
-                            : 'Really cancel meetup?'
-                          : language === 'de'
-                          ? 'Raum wirklich verlassen?'
-                          : 'Really leave room?'}
+                        {language === 'de' ? 'Raum wirklich verlassen?' : 'Really leave room?'}
                       </AlertDialogTitle>
                       <AlertDialogDescription className="text-sm font-medium text-slate-500 dark:text-neutral-400">
-                        {isHost || isOnlyParticipant
-                          ? language === 'de'
-                            ? 'Diese Aktion löscht die Aktivität und alle zugehörigen Chat-Nachrichten unwiderruflich.'
-                            : 'This action permanently deletes the activity and all associated chat messages.'
-                          : language === 'de'
-                          ? 'Du verlässt den Chat und die Aktivität. Du kannst später wieder beitreten, solange Plätze frei sind.'
-                          : 'You will leave the chat and activity. You can join again later as long as spaces are available.'}
+                        {isHost
+                          ? (language === 'de' ? 'Da du der Host bist, wird die Host-Rolle auf ein anderes Mitglied übertragen. Falls du der letzte Teilnehmer bist, wird der Raum gelöscht.' : 'Since you are the host, host ownership will be transferred to another member. If you are the last participant, the meetup will be deleted.')
+                          : (language === 'de' ? 'Du verlässt den Chat und die Aktivität. Du kannst später wieder beitreten, solange Plätze frei sind.' : 'You will leave the chat and activity. You can join again later as long as spaces are available.')}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
@@ -555,13 +549,7 @@ export function RoomInfoSheet({
                         onClick={handleLeaveOrDelete}
                         className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-black h-11 border-none shadow-md shadow-red-200 dark:shadow-none"
                       >
-                        {isHost || isOnlyParticipant
-                          ? language === 'de'
-                            ? 'Ja, absagen'
-                            : 'Yes, cancel'
-                          : language === 'de'
-                          ? 'Ja, verlassen'
-                          : 'Yes, leave'}
+                        {language === 'de' ? 'Ja, verlassen' : 'Yes, leave'}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

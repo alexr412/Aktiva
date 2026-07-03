@@ -1305,6 +1305,204 @@ export const resolveLoginIdentifier = onCall(async (request) => {
   return { email: userData.email || null };
 });
 
+/**
+ * Callable function to securely send a friend request.
+ * Derives the sender ID exclusively from the auth token.
+ */
+export const secureSendFriendRequest = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Der Nutzer muss eingeloggt sein.');
+  }
+
+  const toUserId = request.data?.toUserId;
+  if (!toUserId || typeof toUserId !== 'string' || toUserId.trim() === '') {
+    throw new HttpsError('invalid-argument', 'toUserId ist ein Pflichtfeld.');
+  }
+
+  const fromUserId = request.auth.uid;
+  if (fromUserId === toUserId) {
+    throw new HttpsError('failed-precondition', 'Selbst-Freundschaftsanfragen sind nicht erlaubt.');
+  }
+
+  const db = admin.firestore();
+  const fromUserRef = db.collection('users').doc(fromUserId);
+  const toUserRef = db.collection('users').doc(toUserId);
+  const notificationRef = db.collection('notifications').doc();
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      const fromUserSnap = await transaction.get(fromUserRef);
+      const toUserSnap = await transaction.get(toUserRef);
+
+      if (!fromUserSnap.exists) {
+        throw new HttpsError('not-found', 'Profil des Senders existiert nicht.');
+      }
+      if (!toUserSnap.exists) {
+        throw new HttpsError('not-found', 'Profil des Empfängers existiert nicht.');
+      }
+
+      const fromUserProfile = fromUserSnap.data() || {};
+      const toUserProfile = toUserSnap.data() || {};
+
+      if (fromUserProfile.isBanned) {
+        throw new HttpsError('failed-precondition', 'Dein Account ist gesperrt.');
+      }
+      if (toUserProfile.isBanned) {
+        throw new HttpsError('failed-precondition', 'Der Zielnutzer ist gesperrt.');
+      }
+
+      const friends = fromUserProfile.friends || [];
+      const sent = fromUserProfile.friendRequestsSent || [];
+      const received = fromUserProfile.friendRequestsReceived || [];
+
+      if (friends.includes(toUserId)) {
+        throw new HttpsError('already-exists', 'Ihr seid bereits befreundet.');
+      }
+      if (sent.includes(toUserId)) {
+        throw new HttpsError('already-exists', 'Eine Freundschaftsanfrage wurde bereits gesendet.');
+      }
+      if (received.includes(toUserId)) {
+        throw new HttpsError('already-exists', 'Dieser Nutzer hat dir bereits eine Anfrage gesendet.');
+      }
+
+      // Blacklist / Block check
+      const fromBlacklist = fromUserProfile.blacklist || {};
+      const toBlacklist = toUserProfile.blacklist || {};
+      const fromHard = fromBlacklist.hard || [];
+      const fromSoft = fromBlacklist.soft || [];
+      const toHard = toBlacklist.hard || [];
+      const toSoft = toBlacklist.soft || [];
+
+      if (fromHard.includes(toUserId) || fromSoft.includes(toUserId)) {
+        throw new HttpsError('permission-denied', 'Du hast diesen Nutzer blockiert.');
+      }
+      if (toHard.includes(fromUserId) || toSoft.includes(fromUserId)) {
+        throw new HttpsError('permission-denied', 'Dieser Nutzer hat dich blockiert.');
+      }
+
+      // Update profiles
+      transaction.update(fromUserRef, {
+        friendRequestsSent: FieldValue.arrayUnion(toUserId)
+      });
+      transaction.update(toUserRef, {
+        friendRequestsReceived: FieldValue.arrayUnion(fromUserId)
+      });
+
+      // Write notification document with exact schema
+      transaction.set(notificationRef, {
+        recipientId: toUserId,
+        senderId: fromUserId,
+        senderProfile: {
+          displayName: fromUserProfile.displayName || "Jemand",
+          photoURL: fromUserProfile.photoURL || null
+        },
+        type: 'friend_request',
+        isRead: false,
+        createdAt: FieldValue.serverTimestamp()
+      });
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error(`secureSendFriendRequest failed from ${fromUserId} to ${toUserId}:`, error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError('internal', error.message || 'Fehler beim Senden der Freundschaftsanfrage.');
+  }
+});
+
+/**
+ * Callable function to securely accept a friend request.
+ * Derives the acceptor ID exclusively from the auth token.
+ */
+export const secureAcceptFriendRequest = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Der Nutzer muss eingeloggt sein.');
+  }
+
+  const fromUserId = request.data?.fromUserId; // The user who sent the request
+  if (!fromUserId || typeof fromUserId !== 'string' || fromUserId.trim() === '') {
+    throw new HttpsError('invalid-argument', 'fromUserId ist ein Pflichtfeld.');
+  }
+
+  const currentUserId = request.auth.uid;
+  if (currentUserId === fromUserId) {
+    throw new HttpsError('failed-precondition', 'Selbst-Operationen sind nicht erlaubt.');
+  }
+
+  const db = admin.firestore();
+  const currentUserRef = db.collection('users').doc(currentUserId);
+  const fromUserRef = db.collection('users').doc(fromUserId);
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      const currentUserSnap = await transaction.get(currentUserRef);
+      const fromUserSnap = await transaction.get(fromUserRef);
+
+      if (!currentUserSnap.exists) {
+        throw new HttpsError('not-found', 'Dein Nutzerprofil existiert nicht.');
+      }
+      if (!fromUserSnap.exists) {
+        throw new HttpsError('not-found', 'Profil des Senders existiert nicht.');
+      }
+
+      const currentUserProfile = currentUserSnap.data() || {};
+      const fromUserProfile = fromUserSnap.data() || {};
+
+      if (currentUserProfile.isBanned) {
+        throw new HttpsError('failed-precondition', 'Dein Account ist gesperrt.');
+      }
+      if (fromUserProfile.isBanned) {
+        throw new HttpsError('failed-precondition', 'Der anfragende Nutzer ist gesperrt.');
+      }
+
+      const received = currentUserProfile.friendRequestsReceived || [];
+      const sent = fromUserProfile.friendRequestsSent || [];
+
+      if (!received.includes(fromUserId)) {
+        throw new HttpsError('failed-precondition', 'Keine ausstehende Anfrage von diesem Nutzer gefunden.');
+      }
+      if (!sent.includes(currentUserId)) {
+        throw new HttpsError('failed-precondition', 'Der anfragende Nutzer hat keine ausstehende Anfrage an dich.');
+      }
+
+      const friends = currentUserProfile.friends || [];
+      if (friends.includes(fromUserId)) {
+        throw new HttpsError('already-exists', 'Ihr seid bereits befreundet.');
+      }
+
+      // Blacklist / Block check
+      const currentBlacklist = currentUserProfile.blacklist || {};
+      const fromBlacklist = fromUserProfile.blacklist || {};
+      const currentHard = currentBlacklist.hard || [];
+      const currentSoft = currentBlacklist.soft || [];
+      const fromHard = fromBlacklist.hard || [];
+      const fromSoft = fromBlacklist.soft || [];
+
+      if (currentHard.includes(fromUserId) || currentSoft.includes(fromUserId) ||
+          fromHard.includes(currentUserId) || fromSoft.includes(currentUserId)) {
+        throw new HttpsError('permission-denied', 'Die Aktion ist blockiert.');
+      }
+
+      // Update profiles
+      transaction.update(currentUserRef, {
+        friendRequestsReceived: FieldValue.arrayRemove(fromUserId),
+        friends: FieldValue.arrayUnion(fromUserId)
+      });
+      transaction.update(fromUserRef, {
+        friendRequestsSent: FieldValue.arrayRemove(currentUserId),
+        friends: FieldValue.arrayUnion(currentUserId)
+      });
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error(`secureAcceptFriendRequest failed for ${currentUserId} from ${fromUserId}:`, error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError('internal', error.message || 'Fehler beim Bestätigen der Freundschaftsanfrage.');
+  }
+});
+
+
 
 
 

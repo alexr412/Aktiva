@@ -94,6 +94,26 @@ class MockCollectionReference {
     mockDbState[this.collectionPath][docId] = JSON.parse(JSON.stringify(data));
     return new MockDocumentReference(this.collectionPath, docId);
   }
+
+  limit(n: number) {
+    return this;
+  }
+
+  async get() {
+    const docsData = mockDbState[this.collectionPath] || {};
+    const docs = Object.keys(docsData).map(docId => {
+      return {
+        id: docId,
+        ref: new MockDocumentReference(this.collectionPath, docId),
+        data: () => docsData[docId]
+      };
+    });
+    return {
+      empty: docs.length === 0,
+      size: docs.length,
+      docs
+    };
+  }
 }
 
 const isServerTimestamp = (val: any) => val && val.__type === "serverTimestamp";
@@ -198,6 +218,17 @@ class MockTransaction {
   }
 }
 
+class MockWriteBatch {
+  delete(ref: MockDocumentReference) {
+    if (mockDbState[ref.collectionPath]) {
+      delete mockDbState[ref.collectionPath][ref.docId];
+    }
+  }
+  async commit() {
+    return Promise.resolve();
+  }
+}
+
 const mockDb = {
   collection: (path: string) => new MockCollectionReference(path),
   runTransaction: async (callback: any) => {
@@ -205,6 +236,7 @@ const mockDb = {
     const transaction = new MockTransaction();
     return callback(transaction);
   },
+  batch: () => new MockWriteBatch(),
 };
 
 const firestoreFunc = () => mockDb;
@@ -830,19 +862,29 @@ async function testSecureLeaveActivity() {
     (err: any) => err.name === "HttpsError" && err.code === "invalid-argument"
   );
 
-  // Test Case B: rejects completed/cancelled activity
+  // Test Case B: allows leaving completed/cancelled activity if user is a participant
   mockDbState["activities"] = {
     comp_act: { status: "completed", hostId: "host1", participantIds: ["host1", "user2"] },
     canc_act: { status: "cancelled", hostId: "host1", participantIds: ["host1", "user2"] }
   };
-  await assert.rejects(
-    (secureLeaveActivity as any)({ activityId: "comp_act", operationId: "op1" }, { uid: "user2" }),
-    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition" && err.message.includes("nicht verlassen")
+  mockDbState["chats"] = {
+    comp_act: { participantIds: ["host1", "user2"] },
+    canc_act: { participantIds: ["host1", "user2"] }
+  };
+
+  const leaveCompResult = await (secureLeaveActivity as any)(
+    { activityId: "comp_act", operationId: "op_comp_leave" },
+    { uid: "user2" }
   );
-  await assert.rejects(
-    (secureLeaveActivity as any)({ activityId: "canc_act", operationId: "op1" }, { uid: "user2" }),
-    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition" && err.message.includes("nicht verlassen")
+  assert.deepStrictEqual(leaveCompResult, { success: true });
+  assert.deepStrictEqual(mockDbState["activities"]["comp_act"].participantIds, ["host1"]);
+
+  const leaveCancResult = await (secureLeaveActivity as any)(
+    { activityId: "canc_act", operationId: "op_canc_leave" },
+    { uid: "user2" }
   );
+  assert.deepStrictEqual(leaveCancResult, { success: true });
+  assert.deepStrictEqual(mockDbState["activities"]["canc_act"].participantIds, ["host1"]);
 
   // Test Case C: rejects user not in participants
   mockDbState["activities"] = {
@@ -853,11 +895,24 @@ async function testSecureLeaveActivity() {
     (err: any) => err.name === "HttpsError" && err.code === "not-found" && err.message.includes("kein Teilnehmer")
   );
 
-  // Test Case D: rejects host leaving own activity
-  await assert.rejects(
-    (secureLeaveActivity as any)({ activityId: "act1", operationId: "op1" }, { uid: "host1" }),
-    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition" && err.message.includes("Als Host kannst du deine Aktivität nicht verlassen")
+  // Test Case D: host leaving own activity (host transfer)
+  mockDbState["users"] = {
+    user2: { displayName: "User 2 New Host", photoURL: "http://photo.url" }
+  };
+  mockDbState["chats"] = {
+    act1: { participantIds: ["host1", "user2"], participantDetails: { host1: {}, user2: {} } }
+  };
+  const hostLeaveResult = await (secureLeaveActivity as any)(
+    { activityId: "act1", operationId: "op_host_leave" },
+    { uid: "host1" }
   );
+  assert.deepStrictEqual(hostLeaveResult, { success: true });
+  assert.strictEqual(mockDbState["activities"]["act1"].hostId, "user2");
+  assert.strictEqual(mockDbState["activities"]["act1"].hostName, "User 2 New Host");
+  assert.strictEqual(mockDbState["activities"]["act1"].hostPhotoURL, "http://photo.url");
+  assert.strictEqual(mockDbState["chats"]["act1"].hostId, "user2");
+  assert.strictEqual(mockDbState["chats"]["act1"].hostName, "User 2 New Host");
+  assert.strictEqual(mockDbState["chats"]["act1"].hostPhotoURL, "http://photo.url");
 
   // Test Case E: free activity leave path
   resetMockDb();
@@ -1022,6 +1077,140 @@ async function testSecureLeaveActivity() {
   assert.strictEqual(dlqEntry.operationId, "op_leave_fail");
   assert.strictEqual(dlqEntry.source, "secureLeaveActivity");
   assert.strictEqual(dlqEntry.errorMessage, "Leave Failure");
+
+  // Test Case J: Last participant leaves (non-host)
+  resetMockDb();
+  mockDbState["activities"] = {
+    act1: {
+      status: "active",
+      hostId: "host1",
+      participantIds: ["user2"],
+      placeId: "place1"
+    }
+  };
+  mockDbState["chats"] = {
+    act1: {
+      participantIds: ["user2"]
+    }
+  };
+  mockDbState["places"] = {
+    place1: {
+      activityCount: 2
+    }
+  };
+  mockDbState["activities/act1/participants"] = {
+    user2: { joinedAt: "some-date" }
+  };
+  mockDbState["chats/act1/messages"] = {
+    msg1: { content: "hello" }
+  };
+
+  const leaveLastResult = await (secureLeaveActivity as any)(
+    { activityId: "act1", operationId: "op_leave_last" },
+    { uid: "user2" }
+  );
+  assert.deepStrictEqual(leaveLastResult, { success: true });
+
+  assert.ok(mockDbState["activities"]?.["act1"] === undefined);
+  assert.ok(mockDbState["chats"]?.["act1"] === undefined);
+  assert.ok(mockDbState["activities/act1/participants"]?.["user2"] === undefined);
+  assert.ok(mockDbState["chats/act1/messages"]?.["msg1"] === undefined);
+  assert.strictEqual(mockDbState["places"]["place1"].activityCount, 1);
+
+  // Test Case K: Last participant is host
+  resetMockDb();
+  mockDbState["activities"] = {
+    act1: {
+      status: "active",
+      hostId: "host1",
+      participantIds: ["host1"]
+    }
+  };
+  mockDbState["chats"] = {
+    act1: {
+      hostId: "host1",
+      participantIds: ["host1"]
+    }
+  };
+  mockDbState["activities/act1/participants"] = {
+    host1: { joinedAt: "some-date" }
+  };
+
+  const leaveLastHostResult = await (secureLeaveActivity as any)(
+    { activityId: "act1", operationId: "op_leave_last_host" },
+    { uid: "host1" }
+  );
+  assert.deepStrictEqual(leaveLastHostResult, { success: true });
+
+  assert.ok(mockDbState["activities"]?.["act1"] === undefined);
+  assert.ok(mockDbState["chats"]?.["act1"] === undefined);
+  assert.ok(mockDbState["activities/act1/participants"]?.["host1"] === undefined);
+
+  // Test Case L: Completed status, user is last participant (Test C)
+  resetMockDb();
+  mockDbState["activities"] = {
+    act1: {
+      status: "completed",
+      hostId: "host1",
+      participantIds: ["user2"]
+    }
+  };
+  mockDbState["chats"] = {
+    act1: {
+      participantIds: ["user2"]
+    }
+  };
+  mockDbState["activities/act1/participants"] = {
+    user2: { joinedAt: "some-date" }
+  };
+  mockDbState["chats/act1/messages"] = {
+    msg1: { content: "hello" }
+  };
+
+  const leaveLastCompResult = await (secureLeaveActivity as any)(
+    { activityId: "act1", operationId: "op_leave_last_comp" },
+    { uid: "user2" }
+  );
+  assert.deepStrictEqual(leaveLastCompResult, { success: true });
+  assert.ok(mockDbState["activities"]?.["act1"] === undefined);
+  assert.ok(mockDbState["chats"]?.["act1"] === undefined);
+  assert.ok(mockDbState["activities/act1/participants"]?.["user2"] === undefined);
+  assert.ok(mockDbState["chats/act1/messages"]?.["msg1"] === undefined);
+
+  // Test Case M: Cancelled status, user is last participant, place activityCount is not decremented (Test D)
+  resetMockDb();
+  mockDbState["activities"] = {
+    act1: {
+      status: "cancelled",
+      hostId: "host1",
+      participantIds: ["user2"],
+      placeId: "place1"
+    }
+  };
+  mockDbState["chats"] = {
+    act1: {
+      participantIds: ["user2"]
+    }
+  };
+  mockDbState["places"] = {
+    place1: {
+      activityCount: 2
+    }
+  };
+  mockDbState["activities/act1/participants"] = {
+    user2: { joinedAt: "some-date" }
+  };
+
+  const leaveLastCancResult = await (secureLeaveActivity as any)(
+    { activityId: "act1", operationId: "op_leave_last_canc" },
+    { uid: "user2" }
+  );
+  assert.deepStrictEqual(leaveLastCancResult, { success: true });
+  assert.ok(mockDbState["activities"]?.["act1"] === undefined);
+  assert.ok(mockDbState["chats"]?.["act1"] === undefined);
+  assert.ok(mockDbState["activities/act1/participants"]?.["user2"] === undefined);
+  // Verify place count remains 2 (not decremented since activity status was already cancelled)
+  assert.strictEqual(mockDbState["places"]["place1"].activityCount, 2);
 
   console.log("✅ testSecureLeaveActivity passed");
 }

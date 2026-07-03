@@ -23,7 +23,7 @@ import Link from 'next/link';
 interface ActivityListItemProps {
     activity: Activity & { distance?: number | null };
     user: User | null;
-    onJoin: (activityId: string) => Promise<void>;
+    onJoin: (activity: Activity) => Promise<any>;
 }
 
 export function ActivityListItem({ activity, user, onJoin }: ActivityListItemProps) {
@@ -34,6 +34,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const [isJoining, setIsJoining] = useState(false);
     const [isVoting, setIsVoting] = useState(false);
     const [isReporting, setIsReporting] = useState(false);
+    const [hasRequested, setHasRequested] = useState(false);
     
     const cardRef = useRef<HTMLDivElement>(null);
     const hasTracked = useRef(false);
@@ -112,9 +113,20 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
             return;
         }
 
+        const resolvedMode = activity.joinMode === 'direct' ? 'direct' : 'request';
+        console.log("[JOIN_FLOW_DEBUG]", {
+            activityId: activity.id,
+            joinMode: activity.joinMode,
+            resolvedMode,
+            action: resolvedMode === 'direct' ? 'joinActivity' : 'requestJoinActivity'
+        });
+
         setIsJoining(true);
         try { 
-            await onJoin(activity.id!); 
+            await onJoin(activity); 
+            if (resolvedMode === 'request') {
+                setHasRequested(true);
+            }
         } catch (error) { 
             setIsJoining(false); 
         }
@@ -198,9 +210,14 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                 <div className="mb-2">
                     <div className="flex items-center justify-between gap-2">
                         <h3 className="font-bold text-base truncate flex-1 text-[#0f172a] dark:text-neutral-200">
-                            {activity.placeName || (language === 'de' ? "Treffen" : "Meetup")}
+                            {activity.title || activity.placeName || (language === 'de' ? "Treffen" : "Meetup")}
                         </h3>
                     </div>
+                    {activity.placeAddress && (
+                        <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5 truncate">
+                            {activity.placeAddress}
+                        </p>
+                    )}
                     
                     <div className="flex items-center gap-1.5 mt-0.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px]">
                         {activityDate && (
@@ -283,16 +300,26 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                                 Chat
                             </Button>
                         ) : (
-                            <Button 
+                             <Button 
                                 size="sm"
                                 onClick={handleJoinClick} 
-                                disabled={isJoining || isFull}
+                                disabled={isJoining || isFull || hasRequested}
                                 className={cn(
                                     "h-7 rounded-lg text-[9px] font-black px-4",
                                     isPaidEvent ? "bg-slate-900 text-white" : "bg-primary text-white"
                                 )}
                             >
-                                {isJoining ? <Loader2 className="animate-spin h-3 w-3" /> : isFull ? (language === 'de' ? 'Voll' : 'Full') : (language === 'de' ? 'Beitreten' : 'Join')}
+                                {isJoining ? (
+                                    <Loader2 className="animate-spin h-3 w-3" />
+                                ) : isFull ? (
+                                    language === 'de' ? 'Voll' : 'Full'
+                                ) : hasRequested ? (
+                                    language === 'de' ? 'Anfrage gesendet' : 'Request Sent'
+                                ) : activity.joinMode === 'direct' ? (
+                                    language === 'de' ? 'Beitreten' : 'Join'
+                                ) : (
+                                    language === 'de' ? 'Anfrage' : 'Request'
+                                )}
                             </Button>
                         )}
                     </div>

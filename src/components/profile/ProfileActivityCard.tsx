@@ -12,7 +12,7 @@ import type { Activity } from '@/lib/types';
 interface ProfileActivityCardProps {
   activity: Activity;
   user: any;
-  onJoin: (id: string) => void;
+  onJoin: (activity: Activity) => void;
 }
 
  export function ProfileActivityCard({ activity, user, onJoin }: ProfileActivityCardProps) {
@@ -48,17 +48,23 @@ interface ProfileActivityCardProps {
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <h4 className="">{activity.placeName}</h4>
+            <h4 className="">{activity.title || activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}</h4>
             {(activity as any).isNew && (
                 <div className="bg-[#fff7ed] text-[#ea580c] px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0">
                     <Star className="w-2.5 h-2.5 fill-current" /> {language === 'de' ? 'NEU' : 'NEW'}
                 </div>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex flex-wrap items-center gap-2 mt-0.5">
             <span className="text-sm font-bold text-slate-600">
                 {activityDate ? format(activityDate, language === 'de' ? 'eee, d. MMM' : 'eee, MMM d', { locale }) : (language === 'de' ? 'In Kürze' : 'Soon')}
             </span>
+            {activity.placeAddress && (
+              <>
+                <span className="text-slate-350 dark:text-neutral-700">•</span>
+                <span className="text-xs font-bold text-slate-400 truncate">{activity.placeAddress}</span>
+              </>
+            )}
           </div>
           {activity.description && (
             <p className="mt-2 text-[10px] text-slate-500 font-medium italic border-l-2 border-primary/20 pl-2">

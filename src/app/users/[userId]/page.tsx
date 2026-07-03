@@ -178,7 +178,7 @@ export default function UserProfilePage() {
         loadData();
     }, [userId, currentUser, router, toast, userProfile, authLoading, language]);
 
-    const handleJoin = async (activityId: string) => {
+    const handleJoin = async (activity: Activity) => {
         if (!currentUser) {
             toast({ 
                 title: language === 'de' ? 'Login erforderlich' : 'Login Required', 
@@ -196,17 +196,23 @@ export default function UserProfilePage() {
             return;
         }
         try {
-            const status = await joinActivity(activityId, currentUser);
+            const status = await joinActivity(activity.id!, currentUser, null, null, activity.joinMode);
             if (status === 'joined') {
                 toast({ 
                     title: language === 'de' ? 'Erfolgreich!' : 'Success!', 
                     description: language === 'de' ? 'Du bist beigetreten. Du findest die Aktivität in deinen Chats.' : 'You have joined the activity. You can find it in your chats.' 
                 });
-                setActivities(prev => prev.map(act => act.id === activityId ? {...act, participantIds: [...act.participantIds, currentUser.uid]} : act));
-                router.push(`/chat/${activityId}`);
+                setActivities(prev => prev.map(act => act.id === activity.id ? {...act, participantIds: [...act.participantIds, currentUser.uid]} : act));
+                router.push(`/chat/${activity.id}`);
+            } else if (status === 'already_requested') {
+                toast({
+                    title: language === 'de' ? 'Du hast bereits eine Anfrage gesendet.' : 'You already sent a request.',
+                    description: language === 'de' ? 'Der Host hat deine Anfrage bereits erhalten.' : 'The host has already received your request.'
+                });
             } else {
                 toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
             }
+            return status;
         } catch (error: any) {
             console.error(error);
             toast({ 

@@ -20,7 +20,7 @@ import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/aktiva/activity-list-item';
-import { LogOut, User, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell, Camera, Search, Scale, ChevronRight } from 'lucide-react';
+import { LogOut, User, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell, Camera, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { validateAvatarFile } from '@/lib/avatar-utils';
@@ -300,19 +300,25 @@ export default function ProfilePage() {
         return () => unsubscribe();
     }, [user]);
 
-    const handleJoin = async (activityId: string) => {
+    const handleJoin = async (activity: Activity) => {
         if (!user) {
             router.push('/login');
             throw new Error('Login Required');
         }
         try {
-            const status = await joinActivity(activityId, user);
+            const status = await joinActivity(activity.id!, user, null, null, activity.joinMode);
             if (status === 'joined') {
-                setActivities(prev => prev.map(act => act.id === activityId ? { ...act, participantIds: [...act.participantIds, user.uid] } : act));
-                router.push(`/chat/${activityId}`);
+                setActivities(prev => prev.map(act => act.id === activity.id ? { ...act, participantIds: [...act.participantIds, user.uid] } : act));
+                router.push(`/chat/${activity.id}`);
+            } else if (status === 'already_requested') {
+                toast({
+                    title: language === 'de' ? 'Du hast bereits eine Anfrage gesendet.' : 'You already sent a request.',
+                    description: language === 'de' ? 'Der Host hat deine Anfrage bereits erhalten.' : 'The host has already received your request.'
+                });
             } else {
                 toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
             }
+            return status;
         } catch (error: any) {
             toast({ title: language === 'de' ? 'Fehler beim Beitritt.' : 'Error joining.', variant: 'destructive' });
             throw error;
@@ -812,24 +818,6 @@ export default function ProfilePage() {
 
                         </div>
                     )}
-                </div>
-
-                {/* Legal Shortcut - To satisfy 2-click rule */}
-                <div className="px-6 mt-8 mb-12">
-                    <button 
-                        onClick={() => router.push('/settings/legal')}
-                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 transition-all active:scale-[0.98]"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-slate-50 dark:bg-neutral-800 text-slate-400">
-                                <Scale className="h-4 w-4" />
-                            </div>
-                            <span className="text-xs font-black uppercase tracking-widest text-slate-400">
-                                {language === 'de' ? 'Rechtliches' : 'Legal'}
-                            </span>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-slate-300" />
-                    </button>
                 </div>
             </div>
 

@@ -180,7 +180,7 @@ mockModule("firebase-functions/v2/firestore", mockFunctionsFirestore);
 
 // ─── IMPORTS UNDER TEST ──────────────────────────────────────────────────────
 
-const { respondToJoinRequest } = require("./activities");
+const { respondToJoinRequest, secureRequestJoinActivity } = require("./activities");
 
 // ─── TEST CASES ──────────────────────────────────────────────────────────────
 
@@ -295,9 +295,99 @@ async function testRespondToJoinRequest() {
   console.log("✅ testRespondToJoinRequest passed successfully!");
 }
 
+async function testSecureRequestJoinActivity() {
+  console.log("Running testSecureRequestJoinActivity...");
+
+  const seedFixtures = () => {
+    resetMockDb();
+    mockDbState["activities"] = {
+      act1: { hostId: "host1", status: "active", participantIds: ["host1"] },
+      act_direct: { hostId: "host1", status: "active", participantIds: ["host1"], joinMode: "direct" }
+    };
+    mockDbState["users"] = {
+      host1: { displayName: "Host", role: "user" },
+      joiner1: { displayName: "Joiner", role: "user" }
+    };
+  };
+
+  // 1. Unauthenticated Call
+  seedFixtures();
+  await assert.rejects(
+    secureRequestJoinActivity({ activityId: "act1" }, null),
+    (err: any) => err.name === "HttpsError" && err.code === "unauthenticated"
+  );
+
+  // 2. Missing Activity
+  seedFixtures();
+  await assert.rejects(
+    secureRequestJoinActivity({ activityId: "nonexistent" }, { uid: "joiner1" }),
+    (err: any) => err.name === "HttpsError" && err.code === "not-found"
+  );
+
+  // 3. Activity is Completed (not active)
+  seedFixtures();
+  mockDbState["activities"]["act1"].status = "completed";
+  await assert.rejects(
+    secureRequestJoinActivity({ activityId: "act1" }, { uid: "joiner1" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  // 4. Direct Activity Join Mode
+  seedFixtures();
+  await assert.rejects(
+    secureRequestJoinActivity({ activityId: "act_direct" }, { uid: "joiner1" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  // 5. Requester is Host
+  seedFixtures();
+  await assert.rejects(
+    secureRequestJoinActivity({ activityId: "act1" }, { uid: "host1" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  // 6. Requester is already Participant
+  seedFixtures();
+  mockDbState["activities"]["act1"].participantIds.push("joiner1");
+  await assert.rejects(
+    secureRequestJoinActivity({ activityId: "act1" }, { uid: "joiner1" }),
+    (err: any) => err.name === "HttpsError" && err.code === "already-exists"
+  );
+
+  // 7. Requester is Banned
+  seedFixtures();
+  mockDbState["users"]["joiner1"].isBanned = true;
+  await assert.rejects(
+    secureRequestJoinActivity({ activityId: "act1" }, { uid: "joiner1" }),
+    (err: any) => err.name === "HttpsError" && err.code === "permission-denied"
+  );
+
+  // 8. Successful Request
+  seedFixtures();
+  const res = await secureRequestJoinActivity({ activityId: "act1", message: "Hi" }, { uid: "joiner1" });
+  assert.deepStrictEqual(res, { success: true, status: "requested" });
+  
+  // Verify notification doc
+  const notif = mockDbState["notifications"][`join_request_act1_joiner1`];
+  assert.ok(notif);
+  assert.strictEqual(notif.recipientId, "host1");
+  assert.strictEqual(notif.senderId, "joiner1");
+  assert.strictEqual(notif.type, "join_request");
+  assert.strictEqual(notif.message, "Hi");
+
+  // 9. Repeated Request (Idempotency)
+  const res2 = await secureRequestJoinActivity({ activityId: "act1", message: "Hi second time" }, { uid: "joiner1" });
+  assert.deepStrictEqual(res2, { success: true, status: "already_requested" });
+  // Verify no new notification was created and message not updated
+  assert.strictEqual(mockDbState["notifications"][`join_request_act1_joiner1`].message, "Hi");
+
+  console.log("✅ testSecureRequestJoinActivity passed successfully!");
+}
+
 async function runAllTests() {
   try {
     await testRespondToJoinRequest();
+    await testSecureRequestJoinActivity();
     console.log("🎉 ALL ACTIVITIES MODULE TESTS PASSED SUCCESSFULLY! 🎉");
   } catch (error) {
     console.error("❌ TEST RUNNER FAILED:", error);

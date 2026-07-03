@@ -264,6 +264,38 @@ export default function ChatRoomPage() {
   const { toast } = useToast();
   const [isSending, setIsSending] = useState(false);
 
+  const messagesUnsubscribeRef = useRef<(() => void) | null>(null);
+  const leavingChatIdRef = useRef<string | null>(null);
+  const chatScopedUnsubscribesRef = useRef<Set<() => void>>(new Set());
+
+  const prepareLeave = (targetChatId: string) => {
+    leavingChatIdRef.current = targetChatId;
+    
+    if (messagesUnsubscribeRef.current) {
+      messagesUnsubscribeRef.current();
+      messagesUnsubscribeRef.current = null;
+    }
+
+    chatScopedUnsubscribesRef.current.forEach((unsub) => {
+      try {
+        unsub();
+      } catch (err) {
+        console.error("Error during unsubscribe:", err);
+      }
+    });
+    chatScopedUnsubscribesRef.current.clear();
+    
+    setMessages([]);
+    setChat(null);
+    setInfoSheetOpen(false);
+    setShowRoomInfo(false);
+    setPlaceDetailsOpen(false);
+  };
+
+  const handleLeaveError = () => {
+    leavingChatIdRef.current = null;
+  };
+
   // Auth & Onboarding Guards
   useEffect(() => {
     if (authLoading) return;
@@ -284,11 +316,34 @@ export default function ChatRoomPage() {
   useEffect(() => {
     if (!chatId || !user) return;
 
+    const currentChatId = chatId;
     let activityUnsubscribe: (() => void) | undefined;
     let placeUnsubscribe: (() => void) | undefined;
 
-    const chatUnsubscribe = onSnapshot(doc(db!, 'chats', chatId), (chatDoc) => {
+    const handleListenerError = (listenerName: string, targetChatId: string, customMsg?: string) => (error: any) => {
+      const isLeavingThisChat = leavingChatIdRef.current === targetChatId;
+      const isPermissionDenied = error?.code === 'permission-denied' || 
+                                 error?.message?.includes('permission-denied') || 
+                                 error?.message?.includes('insufficient permissions');
+
+      if (isLeavingThisChat && isPermissionDenied) {
+        console.log(`Suppressed expected permission-denied error for ${listenerName} while leaving chat:`, targetChatId);
+        return;
+      }
+
+      console.error(`Error in ${listenerName}:`, error);
+      toast({ 
+        title: language === 'de' ? "Fehler" : "Error", 
+        description: customMsg || (language === 'de' ? "Daten konnten nicht geladen werden." : "Data could not be loaded."), 
+        variant: 'destructive'
+      });
+    };
+
+    const chatUnsubscribe = onSnapshot(doc(db!, 'chats', currentChatId), (chatDoc) => {
       if (chatDoc.exists()) {
+        // Reset leavingChatIdRef only on successful chat load
+        leavingChatIdRef.current = null;
+
         const chatData = { id: chatDoc.id, ...chatDoc.data() } as Chat;
 
         // Access Control: Only allow participants of the chat to enter
@@ -315,13 +370,25 @@ export default function ChatRoomPage() {
           }
           setActivity(null);
           setPlace(null);
-          if (activityUnsubscribe) activityUnsubscribe();
-          if (placeUnsubscribe) placeUnsubscribe();
+          if (activityUnsubscribe) {
+            activityUnsubscribe();
+            chatScopedUnsubscribesRef.current.delete(activityUnsubscribe);
+            activityUnsubscribe = undefined;
+          }
+          if (placeUnsubscribe) {
+            placeUnsubscribe();
+            chatScopedUnsubscribesRef.current.delete(placeUnsubscribe);
+            placeUnsubscribe = undefined;
+          }
         } else {
           setOtherUser(null);
-          if (activityUnsubscribe) activityUnsubscribe();
+          if (activityUnsubscribe) {
+            activityUnsubscribe();
+            chatScopedUnsubscribesRef.current.delete(activityUnsubscribe);
+            activityUnsubscribe = undefined;
+          }
           
-          activityUnsubscribe = onSnapshot(doc(db!, 'activities', chatData.activityId!), (activityDoc) => {
+          const rawActivityUnsubscribe = onSnapshot(doc(db!, 'activities', chatData.activityId!), (activityDoc) => {
               if (activityDoc.exists()) {
                   const activityData = { id: activityDoc.id, ...activityDoc.data() } as Activity;
                   setActivity(activityData);
@@ -330,31 +397,45 @@ export default function ChatRoomPage() {
                       checkIfUserReviewed(activityData.id, user.uid).then(setHasReviewed);
                   }
 
-                  if (placeUnsubscribe) placeUnsubscribe();
+                  if (placeUnsubscribe) {
+                      placeUnsubscribe();
+                      chatScopedUnsubscribesRef.current.delete(placeUnsubscribe);
+                      placeUnsubscribe = undefined;
+                  }
                   if (activityData.placeId) {
-                      placeUnsubscribe = onSnapshot(doc(db!, 'places', activityData.placeId), (placeDoc) => {
+                      const rawPlaceUnsubscribe = onSnapshot(doc(db!, 'places', activityData.placeId), (placeDoc) => {
                           if (placeDoc.exists()) {
                               setPlace({ id: placeDoc.id, ...placeDoc.data() } as Place);
                           } else {
                               setPlace(null);
                           }
-                      });
+                      }, handleListenerError('places', currentChatId));
+                      placeUnsubscribe = rawPlaceUnsubscribe;
+                      chatScopedUnsubscribesRef.current.add(rawPlaceUnsubscribe);
                   }
               } else {
                 setActivity(null);
                 setPlace(null);
               }
-          });
+          }, handleListenerError('activities', currentChatId));
+          activityUnsubscribe = rawActivityUnsubscribe;
+          chatScopedUnsubscribesRef.current.add(rawActivityUnsubscribe);
         }
       } else {
         setLoading(false);
         setChat(null);
         router.replace('/chat');
       }
-    });
+    }, handleListenerError('chats', currentChatId));
+    chatScopedUnsubscribesRef.current.add(chatUnsubscribe);
+
+    if (messagesUnsubscribeRef.current) {
+      messagesUnsubscribeRef.current();
+      messagesUnsubscribeRef.current = null;
+    }
 
     const messagesQuery = query(
-      collection(db!, 'chats', chatId, 'messages'), 
+      collection(db!, 'chats', currentChatId, 'messages'), 
       orderBy('sentAt', 'asc'), 
       limitToLast(100)
     );
@@ -362,24 +443,24 @@ export default function ChatRoomPage() {
       const newMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Message));
       setMessages(newMessages);
       setLoading(false);
-    }, (error) => {
-      console.error("Error fetching messages:", error);
-      toast({ 
-        title: language === 'de' ? "Fehler" : "Error", 
-        description: language === 'de' ? "Nachrichten konnten nicht geladen werden." : "Messages could not be loaded.", 
-        variant: 'destructive'
-      });
-      setLoading(false);
-    });
+    }, handleListenerError('messages', currentChatId, language === 'de' ? "Nachrichten konnten nicht geladen werden." : "Messages could not be loaded."));
+
+    messagesUnsubscribeRef.current = messagesUnsubscribe;
 
     return () => {
       chatUnsubscribe();
-      messagesUnsubscribe();
+      chatScopedUnsubscribesRef.current.delete(chatUnsubscribe);
+      if (messagesUnsubscribeRef.current === messagesUnsubscribe) {
+        messagesUnsubscribe();
+        messagesUnsubscribeRef.current = null;
+      }
       if (activityUnsubscribe) {
         activityUnsubscribe();
+        chatScopedUnsubscribesRef.current.delete(activityUnsubscribe);
       }
       if (placeUnsubscribe) {
         placeUnsubscribe();
+        chatScopedUnsubscribesRef.current.delete(placeUnsubscribe);
       }
     };
   }, [chatId, router, toast, user]);
@@ -524,6 +605,7 @@ export default function ChatRoomPage() {
     if (!chatId || !user) return;
     setIsDeleting(true);
     try {
+      prepareLeave(chatId);
       await removeUserFromChat(chatId, user.uid);
       toast({ 
         title: language === 'de' ? "Chat entfernt" : "Chat removed", 
@@ -531,6 +613,7 @@ export default function ChatRoomPage() {
       });
       router.push('/');
     } catch (error: any) {
+      handleLeaveError();
       toast({ variant: 'destructive', title: language === 'de' ? "Fehler beim Entfernen" : "Error removing chat", description: error.message });
       setIsDeleting(false);
     }
@@ -599,7 +682,7 @@ export default function ChatRoomPage() {
                     </div>
                   )}
                   <h1 className="font-black text-lg text-slate-900 dark:text-neutral-100 truncate flex items-center gap-1.5">
-                    {chat?.placeName}
+                    {activity?.title || chat?.placeName}
                     {place && (
                       <button 
                         onClick={(e) => {
@@ -816,6 +899,8 @@ export default function ChatRoomPage() {
             activity={activity}
             open={isInfoSheetOpen}
             onOpenChange={setInfoSheetOpen}
+            onBeforeLeave={() => prepareLeave(chatId)}
+            onLeaveError={handleLeaveError}
         />
       )}
       
@@ -868,6 +953,8 @@ export default function ChatRoomPage() {
             setShowRoomInfo(false);
             setPlaceDetailsOpen(true);
           }}
+          onBeforeLeave={() => prepareLeave(chatId)}
+          onLeaveError={handleLeaveError}
         />
       )}
 

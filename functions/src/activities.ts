@@ -682,3 +682,140 @@ export const respondToJoinRequest = onCall(async (request) => {
     throw new HttpsError('internal', error.message || 'Internal error responding to join request.');
   }
 });
+
+/**
+ * HTTPS Callable: Sendet eine Beitrittsanfrage für eine Aktivität (idempotent).
+ */
+export const secureRequestJoinActivity = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  }
+
+  const requesterId = request.auth.uid;
+  const { activityId, message } = request.data;
+
+  if (typeof activityId !== 'string' || !activityId) {
+    throw new HttpsError('invalid-argument', 'Missing or invalid required arguments.');
+  }
+
+  const db = admin.firestore();
+
+  try {
+    const result = await db.runTransaction(async (transaction) => {
+      const activityRef = db.collection('activities').doc(activityId);
+      const requesterRef = db.collection('users').doc(requesterId);
+      const notificationRef = db.collection('notifications').doc(`join_request_${activityId}_${requesterId}`);
+
+      const [activitySnap, requesterSnap, notificationSnap] = await Promise.all([
+        transaction.get(activityRef),
+        transaction.get(requesterRef),
+        transaction.get(notificationRef)
+      ]);
+
+      if (!activitySnap.exists) {
+        throw new HttpsError('not-found', 'Activity does not exist.');
+      }
+
+      const activity = activitySnap.data()!;
+      if (activity.status !== 'active') {
+        throw new HttpsError('failed-precondition', 'Activity is not active.');
+      }
+
+      const joinMode = activity.joinMode || 'request';
+      if (joinMode === 'direct') {
+        throw new HttpsError('failed-precondition', 'Direct join activities cannot use request join.');
+      }
+
+      if (requesterId === activity.hostId) {
+        throw new HttpsError('failed-precondition', 'You cannot request to join your own activity.');
+      }
+
+      const participantIds = activity.participantIds || [];
+      if (participantIds.includes(requesterId)) {
+        throw new HttpsError('already-exists', 'You are already a participant of this activity.');
+      }
+
+      if (!requesterSnap.exists) {
+        throw new HttpsError('not-found', 'Requester user profile not found.');
+      }
+
+      const requesterData = requesterSnap.data()!;
+      if (requesterData.isBanned === true) {
+        throw new HttpsError('permission-denied', 'Requester account is banned.');
+      }
+
+      const hostId = activity.hostId;
+      const hostRef = db.collection('users').doc(hostId);
+      const hostSnap = await transaction.get(hostRef);
+      if (!hostSnap.exists) {
+        throw new HttpsError('not-found', 'Host profile not found.');
+      }
+
+      const hostData = hostSnap.data()!;
+      if (hostData.isBanned === true) {
+        throw new HttpsError('permission-denied', 'Host account is banned.');
+      }
+
+      if (activity.maxParticipants && participantIds.length >= activity.maxParticipants) {
+        throw new HttpsError('resource-exhausted', 'This activity has reached its maximum participants limit.');
+      }
+
+      // Check if the requester is blocked by the host
+      const hostBlacklist = hostData.blacklist || {};
+      const softBlocked = hostBlacklist.soft || [];
+      const hardBlocked = hostBlacklist.hard || [];
+      if (softBlocked.includes(requesterId) || hardBlocked.includes(requesterId)) {
+        throw new HttpsError('permission-denied', 'You cannot join this activity because you are blocked by the host.');
+      }
+
+      // Check if the host is blocked by the requester
+      const requesterBlacklist = requesterData.blacklist || {};
+      const requesterSoftBlocked = requesterBlacklist.soft || [];
+      const requesterHardBlocked = requesterBlacklist.hard || [];
+      if (requesterSoftBlocked.includes(hostId) || requesterHardBlocked.includes(hostId)) {
+        throw new HttpsError('permission-denied', 'You cannot join this activity because you have blocked the host.');
+      }
+
+      if (activity.isPaid === true) {
+        throw new HttpsError('failed-precondition', 'Paid activities cannot be request-joined directly.');
+      }
+
+      if (notificationSnap.exists) {
+        const existingNotif = notificationSnap.data()!;
+        if (existingNotif.type === 'join_request') {
+          return { success: true, status: 'already_requested' };
+        }
+      }
+
+      const displayNameToUse = requesterData.displayName || 'User';
+      const photoURLToUse = requesterData.photoURL || null;
+
+      transaction.set(notificationRef, {
+        recipientId: hostId,
+        senderId: requesterId,
+        senderName: displayNameToUse,
+        senderProfile: {
+          displayName: displayNameToUse,
+          photoURL: photoURLToUse
+        },
+        type: 'join_request',
+        title: 'Neue Beitrittsanfrage',
+        message: message || `${displayNameToUse} möchte an deiner Aktivität "${activity.placeName || 'Treffen'}" teilnehmen.`,
+        isRead: false,
+        createdAt: FieldValue.serverTimestamp(),
+        activityId,
+        link: `/activities/${activityId}`
+      });
+
+      return { success: true, status: 'requested' };
+    });
+
+    return result;
+  } catch (error: any) {
+    console.error("Error in secureRequestJoinActivity transaction:", error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError('internal', error.message || 'Internal error requesting to join activity.');
+  }
+});

@@ -44,7 +44,7 @@ interface ActivityInfoSheetProps {
   activity: Activity | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onJoin: (activity: Activity) => Promise<void>;
+  onJoin: (activity: Activity) => Promise<any>;
   isJoining?: boolean;
 }
 
@@ -136,7 +136,7 @@ export function ActivityInfoSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex flex-col p-0 sm:max-w-md border-none rounded-l-[2.5rem] overflow-hidden dark:bg-neutral-950">
         <SheetHeader className="sr-only">
-          <SheetTitle>{activity.placeName}</SheetTitle>
+          <SheetTitle>{activity.isCustomActivity ? (activity.title || activity.placeName) : activity.placeName}</SheetTitle>
           <SheetDescription>
             {language === 'de'
               ? 'Details und Teilnahmebedingungen für dieses Treffen'
@@ -151,7 +151,7 @@ export function ActivityInfoSheet({
               <PrimaryIcon className="text-white h-7 w-7 drop-shadow-md" />
             </div>
             <h2 className="text-xl font-black truncate max-w-full drop-shadow-sm px-4">
-              {activity.placeName || (language === 'de' ? 'Aktivität' : 'Activity')}
+              {activity.isCustomActivity ? (activity.title || activity.placeName) : (activity.placeName || (language === 'de' ? 'Aktivität' : 'Activity'))}
             </h2>
             {activity.placeAddress && (
               <p className="text-[11px] font-bold opacity-90 truncate max-w-full flex items-center gap-1 mt-1 drop-shadow-sm">

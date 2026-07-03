@@ -263,4 +263,21 @@
   .elevation-high {
     @apply shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] dark:shadow-none;
   }
+
+  /* Safe Area Utilities */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mt-safe {
+    margin-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-bottom-nav-safe {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
 }

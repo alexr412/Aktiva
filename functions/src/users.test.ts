@@ -232,13 +232,55 @@ class MockTransaction {
     }
   }
   update(ref: MockDocumentReference, data: any) {
-    if (!mockDbState[ref.collectionPath]?.[ref.docId]) {
+    const doc = mockDbState[ref.collectionPath]?.[ref.docId];
+    if (!doc) {
       throw new Error(`Document not found for update: ${ref.collectionPath}/${ref.docId}`);
     }
-    mockDbState[ref.collectionPath][ref.docId] = {
-      ...mockDbState[ref.collectionPath][ref.docId],
-      ...JSON.parse(JSON.stringify(data))
-    };
+    const updatedDoc = { ...doc };
+    Object.keys(data).forEach(key => {
+      const value = data[key];
+      if (key.includes('.')) {
+        const parts = key.split('.');
+        let current = updatedDoc;
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (!current[parts[i]]) current[parts[i]] = {};
+          current = current[parts[i]];
+        }
+        const lastPart = parts[parts.length - 1];
+        if (value && value.__type === "delete") {
+          delete current[lastPart];
+        } else if (value && value.__type === "arrayUnion") {
+          const arr = Array.isArray(current[lastPart]) ? current[lastPart] : [];
+          const newArr = [...arr];
+          value.value.forEach((x: any) => {
+            if (!newArr.includes(x)) newArr.push(x);
+          });
+          current[lastPart] = newArr;
+        } else if (value && value.__type === "arrayRemove") {
+          const arr = Array.isArray(current[lastPart]) ? current[lastPart] : [];
+          current[lastPart] = arr.filter((x: any) => !value.value.includes(x));
+        } else {
+          current[lastPart] = value;
+        }
+      } else {
+        if (value && value.__type === "arrayUnion") {
+          const arr = Array.isArray(updatedDoc[key]) ? updatedDoc[key] : [];
+          const newArr = [...arr];
+          value.value.forEach((x: any) => {
+            if (!newArr.includes(x)) newArr.push(x);
+          });
+          updatedDoc[key] = newArr;
+        } else if (value && value.__type === "arrayRemove") {
+          const arr = Array.isArray(updatedDoc[key]) ? updatedDoc[key] : [];
+          updatedDoc[key] = arr.filter((x: any) => !value.value.includes(x));
+        } else if (value && value.__type === "delete") {
+          delete updatedDoc[key];
+        } else {
+          updatedDoc[key] = value;
+        }
+      }
+    });
+    mockDbState[ref.collectionPath][ref.docId] = JSON.parse(JSON.stringify(updatedDoc));
   }
   delete(ref: MockDocumentReference) {
     if (mockDbState[ref.collectionPath]) {
@@ -503,11 +545,156 @@ async function testOnUserDeleted() {
   console.log("✅ testOnUserDeleted passed successfully!");
 }
 
+async function testSecureSendFriendRequest() {
+  console.log("Running testSecureSendFriendRequest...");
+  const { secureSendFriendRequest } = require("./users");
+
+  const seedFixtures = () => {
+    resetMockDb();
+    mockDbState["users"] = {
+      alice: { uid: "alice", displayName: "Alice", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: [] },
+      bob: { uid: "bob", displayName: "Bob", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: [] },
+      charlie: { uid: "charlie", displayName: "Charlie", role: "user", friends: ["alice"], friendRequestsSent: [], friendRequestsReceived: [] },
+      dave: { uid: "dave", displayName: "Dave", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: [], blacklist: { hard: ["alice"] } },
+    };
+    mockDbState["notifications"] = {};
+  };
+
+  // 1. Unauthenticated
+  seedFixtures();
+  await assert.rejects(
+    secureSendFriendRequest({ toUserId: "bob" }, null),
+    (err: any) => err.name === "HttpsError" && err.code === "unauthenticated"
+  );
+
+  // 2. Missing toUserId
+  seedFixtures();
+  await assert.rejects(
+    secureSendFriendRequest({}, { uid: "alice" }),
+    (err: any) => err.name === "HttpsError" && err.code === "invalid-argument"
+  );
+
+  // 3. Self request
+  seedFixtures();
+  await assert.rejects(
+    secureSendFriendRequest({ toUserId: "alice" }, { uid: "alice" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  // 4. Sender or recipient not found
+  seedFixtures();
+  await assert.rejects(
+    secureSendFriendRequest({ toUserId: "nonexistent" }, { uid: "alice" }),
+    (err: any) => err.name === "HttpsError" && err.code === "not-found"
+  );
+
+  // 5. Already friends
+  seedFixtures();
+  mockDbState["users"]["alice"].friends = ["charlie"];
+  await assert.rejects(
+    secureSendFriendRequest({ toUserId: "charlie" }, { uid: "alice" }),
+    (err: any) => err.name === "HttpsError" && err.code === "already-exists"
+  );
+
+  // 6. Blocked user
+  seedFixtures();
+  await assert.rejects(
+    secureSendFriendRequest({ toUserId: "dave" }, { uid: "alice" }),
+    (err: any) => err.name === "HttpsError" && err.code === "permission-denied"
+  );
+
+  // 7. Successful request
+  seedFixtures();
+  const res = await secureSendFriendRequest({ toUserId: "bob" }, { uid: "alice" });
+  assert.deepStrictEqual(res, { success: true });
+  assert.deepStrictEqual(mockDbState["users"]["alice"].friendRequestsSent, ["bob"]);
+  assert.deepStrictEqual(mockDbState["users"]["bob"].friendRequestsReceived, ["alice"]);
+  
+  // Verify notification
+  const notifKeys = Object.keys(mockDbState["notifications"] || {});
+  assert.strictEqual(notifKeys.length, 1);
+  const notif = mockDbState["notifications"][notifKeys[0]];
+  assert.strictEqual(notif.recipientId, "bob");
+  assert.strictEqual(notif.senderId, "alice");
+  assert.strictEqual(notif.type, "friend_request");
+  assert.strictEqual(notif.isRead, false);
+  assert.strictEqual(notif.senderProfile.displayName, "Alice");
+
+  // 8. Duplicate request
+  await assert.rejects(
+    secureSendFriendRequest({ toUserId: "bob" }, { uid: "alice" }),
+    (err: any) => err.name === "HttpsError" && err.code === "already-exists"
+  );
+
+  console.log("✅ testSecureSendFriendRequest passed successfully!");
+}
+
+async function testSecureAcceptFriendRequest() {
+  console.log("Running testSecureAcceptFriendRequest...");
+  const { secureAcceptFriendRequest } = require("./users");
+
+  const seedFixtures = () => {
+    resetMockDb();
+    mockDbState["users"] = {
+      alice: { uid: "alice", displayName: "Alice", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: ["bob"] },
+      bob: { uid: "bob", displayName: "Bob", role: "user", friends: [], friendRequestsSent: ["alice"], friendRequestsReceived: [] },
+      charlie: { uid: "charlie", displayName: "Charlie", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: [] },
+    };
+  };
+
+  // 1. Unauthenticated
+  seedFixtures();
+  await assert.rejects(
+    secureAcceptFriendRequest({ fromUserId: "bob" }, null),
+    (err: any) => err.name === "HttpsError" && err.code === "unauthenticated"
+  );
+
+  // 2. Missing fromUserId
+  seedFixtures();
+  await assert.rejects(
+    secureAcceptFriendRequest({}, { uid: "alice" }),
+    (err: any) => err.name === "HttpsError" && err.code === "invalid-argument"
+  );
+
+  // 3. Self accept
+  seedFixtures();
+  await assert.rejects(
+    secureAcceptFriendRequest({ fromUserId: "alice" }, { uid: "alice" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  // 4. No pending request
+  seedFixtures();
+  await assert.rejects(
+    secureAcceptFriendRequest({ fromUserId: "charlie" }, { uid: "alice" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  // 5. Successful accept
+  seedFixtures();
+  const res = await secureAcceptFriendRequest({ fromUserId: "bob" }, { uid: "alice" });
+  assert.deepStrictEqual(res, { success: true });
+  assert.deepStrictEqual(mockDbState["users"]["alice"].friends, ["bob"]);
+  assert.deepStrictEqual(mockDbState["users"]["bob"].friends, ["alice"]);
+  assert.deepStrictEqual(mockDbState["users"]["alice"].friendRequestsReceived, []);
+  assert.deepStrictEqual(mockDbState["users"]["bob"].friendRequestsSent, []);
+
+  // 6. Already friends
+  await assert.rejects(
+    secureAcceptFriendRequest({ fromUserId: "bob" }, { uid: "alice" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  console.log("✅ testSecureAcceptFriendRequest passed successfully!");
+}
+
 async function runAllTests() {
   try {
     await testApplyReferralCode();
     await testResolveLoginIdentifier();
     await testOnUserDeleted();
+    await testSecureSendFriendRequest();
+    await testSecureAcceptFriendRequest();
     console.log("🎉 ALL USERS MODULE TESTS PASSED SUCCESSFULLY! 🎉");
   } catch (error) {
     console.error("❌ TEST RUNNER FAILED:", error);

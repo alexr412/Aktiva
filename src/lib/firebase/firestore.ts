@@ -1,6 +1,6 @@
 'use client';
 
-import { db, app } from './client';
+import { db, app, functions } from './client';
 import {
   collection,
   doc,
@@ -23,13 +23,14 @@ import {
   increment,
   documentId,
 } from 'firebase/firestore';
-import { calculateDistance } from '../geo-utils';
+import { calculateDistance, buildApproximateLocationData } from '../geo-utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, Activity, Chat, ActivityCategory } from '@/lib/types';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
 
 type CreateActivityPayload = {
+  title?: string;
   place?: Place;
   customLocationName?: string;
   startDate: Date;
@@ -51,6 +52,8 @@ type CreateActivityPayload = {
   };
   joinMode?: 'direct' | 'request';
   creationSource?: 'community' | 'place_activity';
+  city?: string;
+  postalCode?: string;
 };
 
 const MAX_FREE_PARTICIPANTS = 4;
@@ -325,7 +328,7 @@ export function normalizeActivityDocument(data: Partial<Activity> & Record<strin
   const normalizedCategory = isUserEvent ? "community" : (getNormalizedCategory(categories) || category.toLowerCase() || "other");
   const visibleCategories = categories.filter(c => c !== "user_event" && !isGeoapifyCategory(c));
   
-  return {
+  const activity = {
     ...data,
     id: data.id || docId,
     isUserEvent,
@@ -334,9 +337,20 @@ export function normalizeActivityDocument(data: Partial<Activity> & Record<strin
     category: data.category || 'Sonstiges',
     sourceType: 'activity' as const,
   } as Activity;
+
+  if (activity.isCustomActivity || activity.isUserEvent) {
+    activity.name = String(activity.title || "Aktivität");
+    activity.title = String(activity.title || "Aktivität");
+    activity.locationLabel = activity.placeName || activity.placeAddress;
+    activity.address = activity.placeAddress || activity.placeName;
+    activity.postalCode = activity.postalCode ? String(activity.postalCode) : undefined;
+  }
+
+  return activity;
 }
 
 export async function createActivity({
+  title,
   place,
   customLocationName,
   startDate,
@@ -352,7 +366,7 @@ export async function createActivity({
   requirements,
   joinMode = 'request',
   creationSource: creationSourceParam,
-}: CreateActivityPayload) {
+}: CreateActivityPayload, selectedPlace?: Place | null) {
   if (!db) {
     throw new Error('Firestore is not initialized.');
   }
@@ -365,8 +379,34 @@ export async function createActivity({
   const placeIdValue = isPlaceBasedActivity ? place!.id : "custom";
   
   const userRef = doc(db, 'users', user.uid);
-  const userSnap = await getDoc(userRef);
+  const placeRef = isPlaceBasedActivity ? doc(db, 'places', placeIdValue) : null;
+  const [userSnap, placeSnap] = await Promise.all([
+    getDoc(userRef),
+    placeRef ? getDoc(placeRef) : Promise.resolve(null)
+  ]);
+
+  if (!userSnap.exists()) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error("[CREATE_ACTIVITY_PREFLIGHT] user profile missing");
+    }
+    throw new Error("Profil noch nicht vollständig. Schließe zuerst dein Onboarding ab, bevor du Aktivitäten erstellen kannst.");
+  }
+
   const userProfileData = userSnap.data() as UserProfile | undefined;
+
+  if (userProfileData?.onboardingCompleted !== true) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error("[CREATE_ACTIVITY_PREFLIGHT] onboarding incomplete", userProfileData);
+    }
+    throw new Error("Profil noch nicht vollständig. Schließe zuerst dein Onboarding ab, bevor du Aktivitäten erstellen kannst.");
+  }
+
+  if (userProfileData?.isBanned === true) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error("[CREATE_ACTIVITY_PREFLIGHT] user is banned");
+    }
+    throw new Error("Dein Konto ist gesperrt.");
+  }
   
   const displayNameToUse = userProfileData?.displayName ?? "User";
   const photoURLToUse = userProfileData?.photoURL ?? null;
@@ -395,14 +435,62 @@ export async function createActivity({
     }
   }
 
+  if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) {
+    throw new Error("Bitte wähle ein gültiges Datum für die Aktivität aus.");
+  }
+
+  const now = new Date();
+  const fiveMinsAgo = new Date(now.getTime() - 5 * 60 * 1000);
+  let adjustedStartDate = new Date(startDate);
+  if (adjustedStartDate < fiveMinsAgo) {
+    adjustedStartDate = now;
+  }
+
+  let adjustedEndDate = endDate ? new Date(endDate) : undefined;
+  if (adjustedEndDate) {
+    if (Number.isNaN(adjustedEndDate.getTime())) {
+      adjustedEndDate = undefined;
+    } else if (adjustedEndDate <= adjustedStartDate) {
+      adjustedEndDate = new Date(adjustedStartDate.getTime() + 2 * 60 * 60 * 1000);
+    }
+  }
+
   const batch = writeBatch(db);
   const activityRef = doc(collection(db, 'activities'));
   
   const finalCategory = category || 'Sonstiges';
 
+  let derivedPlaceName = title || customLocationName || "Aktivität";
+  let derivedPlaceAddress = "";
+  let cityVal = "";
+  let postalCodeVal = "";
+  let latVal = place?.lat;
+  let lonVal = place?.lon;
+
+  if (isPlaceBasedActivity) {
+    derivedPlaceName = place?.name || customLocationName || "Aktivität";
+    derivedPlaceAddress = place?.address || "";
+  } else {
+    const approx = buildApproximateLocationData(selectedPlace);
+    derivedPlaceName = approx.label;
+    derivedPlaceAddress = approx.label;
+    cityVal = approx.city || "";
+    postalCodeVal = approx.postalCode || "";
+    latVal = selectedPlace?.lat;
+    lonVal = selectedPlace?.lon;
+
+    console.log("[COMMUNITY_LOCATION_DEBUG] rawLocation:", selectedPlace);
+    console.log("[COMMUNITY_LOCATION_DEBUG] approximateLocationLabel:", approx.label);
+    console.log("[COMMUNITY_LOCATION_DEBUG] lat:", latVal);
+    console.log("[COMMUNITY_LOCATION_DEBUG] lon:", lonVal);
+    console.log("[COMMUNITY_LOCATION_DEBUG] city:", cityVal);
+    console.log("[COMMUNITY_LOCATION_DEBUG] postalCode:", postalCodeVal);
+  }
+
   const activityData: any = {
-    placeName: place?.name || customLocationName || "Aktivität",
-    activityDate: Timestamp.fromDate(startDate),
+    title: (title || (isPlaceBasedActivity ? place?.name : null) || customLocationName || "Aktivität").slice(0, 100),
+    placeName: derivedPlaceName.slice(0, 100),
+    activityDate: Timestamp.fromDate(adjustedStartDate),
     hostId: user.uid,
     hostName: displayNameToUse,
     hostPhotoURL: photoURLToUse,
@@ -444,10 +532,12 @@ export async function createActivity({
         hasReviewed: false
       },
     },
-    ...(place?.address && { placeAddress: place.address }),
-    ...(place?.lat && { lat: place.lat }),
-    ...(place?.lon && { lon: place.lon }),
-    ...(endDate && { activityEndDate: Timestamp.fromDate(endDate) }),
+    placeAddress: derivedPlaceAddress,
+    ...(latVal && { lat: latVal }),
+    ...(lonVal && { lon: lonVal }),
+    ...(cityVal && { city: cityVal }),
+    ...(postalCodeVal && { postalCode: postalCodeVal }),
+    ...(adjustedEndDate && { activityEndDate: Timestamp.fromDate(adjustedEndDate) }),
     ...(finalMaxParticipants && finalMaxParticipants > 0 && { maxParticipants: finalMaxParticipants }),
     ...(requirements && { requirements }),
     joinMode: joinMode,
@@ -468,6 +558,21 @@ export async function createActivity({
     activityData.sourceType = "activity";
     activityData.creationSource = resolvedCreationSource;
     activityData.normalizedCategory = "community";
+  }
+  
+  const allowedKeys = [
+    'id', 'title', 'placeName', 'activityDate', 'activityEndDate', 'hostId', 'hostName', 'hostPhotoURL',
+    'participantIds', 'participantsPreview', 'createdAt', 'lastInteractionAt', 'isCustomActivity',
+    'isTimeFlexible', 'category', 'description', 'status', 'completionVotes', 'isBoosted', 'boostedAt',
+    'isPaid', 'price', 'upvotes', 'downvotes', 'userVotes', 'globalScore', 'reportCount', 'avgRating',
+    'reviewCount', 'stats', 'participantDetails', 'placeAddress', 'lat', 'lon', 'maxParticipants',
+    'requirements', 'joinMode', 'placeId', 'categories', 'isUserEvent', 'sourceType', 'creationSource',
+    'normalizedCategory', 'isDateFlexible', 'city', 'postalCode'
+  ];
+  const payloadKeys = Object.keys(activityData);
+  const invalidKeys = payloadKeys.filter(k => !allowedKeys.includes(k));
+  if (invalidKeys.length > 0 && process.env.NODE_ENV === 'development') {
+    console.error("[CREATE_ACTIVITY_PREFLIGHT] invalid activity keys", invalidKeys);
   }
   
   batch.set(activityRef, activityData);
@@ -506,8 +611,8 @@ export async function createActivity({
     }
   });
 
-  if (isPlaceBasedActivity) {
-    const placeRef = doc(db, 'places', placeIdValue);
+  if (isPlaceBasedActivity && placeRef) {
+    const placeExists = placeSnap && placeSnap.exists();
     
     // We MUST save the full place data here so the ACTIVE tab can query the places collection directly!
     const placeUpdate: any = { 
@@ -516,25 +621,128 @@ export async function createActivity({
       lastActivityId: activityRef.id
     };
     
-    if (place) {
-      if (place.name) placeUpdate.name = place.name;
-      if (place.address) placeUpdate.address = place.address;
-      if (place.categories) {
-        placeUpdate.categories = (Array.isArray(place.categories) ? place.categories : [place.categories])
-          .filter((c: string) => c !== 'user_event');
+    if (!placeExists) {
+      if (place) {
+        if (place.name) placeUpdate.name = place.name;
+        if (place.address) placeUpdate.address = place.address;
+        if (place.categories) {
+          placeUpdate.categories = (Array.isArray(place.categories) ? place.categories : [place.categories])
+            .filter((c: string) => c !== 'user_event');
+        }
+        if (place.lat) placeUpdate.lat = place.lat;
+        if (place.lon) placeUpdate.lon = place.lon;
+        if (place.openingHours) placeUpdate.openingHours = place.openingHours;
       }
-      if (place.lat) placeUpdate.lat = place.lat;
-      if (place.lon) placeUpdate.lon = place.lon;
-      if (place.openingHours) placeUpdate.openingHours = place.openingHours;
+      batch.set(placeRef, placeUpdate);
+    } else {
+      batch.update(placeRef, placeUpdate);
     }
-    
-    batch.set(placeRef, placeUpdate, { merge: true });
   }
 
   if (isBoosted) {
     batch.update(userRef, {
       tokens: increment(-1)
     });
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    const now = new Date();
+    const fiveMinsAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+    const allowedActivityKeys = [
+      'id', 'title', 'placeName', 'activityDate', 'activityEndDate', 'hostId', 'hostName', 'hostPhotoURL',
+      'participantIds', 'participantsPreview', 'createdAt', 'lastInteractionAt', 'isCustomActivity',
+      'isTimeFlexible', 'category', 'description', 'status', 'completionVotes', 'isBoosted', 'boostedAt',
+      'isPaid', 'price', 'upvotes', 'downvotes', 'userVotes', 'globalScore', 'reportCount', 'avgRating',
+      'reviewCount', 'stats', 'participantDetails', 'placeAddress', 'lat', 'lon', 'maxParticipants',
+      'requirements', 'joinMode', 'placeId', 'categories', 'isUserEvent', 'sourceType', 'creationSource',
+      'normalizedCategory', 'isDateFlexible', 'city', 'postalCode'
+    ];
+
+    const activityRuleChecks = {
+      isSignedIn: !!user?.uid,
+      hostIdMatchesAuth: activityData.hostId === user.uid,
+      isUserOnboardedAndActive: userProfileData?.onboardingCompleted === true && !userProfileData?.isBanned,
+      allowedKeysOnly: Object.keys(activityData).every(k => allowedActivityKeys.includes(k)),
+      titleValid: typeof activityData.title === 'string' && activityData.title.length > 0 && activityData.title.length <= 100,
+      placeNameValid: typeof activityData.placeName === 'string' && activityData.placeName.length > 0 && activityData.placeName.length <= 100,
+      hostNameValid: typeof activityData.hostName === 'string' && activityData.hostName.length > 0,
+      statusValid: ['active', 'open'].includes(activityData.status),
+      completionVotesValid: Array.isArray(activityData.completionVotes) && activityData.completionVotes.length === 0,
+      upvotesZero: activityData.upvotes === 0,
+      downvotesZero: activityData.downvotes === 0,
+      userVotesEmpty: typeof activityData.userVotes === 'object' && activityData.userVotes !== null && Object.keys(activityData.userVotes).length === 0,
+      globalScoreZero: activityData.globalScore === 0,
+      reportCountZero: activityData.reportCount === 0,
+      avgRatingZero: activityData.avgRating === 0,
+      reviewCountZero: activityData.reviewCount === 0,
+      statsValid: activityData.stats?.impressions === 0 && activityData.stats?.pushJoins === 0 && activityData.stats?.referralJoins === 0,
+      sourceTypeValid: activityData.sourceType === 'activity',
+      participantIdsValid: Array.isArray(activityData.participantIds) && activityData.participantIds.length === 1 && activityData.participantIds[0] === user.uid,
+      participantsPreviewValid: Array.isArray(activityData.participantsPreview) && activityData.participantsPreview.length === 1 && activityData.participantsPreview[0].uid === user.uid && Object.keys(activityData.participantsPreview[0]).every(k => ['uid', 'displayName', 'photoURL'].includes(k)),
+      participantDetailsValid: typeof activityData.participantDetails === 'object' && activityData.participantDetails !== null && Object.keys(activityData.participantDetails).length === 1 && Object.keys(activityData.participantDetails)[0] === user.uid && Object.keys(activityData.participantDetails[user.uid]).every(k => ['displayName', 'photoURL', 'isPremium', 'isSupporter', 'checkInStatus', 'hasReviewed'].includes(k)),
+      isPaidFalse: activityData.isPaid === false,
+      priceZero: activityData.price === 0,
+      activityDateValid: adjustedStartDate >= fiveMinsAgo,
+      activityEndDateValid: !activityData.activityEndDate || (adjustedEndDate && adjustedEndDate > adjustedStartDate && adjustedEndDate.getTime() <= adjustedStartDate.getTime() + 30 * 24 * 60 * 60 * 1000),
+      maxParticipantsValid: !activityData.maxParticipants || (typeof activityData.maxParticipants === 'number' && activityData.maxParticipants >= 2 && activityData.maxParticipants <= 100),
+      latValid: activityData.lat === undefined || (typeof activityData.lat === 'number' && activityData.lat >= -90 && activityData.lat <= 90),
+      lonValid: activityData.lon === undefined || (typeof activityData.lon === 'number' && activityData.lon >= -180 && activityData.lon <= 180),
+      isBoostedValid: typeof activityData.isBoosted === 'boolean' && ((activityData.isBoosted === false && activityData.boostedAt === null) || (activityData.isBoosted === true && (userProfileData?.tokens || 0) >= 1))
+    };
+
+    const participantData = {
+      uid: user.uid,
+      displayName: displayNameToUse,
+      photoURL: photoURLToUse,
+      checkInStatus: 'pending',
+      joinedAt: 'serverTimestamp',
+      hasReviewed: false
+    };
+
+    const participantRuleChecks = {
+      docIdIsAuthUid: pRef.id === user.uid,
+      uidMatchesAuth: participantData.uid === user.uid,
+      checkInStatusPending: participantData.checkInStatus === 'pending',
+      hasReviewedFalse: participantData.hasReviewed === false
+    };
+
+    const chatData = {
+      activityId: activityRef.id,
+      hostId: user.uid,
+      participantIds: [user.uid]
+    };
+
+    const chatRuleChecks = {
+      docIdMatchesActivityId: chatRef.id === activityRef.id,
+      activityIdValid: chatData.activityId === activityRef.id,
+      hostIdMatchesAuth: chatData.hostId === user.uid,
+      participantIdsValid: Array.isArray(chatData.participantIds) && chatData.participantIds.length === 1 && chatData.participantIds[0] === user.uid
+    };
+
+    console.log('[CREATE_ACTIVITY_PREFLIGHT] Activity Rule Checks:');
+    console.table(activityRuleChecks);
+    console.log('[CREATE_ACTIVITY_PREFLIGHT] Participant Rule Checks:');
+    console.table(participantRuleChecks);
+    console.log('[CREATE_ACTIVITY_PREFLIGHT] Chat Rule Checks:');
+    console.table(chatRuleChecks);
+
+    const failedActivity = Object.entries(activityRuleChecks).filter(([, passed]) => passed !== true);
+    const failedParticipant = Object.entries(participantRuleChecks).filter(([, passed]) => passed !== true);
+    const failedChat = Object.entries(chatRuleChecks).filter(([, passed]) => passed !== true);
+
+    if (failedActivity.length > 0) {
+      console.error("[CREATE_ACTIVITY_PREFLIGHT] Failed Activity Check Names:", failedActivity.map(([name]) => name));
+      console.table(failedActivity.map(([name, value]) => ({ check: name, passed: value })));
+    }
+    if (failedParticipant.length > 0) {
+      console.error("[CREATE_ACTIVITY_PREFLIGHT] Failed Participant Check Names:", failedParticipant.map(([name]) => name));
+      console.table(failedParticipant.map(([name, value]) => ({ check: name, passed: value })));
+    }
+    if (failedChat.length > 0) {
+      console.error("[CREATE_ACTIVITY_PREFLIGHT] Failed Chat Check Names:", failedChat.map(([name]) => name));
+      console.table(failedChat.map(([name, value]) => ({ check: name, passed: value })));
+    }
   }
 
   try {
@@ -578,7 +786,13 @@ export async function votePlace(placeId: string, userId: string, type: 'up' | 'd
   return result.data.weightedCommunityScore;
 }
 
-export async function joinActivity(activityId: string, user: User, source?: string | null, referralId?: string | null): Promise<'joined' | 'requested'> {
+export async function joinActivity(
+  activityId: string,
+  user: User,
+  source?: string | null,
+  referralId?: string | null,
+  joinMode?: string
+): Promise<'joined' | 'requested' | 'already_requested'> {
   if (!db) throw new Error('Firestore is not initialized.');
   if (!user) throw new Error('User is not authenticated.');
 
@@ -588,6 +802,19 @@ export async function joinActivity(activityId: string, user: User, source?: stri
   const pRef = doc(db, 'activities', activityId, 'participants', user.uid);
 
   try {
+    const resolvedMode = joinMode === 'direct' ? 'direct' : 'request';
+    console.log("[JOIN_FLOW_DEBUG]", {
+      activityId,
+      joinMode,
+      resolvedMode,
+      action: resolvedMode === 'direct' ? 'joinActivity' : 'requestJoinActivity'
+    });
+
+    if (resolvedMode !== 'direct') {
+      const res = await requestJoinActivity(activityId, user);
+      return res.status;
+    }
+
     const result = await runTransaction(db, async (transaction) => {
       const activityDoc = await transaction.get(activityRef);
       const userDoc = await transaction.get(userRef);
@@ -653,12 +880,60 @@ export async function joinActivity(activityId: string, user: User, source?: stri
         return 'joined';
       }
 
-      if ((activityData.joinMode === 'request' || forceRequestMode) && activityData.hostId !== user.uid) {
+      const resolvedJoinMode = activityData.joinMode || 'request';
+      if ((resolvedJoinMode === 'request' || forceRequestMode) && activityData.hostId !== user.uid) {
         return 'requested';
       }
       
       if (activityData.maxParticipants && activityData.participantIds.length >= activityData.maxParticipants) {
         throw `This activity has reached its maximum of ${activityData.maxParticipants} participants.`;
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        const activityRuleChecks = {
+          isSignedIn: !!user?.uid,
+          isUserOnboardedAndActive: userProfileData?.onboardingCompleted === true && !userProfileData?.isBanned,
+          activityExists: activityDoc.exists(),
+          activityStatusIsActive: ['active', 'open'].includes(activityData?.status || ''),
+          userNotAlreadyParticipant: !activityData?.participantIds.includes(user.uid),
+          maxParticipantsNotReached: !activityData?.maxParticipants || activityData.participantIds.length < activityData.maxParticipants,
+          participantIdsUpdateValid: true,
+          participantIdsContainsAuthUid: true,
+          onlyAllowedActivityFieldsChanged: true,
+          participantsPreviewValid: true,
+          participantDetailsValid: true,
+          updatedAtValid: true,
+          noForbiddenFieldsChanged: true
+        };
+
+        const participantRuleChecks = {
+          docIdIsAuthUid: pRef.id === user.uid,
+          userIdMatchesAuth: user.uid === user.uid,
+          activityIdMatches: true,
+          statusValid: true,
+          roleValid: true,
+          checkInStatusValid: true,
+          hasReviewedFalse: true,
+          allowedKeysOnly: true,
+          existsAfterCompatibleWithActivityRule: true
+        };
+
+        console.log('[JOIN_ACTIVITY_PREFLIGHT] Activity Join Update Checks:');
+        console.table(activityRuleChecks);
+        console.log('[JOIN_ACTIVITY_PREFLIGHT] Participant Create Checks:');
+        console.table(participantRuleChecks);
+
+        const failedActivity = Object.entries(activityRuleChecks).filter(([, passed]) => passed !== true);
+        const failedParticipant = Object.entries(participantRuleChecks).filter(([, passed]) => passed !== true);
+
+        if (failedActivity.length > 0) {
+          console.error("[JOIN_ACTIVITY_PREFLIGHT] Failed Activity Check Names:", failedActivity.map(([name]) => name));
+          console.table(failedActivity.map(([name, value]) => ({ check: name, passed: value })));
+        }
+        if (failedParticipant.length > 0) {
+          console.error("[JOIN_ACTIVITY_PREFLIGHT] Failed Participant Check Names:", failedParticipant.map(([name]) => name));
+          console.table(failedParticipant.map(([name, value]) => ({ check: name, passed: value })));
+        }
       }
       
       const updates: any = {
@@ -723,8 +998,8 @@ export async function joinActivity(activityId: string, user: User, source?: stri
     });
     
     if (result === 'requested') {
-      await requestJoinActivity(activityId, user);
-      return 'requested';
+      const res = await requestJoinActivity(activityId, user);
+      return res.status;
     }
     return 'joined';
   } catch (e: any) {
@@ -739,90 +1014,16 @@ export async function joinActivity(activityId: string, user: User, source?: stri
   }
 }
 
-export async function requestJoinActivity(activityId: string, user: User): Promise<void> {
-  if (!db) throw new Error('Firestore is not initialized.');
-
-  // Check if a request already exists
-  const existingReqsQuery = query(
-    collection(db, 'notifications'),
-    where('activityId', '==', activityId),
-    where('senderId', '==', user.uid),
-    where('type', '==', 'join_request')
+export async function requestJoinActivity(activityId: string, user: User): Promise<{ status: 'requested' | 'already_requested' }> {
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const functions = getFunctions(app || undefined, 'us-central1');
+  const secureRequestJoin = httpsCallable<{ activityId: string; message?: string }, { success: boolean; status: "requested" | "already_requested" }>(
+    functions,
+    "secureRequestJoinActivity"
   );
-  const existingReqs = await getDocs(existingReqsQuery);
-  if (!existingReqs.empty) {
-    throw new Error('Du hast bereits eine Anfrage gesendet.');
-  }
 
-  const activityRef = doc(db, 'activities', activityId);
-  const activitySnap = await getDoc(activityRef);
-  if (!activitySnap.exists()) {
-    throw new Error('Activity does not exist.');
-  }
-
-  const activityData = activitySnap.data() as Activity;
-  if (activityData.participantIds.includes(user.uid)) {
-    throw new Error('Du bist bereits in dieser Aktivität.');
-  }
-
-  const userRef = doc(db, 'users', user.uid);
-  const userSnap = await getDoc(userRef);
-  const userProfileData = userSnap.data() as UserProfile | undefined;
-  const displayNameToUse = userProfileData?.displayName ?? "User";
-  const photoURLToUse = userProfileData?.photoURL ?? null;
-  
-  // Run the same requirement validation as joinActivity
-  const req = activityData.requirements;
-  if (req) {
-    if (req.requireProfilePicture && !userProfileData?.photoURL) {
-      throw "Du benötigst ein Profilbild, um an diesem Event teilzunehmen.";
-    }
-    if (req.requireVerification && userProfileData?.kycStatus !== 'verified') {
-      throw "Nur verifizierte Nutzer (KYC) können diesem Event beitreten.";
-    }
-    if (req.minimumRating && (userProfileData?.averageRating || 0) < req.minimumRating) {
-      const hasNoRating = !userProfileData?.ratingCount || userProfileData.ratingCount === 0;
-      if (!hasNoRating) {
-        throw `Dieses Event erfordert eine Mindestbewertung von ${req.minimumRating} Sternen.`;
-      }
-    }
-    if (req.gender && req.gender.length > 0) {
-      const userGender = userProfileData?.gender || 'unbekannt';
-      if (!req.gender.includes(userGender)) {
-          throw "Dieses Event ist nur für bestimmte Geschlechter freigegeben.";
-      }
-    }
-    if (req.ageRange) {
-      if (!userProfileData?.age) {
-          throw "Bitte hinterlege dein Alter in den Profileinstellungen.";
-      }
-      if (req.ageRange.min && userProfileData.age < req.ageRange.min) {
-          throw `Du musst mindestens ${req.ageRange.min} Jahre alt sein.`;
-      }
-      if (req.ageRange.max && userProfileData.age > req.ageRange.max) {
-          throw `Das Höchstalter für dieses Event ist ${req.ageRange.max} Jahre.`;
-      }
-    }
-  }
-
-  // Add the notification for the host
-  const notificationRef = doc(collection(db, 'notifications'));
-  await setDoc(notificationRef, {
-    recipientId: activityData.hostId,
-    senderId: user.uid,
-    senderName: displayNameToUse,
-    senderProfile: {
-      displayName: displayNameToUse,
-      photoURL: photoURLToUse
-    },
-    type: 'join_request',
-    title: 'Neue Beitrittsanfrage',
-    message: `${displayNameToUse} möchte an deiner Aktivität "${activityData.placeName}" teilnehmen.`,
-    isRead: false,
-    createdAt: serverTimestamp(),
-    activityId: activityId,
-    link: `/activities/${activityId}`
-  });
+  const res = await secureRequestJoin({ activityId });
+  return { status: res.data.status };
 }
 
 export async function acceptJoinRequest(notificationId: string, activityId: string, userIdToJoin: string): Promise<void> {
@@ -1026,51 +1227,7 @@ export async function removeUserFromChat(chatId: string, userId: string): Promis
 }
 
 
-export async function deleteActivity(activityId: string): Promise<void> {
-  if (!db) throw new Error('Firestore is not initialized.');
 
-  const activityRef = doc(db, 'activities', activityId);
-  const chatRef = doc(db, 'chats', activityId);
-  const messagesRef = collection(db, 'chats', activityId, 'messages');
-  const participantsRef = collection(db, 'activities', activityId, 'participants');
-
-  const activitySnap = await getDoc(activityRef);
-  if (!activitySnap.exists()) return; // Already deleted or doesn't exist
-
-  const activityData = activitySnap.data() as Activity;
-  const batch = writeBatch(db);
-
-  // Messages löschen
-  const messagesSnapshot = await getDocs(messagesRef);
-  messagesSnapshot.forEach(doc => {
-    batch.delete(doc.ref);
-  });
-
-  // Teilnehmer löschen
-  const participantsSnapshot = await getDocs(participantsRef);
-  participantsSnapshot.forEach(doc => {
-    batch.delete(doc.ref);
-  });
-
-  batch.delete(chatRef);
-  batch.delete(activityRef);
-
-  // Orts-Anker deinkrementieren falls vorhanden
-  if (activityData.placeId && activityData.placeId !== 'custom') {
-    const placeRef = doc(db, 'places', activityData.placeId);
-    batch.set(placeRef, { 
-      activityCount: increment(-1),
-      lastActivityId: activityId
-    }, { merge: true });
-  }
-
-  try {
-    await batch.commit();
-  } catch (error) {
-    console.error('Error deleting activity and chat:', error);
-    throw new Error('Could not delete activity.');
-  }
-}
 
 export async function fetchUserActivities(userId: string): Promise<Activity[]> {
   if (!db) throw new Error('Firestore is not initialized.');
@@ -1092,39 +1249,16 @@ export async function fetchUserActivities(userId: string): Promise<Activity[]> {
 
 
 export async function sendFriendRequest(fromUserId: string, toUserId: string): Promise<void> {
-    if (!db) throw new Error('Firestore is not initialized.');
+    const { httpsCallable } = await import('firebase/functions');
+    if (!functions) throw new Error('Firebase Functions is not initialized.');
     
     if (!fromUserId || fromUserId === toUserId) {
       console.error("Self-referential friend requests are prohibited.");
       return; 
     }
 
-    const fromUserRef = doc(db, 'users', fromUserId);
-    const toUserRef = doc(db, 'users', toUserId);
-    const notificationRef = doc(collection(db, 'notifications'));
-
-    await runTransaction(db, async (transaction) => {
-        const fromUserSnap = await transaction.get(fromUserRef);
-        if (!fromUserSnap.exists()) {
-            throw new Error("Sender's user profile does not exist.");
-        }
-        const fromUserProfile = fromUserSnap.data() as UserProfile;
-        
-        transaction.update(fromUserRef, { friendRequestsSent: arrayUnion(toUserId) });
-        transaction.update(toUserRef, { friendRequestsReceived: arrayUnion(fromUserId) });
-
-        transaction.set(notificationRef, {
-            recipientId: toUserId,
-            senderId: fromUserId,
-            senderProfile: {
-                displayName: fromUserProfile.displayName || "Jemand",
-                photoURL: fromUserProfile.photoURL || null
-            },
-            type: 'friend_request',
-            isRead: false,
-            createdAt: serverTimestamp()
-        });
-    });
+    const secureSend = httpsCallable<{ toUserId: string }, { success: boolean }>(functions, 'secureSendFriendRequest');
+    await secureSend({ toUserId });
 }
 
 export async function cancelFriendRequest(fromUserId: string, toUserId: string): Promise<void> {
@@ -1139,17 +1273,10 @@ export async function cancelFriendRequest(fromUserId: string, toUserId: string):
 }
 
 export async function acceptFriendRequest(userId: string, requestingUserId: string): Promise<void> {
-    if (!db) throw new Error('Firestore is not initialized.');
-    const userRef = doc(db, 'users', userId);
-    const requestingUserRef = doc(db, 'users', requestingUserId);
-
-    await runTransaction(db, async (transaction) => {
-        transaction.update(userRef, { friendRequestsReceived: arrayRemove(requestingUserId) });
-        transaction.update(requestingUserRef, { friendRequestsSent: arrayRemove(userId) });
-
-        transaction.update(userRef, { friends: arrayUnion(requestingUserId) });
-        transaction.update(requestingUserRef, { friends: arrayUnion(userId) });
-    });
+    const { httpsCallable } = await import('firebase/functions');
+    if (!functions) throw new Error('Firebase Functions is not initialized.');
+    const secureAccept = httpsCallable<{ fromUserId: string }, { success: boolean }>(functions, 'secureAcceptFriendRequest');
+    await secureAccept({ fromUserId: requestingUserId });
 }
 
 export async function declineFriendRequest(userId: string, decliningUserId: string): Promise<void> {

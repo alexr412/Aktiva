@@ -65,6 +65,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const [isJoining, setIsJoining] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [hasRequested, setHasRequested] = useState(false);
 
   // Authentication and onboarding guards
   useEffect(() => {
@@ -149,7 +150,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
     if (isJoining) return;
     setIsJoining(true);
     try {
-      const status = await joinActivity(activity.id!, user, null, referralId);
+      const status = await joinActivity(activity.id!, user, null, referralId, activity.joinMode);
       if (status === 'joined') {
         toast({ 
           title: language === 'de' ? "Willkommen!" : "Welcome!", 
@@ -157,6 +158,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         });
         router.push(`/chat/${activity.id}`);
       } else {
+        setHasRequested(true);
         toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
       }
     } catch (error: any) {
@@ -204,8 +206,8 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
     if (!activity) return;
     const shareUrl = `${window.location.origin}/activities/${activity.id}?ref=${user?.uid || 'guest'}`;
     const shareTitle = language === 'de' 
-      ? `Treffen bei ${activity.placeName}`
-      : `Meeting at ${activity.placeName}`;
+      ? `Treffen: ${activity.isCustomActivity ? (activity.title || activity.placeName) : activity.placeName}`
+      : `Meeting: ${activity.isCustomActivity ? (activity.title || activity.placeName) : activity.placeName}`;
     const shareText = language === 'de'
       ? `Komm vorbei zum Event in der Kategorie ${activity.category || 'Sonstiges'} bei ${activity.placeName}!`
       : `Join me for ${activity.category || 'this event'} at ${activity.placeName}!`;
@@ -292,7 +294,9 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex-1 text-center font-bold text-slate-800">{language === 'de' ? 'Community Event' : 'Community Event'}</div>
+        <div className="flex-1 text-center font-bold text-slate-800 truncate px-4">
+          {activity.title || activity.placeName || (language === 'de' ? 'Aktivität' : 'Activity')}
+        </div>
         <Button 
           variant="ghost" 
           size="icon" 
@@ -337,17 +341,21 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
             </div>
             
             <h1 className="text-2xl font-black mb-2 leading-tight text-slate-900">
-              {formatLabel(activity.category || (language === 'de' ? 'Aktivität' : 'Activity'))}
+              {activity.title || activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}
             </h1>
             
-            <div className="text-slate-700 font-bold mb-1 flex items-center gap-1.5 text-sm">
-              <MapPin className="h-4 w-4 text-primary shrink-0" /> 
-              <span>{activity.placeName}</span>
-            </div>
+            {activity.title && activity.placeName && (
+              <div className="text-slate-700 font-bold mb-1 flex items-center gap-1.5 text-sm">
+                <MapPin className="h-4 w-4 text-primary shrink-0" /> 
+                <span>{activity.placeName}</span>
+              </div>
+            )}
+            
             {activity.placeAddress && (
-              <p className="text-slate-400 font-medium mb-4 text-xs pl-5.5 truncate">
-                {activity.placeAddress}
-              </p>
+              <div className="text-slate-450 font-bold mb-4 flex items-center gap-1.5 text-xs">
+                {!(activity.title && activity.placeName) && <MapPin className="h-4 w-4 text-primary shrink-0" />}
+                <span className={cn(activity.title && activity.placeName && "pl-5.5")}>{activity.placeAddress}</span>
+              </div>
             )}
 
             {activity.description && (
@@ -803,7 +811,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
               ) : (
                 <Button 
                   onClick={handleJoin} 
-                  disabled={isJoining || isFull || isClosed}
+                  disabled={isJoining || isFull || isClosed || hasRequested}
                   className={cn(
                     "w-full h-14 rounded-2xl font-black text-lg transition-all shadow-xl",
                     activity.isPaid 
@@ -818,9 +826,14 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                         ? (language === 'de' ? 'Aktivität ist voll' : 'Activity is full') 
                         : isClosed
                         ? (language === 'de' ? 'Aktivität beendet' : 'Activity ended')
+                        : hasRequested
+                        ? (language === 'de' ? 'Anfrage gesendet' : 'Request Sent')
                         : (activity.isPaid 
                             ? (language === 'de' ? `Beitreten (€${activity.price?.toFixed(2)})` : `Join (€${activity.price?.toFixed(2)})`) 
-                            : (language === 'de' ? 'Jetzt beitreten' : 'Join now')
+                            : (activity.joinMode === 'direct'
+                                ? (language === 'de' ? 'Jetzt beitreten' : 'Join now')
+                                : (language === 'de' ? 'Anfrage' : 'Request')
+                              )
                           )}
                     </>
                   )}

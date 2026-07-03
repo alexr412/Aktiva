@@ -1,7 +1,7 @@
 import assert from 'assert';
 import * as fs from 'fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, updateDoc, getDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, getDoc, deleteDoc, writeBatch, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { ref, uploadBytes, deleteObject, getBytes } from 'firebase/storage';
 
 const PROJECT_ID = 'aktiva-rules-test';
@@ -295,6 +295,8 @@ async function runTests() {
 
     await seedDoc('activities/actPaid', initialPaidActivity);
     await seedDoc('activities/actFree', initialFreeActivity);
+    await seedDoc('chats/actPaid', { activityId: 'actPaid', hostId: 'host1', participantIds: ['host1', 'user1'] });
+    await seedDoc('chats/actFree', { activityId: 'actFree', hostId: 'host1', participantIds: ['host1', 'user1'] });
     await seedDoc('users/host1', { uid: 'host1', onboardingCompleted: true, isBanned: false, role: 'user', tokens: 5 });
     await seedDoc('users/user1', { uid: 'user1', onboardingCompleted: true, isBanned: false, role: 'user', tokens: 5 });
     await seedDoc('users/bob', { uid: 'bob', onboardingCompleted: true, isBanned: false, role: 'user', tokens: 5 });
@@ -355,6 +357,11 @@ async function runTests() {
 
     await seedDoc('activities/actFree', freeActivity);
     await seedDoc('activities/actPaid', paidActivity);
+    await seedDoc('chats/actFree', { activityId: 'actFree', hostId: 'host1', participantIds: ['host1', 'user1'] });
+    await seedDoc('chats/actPaid', { activityId: 'actPaid', hostId: 'host1', participantIds: ['host1', 'user1'] });
+    await seedDoc('users/host1', { uid: 'host1', onboardingCompleted: true, isBanned: false, role: 'user' });
+    await seedDoc('users/user1', { uid: 'user1', onboardingCompleted: true, isBanned: false, role: 'user' });
+    await seedDoc('users/bob', { uid: 'bob', onboardingCompleted: true, isBanned: false, role: 'user' });
 
     const userDb = testEnv.authenticatedContext('user1').firestore();
     const bobDb = testEnv.authenticatedContext('bob').firestore();
@@ -1952,6 +1959,7 @@ async function runTests() {
     seedAct.lastInteractionAt = new Date() as any;
     seedAct.activityDate = new Date(Date.now() + 3600 * 1000) as any;
     await seedDoc('activities/act_to_boost', seedAct);
+    await seedDoc('chats/act_to_boost', { activityId: 'act_to_boost', hostId: 'alice', participantIds: ['alice'] });
 
     // Positive: Host boosts activity subsequently with token deduction succeeds
     {
@@ -1975,6 +1983,7 @@ async function runTests() {
     jointAct.lat = 48.0;
     jointAct.lon = 11.0;
     await seedDoc('activities/act_joint', jointAct);
+    await seedDoc('chats/act_joint', { activityId: 'act_joint', hostId: 'alice', participantIds: ['alice', 'bob'] });
 
     // Positive: Host updates title (allowed)
     await assertSucceeds(updateDoc(doc(aliceDb, 'activities/act_joint'), { title: 'New title joint' }));
@@ -1996,6 +2005,614 @@ async function runTests() {
 
     // Negative: Foreign user bob tries to edit alice's activity (blocked)
     await assertFails(updateDoc(doc(bobDb, 'activities/act_normal'), { title: 'Bob was here' }));
+  }
+
+  // ==========================================
+  // P. Specific createActivity and joinActivity Flow Tests
+  // ==========================================
+  {
+    console.log('Running Suite P: Specific createActivity and joinActivity Flow Tests...');
+    await testEnv.clearFirestore();
+
+    // Seed profiles
+    await seedDoc('users/alice', { uid: 'alice', onboardingCompleted: true, isBanned: false, role: 'user' });
+    await seedDoc('users/bob', { uid: 'bob', onboardingCompleted: true, isBanned: false, role: 'user' });
+    await seedDoc('users/charlie', { uid: 'charlie', onboardingCompleted: false, isBanned: false, role: 'user' });
+    await seedDoc('users/banned_user', { uid: 'banned_user', onboardingCompleted: true, isBanned: true, role: 'user' });
+    await seedDoc('users/admin_user', { uid: 'admin_user', onboardingCompleted: true, isBanned: false, role: 'admin' });
+
+    const hostId = 'alice';
+    const guestId = 'bob';
+    const hostDb = testEnv.authenticatedContext(hostId).firestore();
+    const guestDb = testEnv.authenticatedContext(guestId).firestore();
+    const charlieDb = testEnv.authenticatedContext('charlie').firestore();
+    const bannedDb = testEnv.authenticatedContext('banned_user').firestore();
+    const adminDb = testEnv.authenticatedContext('admin_user').firestore();
+
+    function getValidActivityPayload(hId: string): any {
+      return {
+        title: 'Football Match',
+        placeName: 'Soccer Field',
+        activityDate: new Date(Date.now() + 3600 * 1000), // 1 hour in future
+        hostId: hId,
+        hostName: 'Host User',
+        hostPhotoURL: null,
+        participantIds: [hId],
+        participantsPreview: [{ uid: hId, displayName: 'Host User', photoURL: null }],
+        createdAt: serverTimestamp(),
+        lastInteractionAt: serverTimestamp(),
+        isCustomActivity: true,
+        isTimeFlexible: false,
+        category: 'Sport',
+        description: 'Friendly match',
+        status: 'active',
+        completionVotes: [],
+        isBoosted: false,
+        boostedAt: null,
+        isPaid: false,
+        price: 0,
+        upvotes: 0,
+        downvotes: 0,
+        userVotes: {},
+        globalScore: 0,
+        reportCount: 0,
+        avgRating: 0,
+        reviewCount: 0,
+        stats: { impressions: 0, pushJoins: 0, referralJoins: 0 },
+        participantDetails: {
+          [hId]: {
+            displayName: 'Host User',
+            photoURL: null,
+            isPremium: false,
+            isSupporter: false,
+            checkInStatus: 'pending',
+            hasReviewed: false
+          }
+        },
+        categories: ['Sport'],
+        isUserEvent: true,
+        sourceType: 'activity',
+        creationSource: 'community',
+        joinMode: 'direct'
+      };
+    }
+
+    // 1. createActivity mit neuem Place success
+    console.log('Running test 1: createActivity mit neuem Place success');
+    {
+      const batch = writeBatch(hostDb);
+      const actId = 'act_new_place';
+      const activityRef = doc(hostDb, `activities/${actId}`);
+      const chatRef = doc(hostDb, `chats/${actId}`);
+      const participantRef = doc(hostDb, `activities/${actId}/participants/${hostId}`);
+      const placeRef = doc(hostDb, `places/place_new`);
+
+      const actPayload = { ...getValidActivityPayload(hostId), placeId: 'place_new', isCustomActivity: false };
+      batch.set(activityRef, actPayload);
+      batch.set(chatRef, {
+        activityId: actId,
+        hostId: hostId,
+        createdAt: serverTimestamp(),
+        lastActivityAt: serverTimestamp(),
+        participantIds: [hostId],
+        lastMessage: null,
+        placeName: 'Soccer Field',
+        categories: ['Sport'],
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      batch.set(participantRef, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+      batch.set(placeRef, {
+        name: 'Soccer Field',
+        address: 'Bielefeld',
+        lat: 52.0,
+        lon: 8.5,
+        categories: ['Sport'],
+        source: 'google',
+        sourceType: 'place',
+        activityCount: 1,
+        lastActivityId: actId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isDeleted: false,
+        isBlacklisted: false
+      });
+
+      await assertSucceeds(batch.commit());
+    }
+
+    // 2. createActivity mit vorhandenem Place success
+    console.log('Running test 2: createActivity mit vorhandenem Place success');
+    {
+      await seedDoc('places/place_exist', {
+        name: 'Soccer Field',
+        address: 'Bielefeld',
+        lat: 52.0,
+        lon: 8.5,
+        categories: ['Sport'],
+        source: 'google',
+        sourceType: 'place',
+        activityCount: 0,
+        lastActivityId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isDeleted: false,
+        isBlacklisted: false
+      });
+
+      const batch = writeBatch(hostDb);
+      const actId = 'act_exist_place';
+      const activityRef = doc(hostDb, `activities/${actId}`);
+      const chatRef = doc(hostDb, `chats/${actId}`);
+      const participantRef = doc(hostDb, `activities/${actId}/participants/${hostId}`);
+      const placeRef = doc(hostDb, `places/place_exist`);
+
+      const actPayload = { ...getValidActivityPayload(hostId), placeId: 'place_exist', isCustomActivity: false };
+      batch.set(activityRef, actPayload);
+      batch.set(chatRef, {
+        activityId: actId,
+        hostId: hostId,
+        createdAt: serverTimestamp(),
+        lastActivityAt: serverTimestamp(),
+        participantIds: [hostId],
+        lastMessage: null,
+        placeName: 'Soccer Field',
+        categories: ['Sport'],
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      batch.set(participantRef, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+      batch.update(placeRef, {
+        activityCount: 1,
+        lastActivityId: actId,
+        updatedAt: serverTimestamp()
+      });
+
+      await assertSucceeds(batch.commit());
+    }
+
+    // 3. createActivity blockiert, wenn Place isDeleted true
+    console.log('Running test 3: createActivity blockiert, wenn Place isDeleted true');
+    {
+      await seedDoc('places/place_deleted', {
+        name: 'Soccer Field',
+        address: 'Bielefeld',
+        lat: 52.0,
+        lon: 8.5,
+        categories: ['Sport'],
+        source: 'google',
+        sourceType: 'place',
+        activityCount: 0,
+        lastActivityId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isDeleted: true,
+        isBlacklisted: false
+      });
+
+      const batch = writeBatch(hostDb);
+      const actId = 'act_deleted_place';
+      const activityRef = doc(hostDb, `activities/${actId}`);
+      const chatRef = doc(hostDb, `chats/${actId}`);
+      const participantRef = doc(hostDb, `activities/${actId}/participants/${hostId}`);
+      const placeRef = doc(hostDb, `places/place_deleted`);
+
+      const actPayload = { ...getValidActivityPayload(hostId), placeId: 'place_deleted', isCustomActivity: false };
+      batch.set(activityRef, actPayload);
+      batch.set(chatRef, {
+        activityId: actId,
+        hostId: hostId,
+        createdAt: serverTimestamp(),
+        lastActivityAt: serverTimestamp(),
+        participantIds: [hostId],
+        lastMessage: null,
+        placeName: 'Soccer Field',
+        categories: ['Sport'],
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      batch.set(participantRef, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+      batch.update(placeRef, {
+        activityCount: 1,
+        lastActivityId: actId,
+        updatedAt: serverTimestamp()
+      });
+
+      await assertFails(batch.commit());
+    }
+
+    // 4. createActivity blockiert, wenn Place isBlacklisted true
+    console.log('Running test 4: createActivity blockiert, wenn Place isBlacklisted true');
+    {
+      await seedDoc('places/place_blacklisted', {
+        name: 'Soccer Field',
+        address: 'Bielefeld',
+        lat: 52.0,
+        lon: 8.5,
+        categories: ['Sport'],
+        source: 'google',
+        sourceType: 'place',
+        activityCount: 0,
+        lastActivityId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isDeleted: false,
+        isBlacklisted: true
+      });
+
+      const batch = writeBatch(hostDb);
+      const actId = 'act_black_place';
+      const activityRef = doc(hostDb, `activities/${actId}`);
+      const chatRef = doc(hostDb, `chats/${actId}`);
+      const participantRef = doc(hostDb, `activities/${actId}/participants/${hostId}`);
+      const placeRef = doc(hostDb, `places/place_blacklisted`);
+
+      const actPayload = { ...getValidActivityPayload(hostId), placeId: 'place_blacklisted', isCustomActivity: false };
+      batch.set(activityRef, actPayload);
+      batch.set(chatRef, {
+        activityId: actId,
+        hostId: hostId,
+        createdAt: serverTimestamp(),
+        lastActivityAt: serverTimestamp(),
+        participantIds: [hostId],
+        lastMessage: null,
+        placeName: 'Soccer Field',
+        categories: ['Sport'],
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      batch.set(participantRef, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+      batch.update(placeRef, {
+        activityCount: 1,
+        lastActivityId: actId,
+        updatedAt: serverTimestamp()
+      });
+
+      await assertFails(batch.commit());
+    }
+
+    // 5. joinActivity success
+    console.log('Running test 5: joinActivity success');
+    {
+      await seedDoc('activities/act_joinable', getValidActivityPayload(hostId));
+      await seedDoc('chats/act_joinable', {
+        activityId: 'act_joinable',
+        hostId: hostId,
+        createdAt: new Date(),
+        lastActivityAt: new Date(),
+        participantIds: [hostId],
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      await seedDoc(`activities/act_joinable/participants/${hostId}`, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: new Date(),
+        hasReviewed: false
+      });
+
+      const batch = writeBatch(guestDb);
+      const activityRef = doc(guestDb, 'activities/act_joinable');
+      const chatRef = doc(guestDb, 'chats/act_joinable');
+      const participantRef = doc(guestDb, 'activities/act_joinable/participants/bob');
+
+      batch.update(activityRef, {
+        participantIds: arrayUnion(guestId),
+        lastInteractionAt: serverTimestamp(),
+        [`participantDetails.${guestId}`]: {
+          displayName: 'Bob User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending',
+          hasReviewed: false
+        }
+      });
+      batch.set(participantRef, {
+        uid: guestId,
+        displayName: 'Bob User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+      batch.update(chatRef, {
+        participantIds: arrayUnion(guestId),
+        [`participantDetails.${guestId}`]: {
+          displayName: 'Bob User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending'
+        },
+        [`unreadCount.${guestId}`]: 0
+      });
+
+      await assertSucceeds(batch.commit());
+    }
+
+    // 6. joinActivity blockiert, wenn User nicht onboarded
+    console.log('Running test 6: joinActivity blockiert, wenn User nicht onboarded');
+    {
+      const batch = writeBatch(charlieDb);
+      const activityRef = doc(charlieDb, 'activities/act_joinable');
+      const chatRef = doc(charlieDb, 'chats/act_joinable');
+      const participantRef = doc(charlieDb, 'activities/act_joinable/participants/charlie');
+
+      batch.update(activityRef, {
+        participantIds: arrayUnion('charlie'),
+        lastInteractionAt: serverTimestamp(),
+        [`participantDetails.charlie`]: {
+          displayName: 'Charlie User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending',
+          hasReviewed: false
+        }
+      });
+      batch.set(participantRef, {
+        uid: 'charlie',
+        displayName: 'Charlie User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+      batch.update(chatRef, {
+        participantIds: arrayUnion('charlie'),
+        [`participantDetails.charlie`]: {
+          displayName: 'Charlie User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending'
+        },
+        [`unreadCount.charlie`]: 0
+      });
+
+      await assertFails(batch.commit());
+    }
+
+    // 7. joinActivity blockiert, wenn banned
+    console.log('Running test 7: joinActivity blockiert, wenn banned');
+    {
+      const batch = writeBatch(bannedDb);
+      const activityRef = doc(bannedDb, 'activities/act_joinable');
+      const chatRef = doc(bannedDb, 'chats/act_joinable');
+      const participantRef = doc(bannedDb, 'activities/act_joinable/participants/banned_user');
+
+      batch.update(activityRef, {
+        participantIds: arrayUnion('banned_user'),
+        lastInteractionAt: serverTimestamp(),
+        [`participantDetails.banned_user`]: {
+          displayName: 'Banned User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending',
+          hasReviewed: false
+        }
+      });
+      batch.set(participantRef, {
+        uid: 'banned_user',
+        displayName: 'Banned User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+      batch.update(chatRef, {
+        participantIds: arrayUnion('banned_user'),
+        [`participantDetails.banned_user`]: {
+          displayName: 'Banned User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending'
+        },
+        [`unreadCount.banned_user`]: 0
+      });
+
+      await assertFails(batch.commit());
+    }
+
+    // 8. joinActivity blockiert, wenn joinMode request
+    console.log('Running test 8: joinActivity blockiert, wenn joinMode request');
+    {
+      const reqAct = { ...getValidActivityPayload(hostId), joinMode: 'request' };
+      await seedDoc('activities/act_request_only', reqAct);
+      await seedDoc('chats/act_request_only', {
+        activityId: 'act_request_only',
+        hostId: hostId,
+        createdAt: new Date(),
+        lastActivityAt: new Date(),
+        participantIds: [hostId],
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      await seedDoc(`activities/act_request_only/participants/${hostId}`, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: new Date(),
+        hasReviewed: false
+      });
+
+      const batch = writeBatch(guestDb);
+      const activityRef = doc(guestDb, 'activities/act_request_only');
+      const chatRef = doc(guestDb, 'chats/act_request_only');
+      const participantRef = doc(guestDb, 'activities/act_request_only/participants/bob');
+
+      batch.update(activityRef, {
+        participantIds: arrayUnion(guestId),
+        lastInteractionAt: serverTimestamp(),
+        [`participantDetails.${guestId}`]: {
+          displayName: 'Bob User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending',
+          hasReviewed: false
+        }
+      });
+      batch.set(participantRef, {
+        uid: guestId,
+        displayName: 'Bob User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+      batch.update(chatRef, {
+        participantIds: arrayUnion(guestId),
+        [`participantDetails.${guestId}`]: {
+          displayName: 'Bob User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending'
+        },
+        [`unreadCount.${guestId}`]: 0
+      });
+
+      await assertFails(batch.commit());
+    }
+
+    // 9. joinActivity blockiert, wenn full
+    console.log('Running test 9: joinActivity blockiert, wenn full');
+    {
+      const fullAct = { ...getValidActivityPayload(hostId), maxParticipants: 1 };
+      await seedDoc('activities/act_full_only', fullAct);
+      await seedDoc('chats/act_full_only', {
+        activityId: 'act_full_only',
+        hostId: hostId,
+        createdAt: new Date(),
+        lastActivityAt: new Date(),
+        participantIds: [hostId],
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      await seedDoc(`activities/act_full_only/participants/${hostId}`, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: new Date(),
+        hasReviewed: false
+      });
+
+      const batch = writeBatch(guestDb);
+      const activityRef = doc(guestDb, 'activities/act_full_only');
+      const chatRef = doc(guestDb, 'chats/act_full_only');
+      const participantRef = doc(guestDb, 'activities/act_full_only/participants/bob');
+
+      batch.update(activityRef, {
+        participantIds: arrayUnion(guestId),
+        lastInteractionAt: serverTimestamp(),
+        [`participantDetails.${guestId}`]: {
+          displayName: 'Bob User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending',
+          hasReviewed: false
+        }
+      });
+      batch.set(participantRef, {
+        uid: guestId,
+        displayName: 'Bob User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+      batch.update(chatRef, {
+        participantIds: arrayUnion(guestId),
+        [`participantDetails.${guestId}`]: {
+          displayName: 'Bob User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending'
+        },
+        [`unreadCount.${guestId}`]: 0
+      });
+
+      await assertFails(batch.commit());
+    }
+
+    // 10. host cancel success
+    console.log('Running test 10: host cancel success');
+    {
+      await seedDoc('activities/act_cancelable', getValidActivityPayload(hostId));
+
+      const activityRef = doc(hostDb, 'activities/act_cancelable');
+      await assertSucceeds(updateDoc(activityRef, {
+        status: 'cancelled',
+        cancelledBy: hostId,
+        cancelledAt: serverTimestamp()
+      }));
+    }
+
+    // 11. host hard delete denied
+    console.log('Running test 11: host hard delete denied');
+    {
+      const activityRef = doc(hostDb, 'activities/act_cancelable');
+      await assertFails(deleteDoc(activityRef));
+    }
+
+    // 12. admin hard delete success
+    console.log('Running test 12: admin hard delete success');
+    {
+      const activityRef = doc(adminDb, 'activities/act_cancelable');
+      await assertSucceeds(deleteDoc(activityRef));
+    }
   }
 
   console.log('🎉 ALL SECURITY RULES TESTS PASSED SUCCESSFULLY! 🎉');

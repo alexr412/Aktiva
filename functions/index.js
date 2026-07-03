@@ -201,6 +201,8 @@ exports.checkUsernameAvailability = users.checkUsernameAvailability;
 exports.claimUsername = users.claimUsername;
 exports.earnToken = users.earnToken;
 exports.resolveLoginIdentifier = users.resolveLoginIdentifier;
+exports.secureSendFriendRequest = users.secureSendFriendRequest;
+exports.secureAcceptFriendRequest = users.secureAcceptFriendRequest;
 
 // Aktiva Points & Referrals Activities Triggers
 const activities = require('./lib/activities');
@@ -208,6 +210,7 @@ exports.onActivityCreated = activities.onActivityCreated;
 exports.onActivityUpdated = activities.onActivityUpdated;
 exports.notifyNearbyUsers = activities.notifyNearbyUsers;
 exports.respondToJoinRequest = activities.respondToJoinRequest;
+exports.secureRequestJoinActivity = activities.secureRequestJoinActivity;
 
 // Telemetry Aggregation & Data Retention
 const aggregation = require('./lib/aggregation');

@@ -87,7 +87,7 @@ export function NotificationItem({ notification, onAction }: NotificationItemPro
             toast({ title: language === 'de' ? "Anfrage akzeptiert!" : "Request accepted!" });
             onAction();
         } catch (error: any) {
-            toast({ variant: 'destructive', title: "Error", description: error.message || error });
+            toast({ variant: 'destructive', title: "Error", description: error.message || String(error) });
         } finally {
             setIsLoading(null);
         }
@@ -101,7 +101,7 @@ export function NotificationItem({ notification, onAction }: NotificationItemPro
             toast({ title: language === 'de' ? "Anfrage abgelehnt." : "Request declined." });
             onAction();
         } catch (error: any) {
-            toast({ variant: 'destructive', title: "Error", description: error.message || error });
+            toast({ variant: 'destructive', title: "Error", description: error.message || String(error) });
         } finally {
             setIsLoading(null);
         }

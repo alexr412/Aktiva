@@ -78,6 +78,12 @@ export interface Activity {
   placeAddress?: string;
   lat?: number;
   lon?: number;
+  title?: string;
+  name?: string;
+  locationLabel?: string;
+  city?: string;
+  postalCode?: string;
+  address?: string;
   imageUrl?: string;
   activityDate: Timestamp;
   activityEndDate?: Timestamp;
@@ -91,6 +97,8 @@ export interface Activity {
   maxParticipants?: number;
   createdAt: Timestamp;
   updatedAt?: Timestamp;
+  cancelledAt?: Timestamp;
+  cancelledBy?: string;
   isCustomActivity?: boolean;
   lastInteractionAt?: Timestamp;
   categories?: string[];
@@ -202,6 +210,7 @@ export interface Chat {
     pinnedMessages?: PinnedMessage[];
     isUserEvent?: boolean;
     creationSource?: 'community' | 'place_activity';
+    status?: 'active' | 'cancelled';
 }
 
 export interface GeoapifyFeature {
