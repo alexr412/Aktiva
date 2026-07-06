@@ -170,6 +170,8 @@ export interface Message {
   replyToSenderName?: string;
   isEdited?: boolean;
   editedAt?: Timestamp;
+  isSystem?: boolean;
+  systemType?: string;
 }
 
 export interface PinnedMessage {

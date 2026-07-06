@@ -765,11 +765,30 @@ async function runTests() {
     await assertSucceeds(getDoc(doc(aliceDb, 'chats/act1')));
     await assertSucceeds(getDoc(doc(aliceDb, 'chats/act1/messages/msgAlice1')));
 
-    // 2. Participant creates message with serverTimestamp
-    await assertSucceeds(setDoc(doc(aliceDb, 'chats/act1/messages/newMsg1'), {
+    // 2. Participant cannot create normal message directly with serverTimestamp
+    await assertFails(setDoc(doc(aliceDb, 'chats/act1/messages/newMsg1'), {
       text: 'Good morning!',
       senderId: 'alice',
       senderName: 'Alice Participant',
+      sentAt: serverTimestamp(),
+      isPremium: false
+    }));
+
+    // 2.b. Participant cannot create system join/leave message directly
+    await assertFails(setDoc(doc(aliceDb, 'chats/act1/messages/systemJoin1'), {
+      text: 'Alice has joined',
+      senderId: 'alice',
+      senderName: 'Alice Participant',
+      senderPhotoURL: 'system:join',
+      sentAt: serverTimestamp(),
+      isPremium: false
+    }));
+
+    await assertFails(setDoc(doc(aliceDb, 'chats/act1/messages/systemLeave1'), {
+      text: 'Alice has left',
+      senderId: 'alice',
+      senderName: 'Alice Participant',
+      senderPhotoURL: 'system:leave',
       sentAt: serverTimestamp(),
       isPremium: false
     }));
@@ -790,8 +809,8 @@ async function runTests() {
     // 6. Admin deletes a message without being a participant
     await assertSucceeds(deleteDoc(doc(adminDb, 'chats/act1/messages/msgAliceToAdminDelete')));
 
-    // 7. Direct Message without activityId remains writable for participant
-    await assertSucceeds(setDoc(doc(aliceDb, 'chats/dm1/messages/dmMsg1'), {
+    // 7. Direct Message without activityId is also blocked for normal client direct write
+    await assertFails(setDoc(doc(aliceDb, 'chats/dm1/messages/dmMsg1'), {
       text: 'Direct message text',
       senderId: 'alice',
       senderName: 'Alice Participant',
@@ -941,6 +960,65 @@ async function runTests() {
       senderName: 'Alice Participant',
       sentAt: serverTimestamp(),
       isPremium: false
+    }));
+
+    // 15. unreadCount updates and chat metadata updates validations (Phase 0)
+    await seedDoc('chats/testUnread', {
+      id: 'testUnread',
+      participantIds: ['alice', 'bob'],
+      unreadCount: { alice: 3, bob: 2 }
+    });
+
+    // A. User can set their own unreadCount to 0 (markChatAsRead)
+    await assertSucceeds(updateDoc(doc(aliceDb, 'chats/testUnread'), {
+      'unreadCount.alice': 0
+    }));
+
+    // B. User cannot set someone else's unreadCount to 0
+    await assertFails(updateDoc(doc(aliceDb, 'chats/testUnread'), {
+      'unreadCount.bob': 0
+    }));
+
+    // C. User cannot arbitrarily set someone else's unreadCount to an arbitrary number
+    await assertFails(updateDoc(doc(aliceDb, 'chats/testUnread'), {
+      'unreadCount.bob': 100
+    }));
+
+    // D. Non-participants cannot edit chat metadata or unreadCount
+    await assertFails(updateDoc(doc(charlieDb, 'chats/testUnread'), {
+      'unreadCount.alice': 0
+    }));
+    await assertFails(updateDoc(doc(charlieDb, 'chats/testUnread'), {
+      lastActivityAt: serverTimestamp()
+    }));
+
+    // E. Message metadata update which increments others' unreadCount is blocked for the client
+    // bob is sender (uid = bob), alice is other user. alice unreadCount: old value is 3
+    await seedDoc('chats/testUnread', {
+      id: 'testUnread',
+      participantIds: ['alice', 'bob'],
+      unreadCount: { alice: 3, bob: 2 }
+    });
+    
+    await assertFails(updateDoc(doc(bobDb, 'chats/testUnread'), {
+      lastMessage: {
+        text: 'Hello from Bob',
+        senderName: 'Bob Host',
+        sentAt: serverTimestamp()
+      },
+      lastActivityAt: serverTimestamp(),
+      'unreadCount.alice': 4
+    }));
+
+    // F. Incrementing by other than 1 is also blocked
+    await assertFails(updateDoc(doc(bobDb, 'chats/testUnread'), {
+      lastMessage: {
+        text: 'Hello from Bob again',
+        senderName: 'Bob Host',
+        sentAt: serverTimestamp()
+      },
+      lastActivityAt: serverTimestamp(),
+      'unreadCount.alice': 10
     }));
   }
 

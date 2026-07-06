@@ -78,6 +78,22 @@ export async function signOut(): Promise<void> {
     } catch (e) {
       console.warn("Failed to clear fcmToken in Firestore during signOut:", e);
     }
+    
+    // Clear client-side IndexedDB caches for this user to ensure data sanitization
+    try {
+      const { 
+        clearCachedChatsForUser, 
+        clearCachedMessagesForUser, 
+        clearCachedActivitiesForUser, 
+        clearCachedPlacesForUser 
+      } = await import('@/lib/db/indexed-db');
+      await clearCachedChatsForUser(currentUser.uid);
+      await clearCachedMessagesForUser(currentUser.uid);
+      await clearCachedActivitiesForUser(currentUser.uid);
+      await clearCachedPlacesForUser(currentUser.uid);
+    } catch (e) {
+      console.warn("Failed to clear IndexedDB cache during signOut:", e);
+    }
   }
   
   await firebaseSignOut(auth);

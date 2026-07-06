@@ -11,6 +11,7 @@ import { FavoritesProvider } from '@/contexts/favorites-context';
 import { AppInit } from '@/components/common/AppInit';
 import { StatusBorder } from '@/components/common/StatusBorder';
 import { AdminQuickNavigator } from '@/components/admin/AdminQuickNavigator';
+import { ChatSyncProvider } from '@/contexts/chat-sync-context';
 
 export const metadata: Metadata = {
   title: 'Aktiva',
@@ -76,15 +77,17 @@ export default function RootLayout({
           <AuthProvider>
             <FavoritesProvider>
               <PlanningModeProvider>
-                <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
-                  <PlanningModeBanner />
-                  <main className="flex-1 relative flex flex-col overflow-hidden">
-                    {children}
-                  </main>
-                  <BottomNav />
-                  <AdminQuickNavigator />
-                </div>
-                <Toaster />
+                <ChatSyncProvider>
+                  <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
+                    <PlanningModeBanner />
+                    <main className="flex-1 relative flex flex-col overflow-hidden">
+                      {children}
+                    </main>
+                    <BottomNav />
+                    <AdminQuickNavigator />
+                  </div>
+                  <Toaster />
+                </ChatSyncProvider>
               </PlanningModeProvider>
             </FavoritesProvider>
             <StatusBorder />

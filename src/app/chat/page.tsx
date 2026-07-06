@@ -10,6 +10,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
+import { useChatSync } from '@/contexts/chat-sync-context';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -49,9 +50,8 @@ const EmptyState = ({ language }: { language: string }) => (
 
 export default function ChatPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
+  const { chats, loading: syncLoading } = useChatSync();
   const language = useLanguage();
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddFriendDialog, setShowAddFriendDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'places' | 'people'>('all');
@@ -68,43 +68,6 @@ export default function ChatPage() {
       router.push('/onboarding');
       return;
     }
-
-    const q = query(
-      collection(db!, 'chats'),
-      where('participantIds', 'array-contains', user.uid)
-    );
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const userChats = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      } as Chat));
-      
-      const visibleChats = userChats.filter(chat => {
-          if (!userProfile?.hiddenEntityIds) return true;
-          if (chat.activityId && userProfile.hiddenEntityIds.includes(chat.activityId)) return false;
-          const isDM = !chat.activityId;
-          if (isDM) {
-              const otherUserId = chat.participantIds.find(id => id !== user.uid);
-              if (otherUserId && userProfile.hiddenEntityIds.includes(otherUserId)) return false;
-          }
-          return true;
-      });
-
-      visibleChats.sort((a, b) => {
-        const aTime = a.lastMessage?.sentAt?.toMillis() || a.createdAt?.toMillis() || 0;
-        const bTime = b.lastMessage?.sentAt?.toMillis() || b.createdAt?.toMillis() || 0;
-        return bTime - aTime;
-      });
-
-      setChats(visibleChats);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching chats: ", error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
   }, [user, userProfile, authLoading, router]);
 
   useEffect(() => {
@@ -139,7 +102,7 @@ export default function ChatPage() {
   };
 
   const renderContent = () => {
-    if (loading || authLoading) {
+    if ((syncLoading && chats.length === 0) || authLoading) {
       return (
         <div className="p-4 space-y-4">
           {Array.from({ length: 5 }).map((_, i) => <ChatListItemSkeleton key={i} />)}

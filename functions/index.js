@@ -233,3 +233,8 @@ const votes = require('./lib/votes');
 exports.secureVotePlace = votes.secureVotePlace;
 exports.secureVoteActivity = votes.secureVoteActivity;
 
+// Secure Chats (Server-Side)
+const chats = require('./lib/chats');
+exports.sendChatMessage = chats.sendChatMessage;
+exports.onChatUpdated = chats.onChatUpdated;
+

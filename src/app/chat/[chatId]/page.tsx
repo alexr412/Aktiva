@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -8,7 +8,8 @@ import { db } from '@/lib/firebase/client';
 import { sendMessage, checkIfUserReviewed, markChatAsRead, removeUserFromChat, editMessage, pinMessage, unpinMessage } from '@/lib/firebase/firestore';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
 import type { Message, Chat, Activity, UserProfile, Place } from '@/lib/types';
-import { collection, doc, onSnapshot, orderBy, query, limitToLast } from 'firebase/firestore';
+import { collection, doc, onSnapshot, orderBy, query, limitToLast, where, getDoc, getDocs, startAfter, limit } from 'firebase/firestore';
+import { getCachedMessages, upsertCachedMessages, deleteCachedMessage, getCachedMessagesBefore, getCachedActivity, upsertCachedActivity, getCachedPlace, upsertCachedPlace } from '@/lib/db/indexed-db';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
@@ -102,6 +103,33 @@ const MessageBubble = ({
   onPin: (message: Message) => void;
   onCopy: (message: Message) => void;
 }) => {
+  const isSystemJoin = message.senderPhotoURL === "system:join";
+  const isSystemLeave = message.senderPhotoURL === "system:leave";
+  const isSystemMessage = isSystemJoin || isSystemLeave;
+
+  if (isSystemMessage) {
+    const formattedName = formatFirstName(message.senderName, language === 'de' ? 'Ein Nutzer' : 'A user');
+    const systemText = isSystemJoin
+      ? (language === 'de' 
+          ? `${formattedName} ist der Aktivität beigetreten` 
+          : `${formattedName} joined the activity`)
+      : (language === 'de' 
+          ? `${formattedName} hat die Aktivität verlassen` 
+          : `${formattedName} left the activity`);
+
+    return (
+      <div className="w-full flex justify-center px-4 my-2.5 select-none">
+        <div 
+          className="bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400 text-[11px] font-bold px-4 py-1.5 rounded-2xl text-center max-w-[85%] shadow-sm border border-slate-200/50 dark:border-neutral-750/30"
+          role="status"
+          aria-label={systemText}
+        >
+          {systemText}
+        </div>
+      </div>
+    );
+  }
+
   const badgePremium = isOwnMessage 
     ? Boolean(currentUserProfile?.isPremium) 
     : Boolean(message.isPremium || participantDetails?.[message.senderId]?.isPremium);
@@ -268,6 +296,15 @@ export default function ChatRoomPage() {
   const leavingChatIdRef = useRef<string | null>(null);
   const chatScopedUnsubscribesRef = useRef<Set<() => void>>(new Set());
 
+  // Pagination & Scroll Retention State
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollHeightBeforeRef = useRef<number>(0);
+  const scrollTopBeforeRef = useRef<number>(0);
+  const isPrependingRef = useRef<boolean>(false);
+  const prevOldestMessageIdRef = useRef<string | null>(null);
+
   const prepareLeave = (targetChatId: string) => {
     leavingChatIdRef.current = targetChatId;
     
@@ -309,16 +346,49 @@ export default function ChatRoomPage() {
     }
   }, [user, userProfile, authLoading, chatId, router]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+  useLayoutEffect(() => {
+    if (!scrollContainerRef.current) return;
+    
+    if (isPrependingRef.current) {
+      isPrependingRef.current = false;
+      const container = scrollContainerRef.current;
+      const heightDifference = container.scrollHeight - scrollHeightBeforeRef.current;
+      container.scrollTop = scrollTopBeforeRef.current + heightDifference;
+    } else {
+      const container = scrollContainerRef.current;
+      const isNearBottom = container.scrollHeight - container.clientHeight - container.scrollTop < 150;
+      const oldestId = messages[0]?.id || null;
+      
+      // If it's a completely new chat load, scroll to bottom
+      const isNewChatLoad = prevOldestMessageIdRef.current === null && oldestId !== null;
+      
+      if (isNearBottom || isNewChatLoad) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }
+      
+      prevOldestMessageIdRef.current = oldestId;
+    }
   }, [messages]);
 
   useEffect(() => {
     if (!chatId || !user) return;
 
+    // Immediately clear message state and pagination states to avoid leakage
+    setMessages([]);
+    setLoading(true);
+    setIsLoadingOlder(false);
+    setHasMoreOlder(true);
+    prevOldestMessageIdRef.current = null;
+    scrollHeightBeforeRef.current = 0;
+    scrollTopBeforeRef.current = 0;
+    isPrependingRef.current = false;
+    setActivity(null);
+    setPlace(null);
+
     const currentChatId = chatId;
     let activityUnsubscribe: (() => void) | undefined;
     let placeUnsubscribe: (() => void) | undefined;
+    let active = true;
 
     const handleListenerError = (listenerName: string, targetChatId: string, customMsg?: string) => (error: any) => {
       const isLeavingThisChat = leavingChatIdRef.current === targetChatId;
@@ -388,34 +458,85 @@ export default function ChatRoomPage() {
             activityUnsubscribe = undefined;
           }
           
-          const rawActivityUnsubscribe = onSnapshot(doc(db!, 'activities', chatData.activityId!), (activityDoc) => {
+          const targetActivityId = chatData.activityId!;
+          
+          // 1. Hydrate Activity from cache first
+          getCachedActivity(user.uid, targetActivityId).then(async (cachedAct) => {
+            if (!active) return;
+            if (cachedAct) {
+              setActivity(cachedAct);
+              // Hydrate Place from cache if present on the cached Activity
+              if (cachedAct.placeId) {
+                const cachedPl = await getCachedPlace(user.uid, cachedAct.placeId);
+                if (active) {
+                  setPlace(cachedPl);
+                }
+              }
+            }
+          });
+
+          // 2. Start the Live Listener on Activity
+          let currentPlaceId: string | null = null;
+          
+          const rawActivityUnsubscribe = onSnapshot(doc(db!, 'activities', targetActivityId), async (activityDoc) => {
+              if (!active) return;
               if (activityDoc.exists()) {
                   const activityData = { id: activityDoc.id, ...activityDoc.data() } as Activity;
+                  
+                  // Save updated Activity to cache
+                  await upsertCachedActivity(user.uid, targetActivityId, activityData);
+                  if (!active) return;
+                  
                   setActivity(activityData);
 
                   if (activityData.status === 'completed' && activityData.id) {
-                      checkIfUserReviewed(activityData.id, user.uid).then(setHasReviewed);
+                      checkIfUserReviewed(activityData.id, user.uid).then((res) => {
+                        if (active) setHasReviewed(res);
+                      });
                   }
 
-                  if (placeUnsubscribe) {
-                      placeUnsubscribe();
-                      chatScopedUnsubscribesRef.current.delete(placeUnsubscribe);
-                      placeUnsubscribe = undefined;
-                  }
-                  if (activityData.placeId) {
-                      const rawPlaceUnsubscribe = onSnapshot(doc(db!, 'places', activityData.placeId), (placeDoc) => {
-                          if (placeDoc.exists()) {
-                              setPlace({ id: placeDoc.id, ...placeDoc.data() } as Place);
-                          } else {
-                              setPlace(null);
+                  const newPlaceId = activityData.placeId || null;
+                  
+                  // 3. Handle Place changes / single getDoc fetch
+                  if (newPlaceId !== currentPlaceId) {
+                      currentPlaceId = newPlaceId;
+                      
+                      if (!newPlaceId) {
+                          // Place became missing/null -> reset place state
+                          setPlace(null);
+                      } else {
+                          // Place changed or is new -> load cached Place first, then refresh via getDoc
+                          const cachedPl = await getCachedPlace(user.uid, newPlaceId);
+                          if (!active) return;
+                          if (currentPlaceId !== newPlaceId) return; // stale check
+                          
+                          setPlace(cachedPl);
+                          
+                          // Run one-time getDoc refresh
+                          try {
+                              const placeDoc = await getDoc(doc(db!, 'places', newPlaceId));
+                              if (!active) return;
+                              if (currentPlaceId !== newPlaceId) return; // stale check
+                              
+                              if (placeDoc.exists()) {
+                                  const placeData = { id: placeDoc.id, ...placeDoc.data() } as Place;
+                                  // Save to cache
+                                  await upsertCachedPlace(user.uid, newPlaceId, placeData);
+                                  if (active) {
+                                      setPlace(placeData);
+                                  }
+                              } else {
+                                  if (active) setPlace(null);
+                              }
+                          } catch (err) {
+                              console.error("Failed to fetch Place details:", err);
                           }
-                      }, handleListenerError('places', currentChatId));
-                      placeUnsubscribe = rawPlaceUnsubscribe;
-                      chatScopedUnsubscribesRef.current.add(rawPlaceUnsubscribe);
+                      }
                   }
               } else {
                 setActivity(null);
                 setPlace(null);
+                currentPlaceId = null;
               }
           }, handleListenerError('activities', currentChatId));
           activityUnsubscribe = rawActivityUnsubscribe;
@@ -434,24 +555,113 @@ export default function ChatRoomPage() {
       messagesUnsubscribeRef.current = null;
     }
 
-    const messagesQuery = query(
-      collection(db!, 'chats', currentChatId, 'messages'), 
-      orderBy('sentAt', 'asc'), 
-      limitToLast(100)
-    );
-    const messagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-      const newMessages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Message));
-      setMessages(newMessages);
-      setLoading(false);
-    }, handleListenerError('messages', currentChatId, language === 'de' ? "Nachrichten konnten nicht geladen werden." : "Messages could not be loaded."));
 
-    messagesUnsubscribeRef.current = messagesUnsubscribe;
+
+    async function initMessagesSync() {
+      let cachedMsgs: Message[] = [];
+      try {
+        // Limit initial load to latest 100 messages
+        cachedMsgs = await getCachedMessages(user!.uid, currentChatId, 100);
+        if (active && cachedMsgs.length > 0) {
+          setMessages(cachedMsgs);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Error loading cached messages:', err);
+      }
+
+      if (!active) return;
+
+      const newestLocalSentAt = cachedMsgs.length > 0
+        ? cachedMsgs[cachedMsgs.length - 1].sentAt
+        : null;
+
+      let deltaUnsubscribe: (() => void) | null = null;
+      let reconUnsubscribe: (() => void) | null = null;
+
+      const handleIncomingMessages = async (snapshot: any, isReconciliation: boolean) => {
+        const docs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Message));
+
+        // Process removals from IndexedDB
+        for (const change of snapshot.docChanges()) {
+          if (change.type === 'removed') {
+            await deleteCachedMessage(user!.uid, currentChatId, change.doc.id);
+          }
+        }
+
+        // Cache new/modified messages
+        const toCache = docs.filter((m: Message) => m.sentAt);
+        if (toCache.length > 0) {
+          await upsertCachedMessages(user!.uid, currentChatId, toCache);
+        }
+
+        // Update state with deduplication and sorting
+        setMessages((prevMessages) => {
+          const mergedMap = new Map<string, Message>();
+          prevMessages.forEach((msg: Message) => mergedMap.set(msg.id, msg));
+          docs.forEach((msg: Message) => mergedMap.set(msg.id, msg));
+          
+          for (const change of snapshot.docChanges()) {
+            if (change.type === 'removed') {
+              mergedMap.delete(change.doc.id);
+            }
+          }
+
+          const mergedList = Array.from(mergedMap.values());
+          mergedList.sort((a, b) => {
+            const aTime = a.sentAt?.toMillis() || 0;
+            const bTime = b.sentAt?.toMillis() || 0;
+            if (aTime !== bTime) {
+              return aTime - bTime;
+            }
+            return a.id.localeCompare(b.id);
+          });
+
+          return mergedList;
+        });
+
+        setLoading(false);
+      };
+
+      // 1. Delta Sync Query (if cache is populated)
+      if (newestLocalSentAt) {
+        const deltaQuery = query(
+          collection(db!, 'chats', currentChatId, 'messages'),
+          orderBy('sentAt', 'asc'),
+          where('sentAt', '>', newestLocalSentAt)
+        );
+
+        deltaUnsubscribe = onSnapshot(deltaQuery, (snapshot) => {
+          if (active) handleIncomingMessages(snapshot, false);
+        }, handleListenerError('messages-delta', currentChatId));
+      }
+
+      // 2. Reconciliation Query (always gets the latest 100 messages)
+      const reconQuery = query(
+        collection(db!, 'chats', currentChatId, 'messages'),
+        orderBy('sentAt', 'asc'),
+        limitToLast(100)
+      );
+
+      reconUnsubscribe = onSnapshot(reconQuery, (snapshot) => {
+        if (active) handleIncomingMessages(snapshot, true);
+      }, handleListenerError('messages-recon', currentChatId, language === 'de' ? "Nachrichten konnten nicht geladen werden." : "Messages could not be loaded."));
+
+      messagesUnsubscribeRef.current = () => {
+        active = false;
+        if (deltaUnsubscribe) deltaUnsubscribe();
+        if (reconUnsubscribe) reconUnsubscribe();
+      };
+    }
+
+    initMessagesSync();
 
     return () => {
+      active = false;
       chatUnsubscribe();
       chatScopedUnsubscribesRef.current.delete(chatUnsubscribe);
-      if (messagesUnsubscribeRef.current === messagesUnsubscribe) {
-        messagesUnsubscribe();
+      if (messagesUnsubscribeRef.current) {
+        messagesUnsubscribeRef.current();
         messagesUnsubscribeRef.current = null;
       }
       if (activityUnsubscribe) {
@@ -464,6 +674,125 @@ export default function ChatRoomPage() {
       }
     };
   }, [chatId, router, toast, user]);
+
+  const loadOlderMessages = async () => {
+    if (isLoadingOlder || !hasMoreOlder || !user || !chatId) return;
+
+    const oldestMsg = messages[0];
+    if (!oldestMsg) return;
+
+    setIsLoadingOlder(true);
+
+    const beforeTime = oldestMsg.sentAt.toMillis();
+    const beforeId = oldestMsg.id;
+
+    try {
+      // 1. Try loading older messages from IndexedDB first
+      const localOlder = await getCachedMessagesBefore(user.uid, chatId, beforeTime, beforeId, 30);
+      
+      if (localOlder.length > 0) {
+        // Prepend messages with scroll offset retention
+        if (scrollContainerRef.current) {
+          scrollHeightBeforeRef.current = scrollContainerRef.current.scrollHeight;
+          scrollTopBeforeRef.current = scrollContainerRef.current.scrollTop;
+          isPrependingRef.current = true;
+        }
+
+        setMessages((prev) => {
+          const mergedMap = new Map<string, Message>();
+          localOlder.forEach((m) => mergedMap.set(m.id, m));
+          prev.forEach((m) => mergedMap.set(m.id, m));
+
+          const sorted = Array.from(mergedMap.values()).sort((a, b) => {
+            const aTime = a.sentAt?.toMillis() || 0;
+            const bTime = b.sentAt?.toMillis() || 0;
+            if (aTime !== bTime) return aTime - bTime;
+            return a.id.localeCompare(b.id);
+          });
+          return sorted;
+        });
+
+        setIsLoadingOlder(false);
+        return;
+      }
+
+      // 2. Local cache is dry, load older messages from Firestore
+      const oldestDocRef = doc(db!, 'chats', chatId, 'messages', oldestMsg.id);
+      let oldestDocSnap = null;
+      try {
+        oldestDocSnap = await getDoc(oldestDocRef);
+      } catch (err) {
+        console.error('Failed to get oldest message DocumentSnapshot:', err);
+      }
+
+      let olderQuery;
+      if (oldestDocSnap && oldestDocSnap.exists()) {
+        olderQuery = query(
+          collection(db!, 'chats', chatId, 'messages'),
+          orderBy('sentAt', 'desc'),
+          startAfter(oldestDocSnap),
+          limit(30)
+        );
+      } else {
+        // Fallback using Timestamp if DocumentSnapshot isn't found
+        olderQuery = query(
+          collection(db!, 'chats', chatId, 'messages'),
+          orderBy('sentAt', 'desc'),
+          startAfter(oldestMsg.sentAt),
+          limit(30)
+        );
+      }
+
+      const querySnap = await getDocs(olderQuery);
+      const fetchedOlder = querySnap.docs.map((d) => ({ id: d.id, ...d.data() } as Message));
+
+      // Reverse so it's chronologically ascending
+      fetchedOlder.reverse();
+
+      if (fetchedOlder.length < 30) {
+        setHasMoreOlder(false);
+      }
+
+      if (fetchedOlder.length > 0) {
+        // Cache these older messages in IndexedDB
+        await upsertCachedMessages(user.uid, chatId, fetchedOlder);
+
+        // Prepend messages with scroll offset retention
+        if (scrollContainerRef.current) {
+          scrollHeightBeforeRef.current = scrollContainerRef.current.scrollHeight;
+          scrollTopBeforeRef.current = scrollContainerRef.current.scrollTop;
+          isPrependingRef.current = true;
+        }
+
+        setMessages((prev) => {
+          const mergedMap = new Map<string, Message>();
+          fetchedOlder.forEach((m) => mergedMap.set(m.id, m));
+          prev.forEach((m) => mergedMap.set(m.id, m));
+
+          const sorted = Array.from(mergedMap.values()).sort((a, b) => {
+            const aTime = a.sentAt?.toMillis() || 0;
+            const bTime = b.sentAt?.toMillis() || 0;
+            if (aTime !== bTime) return aTime - bTime;
+            return a.id.localeCompare(b.id);
+          });
+          return sorted;
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load older messages:', error);
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  };
+
+  const handleScroll = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    if (container.scrollTop < 100 && !isLoadingOlder && hasMoreOlder) {
+      loadOlderMessages();
+    }
+  };
 
   useEffect(() => {
     if (chat && user && chat.unreadCount?.[user.uid] && chat.unreadCount[user.uid] > 0) {
@@ -775,8 +1104,13 @@ export default function ChatRoomPage() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto pt-4 pb-32">
+        <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto pt-4 pb-32">
           <div className="flex flex-col w-full max-w-3xl mx-auto">
+            {isLoadingOlder && (
+              <div className="flex items-center justify-center py-2">
+                <Loader2 className="h-5 w-5 text-primary animate-spin" />
+              </div>
+            )}
             {messages.map((message, index) => {
               const prevMessage = messages[index - 1];
               const isOwnMessage = message.senderId === user?.uid;

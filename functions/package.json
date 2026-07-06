@@ -3,7 +3,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "test": "npx tsx src/payments.test.ts && npx tsx src/activities.test.ts && npx tsx src/users.test.ts"
+    "test": "npx tsx src/payments.test.ts && npx tsx src/activities.test.ts && npx tsx src/users.test.ts && npx tsx src/chats.test.ts"
   },
   "engines": {
     "node": "20"

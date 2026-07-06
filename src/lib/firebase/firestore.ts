@@ -28,6 +28,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, Activity, Chat, ActivityCategory } from '@/lib/types';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
+import { formatFirstName } from '@/lib/utils';
 
 type CreateActivityPayload = {
   title?: string;
@@ -983,6 +984,8 @@ export async function joinActivity(
         });
       }
 
+      const formattedName = formatFirstName(displayNameToUse, "User");
+
       transaction.update(chatRef, {
         participantIds: arrayUnion(user.uid),
         [`participantDetails.${user.uid}`]: {
@@ -992,8 +995,9 @@ export async function joinActivity(
           isSupporter: userProfileData?.isSupporter || false,
           checkInStatus: 'pending'
         },
-        [`unreadCount.${user.uid}`]: 0
+        [`unreadCount.${user.uid}`]: 0,
       });
+
       return 'joined' as const;
     });
     
@@ -1078,62 +1082,32 @@ export async function sendMessage(
   userProfile?: UserProfile | null,
   replyTo?: { id: string; text: string; senderName: string } | null
 ): Promise<void> {
-  if (!db) throw new Error('Firestore is not initialized.');
   if (!text.trim()) return;
 
   if (!validateChatMessage(text)) {
     throw new Error('Diese Nachricht enthält nicht erlaubte Inhalte.');
   }
 
-  const chatRef = doc(db, 'chats', chatId);
-  const chatSnap = await getDoc(chatRef);
-  if (!chatSnap.exists()) return;
-  const chatData = chatSnap.data() as Chat;
-
-  const messagesRef = collection(db, 'chats', chatId, 'messages');
-  const batch = writeBatch(db);
-
-  const newMessageRef = doc(messagesRef);
-  const messagePayload: any = {
-    text: text.trim(),
-    senderId: user.uid,
-    senderName: userProfile?.displayName || "User",
-    senderPhotoURL: userProfile?.photoURL || null,
-    sentAt: serverTimestamp(),
-    isPremium: userProfile?.isPremium || false,
-    isSupporter: userProfile?.isSupporter || false,
-  };
-
-  if (replyTo) {
-    messagePayload.replyToId = replyTo.id;
-    messagePayload.replyToText = replyTo.text;
-    messagePayload.replyToSenderName = replyTo.senderName;
-  }
-
-  batch.set(newMessageRef, messagePayload);
-
-  const updates: any = {
-    lastMessage: {
-      text: text.trim(),
-      senderName: userProfile?.displayName || "User",
-      sentAt: serverTimestamp(),
-    },
-    lastActivityAt: serverTimestamp(),
-  };
-
-  chatData.participantIds.forEach(pid => {
-    if (pid !== user.uid) {
-      updates[`unreadCount.${pid}`] = increment(1);
-    }
-  });
-
-  batch.update(chatRef, updates);
-
   try {
-    await batch.commit();
-  } catch (error) {
-    console.error('Error sending message:', error);
-    throw new Error('Could not send message.');
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functionsInstance = getFunctions(app || undefined, 'us-central1');
+    const sendChatMessageFn = httpsCallable<any, any>(functionsInstance, 'sendChatMessage');
+
+    if (!db) throw new Error('Firestore is not initialized.');
+    const messagesRef = collection(db, 'chats', chatId, 'messages');
+    const clientMessageId = doc(messagesRef).id;
+
+    await sendChatMessageFn({
+      chatId,
+      text: text.trim(),
+      replyToId: replyTo?.id || undefined,
+      replyToText: replyTo?.text || undefined,
+      replyToSenderName: replyTo?.senderName || undefined,
+      clientMessageId
+    });
+  } catch (error: any) {
+    console.error('Error calling sendChatMessage Cloud Function:', error);
+    throw new Error(error.message || 'Could not send message.');
   }
 }
 
@@ -1188,6 +1162,7 @@ export async function markChatAsRead(chatId: string, userId: string): Promise<vo
 }
 
 export async function leaveActivity(activityId: string, userId: string): Promise<void> {
+
   // Generate a deterministic, globally unique operationId for this leave operation.
   const operationId = `leave_${userId}_${activityId}_${Date.now()}`;
 
@@ -1214,6 +1189,7 @@ export async function leaveActivity(activityId: string, userId: string): Promise
 export async function removeUserFromChat(chatId: string, userId: string): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   const chatRef = doc(db, 'chats', chatId);
+
   try {
     await updateDoc(chatRef, {
       participantIds: arrayRemove(userId),
