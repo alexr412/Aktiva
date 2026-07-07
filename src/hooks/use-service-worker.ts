@@ -13,6 +13,30 @@ export function useServiceWorker() {
       return;
     }
 
+    if (process.env.NODE_ENV !== 'production') {
+      // Dev safety: Unregister any registered service workers for this origin
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister().then(() => {
+            console.log('[SW] Unregistered existing service worker in development mode.');
+          });
+        }
+      });
+      // Delete old Aktiva cache storage to avoid stale assets in dev mode
+      if (typeof caches !== 'undefined') {
+        caches.keys().then((keys) => {
+          for (const key of keys) {
+            if (key.startsWith('aktiva-')) {
+              caches.delete(key).then(() => {
+                console.log('[SW] Deleted dev cache storage:', key);
+              });
+            }
+          }
+        });
+      }
+      return;
+    }
+
     const registerSW = async () => {
       try {
         const registration = await navigator.serviceWorker.register('/sw.js', {

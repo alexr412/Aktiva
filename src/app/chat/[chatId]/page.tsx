@@ -10,6 +10,7 @@ import { validateChatMessage } from '@/lib/moderation/blacklist';
 import type { Message, Chat, Activity, UserProfile, Place } from '@/lib/types';
 import { collection, doc, onSnapshot, orderBy, query, limitToLast, where, getDoc, getDocs, startAfter, limit } from 'firebase/firestore';
 import { getCachedMessages, upsertCachedMessages, deleteCachedMessage, getCachedMessagesBefore, getCachedActivity, upsertCachedActivity, getCachedPlace, upsertCachedPlace } from '@/lib/db/indexed-db';
+import { useChatSync } from '@/contexts/chat-sync-context';
 import { format, isSameDay, isToday, isYesterday } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
@@ -263,6 +264,7 @@ const MessageBubble = ({
 export default function ChatRoomPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
   const language = useLanguage();
+  const { chats } = useChatSync();
   const [chat, setChat] = useState<Chat | null>(null);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [place, setPlace] = useState<Place | null>(null);
@@ -304,6 +306,23 @@ export default function ChatRoomPage() {
   const scrollTopBeforeRef = useRef<number>(0);
   const isPrependingRef = useRef<boolean>(false);
   const prevOldestMessageIdRef = useRef<string | null>(null);
+
+  // Hydrate chat metadata from ChatSyncContext instantly for offline capability
+  useEffect(() => {
+    if (!chatId || !chats.length) return;
+    const foundChat = chats.find(c => c.id === chatId);
+    if (foundChat && !chat) {
+      setChat(foundChat);
+      const isDM = !foundChat.activityId;
+      setIsDirectMessage(isDM);
+      if (isDM) {
+        const otherUserId = foundChat.participantIds.find(id => id !== user?.uid);
+        if (otherUserId && foundChat.participantDetails) {
+          setOtherUser({ ...foundChat.participantDetails[otherUserId], uid: otherUserId });
+        }
+      }
+    }
+  }, [chatId, chats, user, chat]);
 
   const prepareLeave = (targetChatId: string) => {
     leavingChatIdRef.current = targetChatId;
@@ -562,7 +581,7 @@ export default function ChatRoomPage() {
       try {
         // Limit initial load to latest 100 messages
         cachedMsgs = await getCachedMessages(user!.uid, currentChatId, 100);
-        if (active && cachedMsgs.length > 0) {
+        if (active) {
           setMessages(cachedMsgs);
           setLoading(false);
         }

@@ -22,7 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CreateActivityDialog } from '@/components/aktiva/create-activity-dialog';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { createActivity, joinActivity, searchActivitiesBySemanticVector, castActivityVote, votePlace, updateUserLocation } from '@/lib/firebase/firestore';
+import { createActivity, joinActivity, searchActivitiesBySemanticVector, castActivityVote, votePlace, updateUserLocation, subscribeCommunityActivities } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter, doc, documentId } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
@@ -137,6 +137,9 @@ export default function Home() {
   const [showLocationRequirement, setShowLocationRequirement] = useState(false);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
   const [activePremiumFilters, setActivePremiumFilters] = useState<string[]>([]);
+  const [communityActivities, setCommunityActivities] = useState<Activity[]>([]);
+  const [isCommunityLoading, setIsCommunityLoading] = useState(false);
+  const [communityError, setCommunityError] = useState<Error | null>(null);
 
   const isOpenNow = (openingHours: string | null | undefined): boolean => {
     if (!openingHours) return false;
@@ -290,6 +293,29 @@ export default function Home() {
   const isHighlightsCategory = activeTabId === "Highlights";
   const isAktivCategory = activeTabId === "Active";
 
+  useEffect(() => {
+    if (!isCommunityCategory) return;
+
+    setIsCommunityLoading(true);
+    setCommunityError(null);
+
+    const unsubscribe = subscribeCommunityActivities(
+      (activities) => {
+        setCommunityActivities(activities);
+        setIsCommunityLoading(false);
+      },
+      (error) => {
+        console.error("Failed to subscribe to community activities:", error);
+        setCommunityError(error);
+        setIsCommunityLoading(false);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isCommunityCategory]);
+
   // MULTI-SOURCE FETCHER (Geoapify vs Firestore)
   const multiFetcher = async (key: any) => {
     if (!key) return null;
@@ -431,8 +457,7 @@ export default function Home() {
     )) return null;
 
     if (isCommunityCategory) {
-      const cursor = pageIndex === 0 ? null : previousPageData[previousPageData.length - 1]?.createdAt;
-      return { type: 'activities', subType: 'community', cursorValue: cursor, pageIndex };
+      return null;
     }
 
     if (isAktivCategory) {
@@ -558,23 +583,34 @@ export default function Home() {
 
   const displayData = data || cachedData;
 
-  const isLoadingInitialData = !displayData && !error;
-  const isEmpty = displayData?.[0]?.features ? displayData[0].features.length === 0 : (displayData?.[0]?.length === 0);
-  const isFetchingNextPage = Boolean(size > 0 && displayData && typeof displayData[size - 1] === "undefined");
+  const isLoadingInitialData = isCommunityCategory
+    ? isCommunityLoading && communityActivities.length === 0
+    : (!displayData && !error);
+
+  const isEmpty = isCommunityCategory
+    ? communityActivities.length === 0
+    : (displayData?.[0]?.features ? displayData[0].features.length === 0 : (displayData?.[0]?.length === 0));
+
+  const isFetchingNextPage = isCommunityCategory
+    ? false
+    : Boolean(size > 0 && displayData && typeof displayData[size - 1] === "undefined");
 
   const isReachingEnd = useMemo(() => {
+    if (isCommunityCategory) return true; // Community tab is a live stream of up to 100 activities, no SWR pagination
     if (error) return true;
     if (isEmpty) return true;
     if (!displayData || displayData.length === 0) return false;
     const lastPage = displayData[displayData.length - 1];
     const expectedLimit = (displayData.length - 1) === 0 ? 50 : 50;
-    if (isCommunityCategory || isAktivCategory || isHighlightsCategory) {
-      // All three system tabs (Community, Active, Highlights) now fetch 50 initially, then 10.
+    if (isAktivCategory || isHighlightsCategory) {
+      // System tabs fetch 50 initially, then 10.
       let fbLimit = (displayData.length - 1) === 0 ? 50 : 10;
       return Boolean(lastPage && lastPage.length < fbLimit);
     }
     return Boolean(lastPage && lastPage.features?.length < expectedLimit);
   }, [displayData, isEmpty, error, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
+
+  const activeError = isCommunityCategory ? communityError : error;
 
   const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number; weightedUpvotes: number; weightedDownvotes: number; voteBoostScore: number }>>({});
 
@@ -1082,7 +1118,7 @@ export default function Home() {
     if (!userLocation && !isLoadingInitialData) {
       return <div className="flex h-full w-full items-center justify-center"><div className="flex flex-col items-center gap-2 text-muted-foreground"><MapPin className="h-8 w-8 animate-bounce text-primary" /><p className="font-bold text-sm">{language === 'de' ? 'Standort wird ermittelt...' : 'Locating...'}</p></div></div>;
     }
-    if (error) return <div className="flex h-full w-full items-center justify-center p-6 text-center text-destructive font-bold">{language === 'de' ? 'Verbindungsproblem.' : 'Connection problem.'}</div>;
+    if (activeError) return <div className="flex h-full w-full items-center justify-center p-6 text-center text-destructive font-bold">{language === 'de' ? 'Verbindungsproblem.' : 'Connection problem.'}</div>;
 
     const EmptySearchState = () => (
       <div className="flex h-full w-full items-center justify-center p-6 text-center">
@@ -1120,10 +1156,10 @@ export default function Home() {
         }
 
         if (isCommunityCategory) {
-          const rawList = data?.flat() || [];
+          const rawList = communityActivities;
 
           // Deduplicate the list to prevent React duplicate key errors from SWR caching edge cases
-          const uniqueMap = new Map();
+          const uniqueMap = new Map<string, Activity>();
           for (const item of rawList) {
             if (item?.id) uniqueMap.set(item.id, item);
           }
@@ -1132,7 +1168,7 @@ export default function Home() {
           // "es muss doch nur geguckt werden ob es user_event hat" -> This is already done by the database query in multiFetcher!
           // "und nach dem datum" -> We filter out activities that are already over (in the past).
           const now = Date.now();
-          const filteredList = list.filter((item: any) => {
+          let filteredList = list.filter((item: any) => {
             if (!item) return false;
 
             // Filter out cancelled, completed, or blacklisted activities
@@ -1164,6 +1200,36 @@ export default function Home() {
 
             return true;
           });
+
+          // Berechne die Distanz clientseitig mit der bestehenden calculateDistance-Logik
+          if (userLocation) {
+            filteredList = filteredList.map((item: any) => {
+              let distance = undefined;
+              if (item.lat && (item.lon || item.lng)) {
+                distance = calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lon || item.lng);
+              }
+              return { ...item, distance };
+            });
+
+            // Wende den aktuellen Radiusfilter (maxDistance) clientseitig an
+            if (maxDistance !== null) {
+              filteredList = filteredList.filter((item: any) => {
+                return item.distance !== undefined && item.distance !== null && item.distance <= maxDistance;
+              });
+            }
+          }
+
+          // Wende die Suche über debouncedSearchQuery clientseitig an
+          if (debouncedSearchQuery) {
+            const queryLower = debouncedSearchQuery.toLowerCase();
+            filteredList = filteredList.filter((item: any) => {
+              const titleMatch = item.title && item.title.toLowerCase().includes(queryLower);
+              const descMatch = item.description && item.description.toLowerCase().includes(queryLower);
+              const placeMatch = item.placeName && item.placeName.toLowerCase().includes(queryLower);
+              const categoryMatch = item.category && item.category.toLowerCase().includes(queryLower);
+              return titleMatch || descMatch || placeMatch || categoryMatch;
+            });
+          }
 
           // Sort by activityDate (ascending: upcoming events first)
           const sortedList = [...filteredList].sort((a, b) => {

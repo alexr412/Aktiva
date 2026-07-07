@@ -22,6 +22,7 @@ import {
   limit,
   increment,
   documentId,
+  onSnapshot,
 } from 'firebase/firestore';
 import { calculateDistance, buildApproximateLocationData } from '../geo-utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -329,6 +330,12 @@ export function normalizeActivityDocument(data: Partial<Activity> & Record<strin
   const normalizedCategory = isUserEvent ? "community" : (getNormalizedCategory(categories) || category.toLowerCase() || "other");
   const visibleCategories = categories.filter(c => c !== "user_event" && !isGeoapifyCategory(c));
   
+  // Defensive treatment for createdAt (e.g. during local latency compensation)
+  let normalizedCreatedAt = data.createdAt;
+  if (!normalizedCreatedAt || typeof (normalizedCreatedAt as any).toMillis !== 'function') {
+    normalizedCreatedAt = Timestamp.now();
+  }
+  
   const activity = {
     ...data,
     id: data.id || docId,
@@ -337,6 +344,7 @@ export function normalizeActivityDocument(data: Partial<Activity> & Record<strin
     categories: visibleCategories,
     category: data.category || 'Sonstiges',
     sourceType: 'activity' as const,
+    createdAt: normalizedCreatedAt,
   } as Activity;
 
   if (activity.isCustomActivity || activity.isUserEvent) {
@@ -2013,6 +2021,36 @@ export async function triggerCleanupEmptyChats(): Promise<CleanupChatsResult> {
     console.error("Cleanup Empty Chats Cloud Function failed: ", error);
     throw new Error(error.message || "Fehler beim Bereinigen der leeren Chats.");
   }
+}
+
+export function subscribeCommunityActivities(
+  callback: (activities: Activity[]) => void,
+  onError?: (error: any) => void
+): () => void {
+  if (!db) throw new Error('Firestore is not initialized.');
+
+  const q = query(
+    collection(db, 'activities'),
+    where('status', '==', 'active'),
+    orderBy('createdAt', 'desc'),
+    limit(100)
+  );
+
+  const unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      const activities = snapshot.docs.map((docSnap) =>
+        normalizeActivityDocument(docSnap.data() as Partial<Activity> & Record<string, unknown>, docSnap.id)
+      );
+      callback(activities);
+    },
+    (error) => {
+      console.error('🔥 Error in community activities subscription:', error);
+      if (onError) onError(error);
+    }
+  );
+
+  return unsubscribe;
 }
 
 
