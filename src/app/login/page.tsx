@@ -18,7 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/hooks/use-language';
-import { signIn, signOut, sendPasswordReset, signInWithGoogle, signInWithApple } from '@/lib/firebase/auth';
+import { auth, signIn, signOut, sendPasswordReset, signInWithApple, handleSuccessfulSocialLogin } from '@/lib/firebase/auth';
+import { signInWithPopup, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
 import { sendEmailVerification, type User } from 'firebase/auth';
 import { debugLog } from '@/lib/debug';
 import { db } from '@/lib/firebase/client';
@@ -293,97 +294,39 @@ function LoginPageContent() {
   const handleGoogleSignIn = async () => {
     if (isLoading) return;
     
-    
     setLoginError(null);
     setIsLoading(true);
+
+    const googleProvider = new GoogleAuthProvider();
+    googleProvider.setCustomParameters({
+      prompt: "select_account",
+    });
+
     try {
+      console.warn("[LEGAL DEBUG] Google popup login initiated", { timestamp: Date.now() });
+      const result = await signInWithPopup(auth!, googleProvider);
       
-      const { user, isNewUser } = await signInWithGoogle();
-      
-      
-      
-      const userDocRef = doc(db!, 'users', user.uid);
-      const userDocSnap = await getDoc(userDocRef);
-      const profileData = userDocSnap.exists() ? userDocSnap.data() : null;
-      const hasAcceptedLegal = !!profileData?.legalAcceptedAt;
-      
-
-      if (isNewUser || !hasAcceptedLegal) {
-        
-        setSocialLegalConsentPending(true);
-        
-        setIsLoading(false);
-        return;
-      }
-
-      await user.reload();
-      
-      if (!user.emailVerified) {
-        let verificationEmailSent = false;
-        try {
-          const { httpsCallable } = await import('firebase/functions');
-          const { functions: clientFunctions } = await import('@/lib/firebase/client');
-          if (clientFunctions) {
-            const checkThrottle = httpsCallable(clientFunctions, 'checkAndRecordVerificationEmail');
-            const res = await checkThrottle();
-            const { allowed } = res.data as { allowed: boolean };
-            if (allowed) {
-              await sendEmailVerification(user);
-              verificationEmailSent = true;
-            }
-          }
-        } catch (verifError: any) {
-          console.warn("Could not check/resend email verification link:", verifError);
-        }
-
-        console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
-          source: "handleGoogleSignIn - email unverified",
-          target: "signOut & redirect /login?verification=required",
-          uid: user.uid,
-          timestamp: Date.now()
-        });
-        await signOut();
-
-        router.replace('/login?verification=required');
-        setLoginError({
-          title: language === 'de' ? 'Verifizierung erforderlich' : 'Verification Required',
-          description: language === 'de' 
-            ? (verificationEmailSent
-                ? "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Wir haben dir einen neuen Bestätigungs-Link an deine E-Mail-Adresse gesendet. Prüfe bitte auch deinen Spam-Ordner."
-                : "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Ein neuer Bestätigungs-Link konnte erst vor kurzem gesendet werden, bitte prüfe dein Postfach (auch Spam-Ordner).")
-            : (verificationEmailSent
-                ? "Please verify your email address to log in. We have sent a new verification link to your email address. Please check your spam folder as well."
-                : "Please verify your email address to log in. A new verification link could not be sent recently, please check your inbox."),
-          variant: 'info'
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      const onboardingCompleted = !!profileData?.onboardingCompleted;
-
-      toast({
-        title: language === 'de' ? 'Login erfolgreich' : 'Login successful',
-        description: language === 'de' ? "Willkommen zurück!" : "Welcome back!",
+      await handleSuccessfulSocialLogin({
+        user: result.user,
+        router,
+        language,
+        toast,
+        setSocialLegalConsentPending,
+        setIsLoading,
       });
-
-      console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
-        source: "handleGoogleSignIn - flow completed",
-        target: onboardingCompleted ? "/" : "/onboarding",
-        uid: user.uid,
-        onboardingCompleted,
-        timestamp: Date.now()
-      });
-      if (onboardingCompleted) {
-        router.push('/');
-      } else {
-        router.push('/onboarding');
-      }
     } catch (error: any) {
-      console.error("[LEGAL DEBUG] Google login failed", {
-        error: error.message || error,
-        timestamp: Date.now()
-      });
+      console.error("[LEGAL DEBUG] Google login failed", error);
+
+      if (error?.code === "auth/popup-blocked") {
+        console.warn("[LEGAL DEBUG] Google popup blocked, falling back to redirect", { timestamp: Date.now() });
+        try {
+          await signInWithRedirect(auth!, googleProvider);
+          return;
+        } catch (redirectError: any) {
+          console.error("[LEGAL DEBUG] Google redirect fallback failed", redirectError);
+        }
+      }
+
       let desc = language === 'de' ? 'Google-Login konnte nicht abgeschlossen werden.' : 'Google login could not be completed.';
       if (error.code === 'auth/popup-closed-by-user') {
         desc = language === 'de' ? 'Das Anmeldefenster wurde geschlossen.' : 'The sign-in popup was closed.';
@@ -393,7 +336,6 @@ function LoginPageContent() {
         description: desc,
         variant: 'error'
       });
-    } finally {
       setIsLoading(false);
     }
   };

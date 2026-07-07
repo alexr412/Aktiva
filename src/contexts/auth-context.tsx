@@ -3,7 +3,8 @@
 import { createContext, useState, useEffect, useMemo, type ReactNode } from 'react';
 import type { User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase/client';
-import { onAuthStateChanged, deleteUser, sendEmailVerification, signOut as firebaseSignOut } from 'firebase/auth';
+import { onAuthStateChanged, deleteUser, sendEmailVerification, signOut as firebaseSignOut, getRedirectResult, getAdditionalUserInfo } from 'firebase/auth';
+import { handleSuccessfulSocialLogin } from '@/lib/firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Loader2, Ban } from 'lucide-react';
@@ -66,6 +67,8 @@ const BannedScreen = () => (
     </p>
   </div>
 );
+
+let isRedirectProcessing = false;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -354,6 +357,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!auth || !db) {
         setLoading(false);
         return;
+    }
+
+    if (!isRedirectProcessing) {
+      isRedirectProcessing = true;
+      getRedirectResult(auth)
+        .then(async (result) => {
+          if (result) {
+            console.warn("[LEGAL DEBUG] getRedirectResult success", {
+              uid: result.user.uid,
+              isNewUser: !!getAdditionalUserInfo(result)?.isNewUser,
+              timestamp: Date.now()
+            });
+            await handleSuccessfulSocialLogin({
+              user: result.user,
+              router,
+              language,
+              toast,
+              setSocialLegalConsentPending,
+            });
+          }
+        })
+        .catch((error) => {
+          console.error("[LEGAL DEBUG] getRedirectResult failed", error);
+          toast({
+            variant: 'destructive',
+            title: language === 'de' ? 'Login fehlgeschlagen' : 'Login failed',
+            description: language === 'de' 
+              ? 'Google-Login konnte nicht abgeschlossen werden.' 
+              : 'Google login could not be completed.',
+          });
+        });
     }
 
     let unsubscribeDoc: (() => void) | undefined;

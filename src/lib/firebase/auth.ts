@@ -16,7 +16,8 @@ import {
   getAdditionalUserInfo,
   type User,
 } from 'firebase/auth';
-import { auth } from './client';
+import { auth, db } from './client';
+import { doc, getDoc } from 'firebase/firestore';
 import { createUserProfileDocument, getUserProfile, updateUserProfile } from './firestore';
 import { deleteFCMToken } from './messaging';
 
@@ -126,20 +127,111 @@ export async function deleteAccount(password?: string): Promise<void> {
     throw error;
   }
 }
-export async function signInWithGoogle(): Promise<{ user: User; isNewUser: boolean }> {
-  if (!auth) throw new Error('Firebase has not been initialized.');
-  const provider = new GoogleAuthProvider();
-  const userCredential = await signInWithPopup(auth, provider);
-  const additionalInfo = getAdditionalUserInfo(userCredential);
-  const isNewUser = !!additionalInfo?.isNewUser;
-  
-  // Check if profile exists, if not create it
-  const profile = await getUserProfile(userCredential.user.uid);
-  if (!profile) {
-    await createUserProfileDocument(userCredential.user);
+export async function handleSuccessfulSocialLogin(options: {
+  user: User;
+  router: any;
+  language: 'de' | 'en';
+  toast: any;
+  setSocialLegalConsentPending: (pending: boolean) => void;
+  setIsLoading?: (loading: boolean) => void;
+}): Promise<void> {
+  const { user, router, language, toast, setSocialLegalConsentPending, setIsLoading } = options;
+
+  console.warn("[LEGAL DEBUG] handleSuccessfulSocialLogin started", {
+    uid: user.uid,
+    email: user.email,
+    timestamp: Date.now()
+  });
+
+  // 1. Profil laden / anlegen
+  if (!db) throw new Error('Firestore is not initialized.');
+  const userDocRef = doc(db, 'users', user.uid);
+  const userDocSnap = await getDoc(userDocRef);
+  let profileData = userDocSnap.exists() ? userDocSnap.data() : null;
+
+  if (!profileData) {
+    console.warn("[LEGAL DEBUG] Profile does not exist, creating profile", { uid: user.uid });
+    await createUserProfileDocument(user);
+    const freshSnap = await getDoc(userDocRef);
+    profileData = freshSnap.exists() ? freshSnap.data() : null;
   }
+
+  const hasAcceptedLegal = !!profileData?.legalAcceptedAt;
+
+  // 2. Legal Consent prüfen
+  if (!hasAcceptedLegal) {
+    console.warn("[LEGAL DEBUG] Legal consent not accepted, opening dialog", { uid: user.uid });
+    setSocialLegalConsentPending(true);
+    setIsLoading?.(false);
+    return;
+  }
+
+  // 3. Email Verification Status prüfen
+  await user.reload();
   
-  return { user: userCredential.user, isNewUser };
+  if (!user.emailVerified) {
+    let verificationEmailSent = false;
+    try {
+      const { httpsCallable } = await import('firebase/functions');
+      const { functions: clientFunctions } = await import('@/lib/firebase/client');
+      if (clientFunctions) {
+        const checkThrottle = httpsCallable(clientFunctions, 'checkAndRecordVerificationEmail');
+        const res = await checkThrottle();
+        const { allowed } = res.data as { allowed: boolean };
+        if (allowed) {
+          await sendEmailVerification(user);
+          verificationEmailSent = true;
+        }
+      }
+    } catch (verifError: any) {
+      console.warn("Could not check/resend email verification link:", verifError);
+    }
+
+    console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
+      source: "handleSuccessfulSocialLogin - email unverified",
+      target: "signOut & redirect /login?verification=required",
+      uid: user.uid,
+      timestamp: Date.now()
+    });
+    await signOut();
+
+    router.replace('/login?verification=required');
+    toast({
+      variant: 'destructive',
+      title: language === 'de' ? 'Verifizierung erforderlich' : 'Verification Required',
+      description: language === 'de' 
+        ? (verificationEmailSent
+            ? "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Wir haben dir einen neuen Bestätigungs-Link an deine E-Mail-Adresse gesendet. Prüfe bitte auch deinen Spam-Ordner."
+            : "Bitte bestätige deine E-Mail-Adresse, um dich einzuloggen. Ein neuer Bestätigungs-Link konnte erst vor kurzem gesendet werden, bitte prüfe dein Postfach (auch Spam-Ordner).")
+        : (verificationEmailSent
+            ? "Please verify your email address to log in. We have sent a new verification link to your email address. Please check your spam folder as well."
+            : "Please verify your email address to log in. A new verification link could not be sent recently, please check your inbox."),
+    });
+    setIsLoading?.(false);
+    return;
+  }
+
+  // 4. Onboarding prüfen und Router Navigation
+  const onboardingCompleted = !!profileData?.onboardingCompleted;
+
+  toast({
+    title: language === 'de' ? 'Login erfolgreich' : 'Login successful',
+    description: language === 'de' ? "Willkommen zurück!" : "Welcome back!",
+  });
+
+  console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
+    source: "handleSuccessfulSocialLogin - flow completed",
+    target: onboardingCompleted ? "/" : "/onboarding",
+    uid: user.uid,
+    onboardingCompleted,
+    timestamp: Date.now()
+  });
+  
+  if (onboardingCompleted) {
+    router.push('/');
+  } else {
+    router.push('/onboarding');
+  }
 }
 
 export async function signInWithApple(): Promise<{ user: User; isNewUser: boolean }> {
