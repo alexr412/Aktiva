@@ -69,6 +69,7 @@ const BannedScreen = () => (
 );
 
 let isRedirectProcessing = false;
+let hasProcessedPostLogin = false;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -361,14 +362,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (!isRedirectProcessing) {
       isRedirectProcessing = true;
+      console.log("[LEGAL DEBUG] Redirect result check started", {
+        timestamp: Date.now(),
+        href: window.location.href,
+      });
       getRedirectResult(auth)
         .then(async (result) => {
+          console.log("[LEGAL DEBUG] Redirect result received", {
+            hasResult: !!result,
+            uid: result?.user?.uid ?? null,
+            email: result?.user?.email ?? null,
+            providerId: result?.providerId ?? null,
+            timestamp: Date.now(),
+          });
           if (result) {
-            console.warn("[LEGAL DEBUG] getRedirectResult success", {
-              uid: result.user.uid,
-              isNewUser: !!getAdditionalUserInfo(result)?.isNewUser,
-              timestamp: Date.now()
-            });
+            hasProcessedPostLogin = true;
             await handleSuccessfulSocialLogin({
               user: result.user,
               router,
@@ -379,7 +387,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         })
         .catch((error) => {
-          console.error("[LEGAL DEBUG] getRedirectResult failed", error);
+          console.error("[LEGAL DEBUG] Redirect result failed", error);
           toast({
             variant: 'destructive',
             title: language === 'de' ? 'Login fehlgeschlagen' : 'Login failed',
@@ -473,15 +481,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (authUser) {
         
-        authUser.reload().then(() => {
+        authUser.reload().then(async () => {
           const freshUser = auth?.currentUser || authUser;
           
           setUser(freshUser);
           setupUserDocListener(freshUser);
-        }).catch((err) => {
+
+          // Safety fallback for redirect login
+          const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+          const cleanPath = currentPath.replace(/\/+$/, '') || '/';
+          const isLoginPage = cleanPath === '/login';
+          const isSignupPage = cleanPath === '/signup';
+          const isAuthPage = isLoginPage || isSignupPage;
+
+          if (isAuthPage && !hasProcessedPostLogin) {
+            console.warn("[LEGAL DEBUG] onAuthStateChanged safety fallback triggered", {
+              uid: freshUser.uid,
+              timestamp: Date.now()
+            });
+            hasProcessedPostLogin = true;
+            await handleSuccessfulSocialLogin({
+              user: freshUser,
+              router,
+              language,
+              toast,
+              setSocialLegalConsentPending,
+            });
+          }
+        }).catch(async (err) => {
           console.warn("[LEGAL DEBUG] onAuthStateChanged - failed to reload user:", err);
           setUser(authUser);
           setupUserDocListener(authUser);
+
+          // Safety fallback for redirect login on reload failure
+          const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+          const cleanPath = currentPath.replace(/\/+$/, '') || '/';
+          const isLoginPage = cleanPath === '/login';
+          const isSignupPage = cleanPath === '/signup';
+          const isAuthPage = isLoginPage || isSignupPage;
+
+          if (isAuthPage && !hasProcessedPostLogin) {
+            console.warn("[LEGAL DEBUG] onAuthStateChanged safety fallback triggered on reload error", {
+              uid: authUser.uid,
+              timestamp: Date.now()
+            });
+            hasProcessedPostLogin = true;
+            await handleSuccessfulSocialLogin({
+              user: authUser,
+              router,
+              language,
+              toast,
+              setSocialLegalConsentPending,
+            });
+          }
         });
       } else {
         
