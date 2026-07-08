@@ -766,7 +766,14 @@ export const applyReferralCode = onCall(async (request) => {
 
       // 4. Write referredBy relationship
       transaction.update(callerRef, {
-        referredBy: referrerUid
+        referredBy: referrerUid,
+        referralCodeUsed: normalizedCode,
+        referralStatus: 'pending'
+      });
+
+      const referrerRef = db.collection('users').doc(referrerUid);
+      transaction.update(referrerRef, {
+        pendingReferrals: FieldValue.increment(1)
       });
 
       return { success: true, referrerUid };
@@ -815,107 +822,174 @@ export const processReferralOnboardingCompletion = onDocumentUpdated({
   document: 'users/{userId}',
   retry: true
 }, async (event) => {
-  const before = event.data?.before.data();
-  const after = event.data?.after.data();
+  // Disables the old onboarding completion reward system. Payout is now activation-based.
+  return null;
+});
 
-  if (!before || !after) return null;
-
-  const wasOnboarded = before.onboardingCompleted === true;
-  const isOnboarded = after.onboardingCompleted === true;
-  
-  const wasVerified = before.emailVerificationRequired !== true;
-  const isVerified = after.emailVerificationRequired !== true;
-
-  // We only proceed if they transitioned to BOTH fully onboardingCompleted and verified
-  const justQualified = (isOnboarded && isVerified) && (!wasOnboarded || !wasVerified);
-
-  if (!justQualified) {
-    return null;
-  }
-
-  const userId = event.params.userId;
-  const referredBy = after.referredBy;
-
-  if (!referredBy) {
-    return null;
-  }
-
+/**
+ * Helper to activate referral rewards if a referred user does their first action.
+ */
+export async function maybeActivateReferral(
+  referredUserId: string,
+  activationReason: 'first_activity_joined' | 'first_activity_created' | 'first_chat_active' | 'first_meeting_completed'
+) {
   const db = admin.firestore();
 
   try {
     await db.runTransaction(async (transaction) => {
-      // 1. Check if referral bonus was already paid (idempotency check)
-      const referrerLedgerRef = db.collection('users').doc(referredBy).collection('pointsLedger').doc(`invite_completed_${userId}`);
-      const ledgerSnap = await transaction.get(referrerLedgerRef);
-      if (ledgerSnap.exists) {
-        console.log(`Referral points already processed for referred user ${userId}`);
+      // 1. Retrieve referred user's profile
+      const referredRef = db.collection('users').doc(referredUserId);
+      const referredSnap = await transaction.get(referredRef);
+      if (!referredSnap.exists) {
+        console.log(`Referred user profile ${referredUserId} not found.`);
         return;
       }
 
-      // 2. Verify referrer profile exists
-      const referrerRef = db.collection('users').doc(referredBy);
+      const referredData = referredSnap.data()!;
+      const referrerId = referredData.referredBy;
+
+      // Check if referred by anyone
+      if (!referrerId) {
+        console.log(`User ${referredUserId} was not referred by anyone.`);
+        return;
+      }
+
+      // Check if referral status is already rewarded
+      const status = referredData.referralStatus;
+      if (status === 'rewarded') {
+        console.log(`User ${referredUserId} has already triggered referral reward.`);
+        return;
+      }
+
+      // 2. Idempotency check: Ledger check for this reward
+      const idempotencyKey = `referral_reward_${referredUserId}`;
+      const referrerLedgerRef = db.collection('users').doc(referrerId).collection('pointsLedger').doc(idempotencyKey);
+      const ledgerSnap = await transaction.get(referrerLedgerRef);
+      if (ledgerSnap.exists) {
+        console.log(`Referral ledger entry ${idempotencyKey} already exists. Skipping.`);
+        return;
+      }
+
+      // Retrieve referrer profile
+      const referrerRef = db.collection('users').doc(referrerId);
       const referrerSnap = await transaction.get(referrerRef);
       if (!referrerSnap.exists) {
-        console.warn(`Referrer ${referredBy} does not exist.`);
+        console.warn(`Referrer ${referrerId} not found.`);
         return;
       }
 
       const referrerData = referrerSnap.data()!;
-      const referrerLifetime = (referrerData.pointsLifetime || 0) + 25;
-      const referrerBalance = (referrerData.pointsBalance || 0) + 25;
+
+      // Update referred user's status to rewarded
+      transaction.update(referredRef, {
+        referralStatus: 'rewarded',
+        referralActivatedAt: FieldValue.serverTimestamp(),
+        referralActivationReason: activationReason
+      });
+
+      // Calculate referrer points & level
+      const referralPoints = 25; // 25 points for referrer
+      const referrerLifetime = (referrerData.pointsLifetime || 0) + referralPoints;
+      const referrerBalance = (referrerData.pointsBalance || 0) + referralPoints;
       const referrerNewLevel = calculateLevel(referrerLifetime);
 
-      // 3. Award +25 to referrer pointsLedger
+      // Referrer metrics updates
+      const oldActivated = referrerData.activatedReferrals || 0;
+      const newActivated = oldActivated + 1;
+
+      const oldSuccessful = referrerData.successfulReferrals || 0;
+      const newSuccessful = oldSuccessful + 1;
+
+      // Decrement pendingReferrals defensively (never below 0)
+      const oldPending = referrerData.pendingReferrals || 0;
+      const newPending = Math.max(0, oldPending - 1);
+
+      // Write ledger entry for referrer
       transaction.set(referrerLedgerRef, {
-        type: 'friend_invite_completed',
-        points: 25,
+        type: 'referral_activation_bonus',
+        referrerId: referrerId,
+        referredUserId: referredUserId,
+        activationReason: activationReason,
+        points: referralPoints,
         createdAt: FieldValue.serverTimestamp(),
-        sourceId: userId,
+        idempotencyKey: idempotencyKey,
         metadata: {
-          message: `Freund geworben: ${after.displayName || 'User'}`
+          message: `Referral aktiviert: ${referredData.displayName || 'User'}`
         }
       });
 
-      // 4. Update referrer profile
-      transaction.update(referrerRef, {
+      // Update referrer fields
+      const referrerUpdates: any = {
         pointsBalance: referrerBalance,
         pointsLifetime: referrerLifetime,
         level: referrerNewLevel,
-        successfulReferrals: FieldValue.increment(1)
-      });
+        activatedReferrals: newActivated,
+        successfulReferrals: newSuccessful,
+        pendingReferrals: newPending
+      };
 
-      // 5. Award +10 to referred user pointsLedger
-      const referredLedgerRef = db.collection('users').doc(userId).collection('pointsLedger').doc(`invite_signup_bonus_${userId}`);
-      transaction.set(referredLedgerRef, {
-        type: 'invite_signup_bonus',
-        points: 10,
-        createdAt: FieldValue.serverTimestamp(),
-        sourceId: referredBy,
-        metadata: {
-          message: 'Willkommensbonus für Einladung'
-        }
-      });
+      // Check milestones based exclusively on activatedReferrals (newActivated)
+      const milestones = referrerData.referralMilestonesClaimed || {};
+      let milestoneBonus = 0;
+      const newMilestones = { ...milestones };
 
-      // 6. Update referred user profile
-      const referredRef = db.collection('users').doc(userId);
-      const referredLifetime = (after.pointsLifetime || 0) + 10;
-      const referredBalance = (after.pointsBalance || 0) + 10;
-      const referredNewLevel = calculateLevel(referredLifetime);
+      if (newActivated >= 5 && !milestones.recruiter) {
+        newMilestones.recruiter = true;
+        milestoneBonus += 50;
+        const milestoneLedgerRef = db.collection('users').doc(referrerId).collection('pointsLedger').doc(`milestone_recruiter_${referrerId}_${newActivated}`);
+        transaction.set(milestoneLedgerRef, {
+          type: 'referral_milestone_bonus',
+          points: 50,
+          createdAt: FieldValue.serverTimestamp(),
+          metadata: {
+            message: 'Milestone: Recruiter (5 aktivierte Referrals)'
+          }
+        });
+      }
 
-      transaction.update(referredRef, {
-        pointsBalance: referredBalance,
-        pointsLifetime: referredLifetime,
-        level: referredNewLevel
-      });
+      if (newActivated >= 25 && !milestones.ambassador) {
+        newMilestones.ambassador = true;
+        milestoneBonus += 200;
+        const milestoneLedgerRef = db.collection('users').doc(referrerId).collection('pointsLedger').doc(`milestone_ambassador_${referrerId}_${newActivated}`);
+        transaction.set(milestoneLedgerRef, {
+          type: 'referral_milestone_bonus',
+          points: 200,
+          createdAt: FieldValue.serverTimestamp(),
+          metadata: {
+            message: 'Milestone: Ambassador (25 aktivierte Referrals)'
+          }
+        });
+      }
 
-      console.log(`Paid referral rewards: Referrer ${referredBy} (+25 points, level ${referrerNewLevel}) and Referred User ${userId} (+10 points, level ${referredNewLevel})`);
+      if (newActivated >= 100 && !milestones.communityLegend) {
+        newMilestones.communityLegend = true;
+        milestoneBonus += 1000;
+        const milestoneLedgerRef = db.collection('users').doc(referrerId).collection('pointsLedger').doc(`milestone_community_legend_${referrerId}_${newActivated}`);
+        transaction.set(milestoneLedgerRef, {
+          type: 'referral_milestone_bonus',
+          points: 1000,
+          createdAt: FieldValue.serverTimestamp(),
+          metadata: {
+            message: 'Milestone: Community Legend (100 aktivierte Referrals)'
+          }
+        });
+      }
+
+      if (milestoneBonus > 0) {
+        referrerUpdates.pointsBalance = referrerBalance + milestoneBonus;
+        referrerUpdates.pointsLifetime = referrerLifetime + milestoneBonus;
+        referrerUpdates.level = calculateLevel(referrerUpdates.pointsLifetime);
+        referrerUpdates.referralMilestonesClaimed = newMilestones;
+      }
+
+      transaction.update(referrerRef, referrerUpdates);
+
+      console.log(`Referral activated for ${referredUserId}. Referrer ${referrerId} awarded 25 points.`);
     });
   } catch (error) {
-    console.error(`Error in processReferralOnboardingCompletion for user ${userId}:`, error);
+    console.error(`Error in maybeActivateReferral for user ${referredUserId}:`, error);
   }
-
-  return null;
-});
+}
 
 export const getPublicProfile = onCall(async (request) => {
   if (!request.auth) {

@@ -120,10 +120,17 @@ export default function WalletPage() {
     const getLedgerTypeDetails = (type: string, metadata?: any) => {
         switch (type) {
             case 'friend_invite_completed':
+            case 'referral_activation_bonus':
                 return {
                     label: language === 'de' ? 'Freund geworben' : 'Referred Friend',
                     desc: metadata?.message || (language === 'de' ? 'Einladung abgeschlossen' : 'Referral completed'),
                     icon: '🎁'
+                };
+            case 'referral_milestone_bonus':
+                return {
+                    label: language === 'de' ? 'Referral Meilenstein' : 'Referral Milestone',
+                    desc: metadata?.message || (language === 'de' ? 'Belohnung für Meilenstein erhalten' : 'Milestone reward unlocked'),
+                    icon: '👑'
                 };
             case 'invite_signup_bonus':
                 return {

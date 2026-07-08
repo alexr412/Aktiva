@@ -117,6 +117,8 @@ export default function Home() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
+  const [presetTitle, setPresetTitle] = useState('');
+  const [presetCategory, setPresetCategory] = useState<string | undefined>(undefined);
   const [activeCategory, setActiveCategory] = useState<string[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>("");
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
@@ -1120,23 +1122,85 @@ export default function Home() {
     }
     if (activeError) return <div className="flex h-full w-full items-center justify-center p-6 text-center text-destructive font-bold">{language === 'de' ? 'Verbindungsproblem.' : 'Connection problem.'}</div>;
 
-    const EmptySearchState = () => (
-      <div className="flex h-full w-full items-center justify-center p-6 text-center">
-        <div className="space-y-4">
-          <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">{language === "de" ? "Keine Ergebnisse" : "No results"}</h3>
-          <p className="text-[#64748b] dark:text-neutral-400 font-medium">{language === "de" ? "Passe deine Suche oder die Filter an." : "Adjust your search or filters."}</p>
-          <Button onClick={() => {
-            handleCategoryChange([], '');
-            setShouldFilterByName(false);
-            setSearchQuery("");
-            setMaxDistance(10);
-            setActivityCategoryFilter(language === 'de' ? 'Alle' : 'All');
-          }} variant="outline" className="rounded-xl font-bold">
-            {language === "de" ? "Filter zurücksetzen" : "Reset filters"}
-          </Button>
+    const EmptySearchState = () => {
+      const isFilterActive = !!debouncedSearchQuery || 
+        activeCategory.length > 0 || 
+        (activityCategoryFilter !== 'Alle' && activityCategoryFilter !== 'All') ||
+        maxDistance !== 10;
+      
+      if (isFilterActive) {
+        return (
+          <div className="flex h-full w-full items-center justify-center p-6 text-center">
+            <div className="space-y-4">
+              <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">{language === "de" ? "Keine Ergebnisse" : "No results"}</h3>
+              <p className="text-[#64748b] dark:text-neutral-400 font-medium">{language === "de" ? "Passe deine Suche oder die Filter an." : "Adjust your search or filters."}</p>
+              <Button onClick={() => {
+                handleCategoryChange([], '');
+                setShouldFilterByName(false);
+                setSearchQuery("");
+                setMaxDistance(10);
+                setActivityCategoryFilter(language === 'de' ? 'Alle' : 'All');
+              }} variant="outline" className="rounded-xl font-bold">
+                {language === "de" ? "Filter zurücksetzen" : "Reset filters"}
+              </Button>
+            </div>
+          </div>
+        );
+      }
+
+      // True empty state -> Suggestion Funnel
+      const quickActivityTemplates = [
+        { title: language === 'de' ? "Kaffee trinken" : "Grab a Coffee", category: "Sonstiges" as const, icon: "☕" },
+        { title: language === 'de' ? "Gym Session" : "Gym Session", category: "Sport" as const, icon: "💪" },
+        { title: language === 'de' ? "Spaziergang" : "Go for a Walk", category: "Outdoor" as const, icon: "🌲" },
+        { title: language === 'de' ? "Bar" : "Bar", category: "Party" as const, icon: "🍹" },
+        { title: language === 'de' ? "Kino" : "Cinema", category: "Kultur" as const, icon: "🎬" },
+        { title: language === 'de' ? "Lernen" : "Study Session", category: "Networking" as const, icon: "📚" },
+        { title: language === 'de' ? "Bowling" : "Bowling", category: "Sport" as const, icon: "🎳" },
+        { title: language === 'de' ? "Volleyball" : "Volleyball", category: "Sport" as const, icon: "🏐" },
+        { title: language === 'de' ? "Brettspielabend" : "Board Game Night", category: "Gaming" as const, icon: "🎲" }
+      ];
+
+      return (
+        <div className="flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto my-12 animate-in fade-in zoom-in duration-300">
+          <div className="bg-gradient-to-tr from-violet-500/10 to-indigo-500/10 dark:from-violet-500/20 dark:to-indigo-500/20 p-6 rounded-full mb-6">
+            <span className="text-4xl">✨</span>
+          </div>
+          <h3 className="font-black text-2xl text-slate-900 dark:text-neutral-100 mb-2">
+            {language === 'de' ? 'Heute noch nichts geplant?' : 'Nothing planned for today?'}
+          </h3>
+          <p className="text-slate-550 dark:text-neutral-400 text-sm font-semibold max-w-sm mb-8 leading-relaxed">
+            {language === 'de' 
+              ? 'Erstelle eine Aktivität und lade 3 Leute ein.' 
+              : 'Create an activity and invite 3 friends.'}
+          </p>
+          
+          <div className="w-full grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {quickActivityTemplates.map((template, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  if (!user) {
+                    router.push(`/login?redirect=/`);
+                    return;
+                  }
+                  setPresetTitle(template.title);
+                  setPresetCategory(template.category);
+                  setActivityModalPlace('custom');
+                }}
+                className="flex items-center gap-2 p-3 bg-white dark:bg-neutral-900 hover:bg-slate-50 dark:hover:bg-neutral-800 border border-slate-100 dark:border-neutral-800 rounded-2xl text-left shadow-sm hover:scale-[1.03] active:scale-95 transition-all outline-none group"
+              >
+                <span className="text-xl group-hover:animate-bounce">{template.icon}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-black text-slate-800 dark:text-neutral-200 truncate">{template.title}</div>
+                  <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{template.category}</div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
-    );
+      );
+    };
 
     if (viewMode === 'list') {
       const renderList = () => {
@@ -1530,7 +1594,20 @@ export default function Home() {
       ) : (
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}><DialogContent className="p-0 w-full max-w-4xl max-h-[92vh] gap-0 overflow-hidden border-none outline-none"><DialogTitle className="sr-only">{selectedPlace?.name || (language === 'de' ? 'Ort Details' : 'Place Details')}</DialogTitle><DialogDescription className="sr-only">{language === 'de' ? 'Details zum ausgewählten Ort' : 'Details about the selected place'}</DialogDescription>{selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} onCreateActivity={() => setActivityModalPlace(selectedPlace)} />}</DialogContent></Dialog>
       )}
-      <CreateActivityDialog place={activityModalPlace === 'custom' ? null : activityModalPlace as Place} open={!!activityModalPlace} onOpenChange={(open) => !open && setActivityModalPlace(null)} onCreateActivity={handleCreateActivity} />
+      <CreateActivityDialog 
+        place={activityModalPlace === 'custom' ? null : activityModalPlace as Place} 
+        open={!!activityModalPlace} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivityModalPlace(null);
+            setPresetTitle('');
+            setPresetCategory(undefined);
+          }
+        }} 
+        onCreateActivity={handleCreateActivity}
+        initialTitle={presetTitle}
+        initialCategory={presetCategory}
+      />
       <SpotActionSheet place={actionSheetPlace} open={!!actionSheetPlace} onOpenChange={(open) => !open && setActionSheetPlace(null)} onCreateNew={(place) => setActivityModalPlace(place)} />
       <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
       <LocationRequirementDialog

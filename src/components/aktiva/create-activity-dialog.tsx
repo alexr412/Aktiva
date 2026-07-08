@@ -73,9 +73,11 @@ interface CreateActivityDialogProps {
     joinMode?: 'direct' | 'request',
     selectedPlace?: Place | null
   ) => Promise<boolean>;
+  initialTitle?: string;
+  initialCategory?: string;
 }
 
-export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, onCreateActivity }: CreateActivityDialogProps) {
+export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, onCreateActivity, initialTitle, initialCategory }: CreateActivityDialogProps) {
   const { userProfile, user } = useAuth();
   const language = useLanguage();
   const { toast } = useToast();
@@ -138,7 +140,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
     if (open) {
       setIsCreating(false);
       setSelectedLocation(initialPlace);
-      setActivityTitle('');
+      setActivityTitle(initialTitle || '');
       setDescription('');
       setSearchQuery('');
       setSearchResults([]);
@@ -153,7 +155,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
       setIsBoosted(false);
       setIsPaid(false);
       setPrice(0);
-      setSelectedCategory(language === 'de' ? 'Sonstiges' : 'Sonstiges');
+      setSelectedCategory((initialCategory as any) || (language === 'de' ? 'Sonstiges' : 'Sonstiges'));
       setRequireProfilePicture(false);
       setRequireVerification(false);
       setMinAge('');
@@ -162,7 +164,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
       setMinimumRating('');
       setJoinMode('request');
     }
-  }, [initialPlace, open]);
+  }, [initialPlace, open, initialTitle, initialCategory, language]);
 
   const handleSearch = async (val: string) => {
     setSearchQuery(val);

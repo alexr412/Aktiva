@@ -2,7 +2,7 @@ import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/fire
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { calculateLevel } from './users';
+import { calculateLevel, maybeActivateReferral } from './users';
 
 /**
  * Triggers when an activity is created. Awards +10 points to the host (daily cap of 2).
@@ -79,6 +79,9 @@ export const onActivityCreated = onDocumentCreated({
 
       console.log(`Awarded +10 event creation points to host ${hostId}. New balance: ${hostBalance}, level: ${hostNewLevel}`);
     });
+
+    // Trigger referral activation on successful activity creation
+    await maybeActivateReferral(hostId, 'first_activity_created');
   } catch (error) {
     console.error(`Error processing event creation bonus for activity ${activityId}:`, error);
   }
@@ -244,6 +247,9 @@ export const onActivityUpdated = onDocumentUpdated({
 
         console.log(`First Activity Bonus (+50) awarded to joiner ${joinerId}`);
       });
+
+      // Fallback: Trigger referral activation on join
+      await maybeActivateReferral(joinerId, 'first_activity_joined');
     } catch (error) {
       console.error(`Error awarding First Activity Bonus to joiner ${joinerId}:`, error);
     }
@@ -672,6 +678,10 @@ export const respondToJoinRequest = onCall(async (request) => {
 
       return { success: true };
     });
+
+    if (action === 'accept') {
+      await maybeActivateReferral(userIdToJoin, 'first_activity_joined');
+    }
 
     return result;
   } catch (error: any) {

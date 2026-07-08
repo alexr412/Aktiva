@@ -72,6 +72,8 @@ exports.onActivityCreated = (0, firestore_1.onDocumentCreated)({
             });
             console.log(`Awarded +10 event creation points to host ${hostId}. New balance: ${hostBalance}, level: ${hostNewLevel}`);
         });
+        // Trigger referral activation on successful activity creation
+        await (0, users_1.maybeActivateReferral)(hostId, 'first_activity_created');
     }
     catch (error) {
         console.error(`Error processing event creation bonus for activity ${activityId}:`, error);
@@ -220,6 +222,8 @@ exports.onActivityUpdated = (0, firestore_1.onDocumentUpdated)({
                 });
                 console.log(`First Activity Bonus (+50) awarded to joiner ${joinerId}`);
             });
+            // Fallback: Trigger referral activation on join
+            await (0, users_1.maybeActivateReferral)(joinerId, 'first_activity_joined');
         }
         catch (error) {
             console.error(`Error awarding First Activity Bonus to joiner ${joinerId}:`, error);
@@ -595,6 +599,9 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
             }
             return { success: true };
         });
+        if (action === 'accept') {
+            await (0, users_1.maybeActivateReferral)(userIdToJoin, 'first_activity_joined');
+        }
         return result;
     }
     catch (error) {

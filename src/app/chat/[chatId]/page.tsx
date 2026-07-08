@@ -25,7 +25,7 @@ import { ChatInfoSheet } from '@/components/aktiva/chat-info-sheet';
 import { PlaceDetails } from '@/components/aktiva/place-details';
 import { RoomInfoSheet } from '@/components/chat/room-info-sheet';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { ArrowLeft, Send, MoreVertical, Loader2, Users, Info, Reply, Edit3, Pin, Copy, CornerUpLeft, X, PinOff, Check } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Loader2, Users, Info, Reply, Edit3, Pin, Copy, CornerUpLeft, X, PinOff, Check, Share2 } from 'lucide-react';
 import { CompletionBanner } from '@/components/aktiva/CompletionBanner';
 import { MultiPeerReviewDialog } from '@/components/aktiva/multi-peer-review-dialog';
 import { UserBadge } from '@/components/common/UserBadge';
@@ -1055,6 +1055,61 @@ export default function ChatRoomPage() {
               </Button>
           )}
         </header>
+
+        {/* MODUL: Freunde einladen Banner */}
+        {!isDirectMessage && activity && user && chat && activity.status === 'active' && (() => {
+          const spotsLeft = (activity.maxParticipants || 0) - (chat.participantIds?.length || 0);
+          if (!activity.maxParticipants || spotsLeft <= 0) return null;
+
+          return (
+            <div className="sticky top-0 z-10 w-full bg-gradient-to-r from-violet-500/10 to-indigo-500/10 dark:from-violet-500/20 dark:to-indigo-500/20 border-b border-violet-100/30 dark:border-neutral-800/80 px-4 py-2.5 flex items-center justify-between shadow-sm animate-in slide-in-from-top-2 duration-250">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs font-bold text-slate-700 dark:text-neutral-300">
+                  {spotsLeft === 1 
+                    ? (language === 'de' ? 'Noch 1 Platz frei' : '1 spot left') 
+                    : (language === 'de' ? `Noch ${spotsLeft} Plätze frei` : `${spotsLeft} spots left`)}
+                </span>
+              </div>
+              <Button
+                onClick={async () => {
+                  const refCode = userProfile?.referralCode || '';
+                  const shareUrl = `${window.location.origin}/activities/${activity.id}/invite${refCode ? `?ref=${refCode}` : ''}`;
+                  const shareTitle = activity.title || chat.placeName || 'Aktiva';
+                  const dateStr = activity.activityDate && typeof activity.activityDate.toDate === 'function'
+                    ? activity.activityDate.toDate().toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })
+                    : '';
+                  const shareText = language === 'de'
+                    ? `Komm dazu: ${shareTitle} in ${activity.placeName || ''} am ${dateStr}. Noch ${spotsLeft} Plätze frei.`
+                    : `Join us: ${shareTitle} at ${activity.placeName || ''} on ${dateStr}. ${spotsLeft} spots left.`;
+
+                  if (typeof navigator !== 'undefined' && navigator.share) {
+                    try {
+                      await navigator.share({
+                        title: shareTitle,
+                        text: shareText,
+                        url: shareUrl
+                      });
+                    } catch (err) {
+                      console.error('Error sharing:', err);
+                    }
+                  } else {
+                    await navigator.clipboard.writeText(shareUrl);
+                    toast({
+                      title: language === 'de' ? 'Link kopiert!' : 'Link copied!',
+                      description: language === 'de' ? 'Der Einladungslink wurde in die Zwischenablage kopiert.' : 'Invitation link copied to clipboard.'
+                    });
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-xl font-bold bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-xs px-3.5 shadow-sm text-slate-800 dark:text-neutral-200 hover:bg-slate-50 dark:hover:bg-neutral-750 transition-all flex items-center gap-1.5"
+              >
+                <Share2 className="h-3.5 w-3.5 text-violet-500" />
+                <span>{language === 'de' ? 'Link teilen' : 'Share Link'}</span>
+              </Button>
+            </div>
+          );
+        })()}
 
         {!isDirectMessage && activity && user && chat && activity.status === 'active' && activity.completionVotes && activity.completionVotes.length > 0 && (
           <CompletionBanner activity={activity} currentUser={user} participantDetails={chat.participantDetails} />

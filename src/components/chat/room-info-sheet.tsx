@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { leaveActivity } from '@/lib/firebase/firestore';
+import { useAuth } from '@/hooks/use-auth';
 import { format, isToday } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { cn, formatFirstName } from '@/lib/utils';
@@ -73,6 +74,12 @@ export function RoomInfoSheet({
 
   const isHost = activity?.hostId === currentUserId || chat.hostId === currentUserId;
   const isOnlyParticipant = chat.participantIds?.length === 1;
+
+  const isPast = activity?.activityDate?.toDate
+    ? activity.activityDate.toDate().getTime() < Date.now()
+    : false;
+  const isCancelled = activity?.status === 'cancelled';
+  const isCompleted = activity?.status === 'completed' || isPast;
 
   // Primary style icon
   const visualCategoryData = getRoomVisualCategory({ activity, place, chat });
@@ -184,14 +191,21 @@ export function RoomInfoSheet({
   };
 
   // Raum teilen
+  const { userProfile } = useAuth();
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/chat/${chat.id}` : '';
-    const shareTitle = activity?.placeName || chat.placeName || 'Aktiva Chat';
+    if (!activity) return;
+    const refCode = userProfile?.referralCode || '';
+    const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/activities/${activity.id}/invite${refCode ? `?ref=${refCode}` : ''}` : '';
+    const shareTitle = activity.title || chat.placeName || 'Aktiva';
+    const dateStr = activity.activityDate && typeof activity.activityDate.toDate === 'function'
+      ? activity.activityDate.toDate().toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })
+      : '';
+    const spotsLeft = (activity.maxParticipants || 0) - (chat.participantIds?.length || 0);
     const shareText = language === 'de'
-      ? `Tritt unserem Treffen bei: ${shareTitle}`
-      : `Join our meetup: ${shareTitle}`;
+      ? `Komm dazu: ${shareTitle} in ${activity.placeName || ''} am ${dateStr}. Noch ${spotsLeft} Plätze frei.`
+      : `Join us: ${shareTitle} at ${activity.placeName || ''} on ${dateStr}. ${spotsLeft} spots left.`;
 
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
@@ -207,7 +221,7 @@ export function RoomInfoSheet({
       await navigator.clipboard.writeText(shareUrl);
       toast({
         title: language === 'de' ? 'Link kopiert!' : 'Link copied!',
-        description: language === 'de' ? 'Der Link zum Chat wurde kopiert.' : 'The link to the chat has been copied.',
+        description: language === 'de' ? 'Der Einladungslink wurde kopiert.' : 'The invitation link has been copied.',
       });
     }
   };
@@ -500,13 +514,38 @@ export function RoomInfoSheet({
                 {language === 'de' ? 'Aktionen' : 'Actions'}
               </h3>
               <div className="flex flex-col gap-2.5">
-                <Button
-                  onClick={handleShare}
-                  className="w-full h-11 rounded-2xl font-bold bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-700 text-slate-800 dark:text-slate-200 flex items-center justify-center gap-2 shadow-none border-none"
-                >
-                  <Share2 className="h-4 w-4" />
-                  <span>{language === 'de' ? 'Raum teilen' : 'Share Room'}</span>
-                </Button>
+                {activity && activity.status === 'active' && !isCancelled && !isCompleted && (() => {
+                  const spotsLeft = (activity.maxParticipants || 0) - (chat.participantIds?.length || 0);
+                  if (spotsLeft <= 0) {
+                    return (
+                      <Button
+                        disabled
+                        className="w-full h-11 rounded-2xl font-bold bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 flex items-center justify-center gap-2 shadow-none border-none"
+                      >
+                        <Share2 className="h-4 w-4" />
+                        <span>{language === 'de' ? 'Vollbesetzt' : 'Full'}</span>
+                      </Button>
+                    );
+                  }
+                  return (
+                    <div className="bg-gradient-to-r from-violet-500/10 to-indigo-500/10 dark:from-violet-500/20 dark:to-indigo-500/20 border border-violet-100/20 dark:border-neutral-800/80 p-4 rounded-2xl flex flex-col gap-2.5 mb-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-700 dark:text-neutral-300">
+                          {spotsLeft === 1 
+                            ? (language === 'de' ? 'Noch 1 Platz frei' : '1 spot left') 
+                            : (language === 'de' ? `Noch ${spotsLeft} Plätze frei` : `${spotsLeft} spots left`)}
+                        </span>
+                      </div>
+                      <Button
+                        onClick={handleShare}
+                        className="w-full h-10 rounded-xl font-bold bg-violet-600 hover:bg-violet-750 text-white flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        <Share2 className="h-4 w-4" />
+                        <span>{language === 'de' ? 'Freunde einladen' : 'Invite Friends'}</span>
+                      </Button>
+                    </div>
+                  );
+                })()}
 
                 {participantEntries.length > 5 && !isExpanded && (
                   <Button
