@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { db } from '@/lib/firebase/client';
+import { db } from '@/lib/firebase/server';
 import { doc, getDoc } from 'firebase/firestore';
 import ActivityDetailClient from './activity-detail-client';
 
