@@ -42,11 +42,33 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       };
     }
 
+    const isTimeFlexible = !!activity.isTimeFlexible;
+    const isDateFlexible = !!activity.isDateFlexible;
+    const isFlexible = isTimeFlexible || isDateFlexible;
+
     const dateObj = activity.activityDate && typeof activity.activityDate.toDate === 'function'
       ? activity.activityDate.toDate()
       : null;
+    const endDateObj = activity.activityEndDate && typeof activity.activityEndDate.toDate === 'function'
+      ? activity.activityEndDate.toDate()
+      : null;
+
     const dateStr = dateObj ? dateObj.toLocaleDateString('de-DE') : '';
-    const isPast = dateObj ? dateObj.getTime() < Date.now() : false;
+
+    let isPast = false;
+    if (activity.status === 'completed') {
+      isPast = true;
+    } else if (endDateObj) {
+      isPast = endDateObj.getTime() < Date.now();
+    } else if (isDateFlexible) {
+      isPast = false;
+    } else if (isTimeFlexible && dateObj) {
+      const endOfDay = new Date(dateObj);
+      endOfDay.setHours(23, 59, 59, 999);
+      isPast = endOfDay.getTime() < Date.now();
+    } else if (dateObj) {
+      isPast = dateObj.getTime() < Date.now();
+    }
 
     // Check for cancelled or completed status
     const isCancelled = activity.status === 'cancelled';

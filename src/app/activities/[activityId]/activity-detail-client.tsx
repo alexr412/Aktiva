@@ -273,10 +273,32 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const isCompleted = activity.status === 'completed';
   const isActive = activity.status === 'active';
   
+  const isTimeFlexible = !!activity.isTimeFlexible;
+  const isDateFlexible = !!activity.isDateFlexible;
+  const isFlexible = isTimeFlexible || isDateFlexible;
+
   const dateObj = activity.activityDate && typeof activity.activityDate.toDate === 'function'
     ? activity.activityDate.toDate()
     : null;
-  const isPast = dateObj ? dateObj.getTime() < Date.now() : false;
+  const endDateObj = activity.activityEndDate && typeof activity.activityEndDate.toDate === 'function'
+    ? activity.activityEndDate.toDate()
+    : null;
+
+  let isPast = false;
+  if (activity.status === 'completed') {
+    isPast = true;
+  } else if (endDateObj) {
+    isPast = endDateObj.getTime() < Date.now();
+  } else if (isDateFlexible) {
+    isPast = false;
+  } else if (isTimeFlexible && dateObj) {
+    const endOfDay = new Date(dateObj);
+    endOfDay.setHours(23, 59, 59, 999);
+    isPast = endOfDay.getTime() < Date.now();
+  } else if (dateObj) {
+    isPast = dateObj.getTime() < Date.now();
+  }
+
   const isClosed = isCancelled || isCompleted || isPast;
 
   // Formatierung der Opening Hours

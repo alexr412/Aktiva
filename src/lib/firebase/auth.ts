@@ -228,7 +228,20 @@ export async function handleSuccessfulSocialLogin(options: {
   });
   
   if (onboardingCompleted) {
-    router.push('/');
+    let redirectTarget = null;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const paramRedirect = params.get('redirect');
+      const sessionRedirect = window.sessionStorage ? sessionStorage.getItem('postLoginRedirect') : null;
+      const target = paramRedirect || sessionRedirect;
+      if (target && (/^\/[^/]+/.test(target) || target === '/')) {
+        redirectTarget = target;
+        if (window.sessionStorage) {
+          sessionStorage.removeItem('postLoginRedirect');
+        }
+      }
+    }
+    router.push(redirectTarget || '/');
   } else {
     router.push('/onboarding');
   }

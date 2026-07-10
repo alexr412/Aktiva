@@ -88,6 +88,7 @@ export interface Activity {
   activityDate: Timestamp;
   activityEndDate?: Timestamp;
   isTimeFlexible: boolean;
+  isDateFlexible?: boolean;
   joinMode?: 'direct' | 'request';
   category?: string;
   hostId: string;

@@ -51,6 +51,21 @@ function LoginPageContent() {
   const { toast } = useToast();
   const { user, userProfile, loading: authLoading, setSocialLegalConsentPending } = useAuth();
 
+  const getSanitizedRedirect = (clearSession = true): string | null => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const paramRedirect = params.get('redirect');
+    const sessionRedirect = window.sessionStorage ? sessionStorage.getItem('postLoginRedirect') : null;
+    const target = paramRedirect || sessionRedirect;
+    if (target && (/^\/[^/]+/.test(target) || target === '/')) {
+      if (clearSession && window.sessionStorage) {
+        sessionStorage.removeItem('postLoginRedirect');
+      }
+      return target;
+    }
+    return null;
+  };
+
   const [resetEmail, setResetEmail] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -94,13 +109,23 @@ function LoginPageContent() {
     if (user && userProfile && !authLoading && userProfile.legalAcceptedAt) {
       if (user.emailVerified) {
         if (userProfile.onboardingCompleted) {
-          router.replace('/');
+          const redirectTarget = getSanitizedRedirect(true);
+          router.replace(redirectTarget || '/');
         } else {
           router.replace('/onboarding');
         }
       }
     }
   }, [user, userProfile, authLoading, router]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      const redirectParam = searchParams.get('redirect');
+      if (redirectParam && (/^\/[^/]+/.test(redirectParam) || redirectParam === '/')) {
+        sessionStorage.setItem('postLoginRedirect', redirectParam);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const registration = searchParams.get('registration');
@@ -238,7 +263,8 @@ function LoginPageContent() {
       });
       
       if (onboardingCompleted) {
-        router.push('/');
+        const redirectTarget = getSanitizedRedirect(true);
+        router.push(redirectTarget || '/');
       } else {
         router.push('/onboarding');
       }
@@ -425,7 +451,8 @@ function LoginPageContent() {
         timestamp: Date.now()
       });
       if (onboardingCompleted) {
-        router.push('/');
+        const redirectTarget = getSanitizedRedirect(true);
+        router.push(redirectTarget || '/');
       } else {
         router.push('/onboarding');
       }

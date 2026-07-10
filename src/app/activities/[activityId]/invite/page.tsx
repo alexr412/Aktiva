@@ -36,24 +36,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const isFlexible = isTimeFlexible || isDateFlexible;
 
     const dateObj = activity.activityDate?.toDate ? activity.activityDate.toDate() : null;
+    const endDateObj = activity.activityEndDate?.toDate ? activity.activityEndDate.toDate() : null;
 
     let isPast = false;
     if (activity.status === 'completed') {
       isPast = true;
-    } else if (!isFlexible) {
-      const targetDate = activity.activityEndDate?.toDate 
-        ? activity.activityEndDate.toDate() 
-        : dateObj;
-      if (targetDate) {
-        isPast = targetDate.getTime() < Date.now();
-      }
-    } else {
-      const targetDate = activity.activityEndDate?.toDate 
-        ? activity.activityEndDate.toDate() 
-        : null;
-      if (targetDate) {
-        isPast = targetDate.getTime() < Date.now();
-      }
+    } else if (endDateObj) {
+      isPast = endDateObj.getTime() < Date.now();
+    } else if (isDateFlexible) {
+      isPast = false;
+    } else if (isTimeFlexible && dateObj) {
+      const endOfDay = new Date(dateObj);
+      endOfDay.setHours(23, 59, 59, 999);
+      isPast = endOfDay.getTime() < Date.now();
+    } else if (dateObj) {
+      isPast = dateObj.getTime() < Date.now();
     }
 
     const isCompleted = activity.status === 'completed' || isPast;
@@ -155,24 +152,21 @@ export default async function ActivityInvitePage({ params, searchParams }: Props
   const isFlexible = isTimeFlexible || isDateFlexible;
 
   const dateObj = activity.activityDate?.toDate ? activity.activityDate.toDate() : null;
+  const endDateObj = activity.activityEndDate?.toDate ? activity.activityEndDate.toDate() : null;
 
   let isPast = false;
   if (activity.status === 'completed') {
     isPast = true;
-  } else if (!isFlexible) {
-    const targetDate = activity.activityEndDate?.toDate 
-      ? activity.activityEndDate.toDate() 
-      : dateObj;
-    if (targetDate) {
-      isPast = targetDate.getTime() < Date.now();
-    }
-  } else {
-    const targetDate = activity.activityEndDate?.toDate 
-      ? activity.activityEndDate.toDate() 
-      : null;
-    if (targetDate) {
-      isPast = targetDate.getTime() < Date.now();
-    }
+  } else if (endDateObj) {
+    isPast = endDateObj.getTime() < Date.now();
+  } else if (isDateFlexible) {
+    isPast = false;
+  } else if (isTimeFlexible && dateObj) {
+    const endOfDay = new Date(dateObj);
+    endOfDay.setHours(23, 59, 59, 999);
+    isPast = endOfDay.getTime() < Date.now();
+  } else if (dateObj) {
+    isPast = dateObj.getTime() < Date.now();
   }
 
   const isCompleted = activity.status === 'completed' || isPast;

@@ -652,9 +652,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           return;
         }
+        const fullPath = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : pathname;
+        if (typeof window !== 'undefined' && window.sessionStorage && fullPath && (/^\/[^/]+/.test(fullPath) || fullPath === '/')) {
+          sessionStorage.setItem('postLoginRedirect', fullPath);
+        }
         console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
           source: "route guard - unauthenticated user",
-          target: "/login",
+          target: `/login?redirect=${encodeURIComponent(fullPath)}`,
           pathname,
           socialLegalConsentPending,
           sessionStoragePending: sessionStorage.getItem("aktiva:socialLegalConsentPending"),
@@ -662,7 +666,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           timestamp: Date.now()
         });
         
-        router.replace('/login');
+        router.replace(`/login?redirect=${encodeURIComponent(fullPath)}`);
     }
   }, [user, userProfile?.onboardingCompleted, dbProfile?.emailVerificationRequired, loading, isMounted, pathname, isPublicRoute, router, socialLegalConsentPending]);
 

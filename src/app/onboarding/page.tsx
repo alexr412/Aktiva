@@ -166,6 +166,21 @@ function OnboardingContent() {
   const router = useRouter();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
+
+  const getSanitizedRedirect = (clearSession = true): string | null => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const paramRedirect = params.get('redirect');
+    const sessionRedirect = window.sessionStorage ? sessionStorage.getItem('postLoginRedirect') : null;
+    const target = paramRedirect || sessionRedirect;
+    if (target && (/^\/[^/]+/.test(target) || target === '/')) {
+      if (clearSession && window.sessionStorage) {
+        sessionStorage.removeItem('postLoginRedirect');
+      }
+      return target;
+    }
+    return null;
+  };
   const [isUsernameChecking, setIsUsernameChecking] = useState(false);
   const [usernameAvailability, setUsernameAvailability] = useState<'available' | 'taken' | 'invalid' | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -202,7 +217,8 @@ function OnboardingContent() {
   useEffect(() => {
     if (userProfile) {
       if (userProfile.onboardingCompleted) {
-        router.replace('/');
+        const redirectTarget = getSanitizedRedirect(true);
+        router.replace(redirectTarget || '/');
       }
       
       const displayNameState = form.getFieldState('displayName');
@@ -645,7 +661,8 @@ function OnboardingContent() {
         title: language === 'de' ? "Willkommen!" : "Welcome!",
         description: language === 'de' ? "Dein Profil ist jetzt bereit." : "Your profile is now ready.",
       });
-      router.push('/');
+      const redirectTarget = getSanitizedRedirect(true);
+      router.push(redirectTarget || '/');
     } catch (error: any) {
       let errorMessage = error.message;
       if (error.code) {
