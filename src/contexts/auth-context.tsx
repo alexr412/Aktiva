@@ -348,7 +348,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
   const publicRoutes = ['/login', '/signup', '/terms', '/privacy', '/imprint', '/licenses', '/accessibility', '/cancellation'];
-  const isPublicRoute = publicRoutes.includes(pathname);
+  const isPublicInviteRoute = pathname ? (
+    /^\/activities\/[^/]+\/invite$/.test(pathname) ||
+    /^\/activity\/[^/]+\/invite$/.test(pathname)
+  ) : false;
+  const isPublicRoute = publicRoutes.includes(pathname) || isPublicInviteRoute;
 
   const legalPages = ['/terms', '/privacy', '/imprint', '/licenses', '/accessibility', '/cancellation'];
   const isLegalPage = legalPages.includes(pathname);
@@ -625,7 +629,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // AND we are not already on the onboarding page
         // AND we are not on the login/signup page (to prevent race conditions during OAuth check)
         // AND the user does not require email verification
-        if (user.emailVerified && dbProfile?.emailVerificationRequired !== true && userProfile.onboardingCompleted === false && !isInternalOnboarding && !isLoginPage && !isSignupPage && !isLegalPage) {
+        if (user.emailVerified && dbProfile?.emailVerificationRequired !== true && userProfile.onboardingCompleted === false && !isInternalOnboarding && !isLoginPage && !isSignupPage && !isLegalPage && !isPublicRoute) {
             console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
               source: "route guard - onboarding not completed",
               target: "/onboarding",
