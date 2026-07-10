@@ -1218,7 +1218,10 @@ export default function ChatRoomPage() {
         </div>
       </div>
 
-      <footer className="fixed bottom-[72px] left-0 right-0 z-10 mx-auto w-full max-w-3xl bg-white dark:bg-neutral-900 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.05)] border-t border-slate-200 dark:border-neutral-800 transition-colors">
+      <footer 
+        className="fixed left-0 right-0 z-10 mx-auto w-full max-w-3xl bg-white dark:bg-neutral-900 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.05)] border-t border-slate-200 dark:border-neutral-800 transition-colors"
+        style={{ bottom: 'max(env(safe-area-inset-bottom), 8px)' }}
+      >
         {/* Reply Preview */}
         {replyingToMessage && (
           <div className="px-4 py-2 bg-slate-50 dark:bg-neutral-800/50 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-150">
