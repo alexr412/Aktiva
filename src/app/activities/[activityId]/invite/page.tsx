@@ -31,9 +31,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     const isCancelled = activity.status === 'cancelled';
-    const isPast = activity.activityDate?.toDate
-      ? activity.activityDate.toDate().getTime() < Date.now()
-      : false;
+    const isTimeFlexible = !!activity.isTimeFlexible;
+    const isDateFlexible = !!activity.isDateFlexible;
+    const isFlexible = isTimeFlexible || isDateFlexible;
+
+    const dateObj = activity.activityDate?.toDate ? activity.activityDate.toDate() : null;
+
+    let isPast = false;
+    if (activity.status === 'completed') {
+      isPast = true;
+    } else if (!isFlexible) {
+      const targetDate = activity.activityEndDate?.toDate 
+        ? activity.activityEndDate.toDate() 
+        : dateObj;
+      if (targetDate) {
+        isPast = targetDate.getTime() < Date.now();
+      }
+    } else {
+      const targetDate = activity.activityEndDate?.toDate 
+        ? activity.activityEndDate.toDate() 
+        : null;
+      if (targetDate) {
+        isPast = targetDate.getTime() < Date.now();
+      }
+    }
+
     const isCompleted = activity.status === 'completed' || isPast;
 
     let statusPrefix = '';
@@ -45,12 +67,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const spotsLeft = (activity.maxParticipants || 0) - (activity.participantIds?.length || 0);
     const spotsStr = activity.maxParticipants ? `${spotsLeft} von ${activity.maxParticipants} Plätzen frei` : 'Plätze frei';
 
-    const dateObj = activity.activityDate?.toDate ? activity.activityDate.toDate() : null;
-    const dateStr = dateObj
-      ? dateObj.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-      : '';
+    let dateDisplayStr = '';
+    if (isDateFlexible) {
+      dateDisplayStr = 'Datum & Zeit flexibel';
+    } else if (isTimeFlexible) {
+      const dayStr = dateObj
+        ? dateObj.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })
+        : '';
+      dateDisplayStr = dayStr ? `${dayStr}. (Zeit flexibel)` : 'Zeit flexibel';
+    } else if (dateObj) {
+      const hours = String(dateObj.getHours()).padStart(2, '0');
+      const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+      const dayStr = dateObj.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+      dateDisplayStr = `${dayStr}. um ${hours}:${minutes} Uhr`;
+    } else {
+      dateDisplayStr = 'Zeitlich flexibel';
+    }
 
-    const description = `${dateStr} · ${activity.placeName || 'Ort'} · ${spotsStr} · Beitreten über Aktiva`;
+    const description = `${dateDisplayStr} · ${activity.placeName || 'Ort'} · ${spotsStr} · Beitreten über Aktiva`;
 
     const headerList = await headers();
     const host = headerList.get('host') || 'aktiva.app';
