@@ -304,25 +304,29 @@ export default async function ActivityInvitePage({ params, searchParams }: Props
           </div>
 
           {/* Host Profile Info */}
-          {activity.hostName && (
-            <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl mt-2">
-              {activity.hostPhotoURL ? (
-                <img 
-                  src={activity.hostPhotoURL} 
-                  alt="Host Avatar"
-                  className="h-10 w-10 rounded-full object-cover border border-white/20 shadow-sm"
-                />
-              ) : (
-                <div className="h-10 w-10 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/20 flex items-center justify-center font-black text-sm">
-                  {activity.hostName.charAt(0).toUpperCase()}
+          {(() => {
+            const hostUsernameRaw = activity.hostUsername || null;
+            const hostUsernameFormatted = hostUsernameRaw ? `@${hostUsernameRaw.replace(/^@/, '')}` : "Aktiva-Nutzer";
+            return (
+              <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl mt-2">
+                {activity.hostPhotoURL ? (
+                  <img 
+                    src={activity.hostPhotoURL} 
+                    alt="Host Avatar"
+                    className="h-10 w-10 rounded-full object-cover border border-white/20 shadow-sm"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/20 flex items-center justify-center font-black text-sm">
+                    {hostUsernameFormatted.replace(/^@/, '').charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Veranstaltet von</div>
+                  <div className="text-sm font-black text-white truncate">{hostUsernameFormatted}</div>
                 </div>
-              )}
-              <div className="min-w-0">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Veranstaltet von</div>
-                <div className="text-sm font-black text-white truncate">{activity.hostName}</div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Call to Action button */}
           <Link href={joinUrl} className="mt-4 w-full">

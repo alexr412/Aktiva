@@ -8,7 +8,7 @@ import { useLanguage } from '@/hooks/use-language';
 import {
   fetchUserActivities,
   joinActivity,
-  getPublicProfileClient,
+  getPublicProfileDirect,
   sendFriendRequest,
   cancelFriendRequest,
   removeFriend,
@@ -16,7 +16,7 @@ import {
   declineFriendRequest,
   getOrCreateDirectChat,
 } from '@/lib/firebase/firestore';
-import type { Activity, UserProfile } from '@/lib/types';
+import type { Activity, UserProfile, PublicUserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
@@ -51,7 +51,7 @@ export default function UserProfilePage() {
 
     const userId = params.userId as string;
 
-    const [userData, setUserData] = useState<UserProfile | null>(null);
+    const [userData, setUserData] = useState<PublicUserProfile | null>(null);
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFriendActionLoading, setIsFriendActionLoading] = useState(false);
@@ -115,34 +115,12 @@ export default function UserProfilePage() {
             setLoading(true);
             try {
                 const [profile, userActivities] = await Promise.all([
-                    getPublicProfileClient(userId),
+                    getPublicProfileDirect(userId),
                     fetchUserActivities(userId)
                 ]);
 
                 if (profile) {
-                    if (profile.isBanned) {
-                        setIsBlockedOrUnavailable(true);
-                        return;
-                    }
-
-                    // Explicit sanitization to completely strip private user fields before storing in local state
-                    const sanitized: UserProfile = {
-                        uid: profile.uid,
-                        displayName: profile.displayName,
-                        photoURL: profile.photoURL,
-                        age: profile.age,
-                        location: profile.location,
-                        bio: profile.bio,
-                        interests: profile.interests,
-                        isPremium: profile.isPremium,
-                        isSupporter: profile.isSupporter,
-                        isCreator: profile.isCreator,
-                        ratingCount: profile.ratingCount,
-                        averageRating: profile.averageRating,
-                        onboardingCompleted: profile.onboardingCompleted,
-                    } as UserProfile;
-
-                    setUserData(sanitized);
+                    setUserData(profile);
                     
                     const mappedActivities = (userActivities as Activity[]).map(act => ({
                         ...act,
@@ -395,7 +373,8 @@ export default function UserProfilePage() {
     };
 
     const photoUrlToDisplay = userData.photoURL || '';
-    const displayName = formatFirstName(userData.displayName, language === 'de' ? 'Anonymer Nutzer' : 'Anonymous User');
+    const usernameRaw = userData.username || null;
+    const displayName = usernameRaw ? `@${usernameRaw.trim().replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
     
     const isHostBlocked = (hostId: string) => {
         return userProfile?.blacklist?.hard?.includes(hostId) || userProfile?.blacklist?.soft?.includes(hostId);
@@ -476,7 +455,7 @@ export default function UserProfilePage() {
                  <h2 className="font-bold text-lg">{language === 'de' ? 'Interessen' : 'Interests'}</h2>
 
                 <div className="flex flex-wrap gap-2 items-center">
-                    {userData.interests.map(tag => (
+                    {userData.interests.map((tag: string) => (
                          <Badge key={tag} variant="secondary" className="text-base py-1 px-3">
                             {tag}
                         </Badge>

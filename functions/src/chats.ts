@@ -81,11 +81,17 @@ export const sendChatMessage = onCall(async (request) => {
       }
       const userData = userSnap.data()!;
 
+      const senderUsername = userData.username || null;
+      const userLanguage = userData.language || 'de';
+      const usernameFormatted = senderUsername ? `@${senderUsername.replace(/^@/, '')}` : (userLanguage === 'en' ? 'Aktiva user' : 'Aktiva-Nutzer');
+      const senderNameToUse = usernameFormatted;
+
       // 5. Create Message document
       const messagePayload: any = {
         text: text.trim(),
         senderId: uid,
-        senderName: userData.displayName || 'User',
+        senderName: senderNameToUse,
+        senderUsername: senderUsername,
         senderPhotoURL: userData.photoURL || null,
         sentAt: admin.firestore.FieldValue.serverTimestamp(),
         isPremium: userData.isPremium || false,
@@ -97,6 +103,7 @@ export const sendChatMessage = onCall(async (request) => {
         messagePayload.replyToId = replyToId;
         messagePayload.replyToText = replyToText || '';
         messagePayload.replyToSenderName = replyToSenderName || 'User';
+        messagePayload.replyToSenderUsername = (request.data as any).replyToSenderUsername || null;
       }
 
       transaction.set(messageRef, messagePayload);
@@ -105,7 +112,8 @@ export const sendChatMessage = onCall(async (request) => {
       const chatUpdates: any = {
         lastMessage: {
           text: text.trim(),
-          senderName: userData.displayName || 'User',
+          senderName: senderNameToUse,
+          senderUsername: senderUsername,
           sentAt: admin.firestore.FieldValue.serverTimestamp(),
         },
         lastActivityAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -168,14 +176,15 @@ export const onChatUpdated = onDocumentUpdated({
   // 1. Process joins
   for (const uid of joinedUsers) {
     const details = after.participantDetails?.[uid] || {};
-    const displayName = details.displayName || "User";
-    const formattedName = displayName.split(" ")[0] || "User";
+    const username = details.username || null;
+    const formattedName = username ? `@${username.replace(/^@/, '')}` : 'Aktiva-Nutzer';
     
     const msgRef = messagesRef.doc();
     batch.set(msgRef, {
       text: `${formattedName} ist beigetreten`,
       senderId: uid,
-      senderName: displayName,
+      senderName: formattedName,
+      senderUsername: username,
       senderPhotoURL: "system:join",
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
       isPremium: details.isPremium || false,
@@ -195,8 +204,8 @@ export const onChatUpdated = onDocumentUpdated({
   // 2. Process leaves
   for (const uid of leftUsers) {
     const details = before.participantDetails?.[uid] || {};
-    const displayName = details.displayName || "User";
-    const formattedName = displayName.split(" ")[0] || "User";
+    const username = details.username || null;
+    const formattedName = username ? `@${username.replace(/^@/, '')}` : 'Aktiva-Nutzer';
 
     // Determine message text (check if user still exists in activity participants to differentiate leave vs remove)
     let text = `${formattedName} hat die Aktivität verlassen`;
@@ -216,7 +225,8 @@ export const onChatUpdated = onDocumentUpdated({
     batch.set(msgRef, {
       text,
       senderId: uid,
-      senderName: displayName,
+      senderName: formattedName,
+      senderUsername: username,
       senderPhotoURL: "system:leave",
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
       isPremium: details.isPremium || false,

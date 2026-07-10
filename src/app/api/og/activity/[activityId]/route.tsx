@@ -65,7 +65,8 @@ export async function GET(
     const placeName = String(activity.placeName || 'Aktiva').substring(0, 80);
     const city = activity.city ? String(activity.city).substring(0, 50) : '';
     const place = city ? `${placeName}, ${city}` : placeName;
-    const hostName = activity.hostName ? String(activity.hostName).substring(0, 40) : '';
+    const hostUsernameRaw = activity.hostUsername ? String(activity.hostUsername) : '';
+    const hostName = hostUsernameRaw ? `@${hostUsernameRaw.replace(/^@/, '')}` : 'Aktiva-Nutzer';
     const category = String(activity.category || 'Sonstiges').toUpperCase();
 
     // Normalizing Date
@@ -264,7 +265,7 @@ export async function GET(
                     fontSize: '18px',
                   }}
                 >
-                  {hostName.substring(0, 1).toUpperCase()}
+                  {hostName.replace(/^@/, '').substring(0, 1).toUpperCase()}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>HOST</span>

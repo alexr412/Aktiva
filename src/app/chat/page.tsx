@@ -120,6 +120,7 @@ export default function ChatPage() {
           const isDM = !chat.activityId;
           let otherUser: { 
             displayName: string | null; 
+            username?: string | null;
             photoURL: string | null; 
             isPremium?: boolean;
             isCreator?: boolean;
@@ -133,9 +134,10 @@ export default function ChatPage() {
               const otherUserId = chat.participantIds.find(id => id !== user.uid);
               if (otherUserId && chat.participantDetails) {
                   otherUser = chat.participantDetails[otherUserId];
-                  chatName = formatFirstName(otherUser?.displayName, 'Chat');
+                  const otherUsername = otherUser?.username || null;
+                  chatName = otherUsername ? `@${otherUsername.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
                   avatarUrl = otherUser?.photoURL || undefined;
-                  avatarFallback = otherUser?.displayName?.charAt(0).toUpperCase() || 'U';
+                  avatarFallback = chatName.replace(/^@/, '').charAt(0).toUpperCase() || 'U';
               }
           }
 

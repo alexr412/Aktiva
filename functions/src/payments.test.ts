@@ -897,7 +897,7 @@ async function testSecureLeaveActivity() {
 
   // Test Case D: host leaving own activity (host transfer)
   mockDbState["users"] = {
-    user2: { displayName: "User 2 New Host", photoURL: "http://photo.url" }
+    user2: { displayName: "User 2 New Host", username: "user2_un", photoURL: "http://photo.url" }
   };
   mockDbState["chats"] = {
     act1: { participantIds: ["host1", "user2"], participantDetails: { host1: {}, user2: {} } }
@@ -908,10 +908,10 @@ async function testSecureLeaveActivity() {
   );
   assert.deepStrictEqual(hostLeaveResult, { success: true });
   assert.strictEqual(mockDbState["activities"]["act1"].hostId, "user2");
-  assert.strictEqual(mockDbState["activities"]["act1"].hostName, "User 2 New Host");
+  assert.strictEqual(mockDbState["activities"]["act1"].hostName, "@user2_un");
   assert.strictEqual(mockDbState["activities"]["act1"].hostPhotoURL, "http://photo.url");
   assert.strictEqual(mockDbState["chats"]["act1"].hostId, "user2");
-  assert.strictEqual(mockDbState["chats"]["act1"].hostName, "User 2 New Host");
+  assert.strictEqual(mockDbState["chats"]["act1"].hostName, "@user2_un");
   assert.strictEqual(mockDbState["chats"]["act1"].hostPhotoURL, "http://photo.url");
 
   // Test Case E: free activity leave path

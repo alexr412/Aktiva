@@ -246,9 +246,9 @@ async function testSendChatMessage() {
       actArchived: { status: "completed" }
     };
     mockDbState["users"] = {
-      alice: { displayName: "Alice", photoURL: "alice.jpg", isPremium: true, isSupporter: false, isCreator: false },
-      bob: { displayName: "Bob", photoURL: "bob.jpg", isPremium: false, isSupporter: true, isCreator: true },
-      charlie: { displayName: "Charlie", photoURL: "charlie.jpg", isPremium: false, isSupporter: false, isCreator: false }
+      alice: { displayName: "Alice", username: "alice_un", photoURL: "alice.jpg", isPremium: true, isSupporter: false, isCreator: false },
+      bob: { displayName: "Bob", username: "bob_un", photoURL: "bob.jpg", isPremium: false, isSupporter: true, isCreator: true },
+      charlie: { displayName: "Charlie", username: "charlie_un", photoURL: "charlie.jpg", isPremium: false, isSupporter: false, isCreator: false }
     };
   };
 
@@ -283,7 +283,7 @@ async function testSendChatMessage() {
   assert.ok(msgDoc);
   assert.strictEqual(msgDoc.text, "Hello Bob");
   assert.strictEqual(msgDoc.senderId, "alice");
-  assert.strictEqual(msgDoc.senderName, "Alice");
+  assert.strictEqual(msgDoc.senderName, "@alice_un");
   assert.strictEqual(msgDoc.isPremium, true);
 
   // Verify chat lastMessage & unreadCount updates
@@ -337,7 +337,7 @@ async function testOnChatUpdatedTrigger() {
           activityId: "chat1",
           participantIds: ["alice"],
           participantDetails: {
-            alice: { displayName: "Alice", photoURL: "alice.jpg", isPremium: true }
+            alice: { displayName: "Alice", username: "alice_un", photoURL: "alice.jpg", isPremium: true }
           }
         })
       },
@@ -346,8 +346,8 @@ async function testOnChatUpdatedTrigger() {
           activityId: "chat1",
           participantIds: ["alice", "bob"],
           participantDetails: {
-            alice: { displayName: "Alice", photoURL: "alice.jpg", isPremium: true },
-            bob: { displayName: "Bob", photoURL: "bob.jpg", isPremium: false, isSupporter: true }
+            alice: { displayName: "Alice", username: "alice_un", photoURL: "alice.jpg", isPremium: true },
+            bob: { displayName: "Bob", username: "bob_un", photoURL: "bob.jpg", isPremium: false, isSupporter: true }
           }
         })
       }
@@ -364,14 +364,14 @@ async function testOnChatUpdatedTrigger() {
   const msgKeys = Object.keys(messages);
   assert.strictEqual(msgKeys.length, 1);
   const joinMsg = messages[msgKeys[0]];
-  assert.strictEqual(joinMsg.text, "Bob ist beigetreten");
+  assert.strictEqual(joinMsg.text, "@bob_un ist beigetreten");
   assert.strictEqual(joinMsg.senderId, "bob");
   assert.strictEqual(joinMsg.senderPhotoURL, "system:join");
   assert.strictEqual(joinMsg.isSupporter, true);
 
   // Assert chat metadata was updated
   const chatDoc = mockDbState["chats"]["chat1"];
-  assert.strictEqual(chatDoc.lastMessage.text, "Bob ist beigetreten");
+  assert.strictEqual(chatDoc.lastMessage.text, "@bob_un ist beigetreten");
   assert.strictEqual(chatDoc.lastMessage.senderName, "System");
 
   // 2. Test Leave Trigger (normal leave)
@@ -383,8 +383,8 @@ async function testOnChatUpdatedTrigger() {
           activityId: "chat1",
           participantIds: ["alice", "bob"],
           participantDetails: {
-            alice: { displayName: "Alice", photoURL: "alice.jpg", isPremium: true },
-            bob: { displayName: "Bob", photoURL: "bob.jpg", isPremium: false, isSupporter: true }
+            alice: { displayName: "Alice", username: "alice_un", photoURL: "alice.jpg", isPremium: true },
+            bob: { displayName: "Bob", username: "bob_un", photoURL: "bob.jpg", isPremium: false, isSupporter: true }
           }
         })
       },
@@ -393,7 +393,7 @@ async function testOnChatUpdatedTrigger() {
           activityId: "chat1",
           participantIds: ["alice"],
           participantDetails: {
-            alice: { displayName: "Alice", photoURL: "alice.jpg", isPremium: true }
+            alice: { displayName: "Alice", username: "alice_un", photoURL: "alice.jpg", isPremium: true }
           }
         })
       }
@@ -409,7 +409,7 @@ async function testOnChatUpdatedTrigger() {
   const msgKeysLeave = Object.keys(messagesLeave);
   assert.strictEqual(msgKeysLeave.length, 1);
   const leaveMsg = messagesLeave[msgKeysLeave[0]];
-  assert.strictEqual(leaveMsg.text, "Bob hat die Aktivität verlassen");
+  assert.strictEqual(leaveMsg.text, "@bob_un hat die Aktivität verlassen");
   assert.strictEqual(leaveMsg.senderId, "bob");
   assert.strictEqual(leaveMsg.senderPhotoURL, "system:leave");
 
@@ -424,7 +424,7 @@ async function testOnChatUpdatedTrigger() {
   const msgKeysCleanup = Object.keys(messagesCleanup);
   assert.strictEqual(msgKeysCleanup.length, 1);
   const cleanupMsg = messagesCleanup[msgKeysCleanup[0]];
-  assert.strictEqual(cleanupMsg.text, "Bob hat den Chat verlassen");
+  assert.strictEqual(cleanupMsg.text, "@bob_un hat den Chat verlassen");
   assert.strictEqual(cleanupMsg.senderId, "bob");
   assert.strictEqual(cleanupMsg.senderPhotoURL, "system:leave");
 

@@ -298,12 +298,13 @@ exports.notifyNearbyUsers = (0, firestore_1.onDocumentCreated)({
                 }
             });
             if (tokens.length > 0) {
-                const hostName = activity.hostName || activity.creatorName || "Ein Nutzer";
+                const hostUsernameRaw = activity.hostUsername || null;
+                const hostUsernameFormatted = hostUsernameRaw ? `@${hostUsernameRaw.replace(/^@/, '')}` : "Ein Nutzer";
                 const placeName = activity.placeName || activity.title || "ein Highlight";
                 const message = {
                     notification: {
                         title: "🔥 Hot in deiner Nähe!",
-                        body: `${hostName} hat gerade ein Highlight gestartet: "${placeName}".`,
+                        body: `${hostUsernameFormatted} hat gerade ein Highlight gestartet: "${placeName}".`,
                     },
                     data: {
                         activityId: activityId,
@@ -388,18 +389,19 @@ exports.notifyNearbyUsers = (0, firestore_1.onDocumentCreated)({
                 const friendsToNotifyFinal = checks.filter((c) => c !== null);
                 if (friendsToNotifyFinal.length > 0) {
                     const friendPushTokens = [];
-                    const hostName = hostProfile.displayName || "Ein Freund";
-                    const hostFirstName = formatFirstName(hostName);
+                    const hostUsername = hostProfile.username || null;
+                    const hostUsernameFormatted = hostUsername ? `@${hostUsername.replace(/^@/, '')}` : "Ein Freund";
                     const activityTitle = activity.title || activity.placeName || "eine Aktivität";
-                    const messageText = `${hostFirstName} plant gerade "${activityTitle}" in deiner Nähe.`;
+                    const messageText = `${hostUsernameFormatted} plant gerade "${activityTitle}" in deiner Nähe.`;
                     const batch = db.batch();
                     for (const f of friendsToNotifyFinal) {
                         batch.set(f.notifRef, {
                             recipientId: f.friendId,
                             senderId: hostId,
-                            senderName: hostProfile.displayName || "Ein Freund",
+                            senderName: hostUsernameFormatted,
                             senderProfile: {
-                                displayName: hostProfile.displayName || "Ein Freund",
+                                displayName: hostUsernameFormatted,
+                                username: hostUsername,
                                 photoURL: hostProfile.photoURL || null
                             },
                             type: 'friend_nearby_activity',
@@ -512,7 +514,10 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                 if (activity.maxParticipants && participantIds.length >= activity.maxParticipants) {
                     throw new https_1.HttpsError('resource-exhausted', 'This activity has reached its maximum participants limit.');
                 }
-                const displayNameToUse = userProfile.displayName || "User";
+                const userLanguage = userProfile.language || 'de';
+                const userUsername = userProfile.username || null;
+                const usernameFormatted = userUsername ? `@${userUsername.replace(/^@/, '')}` : (userLanguage === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
+                const displayNameToUse = usernameFormatted;
                 const photoURLToUse = userProfile.photoURL || null;
                 // Update activity
                 transaction.update(activityRef, {
@@ -520,6 +525,7 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                     lastInteractionAt: firestore_2.FieldValue.serverTimestamp(),
                     [`participantDetails.${userIdToJoin}`]: {
                         displayName: displayNameToUse,
+                        username: userUsername,
                         photoURL: photoURLToUse,
                         isPremium: userProfile.isPremium || false,
                         isSupporter: userProfile.isSupporter || false,
@@ -534,6 +540,7 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                         participantsPreview: firestore_2.FieldValue.arrayUnion({
                             uid: userIdToJoin,
                             displayName: displayNameToUse,
+                            username: userUsername,
                             photoURL: photoURLToUse
                         })
                     });
@@ -544,6 +551,7 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                     participantIds: firestore_2.FieldValue.arrayUnion(userIdToJoin),
                     [`participantDetails.${userIdToJoin}`]: {
                         displayName: displayNameToUse,
+                        username: userUsername,
                         photoURL: photoURLToUse,
                         isPremium: userProfile.isPremium || false,
                         isSupporter: userProfile.isSupporter || false,
@@ -696,19 +704,21 @@ exports.secureRequestJoinActivity = (0, https_1.onCall)(async (request) => {
                     return { success: true, status: 'already_requested' };
                 }
             }
-            const displayNameToUse = requesterData.displayName || 'User';
+            const requesterUsername = requesterData.username || null;
+            const usernameFormatted = requesterUsername ? `@${requesterUsername.replace(/^@/, '')}` : 'Aktiva-Nutzer';
             const photoURLToUse = requesterData.photoURL || null;
             transaction.set(notificationRef, {
                 recipientId: hostId,
                 senderId: requesterId,
-                senderName: displayNameToUse,
+                senderName: usernameFormatted,
                 senderProfile: {
-                    displayName: displayNameToUse,
+                    displayName: usernameFormatted,
+                    username: requesterUsername,
                     photoURL: photoURLToUse
                 },
                 type: 'join_request',
                 title: 'Neue Beitrittsanfrage',
-                message: message || `${displayNameToUse} möchte an deiner Aktivität "${activity.placeName || 'Treffen'}" teilnehmen.`,
+                message: message || `${usernameFormatted} möchte an deiner Aktivität "${activity.placeName || 'Treffen'}" teilnehmen.`,
                 isRead: false,
                 createdAt: firestore_2.FieldValue.serverTimestamp(),
                 activityId,

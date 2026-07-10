@@ -72,7 +72,7 @@ export default function CommunityPage() {
             await sendFriendRequest(user.uid, foundUser.uid);
             toast({
                 title: language === 'de' ? 'Freundschaftsanfrage gesendet!' : 'Friend Request Sent!',
-                description: language === 'de' ? `Deine Anfrage wurde an ${formatFirstName(foundUser.displayName, 'User')} gesendet.` : `Your request has been sent to ${formatFirstName(foundUser.displayName, 'User')}.`,
+                description: language === 'de' ? `Deine Anfrage wurde an ${foundUser.username ? `@${foundUser.username.replace(/^@/, '')}` : 'Aktiva-Nutzer'} gesendet.` : `Your request has been sent to ${foundUser.username ? `@${foundUser.username.replace(/^@/, '')}` : 'Aktiva user'}.`,
             });
         } catch (error: any) {
             setRequestSent(false);
@@ -133,7 +133,7 @@ export default function CommunityPage() {
                                             isCreator={foundUser.isCreator}
                                             isSupporter={foundUser.isSupporter}
                                         />
-                                        <div className="font-bold truncate">{formatFirstName(foundUser.displayName, "User")}</div>
+                                        <div className="font-bold truncate">{foundUser.username ? `@${foundUser.username.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')}</div>
                                     </Link>
                                     
                                     {isSelf ? (

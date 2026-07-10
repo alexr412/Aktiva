@@ -274,7 +274,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
                     <div className="flex items-center gap-1.5 flex-1 min-w-0">
                         <Users className="h-3 w-3 text-slate-300 shrink-0" />
                         <span className="text-[9px] text-slate-400 font-bold uppercase truncate flex items-center gap-1">
-                            {language === 'de' ? 'Veranstalter:' : 'Host:'} {formatFirstName(activity.hostName, "User")}
+                            {language === 'de' ? 'Veranstalter:' : 'Host:'} {activity.hostUsername ? `@${activity.hostUsername.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')}
                             {activity.participantDetails?.[activity.hostId] && (
                               <UserBadge
                                 isPremium={activity.participantDetails[activity.hostId].isPremium}

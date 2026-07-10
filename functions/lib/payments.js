@@ -930,13 +930,17 @@ exports.secureLeaveActivity = (0, https_1.onCall)(async (request) => {
                 // More participants remain -> remove current user
                 const updatedPreview = (activityData.participantsPreview || []).filter((p) => p.uid !== uid);
                 let newHostName = null;
+                let newHostUsername = null;
                 let newHostPhotoURL = null;
                 if (hostTransferTo) {
                     const newHostRef = db.collection("users").doc(hostTransferTo);
                     const newHostSnap = await transaction.get(newHostRef);
                     if (newHostSnap.exists) {
                         const newHostData = newHostSnap.data() || {};
-                        newHostName = newHostData.displayName || "Teilnehmer";
+                        newHostUsername = newHostData.username || null;
+                        newHostName = newHostData.username
+                            ? `@${newHostData.username.replace(/^@/, '')}`
+                            : "Teilnehmer";
                         newHostPhotoURL = newHostData.photoURL || null;
                     }
                 }
@@ -949,6 +953,7 @@ exports.secureLeaveActivity = (0, https_1.onCall)(async (request) => {
                 if (hostTransferTo) {
                     activityUpdate.hostId = hostTransferTo;
                     activityUpdate.hostName = newHostName;
+                    activityUpdate.hostUsername = newHostUsername;
                     activityUpdate.hostPhotoURL = newHostPhotoURL;
                 }
                 transaction.update(activityRef, activityUpdate);
@@ -963,6 +968,7 @@ exports.secureLeaveActivity = (0, https_1.onCall)(async (request) => {
                 if (hostTransferTo) {
                     chatUpdate.hostId = hostTransferTo;
                     chatUpdate.hostName = newHostName;
+                    chatUpdate.hostUsername = newHostUsername;
                     chatUpdate.hostPhotoURL = newHostPhotoURL;
                 }
                 transaction.update(chatRef, chatUpdate);

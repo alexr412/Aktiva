@@ -1086,6 +1086,7 @@ export const secureLeaveActivity = onCall(async (request) => {
         const updatedPreview = (activityData.participantsPreview || []).filter((p: any) => p.uid !== uid);
 
         let newHostName = null;
+        let newHostUsername = null;
         let newHostPhotoURL = null;
 
         if (hostTransferTo) {
@@ -1093,7 +1094,10 @@ export const secureLeaveActivity = onCall(async (request) => {
           const newHostSnap = await transaction.get(newHostRef);
           if (newHostSnap.exists) {
             const newHostData = newHostSnap.data() || {};
-            newHostName = newHostData.displayName || "Teilnehmer";
+            newHostUsername = newHostData.username || null;
+            newHostName = newHostData.username 
+              ? `@${newHostData.username.replace(/^@/, '')}`
+              : "Teilnehmer";
             newHostPhotoURL = newHostData.photoURL || null;
           }
         }
@@ -1108,6 +1112,7 @@ export const secureLeaveActivity = onCall(async (request) => {
         if (hostTransferTo) {
           activityUpdate.hostId = hostTransferTo;
           activityUpdate.hostName = newHostName;
+          activityUpdate.hostUsername = newHostUsername;
           activityUpdate.hostPhotoURL = newHostPhotoURL;
         }
 
@@ -1126,6 +1131,7 @@ export const secureLeaveActivity = onCall(async (request) => {
         if (hostTransferTo) {
           chatUpdate.hostId = hostTransferTo;
           chatUpdate.hostName = newHostName;
+          chatUpdate.hostUsername = newHostUsername;
           chatUpdate.hostPhotoURL = newHostPhotoURL;
         }
 

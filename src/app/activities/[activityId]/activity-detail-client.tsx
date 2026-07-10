@@ -442,11 +442,15 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   isSupporter={activity.participantDetails?.[activity.hostId]?.isSupporter}
                 >
                   <AvatarImage src={activity.hostPhotoURL || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary font-black">{activity.hostName?.charAt(0)}</AvatarFallback>
+                  <AvatarFallback className="bg-primary/10 text-primary font-black">
+                    {(activity.hostUsername || 'A').replace(/^@/, '').charAt(0).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-1">
-                    <p className="font-black text-slate-900 text-sm leading-none">{formatFirstName(activity.hostName, 'Host')}</p>
+                    <p className="font-black text-slate-900 text-sm leading-none">
+                      {activity.hostUsername ? `@${activity.hostUsername.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')}
+                    </p>
                     <UserBadge isPremium={activity.participantDetails?.[activity.hostId]?.isPremium} size="sm" />
                   </div>
                   <p className="text-[9px] font-bold text-slate-400 uppercase mt-1 leading-none">{language === 'de' ? 'Veranstalter' : 'Host'}</p>
@@ -489,7 +493,8 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
             <ul className="space-y-3">
               {activity.participantIds.map((uid) => {
                 const details = activity.participantDetails?.[uid];
-                const displayName = details?.displayName || (uid === activity.hostId ? activity.hostName : null) || (language === 'de' ? 'Entdecker' : 'Explorer');
+                const participantUsername = details?.username || (uid === activity.hostId ? activity.hostUsername : null) || null;
+                const displayName = participantUsername ? `@${participantUsername.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
                 const photoURL = details?.photoURL || (uid === activity.hostId ? activity.hostPhotoURL : null);
                 const isHostUser = uid === activity.hostId;
                 

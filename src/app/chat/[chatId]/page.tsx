@@ -29,7 +29,7 @@ import { ArrowLeft, Send, MoreVertical, Loader2, Users, Info, Reply, Edit3, Pin,
 import { CompletionBanner } from '@/components/aktiva/CompletionBanner';
 import { MultiPeerReviewDialog } from '@/components/aktiva/multi-peer-review-dialog';
 import { UserBadge } from '@/components/common/UserBadge';
-import { cn, formatFirstName } from '@/lib/utils';
+import { cn, formatFirstName, resolvePublicUsername } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,7 +109,13 @@ const MessageBubble = ({
   const isSystemMessage = isSystemJoin || isSystemLeave;
 
   if (isSystemMessage) {
-    const formattedName = formatFirstName(message.senderName, language === 'de' ? 'Ein Nutzer' : 'A user');
+    const resolvedUsername = resolvePublicUsername({
+      uid: message.senderId,
+      participantDetails,
+      currentUserProfile,
+      language: language === 'en' ? 'en' : 'de'
+    });
+    const formattedName = resolvedUsername;
     const systemText = isSystemJoin
       ? (language === 'de' 
           ? `${formattedName} ist der Aktivität beigetreten` 
@@ -159,7 +165,12 @@ const MessageBubble = ({
             className="flex items-center gap-1 mb-1 mx-1 hover:opacity-80 transition-opacity cursor-pointer group h-4"
           >
             <span className={cn("text-[10px] font-black uppercase tracking-wider group-hover:underline leading-none flex items-center", getColorForUser(message.senderId))}>
-              {formatFirstName(message.senderName, "User")}
+              {resolvePublicUsername({
+                uid: message.senderId,
+                participantDetails,
+                currentUserProfile,
+                language: language === 'en' ? 'en' : 'de'
+              })}
             </span>
             <UserBadge isPremium={badgePremium} isSupporter={badgeSupporter} isCreator={badgeCreator} size="sm" />
           </Link>
@@ -186,7 +197,13 @@ const MessageBubble = ({
                 : "border-primary text-slate-700 dark:text-neutral-305"
             )}>
               <div className="font-black uppercase tracking-wider text-[9px] mb-0.5 opacity-80">
-                {message.replyToSenderName}
+                {message.replyToSenderUsername 
+                  ? `@${message.replyToSenderUsername.replace(/^@/, '')}` 
+                  : (message.replyToSenderName && message.replyToSenderName.startsWith('@')
+                      ? message.replyToSenderName
+                      : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')
+                    )
+                }
               </div>
               <div className="italic truncate">{message.replyToText}</div>
             </div>
@@ -828,7 +845,7 @@ export default function ChatRoomPage() {
   const handlePinMessage = async (msg: Message) => {
     setActiveMenuMessageId(null);
     try {
-      await pinMessage(chatId, msg.id, msg.text, msg.senderName || "Anonymer Nutzer");
+      await pinMessage(chatId, msg.id, msg.text, msg.senderName || "Anonymer Nutzer", msg.senderUsername || null);
       toast({
         title: language === 'de' ? 'Nachricht angepinnt' : 'Message pinned',
         description: language === 'de' ? 'Die Nachricht wurde oben angepinnt.' : 'The message was pinned at the top.'
@@ -1125,7 +1142,16 @@ export default function ChatRoomPage() {
                   {language === 'de' ? 'Angepinnte Nachricht' : 'Pinned Message'}
                 </span>
                 <span className="block text-xs text-slate-850 dark:text-neutral-250 truncate font-semibold">
-                  <strong>{formatFirstName(chat.pinnedMessages[chat.pinnedMessages.length - 1].senderName, "User")}:</strong> {chat.pinnedMessages[chat.pinnedMessages.length - 1].text}
+                  <strong>{(() => {
+                    const pinnedMsg = chat.pinnedMessages[chat.pinnedMessages.length - 1];
+                    const pinnedUsername = pinnedMsg.senderUsername || null;
+                    return pinnedUsername 
+                      ? `@${pinnedUsername.replace(/^@/, '')}` 
+                      : (pinnedMsg.senderName && pinnedMsg.senderName.startsWith('@')
+                          ? pinnedMsg.senderName
+                          : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')
+                        );
+                  })()}:</strong> {chat.pinnedMessages[chat.pinnedMessages.length - 1].text}
                 </span>
               </div>
             </div>
@@ -1227,7 +1253,15 @@ export default function ChatRoomPage() {
           <div className="px-4 py-2 bg-slate-50 dark:bg-neutral-800/50 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-150">
             <div className="flex-1 min-w-0 border-l-4 border-primary pl-2.5">
               <span className="block text-[9px] font-black uppercase text-primary tracking-wider truncate">
-                {language === 'de' ? 'Antworten auf' : 'Replying to'} {formatFirstName(replyingToMessage.senderName, "User")}
+                {language === 'de' ? 'Antworten auf' : 'Replying to'} {(() => {
+                  const replyUsername = replyingToMessage.senderUsername || null;
+                  return replyUsername 
+                    ? `@${replyUsername.replace(/^@/, '')}` 
+                    : (replyingToMessage.senderName && replyingToMessage.senderName.startsWith('@')
+                        ? replyingToMessage.senderName
+                        : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')
+                      );
+                })()}
               </span>
               <span className="block text-xs text-slate-500 dark:text-neutral-400 truncate">
                 {replyingToMessage.text}

@@ -86,7 +86,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       ? `Die Aktivität bei ${activity.placeName || 'uns'} am ${dateStr} wurde abgesagt.`
       : isCompleted
       ? `Diese Aktivität bei ${activity.placeName || 'uns'} fand am ${dateStr} statt.`
-      : `Wird veranstaltet von ${activity.hostName || 'einem Entdecker'}. Sei dabei am ${dateStr}!`;
+      : `Wird veranstaltet von ${activity.hostUsername ? `@${activity.hostUsername.replace(/^@/, '')}` : 'einem Entdecker'}. Sei dabei am ${dateStr}!`;
 
     return {
       title,

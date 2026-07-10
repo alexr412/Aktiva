@@ -223,7 +223,7 @@ function OnboardingContent() {
       
       const displayNameState = form.getFieldState('displayName');
       if (!displayNameState.isDirty && !form.getValues('displayName') && (userProfile.displayName || userProfile.username)) {
-        form.setValue('displayName', userProfile.displayName || userProfile.username);
+        form.setValue('displayName', userProfile.displayName || userProfile.username || '');
       }
 
       const birthDateState = form.getFieldState('birthDate');

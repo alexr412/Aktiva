@@ -334,12 +334,13 @@ export const notifyNearbyUsers = onDocumentCreated({
       });
 
       if (tokens.length > 0) {
-        const hostName = activity.hostName || activity.creatorName || "Ein Nutzer";
+        const hostUsernameRaw = activity.hostUsername || null;
+        const hostUsernameFormatted = hostUsernameRaw ? `@${hostUsernameRaw.replace(/^@/, '')}` : "Ein Nutzer";
         const placeName = activity.placeName || activity.title || "ein Highlight";
         const message = {
           notification: {
             title: "🔥 Hot in deiner Nähe!",
-            body: `${hostName} hat gerade ein Highlight gestartet: "${placeName}".`,
+            body: `${hostUsernameFormatted} hat gerade ein Highlight gestartet: "${placeName}".`,
           },
           data: {
             activityId: activityId,
@@ -441,19 +442,20 @@ export const notifyNearbyUsers = onDocumentCreated({
 
         if (friendsToNotifyFinal.length > 0) {
           const friendPushTokens: string[] = [];
-          const hostName = hostProfile.displayName || "Ein Freund";
-          const hostFirstName = formatFirstName(hostName);
+          const hostUsername = hostProfile.username || null;
+          const hostUsernameFormatted = hostUsername ? `@${hostUsername.replace(/^@/, '')}` : "Ein Freund";
           const activityTitle = activity.title || activity.placeName || "eine Aktivität";
-          const messageText = `${hostFirstName} plant gerade "${activityTitle}" in deiner Nähe.`;
+          const messageText = `${hostUsernameFormatted} plant gerade "${activityTitle}" in deiner Nähe.`;
 
           const batch = db.batch();
           for (const f of friendsToNotifyFinal) {
             batch.set(f.notifRef, {
               recipientId: f.friendId,
               senderId: hostId,
-              senderName: hostProfile.displayName || "Ein Freund",
+              senderName: hostUsernameFormatted,
               senderProfile: {
-                displayName: hostProfile.displayName || "Ein Freund",
+                displayName: hostUsernameFormatted,
+                username: hostUsername,
                 photoURL: hostProfile.photoURL || null
               },
               type: 'friend_nearby_activity',
@@ -583,7 +585,10 @@ export const respondToJoinRequest = onCall(async (request) => {
           throw new HttpsError('resource-exhausted', 'This activity has reached its maximum participants limit.');
         }
 
-        const displayNameToUse = userProfile.displayName || "User";
+        const userLanguage = userProfile.language || 'de';
+        const userUsername = userProfile.username || null;
+        const usernameFormatted = userUsername ? `@${userUsername.replace(/^@/, '')}` : (userLanguage === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
+        const displayNameToUse = usernameFormatted;
         const photoURLToUse = userProfile.photoURL || null;
 
         // Update activity
@@ -592,6 +597,7 @@ export const respondToJoinRequest = onCall(async (request) => {
           lastInteractionAt: FieldValue.serverTimestamp(),
           [`participantDetails.${userIdToJoin}`]: {
             displayName: displayNameToUse,
+            username: userUsername,
             photoURL: photoURLToUse,
             isPremium: userProfile.isPremium || false,
             isSupporter: userProfile.isSupporter || false,
@@ -607,6 +613,7 @@ export const respondToJoinRequest = onCall(async (request) => {
             participantsPreview: FieldValue.arrayUnion({
               uid: userIdToJoin,
               displayName: displayNameToUse,
+              username: userUsername,
               photoURL: photoURLToUse
             })
           });
@@ -618,6 +625,7 @@ export const respondToJoinRequest = onCall(async (request) => {
           participantIds: FieldValue.arrayUnion(userIdToJoin),
           [`participantDetails.${userIdToJoin}`]: {
             displayName: displayNameToUse,
+            username: userUsername,
             photoURL: photoURLToUse,
             isPremium: userProfile.isPremium || false,
             isSupporter: userProfile.isSupporter || false,
@@ -797,20 +805,22 @@ export const secureRequestJoinActivity = onCall(async (request) => {
         }
       }
 
-      const displayNameToUse = requesterData.displayName || 'User';
+      const requesterUsername = requesterData.username || null;
+      const usernameFormatted = requesterUsername ? `@${requesterUsername.replace(/^@/, '')}` : 'Aktiva-Nutzer';
       const photoURLToUse = requesterData.photoURL || null;
 
       transaction.set(notificationRef, {
         recipientId: hostId,
         senderId: requesterId,
-        senderName: displayNameToUse,
+        senderName: usernameFormatted,
         senderProfile: {
-          displayName: displayNameToUse,
+          displayName: usernameFormatted,
+          username: requesterUsername,
           photoURL: photoURLToUse
         },
         type: 'join_request',
         title: 'Neue Beitrittsanfrage',
-        message: message || `${displayNameToUse} möchte an deiner Aktivität "${activity.placeName || 'Treffen'}" teilnehmen.`,
+        message: message || `${usernameFormatted} möchte an deiner Aktivität "${activity.placeName || 'Treffen'}" teilnehmen.`,
         isRead: false,
         createdAt: FieldValue.serverTimestamp(),
         activityId,

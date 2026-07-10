@@ -1,4 +1,4 @@
-const { initializeApp, getApps } = require('firebase/app');
+const { initializeApp } = require('firebase/app');
 const { getFirestore, doc, getDoc } = require('firebase/firestore');
 require('dotenv').config();
 
@@ -15,18 +15,11 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 async function checkDoc() {
-  const docRef1 = doc(db, 'activities', 'FROS2L5HyZmAm64OPc1I');
-  const snap1 = await getDoc(docRef1);
-  console.log('Document FROS2L5HyZmAm64OPc1I (with O) exists:', snap1.exists());
-  if (snap1.exists()) {
-    console.log('Data (with O):', snap1.data());
-  }
-
-  const docRef2 = doc(db, 'activities', 'FROS2L5HyZmAm640Pc1I');
-  const snap2 = await getDoc(docRef2);
-  console.log('Document FROS2L5HyZmAm640Pc1I (with zero) exists:', snap2.exists());
-  if (snap2.exists()) {
-    console.log('Data (with zero):', snap2.data());
+  const docRef = doc(db, 'activities', 'xBwEk2JS9WuqC1dmCG5d');
+  const snap = await getDoc(docRef);
+  console.log('Document xBwEk2JS9WuqC1dmCG5d exists:', snap.exists());
+  if (snap.exists()) {
+    console.log('Data:', snap.data());
   }
 }
 

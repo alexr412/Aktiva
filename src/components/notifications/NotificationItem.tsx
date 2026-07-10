@@ -129,12 +129,28 @@ export function NotificationItem({ notification, onAction }: NotificationItemPro
                     <p className="text-sm">
                         {notification.type === 'friend_request' && (
                             <>
-                                <span className="font-semibold">{formatFirstName(sender?.displayName, 'Someone')}</span> {language === 'de' ? 'hat dir eine Freundschaftsanfrage gesendet.' : 'sent you a friend request.'}
+                                <span className="font-semibold">{(() => {
+                                  const usernameRaw = sender?.username || null;
+                                  return usernameRaw 
+                                    ? `@${usernameRaw.replace(/^@/, '')}` 
+                                    : (sender?.displayName && sender.displayName.startsWith('@')
+                                        ? sender.displayName
+                                        : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')
+                                      );
+                                })()}</span> {language === 'de' ? 'hat dir eine Freundschaftsanfrage gesendet.' : 'sent you a friend request.'}
                             </>
                         )}
                         {notification.type === 'join_request' && (
                             <>
-                                <span className="font-semibold">{formatFirstName(sender?.displayName, 'Someone')}</span> {language === 'de' ? 'möchte deiner Aktivität beitreten.' : 'wants to join your activity.'}
+                                <span className="font-semibold">{(() => {
+                                  const usernameRaw = sender?.username || null;
+                                  return usernameRaw 
+                                    ? `@${usernameRaw.replace(/^@/, '')}` 
+                                    : (sender?.displayName && sender.displayName.startsWith('@')
+                                        ? sender.displayName
+                                        : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')
+                                      );
+                                })()}</span> {language === 'de' ? 'möchte deiner Aktivität beitreten.' : 'wants to join your activity.'}
                             </>
                         )}
                         {(notification.type === 'system' || notification.type === 'join_response') && (

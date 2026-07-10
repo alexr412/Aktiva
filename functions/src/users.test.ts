@@ -552,10 +552,10 @@ async function testSecureSendFriendRequest() {
   const seedFixtures = () => {
     resetMockDb();
     mockDbState["users"] = {
-      alice: { uid: "alice", displayName: "Alice", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: [] },
-      bob: { uid: "bob", displayName: "Bob", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: [] },
-      charlie: { uid: "charlie", displayName: "Charlie", role: "user", friends: ["alice"], friendRequestsSent: [], friendRequestsReceived: [] },
-      dave: { uid: "dave", displayName: "Dave", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: [], blacklist: { hard: ["alice"] } },
+      alice: { uid: "alice", displayName: "Alice", username: "alice_un", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: [] },
+      bob: { uid: "bob", displayName: "Bob", username: "bob_un", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: [] },
+      charlie: { uid: "charlie", displayName: "Charlie", username: "charlie_un", role: "user", friends: ["alice"], friendRequestsSent: [], friendRequestsReceived: [] },
+      dave: { uid: "dave", displayName: "Dave", username: "dave_un", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: [], blacklist: { hard: ["alice"] } },
     };
     mockDbState["notifications"] = {};
   };
@@ -618,7 +618,7 @@ async function testSecureSendFriendRequest() {
   assert.strictEqual(notif.senderId, "alice");
   assert.strictEqual(notif.type, "friend_request");
   assert.strictEqual(notif.isRead, false);
-  assert.strictEqual(notif.senderProfile.displayName, "Alice");
+  assert.strictEqual(notif.senderProfile.displayName, "@alice_un");
 
   // 8. Duplicate request
   await assert.rejects(

@@ -19,15 +19,39 @@ export const syncUserProfileUpdates = onDocumentUpdated({
 
   if (!before || !after) return null;
 
-  // Nur triggern wenn Name oder Foto sich ändern
-  if (before.displayName === after.displayName && before.photoURL === after.photoURL) {
+  // Nur triggern wenn Name, Foto, Username oder Badges sich ändern
+  if (
+    before.displayName === after.displayName && 
+    before.photoURL === after.photoURL &&
+    before.username === after.username &&
+    before.isPremium === after.isPremium &&
+    before.isSupporter === after.isSupporter &&
+    before.isCreator === after.isCreator
+  ) {
     return null;
   }
 
   const userId = event.params.userId;
-  const newName = after.displayName;
-  const newPhotoURL = after.photoURL;
+  const newUsername = after.username || null;
+  const newPhotoURL = after.photoURL || null;
+  const userLanguage = after.language || 'de';
+  const usernameFormatted = newUsername ? `@${newUsername.replace(/^@/, '')}` : (userLanguage === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
+  const newName = usernameFormatted;
   const db = admin.firestore();
+
+  // 0. Update publicProfiles projection
+  if (newUsername) {
+    await db.collection('publicProfiles').doc(userId).set({
+      uid: userId,
+      username: newUsername,
+      photoURL: newPhotoURL,
+      isPremium: after.isPremium || false,
+      isSupporter: after.isSupporter || false,
+      isCreator: after.isCreator || false
+    }, { merge: true });
+  } else {
+    await db.collection('publicProfiles').doc(userId).delete().catch(() => {});
+  }
 
   // Liste aller Dokument-Referenzen sammeln, die geupdatet werden müssen
   const targets: { ref: admin.firestore.DocumentReference, updates: any }[] = [];
@@ -44,12 +68,17 @@ export const syncUserProfileUpdates = onDocumentUpdated({
 
     if (data.hostId === userId) {
       if (data.hostName !== newName) { updates.hostName = newName; needsUpdate = true; }
+      if (data.hostUsername !== newUsername) { updates.hostUsername = newUsername; needsUpdate = true; }
       if (data.hostPhotoURL !== newPhotoURL) { updates.hostPhotoURL = newPhotoURL; needsUpdate = true; }
     }
 
     if (data.participantDetails?.[userId]) {
       updates[`participantDetails.${userId}.displayName`] = newName;
+      updates[`participantDetails.${userId}.username`] = newUsername;
       updates[`participantDetails.${userId}.photoURL`] = newPhotoURL;
+      updates[`participantDetails.${userId}.isPremium`] = after.isPremium || false;
+      updates[`participantDetails.${userId}.isSupporter`] = after.isSupporter || false;
+      updates[`participantDetails.${userId}.isCreator`] = after.isCreator || false;
       needsUpdate = true;
     }
 
@@ -57,7 +86,12 @@ export const syncUserProfileUpdates = onDocumentUpdated({
       const idx = data.participantsPreview.findIndex((p: any) => p.uid === userId);
       if (idx !== -1) {
         const newPreview = [...data.participantsPreview];
-        newPreview[idx] = { ...newPreview[idx], displayName: newName, photoURL: newPhotoURL };
+        newPreview[idx] = { 
+          ...newPreview[idx], 
+          displayName: newName, 
+          username: newUsername, 
+          photoURL: newPhotoURL 
+        };
         updates.participantsPreview = newPreview;
         needsUpdate = true;
       }
@@ -78,7 +112,11 @@ export const syncUserProfileUpdates = onDocumentUpdated({
         ref: doc.ref,
         updates: {
           [`participantDetails.${userId}.displayName`]: newName,
+          [`participantDetails.${userId}.username`]: newUsername,
           [`participantDetails.${userId}.photoURL`]: newPhotoURL,
+          [`participantDetails.${userId}.isPremium`]: after.isPremium || false,
+          [`participantDetails.${userId}.isSupporter`]: after.isSupporter || false,
+          [`participantDetails.${userId}.isCreator`]: after.isCreator || false,
         }
       });
     }
@@ -1462,12 +1500,16 @@ export const secureSendFriendRequest = onCall(async (request) => {
         friendRequestsReceived: FieldValue.arrayUnion(fromUserId)
       });
 
+      const senderUsername = fromUserProfile.username || null;
+      const usernameFormatted = senderUsername ? `@${senderUsername.replace(/^@/, '')}` : 'Aktiva-Nutzer';
+
       // Write notification document with exact schema
       transaction.set(notificationRef, {
         recipientId: toUserId,
         senderId: fromUserId,
         senderProfile: {
-          displayName: fromUserProfile.displayName || "Jemand",
+          displayName: usernameFormatted,
+          username: senderUsername,
           photoURL: fromUserProfile.photoURL || null
         },
         type: 'friend_request',

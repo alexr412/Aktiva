@@ -27,7 +27,7 @@ import {
 import { calculateDistance, buildApproximateLocationData } from '../geo-utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
-import type { Place, UserProfile, Activity, Chat, ActivityCategory } from '@/lib/types';
+import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory } from '@/lib/types';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
 import { formatFirstName } from '@/lib/utils';
 
@@ -77,8 +77,12 @@ export async function createUserProfileDocument(user: User, additionalData?: Par
   if (!db) throw new Error('Firestore is not initialized.');
   const userDocRef = doc(db, 'users', user.uid);
   
-  // Safely filter out server-side referral/points properties
-  const { referralCode, referredBy, pointsBalance, pointsLifetime, level, ...filteredAdditionalData } = additionalData || {};
+  // Safely filter out server-side referral/points and username properties
+  const { 
+    referralCode, referredBy, pointsBalance, pointsLifetime, level, 
+    username, usernameLowercase, usernameLastChangedAt, usernameChangeHistory,
+    ...filteredAdditionalData 
+  } = additionalData || {};
 
   const userProfile: UserProfile = {
     uid: user.uid,
@@ -154,10 +158,22 @@ export async function getPublicProfileClient(targetUserId: string): Promise<User
   }
 }
 
+export async function getPublicProfileDirect(targetUserId: string): Promise<PublicUserProfile | null> {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const docRef = doc(db, 'publicProfiles', targetUserId);
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) return null;
+  return snap.data() as PublicUserProfile;
+}
+
 export async function updateUserProfile(userId: string, data: Partial<UserProfile>) {
     if (!db) throw new Error('Firestore is not initialized.');
     const userDocRef = doc(db, 'users', userId);
-    await updateDoc(userDocRef, removeUndefinedFields(data));
+    const { 
+      username, usernameLowercase, usernameLastChangedAt, usernameChangeHistory, 
+      ...filteredData 
+    } = data;
+    await updateDoc(userDocRef, removeUndefinedFields(filteredData));
 }
 
 export async function updatePresetAvatar(userId: string, avatarUrl: string) {
@@ -417,7 +433,10 @@ export async function createActivity({
     throw new Error("Dein Konto ist gesperrt.");
   }
   
-  const displayNameToUse = userProfileData?.displayName ?? "User";
+  const usernameToUse = userProfileData?.username || null;
+  const userProfileLang = userProfileData?.language || 'de';
+  const usernameFormatted = usernameToUse ? `@${usernameToUse.replace(/^@/, '')}` : (userProfileLang === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
+  const displayNameToUse = usernameFormatted;
   const photoURLToUse = userProfileData?.photoURL ?? null;
   
   if (isBoosted && (userProfileData?.tokens || 0) < 1) {
@@ -502,10 +521,11 @@ export async function createActivity({
     activityDate: Timestamp.fromDate(adjustedStartDate),
     hostId: user.uid,
     hostName: displayNameToUse,
+    hostUsername: usernameToUse,
     hostPhotoURL: photoURLToUse,
     participantIds: [user.uid],
     participantsPreview: [
-      { uid: user.uid, displayName: displayNameToUse, photoURL: photoURLToUse }
+      { uid: user.uid, displayName: displayNameToUse, username: usernameToUse, photoURL: photoURLToUse }
     ],
     createdAt: serverTimestamp() as Timestamp,
     isCustomActivity: !isPlaceBasedActivity,
@@ -534,6 +554,7 @@ export async function createActivity({
     participantDetails: {
       [user.uid]: {
         displayName: displayNameToUse,
+        username: usernameToUse,
         photoURL: photoURLToUse,
         isPremium: isUserPremium,
         isSupporter: isUserSupporter,
@@ -839,7 +860,10 @@ export async function joinActivity(
       }
 
       const userProfileData = userDoc.data() as UserProfile | undefined;
-      const displayNameToUse = userProfileData?.displayName ?? "User";
+      const userLanguage = userProfileData?.language || 'de';
+      const usernameToUse = userProfileData?.username || null;
+      const usernameFormatted = usernameToUse ? `@${usernameToUse.replace(/^@/, '')}` : (userLanguage === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
+      const displayNameToUse = usernameFormatted;
       const photoURLToUse = userProfileData?.photoURL ?? null;
       
       let forceRequestMode = false;
@@ -950,6 +974,7 @@ export async function joinActivity(
         lastInteractionAt: serverTimestamp(),
         [`participantDetails.${user.uid}`]: {
           displayName: displayNameToUse,
+          username: usernameToUse,
           photoURL: photoURLToUse,
           isPremium: userProfileData?.isPremium || false,
           isSupporter: userProfileData?.isSupporter || false,
@@ -975,6 +1000,7 @@ export async function joinActivity(
       transaction.set(pRef, {
         uid: user.uid,
         displayName: displayNameToUse,
+        username: usernameToUse,
         photoURL: photoURLToUse,
         checkInStatus: 'pending',
         joinedAt: serverTimestamp(),
@@ -987,17 +1013,19 @@ export async function joinActivity(
           participantsPreview: arrayUnion({
             uid: user.uid,
             displayName: displayNameToUse,
+            username: usernameToUse,
             photoURL: photoURLToUse
           })
         });
       }
 
-      const formattedName = formatFirstName(displayNameToUse, "User");
+      const formattedName = usernameFormatted;
 
       transaction.update(chatRef, {
         participantIds: arrayUnion(user.uid),
         [`participantDetails.${user.uid}`]: {
           displayName: displayNameToUse,
+          username: usernameToUse,
           photoURL: photoURLToUse,
           isPremium: userProfileData?.isPremium || false,
           isSupporter: userProfileData?.isSupporter || false,
@@ -1088,7 +1116,7 @@ export async function sendMessage(
   text: string, 
   user: User, 
   userProfile?: UserProfile | null,
-  replyTo?: { id: string; text: string; senderName: string } | null
+  replyTo?: { id: string; text: string; senderName: string; replyToSenderUsername?: string | null } | null
 ): Promise<void> {
   if (!text.trim()) return;
 
@@ -1111,6 +1139,7 @@ export async function sendMessage(
       replyToId: replyTo?.id || undefined,
       replyToText: replyTo?.text || undefined,
       replyToSenderName: replyTo?.senderName || undefined,
+      replyToSenderUsername: replyTo?.replyToSenderUsername || undefined,
       clientMessageId
     });
   } catch (error: any) {
@@ -1132,7 +1161,13 @@ export async function editMessage(chatId: string, messageId: string, newText: st
   });
 }
 
-export async function pinMessage(chatId: string, messageId: string, messageText: string, senderName: string): Promise<void> {
+export async function pinMessage(
+  chatId: string, 
+  messageId: string, 
+  messageText: string, 
+  senderName: string,
+  senderUsername?: string | null
+): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
   const chatRef = doc(db, 'chats', chatId);
   await updateDoc(chatRef, {
@@ -1140,6 +1175,7 @@ export async function pinMessage(chatId: string, messageId: string, messageText:
       id: messageId,
       text: messageText,
       senderName: senderName,
+      senderUsername: senderUsername || null,
     })
   });
 }

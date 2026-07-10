@@ -34,3 +34,52 @@ export function formatFirstName(
   return trimmed.split(/\s+/)[0] || fallback;
 }
 
+import type { ParticipantDetailEntry } from '@/lib/types';
+
+export function formatPublicUsername(
+  username?: string | null,
+  fallback = "Aktiva-Nutzer"
+): string {
+  if (username) {
+    const clean = username.trim().replace(/^@/, '');
+    if (clean) return `@${clean}`;
+  }
+  return fallback;
+}
+
+export function resolvePublicUsername({
+  uid,
+  participantDetails,
+  currentUserProfile,
+  otherUser,
+  language = 'de'
+}: {
+  uid: string;
+  participantDetails?: Record<string, ParticipantDetailEntry> | null;
+  currentUserProfile?: any;
+  otherUser?: any;
+  language?: 'de' | 'en';
+}): string {
+  const neutralFallback = language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user';
+  
+  if (currentUserProfile && uid === currentUserProfile.uid) {
+    if (currentUserProfile.username) {
+      return `@${currentUserProfile.username.trim().replace(/^@/, '')}`;
+    }
+    return neutralFallback;
+  }
+  
+  if (otherUser && uid === otherUser.uid) {
+    if (otherUser.username) {
+      return `@${otherUser.username.trim().replace(/^@/, '')}`;
+    }
+    return neutralFallback;
+  }
+  
+  if (participantDetails?.[uid]?.username) {
+    return `@${participantDetails[uid].username!.trim().replace(/^@/, '')}`;
+  }
+  
+  return neutralFallback;
+}
+

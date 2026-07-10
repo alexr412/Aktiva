@@ -4,15 +4,52 @@ import type { Timestamp } from 'firebase/firestore';
 
 export type ActivityCategory = 'Sport' | 'Tech' | 'Party' | 'Kultur' | 'Outdoor' | 'Gaming' | 'Networking' | 'Sonstiges' | 'Other';
 
+export interface PublicUserProfile {
+  uid: string;
+  username: string;
+  photoURL: string | null;
+  isPremium?: boolean;
+  isSupporter?: boolean;
+  isCreator?: boolean;
+  age?: number;
+  location?: string;
+  bio?: string;
+  interests?: string[];
+  ratingCount?: number;
+  averageRating?: number;
+}
+
+export interface ParticipantDetailEntry {
+  displayName: string | null;
+  photoURL: string | null;
+  username?: string | null;
+  isPremium?: boolean;
+  isSupporter?: boolean;
+  isCreator?: boolean;
+  checkInStatus?: CheckInStatus;
+  checkInTime?: Timestamp;
+  hasReviewed?: boolean;
+}
+
+export interface ParticipantPreviewEntry {
+  uid: string;
+  displayName: string | null;
+  photoURL: string | null;
+  username?: string | null;
+}
+
+export interface NotificationSenderProfile {
+  displayName?: string;
+  photoURL?: string;
+  username?: string;
+}
+
 export interface Notification {
   id: string;
   recipientId: string;
   senderId: string;
   senderName?: string;
-  senderProfile?: {
-    displayName?: string;
-    photoURL?: string;
-  };
+  senderProfile?: NotificationSenderProfile;
   type: 'friend_request' | 'activity_invite' | 'system' | 'join_request' | 'join_response' | 'friend_nearby_activity';
   title: string;
   message: string;
@@ -93,6 +130,7 @@ export interface Activity {
   category?: string;
   hostId: string;
   hostName: string | null;
+  hostUsername?: string | null;
   hostPhotoURL: string | null;
   participantIds: string[];
   maxParticipants?: number;
@@ -107,22 +145,9 @@ export interface Activity {
   status: 'active' | 'open' | 'completed' | 'cancelled' | 'blacklisted';
   completionVotes: string[];
   participantDetails: {
-      [uid: string]: {
-          displayName: string | null;
-          photoURL: string | null;
-          isPremium?: boolean;
-          isSupporter?: boolean;
-          isCreator?: boolean;
-          checkInStatus?: CheckInStatus;
-          checkInTime?: Timestamp;
-          hasReviewed?: boolean;
-      }
+      [uid: string]: ParticipantDetailEntry;
   };
-  participantsPreview?: {
-    uid: string;
-    displayName: string | null;
-    photoURL: string | null;
-  }[];
+  participantsPreview?: ParticipantPreviewEntry[];
   isBoosted?: boolean;
   boostedAt?: Timestamp | null;
   isPaid?: boolean;
@@ -161,6 +186,7 @@ export interface Message {
   text: string;
   senderId: string;
   senderName: string | null;
+  senderUsername?: string | null;
   senderPhotoURL: string | null;
   sentAt: Timestamp;
   isPremium?: boolean;
@@ -169,6 +195,7 @@ export interface Message {
   replyToId?: string;
   replyToText?: string;
   replyToSenderName?: string;
+  replyToSenderUsername?: string | null;
   isEdited?: boolean;
   editedAt?: Timestamp;
   isSystem?: boolean;
@@ -179,6 +206,7 @@ export interface PinnedMessage {
   id: string;
   text: string;
   senderName: string;
+  senderUsername?: string | null;
   pinnedAt?: Timestamp | Date;
 }
 
@@ -189,22 +217,17 @@ export interface Chat {
     placeName?: string;
     categories?: string[];
     hostId?: string;
+    hostName?: string | null;
+    hostUsername?: string | null;
     participantIds: string[];
     participantDetails: {
-        [uid: string]: {
-            displayName: string | null;
-            photoURL: string | null;
-            isPremium?: boolean;
-            isSupporter?: boolean;
-            isCreator?: boolean;
-            checkInStatus?: CheckInStatus;
-            checkInTime?: Timestamp;
-        }
+        [uid: string]: ParticipantDetailEntry;
     };
     lastMessage: {
         text: string;
         senderId: string;
         senderName: string | null;
+        senderUsername?: string | null;
         sentAt: Timestamp;
     } | null;
     createdAt: Timestamp;
@@ -288,7 +311,8 @@ export interface UserProfile {
   legalVersion?: string;
   legalLocale?: string;
   onboardingCompleted: boolean;
-  username?: string;
+  username?: string | null;
+  usernameLowercase?: string | null;
   usernameLastChangedAt?: Timestamp;
   usernameChangeHistory?: Timestamp[];
   birthday?: string;
