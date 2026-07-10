@@ -328,6 +328,16 @@ function LoginPageContent() {
       prompt: "select_account",
     });
 
+    const redirectParam = searchParams.get("redirect");
+    let sanitizedRedirect = '/';
+    if (redirectParam && (/^\/[^/]+/.test(redirectParam) || redirectParam === '/')) {
+      sanitizedRedirect = redirectParam;
+    }
+
+    if (typeof window !== 'undefined' && window.sessionStorage && redirectParam) {
+      sessionStorage.setItem("postLoginRedirect", sanitizedRedirect);
+    }
+
     try {
       console.warn("[LEGAL DEBUG] Google popup login initiated", { timestamp: Date.now() });
       const result = await signInWithPopup(auth!, googleProvider);
@@ -339,6 +349,7 @@ function LoginPageContent() {
         toast,
         setSocialLegalConsentPending,
         setIsLoading,
+        redirectTarget: sanitizedRedirect,
       });
     } catch (error: any) {
       console.error("[LEGAL DEBUG] Google login failed", error);

@@ -134,8 +134,17 @@ export async function handleSuccessfulSocialLogin(options: {
   toast: any;
   setSocialLegalConsentPending: (pending: boolean) => void;
   setIsLoading?: (loading: boolean) => void;
+  redirectTarget?: string | null;
 }): Promise<void> {
-  const { user, router, language, toast, setSocialLegalConsentPending, setIsLoading } = options;
+  const { user, router, language, toast, setSocialLegalConsentPending, setIsLoading, redirectTarget } = options;
+
+  if (typeof window !== 'undefined') {
+    if ((window as any).__AKTIVA_LOGIN_PROCESSING__) {
+      console.warn("[LEGAL DEBUG] handleSuccessfulSocialLogin already processing/processed, skipping duplicate run.");
+      return;
+    }
+    (window as any).__AKTIVA_LOGIN_PROCESSING__ = true;
+  }
 
   console.warn("[LEGAL DEBUG] handleSuccessfulSocialLogin started", {
     uid: user.uid,
@@ -163,6 +172,9 @@ export async function handleSuccessfulSocialLogin(options: {
     console.warn("[LEGAL DEBUG] Legal consent not accepted, opening dialog", { uid: user.uid });
     setSocialLegalConsentPending(true);
     setIsLoading?.(false);
+    if (typeof window !== 'undefined') {
+      (window as any).__AKTIVA_LOGIN_PROCESSING__ = false;
+    }
     return;
   }
 
@@ -208,6 +220,9 @@ export async function handleSuccessfulSocialLogin(options: {
             : "Please verify your email address to log in. A new verification link could not be sent recently, please check your inbox."),
     });
     setIsLoading?.(false);
+    if (typeof window !== 'undefined') {
+      (window as any).__AKTIVA_LOGIN_PROCESSING__ = false;
+    }
     return;
   }
 
@@ -219,29 +234,50 @@ export async function handleSuccessfulSocialLogin(options: {
     description: language === 'de' ? "Willkommen zurück!" : "Welcome back!",
   });
 
+  let resolvedTarget = '/';
+  if (onboardingCompleted) {
+    let target = null;
+    
+    // a) explicit redirect argument
+    if (redirectTarget && (/^\/[^/]+/.test(redirectTarget) || redirectTarget === '/')) {
+      target = redirectTarget;
+    }
+    
+    // b) URL search param
+    if (!target && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const paramRedirect = params.get('redirect');
+      if (paramRedirect && (/^\/[^/]+/.test(paramRedirect) || paramRedirect === '/')) {
+        target = paramRedirect;
+      }
+    }
+    
+    // c) sessionStorage
+    if (!target && typeof window !== 'undefined' && window.sessionStorage) {
+      const sessionRedirect = sessionStorage.getItem('postLoginRedirect');
+      if (sessionRedirect && (/^\/[^/]+/.test(sessionRedirect) || sessionRedirect === '/')) {
+        target = sessionRedirect;
+      }
+    }
+
+    resolvedTarget = target || '/';
+    
+    // Remove sessionStorage item only after successful navigation decision
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      sessionStorage.removeItem('postLoginRedirect');
+    }
+  }
+
   console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
     source: "handleSuccessfulSocialLogin - flow completed",
-    target: onboardingCompleted ? "/" : "/onboarding",
+    target: onboardingCompleted ? resolvedTarget : "/onboarding",
     uid: user.uid,
     onboardingCompleted,
     timestamp: Date.now()
   });
   
   if (onboardingCompleted) {
-    let redirectTarget = null;
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const paramRedirect = params.get('redirect');
-      const sessionRedirect = window.sessionStorage ? sessionStorage.getItem('postLoginRedirect') : null;
-      const target = paramRedirect || sessionRedirect;
-      if (target && (/^\/[^/]+/.test(target) || target === '/')) {
-        redirectTarget = target;
-        if (window.sessionStorage) {
-          sessionStorage.removeItem('postLoginRedirect');
-        }
-      }
-    }
-    router.push(redirectTarget || '/');
+    router.push(resolvedTarget);
   } else {
     router.push('/onboarding');
   }
