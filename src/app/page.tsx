@@ -229,7 +229,7 @@ export default function Home() {
   }, [searchQuery]);
 
   const { toast } = useToast();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const isUserPremium = hasPremiumFeature(userProfile, 'advanced_filters');
@@ -973,19 +973,24 @@ export default function Home() {
     }
     
     // 4. Browser Geolocation (using existing credentials/permissions, no forced popup)
-    if (!restored && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = { lat: position.coords.latitude, lng: position.coords.longitude };
-          setUserLocation(location);
-          if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
-        },
-        (error) => {
+    if (!restored && navigator.geolocation && typeof navigator.permissions !== 'undefined') {
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        if (result.state === 'granted') {
+          navigator.geolocation.getCurrentPosition((position) => {
+            const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+            setUserLocation(location);
+            if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
+          });
+        } else {
           // 5. Default fallback
           setUserLocation({ lat: 53.5395, lng: 8.5809 });
           setCityName("Bremerhaven");
         }
-      );
+      }).catch(() => {
+        // Fallback if permission query fails
+        setUserLocation({ lat: 53.5395, lng: 8.5809 });
+        setCityName("Bremerhaven");
+      });
       restored = true;
     }
     
@@ -1001,6 +1006,23 @@ export default function Home() {
       requestLocation();
     }
   }, [requestLocation, user]);
+
+  // Expired Premium Location Reset
+  useEffect(() => {
+    if (authLoading) return;
+    
+    const isPremium = userProfile?.isPremium || false;
+    if (!isPremium && planningState.isPlanning) {
+      console.warn("[LOCATION DEBUG] Non-premium user has active planning mode. Resetting location.");
+      handleResetLocation();
+      toast({
+        title: language === 'de' ? 'Premium erforderlich' : 'Premium Required',
+        description: language === 'de'
+          ? 'Deine Standortauswahl wurde zurückgesetzt, da dein Premium-Status nicht mehr aktiv ist.'
+          : 'Your location selection has been reset because your premium status is no longer active.',
+      });
+    }
+  }, [authLoading, userProfile, planningState.isPlanning]);
 
   const handleUseHomeLocation = () => {
     if (userProfile?.lastLocation) {
@@ -1732,7 +1754,12 @@ export default function Home() {
         initialCategory={presetCategory}
       />
       <SpotActionSheet place={actionSheetPlace} open={!!actionSheetPlace} onOpenChange={(open) => !open && setActionSheetPlace(null)} onCreateNew={(place) => setActivityModalPlace(place)} />
-      <LocationSearchDialog open={isLocationSearchOpen} onOpenChange={setIsLocationSearchOpen} />
+      <LocationSearchDialog 
+        open={isLocationSearchOpen} 
+        onOpenChange={setIsLocationSearchOpen} 
+        isPremium={userProfile?.isPremium || false}
+        onOpenPremiumUpgrade={() => setIsPremiumUpsellOpen(true)}
+      />
       <LocationRequirementDialog
         open={showLocationRequirement}
         onOpenChange={setShowLocationRequirement}

@@ -21,13 +21,14 @@ interface NominatimResult {
     };
 }
 
-export async function searchLocation(query: string): Promise<Destination[]> {
+export async function searchLocation(query: string, signal?: AbortSignal): Promise<Destination[]> {
     if (!query) return [];
 
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`;
 
     try {
         const response = await fetch(url, {
+            signal,
             headers: {
                 'Accept-Language': 'en-US,en;q=0.9',
             }

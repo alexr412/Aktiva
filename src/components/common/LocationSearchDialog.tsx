@@ -14,38 +14,58 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, MapPin, Search } from 'lucide-react';
+import { Loader2, MapPin, Search, Crown, ChevronRight } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 
 interface LocationSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isPremium?: boolean;
+  onOpenPremiumUpgrade?: () => void;
 }
 
-export function LocationSearchDialog({ open, onOpenChange }: LocationSearchDialogProps) {
+export function LocationSearchDialog({ open, onOpenChange, isPremium = true, onOpenPremiumUpgrade = () => {} }: LocationSearchDialogProps) {
   const { enterPlanningMode } = usePlanningMode();
   const language = useLanguage();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Destination[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeAbortController, setActiveAbortController] = useState<AbortController | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isPremium) {
+      onOpenPremiumUpgrade();
+      return;
+    }
     if (!query.trim()) return;
+
+    if (query.trim().length < 3) {
+      setError(language === 'de' ? "Bitte gib mindestens 3 Zeichen ein." : "Please enter at least 3 characters.");
+      return;
+    }
+
+    if (activeAbortController) {
+      activeAbortController.abort();
+    }
+    const controller = new AbortController();
+    setActiveAbortController(controller);
     
     setIsLoading(true);
     setError(null);
     setResults([]);
     
     try {
-        const searchResults = await searchLocation(query);
+        const searchResults = await searchLocation(query, controller.signal);
         if (searchResults.length === 0) {
             setError(language === 'de' ? "Keine Orte für deine Suche gefunden." : "No locations found for your search.");
         }
         setResults(searchResults);
-    } catch (e) {
-        setError(language === 'de' ? "Suche konnte nicht durchgeführt werden. Bitte versuche es erneut." : "Could not perform search. Please try again.");
+    } catch (e: any) {
+        if (e.name !== 'AbortError') {
+            setError(language === 'de' ? "Suche konnte nicht durchgeführt werden. Bitte versuche es erneut." : "Could not perform search. Please try again.");
+        }
     } finally {
         setIsLoading(false);
     }
@@ -62,6 +82,10 @@ export function LocationSearchDialog({ open, onOpenChange }: LocationSearchDialo
         setResults([]);
         setError(null);
         setIsLoading(false);
+        if (activeAbortController) {
+            activeAbortController.abort();
+            setActiveAbortController(null);
+        }
     }
     onOpenChange(isOpen);
   }
@@ -78,6 +102,30 @@ export function LocationSearchDialog({ open, onOpenChange }: LocationSearchDialo
           </DialogDescription>
         </DialogHeader>
         <div className="pt-4">
+          {!isPremium ? (
+            <div 
+              onClick={() => {
+                onOpenPremiumUpgrade();
+                onOpenChange(false);
+              }}
+              className="flex items-center justify-between p-4 bg-slate-50 dark:bg-neutral-900 border border-amber-500/30 rounded-2xl cursor-pointer hover:bg-slate-100 dark:hover:bg-neutral-850 transition-all shadow-sm group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-950/40 dark:to-amber-900/40 flex items-center justify-center border border-amber-200/20 group-hover:scale-105 transition-transform">
+                  <Crown className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-sm font-black text-slate-800 dark:text-neutral-200 uppercase tracking-tight">
+                    {language === 'de' ? 'Andere Stadt eingeben' : 'Enter another city'}
+                  </span>
+                  <span className="text-xs text-amber-600/80 dark:text-amber-500/80 mt-0.5 font-bold uppercase tracking-wider">
+                    Premium
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-neutral-400 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          ) : (
             <form onSubmit={handleSearch} className="flex gap-2">
                 <Input 
                     placeholder={language === 'de' ? 'Z. B. Berlin, Deutschland' : 'E.g., Berlin, Germany'}
@@ -88,6 +136,7 @@ export function LocationSearchDialog({ open, onOpenChange }: LocationSearchDialo
                     {isLoading ? <Loader2 className="animate-spin" /> : <Search />}
                 </Button>
             </form>
+          )}
 
             <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
                 {isLoading && (
