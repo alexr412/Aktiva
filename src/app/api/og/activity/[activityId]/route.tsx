@@ -71,6 +71,8 @@ export async function GET(
     // Normalizing Date
     let dateStr = '';
     try {
+      const isTimeFlexible = !!activity.isTimeFlexible;
+      const isDateFlexible = !!activity.isDateFlexible;
       let dateObj: Date | null = null;
       if (activity.activityDate) {
         if (typeof activity.activityDate.toDate === 'function') {
@@ -81,13 +83,20 @@ export async function GET(
           dateObj = new Date(activity.activityDate);
         }
       }
-      if (dateObj && !isNaN(dateObj.getTime())) {
+
+      if (isDateFlexible) {
+        dateStr = 'DATUM & ZEIT FLEXIBEL';
+      } else if (isTimeFlexible) {
+        const dayStr = dateObj
+          ? dateObj.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })
+          : '';
+        dateStr = dayStr ? `${dayStr}. (ZEIT FLEXIBEL)`.toUpperCase() : 'ZEIT FLEXIBEL';
+      } else if (dateObj && !isNaN(dateObj.getTime())) {
         const hours = String(dateObj.getHours()).padStart(2, '0');
         const minutes = String(dateObj.getMinutes()).padStart(2, '0');
         const day = String(dateObj.getDate()).padStart(2, '0');
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-        // Example: 24.12. um 18:00 Uhr
-        dateStr = `${day}.${month}. um ${hours}:${minutes} UHR`;
+        dateStr = `${day}.${month}. UM ${hours}:${minutes} UHR`;
       } else {
         dateStr = 'ZEITLICH FLEXIBEL';
       }

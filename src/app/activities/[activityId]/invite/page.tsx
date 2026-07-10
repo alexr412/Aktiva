@@ -115,18 +115,52 @@ export default async function ActivityInvitePage({ params, searchParams }: Props
   }
 
   const isCancelled = activity.status === 'cancelled';
-  const isPast = activity.activityDate?.toDate
-    ? activity.activityDate.toDate().getTime() < Date.now()
-    : false;
-  const isCompleted = activity.status === 'completed' || isPast;
+
+  const isTimeFlexible = !!activity.isTimeFlexible;
+  const isDateFlexible = !!activity.isDateFlexible;
+  const isFlexible = isTimeFlexible || isDateFlexible;
 
   const dateObj = activity.activityDate?.toDate ? activity.activityDate.toDate() : null;
-  const dateStr = dateObj
-    ? dateObj.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })
-    : '';
+
+  let isPast = false;
+  if (activity.status === 'completed') {
+    isPast = true;
+  } else if (!isFlexible) {
+    const targetDate = activity.activityEndDate?.toDate 
+      ? activity.activityEndDate.toDate() 
+      : dateObj;
+    if (targetDate) {
+      isPast = targetDate.getTime() < Date.now();
+    }
+  } else {
+    const targetDate = activity.activityEndDate?.toDate 
+      ? activity.activityEndDate.toDate() 
+      : null;
+    if (targetDate) {
+      isPast = targetDate.getTime() < Date.now();
+    }
+  }
+
+  const isCompleted = activity.status === 'completed' || isPast;
+
   const timeStr = dateObj
     ? dateObj.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
     : '';
+
+  let dateDisplayStr = '';
+  if (isDateFlexible) {
+    dateDisplayStr = 'Datum & Zeit flexibel';
+  } else if (isTimeFlexible) {
+    const dayStr = dateObj
+      ? dateObj.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })
+      : '';
+    dateDisplayStr = dayStr ? `${dayStr} (Zeit flexibel)` : 'Zeit flexibel';
+  } else {
+    const dayStr = dateObj
+      ? dateObj.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })
+      : '';
+    dateDisplayStr = dayStr ? `${dayStr} um ${timeStr} Uhr` : '';
+  }
 
   const spotsLeft = (activity.maxParticipants || 0) - (activity.participantIds?.length || 0);
   const spotsStr = activity.maxParticipants
@@ -196,7 +230,7 @@ export default async function ActivityInvitePage({ params, searchParams }: Props
               <div className="min-w-0">
                 <div className="text-xs font-bold text-slate-400">Datum & Uhrzeit</div>
                 <div className="text-sm font-black text-white mt-0.5">
-                  {dateStr ? `${dateStr} um ${timeStr}` : 'Zeitlich flexibel'}
+                  {dateDisplayStr || 'Zeitlich flexibel'}
                 </div>
               </div>
             </div>
