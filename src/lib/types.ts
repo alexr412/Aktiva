@@ -411,6 +411,11 @@ export interface Destination {
     name: string;
     lat: number;
     lng: number;
+    city?: string;
+    latitude?: number;
+    longitude?: number;
+    placeId?: string;
+    isManualLocation?: boolean;
 }
 
 export interface PlanningState {

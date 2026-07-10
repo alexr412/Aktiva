@@ -239,7 +239,7 @@ export default function Home() {
   }, [userProfile, activePremiumFilters]);
 
   const router = useRouter();
-  const { planningState } = usePlanningMode();
+  const { planningState, exitPlanningMode } = usePlanningMode();
   const { favorites } = useFavorites();
   const [isMobile, setIsMobile] = useState(false);
 
@@ -849,30 +849,63 @@ export default function Home() {
   }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, displayData, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
   const requestLocation = useCallback(() => {
-    // Check for cached location for instant boot
-    const cached = localStorage.getItem('aktiva_last_location');
-    if (cached) {
+    setIsLocationLoading(true);
+
+    // 1. Persistierter manueller Standort
+    if (typeof window !== 'undefined') {
       try {
-        const { lat, lng, city, timestamp } = JSON.parse(cached);
-        const age = Date.now() - timestamp;
-        if (age < 4 * 60 * 60 * 1000) { // 4 hours TTL
-          setUserLocation({ lat, lng });
-          setCityName(city);
-          setIsLocationLoading(false);
-          // Still request fresh location in background
+        const storedManual = localStorage.getItem('app-planning-mode');
+        if (storedManual) {
+          const parsed = JSON.parse(storedManual);
+          if (parsed && parsed.isPlanning && parsed.destination) {
+            const dest = parsed.destination;
+            setUserLocation(dest);
+            setCityName(dest.city || dest.name || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
+            setIsLocationLoading(false);
+            return;
+          }
         }
       } catch (e) {
-        localStorage.removeItem('aktiva_last_location');
+        console.error("Error reading manual location", e);
       }
     }
 
     if (planningState.isPlanning && planningState.destination) {
       setUserLocation(planningState.destination);
-      setCityName(planningState.destination.name);
+      setCityName(planningState.destination.city || planningState.destination.name || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
       setIsLocationLoading(false);
       return;
     }
 
+    // 2. Bereits vorhandener regulärer Nutzerstandort (aus cache)
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('aktiva_last_location');
+        if (cached) {
+          const { lat, lng, city, timestamp } = JSON.parse(cached);
+          const age = Date.now() - timestamp;
+          if (age < 4 * 60 * 60 * 1000) { // 4 hours TTL
+            setUserLocation({ lat, lng });
+            setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
+            setIsLocationLoading(false);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Error reading cached location", e);
+      }
+    }
+
+    // 3. Gespeicherter Profilstandort
+    if (userProfile?.lastLocation) {
+      const { lat, lng } = userProfile.lastLocation;
+      setUserLocation({ lat, lng });
+      reverseGeocode(lat, lng);
+      setIsLocationLoading(false);
+      return;
+    }
+
+    // 4. Browser-Geolocation
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -887,6 +920,10 @@ export default function Home() {
           setIsLocationLoading(false);
           setShowLocationRequirement(true);
 
+          // 5. Bestehender Default-Standort
+          setUserLocation({ lat: 53.5395, lng: 8.5809 });
+          setCityName("Bremerhaven");
+
           if (error.code === 1) { // PERMISSION_DENIED
             toast({
               title: language === 'de' ? "Standort blockiert" : "Location blocked",
@@ -898,10 +935,66 @@ export default function Home() {
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
       );
     } else {
+      // 5. Bestehender Default-Standort
+      setUserLocation({ lat: 53.5395, lng: 8.5809 });
+      setCityName("Bremerhaven");
       setIsLocationLoading(false);
       setShowLocationRequirement(true);
     }
   }, [planningState, reverseGeocode, language, toast, userProfile]);
+
+  const handleResetLocation = () => {
+    exitPlanningMode();
+    
+    // Immediately restore regular location using priorities 2, 3, 4, 5
+    let restored = false;
+    
+    // 2. Check cached regular user location
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('aktiva_last_location');
+        if (cached) {
+          const { lat, lng, city } = JSON.parse(cached);
+          setUserLocation({ lat, lng });
+          setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
+          restored = true;
+        }
+      } catch (e) {
+        console.error("Error restoring cached location", e);
+      }
+    }
+    
+    // 3. Check profile location
+    if (!restored && userProfile?.lastLocation) {
+      const { lat, lng } = userProfile.lastLocation;
+      setUserLocation({ lat, lng });
+      reverseGeocode(lat, lng);
+      restored = true;
+    }
+    
+    // 4. Browser Geolocation (using existing credentials/permissions, no forced popup)
+    if (!restored && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+          setUserLocation(location);
+          if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
+        },
+        (error) => {
+          // 5. Default fallback
+          setUserLocation({ lat: 53.5395, lng: 8.5809 });
+          setCityName("Bremerhaven");
+        }
+      );
+      restored = true;
+    }
+    
+    // 5. Default Fallback
+    if (!restored) {
+      setUserLocation({ lat: 53.5395, lng: 8.5809 });
+      setCityName("Bremerhaven");
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -1445,6 +1538,21 @@ export default function Home() {
                 <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-2 px-4 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest">{cityName}</span>
+                  {planningState.isPlanning && (
+                    <span
+                      role="button"
+                      aria-label="Manuellen Standort zurücksetzen"
+                      title="Standort zurücksetzen"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleResetLocation();
+                      }}
+                      className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[11px] leading-none"
+                    >
+                      ×
+                    </span>
+                  )}
                   <ChevronDown className="h-3 w-3 text-neutral-400" />
                 </button>
               </div>
@@ -1469,6 +1577,21 @@ export default function Home() {
                   <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 mt-0.5 self-start hover:opacity-80 transition-opacity">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-[9px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">{cityName}</span>
+                    {planningState.isPlanning && (
+                      <span
+                        role="button"
+                        aria-label="Manuellen Standort zurücksetzen"
+                        title="Standort zurücksetzen"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleResetLocation();
+                        }}
+                        className="ml-1 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[10px] leading-none"
+                      >
+                        ×
+                      </span>
+                    )}
                     <ChevronDown className="h-2.5 w-2.5 text-neutral-400" />
                   </button>
                 </div>
