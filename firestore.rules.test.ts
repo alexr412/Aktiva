@@ -4,7 +4,7 @@ import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebas
 import { doc, setDoc, updateDoc, getDoc, deleteDoc, writeBatch, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { ref, uploadBytes, deleteObject, getBytes } from 'firebase/storage';
 
-const PROJECT_ID = 'aktiva-rules-test';
+const PROJECT_ID = 'activa-444220';
 
 async function runTests() {
   const hostEnv = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
@@ -280,7 +280,8 @@ async function runTests() {
       price: 1000,
       participantIds: ['host1', 'user1'],
       participantsPreview: [{ uid: 'host1' }, { uid: 'user1' }],
-      status: 'active'
+      status: 'active',
+      joinMode: 'direct'
     };
 
     const initialFreeActivity = {
@@ -290,7 +291,8 @@ async function runTests() {
       price: 0,
       participantIds: ['host1', 'user1'],
       participantsPreview: [{ uid: 'host1' }, { uid: 'user1' }],
-      status: 'active'
+      status: 'active',
+      joinMode: 'direct'
     };
 
     await seedDoc('activities/actPaid', initialPaidActivity);
@@ -307,20 +309,27 @@ async function runTests() {
 
     // 1. Paid Activity Direct Mutation Blocked
     // Host attempts direct updates to forbidden financial/participant keys
+    console.log('Testing assertion 1...');
     await assertFails(updateDoc(doc(hostDb, 'activities/actPaid'), { participantIds: ['host1'] }));
+    console.log('Testing assertion 2...');
     await assertFails(updateDoc(doc(hostDb, 'activities/actPaid'), { status: 'completed' }));
     
     // Participant attempts direct update to participantIds
+    console.log('Testing assertion 3...');
     await assertFails(updateDoc(doc(userDb, 'activities/actPaid'), { participantIds: ['host1'] }));
 
     // Host updates safe metadata (title/desc)
+    console.log('Testing assertion 4...');
     await assertSucceeds(updateDoc(doc(hostDb, 'activities/actPaid'), { title: 'New Paid Title' }));
 
     // 2. Free Activity Direct Update Permitted
     // Host cancels free activity directly (allowed by host edit check)
+    console.log('Testing assertion 5...');
     await assertSucceeds(updateDoc(doc(hostDb, 'activities/actFree'), { status: 'cancelled' }));
 
     // Participant leaves free activity directly (allowed by participant edit rules)
+    console.log('Testing assertion 6...');
+    await seedDoc('activities/actFree', initialFreeActivity);
     await assertSucceeds(updateDoc(doc(userDb, 'activities/actFree'), {
       participantIds: ['host1'],
       participantsPreview: [{ uid: 'host1' }],
@@ -328,6 +337,7 @@ async function runTests() {
     }));
 
     // Non-participant cannot join directly (must be host or already in participantIds to write)
+    console.log('Testing assertion 7...');
     await assertFails(updateDoc(doc(bobDb, 'activities/actFree'), {
       participantIds: ['host1', 'user1', 'bob'],
       participantsPreview: [{ uid: 'host1' }, { uid: 'user1' }, { uid: 'bob' }]
@@ -1106,21 +1116,17 @@ async function runTests() {
     // Reset block status for social tests
     await seedDoc('users/alice', alicePayload);
 
-    // 6. Allow: Social update (Alice sends friend request to Bob)
-    // Alice updates her own doc: adds Bob to friendRequestsSent (allowed: owner)
-    await assertSucceeds(updateDoc(doc(aliceDb, 'users/alice'), { friendRequestsSent: ['bob'] }));
-    // Alice updates Bob's doc: adds Alice to friendRequestsReceived (allowed: isAllowedSocialUpdate)
-    await assertSucceeds(updateDoc(doc(aliceDb, 'users/bob'), { friendRequestsReceived: ['alice'] }));
+    // 6. Deny: Direct social updates blocked (must use Cloud Function)
+    await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { friendRequestsSent: ['bob'] }));
+    await assertFails(updateDoc(doc(aliceDb, 'users/bob'), { friendRequestsReceived: ['alice'] }));
 
     // Setup state for Bob accepting Alice request
     await seedDoc('users/alice', { ...alicePayload, friendRequestsSent: ['bob'] });
     await seedDoc('users/bob', { ...bobPayload, friendRequestsReceived: ['alice'] });
 
-    // 7. Allow: Bob accepts Alice friend request
-    // Bob updates own doc: removes Alice from received, adds to friends (allowed: owner)
-    await assertSucceeds(updateDoc(doc(bobDb, 'users/bob'), { friendRequestsReceived: [], friends: ['alice'] }));
-    // Bob updates Alice doc: removes Bob from sent, adds to friends (allowed: isAllowedSocialUpdate)
-    await assertSucceeds(updateDoc(doc(bobDb, 'users/alice'), { friendRequestsSent: [], friends: ['bob'] }));
+    // 7. Deny: Bob accepts Alice friend request directly (blocked: must use Cloud Function)
+    await assertFails(updateDoc(doc(bobDb, 'users/bob'), { friendRequestsReceived: [], friends: ['alice'] }));
+    await assertFails(updateDoc(doc(bobDb, 'users/alice'), { friendRequestsSent: [], friends: ['bob'] }));
 
     // 8. Deny: social write to random field (Alice tries to write to Bob's fiatBalance)
     await assertFails(updateDoc(doc(aliceDb, 'users/bob'), { fiatBalance: 100 }));
@@ -1482,8 +1488,8 @@ async function runTests() {
       senderProfile: { displayName: 'Alice', photoURL: null }
     }));
 
-    // 8. Client-Create: friend_request an Bob funktioniert
-    await assertSucceeds(setDoc(doc(aliceDb, 'notifications/newNotif3'), {
+    // 8. Deny: Client-Create: friend_request an Bob blocked (must use Cloud Function)
+    await assertFails(setDoc(doc(aliceDb, 'notifications/newNotif3'), {
       recipientId: 'bob',
       senderId: 'alice',
       type: 'friend_request',
@@ -1502,8 +1508,8 @@ async function runTests() {
       senderProfile: { displayName: 'Bob', photoURL: null }
     }));
 
-    // 10. Client-Create: join_request an Host (Alice) funktioniert
-    await assertSucceeds(setDoc(doc(bobDb, 'notifications/newNotif5'), {
+    // 10. Deny: Client-Create: join_request an Host blocked (must use Cloud Function)
+    await assertFails(setDoc(doc(bobDb, 'notifications/newNotif5'), {
       recipientId: 'alice',
       senderId: 'bob',
       senderName: 'Bob',
@@ -2424,7 +2430,12 @@ async function runTests() {
           isSupporter: false,
           checkInStatus: 'pending',
           hasReviewed: false
-        }
+        },
+        participantsPreview: arrayUnion({
+          uid: guestId,
+          displayName: 'Bob User',
+          photoURL: null
+        })
       });
       batch.set(participantRef, {
         uid: guestId,
@@ -2690,6 +2701,350 @@ async function runTests() {
     {
       const activityRef = doc(adminDb, 'activities/act_cancelable');
       await assertSucceeds(deleteDoc(activityRef));
+    }
+
+    // 13. Public Identity Revamp: valid activity creation with hostUsername, participantDetails.{uid}.username, participantsPreview[].username
+    console.log('Running test 13: valid activity creation with hostUsername and nested usernames');
+    {
+      await seedDoc('users/alice', { uid: 'alice', onboardingCompleted: true, isBanned: false, role: 'user', username: 'aliceusername', usernameLowercase: 'aliceusername' });
+      const batch = writeBatch(hostDb);
+      const actId = 'act_revamp_ok';
+      const activityRef = doc(hostDb, `activities/${actId}`);
+      const chatRef = doc(hostDb, `chats/${actId}`);
+      const participantRef = doc(hostDb, `activities/${actId}/participants/${hostId}`);
+
+      const payload = { 
+        ...getValidActivityPayload(hostId), 
+        hostUsername: 'aliceusername',
+        participantsPreview: [{ uid: hostId, displayName: 'Host User', photoURL: null, username: 'aliceusername' }],
+        participantDetails: {
+          [hostId]: {
+            displayName: 'Host User',
+            photoURL: null,
+            isPremium: false,
+            isSupporter: false,
+            checkInStatus: 'pending',
+            hasReviewed: false,
+            username: 'aliceusername'
+          }
+        }
+      };
+
+      batch.set(activityRef, payload);
+      batch.set(chatRef, {
+        activityId: actId,
+        hostId: hostId,
+        createdAt: serverTimestamp(),
+        lastActivityAt: serverTimestamp(),
+        participantIds: [hostId],
+        lastMessage: null,
+        placeName: 'Soccer Field',
+        categories: ['Sport'],
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', username: 'aliceusername' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      batch.set(participantRef, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+
+      await assertSucceeds(batch.commit());
+    }
+
+    // 14. Public Identity Revamp: valid legacy creation without optional username
+    console.log('Running test 14: valid legacy creation without optional username');
+    {
+      await seedDoc('users/alice', { uid: 'alice', onboardingCompleted: true, isBanned: false, role: 'user' });
+      const batch = writeBatch(hostDb);
+      const actId = 'act_revamp_legacy';
+      const activityRef = doc(hostDb, `activities/${actId}`);
+      const chatRef = doc(hostDb, `chats/${actId}`);
+      const participantRef = doc(hostDb, `activities/${actId}/participants/${hostId}`);
+
+      const payload = getValidActivityPayload(hostId); // no usernames
+
+      batch.set(activityRef, payload);
+      batch.set(chatRef, {
+        activityId: actId,
+        hostId: hostId,
+        createdAt: serverTimestamp(),
+        lastActivityAt: serverTimestamp(),
+        participantIds: [hostId],
+        lastMessage: null,
+        placeName: 'Soccer Field',
+        categories: ['Sport'],
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      batch.set(participantRef, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+
+      await assertSucceeds(batch.commit());
+    }
+
+    // 15. Public Identity Revamp: malformed username rejected (non-string type)
+    console.log('Running test 15: malformed username rejected');
+    {
+      const batch = writeBatch(hostDb);
+      const actId = 'act_revamp_malformed';
+      const activityRef = doc(hostDb, `activities/${actId}`);
+      
+      const payload = { 
+        ...getValidActivityPayload(hostId), 
+        hostUsername: 12345 // Int instead of string
+      };
+      batch.set(activityRef, payload);
+      await assertFails(batch.commit());
+    }
+
+    // 16. Public Identity Revamp: username with leading @ rejected
+    console.log('Running test 16: username with leading @ rejected');
+    {
+      const batch = writeBatch(hostDb);
+      const actId = 'act_revamp_at_sign';
+      const activityRef = doc(hostDb, `activities/${actId}`);
+      
+      const payload = { 
+        ...getValidActivityPayload(hostId), 
+        hostUsername: '@aliceusername' // invalid leading @
+      };
+      batch.set(activityRef, payload);
+      await assertFails(batch.commit());
+    }
+
+    // 17. Public Identity Revamp: participant username change for another UID rejected
+    console.log('Running test 17: participant username change for another UID rejected');
+    {
+      // Seed an activity
+      const seedPayload = {
+        ...getValidActivityPayload(hostId),
+        hostUsername: 'aliceusername',
+        participantsPreview: [{ uid: hostId, displayName: 'Host User', photoURL: null, username: 'aliceusername' }],
+        participantDetails: {
+          [hostId]: {
+            displayName: 'Host User',
+            photoURL: null,
+            isPremium: false,
+            isSupporter: false,
+            checkInStatus: 'pending',
+            hasReviewed: false,
+            username: 'aliceusername'
+          }
+        }
+      };
+      await seedDoc('activities/act_join_username', seedPayload);
+      await seedDoc('chats/act_join_username', {
+        activityId: 'act_join_username',
+        hostId: hostId,
+        createdAt: new Date(),
+        lastActivityAt: new Date(),
+        participantIds: [hostId],
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', username: 'aliceusername' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      await seedDoc(`activities/act_join_username/participants/${hostId}`, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: new Date(),
+        hasReviewed: false
+      });
+
+      // Now bob tries to join, but bob attempts to set OR modify Alice's username entry in participantDetails
+      const batch = writeBatch(guestDb);
+      const activityRef = doc(guestDb, 'activities/act_join_username');
+      const chatRef = doc(guestDb, 'chats/act_join_username');
+      const participantRef = doc(guestDb, 'activities/act_join_username/participants/bob');
+
+      batch.update(activityRef, {
+        participantIds: arrayUnion(guestId),
+        lastInteractionAt: serverTimestamp(),
+        [`participantDetails.${guestId}`]: {
+          displayName: 'Bob User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending',
+          hasReviewed: false,
+          username: 'bobusername'
+        },
+        // MALICIOUS ACTION: bob tries to modify alice's username
+        [`participantDetails.${hostId}.username`]: 'hacked_alice'
+      });
+
+      batch.set(participantRef, {
+        uid: guestId,
+        displayName: 'Bob User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+
+      batch.update(chatRef, {
+        participantIds: arrayUnion(guestId),
+        [`participantDetails.${guestId}`]: {
+          displayName: 'Bob User',
+          photoURL: null,
+          isPremium: false,
+          isSupporter: false,
+          checkInStatus: 'pending',
+          username: 'bobusername'
+        },
+        [`unreadCount.${guestId}`]: 0
+      });
+
+      await assertFails(batch.commit());
+    }
+
+    // 18. Public Identity Revamp: direct client write to publicProfiles rejected
+    console.log('Running test 18: direct client write to publicProfiles rejected');
+    {
+      const profileRef = doc(hostDb, 'publicProfiles/alice');
+      await assertFails(setDoc(profileRef, { username: 'aliceusername' }));
+    }
+
+    // 19. Public Identity Revamp: API-place activity creation if places are part of the batch
+    console.log('Running test 19: API-place activity creation with hostUsername');
+    {
+      await seedDoc('users/alice', { uid: 'alice', onboardingCompleted: true, isBanned: false, role: 'user', username: 'aliceusername', usernameLowercase: 'aliceusername' });
+      const batch = writeBatch(hostDb);
+      const actId = 'act_place_with_username';
+      const activityRef = doc(hostDb, `activities/${actId}`);
+      const chatRef = doc(hostDb, `chats/${actId}`);
+      const participantRef = doc(hostDb, `activities/${actId}/participants/${hostId}`);
+      const placeRef = doc(hostDb, `places/place_test_user`);
+
+      const actPayload = { 
+        ...getValidActivityPayload(hostId), 
+        placeId: 'place_test_user', 
+        isCustomActivity: false,
+        hostUsername: 'aliceusername',
+        participantsPreview: [{ uid: hostId, displayName: 'Host User', photoURL: null, username: 'aliceusername' }],
+        participantDetails: {
+          [hostId]: {
+            displayName: 'Host User',
+            photoURL: null,
+            isPremium: false,
+            isSupporter: false,
+            checkInStatus: 'pending',
+            hasReviewed: false,
+            username: 'aliceusername'
+          }
+        }
+      };
+
+      batch.set(activityRef, actPayload);
+      batch.set(chatRef, {
+        activityId: actId,
+        hostId: hostId,
+        createdAt: serverTimestamp(),
+        lastActivityAt: serverTimestamp(),
+        participantIds: [hostId],
+        lastMessage: null,
+        placeName: 'Soccer Field',
+        categories: ['Sport'],
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', username: 'aliceusername' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      batch.set(participantRef, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+      batch.set(placeRef, {
+        name: 'Soccer Field',
+        address: 'Bielefeld',
+        lat: 52.0,
+        lon: 8.5,
+        categories: ['Sport'],
+        source: 'google',
+        sourceType: 'place',
+        activityCount: 1,
+        lastActivityId: actId,
+        updatedAt: serverTimestamp()
+      });
+
+      await assertSucceeds(batch.commit());
+    }
+
+    // 20. Public Identity Revamp: community activity creation if it uses a different payload
+    console.log('Running test 20: community activity creation with hostUsername');
+    {
+      const batch = writeBatch(hostDb);
+      const actId = 'act_community_with_username';
+      const activityRef = doc(hostDb, `activities/${actId}`);
+      const chatRef = doc(hostDb, `chats/${actId}`);
+      const participantRef = doc(hostDb, `activities/${actId}/participants/${hostId}`);
+
+      const actPayload = { 
+        ...getValidActivityPayload(hostId), 
+        hostUsername: 'aliceusername',
+        isCustomActivity: true,
+        creationSource: 'community',
+        categories: ['user_event', 'Sport'],
+        normalizedCategory: 'community',
+        participantsPreview: [{ uid: hostId, displayName: 'Host User', photoURL: null, username: 'aliceusername' }],
+        participantDetails: {
+          [hostId]: {
+            displayName: 'Host User',
+            photoURL: null,
+            isPremium: false,
+            isSupporter: false,
+            checkInStatus: 'pending',
+            hasReviewed: false,
+            username: 'aliceusername'
+          }
+        }
+      };
+
+      batch.set(activityRef, actPayload);
+      batch.set(chatRef, {
+        activityId: actId,
+        hostId: hostId,
+        createdAt: serverTimestamp(),
+        lastActivityAt: serverTimestamp(),
+        participantIds: [hostId],
+        lastMessage: null,
+        placeName: 'Soccer Field',
+        categories: actPayload.categories,
+        participantDetails: {
+          [hostId]: { displayName: 'Host User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', username: 'aliceusername' }
+        },
+        unreadCount: { [hostId]: 0 }
+      });
+      batch.set(participantRef, {
+        uid: hostId,
+        displayName: 'Host User',
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+
+      await assertSucceeds(batch.commit());
     }
   }
 
