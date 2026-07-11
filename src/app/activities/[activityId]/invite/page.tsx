@@ -1,10 +1,7 @@
 import { Metadata } from 'next';
-import { db } from '@/lib/firebase/server';
-import { doc, getDoc } from 'firebase/firestore';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { headers } from 'next/headers';
-import { Compass, Users, Calendar, MapPin, ShieldAlert, ArrowRight } from 'lucide-react';
+import { Users, Calendar, MapPin, ShieldAlert, ArrowRight } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,26 +11,67 @@ type Props = {
   searchParams: Promise<{ ref?: string }>;
 };
 
+function parseFirestoreRestDoc(fields: any): any {
+  if (!fields) return {};
+  const result: any = {};
+  for (const key in fields) {
+    const valObj = fields[key];
+    const type = Object.keys(valObj)[0];
+    const value = valObj[type];
+    
+    if (type === 'integerValue' || type === 'doubleValue') {
+      result[key] = Number(value);
+    } else if (type === 'booleanValue') {
+      result[key] = value === 'true' || value === true;
+    } else if (type === 'timestampValue') {
+      result[key] = {
+        toDate: () => new Date(value),
+        seconds: Math.floor(new Date(value).getTime() / 1000)
+      };
+    } else if (type === 'arrayValue') {
+      const values = valObj.arrayValue.values || [];
+      result[key] = values.map((v: any) => {
+        const t = Object.keys(v)[0];
+        const val = v[t];
+        if (t === 'mapValue') {
+          return parseFirestoreRestDoc(v.mapValue.fields);
+        }
+        return val;
+      });
+    } else if (type === 'mapValue') {
+      result[key] = parseFirestoreRestDoc(valObj.mapValue.fields);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+async function getActivityRest(activityId: string) {
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'activa-444220';
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/activities/${activityId}`;
+  
+  const res = await fetch(url, { next: { revalidate: 0 } });
+  if (!res.ok) {
+    return null;
+  }
+  const data = await res.json() as any;
+  return parseFirestoreRestDoc(data.fields);
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { activityId } = await params;
-  if (!db || !activityId) return { title: 'Aktivität Einladung | Aktiva' };
+  if (!activityId) return { title: 'Aktivität Einladung | Aktiva' };
 
   try {
-    const activityRef = doc(db, 'activities', activityId);
-    const activitySnap = await getDoc(activityRef);
-    if (!activitySnap.exists()) {
+    const activity = await getActivityRest(activityId);
+    if (!activity || activity.status === 'blacklisted') {
       return { title: 'Aktivität nicht gefunden | Aktiva' };
-    }
-
-    const activity = activitySnap.data();
-    if (activity.status === 'blacklisted') {
-      return { title: 'Aktivität nicht verfügbar | Aktiva' };
     }
 
     const isCancelled = activity.status === 'cancelled';
     const isTimeFlexible = !!activity.isTimeFlexible;
     const isDateFlexible = !!activity.isDateFlexible;
-    const isFlexible = isTimeFlexible || isDateFlexible;
 
     const dateObj = activity.activityDate?.toDate ? activity.activityDate.toDate() : null;
     const endDateObj = activity.activityEndDate?.toDate ? activity.activityEndDate.toDate() : null;
@@ -59,7 +97,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (isCancelled) statusPrefix = '[Abgesagt] ';
     else if (isCompleted) statusPrefix = '[Beendet] ';
 
-    const title = `${statusPrefix}${activity.title || 'Treffen'} | Aktiva`;
+    const activityTitle = `${statusPrefix}${activity.title || 'Treffen'} | Aktiva`;
 
     const spotsLeft = (activity.maxParticipants || 0) - (activity.participantIds?.length || 0);
     const spotsStr = activity.maxParticipants ? `${spotsLeft} von ${activity.maxParticipants} Plätzen frei` : 'Plätze frei';
@@ -81,40 +119,42 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       dateDisplayStr = 'Zeitlich flexibel';
     }
 
-    const description = `${dateDisplayStr} · ${activity.placeName || 'Ort'} · ${spotsStr} · Beitreten über Aktiva`;
+    const activityDescription = `${dateDisplayStr} · ${activity.placeName || 'Ort'} · ${spotsStr} · Beitreten über Aktiva`;
 
-    const headerList = await headers();
-    const host = headerList.get('host') || 'aktiva.app';
-    const protocol = host.includes('localhost') ? 'http' : 'https';
-    const origin = `${protocol}://${host}`;
-
-    const metadataBase = new URL(origin);
-    const ogImageUrl = `${origin}/api/og/activity/${activityId}`;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://aktiva-six.vercel.app';
+    const inviteUrl = `${baseUrl}/activities/${activityId}/invite`;
+    const imageUrl = `${baseUrl}/api/og/activity/${activityId}`;
 
     return {
-      title,
-      description,
-      metadataBase,
+      title: activityTitle,
+      description: activityDescription,
+      metadataBase: new URL(baseUrl),
+      alternates: {
+        canonical: inviteUrl,
+      },
       openGraph: {
-        title,
-        description,
-        url: `/activities/${activityId}/invite`,
-        images: [
-          {
-            url: ogImageUrl,
-            width: 1200,
-            height: 630,
-            alt: title,
-          },
-        ],
         type: 'website',
         siteName: 'Aktiva',
+        locale: 'de_DE',
+        url: inviteUrl,
+        title: activityTitle,
+        description: activityDescription,
+        images: [
+          {
+            url: imageUrl,
+            secureUrl: imageUrl,
+            width: 1200,
+            height: 630,
+            type: 'image/png',
+            alt: `${activityTitle} – Einladung über Aktiva`,
+          },
+        ],
       },
       twitter: {
         card: 'summary_large_image',
-        title,
-        description,
-        images: [ogImageUrl],
+        title: activityTitle,
+        description: activityDescription,
+        images: [imageUrl],
       },
     };
   } catch (err) {
@@ -127,18 +167,15 @@ export default async function ActivityInvitePage({ params, searchParams }: Props
   const sParams = await searchParams;
   const referralCode = sParams.ref || '';
 
-  if (!db || !activityId) {
+  if (!activityId) {
     notFound();
   }
 
-  const activityRef = doc(db, 'activities', activityId);
-  const activitySnap = await getDoc(activityRef);
+  const activity = await getActivityRest(activityId);
 
-  if (!activitySnap.exists()) {
+  if (!activity) {
     notFound();
   }
-
-  const activity = activitySnap.data();
 
   // Guard: Blacklisted
   if (activity.status === 'blacklisted') {
@@ -149,7 +186,6 @@ export default async function ActivityInvitePage({ params, searchParams }: Props
 
   const isTimeFlexible = !!activity.isTimeFlexible;
   const isDateFlexible = !!activity.isDateFlexible;
-  const isFlexible = isTimeFlexible || isDateFlexible;
 
   const dateObj = activity.activityDate?.toDate ? activity.activityDate.toDate() : null;
   const endDateObj = activity.activityEndDate?.toDate ? activity.activityEndDate.toDate() : null;
