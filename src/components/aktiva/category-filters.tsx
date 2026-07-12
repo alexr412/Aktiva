@@ -129,18 +129,19 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
               aria-pressed={isActive}
               className={cn(
                 vertical
-                  ? "w-full flex items-center justify-start rounded-2xl h-12 font-black border-none transition-all px-4 text-[11px] uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98]"
-                  : "flex-shrink-0 flex items-center justify-center rounded-full h-11 font-black border-none transition-all px-6 text-[11px] uppercase tracking-wider hover:scale-105 active:scale-95",
+                  ? "w-full flex items-center justify-start rounded-[16px] h-12 font-black border transition-all duration-200 px-4 text-[11px] uppercase tracking-wider active:scale-[0.985]"
+                  : "flex-shrink-0 flex items-center justify-center rounded-full h-11 font-black border transition-all duration-200 px-6 text-[11px] uppercase tracking-wider active:scale-[0.985]",
                 isActive 
-                    ? "text-white shadow-xl shadow-primary/20" 
-                    : "elevation-low"
+                    ? "shadow-sm" 
+                    : "bg-slate-100/40 border-slate-200/40 text-slate-600 dark:bg-neutral-800/40 dark:border-neutral-800/60 dark:text-neutral-400 hover:border-slate-300 dark:hover:border-neutral-700"
               )}
-              style={{ 
-                  backgroundColor: isActive ? tab.color : `${tab.color}15`,
-                  color: isActive ? '#fff' : tab.color
-              }}
+              style={isActive ? { 
+                  backgroundColor: `${tab.color}1c`,
+                  borderColor: tab.color,
+                  color: tab.color
+              } : {}}
             >
-              <tab.icon className="h-4 w-4 mr-3 shrink-0" />
+              <tab.icon className="h-4 w-4 mr-3 shrink-0" style={{ color: tab.color }} />
               <span className="whitespace-nowrap truncate">{formatLabel(language === 'de' ? tab.label : (tab.labelEn || tab.label))}</span>
             </Button>
           );
@@ -152,8 +153,8 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
           onClick={() => setIsConfigOpen(true)}
           className={cn(
             vertical
-              ? "w-full flex items-center justify-center rounded-2xl h-12 border border-dashed border-slate-200 dark:border-neutral-800 shadow-none hover:bg-slate-50 mt-1 bg-transparent hover:scale-[1.02] active:scale-[0.98]"
-              : "flex-shrink-0 rounded-full h-11 w-11 bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 text-slate-500 dark:text-neutral-400 flex items-center justify-center hover:scale-105 active:scale-95 transition-all elevation-low"
+              ? "w-full flex items-center justify-center rounded-[16px] h-12 border border-dashed border-slate-200 dark:border-neutral-800 shadow-none hover:bg-slate-50 mt-1 bg-transparent active:scale-[0.985] transition-all duration-200"
+              : "flex-shrink-0 rounded-full h-11 w-11 bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 text-slate-500 dark:text-neutral-400 flex items-center justify-center active:scale-[0.985] hover:border-slate-300 dark:hover:border-neutral-700 transition-all duration-200 shadow-premium"
           )}
         >
           <Plus className={cn("h-4 w-4 text-neutral-500 dark:text-neutral-400 shrink-0", vertical && "mr-2")} />

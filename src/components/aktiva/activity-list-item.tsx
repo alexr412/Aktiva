@@ -35,6 +35,7 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
     const [isVoting, setIsVoting] = useState(false);
     const [isReporting, setIsReporting] = useState(false);
     const [hasRequested, setHasRequested] = useState(false);
+    const [isPressed, setIsPressed] = useState(false);
     
     const cardRef = useRef<HTMLDivElement>(null);
     const hasTracked = useRef(false);
@@ -170,9 +171,20 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
         <div 
           ref={cardRef}
           onClick={() => router.push(`/activities/${activity.id}`)}
+          onPointerDown={(e) => {
+              const target = e.target as HTMLElement;
+              if (target.closest('button') || target.closest('a') || target.closest('input')) {
+                  return;
+              }
+              setIsPressed(true);
+          }}
+          onPointerUp={() => setIsPressed(false)}
+          onPointerCancel={() => setIsPressed(false)}
+          onPointerLeave={() => setIsPressed(false)}
           className={cn(
-              "group cursor-pointer overflow-hidden rounded-[1.5rem] bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/50 transition-all duration-500 flex flex-col relative p-0 h-full dark:shadow-none",
-              activity.isBoosted && "ring-4 ring-orange-500/10 shadow-orange-500/20"
+              "group cursor-pointer overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-all duration-200 flex flex-col relative p-0 h-full",
+              isPressed ? "scale-[0.985] duration-75" : "",
+              activity.isBoosted && "ring-4 ring-orange-500/10 shadow-orange-500/15"
           )}
         >
             {/* Oberer Bild/Icon-Bereich */}
@@ -236,12 +248,12 @@ export function ActivityListItem({ activity, user, onJoin }: ActivityListItemPro
 
                 <div className="flex flex-wrap gap-1 mb-2">
                     {activity.sourceType === 'activity' && activity.isUserEvent && (
-                        <Badge variant="secondary" className="rounded-full text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                        <Badge variant="secondary" className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
                             USER EVENT
                         </Badge>
                     )}
                     {isPaidEvent && (
-                        <Badge variant="secondary" className="rounded-full text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                        <Badge variant="secondary" className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
                             {activity.price?.toFixed(2)}€
                         </Badge>
                     )}

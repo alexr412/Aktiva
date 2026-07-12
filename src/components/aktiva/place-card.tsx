@@ -55,6 +55,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
     const PrimaryIcon = primaryStyle.icon;
 
     const [isVoting, setIsVoting] = useState(false);
+    const [isPressed, setIsPressed] = useState(false);
     const [placeMeta, setPlaceMeta] = useState({
         upvotes: 0,
         downvotes: 0,
@@ -190,8 +191,19 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
         <Card
             ref={cardRef}
             onClick={onClick}
+            onPointerDown={(e) => {
+                const target = e.target as HTMLElement;
+                if (target.closest('button') || target.closest('a') || target.closest('input')) {
+                    return;
+                }
+                setIsPressed(true);
+            }}
+            onPointerUp={() => setIsPressed(false)}
+            onPointerCancel={() => setIsPressed(false)}
+            onPointerLeave={() => setIsPressed(false)}
             className={cn(
-                "cursor-pointer group overflow-hidden rounded-[1.5rem] bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 flex flex-col relative p-0 h-full dark:shadow-none"
+                "cursor-pointer group overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-all duration-200 flex flex-col relative p-0 h-full",
+                isPressed ? "scale-[0.985] duration-75" : ""
             )}
         >
             {/* Oberer Bild/Icon-Bereich */}
@@ -264,7 +276,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                         <Badge
                             key={index}
                             variant="secondary"
-                            className="rounded-full text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-primary/5 text-primary"
+                            className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-primary/5 text-primary"
                         >
                             {translateTag(item.tag, language)}
                         </Badge>
@@ -273,7 +285,7 @@ export function PlaceCard({ place, onClick, onAddActivity }: PlaceCardProps) {
                         (place.categories || []).map((tag: string, idx: number) => (
                             <span
                                 key={`${tag}-${idx}`}
-                                className="px-2 py-0.5 text-[8px] font-mono bg-neutral-50 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 rounded border border-neutral-100 dark:border-neutral-800 whitespace-nowrap"
+                                className="px-2 py-0.5 text-[8px] font-mono bg-neutral-50 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 rounded-[10px] border border-neutral-100 dark:border-neutral-800 whitespace-nowrap"
                             >
                                 {tag}
                             </span>

@@ -27,15 +27,15 @@ export function BottomNav() {
   };
 
   const navItems = [
-    { href: '/', label: language === 'de' ? 'Entdecken' : 'Discover', icon: Home, activeColor: '#10b981' },
-    { href: '/explore', label: language === 'de' ? 'Erkunden' : 'Explore', icon: Compass, activeColor: '#10b981' },
-    { href: '/chat', label: 'Chat', icon: MessageCircle, activeColor: '#10b981' },
-    { href: '/profile', label: language === 'de' ? 'Profil' : 'Profile', icon: User, activeColor: '#10b981' },
+    { href: '/', label: language === 'de' ? 'Entdecken' : 'Discover', icon: Home },
+    { href: '/explore', label: language === 'de' ? 'Erkunden' : 'Explore', icon: Compass },
+    { href: '/chat', label: 'Chat', icon: MessageCircle },
+    { href: '/profile', label: language === 'de' ? 'Profil' : 'Profile', icon: User },
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 w-full z-nav bg-white dark:bg-neutral-900 border-t border-slate-100 dark:border-neutral-800 pb-safe">
-      <nav className="flex h-[76px] items-center justify-around px-2">
+    <div className="fixed bottom-0 left-0 w-full z-nav bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-t border-slate-200/30 dark:border-neutral-800/20 pb-safe shadow-premium">
+      <nav className="flex h-[72px] items-center justify-around px-2">
         {navItems.map((item) => {
           const isActive = getIsActive(item.href);
           return (
@@ -43,19 +43,18 @@ export function BottomNav() {
               key={item.label}
               href={item.href}
               className={cn(
-                  "flex h-full flex-col items-center justify-center gap-1.5 transition-all duration-300 relative px-4 flex-1",
-                  isActive ? "scale-105" : "opacity-40 grayscale hover:opacity-70 hover:grayscale-0"
+                  "flex h-full flex-col items-center justify-center gap-1 transition-all duration-200 relative px-4 flex-1",
+                  isActive ? "text-primary scale-100" : "text-slate-500 dark:text-neutral-400 opacity-60 hover:opacity-100"
               )}
-              style={{ color: isActive ? item.activeColor : undefined }}
             >
               <div className={cn(
-                  "p-2 rounded-2xl transition-all duration-300 relative",
-                  isActive ? "bg-current/10 scale-110 shadow-none" : ""
+                  "p-2.5 rounded-[12px] transition-all duration-200 relative",
+                  isActive ? "bg-primary/10 text-primary" : "text-current"
               )}>
-                <item.icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} />
+                <item.icon className="h-5.5 w-5.5" strokeWidth={isActive ? 2.5 : 2} />
                 {item.href === '/chat' && unreadTotal > 0 && !pathname.startsWith('/chat') && (
                   <div 
-                    className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold px-1"
+                    className="absolute -top-1 -right-1 min-w-[16px] h-[16px] bg-red-500 text-white rounded-full flex items-center justify-center text-[9px] font-bold px-1"
                     aria-label={language === 'de' ? `${unreadTotal} ungelesene Chat-Nachrichten` : `${unreadTotal} unread chat messages`}
                   >
                     <span className="sr-only">
@@ -68,15 +67,11 @@ export function BottomNav() {
                 )}
               </div>
               <span className={cn(
-                  "text-[10px] uppercase font-black tracking-widest transition-all duration-300",
-                  isActive ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-50"
+                  "text-[8px] uppercase font-black tracking-widest transition-all duration-200",
+                  isActive ? "opacity-100 scale-100" : "opacity-0 scale-95"
               )}>
                 {item.label}
               </span>
-              
-              {isActive && (
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-current" />
-              )}
             </Link>
           );
         })}

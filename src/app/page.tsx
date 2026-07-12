@@ -1558,7 +1558,7 @@ export default function Home() {
               {/* Mobile Location Row */}
               <div className="px-6 flex items-center justify-start">
                 <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-2 px-4 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none" />
                   <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest">{cityName}</span>
                   {planningState.isPlanning && (
                     <span
@@ -1597,7 +1597,7 @@ export default function Home() {
                 <div className="flex flex-col">
                   <h1 className="text-xl font-black leading-tight">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
                   <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 mt-0.5 self-start hover:opacity-80 transition-opacity">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none" />
                     <span className="text-[9px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">{cityName}</span>
                     {planningState.isPlanning && (
                       <span
@@ -1631,13 +1631,13 @@ export default function Home() {
                     value={searchQuery} 
                     onChange={handleSearchInput} 
                     disabled={isSearching} 
-                    className="w-full pl-9 h-11 rounded-full border-none bg-white font-bold text-xs shadow-md shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none disabled:opacity-70 placeholder:text-neutral-400" 
+                    className="w-full pl-9 h-11 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400" 
                   />
                 </form>
                 <div className="relative group">
                   <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" className="h-11 px-3 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-md shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
+                      <Button variant="secondary" className="h-11 px-3 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
                       <div className="space-y-4">
@@ -1710,13 +1710,13 @@ export default function Home() {
                     value={searchQuery} 
                     onChange={handleSearchInput} 
                     disabled={isSearching} 
-                    className="w-full pl-9 h-14 rounded-full border-none bg-white font-bold text-xs shadow-xl shadow-slate-200/40 transition-all focus-visible:ring-4 focus-visible:ring-emerald-500/10 dark:bg-neutral-800 dark:text-neutral-100 dark:shadow-none disabled:opacity-70 placeholder:text-neutral-400" 
+                    className="w-full pl-9 h-14 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400" 
                   />
                 </form>
                 <div className="relative group">
                   <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" className="h-14 px-3 rounded-3xl bg-white dark:bg-neutral-800 border-none shadow-xl shadow-slate-200/40 dark:shadow-none font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
+                      <Button variant="secondary" className="h-14 px-3 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
                       <div className="space-y-4">
