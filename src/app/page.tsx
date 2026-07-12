@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { CategoryFilters } from '@/components/aktiva/category-filters';
+import { AktivaPulseHero } from '@/components/aktiva/aktiva-pulse-hero';
 import { PlaceDetails } from '@/components/aktiva/place-details';
 import { PlaceCard } from '@/components/aktiva/place-card';
 import { SpotActionSheet } from '@/components/aktiva/spot-action-sheet';
@@ -114,6 +115,16 @@ export default function Home() {
   const ENABLE_NEW_RANKING_PIPELINE = true;
   const sessionEpochRef = useRef(Date.now());
   const language = useLanguage();
+  const discoverFeedRef = useRef<HTMLDivElement>(null);
+
+  const handleExploreClick = useCallback(() => {
+    if (discoverFeedRef.current) {
+      const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      discoverFeedRef.current.scrollIntoView({
+        behavior: isReduced ? 'auto' : 'smooth'
+      });
+    }
+  }, []);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
@@ -125,6 +136,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [cityName, setCityName] = useState<string>(language === 'de' ? "Wird geladen..." : "Loading...");
+  const [resolvedCityName, setResolvedCityName] = useState<string | null>(null);
   const [isRadiusOpen, setIsRadiusOpen] = useState(false);
   const [sortBy, setSortBy] = useState("recommended");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
@@ -251,22 +263,25 @@ export default function Home() {
       if (place) {
         // Geoapify properties usually contain city or address components
         const props = (place as any)._rawProperties || {};
-        const city = props.city || props.town || props.village || props.suburb || props.municipality || place.name || (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
+        const rawCity = props.city || props.town || props.village || props.suburb || props.municipality || place.name || null;
+        const displayCity = rawCity || (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
 
-        setCityName(city);
+        setCityName(displayCity);
+        setResolvedCityName(rawCity);
 
         if (user?.uid) {
-          updateUserLocation(user.uid, lat, lng, city);
+          updateUserLocation(user.uid, lat, lng, displayCity);
         }
 
         // Cache location for ultra-fast boot on next visit
         localStorage.setItem('aktiva_last_location', JSON.stringify({
-          lat, lng, city, timestamp: Date.now()
+          lat, lng, city: displayCity, timestamp: Date.now()
         }));
       }
     } catch (error) {
       console.error("Reverse geocoding failed:", error);
       setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
+      setResolvedCityName(null);
     }
   }, [language, user?.uid]);
 
@@ -765,6 +780,105 @@ export default function Home() {
     return finalPlaces;
   }, [basePlaces, votesMap, userProfile, userLocation, activePremiumFilters]);
 
+  const visibleCommunityActivities = useMemo(() => {
+    const rawList = communityActivities;
+    const uniqueMap = new Map<string, Activity>();
+    for (const item of rawList) {
+      if (item?.id) uniqueMap.set(item.id, item);
+    }
+    const list = Array.from(uniqueMap.values());
+    const now = Date.now();
+    let filteredList = list.filter((item: any) => {
+      if (!item) return false;
+      if (item.status === 'cancelled' || item.status === 'completed' || item.status === 'blacklisted') return false;
+      const hostId = item.hostId;
+      if (hostId && userProfile?.blacklist) {
+        const hardBlocked = userProfile.blacklist.hard || [];
+        const softBlocked = userProfile.blacklist.soft || [];
+        if (hardBlocked.includes(hostId) || softBlocked.includes(hostId)) return false;
+      }
+      if (item.id && userProfile?.hiddenEntityIds?.includes(item.id)) return false;
+      if (item.activityEndDate?.toMillis) {
+        if (item.activityEndDate.toMillis() < now) return false;
+      } else if (item.activityDate?.toMillis) {
+        if (item.activityDate.toMillis() + 86400000 < now) return false;
+      }
+      return true;
+    });
+
+    if (userLocation) {
+      filteredList = filteredList.map((item: any) => {
+        let distance = undefined;
+        if (item.lat && (item.lon || item.lng)) {
+          distance = calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lon || item.lng);
+        }
+        return { ...item, distance };
+      });
+      if (maxDistance !== null) {
+        filteredList = filteredList.filter((item: any) => {
+          return item.distance !== undefined && item.distance !== null && item.distance <= maxDistance;
+        });
+      }
+    }
+
+    if (debouncedSearchQuery) {
+      const queryLower = debouncedSearchQuery.toLowerCase();
+      filteredList = filteredList.filter((item: any) => {
+        const titleMatch = item.title && item.title.toLowerCase().includes(queryLower);
+        const descMatch = item.description && item.description.toLowerCase().includes(queryLower);
+        const placeMatch = item.placeName && item.placeName.toLowerCase().includes(queryLower);
+        const categoryMatch = item.category && item.category.toLowerCase().includes(queryLower);
+        return titleMatch || descMatch || placeMatch || categoryMatch;
+      });
+    }
+
+    return [...filteredList].sort((a, b) => {
+      const timeA = a.activityDate?.toMillis ? a.activityDate.toMillis() : 0;
+      const timeB = b.activityDate?.toMillis ? b.activityDate.toMillis() : 0;
+      return timeA - timeB;
+    });
+  }, [communityActivities, userProfile, userLocation, maxDistance, debouncedSearchQuery]);
+
+  const visiblePlaces = useMemo(() => {
+    let filtered = places.filter(place => {
+      if (userProfile?.hiddenEntityIds?.includes(place.id)) return false;
+      if (!debouncedSearchQuery || !shouldFilterByName) return true;
+      const rawName = place.name;
+      const name = typeof rawName === 'string'
+        ? rawName
+        : (rawName && typeof rawName === 'object'
+           ? ((rawName as any).de || (rawName as any).en || Object.values(rawName).find(v => typeof v === 'string') || '')
+           : String(rawName || ''));
+      return name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+    });
+
+    if ((isHighlightsCategory || isAktivCategory) && maxDistance !== null) {
+      filtered = filtered.filter(place => place.distance !== undefined && place.distance !== null && place.distance <= maxDistance);
+    }
+
+    const uniqueMap = new Map<string, Place>();
+    filtered.forEach((place, index) => {
+      const id = place.id ||
+                 (place as any).place_id ||
+                 (place as any).properties?.place_id ||
+                 (place.name && place.lat !== undefined && place.lon !== undefined ? `${place.name}_${place.lat}_${place.lon}` : `fallback_index_${index}`);
+      if (!uniqueMap.has(id)) {
+        uniqueMap.set(id, place);
+      }
+    });
+    const uniqueFiltered = Array.from(uniqueMap.values());
+
+    return [...uniqueFiltered].sort((a, b) => {
+      if (sortBy === 'recommended') {
+        return (b.relevanceScore || 0) - (a.relevanceScore || 0);
+      }
+      if (sortBy === 'rating') {
+        return (b.rating || 0) - (a.rating || 0);
+      }
+      return 0;
+    });
+  }, [places, userProfile, debouncedSearchQuery, shouldFilterByName, isHighlightsCategory, isAktivCategory, maxDistance, sortBy]);
+
   // Live Vote-Daten: onSnapshot-Listener für alle sichtbaren Spot-IDs.
   // Wenn ein Vote eingeht (auch von anderen Usern/Admins), wird votesMap live aktualisiert
   // → places memo recalculated → Startseite automatisch neu sortiert.
@@ -859,8 +973,10 @@ export default function Home() {
           const parsed = JSON.parse(storedManual);
           if (parsed && parsed.isPlanning && parsed.destination) {
             const dest = parsed.destination;
+            const city = dest.city || dest.name || null;
             setUserLocation(dest);
-            setCityName(dest.city || dest.name || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
+            setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
+            setResolvedCityName(city);
             setIsLocationLoading(false);
             return;
           }
@@ -871,8 +987,10 @@ export default function Home() {
     }
 
     if (planningState.isPlanning && planningState.destination) {
+      const city = planningState.destination.city || planningState.destination.name || null;
       setUserLocation(planningState.destination);
-      setCityName(planningState.destination.city || planningState.destination.name || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
+      setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
+      setResolvedCityName(city);
       setIsLocationLoading(false);
       return;
     }
@@ -887,6 +1005,7 @@ export default function Home() {
           if (age < 4 * 60 * 60 * 1000) { // 4 hours TTL
             setUserLocation({ lat, lng });
             setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
+            setResolvedCityName(city || null);
             setIsLocationLoading(false);
             return;
           }
@@ -923,6 +1042,7 @@ export default function Home() {
           // 5. Bestehender Default-Standort
           setUserLocation({ lat: 53.5395, lng: 8.5809 });
           setCityName("Bremerhaven");
+          setResolvedCityName("Bremerhaven");
 
           if (error.code === 1) { // PERMISSION_DENIED
             toast({
@@ -938,6 +1058,7 @@ export default function Home() {
       // 5. Bestehender Default-Standort
       setUserLocation({ lat: 53.5395, lng: 8.5809 });
       setCityName("Bremerhaven");
+      setResolvedCityName("Bremerhaven");
       setIsLocationLoading(false);
       setShowLocationRequirement(true);
     }
@@ -957,6 +1078,7 @@ export default function Home() {
           const { lat, lng, city } = JSON.parse(cached);
           setUserLocation({ lat, lng });
           setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
+          setResolvedCityName(city || null);
           restored = true;
         }
       } catch (e) {
@@ -985,11 +1107,13 @@ export default function Home() {
           // 5. Default fallback
           setUserLocation({ lat: 53.5395, lng: 8.5809 });
           setCityName("Bremerhaven");
+          setResolvedCityName("Bremerhaven");
         }
       }).catch(() => {
         // Fallback if permission query fails
         setUserLocation({ lat: 53.5395, lng: 8.5809 });
         setCityName("Bremerhaven");
+        setResolvedCityName("Bremerhaven");
       });
       restored = true;
     }
@@ -998,6 +1122,7 @@ export default function Home() {
     if (!restored) {
       setUserLocation({ lat: 53.5395, lng: 8.5809 });
       setCityName("Bremerhaven");
+      setResolvedCityName("Bremerhaven");
     }
   };
 
@@ -1033,6 +1158,7 @@ export default function Home() {
       // Fallback to defaults
       setUserLocation({ lat: 53.5395, lng: 8.5809 });
       setCityName("Bremerhaven");
+      setResolvedCityName("Bremerhaven");
     }
     setShowLocationRequirement(false);
   };
@@ -1335,92 +1461,10 @@ export default function Home() {
         }
 
         if (isCommunityCategory) {
-          const rawList = communityActivities;
-
-          // Deduplicate the list to prevent React duplicate key errors from SWR caching edge cases
-          const uniqueMap = new Map<string, Activity>();
-          for (const item of rawList) {
-            if (item?.id) uniqueMap.set(item.id, item);
-          }
-          const list = Array.from(uniqueMap.values());
-
-          // "es muss doch nur geguckt werden ob es user_event hat" -> This is already done by the database query in multiFetcher!
-          // "und nach dem datum" -> We filter out activities that are already over (in the past).
-          const now = Date.now();
-          let filteredList = list.filter((item: any) => {
-            if (!item) return false;
-
-            // Filter out cancelled, completed, or blacklisted activities
-            if (item.status === 'cancelled' || item.status === 'completed' || item.status === 'blacklisted') {
-              return false;
-            }
-
-            // Filter out activities hosted by soft/hard blacklisted users, or in hiddenEntityIds
-            const hostId = item.hostId;
-            if (hostId && userProfile?.blacklist) {
-              const hardBlocked = userProfile.blacklist.hard || [];
-              const softBlocked = userProfile.blacklist.soft || [];
-              if (hardBlocked.includes(hostId) || softBlocked.includes(hostId)) {
-                return false;
-              }
-            }
-
-            if (item.id && userProfile?.hiddenEntityIds?.includes(item.id)) {
-              return false;
-            }
-
-            // Check end date or start date to ensure it's not in the past
-            if (item.activityEndDate?.toMillis) {
-              if (item.activityEndDate.toMillis() < now) return false;
-            } else if (item.activityDate?.toMillis) {
-              // If there's no end date, assume it's over 24 hours after the start date
-              if (item.activityDate.toMillis() + 86400000 < now) return false;
-            }
-
-            return true;
-          });
-
-          // Berechne die Distanz clientseitig mit der bestehenden calculateDistance-Logik
-          if (userLocation) {
-            filteredList = filteredList.map((item: any) => {
-              let distance = undefined;
-              if (item.lat && (item.lon || item.lng)) {
-                distance = calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lon || item.lng);
-              }
-              return { ...item, distance };
-            });
-
-            // Wende den aktuellen Radiusfilter (maxDistance) clientseitig an
-            if (maxDistance !== null) {
-              filteredList = filteredList.filter((item: any) => {
-                return item.distance !== undefined && item.distance !== null && item.distance <= maxDistance;
-              });
-            }
-          }
-
-          // Wende die Suche über debouncedSearchQuery clientseitig an
-          if (debouncedSearchQuery) {
-            const queryLower = debouncedSearchQuery.toLowerCase();
-            filteredList = filteredList.filter((item: any) => {
-              const titleMatch = item.title && item.title.toLowerCase().includes(queryLower);
-              const descMatch = item.description && item.description.toLowerCase().includes(queryLower);
-              const placeMatch = item.placeName && item.placeName.toLowerCase().includes(queryLower);
-              const categoryMatch = item.category && item.category.toLowerCase().includes(queryLower);
-              return titleMatch || descMatch || placeMatch || categoryMatch;
-            });
-          }
-
-          // Sort by activityDate (ascending: upcoming events first)
-          const sortedList = [...filteredList].sort((a, b) => {
-            const timeA = a.activityDate?.toMillis ? a.activityDate.toMillis() : 0;
-            const timeB = b.activityDate?.toMillis ? b.activityDate.toMillis() : 0;
-            return timeA - timeB;
-          });
-
-          if (sortedList.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
+          if (visibleCommunityActivities.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
           return (
             <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-              {sortedList.map((item) => (
+              {visibleCommunityActivities.map((item) => (
                 <div key={item.id} className="min-h-[210px] w-full">
                   <ActivityListItem activity={item as any} user={user} onJoin={handleJoin} />
                 </div>
@@ -1429,54 +1473,13 @@ export default function Home() {
           );
         }
 
-        let filtered = places.filter(place => {
-          if (userProfile?.hiddenEntityIds?.includes(place.id)) return false;
-          if (!debouncedSearchQuery || !shouldFilterByName) return true;
-          const rawName = place.name;
-          const name = typeof rawName === 'string'
-            ? rawName
-            : (rawName && typeof rawName === 'object'
-               ? ((rawName as any).de || (rawName as any).en || Object.values(rawName).find(v => typeof v === 'string') || '')
-               : String(rawName || ''));
-          return name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-        });
-
-        // Add distance filter for Highlights and Active tabs
-        if ((isHighlightsCategory || isAktivCategory) && maxDistance !== null) {
-          filtered = filtered.filter(place => place.distance !== undefined && place.distance !== null && place.distance <= maxDistance);
-        }
-
-        // SCHRITT 1: Deduplizierung ZUERST (damit die Sortierung danach das letzte Wort hat)
-        // Da 'filtered' bereits absteigend nach relevanceScore sortiert ist, behalten wir das erste (höchst-scorende) Vorkommen.
-        const uniqueMap = new Map<string, Place>();
-        filtered.forEach((place, index) => {
-          const id = place.id ||
-                     (place as any).place_id ||
-                     (place as any).properties?.place_id ||
-                     (place.name && place.lat !== undefined && place.lon !== undefined ? `${place.name}_${place.lat}_${place.lon}` : `fallback_index_${index}`);
-          if (!uniqueMap.has(id)) {
-            uniqueMap.set(id, place);
-          }
-        });
-        const uniqueFiltered = Array.from(uniqueMap.values());
-
-        // SCHRITT 2: Immutable Sort (spread erzeugt neue Array-Referenz, verhindert React-Mutations-Bugs)
-        const sorted = [...uniqueFiltered].sort((a, b) => {
-          if (sortBy === 'recommended') {
-            return (b.relevanceScore || 0) - (a.relevanceScore || 0);
-          }
-          if (sortBy === 'rating') {
-            return (b.rating || 0) - (a.rating || 0);
-          }
-          return 0;
-        });
-        if (sorted.length === 0) {
+        if (visiblePlaces.length === 0) {
           if (isValidating) {
             return <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>;
           }
           if (!isFetchingNextPage) return <EmptySearchState />;
         }
-        const paginatedSorted = sorted.slice(0, visibleCount);
+        const paginatedSorted = visiblePlaces.slice(0, visibleCount);
         return (
           <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {paginatedSorted.map((place) => (
@@ -1669,34 +1672,6 @@ export default function Home() {
               <CategoryFilters activeCategory={activeCategory} activeTabId={activeTabId} onCategoryChange={handleCategoryChange} />
             </div>
 
-            {/* Premium Advanced Filters Row */}
-            <div className="px-6 -mt-2 pb-2">
-              <div className="flex flex-nowrap overflow-x-auto md:flex-wrap md:overflow-x-visible gap-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-center w-full">
-                {PREMIUM_FILTERS.map((f) => {
-                  const isUserPremium = hasPremiumFeature(userProfile, 'advanced_filters');
-                  const isActive = activePremiumFilters.includes(f.id) && isUserPremium;
-                  return (
-                    <Button
-                      key={f.id}
-                      onClick={() => handlePremiumFilterClick(f.id)}
-                      variant={isActive ? "default" : "outline"}
-                      aria-pressed={isActive}
-                      className={cn(
-                        "flex-shrink-0 flex items-center justify-center rounded-full h-8 px-4 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95 duration-200",
-                        isActive
-                          ? "bg-amber-500 hover:bg-amber-600 text-white border-none shadow-lg shadow-amber-500/20"
-                          : "bg-white/80 dark:bg-neutral-800/80 border-slate-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300"
-                      )}
-                    >
-                      {!isUserPremium && <Lock className="h-3 w-3 mr-1 text-amber-500 fill-amber-500/10 shrink-0" />}
-                      {f.icon && <f.icon className={cn("h-3.5 w-3.5 mr-1 shrink-0", isActive ? "text-white" : "text-amber-500")} />}
-                      <span className="whitespace-nowrap">{language === 'de' ? f.label : f.labelEn}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Search and Radius Row (Mobile only) */}
             <div className="px-6 md:hidden">
               <div className="flex items-center gap-3 w-full">
@@ -1729,9 +1704,55 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            {/* Premium Advanced Filters Row */}
+            <div className="px-6 -mt-2 pb-2">
+              <div className="flex flex-nowrap overflow-x-auto md:flex-wrap md:overflow-x-visible gap-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-center w-full">
+                {PREMIUM_FILTERS.map((f) => {
+                  const isUserPremium = hasPremiumFeature(userProfile, 'advanced_filters');
+                  const isActive = activePremiumFilters.includes(f.id) && isUserPremium;
+                  return (
+                    <Button
+                      key={f.id}
+                      onClick={() => handlePremiumFilterClick(f.id)}
+                      variant={isActive ? "default" : "outline"}
+                      aria-pressed={isActive}
+                      className={cn(
+                        "flex-shrink-0 flex items-center justify-center rounded-full h-8 px-4 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95 duration-200",
+                        isActive
+                          ? "bg-amber-500 hover:bg-amber-600 text-white border-none shadow-lg shadow-amber-500/20"
+                          : "bg-white/80 dark:bg-neutral-800/80 border-slate-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300"
+                      )}
+                    >
+                      {!isUserPremium && <Lock className="h-3 w-3 mr-1 text-amber-500 fill-amber-500/10 shrink-0" />}
+                      {f.icon && <f.icon className={cn("h-3.5 w-3.5 mr-1 shrink-0", isActive ? "text-white" : "text-amber-500")} />}
+                      <span className="whitespace-nowrap">{language === 'de' ? f.label : f.labelEn}</span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </header>
-        <main className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden scroll-smooth'}`}><div className="max-w-7xl mx-auto w-full">{renderContent()}</div></main>
+        <main className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden scroll-smooth'}`}>
+          <div className="max-w-7xl mx-auto w-full pt-2">
+            {viewMode === 'list' && (
+              <div className="px-3 sm:px-6 mb-3 sm:mb-4">
+                <AktivaPulseHero 
+                  cityName={isLocationLoading ? null : resolvedCityName}
+                  currentViewType={isCommunityCategory ? 'activities' : (isFavoritesCategory ? 'favorites' : 'places')}
+                  visiblePlaceCount={visiblePlaces.length}
+                  eligibleActivities={visibleCommunityActivities}
+                  language={language}
+                  onExplore={handleExploreClick}
+                />
+              </div>
+            )}
+            <div ref={discoverFeedRef} id="discover-feed" className="scroll-mt-24">
+              {renderContent()}
+            </div>
+          </div>
+        </main>
       </div>
       <div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500"><Button variant="default" size="icon" className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 transition-transform hover:scale-105 active:scale-95" onClick={handleOpenCustomActivityModal}><Plus className="h-7 w-7" strokeWidth={3} /></Button></div>
       {isMobile ? (

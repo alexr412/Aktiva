@@ -566,3 +566,60 @@ export function getRoomVisualCategory({
   return { categories, name, isUserEvent, creationSource };
 }
 
+/**
+ * Localization Infrastructure for the home screen (Pulse red/green live status, etc.).
+ */
+const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => string); en: string | ((...args: any[]) => string) }> = {
+  'pulse.eyebrow': {
+    de: 'AKTIVA PULSE',
+    en: 'AKTIVA PULSE'
+  },
+  'pulse.heading.near_you': {
+    de: 'Heute ist in deiner Nähe etwas los',
+    en: 'There is something happening near you today'
+  },
+  'pulse.heading.city': {
+    de: (city: string) => `Heute ist in ${city} etwas los`,
+    en: (city: string) => `Something is happening in ${city} today`
+  },
+  'pulse.cta': {
+    de: 'Jetzt entdecken',
+    en: 'Discover Now'
+  },
+  'pulse.fallback': {
+    de: 'Entdecke, was heute passiert',
+    en: "Discover what's happening today"
+  },
+  'pulse.fallback.places': {
+    de: 'Aktivitäten in deiner Nähe',
+    en: 'Activities in your area'
+  },
+  'pulse.places_count': {
+    de: (count: number) => count === 1 ? '1 passender Ort in deiner Nähe' : `${count} passende Orte in deiner Nähe`,
+    en: (count: number) => count === 1 ? '1 matching place nearby' : `${count} matching places nearby`
+  },
+  'pulse.activities_count': {
+    de: (count: number) => count === 1 ? '1 aktive Community-Aktivität' : `${count} aktive Community-Aktivitäten`,
+    en: (count: number) => count === 1 ? '1 active community activity' : `${count} active community activities`
+  },
+  'pulse.starting_soon_count': {
+    de: (count: number) => count === 1 ? '1 startet in Kürze' : `${count} starten in Kürze`,
+    en: (count: number) => count === 1 ? '1 starting soon' : `${count} starting soon`
+  }
+};
+
+export const translateAppString = (
+  key: string,
+  language: 'de' | 'en' = 'de',
+  arg?: string | number
+): string => {
+  const trans = APP_TRANSLATIONS[key];
+  if (!trans) return key;
+  const valueObj = trans[language] || trans['de'];
+  if (typeof valueObj === 'function') {
+    return valueObj(arg as any);
+  }
+  return valueObj;
+};
+
+
