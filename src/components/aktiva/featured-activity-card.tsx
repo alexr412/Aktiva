@@ -6,30 +6,27 @@ import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
-import { Loader2, MessageSquare, Users, Flame, Bookmark, Plus, MapPin, CreditCard, Crown, BarChart3, AlertTriangle, Layers, Star, ArrowUp } from 'lucide-react';
+import { Loader2, MessageSquare, Users, Flame, MapPin, ArrowUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { UserBadge } from '@/components/common/UserBadge';
-import { cn, formatFirstName } from '@/lib/utils';
-import { castActivityVote, trackActivityView, submitReport } from '@/lib/firebase/firestore';
+import { cn } from '@/lib/utils';
+import { trackActivityView } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
-import { getPrimaryIconData, translateTag, translateAppString } from '@/lib/tag-config';
-import { formatTags } from '@/lib/tag-parser';
-import { useToast } from '@/hooks/use-toast';
+import { getPrimaryIconData, translateAppString } from '@/lib/tag-config';
+import { CategoryCardDecoration } from './category-card-decoration';
 import Link from 'next/link';
 
-import { CategoryCardDecoration } from './category-card-decoration';
-
-interface ActivityListItemProps {
+interface FeaturedActivityCardProps {
     activity: Activity & { distance?: number | null };
     user: User | null;
     onJoin: (activity: Activity) => Promise<any>;
     hasRequested?: boolean;
 }
 
-export function ActivityListItem({ activity, user, onJoin, hasRequested }: ActivityListItemProps) {
+export function FeaturedActivityCard({ activity, user, onJoin, hasRequested }: FeaturedActivityCardProps) {
     const { userProfile } = useAuth();
     const language = useLanguage();
     const router = useRouter();
@@ -85,11 +82,6 @@ export function ActivityListItem({ activity, user, onJoin, hasRequested }: Activ
       const cleaned = activity.categories.filter(c => c !== 'user_event');
       visualCategories.push(...cleaned);
     }
-    if (visualCategories.length === 0) {
-      if (activity.isUserEvent) {
-        visualCategories.push('user_event');
-      }
-    }
     
     visualCategories = Array.from(new Set(visualCategories.map(c => c.toLowerCase())));
     if (visualCategories.length > 1) {
@@ -106,9 +98,9 @@ export function ActivityListItem({ activity, user, onJoin, hasRequested }: Activ
     const PrimaryIcon = primaryStyle.icon;
 
     const isRequested = !!(
-        (activity as any).isRequested || // 1. reliable backend state (if added)
-        hasRequested ||                  // 2. page-session state
-        hasRequestedLocal                // 3. component fallback
+        (activity as any).isRequested ||
+        hasRequested ||
+        hasRequestedLocal
     );
 
     const handleJoinClick = async (e: React.MouseEvent) => {
@@ -126,13 +118,6 @@ export function ActivityListItem({ activity, user, onJoin, hasRequested }: Activ
         }
 
         const resolvedMode = activity.joinMode === 'direct' ? 'direct' : 'request';
-        console.log("[JOIN_FLOW_DEBUG]", {
-            activityId: activity.id,
-            joinMode: activity.joinMode,
-            resolvedMode,
-            action: resolvedMode === 'direct' ? 'joinActivity' : 'requestJoinActivity'
-        });
-
         setIsJoining(true);
         try { 
             await onJoin(activity); 
@@ -173,129 +158,130 @@ export function ActivityListItem({ activity, user, onJoin, hasRequested }: Activ
           onPointerCancel={() => setIsPressed(false)}
           onPointerLeave={() => setIsPressed(false)}
           className={cn(
-              "group cursor-pointer overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-all duration-200 flex flex-col relative p-0 h-full",
+              "group cursor-pointer overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-all duration-200 flex flex-col md:flex-row relative p-0 w-full min-h-[160px]",
               isPressed ? "scale-[0.985] duration-75" : "",
               activity.isBoosted && "ring-4 ring-orange-500/10 shadow-orange-500/15"
           )}
         >
-            {/* Oberer Bild/Icon-Bereich mit Dekoration */}
+            {/* Split Left Category Header Area */}
             <CategoryCardDecoration
                 gradientClass={primaryStyle.gradientClass}
                 icon={PrimaryIcon}
                 label={primaryStyle.label}
-                variant="standard"
-                className="group-hover:scale-105"
+                variant="featured"
+                className="w-full md:w-52 h-24 md:h-full shrink-0"
             >
-                {/* Status Badges - Left */}
-                <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-20 pointer-events-none select-none">
-                    {activity.isBoosted && (
-                        <div className="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[8px] font-black px-2 rounded-full uppercase tracking-wider shadow-lg flex items-center gap-1 border border-white/20">
-                            <Flame className="h-2.5 w-2.5" />
-                            <span>Highlight</span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Status Badges - Right */}
-                <div className="absolute top-2.5 right-2.5 flex flex-col items-end gap-1.5 z-20 pointer-events-none select-none">
-                    <div className="h-5 bg-white/20 backdrop-blur-md text-white text-[8px] font-black px-2 rounded-full flex items-center gap-1 border border-white/20">
-                        <ArrowUp className="h-2.5 w-2.5" />
-                        {activity.communityScore || 0}
+                <div className="flex flex-col items-center gap-1 z-10">
+                    <div className="bg-white/95 text-emerald-800 dark:bg-neutral-900 dark:text-emerald-400 text-[8px] font-black uppercase px-2 py-0.5 rounded-full shadow-sm mb-1 tracking-widest border border-white/20 select-none">
+                        {translateAppString('featured.label', language)}
                     </div>
+                    <PrimaryIcon className="text-white h-7 w-7 drop-shadow-lg" />
+                    <span className="text-[7.5px] font-black uppercase tracking-[0.2em] text-white/90 drop-shadow-sm">{primaryStyle.label}</span>
                 </div>
             </CategoryCardDecoration>
 
-            {/* Content Bereich */}
-            <div className="p-3 pb-4 flex flex-col flex-1">
-                <div className="mb-2">
-                    <div className="flex items-center justify-between gap-2">
-                        <h3 className="font-bold text-base truncate flex-1 text-[#0f172a] dark:text-neutral-200">
-                            <Link 
-                                href={`/activities/${activity.id}`} 
-                                onClick={(e) => { e.stopPropagation(); }}
-                                className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
-                            >
-                                {activity.title || activity.placeName || (language === 'de' ? "Treffen" : "Meetup")}
-                            </Link>
-                        </h3>
+            {/* Split Right Content Area */}
+            <div className="p-4 md:p-5 flex flex-col flex-1 min-w-0 justify-between">
+                <div>
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                        <div className="min-w-0">
+                            <h3 className="text-base sm:text-lg font-black tracking-tight leading-snug text-[#0f172a] dark:text-neutral-200 truncate">
+                                <Link 
+                                    href={`/activities/${activity.id}`} 
+                                    onClick={(e) => { e.stopPropagation(); }}
+                                    className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+                                >
+                                    {activity.title || activity.placeName || (language === 'de' ? "Treffen" : "Meetup")}
+                                </Link>
+                            </h3>
+                            {activity.placeAddress && (
+                                <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5 truncate">
+                                    {activity.placeAddress}
+                                </p>
+                            )}
+                            <div className="flex items-center gap-1.5 mt-0.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px]">
+                                {activityDate && (
+                                    <span className="truncate">
+                                        {format(activityDate, language === 'de' ? 'eee, d. MMM HH:mm' : 'eee, MMM d HH:mm', { locale: language === 'de' ? de : enUS })}
+                                    </span>
+                                )}
+                                {activity.distance !== undefined && activity.distance !== null && (
+                                    <>
+                                        <span>•</span>
+                                        <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" /> {activity.distance < 1 ? '< 1 km' : `${activity.distance.toFixed(1)} km`}</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                            <div className="h-5 bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-400 text-[8px] font-black px-2.5 rounded-full flex items-center gap-1 border border-slate-200/20">
+                                <ArrowUp className="h-2.5 w-2.5 text-slate-400" />
+                                {activity.communityScore || 0}
+                            </div>
+                        </div>
                     </div>
-                    {activity.placeAddress && (
-                        <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5 truncate">
-                            {activity.placeAddress}
+
+                    <div className="flex flex-wrap gap-1 mb-3">
+                        {activity.sourceType === 'activity' && activity.isUserEvent && (
+                            <Badge variant="secondary" className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                                USER EVENT
+                            </Badge>
+                        )}
+                        {isPaidEvent && (
+                            <Badge variant="secondary" className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                {activity.price?.toFixed(2)}€
+                            </Badge>
+                        )}
+                    </div>
+
+                    {activity.description && (
+                        <p className="mb-4 text-[9px] text-slate-500 dark:text-neutral-400 font-medium leading-relaxed italic border-l border-primary/20 pl-2 line-clamp-2 overflow-hidden text-ellipsis break-words">
+                            "{activity.description}"
                         </p>
                     )}
-                    
-                    <div className="flex items-center gap-1.5 mt-0.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px]">
-                        {activityDate && (
-                            <span className="truncate">
-                                {format(activityDate, language === 'de' ? 'eee, d. MMM HH:mm' : 'eee, MMM d HH:mm', { locale: language === 'de' ? de : enUS })}
+
+                    {/* Social/Capacity Info */}
+                    <div className="flex items-center gap-3 mb-4">
+                        {visibleAvatars.length > 0 && (
+                            <div className="flex -space-x-1.5 overflow-hidden">
+                                {visibleAvatars.map((p) => (
+                                    <ProfileAvatar 
+                                        key={p.uid} 
+                                        photoURL={p.photoURL}
+                                        displayName={p.displayName}
+                                        className="h-5.5 w-5.5 border border-white shadow-sm"
+                                    />
+                                ))}
+                            </div>
+                        )}
+                        
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-bold text-slate-500 dark:text-neutral-400">
+                                {translateAppString('activity.participants', language, participantIds.length)}
+                                {excessCount > 0 && ` (+${excessCount})`}
                             </span>
-                        )}
-                        {activity.distance !== undefined && activity.distance !== null && (
-                            <>
-                                <span>•</span>
-                                <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" /> {activity.distance < 1 ? '< 1 km' : `${activity.distance.toFixed(1)} km`}</span>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1 mb-2">
-                    {activity.sourceType === 'activity' && activity.isUserEvent && (
-                        <Badge variant="secondary" className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                            USER EVENT
-                        </Badge>
-                    )}
-                    {isPaidEvent && (
-                        <Badge variant="secondary" className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-                            {activity.price?.toFixed(2)}€
-                        </Badge>
-                    )}
-                </div>
-
-                {activity.description && (
-                    <p className="mb-3 text-[9px] text-slate-500 dark:text-neutral-400 font-medium leading-relaxed italic border-l border-primary/20 pl-2 line-clamp-2 overflow-hidden text-ellipsis break-words">
-                        "{activity.description}"
-                    </p>
-                )}
-
-                {/* Social/Capacity Info */}
-                <div className="flex items-center gap-2 mb-3">
-                    {visibleAvatars.length > 0 && (
-                        <div className="flex -space-x-1.5 overflow-hidden">
-                            {visibleAvatars.map((p) => (
-                                <ProfileAvatar 
-                                    key={p.uid} 
-                                    photoURL={p.photoURL}
-                                    displayName={p.displayName}
-                                    className="h-5 w-5 border border-white shadow-sm"
-                                />
-                            ))}
+                            
+                            {/* Spots remaining logic */}
+                            {maxParticipants && maxParticipants > 0 ? (
+                                <span className={cn(
+                                    "text-[8px] font-bold uppercase tracking-wider mt-0.5",
+                                    isFull ? "text-red-500" : "text-emerald-600"
+                                )}>
+                                    {isFull 
+                                        ? translateAppString('activity.full', language)
+                                        : translateAppString('activity.spots_left', language, maxParticipants - participantIds.length)
+                                    }
+                                </span>
+                            ) : null}
                         </div>
-                    )}
-                    <div className="flex flex-col ml-1">
-                        <span className="text-[9px] font-bold text-slate-400">
-                            {translateAppString('activity.participants', language, participantIds.length)}
-                            {excessCount > 0 && ` (+${excessCount})`}
-                        </span>
-                        {maxParticipants && maxParticipants > 0 ? (
-                            <span className={cn(
-                                "text-[7.5px] font-black uppercase tracking-wider mt-0.5",
-                                isFull ? "text-red-500" : "text-emerald-600"
-                            )}>
-                                {isFull 
-                                    ? translateAppString('activity.full', language)
-                                    : translateAppString('activity.spots_left', language, maxParticipants - participantIds.length)
-                                }
-                            </span>
-                        ) : null}
                     </div>
                 </div>
 
-                {/* Footer Actions */}
-                <div className="flex items-center gap-2 mt-auto pt-3 border-t border-slate-50 dark:border-neutral-800/50">
+                {/* Footer Controls */}
+                <div className="flex items-center gap-2 mt-auto pt-3 border-t border-slate-50 dark:border-neutral-800/40">
                     <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                        <Users className="h-3 w-3 text-slate-300 shrink-0" />
+                        <Users className="h-3.5 w-3.5 text-slate-300 shrink-0" />
                         <span className="text-[9px] text-slate-400 font-bold uppercase truncate flex items-center gap-1">
                             {translateAppString('activity.host', language)}: {activity.hostUsername ? `@${activity.hostUsername.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')}
                             {activity.participantDetails?.[activity.hostId] && (
@@ -317,9 +303,9 @@ export function ActivityListItem({ activity, user, onJoin, hasRequested }: Activ
                                 variant="outline" 
                                 size="sm" 
                                 onClick={(e) => { e.stopPropagation(); handleViewChatClick(activity.id!); }} 
-                                className="h-7 rounded-lg text-[9px] font-black text-primary border-primary/20 px-3 flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                className="h-7.5 rounded-lg text-[9px] font-black text-primary border-primary/20 px-3 flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                             >
-                                <MessageSquare className="h-3 w-3" />
+                                <MessageSquare className="h-3.5 w-3.5" />
                                 Chat
                             </Button>
                         ) : (
@@ -328,12 +314,12 @@ export function ActivityListItem({ activity, user, onJoin, hasRequested }: Activ
                                 onClick={handleJoinClick} 
                                 disabled={isJoining || isFull || isRequested}
                                 className={cn(
-                                    "h-7 rounded-lg text-[9px] font-black px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                                    "h-7.5 rounded-lg text-[9px] font-black px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                                     isPaidEvent ? "bg-slate-900 text-white" : "bg-primary text-white"
                                 )}
                             >
                                 {isJoining ? (
-                                    <Loader2 className="animate-spin h-3 w-3" />
+                                    <Loader2 className="animate-spin h-3.5 w-3.5" />
                                 ) : isFull ? (
                                     translateAppString('activity.full', language)
                                 ) : isRequested ? (

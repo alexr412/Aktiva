@@ -10,8 +10,7 @@ import {
     Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, isToday, isTomorrow } from 'date-fns';
-import { getPrimaryIconData, translateTag, getCleanTags } from '@/lib/tag-config';
+import { getPrimaryIconData, translateTag, getCleanTags, translateAppString } from '@/lib/tag-config';
 import { formatOpeningHours } from '@/lib/tag-parser';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,7 @@ const formatDistance = (distanceInKm?: number) => {
     return `${distanceInKm.toFixed(1)}km`;
 };
 
-type PlaceCardProps = {
+interface FeaturedPlaceCardProps {
     place: Place;
     onClick: () => void;
     onAddActivity: (place: Place) => void;
@@ -39,9 +38,9 @@ type PlaceCardProps = {
     role?: string | null;
     weightedUpvotes?: number;
     weightedDownvotes?: number;
-};
+}
 
-export function PlaceCard({
+export function FeaturedPlaceCard({
     place,
     onClick,
     onAddActivity,
@@ -55,7 +54,7 @@ export function PlaceCard({
     role,
     weightedUpvotes = 0,
     weightedDownvotes = 0
-}: PlaceCardProps) {
+}: FeaturedPlaceCardProps) {
     if (!place) return null;
 
     const language = useLanguage();
@@ -101,98 +100,75 @@ export function PlaceCard({
             onPointerCancel={() => setIsPressed(false)}
             onPointerLeave={() => setIsPressed(false)}
             className={cn(
-                "cursor-pointer group overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-all duration-200 flex flex-col relative p-0 h-full",
+                "cursor-pointer group overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-all duration-200 flex flex-col md:flex-row relative p-0 w-full min-h-[160px]",
                 isPressed ? "scale-[0.985] duration-75" : ""
             )}
         >
-            {/* Oberer Bild/Icon-Bereich mit Dekoration */}
+            {/* Split Left Category Header Area */}
             <CategoryCardDecoration
                 gradientClass={primaryStyle.gradientClass}
                 icon={PrimaryIcon}
                 label={primaryStyle.label}
-                variant="standard"
-                className="group-hover:scale-105"
+                variant="featured"
+                className="w-full md:w-52 h-24 md:h-full shrink-0"
             >
-                {/* Status Badges */}
-                <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-20 pointer-events-none select-none">
-                    {(activityCount > 0 || (place.activityCount !== undefined && place.activityCount > 0)) && (
-                        <div className="h-5 bg-emerald-500/90 backdrop-blur-md text-white text-[8px] font-black uppercase px-2 rounded-full shadow-lg animate-pulse tracking-widest flex items-center gap-1 border border-white/20">
-                            <div className="h-1 w-1 rounded-full bg-white animate-ping" />
-                            {(() => {
-                                const activityDate = (place as any).activityDate?.toDate?.() || null;
-                                if (!activityDate) return language === 'de' ? 'Aktiv' : 'Active';
-                                const timeStr = format(activityDate, 'HH:mm');
-                                if (isToday(activityDate)) return `${language === 'de' ? 'Heute' : 'Today'} ${timeStr}`;
-                                if (isTomorrow(activityDate)) return `${language === 'de' ? 'Morgen' : 'Tomorrow'} ${timeStr}`;
-                                return format(activityDate, 'dd.MM. HH:mm');
-                            })()}
-                        </div>
-                    )}
-                </div>
-
-                {/* Status & Distanz Badges */}
-                <div className="absolute top-2.5 right-4 flex items-center gap-1.5 pointer-events-none select-none">
-                    {role === 'admin' && place.relevanceScore !== undefined && (
-                        <div className="h-5 bg-amber-400 text-white text-[8px] font-black px-2 rounded-2xl shadow-lg flex items-center gap-1 border border-white/20">
-                            <Sparkles className="h-2.5 w-2.5" />
-                            {place.relevanceScore.toFixed(1)}
-                        </div>
-                    )}
-                    {place.distance !== undefined && (
-                        <div className="h-5 bg-black/40 backdrop-blur-md text-white text-[8px] font-black px-2 rounded-full whitespace-nowrap flex items-center justify-center border border-white/10">
-                            {formatDistance(place.distance)}
-                        </div>
-                    )}
+                {/* Custom Content Overlay inside Decoration */}
+                <div className="flex flex-col items-center gap-1 z-10">
+                    <div className="bg-white/95 text-emerald-800 dark:bg-neutral-900 dark:text-emerald-400 text-[8px] font-black uppercase px-2 py-0.5 rounded-full shadow-sm mb-1 tracking-widest border border-white/20 select-none">
+                        {translateAppString('featured.label', language)}
+                    </div>
+                    <PrimaryIcon className="text-white h-7 w-7 drop-shadow-lg" />
+                    <span className="text-[7.5px] font-black uppercase tracking-[0.2em] text-white/90 drop-shadow-sm">{primaryStyle.label}</span>
                 </div>
             </CategoryCardDecoration>
 
-            {/* Content Bereich */}
-            <div className="p-3 pb-4 flex flex-col flex-1">
-                <div className="mb-2">
-                    <h3 className="text-base sm:text-lg font-black tracking-tight line-clamp-2 min-h-[2.5rem] leading-snug flex items-center gap-1.5 flex-wrap">
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onClick(); }}
-                            className="font-black text-base text-left text-[#0f172a] dark:text-neutral-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
-                        >
-                            {place.name || (role === 'admin' ? `POI POI Ref: ${place.id.slice(-6)}` : (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'))}
-                        </button>
-                        {isEntityBoosted(place) && (
-                            <Sparkles className="h-4 w-4 text-amber-500 fill-amber-500/20 shrink-0 animate-pulse" />
+            {/* Split Right Content Area */}
+            <div className="p-4 md:p-5 flex flex-col flex-1 min-w-0 justify-between">
+                <div>
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                        <div className="min-w-0">
+                            <h3 className="text-base sm:text-lg font-black tracking-tight leading-snug text-[#0f172a] dark:text-neutral-200 truncate flex items-center gap-1.5 flex-wrap">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onClick(); }}
+                                    className="font-black text-base text-left text-[#0f172a] dark:text-neutral-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+                                >
+                                    {place.name || (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place')}
+                                </button>
+                                {isEntityBoosted(place) && (
+                                    <Sparkles className="h-4 w-4 text-amber-500 fill-amber-500/20 shrink-0 animate-pulse" />
+                                )}
+                            </h3>
+                            <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px] mt-0.5">
+                                {place.openingHours ? (
+                                    <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
+                                ) : (
+                                    <span className="truncate">{(place.address || (language === 'de' ? 'Adresse steht noch aus...' : 'Address pending sync...')).split(',').slice(0, 2).join(', ')}</span>
+                                )}
+                            </div>
+                        </div>
+
+                        {place.distance !== undefined && (
+                            <div className="h-5 shrink-0 bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[8px] font-black px-2.5 rounded-full whitespace-nowrap flex items-center justify-center border border-slate-200/20">
+                                {formatDistance(place.distance)}
+                            </div>
                         )}
-                    </h3>
-                    <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px]">
-                        {place.openingHours ? (
-                            <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
-                        ) : (
-                            <span className="truncate">{(place.address || (language === 'de' ? 'Adresse steht noch aus...' : 'Address pending sync...')).split(',').slice(0, 2).join(', ')}</span>
-                        )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-1 mb-4">
+                        {processedTags.filter(item => item.isMain).map((item, index) => (
+                            <Badge
+                                key={index}
+                                variant="secondary"
+                                className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-primary/5 text-primary"
+                            >
+                                {translateTag(item.tag, language)}
+                            </Badge>
+                        ))}
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1 mb-1">
-                    {processedTags.filter(item => item.isMain).map((item, index) => (
-                        <Badge
-                            key={index}
-                            variant="secondary"
-                            className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-primary/5 text-primary"
-                        >
-                            {translateTag(item.tag, language)}
-                        </Badge>
-                    ))}
-                    {role === 'admin' && (
-                        (place.categories || []).map((tag: string, idx: number) => (
-                            <span
-                                key={`${tag}-${idx}`}
-                                className="px-2 py-0.5 text-[8px] font-mono bg-neutral-50 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 rounded-[10px] border border-neutral-100 dark:border-neutral-800 whitespace-nowrap"
-                            >
-                                {tag}
-                            </span>
-                        ))
-                    )}
-                </div>
-
-                {/* Footer Actions - Einheitliche Zeile */}
-                <div className="flex items-center gap-2 mt-auto">
+                {/* Footer Controls */}
+                <div className="flex items-center gap-2 mt-auto pt-3 border-t border-slate-50 dark:border-neutral-800/40">
                     <div className="flex items-center bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-0.5 gap-0.5 border border-neutral-100 dark:border-neutral-800">
                         <button
                             onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}

@@ -605,6 +605,54 @@ const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => strin
   'pulse.starting_soon_count': {
     de: (count: number) => count === 1 ? '1 startet in Kürze' : `${count} starten in Kürze`,
     en: (count: number) => count === 1 ? '1 starting soon' : `${count} starting soon`
+  },
+  'featured.label': {
+    de: 'Empfohlen',
+    en: 'Recommended'
+  },
+  'activity.spots_left': {
+    de: (count: number) => count === 1 ? 'Noch 1 Platz' : `Noch ${count} Plätze`,
+    en: (count: number) => count === 1 ? '1 spot left' : `${count} spots left`
+  },
+  'activity.full': {
+    de: 'Voll',
+    en: 'Full'
+  },
+  'activity.join': {
+    de: 'Beitreten',
+    en: 'Join'
+  },
+  'activity.request': {
+    de: 'Anfragen',
+    en: 'Request to join'
+  },
+  'activity.requested': {
+    de: 'Angefragt',
+    en: 'Requested'
+  },
+  'activity.joined': {
+    de: 'Beigetreten',
+    en: 'Joined'
+  },
+  'activity.host': {
+    de: 'Veranstalter',
+    en: 'Host'
+  },
+  'activity.community': {
+    de: 'Community',
+    en: 'Community'
+  },
+  'activity.starts_soon': {
+    de: 'Startet in Kürze',
+    en: 'Starting soon'
+  },
+  'activity.loading': {
+    de: 'Wird geladen...',
+    en: 'Loading...'
+  },
+  'activity.participants': {
+    de: (count: number) => count === 1 ? '1 Teilnehmer' : `${count} Teilnehmer`,
+    en: (count: number) => count === 1 ? '1 participant' : `${count} participants`
   }
 };
 

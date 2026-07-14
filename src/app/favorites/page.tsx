@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useFavorites } from '@/contexts/favorites-context';
 import { useCollections } from '@/hooks/use-collections';
 import { PlaceCard } from '@/components/aktiva/place-card';
@@ -11,7 +11,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { CreateActivityDialog } from '@/components/aktiva/create-activity-dialog';
-import { createActivity } from '@/lib/firebase/firestore';
+import { createActivity, votePlace } from '@/lib/firebase/firestore';
 import { PlaceDetails } from '@/components/aktiva/place-details';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,13 +19,239 @@ import { Input } from '@/components/ui/input';
 import { PremiumUpgradeModal } from '@/components/premium/PremiumUpgradeModal';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { cn } from '@/lib/utils';
+import { db } from '@/lib/firebase/client';
+import { collection, query, where, documentId, onSnapshot } from 'firebase/firestore';
 
 export default function FavoritesPage() {
-    const { favorites } = useFavorites();
-    const { user } = useAuth();
+    const { favorites, addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
+    const { user, userProfile } = useAuth();
     const language = useLanguage();
     const router = useRouter();
     const { toast } = useToast();
+
+    // Live Vote/Metadata Cache
+    const [placesMetaMap, setPlacesMetaMap] = useState<Record<string, {
+      upvotes: number;
+      downvotes: number;
+      userVotes: Record<string, 'up' | 'down'>;
+      communityScore: number;
+      avgRating: number;
+      reviewCount: number;
+      activityCount: number;
+      weightedUpvotes: number;
+      weightedDownvotes: number;
+    }>>({});
+    const [isVotingPlace, setIsVotingPlace] = useState<Record<string, boolean>>({});
+
+    const favoritesPlaceIdsKey = useMemo(() => {
+        if (favorites.length === 0) return '';
+        const ids: string[] = [];
+        const seen = new Set<string>();
+        favorites.forEach(f => {
+            if (f.id && !seen.has(f.id)) {
+                seen.add(f.id);
+                ids.push(f.id);
+            }
+        });
+        return ids.join(',');
+    }, [favorites]);
+
+    const activeUnsubs = useRef<Record<string, () => void>>({});
+
+    // Reset maps on authentication changes
+    useEffect(() => {
+        setPlacesMetaMap({});
+        Object.values(activeUnsubs.current).forEach(unsub => unsub());
+        activeUnsubs.current = {};
+    }, [user?.uid]);
+
+    // Live batch metadata snapshot listener for favorites
+    useEffect(() => {
+        if (!db) return;
+        const placeIds = favoritesPlaceIdsKey ? favoritesPlaceIdsKey.split(',') : [];
+        if (placeIds.length === 0) {
+            Object.values(activeUnsubs.current).forEach(unsub => unsub());
+            activeUnsubs.current = {};
+            return;
+        }
+
+        const batchSize = 30;
+        const requiredChunkKeys: string[] = [];
+        const newUnsubs: Record<string, () => void> = {};
+
+        for (let i = 0; i < placeIds.length; i += batchSize) {
+            const chunk = placeIds.slice(i, i + batchSize);
+            const chunkKey = chunk.join(',');
+            requiredChunkKeys.push(chunkKey);
+
+            if (activeUnsubs.current[chunkKey]) {
+                newUnsubs[chunkKey] = activeUnsubs.current[chunkKey];
+                delete activeUnsubs.current[chunkKey];
+            } else {
+                const q = query(collection(db!, 'places'), where(documentId(), 'in', chunk));
+                const unsub = onSnapshot(q, (snap) => {
+                    if (!requiredChunkKeys.includes(chunkKey)) return;
+
+                    setPlacesMetaMap(prev => {
+                        const updated = { ...prev };
+                        let changed = false;
+                        snap.forEach(docSnap => {
+                            const d = docSnap.data();
+                            const newEntry = {
+                              upvotes: d.upvotes || 0,
+                              downvotes: d.downvotes || 0,
+                              userVotes: d.userVotes || {},
+                              communityScore: d.communityScore || 0,
+                              avgRating: d.avgRating || 0,
+                              reviewCount: d.reviewCount || 0,
+                              activityCount: d.activityCount || 0,
+                              weightedUpvotes: d.weightedUpvotes ?? d.upvotes ?? 0,
+                              weightedDownvotes: d.weightedDownvotes ?? d.downvotes ?? 0
+                            };
+                            const existing = prev[docSnap.id];
+                            if (!existing ||
+                                existing.upvotes !== newEntry.upvotes ||
+                                existing.downvotes !== newEntry.downvotes ||
+                                existing.communityScore !== newEntry.communityScore ||
+                                existing.avgRating !== newEntry.avgRating ||
+                                existing.reviewCount !== newEntry.reviewCount ||
+                                existing.activityCount !== newEntry.activityCount ||
+                                existing.weightedUpvotes !== newEntry.weightedUpvotes ||
+                                existing.weightedDownvotes !== newEntry.weightedDownvotes ||
+                                JSON.stringify(existing.userVotes) !== JSON.stringify(newEntry.userVotes)) {
+                              updated[docSnap.id] = newEntry;
+                              changed = true;
+                            }
+                        });
+                        return changed ? updated : prev;
+                    });
+                }, (error) => {
+                    console.error("Favorites metadata snapshot error:", error);
+                });
+                newUnsubs[chunkKey] = unsub;
+            }
+        }
+
+        // Unsubscribe obsolete chunks
+        Object.values(activeUnsubs.current).forEach(unsub => unsub());
+        activeUnsubs.current = newUnsubs;
+    }, [favoritesPlaceIdsKey, db, user?.uid]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            Object.values(activeUnsubs.current).forEach(unsub => unsub());
+            activeUnsubs.current = {};
+        };
+    }, []);
+
+    // Cleanup stale keys from map
+    useEffect(() => {
+        const activeIds = favoritesPlaceIdsKey ? favoritesPlaceIdsKey.split(',') : [];
+        const activeIdSet = new Set(activeIds);
+
+        setPlacesMetaMap(prev => {
+            let changed = false;
+            const cleaned = { ...prev };
+            for (const id in cleaned) {
+                if (!activeIdSet.has(id)) {
+                    delete cleaned[id];
+                    changed = true;
+                }
+            }
+            return changed ? cleaned : prev;
+        });
+    }, [favoritesPlaceIdsKey]);
+
+    const handleVotePlace = async (placeId: string, type: 'up' | 'down' | 'none', placeObj: Place) => {
+        if (!user || isVotingPlace[placeId]) return;
+        setIsVotingPlace(prev => ({ ...prev, [placeId]: true }));
+        
+        setPlacesMetaMap(prev => {
+            const currentMeta = prev[placeId] || {
+                upvotes: placeObj.upvotes || 0,
+                downvotes: placeObj.downvotes || 0,
+                userVotes: placeObj.userVotes || {},
+                communityScore: placeObj.globalScore || 0,
+                avgRating: placeObj.rating || 0,
+                reviewCount: 0,
+                activityCount: placeObj.activityCount || 0,
+                weightedUpvotes: placeObj.upvotes || 0,
+                weightedDownvotes: placeObj.downvotes || 0
+            };
+
+            const prevVote = currentMeta.userVotes?.[user.uid] || 'none';
+            let upDelta = 0;
+            let downDelta = 0;
+            const newUserVotes = { ...currentMeta.userVotes };
+
+            if (prevVote === 'up') upDelta -= 1;
+            else if (prevVote === 'down') downDelta -= 1;
+
+            if (type === 'up') { upDelta += 1; newUserVotes[user.uid] = 'up'; }
+            else if (type === 'down') { downDelta += 1; newUserVotes[user.uid] = 'down'; }
+            else { delete newUserVotes[user.uid]; }
+
+            return {
+                ...prev,
+                [placeId]: {
+                    ...currentMeta,
+                    upvotes: Math.max(0, currentMeta.upvotes + upDelta),
+                    downvotes: Math.max(0, currentMeta.downvotes + downDelta),
+                    userVotes: newUserVotes
+                }
+            };
+        });
+
+        try {
+            await votePlace(placeId, user.uid, type, userProfile?.role, placeObj);
+        } catch (error) {
+            console.error("Voting failed, reverting optimistic update:", error);
+            toast({
+                variant: "destructive",
+                title: language === 'de' ? "Abstimmung fehlgeschlagen" : "Voting failed",
+                description: language === 'de' ? "Bitte versuche es später noch einmal." : "Please try again later."
+            });
+            // Revert optimistic update
+            setPlacesMetaMap(prev => {
+                const currentMeta = prev[placeId];
+                if (!currentMeta) return prev;
+                
+                const prevVote = placeObj.userVotes?.[user.uid] || 'none';
+                let upDelta = 0;
+                let downDelta = 0;
+                const newUserVotes = { ...currentMeta.userVotes };
+
+                const optVote = currentMeta.userVotes?.[user.uid] || 'none';
+                if (optVote === 'up') upDelta -= 1;
+                else if (optVote === 'down') downDelta -= 1;
+
+                if (prevVote === 'up') { upDelta += 1; newUserVotes[user.uid] = 'up'; }
+                else if (prevVote === 'down') { downDelta += 1; newUserVotes[user.uid] = 'down'; }
+                else { delete newUserVotes[user.uid]; }
+
+                return {
+                    ...prev,
+                    [placeId]: {
+                        ...currentMeta,
+                        upvotes: Math.max(0, currentMeta.upvotes + upDelta),
+                        downvotes: Math.max(0, currentMeta.downvotes + downDelta),
+                        userVotes: newUserVotes
+                    }
+                };
+            });
+        } finally {
+            setIsVotingPlace(prev => ({ ...prev, [placeId]: false }));
+        }
+    };
+
+    const handleBookmarkTogglePlace = (placeObj: Place) => {
+        if (checkIsFavorite(placeObj.id)) {
+            removeFavorite(placeObj.id);
+        } else {
+            addFavorite(placeObj);
+        }
+    };
 
     // Collection Hook
     const {
@@ -225,14 +451,28 @@ export default function FavoritesPage() {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {favorites.map(fav => (
-                                        <PlaceCard
-                                            key={fav.id}
-                                            place={fav as Place}
-                                            onClick={() => setSelectedPlace(fav as Place)}
-                                            onAddActivity={() => handleOpenActivityModal(fav as Place)}
-                                        />
-                                    ))}
+                                    {favorites.map(fav => {
+                                        const live = placesMetaMap[fav.id];
+                                        const favPlace = fav as Place;
+                                        return (
+                                            <PlaceCard
+                                                key={fav.id}
+                                                place={favPlace}
+                                                onClick={() => setSelectedPlace(favPlace)}
+                                                onAddActivity={() => handleOpenActivityModal(favPlace)}
+                                                upvotes={live ? live.upvotes : (favPlace.upvotes || 0)}
+                                                downvotes={live ? live.downvotes : (favPlace.downvotes || 0)}
+                                                userVote={live ? (user ? (live.userVotes?.[user.uid] || 'none') : 'none') : (user ? (favPlace.userVotes?.[user.uid] || 'none') : 'none')}
+                                                activityCount={live ? live.activityCount : ((favPlace as any).activityCount || 0)}
+                                                isFavorite={checkIsFavorite(fav.id)}
+                                                onVote={(type) => handleVotePlace(fav.id, type, favPlace)}
+                                                onBookmarkToggle={() => handleBookmarkTogglePlace(favPlace)}
+                                                role={userProfile?.role}
+                                                weightedUpvotes={live ? live.weightedUpvotes : (favPlace.upvotes || 0)}
+                                                weightedDownvotes={live ? live.weightedDownvotes : (favPlace.downvotes || 0)}
+                                            />
+                                        );
+                                    })}
                                 </div>
                             )
                         )}
@@ -366,12 +606,24 @@ export default function FavoritesPage() {
 
                                   if (!place) return null;
 
+                                  const live = placesMetaMap[place.id];
+
                                   return (
                                     <div key={placeId} className="relative group">
                                       <PlaceCard
                                         place={place}
                                         onClick={() => setSelectedPlace(place)}
                                         onAddActivity={() => handleOpenActivityModal(place)}
+                                        upvotes={live ? live.upvotes : (place.upvotes || 0)}
+                                        downvotes={live ? live.downvotes : (place.downvotes || 0)}
+                                        userVote={live ? (user ? (live.userVotes?.[user.uid] || 'none') : 'none') : (user ? (place.userVotes?.[user.uid] || 'none') : 'none')}
+                                        activityCount={live ? live.activityCount : ((place as any).activityCount || 0)}
+                                        isFavorite={checkIsFavorite(place.id)}
+                                        onVote={(type) => handleVotePlace(place.id, type, place)}
+                                        onBookmarkToggle={() => handleBookmarkTogglePlace(place)}
+                                        role={userProfile?.role}
+                                        weightedUpvotes={live ? live.weightedUpvotes : (place.upvotes || 0)}
+                                        weightedDownvotes={live ? live.weightedDownvotes : (place.downvotes || 0)}
                                       />
                                       <Button
                                         variant="destructive"
