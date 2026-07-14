@@ -25,7 +25,7 @@ export function CategoryCardDecoration({
   return (
     <div 
       className={cn(
-        "w-full flex items-center justify-center relative overflow-hidden select-none pointer-events-none transition-transform duration-700",
+        "w-full flex items-center justify-center relative overflow-hidden select-none pointer-events-none transition-transform duration-300",
         variant === 'featured' ? "h-full min-h-[140px] md:w-56 shrink-0" : "h-20",
         gradientClass,
         className

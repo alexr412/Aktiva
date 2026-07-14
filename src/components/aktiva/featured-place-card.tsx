@@ -100,7 +100,7 @@ export function FeaturedPlaceCard({
             onPointerCancel={() => setIsPressed(false)}
             onPointerLeave={() => setIsPressed(false)}
             className={cn(
-                "cursor-pointer group overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-all duration-200 flex flex-col md:flex-row relative p-0 w-full min-h-[160px]",
+                "cursor-pointer group overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-[transform,box-shadow,border-color] duration-200 flex flex-col md:flex-row relative p-0 w-full min-h-[160px]",
                 isPressed ? "scale-[0.985] duration-75" : ""
             )}
         >
@@ -173,7 +173,7 @@ export function FeaturedPlaceCard({
                         <button
                             onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
                             className={cn(
-                                "h-7 rounded-xl flex items-center justify-center transition-all text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                                "h-7 rounded-xl flex items-center justify-center transition-colors duration-200 text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                                 (role === 'admin' || role === 'supporter') ? "px-2" : "w-7",
                                 userVote === 'up' ? "bg-white text-emerald-500 shadow-sm" : "text-emerald-500/40 hover:text-emerald-500"
                             )}
@@ -189,7 +189,7 @@ export function FeaturedPlaceCard({
                         <button
                             onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
                             className={cn(
-                                "h-7 rounded-xl flex items-center justify-center transition-all text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                                "h-7 rounded-xl flex items-center justify-center transition-colors duration-200 text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                                 (role === 'admin' || role === 'supporter') ? "px-2" : "w-7",
                                 userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-red-500/40 hover:text-red-500"
                             )}
@@ -208,17 +208,17 @@ export function FeaturedPlaceCard({
                         size="icon"
                         onClick={handleBookmarkToggle}
                         className={cn(
-                            "h-8 w-8 rounded-xl transition-all ml-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                            "h-8 w-8 rounded-xl transition-colors duration-200 ml-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                             isFavorite ? "text-primary bg-primary/10" : "text-neutral-300 hover:text-primary hover:bg-primary/5"
                         )}
                     >
-                        <Bookmark className={cn("h-4 w-4", isFavorite && "fill-primary")} />
+                        <Bookmark className={cn("h-4 w-4 transition-colors duration-200", isFavorite && "fill-primary")} />
                     </Button>
 
                     <Button
                         size="icon"
                         onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
-                        className="h-8 w-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-all active:scale-95 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                        className="h-8 w-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-[color,background-color,transform,box-shadow] duration-200 active:scale-95 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     >
                         <Plus className="h-4 w-4" strokeWidth={3} />
                     </Button>

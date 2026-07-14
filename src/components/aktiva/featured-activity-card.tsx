@@ -158,7 +158,7 @@ export function FeaturedActivityCard({ activity, user, onJoin, hasRequested }: F
           onPointerCancel={() => setIsPressed(false)}
           onPointerLeave={() => setIsPressed(false)}
           className={cn(
-              "group cursor-pointer overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-all duration-200 flex flex-col md:flex-row relative p-0 w-full min-h-[160px]",
+              "group cursor-pointer overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-[transform,box-shadow,border-color] duration-200 flex flex-col md:flex-row relative p-0 w-full min-h-[160px]",
               isPressed ? "scale-[0.985] duration-75" : "",
               activity.isBoosted && "ring-4 ring-orange-500/10 shadow-orange-500/15"
           )}
@@ -314,20 +314,25 @@ export function FeaturedActivityCard({ activity, user, onJoin, hasRequested }: F
                                 onClick={handleJoinClick} 
                                 disabled={isJoining || isFull || isRequested}
                                 className={cn(
-                                    "h-7.5 rounded-lg text-[9px] font-black px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                                    "h-7.5 rounded-lg text-[9px] font-black px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 relative flex items-center justify-center min-w-[70px]",
                                     isPaidEvent ? "bg-slate-900 text-white" : "bg-primary text-white"
                                 )}
                             >
-                                {isJoining ? (
-                                    <Loader2 className="animate-spin h-3.5 w-3.5" />
-                                ) : isFull ? (
-                                    translateAppString('activity.full', language)
-                                ) : isRequested ? (
-                                    translateAppString('activity.requested', language)
-                                ) : activity.joinMode === 'direct' ? (
-                                    translateAppString('activity.join', language)
-                                ) : (
-                                    translateAppString('activity.request', language)
+                                <span className={cn("transition-[opacity,transform] duration-200", isJoining ? "opacity-0 scale-90" : "opacity-100 scale-100")}>
+                                    {isFull ? (
+                                        translateAppString('activity.full', language)
+                                    ) : isRequested ? (
+                                        translateAppString('activity.requested', language)
+                                    ) : activity.joinMode === 'direct' ? (
+                                        translateAppString('activity.join', language)
+                                    ) : (
+                                        translateAppString('activity.request', language)
+                                    )}
+                                </span>
+                                {isJoining && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <Loader2 className="animate-spin h-3.5 w-3.5 text-current" />
+                                    </div>
                                 )}
                             </Button>
                         )}

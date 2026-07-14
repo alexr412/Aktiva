@@ -13,6 +13,7 @@ interface AktivaPulseHeroProps {
   eligibleActivities: Activity[];
   language: 'de' | 'en';
   onExplore: () => void;
+  loading?: boolean;
 }
 
 /**
@@ -65,12 +66,15 @@ export function AktivaPulseHero({
   visiblePlaceCount,
   eligibleActivities,
   language,
-  onExplore
+  onExplore,
+  loading = false
 }: AktivaPulseHeroProps) {
   const [referenceTime, setReferenceTime] = useState<number | null>(null);
+  const [isPressed, setIsPressed] = useState(false);
 
   // Set reference time after mount to prevent server/client hydration mismatches
   useEffect(() => {
+    if (loading) return;
     setReferenceTime(Date.now());
     
     // Refresh the client reference time once per minute
@@ -79,7 +83,7 @@ export function AktivaPulseHero({
     }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [loading]);
 
   const normalizedCity = useMemo(() => normalizeCityName(cityName), [cityName]);
 
@@ -96,6 +100,30 @@ export function AktivaPulseHero({
       return startMs > referenceTime && startMs <= twoHoursLater;
     }).length;
   }, [eligibleActivities, referenceTime, currentViewType]);
+
+  if (loading) {
+    return (
+      <div 
+        className="w-full flex flex-col justify-between py-6 px-5 md:px-7 rounded-[22px] bg-gradient-to-br from-emerald-600 to-teal-800 dark:from-emerald-800 dark:to-teal-950 text-white shadow-premium relative overflow-hidden transition-all duration-300 gap-4 pointer-events-none select-none"
+        aria-hidden="true"
+      >
+        <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-teal-400/10 rounded-full blur-2xl" />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-emerald-400/60" />
+            <div className="h-3.5 w-24 bg-white/20 rounded animate-pulse motion-reduce:animate-none" />
+          </div>
+          <div className="h-6 w-2/3 bg-white/20 rounded-md mt-1 animate-pulse motion-reduce:animate-none" />
+        </div>
+        <div className="min-h-[2.5rem] flex items-center">
+          <div className="h-4.5 w-1/2 bg-white/10 rounded animate-pulse motion-reduce:animate-none" />
+        </div>
+        <div>
+          <div className="h-11 w-32 bg-white/30 rounded-xl mt-1 animate-pulse motion-reduce:animate-none" />
+        </div>
+      </div>
+    );
+  }
 
   // Determine dynamic heading
   const headingText = normalizedCity
@@ -195,7 +223,7 @@ export function AktivaPulseHero({
       <div className="z-10 mt-1">
         <Button
           onClick={onExplore}
-          className="h-11 px-5 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 font-black text-xs transition-all uppercase tracking-wider active:scale-[0.98] border-none shadow-sm flex items-center gap-1.5"
+          className="h-11 px-5 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 font-black text-xs transition-all uppercase tracking-wider active:scale-[0.985] border-none shadow-sm flex items-center gap-1.5"
           aria-label={translateAppString('pulse.cta', language)}
         >
           <Compass className="h-4 w-4" />

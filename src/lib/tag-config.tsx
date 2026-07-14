@@ -653,6 +653,50 @@ const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => strin
   'activity.participants': {
     de: (count: number) => count === 1 ? '1 Teilnehmer' : `${count} Teilnehmer`,
     en: (count: number) => count === 1 ? '1 participant' : `${count} participants`
+  },
+  'loading.results': {
+    de: 'Ergebnisse werden geladen...',
+    en: 'Loading results...'
+  },
+  'loading.results_more': {
+    de: 'Weitere Ergebnisse werden geladen...',
+    en: 'Loading more results...'
+  },
+  'empty.no_search_matches': {
+    de: 'Keine Übereinstimmungen für deine Suche gefunden.',
+    en: 'No matches found for your search.'
+  },
+  'empty.no_places': {
+    de: 'Keine passenden Orte gefunden.',
+    en: 'No matching places found.'
+  },
+  'empty.no_activities': {
+    de: 'Keine passenden Community-Aktivitäten gefunden.',
+    en: 'No matching community activities found.'
+  },
+  'empty.action.clear_search': {
+    de: 'Suche löschen',
+    en: 'Clear search'
+  },
+  'empty.action.reset_filters': {
+    de: 'Filter zurücksetzen',
+    en: 'Reset filters'
+  },
+  'empty.action.increase_radius': {
+    de: 'Radius erhöhen',
+    en: 'Increase radius'
+  },
+  'empty.action.retry': {
+    de: 'Erneut versuchen',
+    en: 'Retry'
+  },
+  'error.location_unavailable': {
+    de: 'Standort konnte nicht ermittelt werden. Bitte aktiviere den Standortzugriff.',
+    en: 'Location could not be determined. Please enable location access.'
+  },
+  'error.connection_problem': {
+    de: 'Verbindungsproblem. Bitte versuche es später noch einmal.',
+    en: 'Connection problem. Please try again later.'
   }
 };
 

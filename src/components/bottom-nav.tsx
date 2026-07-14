@@ -43,12 +43,12 @@ export function BottomNav() {
               key={item.label}
               href={item.href}
               className={cn(
-                  "flex h-full flex-col items-center justify-center gap-1 transition-all duration-200 relative px-4 flex-1",
+                  "flex h-full flex-col items-center justify-center gap-1 transition-[color,opacity] duration-200 relative px-4 flex-1",
                   isActive ? "text-primary scale-100" : "text-slate-500 dark:text-neutral-400 opacity-60 hover:opacity-100"
               )}
             >
               <div className={cn(
-                  "p-2.5 rounded-[12px] transition-all duration-200 relative",
+                  "p-2.5 rounded-[12px] transition-[color,background-color] duration-200 relative",
                   isActive ? "bg-primary/10 text-primary" : "text-current"
               )}>
                 <item.icon className="h-5.5 w-5.5" strokeWidth={isActive ? 2.5 : 2} />
@@ -67,7 +67,7 @@ export function BottomNav() {
                 )}
               </div>
               <span className={cn(
-                  "text-[8px] uppercase font-black tracking-widest transition-all duration-200",
+                  "text-[8px] uppercase font-black tracking-widest transition-[opacity,transform] duration-200",
                   isActive ? "opacity-100 scale-100" : "opacity-0 scale-95"
               )}>
                 {item.label}

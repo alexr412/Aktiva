@@ -5,6 +5,34 @@ import type { Place, GeoapifyFeature, UserPreferences } from '@/lib/types';
 import { calculateRelevanceScore } from '@/lib/ranking';
 
 /**
+ * Centralized defensive normalization rule for place names:
+ * - String: trim and use it when non-empty
+ * - Number: convert with String(value)
+ * - Null, undefined, arrays, objects, or invalid values: use fallbackVal or fallbackLabel
+ */
+export function normalizePlaceName(
+  nameVal: any,
+  fallbackVal: any = null,
+  fallbackLabel: string = "Unbekannter Ort"
+): string {
+  if (typeof nameVal === 'string') {
+    const trimmed = nameVal.trim();
+    if (trimmed) return trimmed;
+  } else if (typeof nameVal === 'number' && !isNaN(nameVal)) {
+    return String(nameVal);
+  }
+
+  if (typeof fallbackVal === 'string') {
+    const trimmedFallback = fallbackVal.trim();
+    if (trimmedFallback) return trimmedFallback;
+  } else if (typeof fallbackVal === 'number' && !isNaN(fallbackVal)) {
+    return String(fallbackVal);
+  }
+
+  return fallbackLabel;
+}
+
+/**
  * Stufe 0A: Absoluter Abbruch (Hard Veto)
  * Blockiert das Rendering dieser Knoten und ihrer Sub-Kategorien bedingungslos via .startsWith()
  */
@@ -683,7 +711,7 @@ export async function fetchNearbyPlaces(
       const categories = Array.isArray(props.categories) ? props.categories : [props.categories];
       return {
         id: props.place_id,
-        name: props.name || props.address_line1,
+        name: normalizePlaceName(props.name, props.address_line1, "Unbekannter Ort"),
         address: props.address_line2,
         categories: categories,
         lat: props.lat,
@@ -725,7 +753,7 @@ export async function searchTextPlaces(text: string, lat: number, lon: number): 
             const detailedCategories = detailsData.features?.[0]?.properties?.categories || categories;
             return {
               id: placeId,
-              name: item.name || item.formatted,
+              name: normalizePlaceName(item.name, item.formatted, "Unbekannter Ort"),
               address: item.formatted,
               categories: detailedCategories,
               lat: item.lat,
@@ -739,7 +767,7 @@ export async function searchTextPlaces(text: string, lat: number, lon: number): 
 
       return {
         id: placeId || Math.random().toString(),
-        name: item.name || item.formatted,
+        name: normalizePlaceName(item.name, item.formatted, "Unbekannter Ort"),
         address: item.formatted,
         categories: categories,
         lat: item.lat,
@@ -766,7 +794,7 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place | 
       const props = data.features[0].properties;
       return {
         id: props.place_id,
-        name: props.name || props.address_line1,
+        name: normalizePlaceName(props.name, props.address_line1, "Unbekannter Ort"),
         address: props.address_line2,
         categories: props.categories || [],
         lat: props.lat,
@@ -821,7 +849,7 @@ export async function geocodeAddress(text: string): Promise<Place | null> {
       const props = data.features[0].properties;
       return {
         id: props.place_id,
-        name: props.name || props.address_line1,
+        name: normalizePlaceName(props.name, props.address_line1, "Unbekannter Ort"),
         address: props.address_line2,
         categories: props.categories || [],
         lat: props.lat,
@@ -846,7 +874,7 @@ export async function autocompletePlaces(text: string): Promise<Place[]> {
     if (data.features) {
       return data.features.map((f: any) => ({
         id: f.properties.place_id,
-        name: f.properties.name || f.properties.address_line1,
+        name: normalizePlaceName(f.properties.name, f.properties.address_line1, "Unbekannter Ort"),
         address: f.properties.address_line2,
         categories: f.properties.categories || [],
         lat: f.properties.lat,
@@ -890,7 +918,7 @@ export async function fetchUnfilteredPlaceInfo(searchQuery: string) {
       }
 
       return {
-        name: item.name || item.formatted || "Unbekannte Entität",
+        name: normalizePlaceName(item.name, item.formatted, "Unbekannte Entität"),
         address: item.formatted,
         rawCategories: extracted,
         // Führt die Logik isoliert aus, um das blockierende Tag zu diagnostizieren

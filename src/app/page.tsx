@@ -6,8 +6,20 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { CategoryFilters } from '@/components/aktiva/category-filters';
 import { AktivaPulseHero } from '@/components/aktiva/aktiva-pulse-hero';
+import { translateAppString } from '@/lib/tag-config';
 import { PlaceDetails } from '@/components/aktiva/place-details';
 import { PlaceCard } from '@/components/aktiva/place-card';
+
+type DiscoverFeedState =
+  | 'initial_loading'
+  | 'success_with_results'
+  | 'empty_search'
+  | 'empty_filters'
+  | 'empty_radius'
+  | 'empty_generic'
+  | 'location_unavailable'
+  | 'recoverable_network_error'
+  | 'complete_loading_failure';
 import { FeaturedPlaceCard } from '@/components/aktiva/featured-place-card';
 import { FeaturedActivityCard } from '@/components/aktiva/featured-activity-card';
 import { SpotActionSheet } from '@/components/aktiva/spot-action-sheet';
@@ -22,6 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, X, Compass, Clock, Trophy, TreePine, VolumeX, Heart, Users2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PlaceCardSkeleton, FeaturedPlaceCardSkeleton, ActivityCardSkeleton, FeaturedActivityCardSkeleton } from '@/components/aktiva/card-skeletons';
 import { CreateActivityDialog } from '@/components/aktiva/create-activity-dialog';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
@@ -169,6 +182,10 @@ export default function Home() {
   const [communityActivities, setCommunityActivities] = useState<Activity[]>([]);
   const [isCommunityLoading, setIsCommunityLoading] = useState(false);
   const [communityError, setCommunityError] = useState<Error | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+  const [reverseGeocodeFailed, setReverseGeocodeFailed] = useState(false);
+  const [communityRetryTrigger, setCommunityRetryTrigger] = useState(0);
 
   const isOpenNow = (openingHours: string | null | undefined): boolean => {
     if (!openingHours) return false;
@@ -283,6 +300,7 @@ export default function Home() {
 
         setCityName(displayCity);
         setResolvedCityName(rawCity);
+        setReverseGeocodeFailed(false);
 
         if (user?.uid) {
           updateUserLocation(user.uid, lat, lng, displayCity);
@@ -297,6 +315,7 @@ export default function Home() {
       console.error("Reverse geocoding failed:", error);
       setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
       setResolvedCityName(null);
+      setReverseGeocodeFailed(true);
     }
   }, [language, user?.uid]);
 
@@ -346,7 +365,7 @@ export default function Home() {
     return () => {
       unsubscribe();
     };
-  }, [isCommunityCategory]);
+  }, [isCommunityCategory, communityRetryTrigger]);
 
   // MULTI-SOURCE FETCHER (Geoapify vs Firestore)
   const multiFetcher = async (key: any) => {
@@ -574,7 +593,7 @@ export default function Home() {
     return { type: 'geoapify', url, pageIndex };
   }
 
-  const { data, size, setSize, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {
+  const { data, size, setSize, isValidating, error, mutate } = useSWRInfinite(getKey, multiFetcher, {
     revalidateFirstPage: false,
     dedupingInterval: 300000, // Increase deduping interval to 5 mins to prevent redundant API queries
   });
@@ -614,35 +633,6 @@ export default function Home() {
   }, [data, userLocation, activeCategory, activeTabId, debouncedSearchQuery, isValidating]);
 
   const displayData = data || cachedData;
-
-  const isLoadingInitialData = isCommunityCategory
-    ? isCommunityLoading && communityActivities.length === 0
-    : (!displayData && !error);
-
-  const isEmpty = isCommunityCategory
-    ? communityActivities.length === 0
-    : (displayData?.[0]?.features ? displayData[0].features.length === 0 : (displayData?.[0]?.length === 0));
-
-  const isFetchingNextPage = isCommunityCategory
-    ? false
-    : Boolean(size > 0 && displayData && typeof displayData[size - 1] === "undefined");
-
-  const isReachingEnd = useMemo(() => {
-    if (isCommunityCategory) return true; // Community tab is a live stream of up to 100 activities, no SWR pagination
-    if (error) return true;
-    if (isEmpty) return true;
-    if (!displayData || displayData.length === 0) return false;
-    const lastPage = displayData[displayData.length - 1];
-    const expectedLimit = (displayData.length - 1) === 0 ? 50 : 50;
-    if (isAktivCategory || isHighlightsCategory) {
-      // System tabs fetch 50 initially, then 10.
-      let fbLimit = (displayData.length - 1) === 0 ? 50 : 10;
-      return Boolean(lastPage && lastPage.length < fbLimit);
-    }
-    return Boolean(lastPage && lastPage.features?.length < expectedLimit);
-  }, [displayData, isEmpty, error, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
-
-  const activeError = isCommunityCategory ? communityError : error;
 
   const [votesMap, setVotesMap] = useState<Record<string, { upvotes: number; downvotes: number; weightedUpvotes: number; weightedDownvotes: number; voteBoostScore: number }>>({});
 
@@ -894,6 +884,73 @@ export default function Home() {
     });
   }, [places, userProfile, debouncedSearchQuery, shouldFilterByName, isHighlightsCategory, isAktivCategory, maxDistance, sortBy]);
 
+  // Derive explicit active-mode values
+  const activeFeedError = isFavoritesCategory
+    ? null
+    : (isCommunityCategory ? communityError : error);
+
+  const activeFeedIsValidating = isFavoritesCategory
+    ? false
+    : (isCommunityCategory ? isCommunityLoading : isValidating);
+
+  const activeFeedIsFetchingNextPage = isFavoritesCategory
+    ? false
+    : (isCommunityCategory ? false : Boolean(size > 0 && displayData && typeof displayData[size - 1] === "undefined"));
+
+  const activeFeedIsInitialLoading = isFavoritesCategory
+    ? false
+    : (isCommunityCategory 
+        ? isCommunityLoading && communityActivities.length === 0
+        : (!displayData && !error));
+
+  const activeFeedHasUsableData = isFavoritesCategory
+    ? favorites.length > 0
+    : (isCommunityCategory
+        ? communityActivities.length > 0
+        : !!(displayData && displayData.length > 0 && (displayData[0]?.features?.length > 0 || displayData[0]?.length > 0)));
+
+  const activeVisibleItemCount = isFavoritesCategory
+    ? favorites.length
+    : (isCommunityCategory ? visibleCommunityActivities.length : visiblePlaces.length);
+
+  const isLoadingInitialData = activeFeedIsInitialLoading;
+  const hasUsableFeedData = activeFeedHasUsableData;
+  const isInitialFeedLoading = activeFeedIsInitialLoading || (isLocationLoading && !activeFeedHasUsableData);
+  const isFetchingNextPage = activeFeedIsFetchingNextPage;
+  const isEmpty = activeVisibleItemCount === 0;
+
+  const activeError = activeFeedError;
+
+  const isReachingEnd = useMemo(() => {
+    if (isCommunityCategory) return true;
+    if (activeFeedError) return true;
+    if (isEmpty) return true;
+    if (!displayData || displayData.length === 0) return false;
+    const lastPage = displayData[displayData.length - 1];
+    const expectedLimit = (displayData.length - 1) === 0 ? 50 : 50;
+    if (isAktivCategory || isHighlightsCategory) {
+      let fbLimit = (displayData.length - 1) === 0 ? 50 : 10;
+      return Boolean(lastPage && lastPage.length < fbLimit);
+    }
+    return Boolean(lastPage && lastPage.features?.length < expectedLimit);
+  }, [displayData, isEmpty, activeFeedError, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
+
+  const handleActiveFeedRetry = useCallback(async () => {
+    if (activeFeedIsValidating) return;
+
+    if (isCommunityCategory) {
+      setCommunityRetryTrigger(prev => prev + 1);
+    } else if (isFavoritesCategory) {
+      // no-op
+    } else {
+      try {
+        await mutate();
+      } catch (err) {
+        console.error("Retry mutation failed:", err);
+      }
+    }
+  }, [isCommunityCategory, isFavoritesCategory, activeFeedIsValidating, mutate]);
+
   // Live Vote-Daten: onSnapshot-Listener für alle sichtbaren Spot-IDs.
   // Wenn ein Vote eingeht (auch von anderen Usern/Admins), wird votesMap live aktualisiert
   // → places memo recalculated → Startseite automatisch neu sortiert.
@@ -1083,12 +1140,22 @@ export default function Home() {
     if (node) observer.current.observe(node);
   }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, displayData, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
+  const isRequestingLocation = useRef(false);
   const requestLocation = useCallback(() => {
+    if (isRequestingLocation.current || isLocationLoading) return;
+    isRequestingLocation.current = true;
     setIsLocationLoading(true);
+    setLocationError(null);
+    setLocationPermissionDenied(false);
 
-    // 1. Persistierter manueller Standort
-    if (typeof window !== 'undefined') {
-      try {
+    const cleanup = () => {
+      isRequestingLocation.current = false;
+      setIsLocationLoading(false);
+    };
+
+    try {
+      // 1. Persistierter manueller Standort
+      if (typeof window !== 'undefined') {
         const storedManual = localStorage.getItem('app-planning-mode');
         if (storedManual) {
           const parsed = JSON.parse(storedManual);
@@ -1098,27 +1165,23 @@ export default function Home() {
             setUserLocation(dest);
             setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
             setResolvedCityName(city);
-            setIsLocationLoading(false);
+            cleanup();
             return;
           }
         }
-      } catch (e) {
-        console.error("Error reading manual location", e);
       }
-    }
 
-    if (planningState.isPlanning && planningState.destination) {
-      const city = planningState.destination.city || planningState.destination.name || null;
-      setUserLocation(planningState.destination);
-      setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
-      setResolvedCityName(city);
-      setIsLocationLoading(false);
-      return;
-    }
+      if (planningState.isPlanning && planningState.destination) {
+        const city = planningState.destination.city || planningState.destination.name || null;
+        setUserLocation(planningState.destination);
+        setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
+        setResolvedCityName(city);
+        cleanup();
+        return;
+      }
 
-    // 2. Bereits vorhandener regulärer Nutzerstandort (aus cache)
-    if (typeof window !== 'undefined') {
-      try {
+      // 2. Bereits vorhandener regulärer Nutzerstandort (aus cache)
+      if (typeof window !== 'undefined') {
         const cached = localStorage.getItem('aktiva_last_location');
         if (cached) {
           const { lat, lng, city, timestamp } = JSON.parse(cached);
@@ -1127,63 +1190,75 @@ export default function Home() {
             setUserLocation({ lat, lng });
             setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
             setResolvedCityName(city || null);
-            setIsLocationLoading(false);
+            cleanup();
             return;
           }
         }
-      } catch (e) {
-        console.error("Error reading cached location", e);
       }
+
+      // 3. Gespeicherter Profilstandort
+      if (userProfile?.lastLocation) {
+        const { lat, lng } = userProfile.lastLocation;
+        setUserLocation({ lat, lng });
+        reverseGeocode(lat, lng);
+        cleanup();
+        return;
+      }
+
+      // 4. Browser-Geolocation
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            try {
+              const location = { lat: position.coords.latitude, lng: position.coords.longitude };
+              setUserLocation(location);
+              setShowLocationRequirement(false);
+              if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
+            } catch (err) {
+              console.error("Error in position callback:", err);
+            } finally {
+              cleanup();
+            }
+          },
+          (error) => {
+            try {
+              console.warn("Geolocation error:", error);
+              setShowLocationRequirement(true);
+              setLocationError(error.message);
+              if (error.code === 1) { // PERMISSION_DENIED
+                setLocationPermissionDenied(true);
+                toast({
+                  title: language === 'de' ? "Standort blockiert" : "Location blocked",
+                  description: language === 'de' ? "Bitte aktiviere den Standortzugriff in deinen Browsereinstellungen." : "Please enable location access in your browser settings.",
+                  variant: "destructive"
+                });
+              }
+              // Default fallback
+              setUserLocation({ lat: 53.5395, lng: 8.5809 });
+              setCityName("Bremerhaven");
+              setResolvedCityName("Bremerhaven");
+            } catch (err) {
+              console.error("Error in position error callback:", err);
+            } finally {
+              cleanup();
+            }
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+        );
+      } else {
+        setUserLocation({ lat: 53.5395, lng: 8.5809 });
+        setCityName("Bremerhaven");
+        setResolvedCityName("Bremerhaven");
+        setShowLocationRequirement(true);
+        setLocationError("Geolocation not supported by browser");
+        cleanup();
+      }
+    } catch (e) {
+      console.error("Synchronous error in requestLocation:", e);
+      setLocationError(e instanceof Error ? e.message : String(e));
+      cleanup();
     }
-
-    // 3. Gespeicherter Profilstandort
-    if (userProfile?.lastLocation) {
-      const { lat, lng } = userProfile.lastLocation;
-      setUserLocation({ lat, lng });
-      reverseGeocode(lat, lng);
-      setIsLocationLoading(false);
-      return;
-    }
-
-    // 4. Browser-Geolocation
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = { lat: position.coords.latitude, lng: position.coords.longitude };
-          setUserLocation(location);
-          setShowLocationRequirement(false);
-          setIsLocationLoading(false);
-          if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
-        },
-        (error) => {
-          console.warn("Geolocation error:", error);
-          setIsLocationLoading(false);
-          setShowLocationRequirement(true);
-
-          // 5. Bestehender Default-Standort
-          setUserLocation({ lat: 53.5395, lng: 8.5809 });
-          setCityName("Bremerhaven");
-          setResolvedCityName("Bremerhaven");
-
-          if (error.code === 1) { // PERMISSION_DENIED
-            toast({
-              title: language === 'de' ? "Standort blockiert" : "Location blocked",
-              description: language === 'de' ? "Bitte aktiviere den Standortzugriff in deinen Browsereinstellungen." : "Please enable location access in your browser settings.",
-              variant: "destructive"
-            });
-          }
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
-      );
-    } else {
-      // 5. Bestehender Default-Standort
-      setUserLocation({ lat: 53.5395, lng: 8.5809 });
-      setCityName("Bremerhaven");
-      setResolvedCityName("Bremerhaven");
-      setIsLocationLoading(false);
-      setShowLocationRequirement(true);
-    }
-  }, [planningState, reverseGeocode, language, toast, userProfile]);
+  }, [planningState, reverseGeocode, language, toast, userProfile, isLocationLoading]);
 
   const handleResetLocation = () => {
     exitPlanningMode();
@@ -1570,94 +1645,232 @@ export default function Home() {
     setViewMode('map');
   };
 
+  const increaseRadiusToNextOption = () => {
+    if (maxDistance === 5) setMaxDistance(10);
+    else if (maxDistance === 10) setMaxDistance(25);
+    else if (maxDistance === 25) setMaxDistance(null);
+  };
+
   const renderContent = () => {
-    if (isLoadingInitialData || isSwitchingTab) {
-      return <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">{Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}</div>;
+    // Derived State Model
+    let feedState: DiscoverFeedState = 'success_with_results';
+    const isError = !!activeError;
+
+    const hasStructuredLocationFailure =
+      !isLocationLoading &&
+      Boolean(locationError || locationPermissionDenied || reverseGeocodeFailed);
+
+    const hasTerminalActiveError =
+      Boolean(activeFeedError) &&
+      !activeFeedIsValidating &&
+      !activeFeedIsInitialLoading;
+
+    // Precedence Chain
+    if (activeFeedIsInitialLoading && !activeFeedHasUsableData) {
+      feedState = 'initial_loading';
+    } else if (hasTerminalActiveError && !activeFeedHasUsableData) {
+      feedState = 'complete_loading_failure';
+    } else if (activeFeedHasUsableData) {
+      feedState = 'success_with_results';
+    } else if (hasStructuredLocationFailure && !activeFeedHasUsableData) {
+      feedState = 'location_unavailable';
+    } else if (activeVisibleItemCount === 0) {
+      if (debouncedSearchQuery) {
+        feedState = 'empty_search';
+      } else if (activePremiumFilters.length > 0) {
+        feedState = 'empty_filters';
+      } else if (maxDistance !== null) {
+        feedState = 'empty_radius';
+      } else {
+        feedState = 'empty_generic';
+      }
+    } else {
+      feedState = 'success_with_results';
     }
-    if (!userLocation && !isLoadingInitialData) {
-      return <div className="flex h-full w-full items-center justify-center"><div className="flex flex-col items-center gap-2 text-muted-foreground"><MapPin className="h-8 w-8 animate-bounce text-primary" /><p className="font-bold text-sm">{language === 'de' ? 'Standort wird ermittelt...' : 'Locating...'}</p></div></div>;
-    }
-    if (activeError) return <div className="flex h-full w-full items-center justify-center p-6 text-center text-destructive font-bold">{language === 'de' ? 'Verbindungsproblem.' : 'Connection problem.'}</div>;
 
     const EmptySearchState = () => {
-      const isFilterActive = !!debouncedSearchQuery || 
-        activeCategory.length > 0 || 
-        (activityCategoryFilter !== 'Alle' && activityCategoryFilter !== 'All') ||
-        maxDistance !== 10;
-      
-      if (isFilterActive) {
-        return (
-          <div className="flex h-full w-full items-center justify-center p-6 text-center">
-            <div className="space-y-4">
-              <h3 className="font-black text-xl text-[#0f172a] dark:text-neutral-200">{language === "de" ? "Keine Ergebnisse" : "No results"}</h3>
-              <p className="text-[#64748b] dark:text-neutral-400 font-medium">{language === "de" ? "Passe deine Suche oder die Filter an." : "Adjust your search or filters."}</p>
-              <Button onClick={() => {
-                handleCategoryChange([], '');
-                setShouldFilterByName(false);
+      let actionType: 'clear_search' | 'reset_filters' | 'increase_radius' | 'retry' | 'none' = 'none';
+      if (debouncedSearchQuery) {
+        actionType = 'clear_search';
+      } else if (activePremiumFilters.length > 0) {
+        actionType = 'reset_filters';
+      } else if (maxDistance !== null) {
+        actionType = 'increase_radius';
+      } else if (isError) {
+        actionType = 'retry';
+      }
+
+      const getEmptyTitle = () => {
+        if (feedState === 'empty_search') {
+          return translateAppString('empty.no_search_matches', language);
+        }
+        if (isCommunityCategory) {
+          return translateAppString('empty.no_activities', language);
+        }
+        return translateAppString('empty.no_places', language);
+      };
+
+      const getEmptyDesc = () => {
+        if (actionType === 'clear_search') {
+          return language === 'de' ? 'Entferne den Suchbegriff, um alle Ergebnisse zu sehen.' : 'Remove the search query to see all results.';
+        }
+        if (actionType === 'reset_filters') {
+          return translateAppString('empty.adjust_filters', language);
+        }
+        if (actionType === 'increase_radius') {
+          return language === 'de' ? 'Erhöhe den Suchradius, um Ergebnisse in der Umgebung zu finden.' : 'Increase the search radius to find nearby results.';
+        }
+        return language === 'de' ? 'Für die ausgewählten Kriterien liegen zurzeit keine Einträge vor.' : 'No entries available for the selected criteria.';
+      };
+
+      return (
+        <div className="flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto my-12 animate-in fade-in duration-300">
+          <div className="bg-slate-100/80 dark:bg-neutral-800/80 p-4 rounded-full mb-4">
+            <Compass className="h-6 w-6 text-neutral-400 dark:text-neutral-500" />
+          </div>
+          <h3 className="font-black text-lg text-slate-900 dark:text-neutral-100 mb-1 leading-snug">
+            {getEmptyTitle()}
+          </h3>
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs font-semibold max-w-xs mb-6 leading-normal">
+            {getEmptyDesc()}
+          </p>
+          
+          {actionType === 'clear_search' && (
+            <Button 
+              onClick={() => {
                 setSearchQuery("");
-                setMaxDistance(10);
-                setActivityCategoryFilter(language === 'de' ? 'Alle' : 'All');
-              }} variant="outline" className="rounded-xl font-bold">
-                {language === "de" ? "Filter zurücksetzen" : "Reset filters"}
-              </Button>
+                setShouldFilterByName(false);
+              }} 
+              variant="outline" 
+              className="h-9 px-4 rounded-xl font-bold text-xs active:scale-[0.985] transition-[color,background-color,border-color,transform,box-shadow] duration-200"
+            >
+              {translateAppString('empty.action.clear_search', language)}
+            </Button>
+          )}
+          
+          {actionType === 'reset_filters' && (
+            <Button 
+              onClick={() => setActivePremiumFilters([])} 
+              variant="outline" 
+              className="h-9 px-4 rounded-xl font-bold text-xs active:scale-[0.985] transition-[color,background-color,border-color,transform,box-shadow] duration-200"
+            >
+              {translateAppString('empty.action.reset_filters', language)}
+            </Button>
+          )}
+
+          {actionType === 'increase_radius' && (
+            <Button 
+              onClick={increaseRadiusToNextOption} 
+              variant="outline" 
+              className="h-9 px-4 rounded-xl font-bold text-xs active:scale-[0.985] transition-[color,background-color,border-color,transform,box-shadow] duration-200"
+            >
+              {translateAppString('empty.action.increase_radius', language)}
+            </Button>
+          )}
+
+          {actionType === 'retry' && (
+            <Button 
+              onClick={handleActiveFeedRetry} 
+              disabled={activeFeedIsValidating}
+              variant="outline" 
+              className="h-9 px-4 rounded-xl font-bold text-xs active:scale-[0.985] transition-[color,background-color,border-color,transform,box-shadow] duration-200"
+            >
+              {translateAppString('empty.action.retry', language)}
+            </Button>
+          )}
+        </div>
+      );
+    };
+
+    if (feedState === 'initial_loading') {
+      if (isCommunityCategory) {
+        return (
+          <div 
+            className="p-3 sm:p-6 flex flex-col gap-4 sm:gap-6" 
+            aria-busy="true" 
+            role="region" 
+            aria-label={translateAppString('loading.results', language)}
+          >
+            <FeaturedActivityCardSkeleton />
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              <ActivityCardSkeleton />
+              <ActivityCardSkeleton />
+              <ActivityCardSkeleton />
+            </div>
+          </div>
+        );
+      } else {
+        return (
+          <div 
+            className="p-3 sm:p-6 flex flex-col gap-4 sm:gap-6" 
+            aria-busy="true" 
+            role="region" 
+            aria-label={translateAppString('loading.results', language)}
+          >
+            <FeaturedPlaceCardSkeleton />
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              <PlaceCardSkeleton />
+              <PlaceCardSkeleton />
+              <PlaceCardSkeleton />
             </div>
           </div>
         );
       }
+    }
 
-      // True empty state -> Suggestion Funnel
-      const quickActivityTemplates = [
-        { title: language === 'de' ? "Kaffee trinken" : "Grab a Coffee", category: "Sonstiges" as const, icon: "☕" },
-        { title: language === 'de' ? "Gym Session" : "Gym Session", category: "Sport" as const, icon: "💪" },
-        { title: language === 'de' ? "Spaziergang" : "Go for a Walk", category: "Outdoor" as const, icon: "🌲" },
-        { title: language === 'de' ? "Bar" : "Bar", category: "Party" as const, icon: "🍹" },
-        { title: language === 'de' ? "Kino" : "Cinema", category: "Kultur" as const, icon: "🎬" },
-        { title: language === 'de' ? "Lernen" : "Study Session", category: "Networking" as const, icon: "📚" },
-        { title: language === 'de' ? "Bowling" : "Bowling", category: "Sport" as const, icon: "🎳" },
-        { title: language === 'de' ? "Volleyball" : "Volleyball", category: "Sport" as const, icon: "🏐" },
-        { title: language === 'de' ? "Brettspielabend" : "Board Game Night", category: "Gaming" as const, icon: "🎲" }
-      ];
-
+    if (feedState === 'complete_loading_failure') {
       return (
-        <div className="flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto my-12 animate-in fade-in zoom-in duration-300">
-          <div className="bg-gradient-to-tr from-violet-500/10 to-indigo-500/10 dark:from-violet-500/20 dark:to-indigo-500/20 p-6 rounded-full mb-6">
-            <span className="text-4xl">✨</span>
+        <div className="flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto my-12" role="alert">
+          <div className="bg-red-50 dark:bg-red-950/20 p-4 rounded-full mb-4">
+            <X className="h-6 w-6 text-red-500" />
           </div>
-          <h3 className="font-black text-2xl text-slate-900 dark:text-neutral-100 mb-2">
-            {language === 'de' ? 'Heute noch nichts geplant?' : 'Nothing planned for today?'}
+          <h3 className="font-black text-lg text-slate-900 dark:text-neutral-100 mb-1">
+            {translateAppString('error.connection_problem', language)}
           </h3>
-          <p className="text-slate-550 dark:text-neutral-400 text-sm font-semibold max-w-sm mb-8 leading-relaxed">
-            {language === 'de' 
-              ? 'Erstelle eine Aktivität und lade 3 Leute ein.' 
-              : 'Create an activity and invite 3 friends.'}
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs font-semibold max-w-xs mb-6">
+            {language === 'de' ? 'Die Daten konnten nicht geladen werden.' : 'Failed to fetch directory data.'}
           </p>
-          
-          <div className="w-full grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {quickActivityTemplates.map((template, idx) => (
-              <button
-                key={idx}
-                onClick={() => {
-                  if (!user) {
-                    router.push(`/login?redirect=/`);
-                    return;
-                  }
-                  setPresetTitle(template.title);
-                  setPresetCategory(template.category);
-                  setActivityModalPlace('custom');
-                }}
-                className="flex items-center gap-2 p-3 bg-white dark:bg-neutral-900 hover:bg-slate-50 dark:hover:bg-neutral-800 border border-slate-100 dark:border-neutral-800 rounded-2xl text-left shadow-sm hover:scale-[1.03] active:scale-95 transition-all outline-none group"
-              >
-                <span className="text-xl group-hover:animate-bounce">{template.icon}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-black text-slate-800 dark:text-neutral-200 truncate">{template.title}</div>
-                  <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{template.category}</div>
-                </div>
-              </button>
-            ))}
-          </div>
+          <Button 
+            onClick={handleActiveFeedRetry} 
+            disabled={activeFeedIsValidating}
+            variant="outline" 
+            className="h-9 px-4 rounded-xl font-bold text-xs active:scale-[0.985] transition-[color,background-color,border-color,transform,box-shadow] duration-200"
+          >
+            {translateAppString('empty.action.retry', language)}
+          </Button>
         </div>
       );
-    };
+    }
+
+    if (feedState === 'location_unavailable') {
+      return (
+        <div className="flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto my-12" role="alert">
+          <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-full mb-4">
+            <MapPin className="h-6 w-6 text-amber-500" />
+          </div>
+          <h3 className="font-black text-lg text-slate-900 dark:text-neutral-100 mb-1">
+            {translateAppString('error.location_unavailable', language)}
+          </h3>
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs font-semibold max-w-xs mb-6 font-medium">
+            {language === 'de' 
+              ? 'Standortfreigabe ist blockiert oder nicht verfügbar.' 
+              : 'Location permission is blocked or unavailable.'}
+          </p>
+          <Button 
+            onClick={requestLocation} 
+            disabled={isLocationLoading}
+            variant="outline" 
+            className="h-9 px-4 rounded-xl font-bold text-xs active:scale-[0.985] transition-[color,background-color,border-color,transform,box-shadow] duration-200 animate-pulse"
+          >
+            {translateAppString('empty.action.retry', language)}
+          </Button>
+        </div>
+      );
+    }
+
+    if (feedState === 'empty_search' || feedState === 'empty_filters' || feedState === 'empty_radius' || feedState === 'empty_generic') {
+      return <EmptySearchState />;
+    }
 
     if (viewMode === 'list') {
       const renderList = () => {
@@ -1695,8 +1908,6 @@ export default function Home() {
         }
 
         if (isCommunityCategory) {
-          if (visibleCommunityActivities.length === 0 && !isFetchingNextPage) return <EmptySearchState />;
-          
           const visibleSlice = visibleCommunityActivities.slice(0, visibleCount);
           const featuredActivity = visibleSlice[0] ?? null;
           const standardActivities = visibleSlice.slice(1);
@@ -1729,13 +1940,6 @@ export default function Home() {
               )}
             </div>
           );
-        }
-
-        if (visiblePlaces.length === 0) {
-          if (isValidating) {
-            return <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6"><CardSkeleton /><CardSkeleton /><CardSkeleton /></div>;
-          }
-          if (!isFetchingNextPage) return <EmptySearchState />;
         }
         
         const visibleSlice = visiblePlaces.slice(0, visibleCount);
@@ -1798,11 +2002,28 @@ export default function Home() {
         );
       };
 
+      const isResultsRegionBusy =
+        activeFeedIsInitialLoading ||
+        activeFeedIsFetchingNextPage ||
+        (activeFeedIsValidating && !activeFeedHasUsableData);
+
       return (
-        <div className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col">
+        <div 
+          className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col"
+          aria-busy={isResultsRegionBusy ? "true" : "false"}
+        >
+          <div className="sr-only" role="status" aria-live="polite">
+            {isResultsRegionBusy ? (
+              activeFeedIsFetchingNextPage
+                ? translateAppString('loading.results_more', language)
+                : translateAppString('loading.results', language)
+            ) : ''}
+          </div>
           {renderList()}
           {isFetchingNextPage && !isReachingEnd && (
-            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6"><CardSkeleton /></div>
+            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              {isCommunityCategory ? <ActivityCardSkeleton /> : <PlaceCardSkeleton />}
+            </div>
           )}
           {!isReachingEnd && !isLoadingInitialData && !debouncedSearchQuery && (
             <div ref={lastElementRef} className="h-1 w-full flex-shrink-0 bg-transparent" aria-hidden="true" />
@@ -2052,6 +2273,7 @@ export default function Home() {
                   eligibleActivities={visibleCommunityActivities}
                   language={language}
                   onExplore={handleExploreClick}
+                  loading={isInitialFeedLoading && !hasUsableFeedData}
                 />
               </div>
             )}

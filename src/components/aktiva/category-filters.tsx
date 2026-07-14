@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   UtensilsCrossed,
@@ -66,6 +66,8 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
   const [draftTabs, setDraftTabs] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (userProfile?.activeTabs) {
       setLocalActiveTabs(userProfile.activeTabs);
@@ -79,6 +81,31 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
       setDraftTabs(localActiveTabs);
     }
   }, [isConfigOpen, localActiveTabs]);
+
+  // Center horizontally selected tab chip dynamically relative to the container scroll offset
+  useEffect(() => {
+    if (!activeTabId || !containerRef.current || vertical) return;
+    
+    // Defer measuring slightly to allow DOM/styles layout to resolve
+    const timer = setTimeout(() => {
+      const container = containerRef.current;
+      if (!container) return;
+      const activeBtn = container.querySelector('[aria-pressed="true"]') as HTMLElement;
+      if (activeBtn) {
+        const containerWidth = container.clientWidth;
+        const buttonWidth = activeBtn.clientWidth;
+        const buttonLeft = activeBtn.offsetLeft;
+        const targetScrollLeft = buttonLeft - (containerWidth / 2) + (buttonWidth / 2);
+        const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+        container.scrollTo({
+          left: targetScrollLeft,
+          behavior
+        });
+      }
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [activeTabId, vertical]);
 
   const displayedTabs = [
     ...coreTabs,
@@ -109,7 +136,9 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
 
   return (
     <>
-      <div className={cn(
+      <div 
+        ref={containerRef}
+        className={cn(
         vertical 
           ? "flex flex-col gap-2 w-full items-stretch"
           : "flex flex-nowrap overflow-x-auto md:flex-wrap md:overflow-x-visible gap-2 pb-3 md:pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar sm:pb-4 items-center w-full min-w-0"
@@ -129,8 +158,8 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
               aria-pressed={isActive}
               className={cn(
                 vertical
-                  ? "w-full flex items-center justify-start rounded-[16px] h-12 font-black border transition-all duration-200 px-4 text-[11px] uppercase tracking-wider active:scale-[0.985]"
-                  : "flex-shrink-0 flex items-center justify-center rounded-full h-11 font-black border transition-all duration-200 px-6 text-[11px] uppercase tracking-wider active:scale-[0.985]",
+                  ? "w-full flex items-center justify-start rounded-[16px] h-12 font-black border transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 px-4 text-[11px] uppercase tracking-wider active:scale-[0.985]"
+                  : "flex-shrink-0 flex items-center justify-center rounded-full h-11 font-black border transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 px-6 text-[11px] uppercase tracking-wider active:scale-[0.985]",
                 isActive 
                     ? "shadow-sm" 
                     : "bg-slate-100/40 border-slate-200/40 text-slate-600 dark:bg-neutral-800/40 dark:border-neutral-800/60 dark:text-neutral-400 hover:border-slate-300 dark:hover:border-neutral-700"
@@ -153,8 +182,8 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
           onClick={() => setIsConfigOpen(true)}
           className={cn(
             vertical
-              ? "w-full flex items-center justify-center rounded-[16px] h-12 border border-dashed border-slate-200 dark:border-neutral-800 shadow-none hover:bg-slate-50 mt-1 bg-transparent active:scale-[0.985] transition-all duration-200"
-              : "flex-shrink-0 rounded-full h-11 w-11 bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 text-slate-500 dark:text-neutral-400 flex items-center justify-center active:scale-[0.985] hover:border-slate-300 dark:hover:border-neutral-700 transition-all duration-200 shadow-premium"
+              ? "w-full flex items-center justify-center rounded-[16px] h-12 border border-dashed border-slate-200 dark:border-neutral-800 shadow-none hover:bg-slate-50 mt-1 bg-transparent active:scale-[0.985] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200"
+              : "flex-shrink-0 rounded-full h-11 w-11 bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 text-slate-500 dark:text-neutral-400 flex items-center justify-center active:scale-[0.985] hover:border-slate-300 dark:hover:border-neutral-700 transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 shadow-premium"
           )}
         >
           <Plus className={cn("h-4 w-4 text-neutral-500 dark:text-neutral-400 shrink-0", vertical && "mr-2")} />
