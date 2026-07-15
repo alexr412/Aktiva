@@ -694,6 +694,14 @@ const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => strin
     de: 'Ticket verbergen',
     en: 'Hide ticket'
   },
+  'ticket.spot_open': {
+    de: 'Freier Platz',
+    en: 'Open spot'
+  },
+  'ticket.spots_remaining_summary': {
+    de: (count: number) => `+${count} weitere freie Plätze`,
+    en: (count: number) => `+${count} more open spots`
+  },
   'loading.results': {
     de: 'Ergebnisse werden geladen...',
     en: 'Loading results...'

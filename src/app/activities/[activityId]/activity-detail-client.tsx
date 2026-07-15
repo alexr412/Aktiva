@@ -9,7 +9,7 @@ import { joinActivity, cancelActivity, leaveActivity, getPublicProfileClient } f
 import type { Activity, Place } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star, MessageSquare, CreditCard, Camera, Ban, AlertTriangle, Clock, Flame, Heart, ShieldCheck, UserCircle, HelpCircle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star, MessageSquare, CreditCard, Camera, Ban, AlertTriangle, Clock, Flame, Heart, ShieldCheck, UserCircle, HelpCircle, CheckCircle, ChevronDown, ChevronUp, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -538,6 +538,49 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   </li>
                 );
               })}
+              
+              {/* Visual placeholders for open participant spots */}
+              {(() => {
+                const max = typeof activity.maxParticipants === 'number' && !isNaN(activity.maxParticipants)
+                  ? activity.maxParticipants
+                  : 0;
+                
+                if (max <= 0) return null;
+
+                const remainingSpots = max - renderedParticipantIds.length;
+                if (remainingSpots <= 0) return null;
+
+                const rowsToShow = Math.min(3, remainingSpots);
+                const hasRemainder = remainingSpots > 3;
+                
+                const rows = [];
+                for (let i = 0; i < rowsToShow; i++) {
+                  rows.push(
+                    <li key={`open-spot-${i}`} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-none">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-full border border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center shrink-0">
+                          <UserPlus className="h-3.5 w-3.5 text-slate-400" />
+                        </div>
+                        <span className="text-xs font-bold text-slate-450 dark:text-neutral-450">
+                          {translateAppString('ticket.spot_open', language)}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                }
+
+                if (hasRemainder) {
+                  rows.push(
+                    <li key="open-spot-remainder" className="flex items-center py-1.5 border-b border-slate-50 last:border-none">
+                      <span className="text-[11px] font-black text-slate-400 dark:text-neutral-500 pl-10.5">
+                        {translateAppString('ticket.spots_remaining_summary', language, remainingSpots - 3)}
+                      </span>
+                    </li>
+                  );
+                }
+
+                return rows;
+              })()}
             </ul>
           </CardContent>
         </Card>

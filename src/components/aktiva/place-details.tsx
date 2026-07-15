@@ -413,88 +413,95 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                         <div 
                                             key={activity.id} 
                                             onClick={() => setSelectedInfoActivity(activity)}
-                                            className="bg-white dark:bg-neutral-800 rounded-2xl p-3 md:p-3.5 flex flex-row items-center flex-wrap sm:flex-nowrap gap-2.5 md:gap-3 border border-slate-100 dark:border-neutral-800 hover:shadow-md transition-all shadow-sm group cursor-pointer min-h-[96px] md:min-h-[104px]"
+                                            className="bg-white dark:bg-neutral-800 rounded-2xl p-3 md:p-3.5 flex flex-row items-start gap-3 border border-slate-100 dark:border-neutral-800 hover:shadow-md transition-all shadow-sm group cursor-pointer min-h-[96px] md:min-h-[104px]"
                                         >
-                                            {/* Date & Avatar Group */}
-                                            <div className="flex items-center gap-2 md:gap-2.5 flex-none">
-                                                {/* Date Circle */}
-                                                <div className="h-[52px] w-[48px] bg-accent dark:bg-emerald-950/20 rounded-xl flex flex-col items-center justify-center border border-emerald-100/50 dark:border-emerald-900/30 flex-none select-none">
-                                                    <span className="text-lg font-black text-primary leading-none">{format(actDate, 'd')}</span>
-                                                    <span className="text-[8px] font-black text-primary uppercase tracking-tighter mt-0.5">{format(actDate, 'MMM', { locale: language === 'de' ? de : enUS })}</span>
-                                                </div>
-
-                                                {/* Resized Avatar */}
-                                                <div className="w-12 h-12 sm:w-[52px] sm:h-[52px] md:w-14 md:h-14 rounded-full border border-slate-100 dark:border-neutral-800 bg-slate-200 overflow-hidden flex-none shadow-sm">
-                                                    <img 
-                                                        src={activity.participantsPreview?.[0]?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activity.participantsPreview?.[0]?.uid || activity.hostId}`} 
-                                                        alt="avatar" 
-                                                        loading="lazy" 
-                                                        decoding="async" 
-                                                        className="w-full h-full object-cover" 
-                                                    />
-                                                </div>
+                                            {/* Date badge: links, flex-none */}
+                                            <div className="h-[52px] w-[48px] bg-accent dark:bg-emerald-950/20 rounded-xl flex flex-col items-center justify-center border border-emerald-100/50 dark:border-emerald-900/30 flex-none select-none">
+                                                <span className="text-lg font-black text-primary leading-none">{format(actDate, 'd')}</span>
+                                                <span className="text-[8px] font-black text-primary uppercase tracking-tighter mt-0.5">{format(actDate, 'MMM', { locale: language === 'de' ? de : enUS })}</span>
                                             </div>
 
-                                            {/* Title & Count */}
-                                            <div className="flex-1 min-w-[140px]">
-                                                <h4 className="font-bold text-sm md:text-[15px] text-slate-800 dark:text-neutral-200 line-clamp-2 leading-snug break-words">
-                                                    {activity.isCustomActivity ? (activity.title || activity.placeName) : (activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup'))}
-                                                </h4>
-                                                <span className="text-[10px] md:text-[11px] font-bold text-slate-400 dark:text-neutral-500 mt-1 block">
-                                                    {activity.participantIds.length} {language === 'de' ? 'Teilnehmer' : 'Participants'}
-                                                </span>
-                                            </div>
+                                            {/* Main content area: flex-1 min-w-0 */}
+                                            <div className="flex-1 min-w-0 flex flex-col">
+                                                {/* Obere Reihe */}
+                                                <div className="flex items-start justify-between gap-2 w-full">
+                                                    {/* Linker Block: Avatar + Title block */}
+                                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                        {/* Resized Avatar */}
+                                                        <div className="w-12 h-12 sm:w-[52px] sm:h-[52px] md:w-14 md:h-14 rounded-full border border-slate-100 dark:border-neutral-800 bg-slate-200 overflow-hidden flex-none shadow-sm">
+                                                            <img 
+                                                                src={activity.participantsPreview?.[0]?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activity.participantsPreview?.[0]?.uid || activity.hostId}`} 
+                                                                alt="avatar" 
+                                                                loading="lazy" 
+                                                                decoding="async" 
+                                                                className="w-full h-full object-cover" 
+                                                            />
+                                                        </div>
+                                                        {/* Title block */}
+                                                        <div className="min-w-0 flex-1">
+                                                            <h4 className="font-bold text-sm md:text-[15px] text-slate-800 dark:text-neutral-200 line-clamp-2 leading-snug break-words">
+                                                                {activity.isCustomActivity ? (activity.title || activity.placeName) : (activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup'))}
+                                                            </h4>
+                                                        </div>
+                                                    </div>
+                                                    {/* Rechter Actions-Block */}
+                                                    <div className="flex items-start gap-1.5 flex-none self-start">
+                                                        <Button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedInfoActivity(activity);
+                                                            }}
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-11 w-11 rounded-full bg-slate-50 dark:bg-neutral-900 hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-400 hover:text-primary transition-colors border border-slate-150 dark:border-neutral-800 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none flex-none"
+                                                        >
+                                                            <Info className="h-4 w-4" />
+                                                        </Button>
 
-                                            {/* Actions */}
-                                            <div className="flex items-center gap-1.5 flex-none ml-auto sm:ml-0 max-[369px]:w-full max-[369px]:justify-end max-[369px]:mt-1.5">
-                                                <Button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedInfoActivity(activity);
-                                                    }}
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-11 w-11 rounded-full bg-slate-50 dark:bg-neutral-900 hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-400 hover:text-primary transition-colors border border-slate-150 dark:border-neutral-800 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none flex-none"
-                                                >
-                                                    <Info className="h-4 w-4" />
-                                                </Button>
-
-                                                {isParticipant ? (
-                                                    <Button 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            router.push(`/chat/${activity.id}`);
-                                                        }}
-                                                        variant="secondary"
-                                                        className="bg-[#f5f3f2] hover:bg-slate-200 text-[#0f172a] rounded-xl h-11 min-w-[64px] px-3 font-bold text-xs border-none shadow-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none flex-none whitespace-nowrap"
-                                                    >
-                                                        Chat
-                                                    </Button>
-                                                ) : (
-                                                    <Button 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleJoin(activity);
-                                                        }}
-                                                        disabled={joiningActivityId === activity.id || hasRequested || isFull || activity.status !== 'active'}
-                                                        className={cn(
-                                                            hasRequested
-                                                              ? "bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 hover:opacity-100 cursor-not-allowed shadow-none"
-                                                              : "bg-primary text-white hover:opacity-90 shadow-sm",
-                                                            "rounded-xl h-11 min-w-[64px] px-3 font-bold text-xs border-none transition-all focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none flex-none whitespace-nowrap"
-                                                        )}
-                                                    >
-                                                        {joiningActivityId === activity.id ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                        ) : hasRequested ? (
-                                                            language === 'de' ? 'Angefragt' : 'Requested'
-                                                        ) : activity.joinMode !== 'direct' ? (
-                                                            language === 'de' ? 'Anfrage' : 'Request'
+                                                        {isParticipant ? (
+                                                            <Button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    router.push(`/chat/${activity.id}`);
+                                                                }}
+                                                                variant="secondary"
+                                                                className="bg-[#f5f3f2] hover:bg-slate-200 text-[#0f172a] rounded-xl h-11 min-w-[64px] px-3 font-bold text-xs border-none shadow-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none flex-none whitespace-nowrap"
+                                                            >
+                                                                Chat
+                                                            </Button>
                                                         ) : (
-                                                            language === 'de' ? 'Beitreten' : 'Join'
+                                                            <Button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleJoin(activity);
+                                                                }}
+                                                                disabled={joiningActivityId === activity.id || hasRequested || isFull || activity.status !== 'active'}
+                                                                className={cn(
+                                                                    hasRequested
+                                                                      ? "bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 hover:opacity-100 cursor-not-allowed shadow-none"
+                                                                      : "bg-primary text-white hover:opacity-90 shadow-sm",
+                                                                    "rounded-xl h-11 min-w-[64px] px-3 font-bold text-xs border-none transition-all focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none flex-none whitespace-nowrap"
+                                                                )}
+                                                            >
+                                                                {joiningActivityId === activity.id ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                ) : hasRequested ? (
+                                                                    language === 'de' ? 'Angefragt' : 'Requested'
+                                                                ) : activity.joinMode !== 'direct' ? (
+                                                                    language === 'de' ? 'Anfrage' : 'Request'
+                                                                ) : (
+                                                                    language === 'de' ? 'Beitreten' : 'Join'
+                                                                )}
+                                                            </Button>
                                                         )}
-                                                    </Button>
-                                                )}
+                                                    </div>
+                                                </div>
+                                                {/* Teilnehmerzahl darunter, linksbündig unter dem Titel */}
+                                                <div className="pl-[58px] sm:pl-[62px] md:pl-[66px] mt-1">
+                                                    <span className="text-[10px] md:text-[11px] font-bold text-slate-400 dark:text-neutral-500 block">
+                                                        {activity.participantIds.length} {language === 'de' ? 'Teilnehmer' : 'Participants'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     );
