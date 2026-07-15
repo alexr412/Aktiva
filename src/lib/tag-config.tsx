@@ -682,6 +682,18 @@ const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => strin
     de: (count: number) => count === 1 ? '1 Teilnehmer' : `${count} Teilnehmer`,
     en: (count: number) => count === 1 ? '1 participant' : `${count} participants`
   },
+  'activity.participants_list': {
+    de: (count: number) => `Teilnehmerliste · ${count}`,
+    en: (count: number) => `Participants · ${count}`
+  },
+  'ticket.show': {
+    de: 'Ticket anzeigen',
+    en: 'Show ticket'
+  },
+  'ticket.hide': {
+    de: 'Ticket verbergen',
+    en: 'Hide ticket'
+  },
   'loading.results': {
     de: 'Ergebnisse werden geladen...',
     en: 'Loading results...'

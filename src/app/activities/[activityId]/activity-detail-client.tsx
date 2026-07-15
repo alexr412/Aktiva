@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
@@ -9,13 +9,14 @@ import { joinActivity, cancelActivity, leaveActivity, getPublicProfileClient } f
 import type { Activity, Place } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star, MessageSquare, CreditCard, Camera, Ban, AlertTriangle, Clock, Flame, Heart, ShieldCheck, UserCircle, HelpCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star, MessageSquare, CreditCard, Camera, Ban, AlertTriangle, Clock, Flame, Heart, ShieldCheck, UserCircle, HelpCircle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
+import { translateAppString } from '@/lib/tag-config';
 import { UserBadge } from '@/components/common/UserBadge';
 import { TicketQR } from '@/components/ticket-qr';
 import {
@@ -66,6 +67,38 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const [isCancelling, setIsCancelling] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [hasRequested, setHasRequested] = useState(false);
+  const [isTicketExpanded, setIsTicketExpanded] = useState(false);
+
+  useEffect(() => {
+    setIsTicketExpanded(false);
+  }, [activityId]);
+
+  const renderedParticipantIds = useMemo(() => {
+    if (!activity) return [];
+
+    const hostId =
+      typeof activity.hostId === 'string' && activity.hostId.trim()
+        ? activity.hostId.trim()
+        : null;
+
+    const participantIds = Array.isArray(activity.participantIds)
+      ? activity.participantIds
+          .filter((uid): uid is string => typeof uid === 'string')
+          .map((uid) => uid.trim())
+          .filter(Boolean)
+      : [];
+
+    const uniqueIds = Array.from(new Set(participantIds));
+
+    if (!hostId) {
+      return uniqueIds;
+    }
+
+    return [
+      hostId,
+      ...uniqueIds.filter((uid) => uid !== hostId),
+    ];
+  }, [activity?.hostId, activity?.participantIds]);
 
   // Authentication and onboarding guards
   useEffect(() => {
@@ -430,43 +463,12 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         )}
 
 
-        {/* Host Info */}
-        <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar 
-                  className="h-12 w-12 border-2 border-slate-100"
-                  isPremium={activity.participantDetails?.[activity.hostId]?.isPremium}
-                  isCreator={activity.participantDetails?.[activity.hostId]?.isCreator}
-                  isSupporter={activity.participantDetails?.[activity.hostId]?.isSupporter}
-                >
-                  <AvatarImage src={activity.hostPhotoURL || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary font-black">
-                    {(activity.hostUsername || 'A').replace(/^@/, '').charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="flex items-center gap-1">
-                    <p className="font-black text-slate-900 text-sm leading-none">
-                      {activity.hostUsername ? `@${activity.hostUsername.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')}
-                    </p>
-                    <UserBadge isPremium={activity.participantDetails?.[activity.hostId]?.isPremium} size="sm" />
-                  </div>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase mt-1 leading-none">{language === 'de' ? 'Veranstalter' : 'Host'}</p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => router.push(`/users/${activity.hostId}`)} className="rounded-xl font-bold h-8 text-xs">{language === 'de' ? 'Profil' : 'Profile'}</Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Participants & Stats */}
         <div className="grid grid-cols-2 gap-3">
           <Card className="border-none shadow-sm rounded-3xl bg-white p-4 flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-2 mb-1">
               <Users className="h-4 w-4 text-primary" />
-              <p className="text-xl font-black text-slate-900 leading-none">{activity.participantIds.length} / {activity.maxParticipants || '∞'}</p>
+              <p className="text-xl font-black text-slate-900 leading-none">{renderedParticipantIds.length} / {activity.maxParticipants || '∞'}</p>
             </div>
             <p className="text-[9px] font-bold text-slate-400 uppercase">{language === 'de' ? 'Teilnehmer' : 'Participants'}</p>
           </Card>
@@ -485,13 +487,13 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
             <div className="flex items-center gap-2 text-slate-400">
               <Users className="h-4 w-4" />
               <CardTitle className="text-base font-black text-slate-850 dark:text-neutral-200">
-                {language === 'de' ? 'Teilnehmerliste' : 'Participants'}
+                {translateAppString('activity.participants_list', language, renderedParticipantIds.length)}
               </CardTitle>
             </div>
           </CardHeader>
           <CardContent className="p-5 pt-2">
             <ul className="space-y-3">
-              {activity.participantIds.map((uid) => {
+              {renderedParticipantIds.map((uid) => {
                 const details = activity.participantDetails?.[uid];
                 const participantUsername = details?.username || (uid === activity.hostId ? activity.hostUsername : null) || null;
                 const displayName = participantUsername ? `@${participantUsername.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
@@ -716,12 +718,25 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
         {/* Participant Ticket Section */}
         {isParticipant && !isCancelled && (
-          <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden text-center p-6">
-            <CardHeader className="pb-3 p-0">
+          <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden p-6 relative">
+            <CardHeader className="pb-0 p-0 pr-12 text-left sm:text-center sm:pr-0">
               <CardTitle className="text-xl">{language === 'de' ? 'Dein Ticket' : 'Your Ticket'}</CardTitle>
-              <CardDescription className="font-medium text-xs">{language === 'de' ? 'Zeige diesen Code beim Einlass vor.' : 'Show this code at the entrance.'}</CardDescription>
+              <CardDescription className="font-medium text-xs mt-1">{language === 'de' ? 'Zeige diesen Code beim Einlass vor.' : 'Show this code at the entrance.'}</CardDescription>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsTicketExpanded(!isTicketExpanded)}
+                className="absolute top-4 right-4 h-11 w-11 rounded-full text-slate-400 hover:text-slate-650 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none transition-all flex items-center justify-center shrink-0 border border-slate-100"
+                aria-expanded={isTicketExpanded}
+                aria-label={translateAppString(isTicketExpanded ? 'ticket.hide' : 'ticket.show', language)}
+              >
+                {isTicketExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </Button>
             </CardHeader>
-            <CardContent className="flex flex-col items-center p-0 pt-4">
+            <CardContent className={cn(
+              "transition-all duration-300 ease-in-out p-0 flex flex-col items-center",
+              isTicketExpanded ? "mt-4 opacity-100 max-h-[500px]" : "max-h-0 opacity-0 overflow-hidden pointer-events-none"
+            )}>
               <div className={cn("transition-opacity duration-500 max-w-[180px] w-full mx-auto", checkInStatus === 'scanned' && "opacity-20 grayscale")}>
                 <TicketQR activityId={activityId} userId={user!.uid} />
               </div>
