@@ -726,17 +726,22 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsTicketExpanded(!isTicketExpanded)}
-                className="absolute top-4 right-4 h-11 w-11 rounded-full text-slate-400 hover:text-slate-650 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none transition-all flex items-center justify-center shrink-0 border border-slate-100"
+                className="absolute top-4 right-4 h-11 w-11 rounded-full text-slate-400 hover:text-slate-650 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none transition-[background-color,color,border-color] duration-200 flex items-center justify-center shrink-0 border border-slate-100"
                 aria-expanded={isTicketExpanded}
+                aria-controls="activity-ticket-qr-content"
                 aria-label={translateAppString(isTicketExpanded ? 'ticket.hide' : 'ticket.show', language)}
               >
                 {isTicketExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
               </Button>
             </CardHeader>
-            <CardContent className={cn(
-              "transition-all duration-300 ease-in-out p-0 flex flex-col items-center",
-              isTicketExpanded ? "mt-4 opacity-100 max-h-[500px]" : "max-h-0 opacity-0 overflow-hidden pointer-events-none"
-            )}>
+            <CardContent 
+              id="activity-ticket-qr-content"
+              aria-hidden={!isTicketExpanded}
+              className={cn(
+                "transition-[max-height,opacity,margin] duration-300 ease-in-out p-0 flex flex-col items-center",
+                isTicketExpanded ? "mt-4 opacity-100 max-h-[1000px]" : "max-h-0 opacity-0 overflow-hidden pointer-events-none"
+              )}
+            >
               <div className={cn("transition-opacity duration-500 max-w-[180px] w-full mx-auto", checkInStatus === 'scanned' && "opacity-20 grayscale")}>
                 <TicketQR activityId={activityId} userId={user!.uid} />
               </div>
