@@ -1,53 +1,18 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import type { Activity } from '@/lib/types';
-import { translateAppString } from '@/lib/tag-config';
-import { Compass } from 'lucide-react';
+import { Compass, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { translateAppString } from '@/lib/tag-config';
 
 interface AktivaPulseHeroProps {
   cityName: string | null;
-  currentViewType: 'places' | 'activities' | 'favorites';
-  visiblePlaceCount: number;
-  eligibleActivities: Activity[];
+  openRoomsCount: number | null;
+  uniqueParticipantsCount: number | null;
   language: 'de' | 'en';
   onExplore: () => void;
   loading?: boolean;
-}
-
-/**
- * Defensive utility to normalize any incoming timestamp format into milliseconds since epoch.
- * Rejects invalid, NaN, empty, or ambiguous formats safely.
- */
-function normalizeTimestamp(val: any): number | null {
-  if (!val) return null;
-  // 1. Firestore Timestamp check
-  if (typeof val.toMillis === 'function') {
-    return val.toMillis();
-  }
-  if (typeof val.toDate === 'function') {
-    return val.toDate().getTime();
-  }
-  if (typeof val.seconds === 'number' && !isNaN(val.seconds)) {
-    return val.seconds * 1000 + Math.floor((val.nanoseconds || 0) / 1000000);
-  }
-  // 2. JavaScript Date check
-  if (val instanceof Date) {
-    const time = val.getTime();
-    return isNaN(time) ? null : time;
-  }
-  // 3. ISO string or direct numeric millisecond timestamp
-  if (typeof val === 'number') {
-    return isNaN(val) ? null : val;
-  }
-  if (typeof val === 'string') {
-    const trimmed = val.trim();
-    if (!trimmed) return null;
-    const parsed = Date.parse(trimmed);
-    return isNaN(parsed) ? null : parsed;
-  }
-  return null;
 }
 
 /**
@@ -62,61 +27,79 @@ function normalizeCityName(city: string | null | undefined): string | null {
 
 export function AktivaPulseHero({
   cityName,
-  currentViewType,
-  visiblePlaceCount,
-  eligibleActivities,
+  openRoomsCount,
+  uniqueParticipantsCount,
   language,
   onExplore,
   loading = false
 }: AktivaPulseHeroProps) {
-  const [referenceTime, setReferenceTime] = useState<number | null>(null);
-  const [isPressed, setIsPressed] = useState(false);
+  // Unconditional Hook declarations first
+  const [activeMetric, setActiveMetric] = useState<'rooms' | 'participants'>('rooms');
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [resetTrigger, setResetTrigger] = useState(0);
 
-  // Set reference time after mount to prevent server/client hydration mismatches
+  // Monitor prefers-reduced-motion media query
   useEffect(() => {
-    if (loading) return;
-    setReferenceTime(Date.now());
-    
-    // Refresh the client reference time once per minute
-    const interval = setInterval(() => {
-      setReferenceTime(Date.now());
-    }, 60000);
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
 
-    return () => clearInterval(interval);
-  }, [loading]);
+    const listener = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches);
+    };
+    mediaQuery.addEventListener('change', listener);
+    return () => mediaQuery.removeEventListener('change', listener);
+  }, []);
 
+  // Sync to open-rooms metric if reduced motion is requested
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setActiveMetric('rooms');
+    }
+  }, [prefersReducedMotion]);
+
+  // Derive city and heading
   const normalizedCity = useMemo(() => normalizeCityName(cityName), [cityName]);
+  const headingText = normalizedCity
+    ? translateAppString('pulse.heading.city', language, normalizedCity)
+    : translateAppString('pulse.heading.near_you', language);
 
-  // Starting soon calculations (defensive client-side check)
-  const startingSoonCount = useMemo(() => {
-    if (referenceTime === null || currentViewType !== 'activities') return 0;
-    const twoHoursLater = referenceTime + 2 * 60 * 60 * 1000;
+  const metricsAvailable = openRoomsCount !== null && uniqueParticipantsCount !== null;
 
-    return eligibleActivities.filter((act) => {
-      // Exclude completed or cancelled status defensively
-      if (act.status === 'completed' || act.status === 'cancelled') return false;
-      const startMs = normalizeTimestamp(act.activityDate);
-      if (startMs === null) return false;
-      return startMs > referenceTime && startMs <= twoHoursLater;
-    }).length;
-  }, [eligibleActivities, referenceTime, currentViewType]);
+  // Handle rotation interval (5 seconds)
+  useEffect(() => {
+    if (loading || prefersReducedMotion || !metricsAvailable) return;
 
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        setActiveMetric((prev) => (prev === 'rooms' ? 'participants' : 'rooms'));
+      }
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [loading, prefersReducedMotion, metricsAvailable, resetTrigger]);
+
+  const handleManualSwitch = (metric: 'rooms' | 'participants') => {
+    setActiveMetric(metric);
+    setResetTrigger((prev) => prev + 1); // Reset/restart interval
+  };
+
+  // Loading state placeholder skeleton
   if (loading) {
     return (
       <div 
-        className="w-full flex flex-col justify-between py-6 px-5 md:px-7 rounded-[22px] bg-gradient-to-br from-emerald-600 to-teal-800 dark:from-emerald-800 dark:to-teal-950 text-white shadow-premium relative overflow-hidden transition-all duration-300 gap-4 pointer-events-none select-none"
+        className="w-full flex flex-col justify-between py-3.5 px-[18px] md:p-6 rounded-[22px] bg-gradient-to-br from-emerald-600 to-teal-800 dark:from-emerald-800 dark:to-teal-950 text-white shadow-premium relative overflow-hidden transition-all duration-300 gap-1.5 md:gap-4 pointer-events-none select-none"
         aria-hidden="true"
       >
         <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-teal-400/10 rounded-full blur-2xl" />
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-emerald-400/60" />
-            <div className="h-3.5 w-24 bg-white/20 rounded animate-pulse motion-reduce:animate-none" />
+            <div className="h-3 w-16 bg-white/20 rounded animate-pulse motion-reduce:animate-none" />
           </div>
-          <div className="h-6 w-2/3 bg-white/20 rounded-md mt-1 animate-pulse motion-reduce:animate-none" />
+          <div className="h-5 w-2/3 bg-white/20 rounded mt-1 animate-pulse motion-reduce:animate-none" />
         </div>
         <div className="min-h-[2.5rem] flex items-center">
-          <div className="h-4.5 w-1/2 bg-white/10 rounded animate-pulse motion-reduce:animate-none" />
+          <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse motion-reduce:animate-none" />
         </div>
         <div>
           <div className="h-11 w-32 bg-white/30 rounded-xl mt-1 animate-pulse motion-reduce:animate-none" />
@@ -125,66 +108,12 @@ export function AktivaPulseHero({
     );
   }
 
-  // Determine dynamic heading
-  const headingText = normalizedCity
-    ? translateAppString('pulse.heading.city', language, normalizedCity)
-    : translateAppString('pulse.heading.near_you', language);
-
-  // Determine dynamic stats and descriptions based on props and loaded dataset
-  const renderStats = () => {
-    if (currentViewType === 'favorites') {
-      return (
-        <span className="text-xs md:text-sm text-emerald-100 font-medium">
-          {translateAppString('pulse.fallback.places', language)}
-        </span>
-      );
-    }
-
-    if (currentViewType === 'activities') {
-      if (eligibleActivities.length === 0) {
-        return (
-          <span className="text-xs md:text-sm text-emerald-100 font-medium">
-            {translateAppString('pulse.fallback', language)}
-          </span>
-        );
-      }
-
-      return (
-        <div className="flex flex-col gap-1 w-full text-emerald-100">
-          <span className="text-xs md:text-sm font-medium">
-            {translateAppString('pulse.activities_count', language, eligibleActivities.length)}
-          </span>
-          {referenceTime !== null && startingSoonCount > 0 && (
-            <span className="text-[10px] md:text-xs font-semibold bg-emerald-500/20 py-0.5 px-2 rounded-full self-start border border-emerald-400/20 mt-0.5">
-              🚀 {translateAppString('pulse.starting_soon_count', language, startingSoonCount)}
-            </span>
-          )}
-        </div>
-      );
-    }
-
-    // Default: 'places' view
-    if (visiblePlaceCount === 0) {
-      return (
-        <span className="text-xs md:text-sm text-emerald-100 font-medium">
-          {translateAppString('pulse.fallback.places', language)}
-        </span>
-      );
-    }
-
-    return (
-      <span className="text-xs md:text-sm text-emerald-100 font-medium">
-        {translateAppString('pulse.places_count', language, visiblePlaceCount)}
-      </span>
-    );
-  };
-
   return (
     <div 
-      className="w-full flex flex-col justify-between py-6 px-5 md:px-7 rounded-[22px] bg-gradient-to-br from-emerald-600 to-teal-800 dark:from-emerald-800 dark:to-teal-950 text-white shadow-premium relative overflow-hidden transition-all duration-300 gap-4"
+      className="w-full flex flex-col justify-between py-3.5 px-[18px] md:p-6 rounded-[22px] bg-gradient-to-br from-emerald-600 to-teal-800 dark:from-emerald-800 dark:to-teal-950 text-white shadow-premium relative overflow-hidden transition-all duration-300 gap-1.5 md:gap-3"
       aria-labelledby="pulse-heading"
     >
-      {/* Decorative subtle visual elements */}
+      {/* Decorative background blurs */}
       <div 
         className="absolute -right-8 -bottom-8 w-32 h-32 bg-teal-400/10 rounded-full blur-2xl pointer-events-none" 
         aria-hidden="true" 
@@ -194,41 +123,149 @@ export function AktivaPulseHero({
         aria-hidden="true" 
       />
 
-      {/* Header and Eyebrow */}
-      <div className="flex flex-col gap-2 z-10">
-        <div className="flex items-center gap-2">
+      {/* Row 1 on mobile: Eyebrow left, indicators right. On desktop: Eyebrow + breathing dot */}
+      <div className="flex items-center justify-between w-full md:block">
+        <div className="flex items-center gap-1.5">
           {/* Status breathing pulse dot */}
-          <span className="relative flex h-2 w-2">
+          <span className="relative flex h-1.5 w-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
           </span>
-          <span className="text-[9px] font-black uppercase tracking-widest text-emerald-200">
+          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-emerald-200">
             {translateAppString('pulse.eyebrow', language)}
           </span>
         </div>
-        <h2 
-          id="pulse-heading" 
-          className="text-lg md:text-xl font-black tracking-tight leading-tight text-white m-0"
-        >
-          {headingText}
-        </h2>
+
+        {/* Indicators on the right (Mobile only) */}
+        {metricsAvailable && !prefersReducedMotion && (
+          <div 
+            className="flex items-center md:hidden -mr-2.5" 
+            aria-label={language === 'de' ? 'Statistik-Auswahl' : 'Metric selection'}
+          >
+            <button
+              aria-pressed={activeMetric === 'rooms'}
+              aria-label={language === 'de' ? 'Offene Räume anzeigen' : 'Show open rooms'}
+              onClick={() => handleManualSwitch('rooms')}
+              className="h-10 w-10 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <span 
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full transition-colors duration-200",
+                  activeMetric === 'rooms' ? "bg-white" : "bg-white/40"
+                )} 
+              />
+            </button>
+            <button
+              aria-pressed={activeMetric === 'participants'}
+              aria-label={language === 'de' ? 'Teilnehmer anzeigen' : 'Show participants'}
+              onClick={() => handleManualSwitch('participants')}
+              className="h-10 w-10 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <span 
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full transition-colors duration-200",
+                  activeMetric === 'participants' ? "bg-white" : "bg-white/40"
+                )} 
+              />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Derived Statistics Section */}
-      <div className="min-h-[2.5rem] flex items-center z-10" aria-live="polite">
-        {renderStats()}
-      </div>
+      {/* Row 2: Heading */}
+      <h2 
+        id="pulse-heading" 
+        className="text-[17px] md:text-xl font-black tracking-tight leading-tight text-white m-0"
+      >
+        {headingText}
+      </h2>
 
-      {/* Primary Action Button */}
-      <div className="z-10 mt-1">
-        <Button
-          onClick={onExplore}
-          className="h-11 px-5 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 font-black text-xs transition-all uppercase tracking-wider active:scale-[0.985] border-none shadow-sm flex items-center gap-1.5"
-          aria-label={translateAppString('pulse.cta', language)}
-        >
-          <Compass className="h-4 w-4" />
-          {translateAppString('pulse.cta', language)}
-        </Button>
+      {/* Row 3 on mobile: stats on left, CTA on right. On desktop: stats on top, CTA at the bottom */}
+      <div className="flex items-center justify-between gap-3 w-full md:flex-col md:items-stretch md:gap-3">
+        {/* Stats area */}
+        <div className="flex-1 md:flex md:items-center md:justify-between w-full">
+          <div className="grid grid-cols-1 grid-rows-1 min-h-[1.5rem] md:min-h-[2.5rem] items-center w-full">
+            {!metricsAvailable ? (
+              <span className="col-start-1 row-start-1 text-xs md:text-sm text-emerald-100 font-medium leading-tight animate-in fade-in duration-300">
+                {translateAppString('pulse.location_fallback', language)}
+              </span>
+            ) : (
+              <>
+                <div 
+                  className={cn(
+                    "col-start-1 row-start-1 flex flex-col transition-all duration-300",
+                    prefersReducedMotion && "transition-none",
+                    activeMetric === 'rooms' ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 -translate-y-2 pointer-events-none"
+                  )}
+                >
+                  <span className="text-xs md:text-sm text-emerald-100 font-medium leading-tight">
+                    {translateAppString('pulse.open_rooms_count', language, openRoomsCount ?? 0)}
+                  </span>
+                </div>
+                <div 
+                  className={cn(
+                    "col-start-1 row-start-1 flex flex-col transition-all duration-300",
+                    prefersReducedMotion && "transition-none",
+                    activeMetric === 'participants' ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-2 pointer-events-none"
+                  )}
+                >
+                  <span className="text-xs md:text-sm text-emerald-100 font-medium leading-tight">
+                    {translateAppString('pulse.unique_participants_count', language, uniqueParticipantsCount ?? 0)}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Desktop-only indicator dots */}
+          {metricsAvailable && !prefersReducedMotion && (
+            <div 
+              className="hidden md:flex items-center gap-0.5 shrink-0" 
+              aria-label={language === 'de' ? 'Statistik-Auswahl' : 'Metric selection'}
+            >
+              <button
+                aria-pressed={activeMetric === 'rooms'}
+                aria-label={language === 'de' ? 'Offene Räume anzeigen' : 'Show open rooms'}
+                onClick={() => handleManualSwitch('rooms')}
+                className="h-10 w-10 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                <span 
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full transition-colors duration-200",
+                    activeMetric === 'rooms' ? "bg-white" : "bg-white/40"
+                  )} 
+                />
+              </button>
+              <button
+                aria-pressed={activeMetric === 'participants'}
+                aria-label={language === 'de' ? 'Teilnehmer anzeigen' : 'Show participants'}
+                onClick={() => handleManualSwitch('participants')}
+                className="h-10 w-10 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                <span 
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full transition-colors duration-200",
+                    activeMetric === 'participants' ? "bg-white" : "bg-white/40"
+                  )} 
+                />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* CTA Button */}
+        <div className="shrink-0 flex justify-end md:justify-start">
+          <Button
+            onClick={onExplore}
+            disabled={openRoomsCount === null}
+            className="h-11 px-4 md:px-5 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 font-black text-xs transition-all uppercase tracking-wider active:scale-[0.985] border-none shadow-sm flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label={openRoomsCount === 0 ? translateAppString('pulse.cta.create', language) : translateAppString('pulse.cta.open_rooms', language)}
+            aria-disabled={openRoomsCount === null}
+          >
+            {openRoomsCount === 0 ? <Plus className="h-4 w-4" /> : <Compass className="h-4 w-4" />}
+            {openRoomsCount === 0 ? translateAppString('pulse.cta.create', language) : translateAppString('pulse.cta.open_rooms', language)}
+          </Button>
+        </div>
       </div>
     </div>
   );

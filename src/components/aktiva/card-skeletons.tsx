@@ -33,26 +33,29 @@ export function PlaceCardSkeleton() {
 
 export function FeaturedPlaceCardSkeleton() {
   return (
-    <div className="w-full overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-col md:flex-row min-h-[160px] pointer-events-none select-none" aria-hidden="true">
+    <div className="w-full overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-row min-h-[145px] max-h-[165px] md:max-h-none md:min-h-[160px] pointer-events-none select-none" aria-hidden="true">
       {/* Left decoration area placeholder */}
-      <div className="w-full md:w-52 h-24 md:h-full min-h-[96px] bg-slate-100/50 dark:bg-neutral-800/40 flex items-center justify-center shrink-0">
-        <Skeleton className="h-9 w-9 rounded-full motion-reduce:animate-none" />
+      <div className="w-24 md:w-52 h-full bg-slate-100/50 dark:bg-neutral-800/40 flex items-center justify-center shrink-0">
+        <Skeleton className="h-8 w-8 md:h-9 md:w-9 rounded-full motion-reduce:animate-none" />
       </div>
       {/* Right content area placeholder */}
-      <div className="p-4 md:p-5 flex flex-col flex-1 min-w-0 justify-between gap-3">
-        <div className="space-y-2">
-          <Skeleton className="h-5 w-3/4 rounded-lg motion-reduce:animate-none" />
-          <Skeleton className="h-3.5 w-1/3 rounded-md motion-reduce:animate-none" />
-          <div className="flex flex-wrap gap-1 pt-1">
+      <div className="p-3 md:p-5 flex flex-col flex-1 min-w-0 justify-between gap-1.5 md:gap-3">
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-3/4 rounded-lg motion-reduce:animate-none" />
+          <Skeleton className="h-3 w-1/3 rounded-md motion-reduce:animate-none" />
+          <div className="hidden md:flex flex-wrap gap-1 pt-1">
             <Skeleton className="h-4.5 w-12 rounded-[10px] motion-reduce:animate-none" />
             <Skeleton className="h-4.5 w-16 rounded-[10px] motion-reduce:animate-none" />
           </div>
         </div>
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-slate-100/50 dark:border-neutral-800/40">
+        <div className="flex items-center justify-between mt-1 md:mt-auto pt-1.5 md:pt-3 border-t border-slate-100/50 dark:border-neutral-800/40">
           <div className="flex gap-1.5">
-            <Skeleton className="h-6.5 w-16 rounded-lg motion-reduce:animate-none" />
+            <Skeleton className="h-6.5 w-14 md:w-16 rounded-lg motion-reduce:animate-none" />
           </div>
-          <Skeleton className="h-6.5 w-6.5 rounded-full motion-reduce:animate-none" />
+          <div className="flex items-center gap-1.5 ml-auto">
+            <Skeleton className="h-11 w-11 md:h-8 md:w-8 rounded-xl motion-reduce:animate-none" />
+            <Skeleton className="h-11 w-11 md:h-8 md:w-8 rounded-full motion-reduce:animate-none" />
+          </div>
         </div>
       </div>
     </div>
@@ -95,30 +98,30 @@ export function ActivityCardSkeleton() {
 
 export function FeaturedActivityCardSkeleton() {
   return (
-    <div className="w-full overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-col md:flex-row min-h-[160px] pointer-events-none select-none" aria-hidden="true">
+    <div className="w-full overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-row min-h-[145px] max-h-[165px] md:max-h-none md:min-h-[160px] pointer-events-none select-none" aria-hidden="true">
       {/* Left decoration area placeholder */}
-      <div className="w-full md:w-52 h-24 md:h-full min-h-[96px] bg-slate-100/50 dark:bg-neutral-800/40 flex items-center justify-center shrink-0">
-        <Skeleton className="h-9 w-9 rounded-full motion-reduce:animate-none" />
+      <div className="w-24 md:w-52 h-full bg-slate-100/50 dark:bg-neutral-800/40 flex items-center justify-center shrink-0">
+        <Skeleton className="h-8 w-8 md:h-9 md:w-9 rounded-full motion-reduce:animate-none" />
       </div>
       {/* Right content area placeholder */}
-      <div className="p-4 md:p-5 flex flex-col flex-1 min-w-0 justify-between gap-3">
-        <div className="space-y-2">
-          <Skeleton className="h-5 w-3/4 rounded-lg motion-reduce:animate-none" />
-          <Skeleton className="h-3.5 w-1/3 rounded-md motion-reduce:animate-none" />
-          <Skeleton className="h-3.5 w-11/12 rounded-md motion-reduce:animate-none" />
+      <div className="p-3 md:p-5 flex flex-col flex-1 min-w-0 justify-between gap-1.5 md:gap-3">
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-3/4 rounded-lg motion-reduce:animate-none" />
+          <Skeleton className="h-3 w-1/3 rounded-md motion-reduce:animate-none" />
+          <Skeleton className="hidden md:block h-3.5 w-11/12 rounded-md motion-reduce:animate-none" />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-2">
           <div className="flex -space-x-1.5">
             <Skeleton className="h-5.5 w-5.5 rounded-full motion-reduce:animate-none" />
             <Skeleton className="h-5.5 w-5.5 rounded-full motion-reduce:animate-none" />
           </div>
           <Skeleton className="h-3.5 w-24 rounded-md motion-reduce:animate-none" />
         </div>
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-slate-100/50 dark:border-neutral-800/40">
+        <div className="flex items-center justify-between mt-1 md:mt-auto pt-1.5 md:pt-3 border-t border-slate-100/50 dark:border-neutral-800/40">
           <div className="flex items-center gap-1">
-            <Skeleton className="h-3.5 w-20 rounded-md motion-reduce:animate-none" />
+            <Skeleton className="h-3.5 w-16 md:w-20 rounded-md motion-reduce:animate-none" />
           </div>
-          <Skeleton className="h-7.5 w-16 rounded-lg motion-reduce:animate-none" />
+          <Skeleton className="h-11 md:h-7.5 w-16 md:w-20 rounded-lg motion-reduce:animate-none" />
         </div>
       </div>
     </div>

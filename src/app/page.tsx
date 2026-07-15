@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { CategoryFilters } from '@/components/aktiva/category-filters';
 import { AktivaPulseHero } from '@/components/aktiva/aktiva-pulse-hero';
-import { translateAppString } from '@/lib/tag-config';
+import { translateAppString, ACTIVITY_EXPIRY_THRESHOLD_MS, isActivityRoomOpen } from '@/lib/tag-config';
 import { PlaceDetails } from '@/components/aktiva/place-details';
 import { PlaceCard } from '@/components/aktiva/place-card';
 
@@ -132,14 +132,34 @@ export default function Home() {
   const language = useLanguage();
   const discoverFeedRef = useRef<HTMLDivElement>(null);
 
-  const handleExploreClick = useCallback(() => {
-    if (discoverFeedRef.current) {
-      const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      discoverFeedRef.current.scrollIntoView({
-        behavior: isReduced ? 'auto' : 'smooth'
-      });
-    }
+  const TIME_REFRESH_INTERVAL_MS = 60000;
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
+  const [isOpenRoomsMode, setIsOpenRoomsMode] = useState(false);
+  const [scrollTriggerId, setScrollTriggerId] = useState(0);
+
+  useEffect(() => {
+    setCurrentTime(Date.now());
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, TIME_REFRESH_INTERVAL_MS);
+    return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (scrollTriggerId > 0 && isOpenRoomsMode) {
+      const animId = requestAnimationFrame(() => {
+        if (isOpenRoomsMode && discoverFeedRef.current) {
+          const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          discoverFeedRef.current.scrollIntoView({
+            behavior: isReduced ? 'auto' : 'smooth'
+          });
+        }
+      });
+      return () => {
+        cancelAnimationFrame(animId);
+      };
+    }
+  }, [scrollTriggerId, isOpenRoomsMode]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
@@ -345,8 +365,6 @@ export default function Home() {
   const isAktivCategory = activeTabId === "Active";
 
   useEffect(() => {
-    if (!isCommunityCategory) return;
-
     setIsCommunityLoading(true);
     setCommunityError(null);
 
@@ -365,7 +383,7 @@ export default function Home() {
     return () => {
       unsubscribe();
     };
-  }, [isCommunityCategory, communityRetryTrigger]);
+  }, [communityRetryTrigger]);
 
   // MULTI-SOURCE FETCHER (Geoapify vs Firestore)
   const multiFetcher = async (key: any) => {
@@ -806,7 +824,7 @@ export default function Home() {
       if (item.activityEndDate?.toMillis) {
         if (item.activityEndDate.toMillis() < now) return false;
       } else if (item.activityDate?.toMillis) {
-        if (item.activityDate.toMillis() + 86400000 < now) return false;
+        if (item.activityDate.toMillis() + ACTIVITY_EXPIRY_THRESHOLD_MS < now) return false;
       }
       return true;
     });
@@ -843,6 +861,97 @@ export default function Home() {
       return timeA - timeB;
     });
   }, [communityActivities, userProfile, userLocation, maxDistance, debouncedSearchQuery]);
+
+  const openRooms = useMemo(() => {
+    if (!userLocation) return [];
+    
+    const rawList = communityActivities;
+    const uniqueMap = new Map<string, Activity>();
+    for (const item of rawList) {
+      if (item?.id) uniqueMap.set(item.id, item);
+    }
+    const list = Array.from(uniqueMap.values());
+    const now = currentTime || Date.now();
+
+    return list.filter((item) => {
+      // 1-5. Authoritative availability / joinability / expiry checks
+      if (!isActivityRoomOpen(item, now, userProfile)) return false;
+
+      // 6. Location and filtering scope
+      if (item.lat && (item.lon || (item as any).lng)) {
+        const itemLon = item.lon || (item as any).lng;
+        const distance = calculateDistance(userLocation.lat, userLocation.lng, item.lat, itemLon);
+        if (maxDistance !== null && distance > maxDistance) return false;
+      } else {
+        return false;
+      }
+
+      return true;
+    });
+  }, [communityActivities, userProfile, userLocation, maxDistance, currentTime]);
+
+  const uniqueParticipantsCount = useMemo(() => {
+    if (!userLocation) return null;
+    const set = new Set<string>();
+    for (const room of openRooms) {
+      if (room.hostId && room.hostId.trim()) set.add(room.hostId.trim());
+      if (Array.isArray(room.participantIds)) {
+        for (const pid of room.participantIds) {
+          if (pid && pid.trim()) set.add(pid.trim());
+        }
+      }
+    }
+    return set.size;
+  }, [openRooms, userLocation]);
+
+  const openRoomsCount = userLocation ? openRooms.length : null;
+
+  const sortedOpenRooms = useMemo(() => {
+    if (!userLocation) return [];
+
+    const now = currentTime || Date.now();
+    const getEventTimes = (item: Activity) => {
+      const startMs = item.activityDate?.toMillis ? item.activityDate.toMillis() : 0;
+      const endMs = item.activityEndDate?.toMillis 
+        ? item.activityEndDate.toMillis() 
+        : (startMs ? startMs + ACTIVITY_EXPIRY_THRESHOLD_MS : 0);
+      return { startMs, endMs };
+    };
+
+    return [...openRooms].sort((a, b) => {
+      const timeA = getEventTimes(a);
+      const timeB = getEventTimes(b);
+
+      const isAStarted = timeA.startMs <= now;
+      const isBStarted = timeB.startMs <= now;
+
+      // 1. currently started, still valid, and still joinable rooms (started comes first)
+      if (isAStarted && !isBStarted) return -1;
+      if (!isAStarted && isBStarted) return 1;
+
+      // 2. started rooms: sort by most recent start first (start time descending)
+      if (isAStarted && isBStarted) {
+        if (timeB.startMs !== timeA.startMs) {
+          return timeB.startMs - timeA.startMs;
+        }
+      }
+
+      // 3. upcoming rooms: sort by soonest start first (start time ascending)
+      if (!isAStarted && !isBStarted) {
+        if (timeA.startMs !== timeB.startMs) {
+          return timeA.startMs - timeB.startMs;
+        }
+      }
+
+      // 4. distance ascending
+      const distA = a.lat && (a.lon || (a as any).lng) ? calculateDistance(userLocation.lat, userLocation.lng, a.lat, a.lon || (a as any).lng) : 999999;
+      const distB = b.lat && (b.lon || (b as any).lng) ? calculateDistance(userLocation.lat, userLocation.lng, b.lat, b.lon || (b as any).lng) : 999999;
+      if (distA !== distB) return distA - distB;
+
+      // 5. stable activity ID fallback
+      return (a.id || "").localeCompare(b.id || "");
+    });
+  }, [openRooms, userLocation, currentTime]);
 
   const visiblePlaces = useMemo(() => {
     let filtered = places.filter(place => {
@@ -1376,6 +1485,7 @@ export default function Home() {
   }, [isLoadingInitialData, isValidating, activeCategory, places.length, debouncedSearchQuery, error, shouldFilterByName]);
 
   const handleCategoryChange = (categoryId: string[], tabId: string) => {
+    setIsOpenRoomsMode(false);
     if (activeTabId !== tabId) {
       setIsSwitchingTab(true);
       setTimeout(() => setIsSwitchingTab(false), 800); // Guarantee skeleton animation for at least 800ms
@@ -1498,6 +1608,16 @@ export default function Home() {
     setActionSheetPlace(place);
   }, [user, router]);
   const handleOpenCustomActivityModal = () => { if (!user) { router.push('/login'); return; } setActivityModalPlace('custom'); };
+
+  const handleExploreClick = useCallback(() => {
+    if (openRoomsCount === null) return;
+    if (openRoomsCount === 0) {
+      handleOpenCustomActivityModal();
+      return;
+    }
+    setIsOpenRoomsMode(true);
+    setScrollTriggerId((prev) => prev + 1);
+  }, [openRoomsCount, handleOpenCustomActivityModal]);
 
   const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory, description?: string, requirements?: any, joinMode?: 'direct' | 'request', selectedPlace?: Place | null): Promise<boolean> => {
     if (!user) return false;
@@ -1652,6 +1772,72 @@ export default function Home() {
   };
 
   const renderContent = () => {
+    if (isOpenRoomsMode) {
+      const renderList = () => {
+        const visibleSlice = sortedOpenRooms.slice(0, visibleCount);
+        const featuredActivity = visibleSlice[0] ?? null;
+        const standardActivities = visibleSlice.slice(1);
+
+        return (
+          <div className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-6">
+            {featuredActivity && (
+              <div className="w-full">
+                <FeaturedActivityCard 
+                  activity={featuredActivity as any} 
+                  user={user} 
+                  onJoin={handleJoin} 
+                  hasRequested={requestedActivityIds[featuredActivity.id!]}
+                />
+              </div>
+            )}
+            {standardActivities.length > 0 && (
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+                {standardActivities.map((item) => (
+                  <div key={item.id} className="min-h-[210px] w-full">
+                    <ActivityListItem 
+                      activity={item as any} 
+                      user={user} 
+                      onJoin={handleJoin} 
+                      hasRequested={requestedActivityIds[item.id!]}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            {visibleSlice.length === 0 && (
+              <div className="flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto my-12 animate-in fade-in duration-300">
+                <div className="bg-slate-100/80 dark:bg-neutral-800/80 p-4 rounded-full mb-4">
+                  <Compass className="h-6 w-6 text-neutral-400 dark:text-neutral-500" />
+                </div>
+                <h3 className="font-black text-lg text-slate-900 dark:text-neutral-100 mb-1 leading-snug">
+                  {translateAppString('pulse.open_rooms_count', language, 0)}
+                </h3>
+                <p className="text-neutral-500 dark:text-neutral-400 text-xs font-semibold max-w-xs mb-6 leading-normal">
+                  {language === 'de' ? 'Zurzeit gibt es keine offenen Aktivitäten in deiner Nähe.' : 'Currently there are no open activities in your area.'}
+                </p>
+                <Button
+                  onClick={handleOpenCustomActivityModal}
+                  className="h-11 px-6 rounded-xl bg-primary text-white font-bold text-xs uppercase tracking-wider active:scale-[0.985] flex items-center gap-1.5 shadow"
+                >
+                  <Plus className="h-4 w-4" />
+                  {translateAppString('pulse.cta.create', language)}
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      return (
+        <div 
+          className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col"
+          aria-busy="false"
+        >
+          {renderList()}
+        </div>
+      );
+    }
+
     // Derived State Model
     let feedState: DiscoverFeedState = 'success_with_results';
     const isError = !!activeError;
@@ -1786,7 +1972,7 @@ export default function Home() {
       if (isCommunityCategory) {
         return (
           <div 
-            className="p-3 sm:p-6 flex flex-col gap-4 sm:gap-6" 
+            className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-6" 
             aria-busy="true" 
             role="region" 
             aria-label={translateAppString('loading.results', language)}
@@ -1802,7 +1988,7 @@ export default function Home() {
       } else {
         return (
           <div 
-            className="p-3 sm:p-6 flex flex-col gap-4 sm:gap-6" 
+            className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-6" 
             aria-busy="true" 
             role="region" 
             aria-label={translateAppString('loading.results', language)}
@@ -1913,7 +2099,7 @@ export default function Home() {
           const standardActivities = visibleSlice.slice(1);
           
           return (
-            <div className="p-3 sm:p-6 flex flex-col gap-4 sm:gap-6">
+            <div className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-6">
               {featuredActivity && (
                 <div className="w-full">
                   <FeaturedActivityCard 
@@ -1947,7 +2133,7 @@ export default function Home() {
         const standardPlaces = visibleSlice.slice(1);
         
         return (
-          <div className="p-3 sm:p-6 flex flex-col gap-4 sm:gap-6">
+          <div className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-6">
             {featuredPlace && (
               <div className="w-full">
                 {(() => {
@@ -2025,7 +2211,7 @@ export default function Home() {
               {isCommunityCategory ? <ActivityCardSkeleton /> : <PlaceCardSkeleton />}
             </div>
           )}
-          {!isReachingEnd && !isLoadingInitialData && !debouncedSearchQuery && (
+          {!isReachingEnd && !isLoadingInitialData && !debouncedSearchQuery && !isOpenRoomsMode && (
             <div ref={lastElementRef} className="h-1 w-full flex-shrink-0 bg-transparent" aria-hidden="true" />
           )}
         </div>
@@ -2054,15 +2240,15 @@ export default function Home() {
       <div className="flex flex-col h-full bg-transparent relative">
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
-        <header className="global-viewport-header pb-4 md:pb-3">
-          <div className="flex flex-col gap-6 md:gap-4 max-w-7xl mx-auto w-full">
+        <header className="global-viewport-header compact pb-2.5 md:pb-3">
+          <div className="flex flex-col gap-4 md:gap-4 max-w-7xl mx-auto w-full">
             {/* Mobile Header Layout */}
-            <div className="md:hidden flex flex-col gap-6">
+            <div className="md:hidden flex flex-col gap-4">
               <div className="global-header-container">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <Link href="/profile">
                     <ProfileAvatar
-                      className="h-10 w-10 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
+                      className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
                       photoURL={userProfile?.photoURL}
                       displayName={userProfile?.displayName}
                       isPremium={userProfile?.isPremium}
@@ -2070,7 +2256,7 @@ export default function Home() {
                       isSupporter={userProfile?.isSupporter}
                     />
                   </Link>
-                  <h1 className="">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
+                  <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-neutral-100">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
                 </div>
                 <div className="flex items-center gap-3">
                   <NotificationBell />
@@ -2088,7 +2274,7 @@ export default function Home() {
 
               {/* Mobile Location Row */}
               <div className="px-6 flex items-center justify-start">
-                <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-2 px-4 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800">
+                <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none" />
                   <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest">{cityName}</span>
                   {planningState.isPlanning && (
@@ -2117,7 +2303,7 @@ export default function Home() {
               <div className="flex items-center gap-3 shrink-0">
                 <Link href="/profile">
                   <ProfileAvatar
-                    className="h-10 w-10 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
+                    className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
                     photoURL={userProfile?.photoURL}
                     displayName={userProfile?.displayName}
                     isPremium={userProfile?.isPremium}
@@ -2197,14 +2383,20 @@ export default function Home() {
             </div>
 
             <div className="px-6">
-              <CategoryFilters activeCategory={activeCategory} activeTabId={activeTabId} onCategoryChange={handleCategoryChange} />
+              <CategoryFilters 
+                activeCategory={activeCategory} 
+                activeTabId={activeTabId} 
+                onCategoryChange={handleCategoryChange} 
+                isOpenRoomsMode={isOpenRoomsMode}
+                onOpenRoomsChange={setIsOpenRoomsMode}
+              />
             </div>
 
             {/* Search and Radius Row (Mobile only) */}
             <div className="px-6 md:hidden">
               <div className="flex items-center gap-3 w-full">
                 <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
-                  {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
+                  {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
                   <Input 
                     type="search" 
                     id="search-input-mobile"
@@ -2213,13 +2405,13 @@ export default function Home() {
                     value={searchQuery} 
                     onChange={handleSearchInput} 
                     disabled={isSearching} 
-                    className="w-full pl-9 h-14 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400" 
+                    className="w-full pl-10 h-11 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400" 
                   />
                 </form>
                 <div className="relative group">
                   <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" className="h-14 px-3 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
+                      <Button variant="secondary" className="h-11 px-2.5 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
                       <div className="space-y-4">
@@ -2234,7 +2426,7 @@ export default function Home() {
             </div>
 
             {/* Premium Advanced Filters Row */}
-            <div className="px-6 -mt-2 pb-2">
+            <div className="px-6 -mt-2 pb-0">
               <div className="flex flex-nowrap overflow-x-auto md:flex-wrap md:overflow-x-visible gap-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-center w-full">
                 {PREMIUM_FILTERS.map((f) => {
                   const isUserPremium = hasPremiumFeature(userProfile, 'advanced_filters');
@@ -2246,7 +2438,7 @@ export default function Home() {
                       variant={isActive ? "default" : "outline"}
                       aria-pressed={isActive}
                       className={cn(
-                        "flex-shrink-0 flex items-center justify-center rounded-full h-8 px-4 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95 duration-200",
+                        "flex-shrink-0 flex items-center justify-center rounded-full h-9 px-4 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95 duration-200",
                         isActive
                           ? "bg-amber-500 hover:bg-amber-600 text-white border-none shadow-lg shadow-amber-500/20"
                           : "bg-white/80 dark:bg-neutral-800/80 border-slate-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300"
@@ -2268,9 +2460,8 @@ export default function Home() {
               <div className="px-3 sm:px-6 mb-3 sm:mb-4">
                 <AktivaPulseHero 
                   cityName={isLocationLoading ? null : resolvedCityName}
-                  currentViewType={isCommunityCategory ? 'activities' : (isFavoritesCategory ? 'favorites' : 'places')}
-                  visiblePlaceCount={visiblePlaces.length}
-                  eligibleActivities={visibleCommunityActivities}
+                  openRoomsCount={openRoomsCount}
+                  uniqueParticipantsCount={uniqueParticipantsCount}
                   language={language}
                   onExplore={handleExploreClick}
                   loading={isInitialFeedLoading && !hasUsableFeedData}

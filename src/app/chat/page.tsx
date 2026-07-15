@@ -161,13 +161,13 @@ export default function ChatPage() {
               key={chat.id} 
               href={`/chat/${chat.id}`} 
               className={cn(
-                "bg-white dark:bg-neutral-900 rounded-[2.5rem] p-5 shadow-xl shadow-slate-200/50 dark:shadow-none transition-all duration-300 flex items-center gap-5 border border-transparent active:scale-95",
+                "bg-white dark:bg-neutral-900 rounded-3xl p-3.5 shadow-xl shadow-slate-200/50 dark:shadow-none transition-all duration-300 flex items-center gap-3.5 border border-transparent active:scale-95",
                 hasUnread && "ring-2 ring-emerald-500/20 bg-emerald-50/10"
               )}
             >
               {/* Square Icon Container */}
               <div className={cn(
-                "h-20 w-20 rounded-[2rem] flex items-center justify-center flex-shrink-0 relative overflow-hidden",
+                "h-16 w-16 rounded-[1.25rem] flex items-center justify-center flex-shrink-0 relative overflow-hidden",
                 !isDM && primaryStyle ? primaryStyle.gradientClass : (isDM ? "bg-white" : "bg-neutral-100")
               )}
               style={isDM ? { 
@@ -176,7 +176,7 @@ export default function ChatPage() {
               } : undefined}
               >
                 <Avatar 
-                  className="h-20 w-20 rounded-[2rem]"
+                  className="h-16 w-16 rounded-[1.25rem]"
                   isPremium={otherUser?.isPremium}
                   isCreator={otherUser?.isCreator}
                   isSupporter={otherUser?.isSupporter}
@@ -186,21 +186,21 @@ export default function ChatPage() {
                   ) : (
                     <AvatarFallback className="bg-transparent">
                       {!isDM && primaryStyle?.icon === Building ? (
-                        <span className="text-3xl font-black text-white drop-shadow-sm">{chatName?.charAt(0).toUpperCase()}</span>
+                        <span className="text-xl font-black text-white drop-shadow-sm">{chatName?.charAt(0).toUpperCase()}</span>
                       ) : (
-                        <CategoryIcon className={cn("h-10 w-10 drop-shadow-md", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
+                        <CategoryIcon className={cn("h-7.5 w-7.5 drop-shadow-md", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
                       )}
                     </AvatarFallback>
                   )}
                 </Avatar>
                 {/* Active Indicator */}
-                {!isDM && <div className="absolute bottom-3 right-3 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />}
+                {!isDM && <div className="absolute bottom-2 right-2 w-2.5 h-2.5 rounded-full bg-emerald-500 border-[1.5px] border-white shadow-sm" />}
               </div>
 
               {/* Text Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-1">
-                  <h3 className="text-xl font-black text-[#0f172a] dark:text-neutral-100 truncate pr-2 font-heading tracking-tight leading-none pt-1">
+                  <h3 className="text-base font-black text-[#0f172a] dark:text-neutral-100 truncate pr-2 font-heading tracking-tight leading-none pt-0.5">
                     {chatName}
                   </h3>
                   {chat.lastMessage?.sentAt && (
@@ -223,7 +223,7 @@ export default function ChatPage() {
                   )}
                 </div>
                 
-                <p className="truncate text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-2 leading-tight">
+                <p className="truncate text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1.5 leading-tight">
                   {chat.lastMessage ? (
                     <>
                       {chat.lastMessage.senderId === user?.uid && <span className="text-neutral-400 mr-1">{language === 'de' ? 'Du:' : 'You:'}</span>}
@@ -240,7 +240,7 @@ export default function ChatPage() {
                    </div>
 
                     {hasUnread && (
-                        <div className="bg-emerald-500 text-white text-[11px] font-black min-w-[24px] h-6 rounded-full flex items-center justify-center px-1.5 shadow-lg shadow-emerald-200">
+                        <div className="bg-emerald-500 text-white text-[10px] font-black min-w-[20px] h-5 rounded-full flex items-center justify-center px-1 shadow-lg shadow-emerald-500/20">
                             {unreadCount}
                         </div>
                     )}
@@ -256,11 +256,11 @@ export default function ChatPage() {
   return (
     <>
       <div className="flex h-full flex-col bg-[#fcfcfb] dark:bg-neutral-950">
-          <header className="global-viewport-header">
-            <div className="global-header-container mb-6">
+          <header className="global-viewport-header compact pb-3">
+            <div className="global-header-container mb-3.5">
               <div className="flex items-center gap-2">
-                <h1 className="">Chats</h1>
-                <MessageCircle className="h-6 w-6 text-violet-400 fill-current opacity-30" />
+                <h1 className="text-[22px] font-black tracking-tight text-slate-900 dark:text-neutral-100">Chats</h1>
+                <MessageCircle className="h-5 w-5 text-violet-400 fill-current opacity-30" />
               </div>
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -269,7 +269,7 @@ export default function ChatPage() {
                         size="icon" 
                         className="secondary-header-button" 
                     >
-                        <Bell className="h-6 w-6" />
+                        <Bell className="h-5 w-5" />
                     </Button>
                     {unreadNotifications > 0 && (
                         <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-sm" />
@@ -281,19 +281,19 @@ export default function ChatPage() {
                   className="secondary-header-button" 
                   onClick={() => setShowAddFriendDialog(true)}
                 >
-                    <Users className="h-6 w-6" />
+                    <Users className="h-5 w-5" />
                 </Button>
               </div>
             </div>
 
-            <div className="px-6 space-y-4">
+            <div className="px-6 space-y-3">
                 <div className="relative">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-400" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
                     <Input 
                         placeholder={language === 'de' ? "Chats durchsuchen..." : "Search chats..."}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="h-14 w-full rounded-3xl border-none bg-neutral-100/60 pl-14 font-bold text-neutral-600 focus-visible:ring-offset-0 focus-visible:ring-emerald-500/20"
+                        className="h-11 w-full rounded-[16px] border-none bg-neutral-100/60 pl-11 font-bold text-xs text-neutral-600 focus-visible:ring-offset-0 focus-visible:ring-emerald-500/20 dark:bg-neutral-900/50 dark:text-neutral-100 placeholder:text-neutral-400"
                     />
                 </div>
 
@@ -308,10 +308,10 @@ export default function ChatPage() {
                             key={btn.id}
                             onClick={() => setFilter(btn.id as any)}
                             className={cn(
-                                "flex-shrink-0 px-6 py-2.5 rounded-full text-[13px] font-black transition-all",
+                                "flex-shrink-0 px-5 h-11 rounded-full text-xs font-semibold transition-all",
                                 filter === btn.id 
-                                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200" 
-                                    : "bg-neutral-100 text-neutral-400 hover:bg-neutral-200/50"
+                                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
+                                    : "bg-neutral-100 text-neutral-400 hover:bg-neutral-200/50 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800"
                             )}
                         >
                             {btn.label}

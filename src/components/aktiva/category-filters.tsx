@@ -12,6 +12,7 @@ import {
   Check,
   Loader2,
   MessageSquare,
+  Compass,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -29,6 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { availableTabs } from './category-filters-data';
 import { cn, formatLabel } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
+import { translateAppString } from '@/lib/tag-config';
 
 // Re-export für Onboarding und andere Konsumenten
 export { availableTabs };
@@ -54,9 +56,18 @@ type CategoryFiltersProps = {
   activeTabId: string;
   onCategoryChange: (categoryId: string[], tabId: string) => void;
   vertical?: boolean;
+  isOpenRoomsMode?: boolean;
+  onOpenRoomsChange?: (enabled: boolean) => void;
 };
 
-export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange, vertical = false }: CategoryFiltersProps) {
+export function CategoryFilters({ 
+  activeCategory, 
+  activeTabId, 
+  onCategoryChange, 
+  vertical = false,
+  isOpenRoomsMode = false,
+  onOpenRoomsChange
+}: CategoryFiltersProps) {
   const { user, userProfile } = useAuth();
   const language = useLanguage();
   const { toast } = useToast();
@@ -84,7 +95,8 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
 
   // Center horizontally selected tab chip dynamically relative to the container scroll offset
   useEffect(() => {
-    if (!activeTabId || !containerRef.current || vertical) return;
+    if (!activeTabId && !isOpenRoomsMode) return;
+    if (!containerRef.current || vertical) return;
     
     // Defer measuring slightly to allow DOM/styles layout to resolve
     const timer = setTimeout(() => {
@@ -105,7 +117,7 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [activeTabId, vertical]);
+  }, [activeTabId, isOpenRoomsMode, vertical]);
 
   const displayedTabs = [
     ...coreTabs,
@@ -143,12 +155,39 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
           ? "flex flex-col gap-2 w-full items-stretch"
           : "flex flex-nowrap overflow-x-auto md:flex-wrap md:overflow-x-visible gap-2 pb-3 md:pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar sm:pb-4 items-center w-full min-w-0"
       )}>
+        {isOpenRoomsMode && (
+          <Button
+            onClick={() => onOpenRoomsChange?.(false)}
+            aria-pressed={true}
+            aria-label={language === 'de' ? 'Offene Räume verlassen' : 'Exit open rooms'}
+            className={cn(
+              vertical
+                ? "w-full flex items-center justify-start rounded-xl h-12 font-black border transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 px-4 text-[11px] uppercase tracking-wider active:scale-[0.985] gap-1.5 shadow-sm focus-visible:ring-2 focus-visible:ring-emerald-500"
+                : "flex-shrink-0 flex items-center justify-center rounded-full h-11 font-black border transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 px-5 text-[11px] uppercase tracking-wider active:scale-[0.985] gap-1.5 shadow-sm focus-visible:ring-2 focus-visible:ring-emerald-500"
+            )}
+            style={{ 
+                backgroundColor: `#10b9811c`,
+                borderColor: '#10b981',
+                color: '#10b981'
+            }}
+          >
+            <Compass className="h-3.5 w-3.5 mr-2 shrink-0 animate-pulse" style={{ color: '#10b981' }} />
+            <span className="whitespace-nowrap truncate">
+              {translateAppString('pulse.feed_mode.open_rooms', language)}
+            </span>
+            <span className="ml-1.5 text-[10px] opacity-60 pointer-events-none" aria-hidden="true">✕</span>
+          </Button>
+        )}
+
         {displayedTabs.map((tab) => {
-          const isActive = activeTabId === tab.id;
+          const isActive = activeTabId === tab.id && !isOpenRoomsMode;
           return (
             <Button
               key={tab.id}
               onClick={() => {
+                if (isOpenRoomsMode) {
+                  onOpenRoomsChange?.(false);
+                }
                 if (isActive) {
                   onCategoryChange([], "");
                 } else {
@@ -158,8 +197,8 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
               aria-pressed={isActive}
               className={cn(
                 vertical
-                  ? "w-full flex items-center justify-start rounded-[16px] h-12 font-black border transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 px-4 text-[11px] uppercase tracking-wider active:scale-[0.985]"
-                  : "flex-shrink-0 flex items-center justify-center rounded-full h-11 font-black border transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 px-6 text-[11px] uppercase tracking-wider active:scale-[0.985]",
+                  ? "w-full flex items-center justify-start rounded-xl h-12 font-black border transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 px-4 text-[11px] uppercase tracking-wider active:scale-[0.985]"
+                  : "flex-shrink-0 flex items-center justify-center rounded-full h-11 font-black border transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 px-5 text-[11px] uppercase tracking-wider active:scale-[0.985]",
                 isActive 
                     ? "shadow-sm" 
                     : "bg-slate-100/40 border-slate-200/40 text-slate-600 dark:bg-neutral-800/40 dark:border-neutral-800/60 dark:text-neutral-400 hover:border-slate-300 dark:hover:border-neutral-700"
@@ -170,7 +209,7 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
                   color: tab.color
               } : {}}
             >
-              <tab.icon className="h-4 w-4 mr-3 shrink-0" style={{ color: tab.color }} />
+              <tab.icon className="h-3.5 w-3.5 mr-2 shrink-0" style={{ color: tab.color }} />
               <span className="whitespace-nowrap truncate">{formatLabel(language === 'de' ? tab.label : (tab.labelEn || tab.label))}</span>
             </Button>
           );
@@ -182,11 +221,11 @@ export function CategoryFilters({ activeCategory, activeTabId, onCategoryChange,
           onClick={() => setIsConfigOpen(true)}
           className={cn(
             vertical
-              ? "w-full flex items-center justify-center rounded-[16px] h-12 border border-dashed border-slate-200 dark:border-neutral-800 shadow-none hover:bg-slate-50 mt-1 bg-transparent active:scale-[0.985] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200"
+              ? "w-full flex items-center justify-center rounded-xl h-12 border border-dashed border-slate-200 dark:border-neutral-800 shadow-none hover:bg-slate-50 mt-1 bg-transparent active:scale-[0.985] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200"
               : "flex-shrink-0 rounded-full h-11 w-11 bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 text-slate-500 dark:text-neutral-400 flex items-center justify-center active:scale-[0.985] hover:border-slate-300 dark:hover:border-neutral-700 transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 shadow-premium"
           )}
         >
-          <Plus className={cn("h-4 w-4 text-neutral-500 dark:text-neutral-400 shrink-0", vertical && "mr-2")} />
+          <Plus className={cn("h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400 shrink-0", vertical && "mr-2")} />
           {vertical && <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{language === 'de' ? 'Kategorien anpassen' : 'Customize categories'}</span>}
         </Button>
       </div>

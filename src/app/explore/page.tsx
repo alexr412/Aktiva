@@ -25,7 +25,7 @@ import { calculateDistance } from '@/lib/geo-utils';
 import { PlaceDetails } from '@/components/aktiva/place-details';
 import { CreateActivityDialog } from '@/components/aktiva/create-activity-dialog';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
-import { getPrimaryIconData } from '@/lib/tag-config';
+import { getPrimaryIconData, ACTIVITY_EXPIRY_THRESHOLD_MS } from '@/lib/tag-config';
 import { usePlanningMode } from '@/contexts/planning-mode-context';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 
@@ -176,7 +176,7 @@ export default function ExplorePage() {
                         if (act.activityEndDate?.toMillis) {
                             if (act.activityEndDate.toMillis() < now) return false;
                         } else if (act.activityDate?.toMillis) {
-                            if (act.activityDate.toMillis() + 86400000 < now) return false;
+                            if (act.activityDate.toMillis() + ACTIVITY_EXPIRY_THRESHOLD_MS < now) return false;
                         }
 
                         // Quarantine threshold

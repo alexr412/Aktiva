@@ -21,7 +21,7 @@ import {
   type LucideIcon
 } from 'lucide-react';
 import { cn, formatLabel } from './utils';
-import type { Activity, Place, Chat } from '@/lib/types';
+import type { Activity, Place, Chat, UserProfile } from '@/lib/types';
 
 /**
  * Custom Icons für Kategorien, die Lucide nicht abdeckt
@@ -575,16 +575,28 @@ const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => strin
     en: 'AKTIVA PULSE'
   },
   'pulse.heading.near_you': {
-    de: 'Heute ist in deiner Nähe etwas los',
-    en: 'There is something happening near you today'
+    de: 'Was geht in deiner Nähe?',
+    en: "What's happening near you?"
   },
   'pulse.heading.city': {
-    de: (city: string) => `Heute ist in ${city} etwas los`,
-    en: (city: string) => `Something is happening in ${city} today`
+    de: (city: string) => `Was geht in ${city}?`,
+    en: (city: string) => `What's happening in ${city}?`
   },
   'pulse.cta': {
     de: 'Jetzt entdecken',
     en: 'Discover Now'
+  },
+  'pulse.cta.open_rooms': {
+    de: 'Offene Räume ansehen',
+    en: 'View open rooms'
+  },
+  'pulse.cta.create': {
+    de: 'Aktivität erstellen',
+    en: 'Create activity'
+  },
+  'pulse.feed_mode.open_rooms': {
+    de: 'Offene Räume',
+    en: 'Open rooms'
   },
   'pulse.fallback': {
     de: 'Entdecke, was heute passiert',
@@ -594,21 +606,37 @@ const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => strin
     de: 'Aktivitäten in deiner Nähe',
     en: 'Activities in your area'
   },
-  'pulse.places_count': {
-    de: (count: number) => count === 1 ? '1 passender Ort in deiner Nähe' : `${count} passende Orte in deiner Nähe`,
-    en: (count: number) => count === 1 ? '1 matching place nearby' : `${count} matching places nearby`
+  'pulse.open_rooms_count': {
+    de: (count: number) => {
+      if (count === 0) return 'Aktuell keine offenen Räume';
+      if (count === 1) return '1 offener Raum';
+      return `${count} offene Räume`;
+    },
+    en: (count: number) => {
+      if (count === 0) return 'No open rooms right now';
+      if (count === 1) return '1 open room';
+      return `${count} open rooms`;
+    }
   },
-  'pulse.activities_count': {
-    de: (count: number) => count === 1 ? '1 aktive Community-Aktivität' : `${count} aktive Community-Aktivitäten`,
-    en: (count: number) => count === 1 ? '1 active community activity' : `${count} active community activities`
+  'pulse.unique_participants_count': {
+    de: (count: number) => {
+      if (count === 0) return 'Noch niemand ist dabei';
+      if (count === 1) return '1 Person ist dabei';
+      return `${count} Personen sind dabei`;
+    },
+    en: (count: number) => {
+      if (count === 0) return 'No one is taking part yet';
+      if (count === 1) return '1 person is taking part';
+      return `${count} people are taking part`;
+    }
   },
-  'pulse.starting_soon_count': {
-    de: (count: number) => count === 1 ? '1 startet in Kürze' : `${count} starten in Kürze`,
-    en: (count: number) => count === 1 ? '1 starting soon' : `${count} starting soon`
+  'pulse.location_fallback': {
+    de: 'Offene Räume werden angezeigt, sobald dein Standort verfügbar ist.',
+    en: 'Open rooms will appear once your location is available.'
   },
   'featured.label': {
-    de: 'Empfohlen',
-    en: 'Recommended'
+    de: 'Top-Ergebnis',
+    en: 'Top result'
   },
   'activity.spots_left': {
     de: (count: number) => count === 1 ? 'Noch 1 Platz' : `Noch ${count} Plätze`,
@@ -714,4 +742,81 @@ export const translateAppString = (
   return valueObj;
 };
 
+export const ACTIVITY_EXPIRY_THRESHOLD_MS = 86400000; // 24 hours
+
+export function isActivityRoomOpen(
+  activity: Activity,
+  now: number,
+  userProfile?: UserProfile | null
+): boolean {
+  if (!activity) return false;
+
+  // 1. Status check
+  if (activity.status !== 'active') return false;
+
+  // 2. Personal safety/blacklist filters
+  const hostId = activity.hostId;
+  if (hostId && userProfile?.blacklist) {
+    const hardBlocked = userProfile.blacklist.hard || [];
+    const softBlocked = userProfile.blacklist.soft || [];
+    if (hardBlocked.includes(hostId) || softBlocked.includes(hostId)) return false;
+  }
+  if (activity.id && userProfile?.hiddenEntityIds?.includes(activity.id)) return false;
+
+  // 3. Expiry / Calendar logic
+  let startMs = null;
+  if (activity.activityDate) {
+    if (typeof (activity.activityDate as any).toMillis === 'function') {
+      startMs = (activity.activityDate as any).toMillis();
+    } else if (typeof (activity.activityDate as any).toDate === 'function') {
+      startMs = (activity.activityDate as any).toDate().getTime();
+    } else if (typeof activity.activityDate === 'number') {
+      startMs = activity.activityDate;
+    } else if (typeof activity.activityDate === 'string') {
+      startMs = Date.parse(activity.activityDate);
+      if (isNaN(startMs)) startMs = null;
+    }
+  }
+  if (startMs === null) return false;
+
+  if (activity.activityEndDate) {
+    let endMs = null;
+    if (typeof (activity.activityEndDate as any).toMillis === 'function') {
+      endMs = (activity.activityEndDate as any).toMillis();
+    } else if (typeof (activity.activityEndDate as any).toDate === 'function') {
+      endMs = (activity.activityEndDate as any).toDate().getTime();
+    } else if (typeof activity.activityEndDate === 'number') {
+      endMs = activity.activityEndDate;
+    } else if (typeof activity.activityEndDate === 'string') {
+      endMs = Date.parse(activity.activityEndDate);
+      if (isNaN(endMs)) endMs = null;
+    }
+    if (endMs !== null && endMs < now) return false;
+  } else if (activity.isTimeFlexible) {
+    // Date-only: keep for full local calendar day
+    const activityDay = new Date(startMs);
+    const endOfActivityDay = new Date(
+      activityDay.getFullYear(),
+      activityDay.getMonth(),
+      activityDay.getDate() + 1
+    ).getTime();
+    if (endOfActivityDay < now) return false;
+  } else {
+    // Exact time: expires after ACTIVITY_EXPIRY_THRESHOLD_MS
+    if (startMs + ACTIVITY_EXPIRY_THRESHOLD_MS < now) return false;
+  }
+
+  // 4. Capacity rule
+  const maxParts = activity.maxParticipants;
+  const participantCount = Array.isArray(activity.participantIds) ? activity.participantIds.length : 0;
+  if (typeof maxParts === 'number' && !isNaN(maxParts) && maxParts > 0) {
+    if (participantCount >= maxParts) return false;
+  }
+
+  // 5. Joinability rules
+  const joinMode = activity.joinMode || 'request';
+  if (joinMode !== 'direct' && joinMode !== 'request') return false;
+
+  return true;
+}
 
