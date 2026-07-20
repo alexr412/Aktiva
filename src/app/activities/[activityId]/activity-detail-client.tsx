@@ -265,7 +265,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex h-full w-full items-center justify-center bg-slate-50 dark:bg-neutral-950">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -273,7 +273,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
   if (!activity) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center p-6 text-center">
+      <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center bg-slate-50 dark:bg-neutral-950">
         <h1 className="text-xl font-bold mb-2">{language === 'de' ? 'Aktivität nicht gefunden' : 'Activity Not Found'}</h1>
         <p className="text-slate-500 mb-6">{language === 'de' ? 'Diese Aktivität existiert nicht mehr oder ist privat.' : 'This activity no longer exists or is private.'}</p>
         <Button onClick={() => router.push('/')} className="rounded-2xl h-12 px-8 font-black">{language === 'de' ? 'Zurück zum Feed' : 'Back to Feed'}</Button>
@@ -290,7 +290,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
   if (isNotAccessible) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center p-6 text-center">
+      <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center bg-slate-50 dark:bg-neutral-950">
         <h1 className="text-xl font-bold mb-2">{language === 'de' ? 'Aktivität nicht verfügbar' : 'Activity Not Available'}</h1>
         <p className="text-slate-500 mb-6">{language === 'de' ? 'Diese Aktivität ist nicht mehr verfügbar.' : 'This activity is no longer available.'}</p>
         <Button onClick={() => router.push('/')} className="rounded-2xl h-12 px-8 font-black">{language === 'de' ? 'Zurück zum Feed' : 'Back to Feed'}</Button>
@@ -338,8 +338,8 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const openingHours = place?.openingHours || activity.participantDetails?.[activity.hostId]?.isCreator ? 'Datenabfrage läuft...' : null;
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 overflow-y-auto">
-      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between px-4 bg-white/80 border-b border-slate-100 backdrop-blur-md">
+    <div className="flex flex-col h-full w-full bg-slate-50 dark:bg-neutral-950 overflow-y-auto">
+      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between px-4 bg-white/80 dark:bg-neutral-900/80 border-b border-slate-100 dark:border-neutral-800 backdrop-blur-md">
         <Button 
           variant="ghost" 
           size="icon" 
@@ -349,7 +349,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex-1 text-center font-bold text-slate-800 truncate px-4">
+        <div className="flex-1 text-center font-bold text-slate-800 dark:text-neutral-100 truncate px-4">
           {activity.title || activity.placeName || (language === 'de' ? 'Aktivität' : 'Activity')}
         </div>
         <Button 
@@ -363,7 +363,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
         </Button>
       </header>
 
-      <main className="flex-1 p-4 sm:p-8 max-w-2xl mx-auto w-full space-y-4 pb-24">
+      <main className="flex-1 p-4 sm:p-8 max-w-2xl mx-auto w-full space-y-4 pb-28 sm:pb-32">
         {/* Status Indicator */}
         {isCancelled && (
           <div className="bg-red-50 border-2 border-red-100 p-6 rounded-[2rem] flex flex-col items-center text-center gap-2 animate-in slide-in-from-top-4 duration-500">
@@ -849,7 +849,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
         {/* Action Button */}
         {!isCancelled && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100 z-nav elevation-mid">
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-t border-slate-100 dark:border-neutral-800 z-nav elevation-mid">
             <div className="max-w-md mx-auto">
               {isParticipant ? (
                 <div className="flex gap-2 w-full">

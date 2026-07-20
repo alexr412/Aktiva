@@ -280,7 +280,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     const categories = (place.categories || []);
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-neutral-900 overflow-hidden rounded-none sm:rounded-[2.5rem] relative">
+        <div className="flex flex-col h-full min-h-0 w-full bg-white dark:bg-neutral-900 overflow-hidden rounded-none sm:rounded-[2.5rem] relative">
             {/* Immersiver Header mit dynamischem Verlauf */}
             <div className={cn(
                 "relative h-[115px] md:h-64 w-full flex-shrink-0 flex items-center justify-center overflow-hidden",
@@ -315,8 +315,8 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                 </div>
             </div>
 
-            <ScrollArea viewportRef={viewportRef} className="flex-1 bg-white dark:bg-neutral-900 border-t border-slate-100 dark:border-neutral-800/50">
-                <div className="p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] md:p-8 md:pb-12">
+            <ScrollArea viewportRef={viewportRef} className="flex-1 min-h-0 w-full bg-white dark:bg-neutral-900 border-t border-slate-100 dark:border-neutral-800/50">
+                <div className="p-4 pb-12 md:p-8 md:pb-16">
                     {/* 1. Core metadata */}
                     <div className="mb-4 md:mb-6">
                         <h2 className="text-xl md:text-3xl font-black text-slate-900 dark:text-neutral-50 mb-1 leading-snug">
@@ -582,15 +582,18 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         <div className="flex items-center bg-neutral-50 dark:bg-neutral-800 rounded-2xl p-0.5 gap-0.5 border border-neutral-100 dark:border-neutral-800">
                             <button
                                 onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
+                                aria-pressed={userVote === 'up'}
                                 className={cn(
-                                    "h-7 rounded-xl flex items-center justify-center transition-all text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none",
+                                    "h-7 rounded-xl flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
                                     (userProfile?.role === 'admin' || userProfile?.role === 'supporter') ? "px-2" : "w-7",
-                                    userVote === 'up' ? "bg-white text-emerald-500 shadow-sm" : "text-emerald-500/40 hover:text-emerald-500"
+                                    userVote === 'up'
+                                        ? "bg-emerald-600 text-white border border-emerald-500 shadow-md shadow-emerald-500/25 scale-[1.04] active:scale-95"
+                                        : "bg-transparent text-emerald-600/50 dark:text-emerald-400/50 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent active:scale-95"
                                 )}
                             >
-                                <ThumbsUp className="h-3.5 w-3.5" />
+                                <ThumbsUp className="h-3.5 w-3.5 shrink-0" />
                                 {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
-                                    <span className="opacity-70 text-[10px]">
+                                    <span className={cn("text-[10px] font-black", userVote === 'up' ? "text-white opacity-100" : "opacity-70")}>
                                         {(placeMeta.weightedUpvotes || 0) > 0 ? `+${placeMeta.weightedUpvotes}` : '0'}
                                     </span>
                                 )}
@@ -598,15 +601,18 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
 
                             <button
                                 onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
+                                aria-pressed={userVote === 'down'}
                                 className={cn(
-                                    "h-7 rounded-xl flex items-center justify-center transition-all text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none",
+                                    "h-7 rounded-xl flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
                                     (userProfile?.role === 'admin' || userProfile?.role === 'supporter') ? "px-2" : "w-7",
-                                    userVote === 'down' ? "bg-white text-red-500 shadow-sm" : "text-red-500/40 hover:text-red-500"
+                                    userVote === 'down'
+                                        ? "bg-rose-600 text-white border border-rose-500 shadow-md shadow-rose-500/25 scale-[1.04] active:scale-95"
+                                        : "bg-transparent text-rose-600/50 dark:text-rose-400/50 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 border border-transparent active:scale-95"
                                 )}
                             >
-                                <ThumbsDown className="h-3.5 w-3.5" />
+                                <ThumbsDown className="h-3.5 w-3.5 shrink-0" />
                                 {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
-                                    <span className="opacity-70 text-[10px]">
+                                    <span className={cn("text-[10px] font-black", userVote === 'down' ? "text-white opacity-100" : "opacity-70")}>
                                         {(placeMeta.weightedDownvotes || 0) > 0 ? `-${placeMeta.weightedDownvotes}` : '0'}
                                     </span>
                                 )}
