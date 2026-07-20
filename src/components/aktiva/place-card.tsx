@@ -130,20 +130,20 @@ export function PlaceCard({
                     )}
                 </div>
 
-                {/* Status & Distanz Badges */}
-                <div className="absolute top-2.5 right-4 flex items-center gap-1.5 pointer-events-none select-none">
-                    {role === 'admin' && place.relevanceScore !== undefined && (
-                        <div className="h-5 bg-amber-400 text-white text-[8px] font-black px-2 rounded-2xl shadow-lg flex items-center gap-1 border border-white/20">
-                            <Sparkles className="h-2.5 w-2.5" />
-                            {place.relevanceScore.toFixed(1)}
-                        </div>
-                    )}
-                    {place.distance !== undefined && (
-                        <div className="h-5 bg-black/40 backdrop-blur-md text-white text-[8px] font-black px-2 rounded-full whitespace-nowrap flex items-center justify-center border border-white/10">
-                            {formatDistance(place.distance)}
-                        </div>
-                    )}
-                </div>
+                {/* Relevance Score Badge */}
+                {role === 'admin' && place.relevanceScore !== undefined && (
+                    <div className="absolute top-2.5 right-4 z-20 pointer-events-none select-none h-5 bg-amber-400 text-white text-[8px] font-black px-2 rounded-2xl shadow-lg flex items-center gap-1 border border-white/20">
+                        <Sparkles className="h-2.5 w-2.5" />
+                        {place.relevanceScore.toFixed(1)}
+                    </div>
+                )}
+
+                {/* Distance Badge - Bottom Left */}
+                {place.distance !== undefined && (
+                    <div className="absolute bottom-2.5 left-2.5 z-20 pointer-events-none select-none h-5 bg-black/40 backdrop-blur-md text-white text-[8px] font-black px-2 rounded-full whitespace-nowrap flex items-center justify-center border border-white/10">
+                        {formatDistance(place.distance)}
+                    </div>
+                )}
             </CategoryCardDecoration>
 
             {/* Content Bereich */}

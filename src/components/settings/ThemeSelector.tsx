@@ -10,19 +10,25 @@ import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { PremiumUpgradeModal } from '@/components/premium/PremiumUpgradeModal';
+import { useLanguage } from '@/hooks/use-language';
 
 export function ThemeSelector() {
-    const { theme, setTheme, mode, toggleMode } = useTheme();
+    const { theme, setTheme, mode, toggleMode, mounted } = useTheme();
     const { userProfile } = useAuth();
+    const language = useLanguage();
     const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
     const isAdmin = userProfile?.role === 'admin';
     const isPremium = userProfile?.isPremium || isAdmin;
 
+    const isDarkMode = mounted ? mode === 'dark' : false;
+
     return (
         <div className="rounded-lg border bg-card p-4">
             <div className="space-y-1">
-                <p className="font-medium">Appearance</p>
-                <p className="text-sm text-muted-foreground">Customize your experience.</p>
+                <p className="font-medium">{language === 'de' ? 'Erscheinungsbild' : 'Appearance'}</p>
+                <p className="text-sm text-muted-foreground">
+                    {language === 'de' ? 'Passe deine App-Ansicht an.' : 'Customize your experience.'}
+                </p>
             </div>
             
             <Separator className="my-4" />
@@ -30,8 +36,10 @@ export function ThemeSelector() {
             {/* Accent Color Section with Gating */}
             <div className="relative w-full p-4 border border-border rounded-xl mt-4">
                 <div className="space-y-1 mb-4">
-                    <p className="text-sm font-bold">Akzentfarbe</p>
-                    <p className="text-xs text-muted-foreground">Choose your favorite primary color.</p>
+                    <p className="text-sm font-bold">{language === 'de' ? 'Akzentfarbe' : 'Accent Color'}</p>
+                    <p className="text-xs text-muted-foreground">
+                        {language === 'de' ? 'Wähle deine bevorzugte Hauptfarbe.' : 'Choose your favorite primary color.'}
+                    </p>
                 </div>
 
                 {!isPremium && (
@@ -46,7 +54,7 @@ export function ThemeSelector() {
                             disabled
                             className="px-4 py-2 h-auto text-xs font-bold rounded-lg shadow-lg bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 opacity-60 cursor-not-allowed"
                         >
-                            Bald verfügbar
+                            {language === 'de' ? 'Bald verfügbar' : 'Coming soon'}
                         </Button>
                     </div>
                 )}
@@ -73,19 +81,31 @@ export function ThemeSelector() {
 
             <Separator className="my-4" />
             
-             <div className="flex items-center justify-between">
-                <Label htmlFor="dark-mode" className="flex items-center gap-2 font-medium">
-                     {mode === 'light' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                    <span>{mode === 'light' ? 'Light' : 'Dark'} Mode</span>
-                    {mode === 'dark' && (
-                        <span className="text-[9px] font-black bg-emerald-500/10 text-[#10b981] px-1.5 py-0.5 rounded uppercase tracking-wider ml-1">Beta</span>
+            <div className="flex items-center justify-between min-h-[44px] py-1">
+                <Label htmlFor="dark-mode" className="flex items-center gap-2.5 font-medium cursor-pointer select-none">
+                    {isDarkMode ? (
+                        <Moon className="h-5 w-5 text-emerald-500 transition-colors" />
+                    ) : (
+                        <Sun className="h-5 w-5 text-amber-500 transition-colors" />
                     )}
+                    <span>
+                        {isDarkMode 
+                            ? (language === 'de' ? 'Dunkelmodus' : 'Dark Mode') 
+                            : (language === 'de' ? 'Hellmodus' : 'Light Mode')}
+                    </span>
                 </Label>
-                <Switch 
-                    id="dark-mode" 
-                    checked={mode === 'dark'} 
-                    onCheckedChange={toggleMode}
-                />
+                <div className="flex items-center min-h-[44px] min-w-[44px] justify-end">
+                    <Switch 
+                        id="dark-mode" 
+                        checked={isDarkMode} 
+                        onCheckedChange={toggleMode}
+                        aria-label={
+                            language === 'de'
+                                ? (isDarkMode ? 'Hellmodus aktivieren' : 'Dunkelmodus aktivieren')
+                                : (isDarkMode ? 'Enable light mode' : 'Enable dark mode')
+                        }
+                    />
+                </div>
             </div>
             
             <PremiumUpgradeModal 

@@ -49,6 +49,16 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
+                  const storedMode = localStorage.getItem('app-mode');
+                  if (storedMode === 'dark' || (!storedMode && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                  const storedTheme = localStorage.getItem('app-theme');
+                  if (storedTheme) {
+                    document.documentElement.classList.add('theme-' + storedTheme);
+                  }
                   const ignoreAttrs = ['bis_skin_checked', 'bis-skin-checked'];
                   const orgSet = Element.prototype.setAttribute;
                   Element.prototype.setAttribute = function(name, value) {

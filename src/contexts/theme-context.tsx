@@ -24,18 +24,21 @@ interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   mode: Mode;
+  setMode: (mode: Mode) => void;
   toggleMode: () => void;
+  mounted: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setThemeState] = useState<Theme>('mint');
-  const [mode, setMode] = useState<Mode>('light');
+  const [mode, setModeState] = useState<Mode>('light');
+  const [mounted, setMounted] = useState(false);
 
   // Initialisierung beim Mounten
   useEffect(() => {
-    // Theme Initialisierung
+    // 1. Theme (Accent Color) Initialisierung
     try {
       const storedTheme = localStorage.getItem('app-theme') as Theme | null;
       const initialTheme = storedTheme && themes.some(t => t.name === storedTheme) ? storedTheme : 'mint';
@@ -45,27 +48,44 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       applyThemeClass('mint');
     }
 
-    // Mode Initialisierung
+    // 2. Mode (Light / Dark) Initialisierung
     try {
-      // Temporarily force light mode while dark mode is being reworked
-      setMode('light');
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('app-mode', 'light');
+      const storedMode = localStorage.getItem('app-mode') as Mode | null;
+      if (storedMode === 'dark' || storedMode === 'light') {
+        setModeState(storedMode);
+        applyModeClass(storedMode);
+      } else {
+        const systemPrefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const initialMode: Mode = systemPrefersDark ? 'dark' : 'light';
+        setModeState(initialMode);
+        applyModeClass(initialMode);
+      }
     } catch (e) {
-      // localStorage nicht verfügbar
+      applyModeClass('light');
     }
+
+    setMounted(true);
   }, []);
 
   const applyThemeClass = (newTheme: Theme) => {
+    if (typeof document === 'undefined') return;
     const root = document.documentElement;
-    // Alte Theme-Klassen entfernen
     root.classList.forEach(className => {
       if (className.startsWith('theme-')) {
         root.classList.remove(className);
       }
     });
-    // Neue Klasse hinzufügen
     root.classList.add(`theme-${newTheme}`);
+  };
+
+  const applyModeClass = (newMode: Mode) => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    if (newMode === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
   };
 
   const setTheme = (newTheme: Theme) => {
@@ -78,20 +98,23 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     applyThemeClass(newTheme);
   };
 
-  const toggleMode = () => {
-    // Temporarily disable mode toggling while dark mode is being reworked
-    const newMode = 'light';
-    setMode(newMode);
+  const setMode = (newMode: Mode) => {
+    setModeState(newMode);
     try {
       localStorage.setItem('app-mode', newMode);
     } catch (e) {
       // ignore
     }
-    document.documentElement.classList.remove('dark');
+    applyModeClass(newMode);
+  };
+
+  const toggleMode = () => {
+    const nextMode: Mode = mode === 'dark' ? 'light' : 'dark';
+    setMode(nextMode);
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, mode, toggleMode }}>
+    <ThemeContext.Provider value={{ theme, setTheme, mode, setMode, toggleMode, mounted }}>
       {children}
     </ThemeContext.Provider>
   );

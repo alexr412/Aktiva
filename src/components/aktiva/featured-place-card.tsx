@@ -104,20 +104,22 @@ export function FeaturedPlaceCard({
                 isPressed ? "scale-[0.985] duration-75" : ""
             )}
         >
-            {/* Split Left Category Header Area */}
             <CategoryCardDecoration
                 gradientClass={primaryStyle.gradientClass}
                 icon={PrimaryIcon}
                 label={primaryStyle.label}
                 variant="featured"
-                className="w-24 md:w-52 h-full shrink-0"
+                className="w-24 md:w-52 h-full shrink-0 relative"
             >
                 {/* Custom Content Overlay inside Decoration */}
-                <div className="flex flex-col items-center gap-1 z-10 px-1 text-center">
-                    <div className="bg-white/95 text-emerald-800 dark:bg-neutral-900 dark:text-emerald-400 text-[6.5px] md:text-[8px] font-black uppercase px-1.5 md:px-2 py-0.5 rounded-full shadow-sm tracking-widest border border-white/20 select-none mb-0.5 md:mb-1">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-max pointer-events-none">
+                    <div className="bg-white/95 text-emerald-800 dark:bg-neutral-900 dark:text-emerald-400 text-[6.5px] md:text-[8px] font-black uppercase px-1.5 md:px-2 py-0.5 rounded-full shadow-sm tracking-widest border border-white/20 select-none">
                         {translateAppString('featured.label', language)}
                     </div>
-                    <PrimaryIcon className="text-white h-5.5 w-5.5 md:h-7 md:w-7 drop-shadow-lg" />
+                </div>
+
+                <div className="flex flex-col items-center gap-1.5 z-10 px-1 text-center mt-5">
+                    <PrimaryIcon className="text-white h-11 w-11 md:h-12 md:w-12 drop-shadow-lg" />
                     <span className="text-[6.5px] md:text-[7.5px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] text-white/90 drop-shadow-sm truncate max-w-full">
                         {primaryStyle.label}
                     </span>

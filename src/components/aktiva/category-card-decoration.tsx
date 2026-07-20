@@ -51,11 +51,15 @@ export function CategoryCardDecoration({
       </svg>
 
       {/* Large faint rotated category icon watermark */}
-      <Icon 
-        className="absolute -right-4 -bottom-6 h-20 w-20 text-white/10 transform rotate-12 pointer-events-none select-none" 
-        aria-hidden="true"
-        focusable="false"
-      />
+      {variant === 'standard' && (
+        <div className="absolute right-3 bottom-3 h-[60px] w-[60px] opacity-[0.48] text-white transform rotate-12 pointer-events-none select-none flex items-center justify-center">
+          <Icon 
+            className="w-full h-full object-contain text-white" 
+            aria-hidden="true"
+            focusable="false"
+          />
+        </div>
+      )}
 
       {/* Content wrapper */}
       <div className="flex flex-col items-center gap-1 z-10 pointer-events-auto">
