@@ -1,7 +1,7 @@
 import assert from 'assert';
 import * as fs from 'fs';
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
-import { doc, setDoc, updateDoc, getDoc, deleteDoc, writeBatch, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, getDoc, deleteDoc, writeBatch, serverTimestamp, arrayUnion, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, deleteObject, getBytes } from 'firebase/storage';
 
 const PROJECT_ID = 'activa-444220';
@@ -2018,7 +2018,7 @@ async function runTests() {
         entityType: 'activity',
         createdAt: serverTimestamp(),
         expiresAt: new Date(Date.now() + 3600 * 1000 * 24),
-        boostLevel: 1,
+        boostLevel: 'standard',
         multiplier: 2.0
       }));
     }
@@ -2030,7 +2030,7 @@ async function runTests() {
         entityType: 'activity',
         createdAt: serverTimestamp(),
         expiresAt: new Date(Date.now() + 3600 * 1000 * 24),
-        boostLevel: 1,
+        boostLevel: 'standard',
         multiplier: 2.0,
         extraField: 'hack'
       }));
@@ -3046,6 +3046,162 @@ async function runTests() {
 
       await assertSucceeds(batch.commit());
     }
+
+    // ─── NEW PREMIUM & SECURITY SYSTEM TESTS ──────────────────────────────────
+    console.log('--- Running Aktiva Premium & System Fields Security Tests ---');
+
+    // Test A: User Document Creation - System Field Protection
+    const newUserId = 'test_new_user';
+    const newUserDb = testEnv.authenticatedContext(newUserId).firestore();
+
+    // 1. User creation setting isOrganizer or isPremium must FAIL
+    await assertFails(setDoc(doc(newUserDb, `users/${newUserId}`), {
+      uid: newUserId,
+      email: 'hacker@test.de',
+      displayName: 'Hacker',
+      role: 'user',
+      isBanned: false,
+      escrowBalance: 0,
+      fiatBalance: 0,
+      balancesInCents: true,
+      kycStatus: 'unverified',
+      tokens: 0,
+      successfulFreeHosts: 0,
+      averageRating: 0,
+      ratingCount: 0,
+      successfulReferrals: 0,
+      isPremium: true, // Should fail
+      isSupporter: false,
+      isCreator: false,
+      onboardingCompleted: true,
+    }));
+
+    await assertFails(setDoc(doc(newUserDb, `users/${newUserId}`), {
+      uid: newUserId,
+      email: 'hacker@test.de',
+      displayName: 'Hacker',
+      role: 'user',
+      isBanned: false,
+      escrowBalance: 0,
+      fiatBalance: 0,
+      balancesInCents: true,
+      kycStatus: 'unverified',
+      tokens: 0,
+      successfulFreeHosts: 0,
+      averageRating: 0,
+      ratingCount: 0,
+      successfulReferrals: 0,
+      isPremium: false,
+      isOrganizer: true, // Should fail
+      isSupporter: false,
+      isCreator: false,
+      onboardingCompleted: true,
+    }));
+
+    // 2. User document update setting protected fields must FAIL
+    await seedDoc(`users/${newUserId}`, {
+      uid: newUserId,
+      role: 'user',
+      isBanned: false,
+      isPremium: false,
+      isOrganizer: false,
+      onboardingCompleted: true,
+    });
+
+    await assertFails(updateDoc(doc(newUserDb, `users/${newUserId}`), {
+      isOrganizer: true,
+    }));
+
+    await assertFails(updateDoc(doc(newUserDb, `users/${newUserId}`), {
+      isPremium: true,
+    }));
+
+    await assertFails(updateDoc(doc(newUserDb, `users/${newUserId}`), {
+      premiumExpiresAt: new Date(),
+    }));
+
+    // 3. User subcollection direct writes must FAIL, read must SUCCEED
+    await seedDoc(`users/${newUserId}/collections/col1`, { name: 'My Faves', places: [] });
+    const colDoc = await getDoc(doc(newUserDb, `users/${newUserId}/collections/col1`));
+    assert.strictEqual(colDoc.exists(), true, 'Owner read of collection should succeed');
+
+    await assertFails(setDoc(doc(newUserDb, `users/${newUserId}/collections/col2`), {
+      name: 'Bypassed Collection',
+      places: []
+    }));
+
+    // Test B: Participant Limits Enforcements (Free: 4, Premium: 12, Organizer: 50)
+    // Seed 3 users: Free, Premium, Organizer
+    await seedDoc(`users/free_host`, { uid: 'free_host', onboardingCompleted: true, isPremium: false, isOrganizer: false, username: 'freehost' });
+    await seedDoc(`users/prem_host`, { uid: 'prem_host', onboardingCompleted: true, isPremium: true, isOrganizer: false, username: 'premhost' });
+    await seedDoc(`users/org_host`, { uid: 'org_host', onboardingCompleted: true, isPremium: false, isOrganizer: true, username: 'orghost' });
+
+    const freeDb = testEnv.authenticatedContext('free_host').firestore();
+    const premDb = testEnv.authenticatedContext('prem_host').firestore();
+    const orgDb = testEnv.authenticatedContext('org_host').firestore();
+
+    // Free user creating activity with 5 participants must FAIL
+    await assertFails(setDoc(doc(freeDb, 'activities/act_free_5'), {
+      ...getValidActivityPayload('free_host'),
+      hostUsername: 'freehost',
+      maxParticipants: 5,
+      participantsPreview: [{ uid: 'free_host', displayName: 'Free Host', photoURL: null, username: 'freehost' }],
+      participantDetails: { 'free_host': { displayName: 'Free Host', photoURL: null, isPremium: false, checkInStatus: 'pending', username: 'freehost' } }
+    }));
+
+    // Free user creating activity with 4 participants must SUCCEED
+    await assertSucceeds(setDoc(doc(freeDb, 'activities/act_free_4'), {
+      ...getValidActivityPayload('free_host'),
+      hostUsername: 'freehost',
+      maxParticipants: 4,
+      participantsPreview: [{ uid: 'free_host', displayName: 'Free Host', photoURL: null, username: 'freehost' }],
+      participantDetails: { 'free_host': { displayName: 'Free Host', photoURL: null, isPremium: false, checkInStatus: 'pending', username: 'freehost' } }
+    }));
+
+    // Premium user creating activity with 12 participants must SUCCEED
+    await assertSucceeds(setDoc(doc(premDb, 'activities/act_prem_12'), {
+      ...getValidActivityPayload('prem_host'),
+      hostUsername: 'premhost',
+      maxParticipants: 12,
+      participantsPreview: [{ uid: 'prem_host', displayName: 'Prem Host', photoURL: null, username: 'premhost' }],
+      participantDetails: { 'prem_host': { displayName: 'Prem Host', photoURL: null, isPremium: true, checkInStatus: 'pending', username: 'premhost' } }
+    }));
+
+    // Organizer user creating activity with 50 participants must SUCCEED
+    await assertSucceeds(setDoc(doc(orgDb, 'activities/act_org_50'), {
+      ...getValidActivityPayload('org_host'),
+      hostUsername: 'orghost',
+      maxParticipants: 50,
+      participantsPreview: [{ uid: 'org_host', displayName: 'Org Host', photoURL: null, username: 'orghost' }],
+      participantDetails: { 'org_host': { displayName: 'Org Host', photoURL: null, isPremium: false, checkInStatus: 'pending', username: 'orghost' } }
+    }));
+
+    // Test C: Boost level canonical string type
+    const bUserDb = testEnv.authenticatedContext('free_host').firestore();
+
+    // Boost with integer boostLevel must FAIL
+    await assertFails(setDoc(doc(bUserDb, 'boosts/b_int'), {
+      userId: 'free_host',
+      entityId: 'act_free_4',
+      entityType: 'activity',
+      createdAt: serverTimestamp(),
+      expiresAt: Timestamp.fromDate(new Date(Date.now() + 86400000)),
+      boostLevel: 1, // Integer must fail
+      multiplier: 2
+    }));
+
+    // Boost with string boostLevel 'standard' must SUCCEED
+    await assertSucceeds(setDoc(doc(bUserDb, 'boosts/b_str'), {
+      userId: 'free_host',
+      entityId: 'act_free_4',
+      entityType: 'activity',
+      createdAt: serverTimestamp(),
+      expiresAt: Timestamp.fromDate(new Date(Date.now() + 86400000)),
+      boostLevel: 'standard', // String succeeds
+      multiplier: 2
+    }));
+
+    console.log('✅ Aktiva Premium & System Fields Security Tests PASSED!');
   }
 
   console.log('🎉 ALL SECURITY RULES TESTS PASSED SUCCESSFULLY! 🎉');

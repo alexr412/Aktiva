@@ -305,6 +305,9 @@ const firestoreFunc = () => mockDb;
 
 const mockAdmin = {
   firestore: firestoreFunc,
+  auth: () => ({
+    getUser: async (uid: string) => ({ uid, metadata: {} }),
+  }),
   storage: () => ({
     bucket: () => ({
       deleteFiles: async (options: any) => {
@@ -314,8 +317,15 @@ const mockAdmin = {
   })
 };
 
+const mockTimestamp = {
+  fromDate: (d: Date) => ({
+    toMillis: () => d.getTime(),
+    toDate: () => d,
+  })
+};
+
 mockModule("firebase-admin", mockAdmin);
-mockModule("firebase-admin/firestore", { FieldValue: mockFieldValue });
+mockModule("firebase-admin/firestore", { FieldValue: mockFieldValue, Timestamp: mockTimestamp });
 
 // ─── FIREBASE FUNCTIONS IN-MEMORY MOCK ────────────────────────────────────────
 
@@ -328,12 +338,14 @@ class HttpsError extends Error {
 
 const mockFunctionsHttps = {
   onCall: (handler: any) => {
-    return async (data: any, auth?: any) => {
-      const request = { data, auth: auth || null };
-      return handler(request);
+    return async (reqOrData: any, auth?: any) => {
+      if (reqOrData && typeof reqOrData === 'object' && ('data' in reqOrData || 'auth' in reqOrData)) {
+        return handler({ data: reqOrData.data, auth: reqOrData.auth || null });
+      }
+      return handler({ data: reqOrData, auth: auth || null });
     };
   },
-  HttpsError,
+  HttpsError: HttpsError,
 };
 
 mockModule("firebase-functions/v2/https", mockFunctionsHttps);
@@ -362,9 +374,104 @@ mockModule("firebase-functions/v1", mockFunctionsV1);
 
 // ─── IMPORTS UNDER TEST ──────────────────────────────────────────────────────
 
-const { applyReferralCode } = require("./users");
+const { applyReferralCode, onUserCreated, getOrganizerAnalytics } = require("./users");
 
 // ─── TEST CASES ──────────────────────────────────────────────────────────────
+
+async function testLaunchCampaign2026() {
+  console.log("Running testLaunchCampaign2026...");
+
+  // 1. User created inside launch campaign window (e.g. 2026-08-15)
+  resetMockDb();
+  const validUser = {
+    uid: "camp_user_1",
+    email: "camp1@aktiva.app",
+    metadata: {
+      creationTime: "2026-08-15T12:00:00.000Z"
+    }
+  };
+
+  await onUserCreated(validUser);
+  const grantedDoc = mockDbState["users"]?.["camp_user_1"];
+  assert.strictEqual(grantedDoc?.isPremium, true, "User should receive campaign premium");
+  assert.strictEqual(grantedDoc?.premiumCampaignId, "launch_2026");
+  assert.strictEqual(grantedDoc?.premiumSource, "launch_campaign_2026");
+
+  // Check idempotency - re-executing must not change or extend dates
+  const originalExpiry = grantedDoc.premiumExpiresAt;
+  await onUserCreated(validUser);
+  assert.strictEqual(mockDbState["users"]["camp_user_1"].premiumExpiresAt, originalExpiry);
+
+  // 2. User created BEFORE campaign window (e.g. 2026-06-01)
+  resetMockDb();
+  const earlyUser = {
+    uid: "early_user",
+    email: "early@aktiva.app",
+    metadata: {
+      creationTime: "2026-06-01T12:00:00.000Z"
+    }
+  };
+  await onUserCreated(earlyUser);
+  assert.strictEqual(mockDbState["users"]?.["early_user"]?.isPremium, undefined, "Early user should NOT receive premium");
+
+  // 3. User created WITHOUT creationTime metadata -> no fallback to new Date()
+  resetMockDb();
+  const noMetaUser = {
+    uid: "no_meta_user",
+    email: "nometa@aktiva.app",
+    metadata: {}
+  };
+  await onUserCreated(noMetaUser);
+  assert.strictEqual(mockDbState["users"]?.["no_meta_user"]?.isPremium, undefined, "Missing creationTime user should NOT receive premium");
+
+  console.log("✅ testLaunchCampaign2026 passed successfully!");
+}
+
+async function testGetOrganizerAnalytics() {
+  console.log("Running testGetOrganizerAnalytics...");
+  resetMockDb();
+
+  // Seed user, place, and telemetry events
+  mockDbState["users"] = {
+    "host_1": { uid: "host_1", isOrganizer: true },
+    "other_user": { uid: "other_user" },
+  };
+
+  mockDbState["places"] = {
+    "place_100": { id: "place_100", hostId: "host_1", title: "My Beach Volleyball Court" },
+  };
+
+  mockDbState["telemetry_events"] = {
+    "e1": { entity_id: "place_100", event_type: "card_open" },
+    "e2": { entity_id: "place_100", event_type: "card_open" },
+    "e3": { entity_id: "place_100", event_type: "favorite" },
+    "e4": { entity_id: "place_100", event_type: "share" },
+    "e5": { entity_id: "place_100", event_type: "directions" },
+    "e6": { entity_id: "other_place", event_type: "card_open" },
+  };
+
+  // 1. Unauthenticated call
+  await assert.rejects(
+    async () => { await getOrganizerAnalytics({ data: { entityId: "place_100", entityType: "place" } }); },
+    (err: any) => err.code === "unauthenticated"
+  );
+
+  // 2. Unauthorized caller (not host)
+  await assert.rejects(
+    async () => { await getOrganizerAnalytics({ data: { entityId: "place_100", entityType: "place" }, auth: { uid: "other_user" } }); },
+    (err: any) => err.code === "permission-denied"
+  );
+
+  // 3. Authorized host call
+  const stats = await getOrganizerAnalytics({
+    data: { entityId: "place_100", entityType: "place" },
+    auth: { uid: "host_1" }
+  });
+
+  assert.deepStrictEqual(stats, { opens: 2, saves: 1, shares: 1, directions: 1 });
+
+  console.log("✅ testGetOrganizerAnalytics passed successfully!");
+}
 
 async function testApplyReferralCode() {
   console.log("Running testApplyReferralCode...");
@@ -690,6 +797,8 @@ async function testSecureAcceptFriendRequest() {
 
 async function runAllTests() {
   try {
+    await testLaunchCampaign2026();
+    await testGetOrganizerAnalytics();
     await testApplyReferralCode();
     await testResolveLoginIdentifier();
     await testOnUserDeleted();

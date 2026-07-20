@@ -24,7 +24,7 @@ import { FeaturedPlaceCard } from '@/components/aktiva/featured-place-card';
 import { FeaturedActivityCard } from '@/components/aktiva/featured-activity-card';
 import { SpotActionSheet } from '@/components/aktiva/spot-action-sheet';
 import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
-import { hasPremiumFeature } from '@/lib/types';
+import { hasPremiumFeature, isPremiumActive } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
@@ -1441,7 +1441,7 @@ export default function Home() {
   useEffect(() => {
     if (authLoading) return;
     
-    const isPremium = userProfile?.isPremium || false;
+    const isPremium = isPremiumActive(userProfile);
     if (!isPremium && planningState.isPlanning) {
       console.warn("[LOCATION DEBUG] Non-premium user has active planning mode. Resetting location.");
       handleResetLocation();

@@ -351,6 +351,10 @@ export interface UserProfile {
   isExplorer?: boolean;
   isOrganizer?: boolean;
   premiumEntitlements?: string[];
+  premiumStartsAt?: Timestamp;
+  premiumExpiresAt?: Timestamp | null;
+  premiumSource?: string;
+  premiumCampaignId?: string;
 }
 
 export type PremiumFeature =
@@ -362,10 +366,75 @@ export type PremiumFeature =
   | 'ai_discovery'
   | 'organizer_analytics';
 
-export function hasPremiumFeature(profile: UserProfile | null, feature: PremiumFeature): boolean {
+/**
+ * Defensive helper to convert various timestamp forms (Firestore Timestamp, JS Date, number, ISO string)
+ * into milliseconds since epoch. Returns null if invalid.
+ */
+export function parseTimestampMillis(ts: any): number | null {
+  if (ts === null || ts === undefined) return null;
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (typeof ts.toDate === 'function') return ts.toDate().getTime();
+  if (ts instanceof Date) return ts.getTime();
+  if (typeof ts === 'number') return isNaN(ts) ? null : ts;
+  if (typeof ts === 'string') {
+    const parsed = Date.parse(ts);
+    return isNaN(parsed) ? null : parsed;
+  }
+  if (typeof ts === 'object' && typeof ts.seconds === 'number') {
+    return ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1000000);
+  }
+  return null;
+}
+
+/**
+ * Central Helper to evaluate if user's premium status is currently active.
+ * - Legacy permanent premium: isPremium === true and premiumExpiresAt is missing or null
+ * - Temporary premium: isPremium === true and premiumExpiresAt > now
+ */
+export function isPremiumActive(profile: UserProfile | null, now?: Date | number): boolean {
+  if (!profile || !profile.isPremium) return false;
+  if (profile.premiumExpiresAt === undefined || profile.premiumExpiresAt === null) {
+    return true; // Legacy permanent premium
+  }
+  const expiresMillis = parseTimestampMillis(profile.premiumExpiresAt);
+  if (expiresMillis === null) return false;
+
+  const currentMillis = now instanceof Date ? now.getTime() : (typeof now === 'number' ? now : Date.now());
+  return expiresMillis > currentMillis;
+}
+
+export function hasPremiumFeature(profile: UserProfile | null, feature: PremiumFeature, now?: Date | number): boolean {
   if (!profile) return false;
-  if (profile.isPremium) return true;
+  if (isPremiumActive(profile, now)) return true;
   return !!profile.premiumEntitlements?.includes(feature);
+}
+
+/**
+ * Returns the binding participant limit for activity creation.
+ * Hierarchy: 1. Organizer (50) -> 2. Active Premium (12) -> 3. Free (4)
+ */
+export function getParticipantLimit(profile: UserProfile | null, now?: Date | number): number {
+  if (profile?.isOrganizer) return 50;
+  if (isPremiumActive(profile, now)) return 12;
+  return 4;
+}
+
+/**
+ * Returns a human-readable expiration string if user has temporary active premium.
+ */
+export function formatPremiumExpiry(profile: UserProfile | null, language: 'de' | 'en' = 'de'): string | null {
+  if (!profile || !profile.isPremium || !profile.premiumExpiresAt) return null;
+  const expiresMillis = parseTimestampMillis(profile.premiumExpiresAt);
+  if (expiresMillis === null) return null;
+
+  const date = new Date(expiresMillis);
+  if (isNaN(date.getTime())) return null;
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+
+  return language === 'de' ? `${day}.${month}.${year}` : `${month}/${day}/${year}`;
 }
 
 export interface SavedCollection {

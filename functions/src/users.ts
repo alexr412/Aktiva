@@ -2,7 +2,7 @@ import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { isReservedUsername, isValidUsername } from './reserved-usernames';
 
 /**
@@ -176,6 +176,67 @@ export const onUserCreated = functions.auth.user().onCreate(async (user) => {
     } catch (error) {
       console.error(`Error in onUserCreated for social user ${user.uid}:`, error);
     }
+  }
+
+  // ─── LAUNCH CAMPAIGN 2026 AUTO-GRANT ──────────────────────────────────
+  try {
+    let creationTimeString = user.metadata?.creationTime;
+    if (!creationTimeString) {
+      try {
+        const fullUser = await admin.auth().getUser(user.uid);
+        creationTimeString = fullUser.metadata?.creationTime;
+      } catch (e) {
+        console.warn(`Could not fetch Auth metadata for ${user.uid}:`, e);
+      }
+    }
+
+    if (creationTimeString) {
+      const creationDate = new Date(creationTimeString);
+      const creationMs = creationDate.getTime();
+
+      // UTC bounds for 01.08.2026 00:00:00 to 31.10.2026 23:59:59 Europe/Berlin
+      const CAMPAIGN_START_MS = Date.parse("2026-07-31T22:00:00.000Z");
+      const CAMPAIGN_END_MS = Date.parse("2026-10-31T22:59:59.999Z");
+
+      if (!isNaN(creationMs) && creationMs >= CAMPAIGN_START_MS && creationMs <= CAMPAIGN_END_MS) {
+        const userRef = db.collection('users').doc(user.uid);
+        await db.runTransaction(async (transaction) => {
+          const userSnap = await transaction.get(userRef);
+          const userData = userSnap.data() || {};
+
+          // Idempotency & preservation checks
+          if (userData.premiumCampaignId === "launch_2026") {
+            return; // Already granted
+          }
+          if (userData.isPremium && (!userData.premiumExpiresAt || userData.premiumExpiresAt === null)) {
+            return; // Preserve legacy permanent premium
+          }
+
+          const startsAt = Timestamp.fromDate(creationDate);
+          const expiresAt = Timestamp.fromDate(new Date(creationMs + 14 * 24 * 60 * 60 * 1000));
+
+          if (userData.premiumExpiresAt) {
+            const existingExpMs = userData.premiumExpiresAt.toMillis ? userData.premiumExpiresAt.toMillis() : new Date(userData.premiumExpiresAt).getTime();
+            if (existingExpMs > expiresAt.toMillis()) {
+              return; // Preserve longer existing premium
+            }
+          }
+
+          transaction.set(userRef, {
+            isPremium: true,
+            premiumStartsAt: startsAt,
+            premiumExpiresAt: expiresAt,
+            premiumSource: "launch_campaign_2026",
+            premiumCampaignId: "launch_2026"
+          }, { merge: true });
+        });
+        console.log(`Granted 14-day Launch Campaign Premium for user ${user.uid}`);
+      }
+    } else {
+      console.warn(`No valid creationTime for user ${user.uid}. Launch Campaign grant skipped.`);
+    }
+  } catch (campaignErr) {
+    console.error(`Error in Launch Campaign grant for user ${user.uid}:`, campaignErr);
   }
 });
 
@@ -1617,6 +1678,83 @@ export const secureAcceptFriendRequest = onCall(async (request) => {
     throw new HttpsError('internal', error.message || 'Fehler beim Bestätigen der Freundschaftsanfrage.');
   }
 });
+
+export const getOrganizerAnalytics = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  }
+
+  const uid = request.auth.uid;
+  const entityId = request.data?.entityId || request.data?.placeId || request.data?.activityId;
+  const entityType = request.data?.entityType || 'place';
+
+  if (!entityId || typeof entityId !== 'string') {
+    throw new HttpsError('invalid-argument', 'Missing or invalid entityId.');
+  }
+
+  const db = admin.firestore();
+
+  let isAuthorized = false;
+
+  // Check user role
+  const callerSnap = await db.collection('users').doc(uid).get();
+  const callerData = callerSnap.data() || {};
+  if (callerData.role === 'admin') {
+    isAuthorized = true;
+  } else {
+    // Check place ownership
+    if (entityType === 'place' || entityType === 'spot') {
+      const placeSnap = await db.collection('places').doc(entityId).get();
+      if (placeSnap.exists) {
+        const pData = placeSnap.data() || {};
+        if (pData.hostId === uid || pData.createdBy === uid || pData.userId === uid || pData.ownerId === uid) {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      const actSnap = await db.collection('activities').doc(entityId).get();
+      if (actSnap.exists) {
+        const aData = actSnap.data() || {};
+        if (aData.hostId === uid || aData.userId === uid) {
+          isAuthorized = true;
+        }
+      }
+    }
+  }
+
+  if (!isAuthorized) {
+    throw new HttpsError('permission-denied', 'You do not have permission to view analytics for this item.');
+  }
+
+  // Query telemetry_events safely with hard cap
+  const telemetrySnap = await db.collection('telemetry_events')
+    .where('entity_id', '==', entityId)
+    .limit(1000)
+    .get();
+
+  let opens = 0;
+  let saves = 0;
+  let shares = 0;
+  let directions = 0;
+
+  const allowedTypes = new Set(['card_open', 'favorite', 'share', 'directions']);
+
+  telemetrySnap.docs.forEach(doc => {
+    const data = doc.data();
+    const type = data.event_type || data.interactionType;
+    if (allowedTypes.has(type)) {
+      if (type === 'card_open') opens++;
+      else if (type === 'favorite') saves++;
+      else if (type === 'share') shares++;
+      else if (type === 'directions') directions++;
+    }
+  });
+
+  return { opens, saves, shares, directions };
+});
+
 
 
 

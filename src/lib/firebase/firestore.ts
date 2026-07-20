@@ -28,6 +28,7 @@ import { calculateDistance, buildApproximateLocationData } from '../geo-utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory } from '@/lib/types';
+import { getParticipantLimit, isPremiumActive } from '@/lib/types';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
 import { formatFirstName } from '@/lib/utils';
 
@@ -453,14 +454,13 @@ export async function createActivity({
     }
   }
 
-  const isUserPremium = userProfileData?.isPremium || false;
+  const isUserPremium = isPremiumActive(userProfileData);
   const isUserSupporter = userProfileData?.isSupporter || false;
 
+  const maxAllowedLimit = getParticipantLimit(userProfileData);
   let finalMaxParticipants = maxParticipants;
-  if (!isUserPremium) {
-    if (!finalMaxParticipants || finalMaxParticipants > MAX_FREE_PARTICIPANTS) {
-      finalMaxParticipants = MAX_FREE_PARTICIPANTS;
-    }
+  if (!finalMaxParticipants || finalMaxParticipants > maxAllowedLimit) {
+    finalMaxParticipants = maxAllowedLimit;
   }
 
   if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) {

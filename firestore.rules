@@ -21,9 +21,9 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
+        request.auth.token.get('isAdmin', false) == true ||
         getUserData().get('role', '') == 'admin' || 
-        getUserData().get('isAdmin', false) == true || // Legacy support
-        request.auth.token.get('isAdmin', false) == true
+        getUserData().get('isAdmin', false) == true // Legacy support
       );
     }
 
@@ -32,20 +32,42 @@ service cloud.firestore {
     }
 
     function isUserOnboardedAndActive(userId) {
-      return exists(/databases/$(database)/documents/users/$(userId)) && 
-             get(/databases/$(database)/documents/users/$(userId)).data.get('onboardingCompleted', false) == true && 
-             get(/databases/$(database)/documents/users/$(userId)).data.get('isBanned', false) == false;
+      let uData = (isSignedIn() && userId == request.auth.uid) ? getUserData() : (exists(/databases/$(database)/documents/users/$(userId)) ? get(/databases/$(database)/documents/users/$(userId)).data : {});
+      return uData.get('onboardingCompleted', false) == true && uData.get('isBanned', false) == false;
+    }
+
+    function getHostParticipantLimit(uid) {
+      let uData = (isSignedIn() && uid == request.auth.uid) ? getUserData() : (exists(/databases/$(database)/documents/users/$(uid)) ? get(/databases/$(database)/documents/users/$(uid)).data : {});
+      let isOrg = uData.get('isOrganizer', false) == true;
+      let isPrem = uData.get('isPremium', false) == true && (
+        !('premiumExpiresAt' in uData) ||
+        uData.get('premiumExpiresAt', null) == null ||
+        uData.get('premiumExpiresAt', request.time) > request.time
+      );
+      return isOrg ? 50 : (isPrem ? 12 : 4);
     }
 
     function isValidActivityCreate(activityId) {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      let userExists = exists(userPath);
-      let username = userExists ? get(userPath).data.get('username', null) : null;
+      let uData = getUserData();
+      let userExists = uData.keys().size() > 0;
+      let username = uData.get('username', null);
+      let isOnboarded = uData.get('onboardingCompleted', false) == true;
+      let isBannedUser = uData.get('isBanned', false) == true;
+      let isOrg = uData.get('isOrganizer', false) == true;
+      let isPrem = uData.get('isPremium', false) == true && (
+        !('premiumExpiresAt' in uData) ||
+        uData.get('premiumExpiresAt', null) == null ||
+        uData.get('premiumExpiresAt', request.time) > request.time
+      );
+      let hostLimit = isOrg ? 50 : (isPrem ? 12 : 4);
+
       return (
         // 1. Authentifizierung & Onboarding
         isSignedIn() && 
         request.resource.data.hostId == request.auth.uid && 
-        isUserOnboardedAndActive(request.auth.uid) &&
+        userExists &&
+        isOnboarded &&
+        !isBannedUser &&
         
         // 2. Whitelist-Validierung
         request.resource.data.keys().hasOnly([
@@ -100,11 +122,12 @@ service cloud.firestore {
           request.resource.data.activityEndDate <= request.resource.data.activityDate + duration.value(30, 'd')
         )) &&
         
-        // 5. Kapazitätsvalidierung
+        // 5. Kapazitäts- & Host-Validierung
+        request.resource.data.hostId == request.auth.uid &&
         (!('maxParticipants' in request.resource.data) || (
           request.resource.data.maxParticipants is int && 
           request.resource.data.maxParticipants >= 2 && 
-          request.resource.data.maxParticipants <= 100
+          request.resource.data.maxParticipants <= hostLimit
         )) &&
         
         // 6. Orts- und Koordinatenvalidierung
@@ -449,43 +472,20 @@ service cloud.firestore {
 
     // Verhindert das Ändern von Systemfeldern durch den Client
     function hasNoSystemFieldChanges() {
-      return (
-        request.resource.data.get('role', '') == resource.data.get('role', '') &&
-        request.resource.data.get('isAdmin', false) == resource.data.get('isAdmin', false) &&
-        request.resource.data.get('isBanned', false) == resource.data.get('isBanned', false) &&
-        request.resource.data.get('escrowBalance', 0) == resource.data.get('escrowBalance', 0) &&
-        request.resource.data.get('fiatBalance', 0) == resource.data.get('fiatBalance', 0) &&
-        request.resource.data.get('balancesInCents', true) == resource.data.get('balancesInCents', true) &&
-        request.resource.data.get('successfulFreeHosts', 0) == resource.data.get('successfulFreeHosts', 0) &&
-        request.resource.data.get('kycStatus', 'unverified') == resource.data.get('kycStatus', 'unverified') &&
-        request.resource.data.get('ratingCount', 0) == resource.data.get('ratingCount', 0) &&
-        request.resource.data.get('averageRating', 0) == resource.data.get('averageRating', 0) &&
-        request.resource.data.get('isPremium', false) == resource.data.get('isPremium', false) &&
-        request.resource.data.get('isSupporter', false) == resource.data.get('isSupporter', false) &&
-        request.resource.data.get('isCreator', false) == resource.data.get('isCreator', false) &&
-        request.resource.data.get('premiumEntitlements', []) == resource.data.get('premiumEntitlements', []) &&
-        request.resource.data.get('successfulReferrals', 0) == resource.data.get('successfulReferrals', 0) &&
-        request.resource.data.get('blacklist', {}).get('hard', []) == resource.data.get('blacklist', {}).get('hard', []) &&
-        request.resource.data.get('blacklist', {}).get('soft', []) == resource.data.get('blacklist', {}).get('soft', []) &&
-        request.resource.data.get('emailVerificationRequired', false) == resource.data.get('emailVerificationRequired', false) &&
-        request.resource.data.get('emailVerificationProvider', '') == resource.data.get('emailVerificationProvider', '') &&
-        request.resource.data.get('emailVerificationReason', '') == resource.data.get('emailVerificationReason', '') &&
-        request.resource.data.get('emailVerificationCreatedAt', null) == resource.data.get('emailVerificationCreatedAt', null) &&
-        request.resource.data.get('emailVerifiedAt', null) == resource.data.get('emailVerifiedAt', null) &&
-        request.resource.data.get('verificationEmailLastSentAt', null) == resource.data.get('verificationEmailLastSentAt', null) &&
-        request.resource.data.get('pointsBalance', 0) == resource.data.get('pointsBalance', 0) &&
-        request.resource.data.get('pointsLifetime', 0) == resource.data.get('pointsLifetime', 0) &&
-        request.resource.data.get('level', 1) == resource.data.get('level', 1) &&
-        request.resource.data.get('referralCode', '') == resource.data.get('referralCode', '') &&
-        request.resource.data.get('referredBy', '') == resource.data.get('referredBy', '') &&
-        request.resource.data.get('username', '') == resource.data.get('username', '') &&
-        request.resource.data.get('usernameLowercase', '') == resource.data.get('usernameLowercase', '') &&
-        request.resource.data.get('usernameLastChangedAt', null) == resource.data.get('usernameLastChangedAt', null) &&
-        request.resource.data.get('usernameChangeHistory', []).size() == resource.data.get('usernameChangeHistory', []).size() &&
-        request.resource.data.get('friends', []) == resource.data.get('friends', []) &&
-        request.resource.data.get('friendRequestsSent', []) == resource.data.get('friendRequestsSent', []) &&
-        request.resource.data.get('friendRequestsReceived', []) == resource.data.get('friendRequestsReceived', []) &&
-        
+      let protectedFields = [
+        'role', 'isAdmin', 'isBanned', 'escrowBalance', 'fiatBalance', 
+        'balancesInCents', 'successfulFreeHosts', 'kycStatus', 'ratingCount', 
+        'averageRating', 'isPremium', 'isSupporter', 'isCreator', 'isOrganizer', 
+        'premiumEntitlements', 'premiumStartsAt', 'premiumExpiresAt', 
+        'premiumSource', 'premiumCampaignId', 'successfulReferrals', 
+        'blacklist', 'emailVerificationRequired', 'emailVerificationProvider', 
+        'emailVerificationReason', 'emailVerificationCreatedAt', 'emailVerifiedAt', 
+        'verificationEmailLastSentAt', 'pointsBalance', 'pointsLifetime', 
+        'level', 'referralCode', 'referredBy', 'username', 'usernameLowercase', 
+        'usernameLastChangedAt', 'usernameChangeHistory', 'friends', 
+        'friendRequestsSent', 'friendRequestsReceived'
+      ];
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedFields) &&
         (
           request.resource.data.get('tokens', 0) == resource.data.get('tokens', 0) ||
           (
@@ -494,8 +494,7 @@ service cloud.firestore {
             request.resource.data.get('tokens', 0) == resource.data.get('tokens', 0) - 1 &&
             request.resource.data.get('tokens', 0) >= 0
           )
-        )
-      );
+        );
     }
 
     function hasNoImmutableFinancialFieldChanges() {
@@ -572,6 +571,11 @@ service cloud.firestore {
         request.resource.data.isPremium == false &&
         request.resource.data.isSupporter == false &&
         request.resource.data.isCreator == false &&
+        (!('isOrganizer' in request.resource.data) || request.resource.data.isOrganizer == false) &&
+        (!('premiumStartsAt' in request.resource.data)) &&
+        (!('premiumExpiresAt' in request.resource.data)) &&
+        (!('premiumSource' in request.resource.data)) &&
+        (!('premiumCampaignId' in request.resource.data)) &&
         (!('premiumEntitlements' in request.resource.data) || request.resource.data.premiumEntitlements.size() == 0) &&
         (!('pointsBalance' in request.resource.data) || request.resource.data.pointsBalance == 0) &&
         (!('pointsLifetime' in request.resource.data) || request.resource.data.pointsLifetime == 0) &&
@@ -596,6 +600,11 @@ service cloud.firestore {
       }
 
       match /tokenTransactions/{txId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if false;
+      }
+
+      match /collections/{collectionId} {
         allow read: if isOwner(userId) || isAdmin();
         allow write: if false;
       }
@@ -808,10 +817,10 @@ service cloud.firestore {
         request.resource.data.userId is string &&
         request.resource.data.entityId is string &&
         request.resource.data.entityType in ['activity', 'place'] &&
-        request.resource.data.createdAt == request.time &&
+        request.resource.data.createdAt is timestamp &&
         request.resource.data.expiresAt is timestamp &&
         request.resource.data.expiresAt > request.time &&
-        request.resource.data.boostLevel is int &&
+        (request.resource.data.boostLevel == 'standard' || request.resource.data.boostLevel == 'high') &&
         request.resource.data.multiplier is number;
       allow update, delete: if isAdmin();
     }
@@ -819,7 +828,7 @@ service cloud.firestore {
     match /places/{placeId} {
       // Places require authenticated/onboarded read.
       allow read: if isSignedIn() && isUserOnboardedAndActive(request.auth.uid);
-      
+
       allow create: if isSignedIn() && 
         !request.resource.data.keys().hasAny([
           'upvotes', 'downvotes', 'weightedUpvotes', 'weightedDownvotes',
@@ -827,8 +836,7 @@ service cloud.firestore {
           'userVotes', 'userVoteWeights', 'voteBoostScore'
         ]) &&
         request.resource.data.get('activityCount', 0) == 1 &&
-        existsAfter(/databases/$(database)/documents/activities/$(request.resource.data.get('lastActivityId', ''))) &&
-        getAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId)).data.get('placeId', '') == placeId;
+        request.resource.data.get('lastActivityId', '') is string;
 
       allow update: if isSignedIn() && 
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
@@ -842,10 +850,7 @@ service cloud.firestore {
             request.resource.data.activityCount is int &&
             request.resource.data.activityCount == resource.data.get('activityCount', 0) + 1 &&
             'lastActivityId' in request.resource.data &&
-            request.resource.data.lastActivityId is string &&
-            existsAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId)) &&
-            getAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId)).data.get('placeId', '') == placeId &&
-            getAfter(/databases/$(database)/documents/activities/$(request.resource.data.lastActivityId)).data.get('hostId', '') == request.auth.uid
+            request.resource.data.lastActivityId is string
           )
         ) &&
         // Do not allow arbitrary overwrites of existing name/address/lat/lon/categories on update without increments (creating activity)

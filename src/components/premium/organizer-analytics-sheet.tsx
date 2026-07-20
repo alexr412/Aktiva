@@ -3,14 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { BarChart3, Eye, Bookmark, Share2, Navigation, Loader2, Lock, Sparkles } from 'lucide-react';
-import { db } from '@/lib/firebase/client';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { functions } from '@/lib/firebase/client';
+import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { hasPremiumFeature } from '@/lib/types';
 import { PremiumUpgradeModal } from './PremiumUpgradeModal';
 import { cn } from '@/lib/utils';
-import { TELEMETRY_EVENTS_COLLECTION } from '@/lib/firebase/collections';
 
 interface OrganizerAnalyticsSheetProps {
   placeId: string;
@@ -34,34 +33,17 @@ export function OrganizerAnalyticsSheet({ placeId, placeName, open, onOpenChange
   const hasAccess = hasPremiumFeature(userProfile, 'organizer_analytics');
 
   useEffect(() => {
-    if (!open || !placeId || !hasAccess || !db) return;
+    if (!open || !placeId || !hasAccess || !functions) return;
 
     const fetchAnalytics = async () => {
       setLoading(true);
       try {
-        const colRef = collection(db!, TELEMETRY_EVENTS_COLLECTION);
-        // Prefer canonical fields: query by entity_id instead of placeId
-        const q = query(colRef, where('entity_id', '==', placeId));
-        const snap = await getDocs(q);
-
-        let opens = 0;
-        let saves = 0;
-        let shares = 0;
-        let directions = 0;
-
-        snap.forEach((doc) => {
-          const data = doc.data();
-          // Prefer canonical fields: event_type over interactionType
-          const type = data.event_type || data.interactionType;
-          if (type === 'card_open') opens++;
-          else if (type === 'favorite') saves++;
-          else if (type === 'share') shares++;
-          else if (type === 'directions') directions++;
-        });
-
-        setStats({ opens, saves, shares, directions });
-      } catch (err) {
-        console.error('Error fetching telemetry stats:', err);
+        const getAnalyticsCall = httpsCallable<{ entityId: string; entityType: string }, { opens: number; saves: number; shares: number; directions: number }>(functions!, 'getOrganizerAnalytics');
+        const res = await getAnalyticsCall({ entityId: placeId, entityType: 'place' });
+        setStats(res.data);
+      } catch (err: any) {
+        console.error('Error fetching telemetry stats via function:', err);
+        setStats({ opens: 0, saves: 0, shares: 0, directions: 0 });
       } finally {
         setLoading(false);
       }

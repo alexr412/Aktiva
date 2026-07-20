@@ -47,6 +47,7 @@ import { useLanguage } from '@/hooks/use-language';
 
 const MAX_FREE_PARTICIPANTS = 4;
 const REQUIRED_FREE_HOSTS = 5;
+import { SavedCollection, isPremiumActive, getParticipantLimit } from '@/lib/types';
 
 interface CreateActivityDialogProps {
   place: Place | null;
@@ -120,7 +121,8 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
   const [minimumRating, setMinimumRating] = useState<number | ''>('');
   const [joinMode, setJoinMode] = useState<'direct' | 'request'>('request');
 
-  const isPremium = userProfile?.isPremium || false;
+  const isPremium = isPremiumActive(userProfile);
+  const participantLimit = getParticipantLimit(userProfile);
   const availableTokens = userProfile?.tokens || 0;
   const canBoost = availableTokens > 0;
 
@@ -633,11 +635,11 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                 <Users className="h-4 w-4 text-muted-foreground" />
                 <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">{language === 'de' ? 'Teilnehmerlimit' : 'Participant limit'}</Label>
               </div>
-              {!isPremium && <Badge className="bg-primary/10 text-primary text-[10px] font-black border-none uppercase">{language === 'de' ? 'Limit' : 'Limit'}: {MAX_FREE_PARTICIPANTS}</Badge>}
+              <Badge className="bg-primary/10 text-primary text-[10px] font-black border-none uppercase">{language === 'de' ? 'Max' : 'Max'}: {participantLimit}</Badge>
             </div>
 
             <div className="flex items-center gap-6 bg-secondary/30 p-4 rounded-2xl">
-              <Slider value={[maxParticipants]} max={isPremium ? 50 : MAX_FREE_PARTICIPANTS} min={2} onValueChange={(val) => setMaxParticipants(val[0])} className="flex-1" />
+              <Slider value={[Math.min(maxParticipants, participantLimit)]} max={participantLimit} min={2} onValueChange={(val) => setMaxParticipants(val[0])} className="flex-1" />
               <div className="min-w-[40px] text-center"><span className="text-2xl font-black text-primary">{maxParticipants}</span></div>
             </div>
 

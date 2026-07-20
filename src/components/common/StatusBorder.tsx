@@ -1,16 +1,18 @@
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
+import { useActivePremium } from '@/hooks/use-active-premium';
 import { cn } from '@/lib/utils';
 
 export function StatusBorder() {
   const { userProfile, actualRole, simulatedRole, setSimulatedRole } = useAuth();
+  const { isPremium, formattedExpiry } = useActivePremium();
 
   if (!userProfile) return null;
 
   const isEligible = actualRole === 'admin' || actualRole === 'supporter';
 
-  const { isPremium, isCreator, role } = userProfile;
+  const { isCreator, role } = userProfile;
 
   // Priority: Premium > Creator > Support/Admin (based on simulated/active role)
   let borderColor = '';
