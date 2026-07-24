@@ -605,15 +605,19 @@ export const onUserDeleted = functions.auth.user().onDelete(async (user) => {
     }
   };
 
-  // 1. Guaranteed deletion of user profile document first
+  // 1. Guaranteed deletion of user profile document & private radar documents
   try {
     const userRef = db.collection('users').doc(userId);
+    const radarSettingsRef = db.collection('users').doc(userId).collection('private').doc('radarSettings');
+    const radarLocRef = db.collection('radar_locations').doc(userId);
     batch.delete(userRef);
-    batchCount++;
+    batch.delete(radarSettingsRef);
+    batch.delete(radarLocRef);
+    batchCount += 3;
     await commitBatch();
-    console.log(`Successfully deleted user profile document /users/${userId}`);
+    console.log(`Successfully deleted user profile, radarSettings, and radar_locations for ${userId}`);
   } catch (err) {
-    console.error(`Failed to delete user profile document /users/${userId}:`, err);
+    console.error(`Failed to delete user profile or radar documents for user ${userId}:`, err);
   }
 
   // 2. Clean up activities where the user is a participant
@@ -1686,38 +1690,42 @@ export const getOrganizerAnalytics = onCall(async (request) => {
 
   const uid = request.auth.uid;
   const entityId = request.data?.entityId || request.data?.placeId || request.data?.activityId;
-  const entityType = request.data?.entityType || 'place';
+  const entityType = request.data?.entityType;
 
   if (!entityId || typeof entityId !== 'string') {
     throw new HttpsError('invalid-argument', 'Missing or invalid entityId.');
+  }
+
+  if (entityType !== 'activity' && entityType !== 'place') {
+    throw new HttpsError('invalid-argument', 'entityType must be explicitly "activity" or "place".');
   }
 
   const db = admin.firestore();
 
   let isAuthorized = false;
 
-  // Check user role
+  // Admin bypass
   const callerSnap = await db.collection('users').doc(uid).get();
   const callerData = callerSnap.data() || {};
   if (callerData.role === 'admin') {
     isAuthorized = true;
   } else {
-    // Check place ownership
-    if (entityType === 'place' || entityType === 'spot') {
-      const placeSnap = await db.collection('places').doc(entityId).get();
-      if (placeSnap.exists) {
-        const pData = placeSnap.data() || {};
-        if (pData.hostId === uid || pData.createdBy === uid || pData.userId === uid || pData.ownerId === uid) {
-          isAuthorized = true;
-        }
-      }
-    }
-
-    if (!isAuthorized) {
+    // Explicit ownership check per entityType
+    if (entityType === 'activity') {
       const actSnap = await db.collection('activities').doc(entityId).get();
       if (actSnap.exists) {
         const aData = actSnap.data() || {};
-        if (aData.hostId === uid || aData.userId === uid) {
+        // Canonical field: hostId. Proven legacy fallbacks: userId, creatorId
+        if (aData.hostId === uid || aData.userId === uid || aData.creatorId === uid) {
+          isAuthorized = true;
+        }
+      }
+    } else if (entityType === 'place') {
+      const placeSnap = await db.collection('places').doc(entityId).get();
+      if (placeSnap.exists) {
+        const pData = placeSnap.data() || {};
+        // Canonical fields: createdBy, ownerId. Proven legacy fallbacks: hostId, userId
+        if (pData.createdBy === uid || pData.ownerId === uid || pData.hostId === uid || pData.userId === uid) {
           isAuthorized = true;
         }
       }
@@ -1727,6 +1735,10 @@ export const getOrganizerAnalytics = onCall(async (request) => {
   if (!isAuthorized) {
     throw new HttpsError('permission-denied', 'You do not have permission to view analytics for this item.');
   }
+
+  // 90-day time range cap (max 90 days of telemetry)
+  const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+  const cutoffTime = Date.now() - NINETY_DAYS_MS;
 
   // Query telemetry_events safely with hard cap
   const telemetrySnap = await db.collection('telemetry_events')
@@ -1739,12 +1751,25 @@ export const getOrganizerAnalytics = onCall(async (request) => {
   let shares = 0;
   let directions = 0;
 
+  // Whitelist restricted strictly to evaluated events returned in API response
   const allowedTypes = new Set(['card_open', 'favorite', 'share', 'directions']);
 
   telemetrySnap.docs.forEach(doc => {
     const data = doc.data();
     const type = data.event_type || data.interactionType;
-    if (allowedTypes.has(type)) {
+
+    // Parse event timestamp
+    let eventTime = 0;
+    if (typeof data.timestamp === 'number') {
+      eventTime = data.timestamp;
+    } else if (typeof data.timestamp === 'string') {
+      eventTime = Date.parse(data.timestamp);
+    } else if (data.timestamp?.toMillis) {
+      eventTime = data.timestamp.toMillis();
+    }
+
+    // Ignore events older than 90 days or unrecognized event types
+    if (eventTime >= cutoffTime && allowedTypes.has(type)) {
       if (type === 'card_open') opens++;
       else if (type === 'favorite') saves++;
       else if (type === 'share') shares++;

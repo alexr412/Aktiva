@@ -12,6 +12,7 @@ import { AppInit } from '@/components/common/AppInit';
 import { StatusBorder } from '@/components/common/StatusBorder';
 import { AdminQuickNavigator } from '@/components/admin/AdminQuickNavigator';
 import { ChatSyncProvider } from '@/contexts/chat-sync-context';
+import { FriendRadarProvider } from '@/hooks/use-friend-radar';
 
 export const metadata: Metadata = {
   title: 'Aktiva',
@@ -85,22 +86,24 @@ export default function RootLayout({
         <AppInit />
         <ThemeProvider>
           <AuthProvider>
-            <FavoritesProvider>
-              <PlanningModeProvider>
-                <ChatSyncProvider>
-                  <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
-                    <PlanningModeBanner />
-                    <main className="flex-1 relative flex flex-col overflow-hidden">
-                      {children}
-                    </main>
-                    <BottomNav />
-                    <AdminQuickNavigator />
-                  </div>
-                  <Toaster />
-                </ChatSyncProvider>
-              </PlanningModeProvider>
-            </FavoritesProvider>
-            <StatusBorder />
+            <FriendRadarProvider>
+              <FavoritesProvider>
+                <PlanningModeProvider>
+                  <ChatSyncProvider>
+                    <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
+                      <PlanningModeBanner />
+                      <main className="flex-1 relative flex flex-col overflow-hidden">
+                        {children}
+                      </main>
+                      <BottomNav />
+                      <AdminQuickNavigator />
+                    </div>
+                    <Toaster />
+                  </ChatSyncProvider>
+                </PlanningModeProvider>
+              </FavoritesProvider>
+              <StatusBorder />
+            </FriendRadarProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

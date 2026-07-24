@@ -4,17 +4,15 @@ import { useEffect, useState } from "react";
 import { fetchFriendsProfiles } from "@/lib/friends";
 import type { UserProfile } from "@/lib/types";
 import { ProfileAvatar } from "@/components/ui/profile-avatar";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
-import { MapPin, Compass, UserPlus, Users } from "lucide-react";
-import { cn, formatFirstName } from "@/lib/utils";
+import { MapPin, UserPlus, Users } from "lucide-react";
+import { formatFirstName } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
 import { db } from "@/lib/firebase/client";
 import { doc, updateDoc, arrayRemove } from "firebase/firestore";
-import { calculateDistance } from "@/lib/geo-utils";
 
 interface FriendListProps {
   friendIds: string[];
@@ -43,9 +41,8 @@ export default function FriendList({ friendIds }: FriendListProps) {
           const foundIds = new Set(data.map(f => f.uid || (f as any).id));
           const missingIds = friendIds.filter(id => !foundIds.has(id));
           
-          if (missingIds.length > 0) {
-            
-            const userRef = doc(db!, "users", currentUser.uid);
+          if (missingIds.length > 0 && db) {
+            const userRef = doc(db, "users", currentUser.uid);
             for (const mid of missingIds) {
               await updateDoc(userRef, {
                 friends: arrayRemove(mid)
@@ -60,49 +57,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
       }
     };
     loadFriends();
-  }, [friendIds]);
-
-  const getProximityLabel = (friend: UserProfile) => {
-    if (!currentUser?.proximitySettings?.enabled || !friend.proximitySettings?.enabled) return null;
-    if (!currentUser.lastLocation || !friend.lastLocation?.updatedAt) return null;
-
-    const lastUpdate = typeof friend.lastLocation.updatedAt === 'object' && 'toMillis' in friend.lastLocation.updatedAt 
-      ? friend.lastLocation.updatedAt.toMillis() 
-      : Date.now();
-      
-    const now = Date.now();
-    const twentyFourHours = 24 * 60 * 60 * 1000;
-
-    if (now - lastUpdate > twentyFourHours) return null;
-
-    const dist = calculateDistance(
-      currentUser.lastLocation.lat,
-      currentUser.lastLocation.lng,
-      friend.lastLocation.lat,
-      friend.lastLocation.lng
-    );
-
-    if (dist < 2) return language === 'de' ? "Ganz nah" : "Very close";
-    if (dist < 10) return language === 'de' ? "In der Nähe" : "Nearby";
-    if (dist < 50) return language === 'de' ? "Umgebung" : "Area";
-    return null;
-  };
-
-  const getActivityStatus = (friend: UserProfile) => {
-    if (!friend.lastLocation?.updatedAt) return null;
-    
-    const lastUpdate = typeof friend.lastLocation.updatedAt === 'object' && 'toMillis' in friend.lastLocation.updatedAt 
-      ? (friend.lastLocation.updatedAt as any).toMillis() 
-      : Date.now();
-      
-    const now = Date.now();
-    const diffMin = Math.floor((now - lastUpdate) / 60000);
-
-    if (diffMin < 5) return language === 'de' ? "Gerade aktiv" : "Active now";
-    if (diffMin < 60) return `${diffMin}m`;
-    if (diffMin < 1440) return `${Math.floor(diffMin / 60)}h`;
-    return null;
-  };
+  }, [friendIds, currentUser?.uid]);
 
   if (isLoading && friendIds.length > 0) {
     return (
@@ -124,7 +79,6 @@ export default function FriendList({ friendIds }: FriendListProps) {
     return (
       <div className="px-6 mb-6">
         <div className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-[#E5E7EB] dark:border-neutral-800 rounded-2xl py-8 px-6 flex flex-col items-center text-center shadow-none">
-          {/* Illustration Stack - Scaled per Root Architecture */}
           <div className="relative mb-6">
             <div className="relative flex items-center justify-center">
                <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center border-2 border-[#E5E7EB] dark:border-neutral-800">
@@ -138,15 +92,15 @@ export default function FriendList({ friendIds }: FriendListProps) {
 
           <div className="relative z-10 w-full max-w-[240px]">
             <h3 className="text-[15px] font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">
-              {language === 'de' ? 'Search For New Friends' : 'Search For New Friends'}
+              {language === 'de' ? 'Neue Freunde finden' : 'Search For New Friends'}
             </h3>
             <p className="text-[11px] font-medium text-slate-400 mb-6 leading-tight px-2">
-              {language === 'de' ? 'Connect with explorers worldwide and build your circle.' : 'Connect with explorers worldwide and build your circle.'}
+              {language === 'de' ? 'Vernetze dich mit Entdeckern in deiner Umgebung.' : 'Connect with explorers worldwide and build your circle.'}
             </p>
             
             <Link href="/community" className="w-full">
               <Button className="w-full h-11 rounded-full font-black tracking-tight text-[13px] shadow-none border-none transition-all active:scale-[0.98]">
-                {language === 'de' ? 'Search For New Friends' : 'Search For New Friends'}
+                {language === 'de' ? 'Freunde suchen' : 'Search For New Friends'}
               </Button>
             </Link>
           </div>
@@ -166,7 +120,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
   return (
     <div className="flex flex-col gap-5 mb-1 w-full">
       <div className="flex items-center justify-between px-4">
-        <h3 className="">
+        <h3 className="text-base font-black text-slate-900 dark:text-neutral-100 flex items-center gap-2">
           {language === 'de' ? 'Freunde' : 'Friends'} 
           <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-black tracking-tight">
             {uniqueFriends.length}
@@ -180,8 +134,6 @@ export default function FriendList({ friendIds }: FriendListProps) {
       <div className="flex overflow-x-auto pb-4 gap-4 px-4 no-scrollbar scroll-smooth">
         {uniqueFriends.length > 0 ? (
           uniqueFriends.map((friend, index) => {
-            const proximity = getProximityLabel(friend);
-            const status = getActivityStatus(friend);
             const friendKey = friend.uid || (friend as any).id || `fallback-${index}`;
             
             return (
@@ -196,11 +148,6 @@ export default function FriendList({ friendIds }: FriendListProps) {
                         isCreator={friend.isCreator}
                         isSupporter={friend.isSupporter}
                       />
-                      {status === (language === 'de' ? "Gerade aktiv" : "Active now") && (
-                        <div className="absolute -bottom-0.5 -right-0.5 bg-white dark:bg-neutral-900 p-0.5 rounded-full border border-slate-100 dark:border-neutral-800">
-                            <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                        </div>
-                      )}
                   </div>
                   <div className="flex flex-col items-center text-center overflow-hidden w-full mt-1">
                     <span className="font-bold text-slate-900 dark:text-neutral-100 truncate w-full leading-tight text-[13px]">
@@ -210,7 +157,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
                       <div className="flex items-center gap-1 text-slate-400 overflow-hidden w-full justify-center">
                         <MapPin className="h-2.5 w-2.5 shrink-0 opacity-40" />
                         <span className="text-[10px] font-bold opacity-70 truncate max-w-[80px]">
-                          {proximity ? proximity : (friend.location?.split(',')[0] || "Aktiva")}
+                          {friend.location?.split(',')[0] || "Aktiva"}
                         </span>
                       </div>
                     </div>
@@ -219,10 +166,6 @@ export default function FriendList({ friendIds }: FriendListProps) {
               </Link>
             );
           })
-        ) : isLoading ? (
-          friendIds.slice(0, 3).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-[35%] shrink-0 rounded-[2rem] bg-neutral-200" />
-          ))
         ) : (
           <div className="px-4 w-full">
              <div className="text-neutral-400 font-medium py-8 text-center bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">

@@ -14,10 +14,14 @@
     "test:duplicate": "npx tsx src/lib/duplicate-detector.test.ts",
     "test:moderation": "npx tsx src/lib/moderation/moderation.test.ts",
     "test:reserved": "npx tsx src/lib/reserved-usernames.test.ts",
+    "test:premium": "npx tsx src/lib/premium.test.ts && npx tsx src/hooks/use-active-premium.test.ts",
+    "test:map": "npx tsx src/components/map/map.test.ts",
+    "test:radar-client": "node --import tsx src/hooks/use-friend-radar.test.ts",
+    "test:radar-backend": "npx tsx functions/src/radar.test.ts",
     "test:backend": "npm --prefix functions run test",
     "test:rules": "npx firebase-tools emulators:exec --only firestore,storage \"npx tsx firestore.rules.test.ts\"",
     "emulators": "npx firebase-tools emulators:start --only auth,firestore,functions,storage",
-    "test:all": "npm run test:ranking && npm run test:duplicate && npm run test:moderation && npm run test:reserved && npm run test:backend"
+    "test:all": "npm run test:ranking && npm run test:duplicate && npm run test:moderation && npm run test:reserved && npm run test:premium && npm run test:map && npm run test:radar-client && npm run test:radar-backend && npm run test:backend"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.28.0",
@@ -55,6 +59,7 @@
     "html5-qrcode": "^2.3.8",
     "idb": "^8.0.3",
     "lucide-react": "^1.8.0",
+    "maplibre-gl": "^5.24.0",
     "next": "15.5.9",
     "patch-package": "^8.0.0",
     "pigeon-maps": "^0.21.6",

@@ -181,10 +181,13 @@ async function runTests() {
     const adminDb = testEnv.authenticatedContext('adminUser').firestore();
 
     // 1. Allow: owner updates safe profile fields only
+    console.log('Testing B.1: owner updates safe profile fields...');
     await assertSucceeds(updateDoc(doc(aliceDb, 'users/alice'), { displayName: 'Alice Updated' }));
-    await assertSucceeds(updateDoc(doc(aliceDb, 'users/alice'), { proximitySettings: { enabled: true, radiusKm: 10 } }));
+    console.log('Testing B.1b: proximitySettings update fails...');
+    await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { proximitySettings: { enabled: true, radiusKm: 10 } }));
 
     // 2. Deny: owner mutation of system fields
+    console.log('Testing B.2: owner system field mutations...');
     await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { role: 'admin' }));
     await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { isAdmin: true }));
     await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { isBanned: true }));
@@ -202,16 +205,23 @@ async function runTests() {
     await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { referredBy: 'someone' }));
 
     // 2.1 Tokens: Owner token decrement tests
+    console.log('Testing B.2.1: token decrement allowed...');
     await assertSucceeds(updateDoc(doc(aliceDb, 'users/alice'), { tokens: 4 })); // decrement by 1 (allowed)
+    console.log('Testing B.2.1b: token increment fails...');
     await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { tokens: 6 })); // increment by 1 (denied)
+    console.log('Testing B.2.1c: token decrement by 2 fails...');
     await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { tokens: 2 })); // decrement by 2 (denied)
+    console.log('Testing B.2.1d: token negative fails...');
     await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { tokens: -1 })); // negative value (denied)
+    console.log('Testing B.2.1e: non-owner token update fails...');
     await assertFails(updateDoc(doc(bobDb, 'users/alice'), { tokens: 3 })); // non-owner update (denied)
 
     // 3. Deny: non-owner updates
+    console.log('Testing B.3: non-owner updates fail...');
     await assertFails(updateDoc(doc(bobDb, 'users/alice'), { displayName: 'Bob Hack' }));
 
     // 4. Allow: admin update (permitted by isAdmin() and rules update condition)
+    console.log('Testing B.4: admin update succeeds...');
     await assertSucceeds(updateDoc(doc(adminDb, 'users/alice'), { kycStatus: 'verified' }));
   }
 
@@ -1622,8 +1632,8 @@ async function runTests() {
     // 23. Language: Ungültige Sprache blockiert
     await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { language: 'fr' }));
 
-    // 24. Proximity Settings: Owner kann proximitySettings setzen
-    await assertSucceeds(updateDoc(doc(aliceDb, 'users/alice'), {
+    // 24. Proximity Settings: Client-Schreibzugriff blockiert (must use Cloud Function)
+    await assertFails(updateDoc(doc(aliceDb, 'users/alice'), {
       proximitySettings: {
         enabled: true,
         radiusKm: 10
@@ -3132,49 +3142,68 @@ async function runTests() {
 
     // Test B: Participant Limits Enforcements (Free: 4, Premium: 12, Organizer: 50)
     // Seed 3 users: Free, Premium, Organizer
-    await seedDoc(`users/free_host`, { uid: 'free_host', onboardingCompleted: true, isPremium: false, isOrganizer: false, username: 'freehost' });
-    await seedDoc(`users/prem_host`, { uid: 'prem_host', onboardingCompleted: true, isPremium: true, isOrganizer: false, username: 'premhost' });
-    await seedDoc(`users/org_host`, { uid: 'org_host', onboardingCompleted: true, isPremium: false, isOrganizer: true, username: 'orghost' });
+    await seedDoc(`users/free_host`, { uid: 'free_host', onboardingCompleted: true, isPremium: false, isOrganizer: false, username: 'freehost', role: 'user', isBanned: false });
+    await seedDoc(`users/prem_host`, { uid: 'prem_host', onboardingCompleted: true, isPremium: true, isOrganizer: false, username: 'premhost', role: 'user', isBanned: false });
+    await seedDoc(`users/org_host`, { uid: 'org_host', onboardingCompleted: true, isPremium: false, isOrganizer: true, username: 'orghost', role: 'user', isBanned: false });
 
     const freeDb = testEnv.authenticatedContext('free_host').firestore();
     const premDb = testEnv.authenticatedContext('prem_host').firestore();
     const orgDb = testEnv.authenticatedContext('org_host').firestore();
 
+    await assertSucceeds(getDoc(doc(freeDb, 'users/free_host')));
+    await assertSucceeds(getDoc(doc(premDb, 'users/prem_host')));
+    await assertSucceeds(getDoc(doc(orgDb, 'users/org_host')));
+
+    async function createActivityBatch(db: any, hId: string, name: string, username: string, isPrem: boolean, actId: string, maxParts: number) {
+      const batch = writeBatch(db);
+      const activityRef = doc(db, `activities/${actId}`);
+      const chatRef = doc(db, `chats/${actId}`);
+      const participantRef = doc(db, `activities/${actId}/participants/${hId}`);
+
+      batch.set(activityRef, {
+        ...getValidActivityPayload(hId),
+        hostName: name,
+        hostUsername: username,
+        maxParticipants: maxParts,
+        participantsPreview: [{ uid: hId, displayName: name, photoURL: null, username: username }],
+        participantDetails: { [hId]: { displayName: name, photoURL: null, isPremium: isPrem, isSupporter: false, checkInStatus: 'pending', hasReviewed: false, username: username } }
+      });
+      batch.set(chatRef, {
+        activityId: actId,
+        hostId: hId,
+        createdAt: serverTimestamp(),
+        lastActivityAt: serverTimestamp(),
+        participantIds: [hId],
+        lastMessage: null,
+        placeName: 'Soccer Field',
+        categories: ['Sport'],
+        participantDetails: {
+          [hId]: { displayName: name, photoURL: null, isPremium: isPrem, isSupporter: false, checkInStatus: 'pending', username: username }
+        },
+        unreadCount: { [hId]: 0 }
+      });
+      batch.set(participantRef, {
+        uid: hId,
+        displayName: name,
+        photoURL: null,
+        checkInStatus: 'pending',
+        joinedAt: serverTimestamp(),
+        hasReviewed: false
+      });
+      return batch.commit();
+    }
+
     // Free user creating activity with 5 participants must FAIL
-    await assertFails(setDoc(doc(freeDb, 'activities/act_free_5'), {
-      ...getValidActivityPayload('free_host'),
-      hostUsername: 'freehost',
-      maxParticipants: 5,
-      participantsPreview: [{ uid: 'free_host', displayName: 'Free Host', photoURL: null, username: 'freehost' }],
-      participantDetails: { 'free_host': { displayName: 'Free Host', photoURL: null, isPremium: false, checkInStatus: 'pending', username: 'freehost' } }
-    }));
+    await assertFails(createActivityBatch(freeDb, 'free_host', 'Free Host', 'freehost', false, 'act_free_5', 5));
 
     // Free user creating activity with 4 participants must SUCCEED
-    await assertSucceeds(setDoc(doc(freeDb, 'activities/act_free_4'), {
-      ...getValidActivityPayload('free_host'),
-      hostUsername: 'freehost',
-      maxParticipants: 4,
-      participantsPreview: [{ uid: 'free_host', displayName: 'Free Host', photoURL: null, username: 'freehost' }],
-      participantDetails: { 'free_host': { displayName: 'Free Host', photoURL: null, isPremium: false, checkInStatus: 'pending', username: 'freehost' } }
-    }));
+    await assertSucceeds(createActivityBatch(freeDb, 'free_host', 'Free Host', 'freehost', false, 'act_free_4', 4));
 
     // Premium user creating activity with 12 participants must SUCCEED
-    await assertSucceeds(setDoc(doc(premDb, 'activities/act_prem_12'), {
-      ...getValidActivityPayload('prem_host'),
-      hostUsername: 'premhost',
-      maxParticipants: 12,
-      participantsPreview: [{ uid: 'prem_host', displayName: 'Prem Host', photoURL: null, username: 'premhost' }],
-      participantDetails: { 'prem_host': { displayName: 'Prem Host', photoURL: null, isPremium: true, checkInStatus: 'pending', username: 'premhost' } }
-    }));
+    await assertSucceeds(createActivityBatch(premDb, 'prem_host', 'Prem Host', 'premhost', true, 'act_prem_12', 12));
 
     // Organizer user creating activity with 50 participants must SUCCEED
-    await assertSucceeds(setDoc(doc(orgDb, 'activities/act_org_50'), {
-      ...getValidActivityPayload('org_host'),
-      hostUsername: 'orghost',
-      maxParticipants: 50,
-      participantsPreview: [{ uid: 'org_host', displayName: 'Org Host', photoURL: null, username: 'orghost' }],
-      participantDetails: { 'org_host': { displayName: 'Org Host', photoURL: null, isPremium: false, checkInStatus: 'pending', username: 'orghost' } }
-    }));
+    await assertSucceeds(createActivityBatch(orgDb, 'org_host', 'Org Host', 'orghost', false, 'act_org_50', 50));
 
     // Test C: Boost level canonical string type
     const bUserDb = testEnv.authenticatedContext('free_host').firestore();
@@ -3191,16 +3220,88 @@ async function runTests() {
     }));
 
     // Boost with string boostLevel 'standard' must SUCCEED
-    await assertSucceeds(setDoc(doc(bUserDb, 'boosts/b_str'), {
-      userId: 'free_host',
-      entityId: 'act_free_4',
-      entityType: 'activity',
-      createdAt: serverTimestamp(),
-      expiresAt: Timestamp.fromDate(new Date(Date.now() + 86400000)),
-      boostLevel: 'standard', // String succeeds
-      multiplier: 2
+    try {
+      await assertSucceeds(setDoc(doc(bUserDb, 'boosts/b_str_unique_99'), {
+        userId: 'free_host',
+        entityId: 'act_free_4',
+        entityType: 'activity',
+        createdAt: serverTimestamp(),
+        expiresAt: Timestamp.fromDate(new Date(Date.now() + 86400000)),
+        boostLevel: 'standard', // String succeeds
+        multiplier: 2
+      }));
+    } catch (err: any) {
+      console.error('CRITICAL B_STR ERROR DETAILS:', err);
+      throw err;
+    }
+
+    // Test D: Capacity updates after plan loss vs historical limit preservation
+    // Seed historical activity with maxParticipants = 12 hosted by free_host
+    await seedDoc('activities/act_historical_12', {
+      ...getValidActivityPayload('free_host'),
+      maxParticipants: 12,
+      participantIds: ['free_host'],
+      participantsPreview: [{ uid: 'free_host' }],
+      participantDetails: { free_host: { displayName: 'Free Host', checkInStatus: 'pending' } }
+    });
+
+    // Free host updating title while keeping maxParticipants: 12 unchanged must SUCCEED (historical higher limit allowed)
+    await assertSucceeds(updateDoc(doc(freeDb, 'activities/act_historical_12'), { title: 'Updated Title' }));
+
+    // Free host trying to INCREASE maxParticipants from 4 to 12 on act_free_4 must FAIL (host limit is 4 for free user)
+    await assertFails(updateDoc(doc(freeDb, 'activities/act_free_4'), { maxParticipants: 12 }));
+
+    // Test E: Direct manipulated join exceeding capacity
+    // Seed activity with maxParticipants: 1 and host already joined
+    await seedDoc('activities/act_full_cap', {
+      ...getValidActivityPayload('free_host'),
+      maxParticipants: 1,
+      joinMode: 'direct',
+      participantIds: ['free_host'],
+      participantsPreview: [{ uid: 'free_host', displayName: 'Free Host', photoURL: null, username: 'freehost' }],
+      participantDetails: { free_host: { displayName: 'Free Host', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', hasReviewed: false, username: 'freehost' } }
+    });
+
+    // Guest trying to join full activity (capacity 1 reached) must FAIL
+    await assertFails(updateDoc(doc(premDb, 'activities/act_full_cap'), {
+      participantIds: ['free_host', 'prem_host'],
+      participantsPreview: [{ uid: 'free_host' }, { uid: 'prem_host', displayName: 'Prem Host', photoURL: null, username: 'premhost' }],
+      participantDetails: {
+        free_host: { displayName: 'Free Host', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', hasReviewed: false, username: 'freehost' },
+        prem_host: { displayName: 'Prem Host', photoURL: null, isPremium: true, isSupporter: false, checkInStatus: 'pending', hasReviewed: false, username: 'premhost' }
+      }
     }));
 
+    // Phase 2 Radar Security Rules Tests
+    await seedDoc('users/user_alice', { uid: 'user_alice', displayName: 'Alice Test', role: 'user', isBanned: false, tokens: 0 });
+    await seedDoc('users/user_alice/private/radarSettings', { enabled: true, radiusKm: 10, consentVersion: 'v1.0' });
+    await seedDoc('radar_locations/user_alice', { latitude: 53.54, longitude: 8.58, updatedAt: serverTimestamp() });
+
+    const aliceDb = testEnv.authenticatedContext('user_alice').firestore();
+    const bobDb = testEnv.authenticatedContext('user_bob').firestore();
+
+    // 1. Owner reading own radarSettings must SUCCEED
+    await assertSucceeds(getDoc(doc(aliceDb, 'users/user_alice/private/radarSettings')));
+
+    // 2. Foreign user reading another user's radarSettings must FAIL
+    await assertFails(getDoc(doc(bobDb, 'users/user_alice/private/radarSettings')));
+
+    // 3. Owner writing directly to radarSettings must FAIL (Cloud Functions only)
+    await assertFails(setDoc(doc(aliceDb, 'users/user_alice/private/radarSettings'), { enabled: false, radiusKm: 5 }));
+
+    // 4. Client reading radar_locations must FAIL for owner and foreign users
+    await assertFails(getDoc(doc(aliceDb, 'radar_locations/user_alice')));
+    await assertFails(getDoc(doc(bobDb, 'radar_locations/user_alice')));
+
+    // 5. Client writing to radar_locations must FAIL for owner and foreign users
+    await assertFails(setDoc(doc(aliceDb, 'radar_locations/user_alice'), { latitude: 53.55, longitude: 8.59 }));
+    await assertFails(setDoc(doc(bobDb, 'radar_locations/user_alice'), { latitude: 53.55, longitude: 8.59 }));
+
+    // 6. Client writing lastLocation or proximitySettings to user profile must FAIL
+    await assertFails(updateDoc(doc(aliceDb, 'users/user_alice'), { lastLocation: { lat: 53.54, lng: 8.58 } }));
+    await assertFails(updateDoc(doc(aliceDb, 'users/user_alice'), { proximitySettings: { enabled: true, radiusKm: 5 } }));
+
+    console.log('✅ Aktiva Phase 2 Radar Security Rules Tests PASSED!');
     console.log('✅ Aktiva Premium & System Fields Security Tests PASSED!');
   }
 

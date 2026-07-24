@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './use-auth';
 import { db } from '@/lib/firebase/client';
-import { collection, doc, getDocs, setDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { SavedCollection, hasPremiumFeature } from '@/lib/types';
 import { useToast } from './use-toast';
 
@@ -18,6 +18,7 @@ export function useCollections() {
   const maxItems = isPremium ? Infinity : 25;
 
   useEffect(() => {
+    // Primary local storage lookup
     const local = localStorage.getItem('aktiva_collections');
     let localData: SavedCollection[] = [];
     if (local) {
@@ -34,6 +35,7 @@ export function useCollections() {
       return;
     }
 
+    // Read existing collections from Firestore if available (allow read: if isOwner)
     const fetchFirestoreCollections = async () => {
       try {
         const colRef = collection(db!, 'users', user.uid, 'collections');
@@ -43,21 +45,9 @@ export function useCollections() {
         if (fbData.length > 0) {
           localStorage.setItem('aktiva_collections', JSON.stringify(fbData));
           setCollections(fbData);
-        } else if (localData.length > 0) {
-          const batch = writeBatch(db!);
-          for (const col of localData) {
-            const docRef = doc(db!, 'users', user.uid, 'collections', col.id);
-            batch.set(docRef, {
-              name: col.name,
-              places: col.places,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp()
-            });
-          }
-          await batch.commit();
         }
       } catch (err) {
-        console.error('Error fetching collections from Firestore:', err);
+        // Read fallback silently stays on local storage
       } finally {
         setLoading(false);
       }
@@ -92,20 +82,6 @@ export function useCollections() {
     const updated = [...collections, newCol];
     saveToLocal(updated);
 
-    if (user && db) {
-      try {
-        const docRef = doc(db, 'users', user.uid, 'collections', newCol.id);
-        await setDoc(docRef, {
-          name: newCol.name,
-          places: newCol.places,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-      } catch (err) {
-        console.error('Firestore save failed:', err);
-      }
-    }
-
     toast({
       title: 'Erfolg',
       description: `Sammlung "${name}" wurde erstellt.`
@@ -116,15 +92,6 @@ export function useCollections() {
   const deleteCollection = async (id: string): Promise<void> => {
     const updated = collections.filter(c => c.id !== id);
     saveToLocal(updated);
-
-    if (user && db) {
-      try {
-        const docRef = doc(db, 'users', user.uid, 'collections', id);
-        await deleteDoc(docRef);
-      } catch (err) {
-        console.error('Firestore delete failed:', err);
-      }
-    }
 
     toast({
       title: 'Gelöscht',
@@ -166,18 +133,6 @@ export function useCollections() {
 
     saveToLocal(updated);
 
-    if (user && db) {
-      try {
-        const docRef = doc(db, 'users', user.uid, 'collections', collectionId);
-        await setDoc(docRef, {
-          places: [...col.places, placeId],
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      } catch (err) {
-        console.error('Firestore save failed:', err);
-      }
-    }
-
     toast({
       title: 'Gespeichert',
       description: 'Ort wurde zur Sammlung hinzugefügt.'
@@ -202,18 +157,6 @@ export function useCollections() {
     });
 
     saveToLocal(updated);
-
-    if (user && db) {
-      try {
-        const docRef = doc(db, 'users', user.uid, 'collections', collectionId);
-        await setDoc(docRef, {
-          places: updatedPlaces,
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      } catch (err) {
-        console.error('Firestore save failed:', err);
-      }
-    }
 
     toast({
       title: 'Entfernt',

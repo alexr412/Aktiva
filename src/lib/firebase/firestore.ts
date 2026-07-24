@@ -254,35 +254,9 @@ export async function removeUserAvatar(userId: string, currentPhotoURL: string |
 }
 
 export async function updateUserLocation(userId: string, lat: number, lng: number, city?: string) {
-  if (!db) return;
-  const userDocRef = doc(db, 'users', userId);
-  
-  try {
-    // Optimierung: Nur updaten wenn die Position sich signifikant geändert hat (> 500m) oder die Stadt neu ist
-    const snap = await getDoc(userDocRef);
-    if (snap.exists()) {
-      const current = snap.data().lastLocation;
-      if (current && current.lat && current.lng) {
-        const distance = calculateDistance(lat, lng, current.lat, current.lng);
-
-        // Wenn < 500m Unterschied und gleiche Stadt -> Update überspringen
-        if (distance < 0.5 && current.city === (city || null)) {
-          return;
-        }
-      }
-    }
-
-    await setDoc(userDocRef, {
-      lastLocation: {
-        lat,
-        lng,
-        city: city || null,
-        updatedAt: serverTimestamp()
-      }
-    }, { merge: true });
-  } catch (e) {
-    console.warn("Update user location failed:", e);
-  }
+  // Phase 2: Direct client writes to users/{userId}.lastLocation are disabled for privacy.
+  // Location updates are handled securely via the updateRadarLocation Callable Function.
+  return;
 }
 
 export const APP_ONLY_CATEGORIES = new Set(["community", "user_event", "favorites", "highlights"]);

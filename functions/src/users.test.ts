@@ -437,17 +437,26 @@ async function testGetOrganizerAnalytics() {
     "other_user": { uid: "other_user" },
   };
 
+  const now = Date.now();
+  const ninetyOneDaysOld = now - 91 * 24 * 60 * 60 * 1000;
+
   mockDbState["places"] = {
     "place_100": { id: "place_100", hostId: "host_1", title: "My Beach Volleyball Court" },
   };
 
+  mockDbState["activities"] = {
+    "act_100": { id: "act_100", hostId: "host_1", title: "Beach Volleyball Game" },
+  };
+
   mockDbState["telemetry_events"] = {
-    "e1": { entity_id: "place_100", event_type: "card_open" },
-    "e2": { entity_id: "place_100", event_type: "card_open" },
-    "e3": { entity_id: "place_100", event_type: "favorite" },
-    "e4": { entity_id: "place_100", event_type: "share" },
-    "e5": { entity_id: "place_100", event_type: "directions" },
-    "e6": { entity_id: "other_place", event_type: "card_open" },
+    "e1": { entity_id: "place_100", event_type: "card_open", timestamp: now },
+    "e2": { entity_id: "place_100", event_type: "card_open", timestamp: now },
+    "e3": { entity_id: "place_100", event_type: "favorite", timestamp: now },
+    "e4": { entity_id: "place_100", event_type: "share", timestamp: now },
+    "e5": { entity_id: "place_100", event_type: "directions", timestamp: now },
+    "e6": { entity_id: "place_100", event_type: "card_open", timestamp: ninetyOneDaysOld }, // >90 days old (ignored)
+    "e7": { entity_id: "place_100", event_type: "impression", timestamp: now }, // Not in whitelist (ignored)
+    "e8": { entity_id: "other_place", event_type: "card_open", timestamp: now },
   };
 
   // 1. Unauthenticated call
@@ -456,19 +465,31 @@ async function testGetOrganizerAnalytics() {
     (err: any) => err.code === "unauthenticated"
   );
 
-  // 2. Unauthorized caller (not host)
+  // 2. Invalid entityType call
+  await assert.rejects(
+    async () => { await getOrganizerAnalytics({ data: { entityId: "place_100", entityType: "unknown" }, auth: { uid: "host_1" } }); },
+    (err: any) => err.code === "invalid-argument"
+  );
+
+  // 3. Unauthorized caller (not host)
   await assert.rejects(
     async () => { await getOrganizerAnalytics({ data: { entityId: "place_100", entityType: "place" }, auth: { uid: "other_user" } }); },
     (err: any) => err.code === "permission-denied"
   );
 
-  // 3. Authorized host call
-  const stats = await getOrganizerAnalytics({
+  // 4. Authorized host place call
+  const placeStats = await getOrganizerAnalytics({
     data: { entityId: "place_100", entityType: "place" },
     auth: { uid: "host_1" }
   });
+  assert.deepStrictEqual(placeStats, { opens: 2, saves: 1, shares: 1, directions: 1 });
 
-  assert.deepStrictEqual(stats, { opens: 2, saves: 1, shares: 1, directions: 1 });
+  // 5. Authorized host activity call
+  const activityStats = await getOrganizerAnalytics({
+    data: { entityId: "act_100", entityType: "activity" },
+    auth: { uid: "host_1" }
+  });
+  assert.deepStrictEqual(activityStats, { opens: 0, saves: 0, shares: 0, directions: 0 });
 
   console.log("✅ testGetOrganizerAnalytics passed successfully!");
 }

@@ -14,30 +14,31 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
+      return request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data : 
              {};
     }
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.get('isAdmin', false) == true ||
-        getUserData().get('role', '') == 'admin' || 
-        getUserData().get('isAdmin', false) == true // Legacy support
+        ('isAdmin' in request.auth.token && request.auth.token.isAdmin == true) ||
+        (request.auth.uid != null && 'role' in getUserData() && getUserData().role == 'admin') ||
+        (request.auth.uid != null && 'isAdmin' in getUserData() && getUserData().isAdmin == true)
       );
     }
 
+    // legacy ban check
     function isBanned() {
-      return isSignedIn() && getUserData().get('isBanned', false) == true;
+      return isSignedIn() && request.auth.uid != null && ('isBanned' in getUserData() && getUserData().isBanned == true);
     }
 
     function isUserOnboardedAndActive(userId) {
-      let uData = (isSignedIn() && userId == request.auth.uid) ? getUserData() : (exists(/databases/$(database)/documents/users/$(userId)) ? get(/databases/$(database)/documents/users/$(userId)).data : {});
+      let uData = (isSignedIn() && userId == request.auth.uid) ? getUserData() : (userId != null && exists(/databases/$(database)/documents/users/$(userId)) ? get(/databases/$(database)/documents/users/$(userId)).data : {});
       return uData.get('onboardingCompleted', false) == true && uData.get('isBanned', false) == false;
     }
 
     function getHostParticipantLimit(uid) {
-      let uData = (isSignedIn() && uid == request.auth.uid) ? getUserData() : (exists(/databases/$(database)/documents/users/$(uid)) ? get(/databases/$(database)/documents/users/$(uid)).data : {});
+      let uData = (isSignedIn() && uid == request.auth.uid) ? getUserData() : (uid != null && exists(/databases/$(database)/documents/users/$(uid)) ? get(/databases/$(database)/documents/users/$(uid)).data : {});
       let isOrg = uData.get('isOrganizer', false) == true;
       let isPrem = uData.get('isPremium', false) == true && (
         !('premiumExpiresAt' in uData) ||
@@ -55,7 +56,7 @@ service cloud.firestore {
       let isBannedUser = uData.get('isBanned', false) == true;
       let isOrg = uData.get('isOrganizer', false) == true;
       let isPrem = uData.get('isPremium', false) == true && (
-        !('premiumExpiresAt' in uData) ||
+        !uData.keys().hasAny(['premiumExpiresAt']) ||
         uData.get('premiumExpiresAt', null) == null ||
         uData.get('premiumExpiresAt', request.time) > request.time
       );
@@ -116,7 +117,7 @@ service cloud.firestore {
         // 4. Zeitvalidierung
         request.resource.data.activityDate is timestamp && 
         request.resource.data.activityDate >= request.time - duration.value(5, 'm') &&
-        (!('activityEndDate' in request.resource.data) || (
+        (!request.resource.data.keys().hasAny(['activityEndDate']) || (
           request.resource.data.activityEndDate is timestamp && 
           request.resource.data.activityEndDate > request.resource.data.activityDate && 
           request.resource.data.activityEndDate <= request.resource.data.activityDate + duration.value(30, 'd')
@@ -124,19 +125,19 @@ service cloud.firestore {
         
         // 5. Kapazitäts- & Host-Validierung
         request.resource.data.hostId == request.auth.uid &&
-        (!('maxParticipants' in request.resource.data) || (
+        (!request.resource.data.keys().hasAny(['maxParticipants']) || (
           request.resource.data.maxParticipants is int && 
           request.resource.data.maxParticipants >= 2 && 
           request.resource.data.maxParticipants <= hostLimit
         )) &&
         
         // 6. Orts- und Koordinatenvalidierung
-        (!('lat' in request.resource.data) || (request.resource.data.lat is number && request.resource.data.lat >= -90.0 && request.resource.data.lat <= 90.0)) &&
-        (!('lon' in request.resource.data) || (request.resource.data.lon is number && request.resource.data.lon >= -180.0 && request.resource.data.lon <= 180.0)) &&
-        (!('city' in request.resource.data) || (request.resource.data.city is string && request.resource.data.city.size() <= 100)) &&
-        (!('postalCode' in request.resource.data) || (request.resource.data.postalCode is string && request.resource.data.postalCode.size() <= 20)) &&
-        (!('placeAddress' in request.resource.data) || (request.resource.data.placeAddress is string && request.resource.data.placeAddress.size() <= 200)) &&
-        (!('joinMode' in request.resource.data) || request.resource.data.joinMode in ['direct', 'request']) &&
+        (!request.resource.data.keys().hasAny(['lat']) || (request.resource.data.lat is number && request.resource.data.lat >= -90.0 && request.resource.data.lat <= 90.0)) &&
+        (!request.resource.data.keys().hasAny(['lon']) || (request.resource.data.lon is number && request.resource.data.lon >= -180.0 && request.resource.data.lon <= 180.0)) &&
+        (!request.resource.data.keys().hasAny(['city']) || (request.resource.data.city is string && request.resource.data.city.size() <= 100)) &&
+        (!request.resource.data.keys().hasAny(['postalCode']) || (request.resource.data.postalCode is string && request.resource.data.postalCode.size() <= 20)) &&
+        (!request.resource.data.keys().hasAny(['placeAddress']) || (request.resource.data.placeAddress is string && request.resource.data.placeAddress.size() <= 200)) &&
+        (!request.resource.data.keys().hasAny(['joinMode']) || request.resource.data.joinMode in ['direct', 'request']) &&
         
         (request.resource.data.get('placeId', 'custom') == 'custom' || (
           request.resource.data.placeId is string &&
@@ -209,11 +210,20 @@ service cloud.firestore {
           request.resource.data.get('isDateFlexible', false) == resource.data.get('isDateFlexible', false)
         )) &&
       
-        // Kapazität nicht verringerbar oder unter aktuelle Teilnehmerzahl
+        // Kapazität: Historische Limits bleiben erlaubt, wenn unverändert. Bei Erhöhung/Änderung darf hostLimit des aktuellen Tarifs nicht überschritten werden.
         (request.resource.data.get('maxParticipants', 0) == resource.data.get('maxParticipants', 0) || (
           request.resource.data.maxParticipants is int &&
           request.resource.data.maxParticipants >= resource.data.get('maxParticipants', 0) &&
-          request.resource.data.maxParticipants >= resource.data.participantIds.size()
+          request.resource.data.maxParticipants >= resource.data.participantIds.size() &&
+          request.resource.data.maxParticipants <= (
+            getUserData().get('isOrganizer', false) == true ? 50 : (
+              (getUserData().get('isPremium', false) == true && (
+                !('premiumExpiresAt' in getUserData()) ||
+                getUserData().premiumExpiresAt == null ||
+                parseTimestampMillis(getUserData().premiumExpiresAt) > request.time.toMillis()
+              )) ? 12 : 4
+            )
+          )
         ))
       );
     }
@@ -446,69 +456,59 @@ service cloud.firestore {
     }
 
     function validateOwnerUpdate() {
-      let data = request.resource.data;
       return (
-        (!('fcmToken' in data) || data.fcmToken == null || (data.fcmToken is string && data.fcmToken.size() > 0 && data.fcmToken.size() < 500)) &&
-        (!('notificationSettings' in data) || (
-          data.notificationSettings is map &&
-          data.notificationSettings.keys().hasOnly(['localHighlights', 'nearbyFriendActivityNotifications', 'friendRequests', 'activityInvites', 'chatMessages']) &&
-          data.notificationSettings.get('localHighlights', false) is bool &&
-          data.notificationSettings.get('nearbyFriendActivityNotifications', true) is bool &&
-          data.notificationSettings.get('friendRequests', true) is bool &&
-          data.notificationSettings.get('activityInvites', true) is bool &&
-          data.notificationSettings.get('chatMessages', true) is bool
+        (!('fcmToken' in request.resource.data) || request.resource.data.fcmToken == null || (request.resource.data.fcmToken is string && request.resource.data.fcmToken.size() > 0 && request.resource.data.fcmToken.size() < 500)) &&
+        (!('notificationSettings' in request.resource.data) || (
+          request.resource.data.notificationSettings is map &&
+          request.resource.data.notificationSettings.keys().hasOnly(['localHighlights', 'nearbyFriendActivityNotifications', 'friendRequests', 'activityInvites', 'chatMessages']) &&
+          (!('localHighlights' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.localHighlights is bool) &&
+          (!('nearbyFriendActivityNotifications' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.nearbyFriendActivityNotifications is bool) &&
+          (!('friendRequests' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.friendRequests is bool) &&
+          (!('activityInvites' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.activityInvites is bool) &&
+          (!('chatMessages' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.chatMessages is bool)
         )) &&
-        (!('proximitySettings' in data) || (
-          data.proximitySettings is map &&
-          data.proximitySettings.keys().hasOnly(['enabled', 'radiusKm']) &&
-          data.proximitySettings.get('enabled', false) is bool &&
-          data.proximitySettings.get('radiusKm', 5) is int &&
-          data.proximitySettings.get('radiusKm', 5) >= 1 &&
-          data.proximitySettings.get('radiusKm', 5) <= 50
+        (!('proximitySettings' in request.resource.data) || (
+          request.resource.data.proximitySettings is map &&
+          request.resource.data.proximitySettings.keys().hasOnly(['enabled', 'radiusKm']) &&
+          (!('enabled' in request.resource.data.proximitySettings) || request.resource.data.proximitySettings.enabled is bool) &&
+          (!('radiusKm' in request.resource.data.proximitySettings) || (request.resource.data.proximitySettings.radiusKm is int && request.resource.data.proximitySettings.radiusKm >= 1 && request.resource.data.proximitySettings.radiusKm <= 50))
         )) &&
-        (!('language' in data) || data.language in ['de', 'en'])
+        (!('language' in request.resource.data) || request.resource.data.language in ['de', 'en'])
       );
     }
 
     // Verhindert das Ändern von Systemfeldern durch den Client
     function hasNoSystemFieldChanges() {
-      let protectedFields = [
-        'role', 'isAdmin', 'isBanned', 'escrowBalance', 'fiatBalance', 
-        'balancesInCents', 'successfulFreeHosts', 'kycStatus', 'ratingCount', 
-        'averageRating', 'isPremium', 'isSupporter', 'isCreator', 'isOrganizer', 
-        'premiumEntitlements', 'premiumStartsAt', 'premiumExpiresAt', 
-        'premiumSource', 'premiumCampaignId', 'successfulReferrals', 
-        'blacklist', 'emailVerificationRequired', 'emailVerificationProvider', 
-        'emailVerificationReason', 'emailVerificationCreatedAt', 'emailVerifiedAt', 
-        'verificationEmailLastSentAt', 'pointsBalance', 'pointsLifetime', 
-        'level', 'referralCode', 'referredBy', 'username', 'usernameLowercase', 
-        'usernameLastChangedAt', 'usernameChangeHistory', 'friends', 
-        'friendRequestsSent', 'friendRequestsReceived'
-      ];
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedFields) &&
-        (
-          request.resource.data.get('tokens', 0) == resource.data.get('tokens', 0) ||
-          (
-            request.resource.data.get('tokens', 0) is int &&
-            resource.data.get('tokens', 0) is int &&
-            request.resource.data.get('tokens', 0) == resource.data.get('tokens', 0) - 1 &&
-            request.resource.data.get('tokens', 0) >= 0
-          )
-        );
+      return resource != null && resource.data != null &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role', 'isAdmin', 'isBanned', 'isPremium', 'isSupporter', 'isCreator',
+          'isOrganizer', 'balancesInCents', 'kycStatus', 'premiumSource',
+          'premiumCampaignId', 'escrowBalance', 'fiatBalance', 'referralCode',
+          'referredBy', 'username', 'usernameLowercase', 'successfulFreeHosts',
+          'ratingCount', 'averageRating', 'successfulReferrals', 'pointsBalance',
+          'pointsLifetime', 'level', 'lastLocation', 'proximitySettings',
+          'friends', 'friendRequestsSent', 'friendRequestsReceived', 'blacklist',
+          'premiumEntitlements', 'usernameChangeHistory', 'premiumStartsAt',
+          'premiumExpiresAt', 'usernameLastChangedAt'
+        ]) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['tokens']) || (
+          request.resource.data.get('tokens', 0) is int &&
+          resource.data.get('tokens', 0) is int &&
+          request.resource.data.get('tokens', 0) == resource.data.get('tokens', 0) - 1
+        ));
     }
 
     function hasNoImmutableFinancialFieldChanges() {
-      let immutableFields = ['price', 'isPaid', 'hostId', 'currency', 'paymentConfig'];
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(immutableFields);
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['price', 'isPaid', 'hostId', 'currency', 'paymentConfig']);
     }
 
+    // legacy
     function hasNoPaidActivityFieldChanges() {
-      let forbiddenKeys = [
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
         'participantIds', 'participantsPreview', 'participantDetails', 
         'completionVotes', 'status', 'price', 'isPaid', 'hostId', 
         'currency', 'paymentConfig'
-      ];
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(forbiddenKeys);
+      ]);
     }
 
     function hasNoActivityVoteFieldChanges() {
@@ -586,7 +586,8 @@ service cloud.firestore {
         (!('usernameLowercase' in request.resource.data)) &&
         (!('usernameLastChangedAt' in request.resource.data)) &&
         (!('usernameChangeHistory' in request.resource.data)) &&
-        validateOwnerUpdate();
+        (!('lastLocation' in request.resource.data)) &&
+        (!('proximitySettings' in request.resource.data) || request.resource.data.proximitySettings == null || request.resource.data.proximitySettings.enabled == false);
       
       // Removed social update bypass completely.
       // System fields list in hasNoSystemFieldChanges now strictly covers friends, friendRequestsSent, and friendRequestsReceived.
@@ -608,6 +609,16 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow write: if false;
       }
+
+      match /private/radarSettings {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+    }
+
+    match /radar_locations/{userId} {
+      allow read: if false;
+      allow write: if false;
     }
 
     match /publicProfiles/{userId} {

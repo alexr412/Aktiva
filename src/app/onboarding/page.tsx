@@ -628,14 +628,7 @@ function OnboardingContent() {
         }
       }
 
-      if (coordinates) {
-        updateData.lastLocation = {
-          lat: coordinates.lat,
-          lng: coordinates.lng,
-          city: data.location || null,
-          updatedAt: serverTimestamp()
-        };
-      }
+      // Phase 2: Direct writes to lastLocation on user profile are disabled for privacy.
 
       await updateUserProfile(user.uid, updateData);
 

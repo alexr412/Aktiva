@@ -11,6 +11,9 @@ import { Slider } from '@/components/ui/slider';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
+import { useActivePremium } from '@/hooks/use-active-premium';
+import { useFriendRadar } from '@/hooks/use-friend-radar';
+import { RadarConsentDialog } from '@/components/radar/radar-consent-dialog';
 import { sendPasswordReset, deleteAccount, signOut } from '@/lib/firebase/auth';
 import { deleteUserDocument, updateUserProfile, submitCreatorApplication } from '@/lib/firebase/firestore';
 import { requestAndGetFCMToken } from '@/lib/firebase/messaging';
@@ -49,6 +52,46 @@ export default function SettingsPage() {
     const { user, userProfile, loading: authLoading } = useAuth();
     const language = useLanguage();
     const { toast } = useToast();
+
+    const { isPremium, isOrganizer } = useActivePremium(userProfile);
+    const hasAccess = isPremium || isOrganizer;
+
+    const {
+      enabled: radarEnabled,
+      radiusKm: radarRadius,
+      permissionState: radarPermissionState,
+      lastLocationUpdatedAt,
+      nextAllowedLocationUpdateAt,
+      activateRadar,
+      deactivateRadar,
+      updateLocation,
+      setRadius,
+      error: radarError,
+      clearError: clearRadarError,
+      isUpdatingLocation,
+      partialFailure: radarPartialFailure,
+      dismissPartialFailure
+    } = useFriendRadar();
+
+    const [consentOpen, setConsentOpen] = useState(false);
+    const [localRadius, setLocalRadius] = useState(5);
+
+    useEffect(() => {
+      if (radarRadius) {
+        setLocalRadius(radarRadius);
+      }
+    }, [radarRadius]);
+
+    useEffect(() => {
+      if (radarError) {
+        toast({
+          variant: 'destructive',
+          title: language === 'de' ? 'Fehler' : 'Error',
+          description: radarError.message
+        });
+        clearRadarError();
+      }
+    }, [radarError, language]);
     
     useEffect(() => {
         if (authLoading) return;
@@ -145,35 +188,24 @@ export default function SettingsPage() {
         }
     };
 
-    const handleProximityToggle = async (enabled: boolean) => {
-      if (!user?.uid) return;
-      try {
-        await updateUserProfile(user.uid, {
-          proximitySettings: {
-            ...userProfile?.proximitySettings,
-            enabled,
-            radiusKm: userProfile?.proximitySettings?.radiusKm || 5
-          }
-        });
-        toast({ title: enabled 
-          ? (language === 'de' ? "Radar aktiviert" : "Radar activated") 
-          : (language === 'de' ? "Radar deaktiviert" : "Radar deactivated") 
-        });
-      } catch (err) {
-        toast({ variant: 'destructive', title: language === 'de' ? "Fehler" : "Error", description: language === 'de' ? "Einstellungen konnten nicht gespeichert werden." : "Settings could not be saved." });
+    const handleProximityToggle = async (checked: boolean) => {
+      if (!hasAccess) return;
+      if (checked) {
+        setConsentOpen(true);
+      } else {
+        try {
+          await deactivateRadar();
+          toast({ title: language === 'de' ? "Radar deaktiviert" : "Radar deactivated" });
+        } catch (err) {
+          console.error(err);
+        }
       }
     };
 
-    const handleRadiusChange = async (value: number[]) => {
-      if (!user?.uid) return;
+    const handleConsentAccept = async () => {
       try {
-        await updateUserProfile(user.uid, {
-          proximitySettings: {
-            ...userProfile?.proximitySettings,
-            enabled: userProfile?.proximitySettings?.enabled || false,
-            radiusKm: value[0]
-          }
-        });
+        await activateRadar(localRadius);
+        toast({ title: language === 'de' ? "Radar aktiviert" : "Radar activated" });
       } catch (err) {
         console.error(err);
       }
@@ -304,42 +336,140 @@ export default function SettingsPage() {
                             <span>{language === 'de' ? 'Freunde-Radar' : 'Friends Radar'}</span>
                         </h2>
                         <div className="space-y-4 rounded-lg border bg-card p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Label htmlFor="radar-enabled" className="font-medium">{language === 'de' ? 'Radar aktivieren' : 'Enable Radar'}</Label>
-                                    <p className="text-xs text-muted-foreground">{language === 'de' ? 'Zeigt Freunde in deiner Nähe an, wenn sie die App nutzen.' : 'Show nearby friends when they use the app.'}</p>
+                            {!hasAccess ? (
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-slate-800 dark:text-neutral-200">
+                                    {language === 'de' ? 'Freunde-Radar' : 'Friends Radar'}
+                                  </span>
+                                  <Badge className="bg-amber-500 text-white font-black">PREMIUM</Badge>
                                 </div>
-                                <Switch
-                                    id="radar-enabled"
-                                    checked={userProfile?.proximitySettings?.enabled}
-                                    onCheckedChange={handleProximityToggle}
-                                />
-                            </div>
-                            
-                            {userProfile?.proximitySettings?.enabled && (
+                                <p className="text-xs text-muted-foreground leading-normal">
+                                  {language === 'de' 
+                                    ? 'Sieh, welche bestätigten Freunde kürzlich in deiner Nähe waren. Dein genauer Standort wird anderen Nutzern nicht angezeigt. Hol dir Premium oder werde Organizer, um dieses Feature freizuschalten.' 
+                                    : 'See which confirmed friends were recently near you. Your exact location is never shown. Upgrade to Premium or become an Organizer to unlock this feature.'}
+                                </p>
+                              </div>
+                            ) : (
                               <>
-                                <Separator />
-                                <div className="space-y-4 pt-2">
-                                  <div className="flex items-center justify-between">
-                                    <Label className="text-sm font-medium">{language === 'de' ? 'Radar-Radius' : 'Radar Radius'}</Label>
-                                    <span className="text-primary font-bold text-sm">{userProfile.proximitySettings.radiusKm} km</span>
-                                  </div>
-                                  <Slider
-                                    defaultValue={[userProfile.proximitySettings.radiusKm]}
-                                    max={50}
-                                    min={1}
-                                    step={1}
-                                    onValueChange={handleRadiusChange}
-                                  />
-                                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                    <MapPin className="h-3 w-3" />
-                                    {language === 'de' ? 'Dein Standort wird nur bei App-Nutzung aktualisiert.' : 'Your location is only updated while using the app.'}
-                                  </p>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <Label htmlFor="radar-enabled" className="font-medium">
+                                          {language === 'de' ? 'Radar aktivieren' : 'Enable Radar'}
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                          {language === 'de' 
+                                            ? 'Zeigt Freunde in deiner Nähe an, wenn sie die App nutzen.' 
+                                            : 'Show nearby friends when they use the app.'}
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        id="radar-enabled"
+                                        checked={radarEnabled}
+                                        onCheckedChange={handleProximityToggle}
+                                    />
                                 </div>
+
+                                {radarPartialFailure && (
+                                  <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200/50 rounded-2xl space-y-2">
+                                    <p className="text-xs text-red-600 dark:text-red-400 font-medium">
+                                      {language === 'de'
+                                        ? 'Einstellung aktiviert, aber Standort konnte nicht aktualisiert werden.'
+                                        : 'Radar enabled, but location update failed.'}
+                                    </p>
+                                    <div className="flex gap-2">
+                                      <Button size="sm" onClick={() => updateLocation()} disabled={isUpdatingLocation} className="h-7 text-[10px] font-black rounded-full">
+                                        {language === 'de' ? 'Erneut versuchen' : 'Retry'}
+                                      </Button>
+                                      <Button size="sm" variant="ghost" onClick={dismissPartialFailure} className="h-7 text-[10px] font-black rounded-full text-slate-500">
+                                        {language === 'de' ? 'Verwerfen' : 'Dismiss'}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {radarEnabled && (
+                                  <>
+                                    <Separator />
+                                    <div className="space-y-4 pt-2">
+                                      <div className="flex items-center justify-between">
+                                        <Label className="text-sm font-medium">{language === 'de' ? 'Radar-Radius' : 'Radar Radius'}</Label>
+                                        <span className="text-primary font-bold text-sm">{localRadius} km</span>
+                                      </div>
+                                      <Slider
+                                        value={[localRadius]}
+                                        max={25}
+                                        min={1}
+                                        step={1}
+                                        onValueChange={(val) => setLocalRadius(val[0])}
+                                        onValueCommit={(val) => setRadius(val[0])}
+                                      />
+                                      
+                                      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-neutral-800 text-[11px] text-slate-500 dark:text-neutral-400">
+                                        <div className="flex justify-between">
+                                          <span>{language === 'de' ? 'Berechtigungsstatus:' : 'Permission status:'}</span>
+                                          <span className="font-bold uppercase tracking-tight">{radarPermissionState}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span>{language === 'de' ? 'Letzte Aktualisierung:' : 'Last update:'}</span>
+                                          <span className="font-semibold">{lastLocationUpdatedAt ? lastLocationUpdatedAt.toLocaleTimeString() : '-'}</span>
+                                        </div>
+                                        {nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime() && (
+                                          <div className="flex justify-between text-amber-500">
+                                            <span>{language === 'de' ? 'Nächstes Update in:' : 'Next update allowed in:'}</span>
+                                            <span className="font-bold">{Math.ceil((nextAllowedLocationUpdateAt.getTime() - Date.now()) / 1000)}s</span>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <div className="flex gap-2 pt-2">
+                                        <Button
+                                          onClick={() => updateLocation()}
+                                          disabled={isUpdatingLocation || (nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime()) ? true : false}
+                                          className="flex-1 h-9 rounded-full text-xs font-black text-white"
+                                        >
+                                          {isUpdatingLocation ? (language === 'de' ? 'Aktualisiere...' : 'Updating...') : (language === 'de' ? 'Standort jetzt aktualisieren' : 'Update location now')}
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          onClick={deactivateRadar}
+                                          className="h-9 rounded-full text-xs font-black border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300"
+                                        >
+                                          {language === 'de' ? 'Standortdaten löschen' : 'Delete location data'}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
                               </>
                             )}
                         </div>
+
+                        {/* Privacy notices */}
+                        {hasAccess && (
+                          <div className="p-4 bg-slate-50/50 dark:bg-neutral-900/30 rounded-3xl border border-slate-100 dark:border-neutral-800/50 space-y-2 text-[10px] text-slate-400 dark:text-neutral-500 leading-normal">
+                            <p className="font-black uppercase tracking-widest">{language === 'de' ? 'Datenschutzhinweise' : 'Privacy Notice'}</p>
+                            <ul className="list-disc pl-4 space-y-1">
+                              <li>{language === 'de' ? 'Standort wird nur bei aktiver Nutzung der App aktualisiert.' : 'Location is only updated while actively using the app.'}</li>
+                              <li>{language === 'de' ? 'Keine dauerhafte Hintergrundortung.' : 'No background location tracking.'}</li>
+                              <li>{language === 'de' ? 'Nur bestätigte Freunde mit gegenseitigem Radar-Opt-in können dich sehen.' : 'Only confirmed friends with mutual opt-in can see you.'}</li>
+                              <li>{language === 'de' ? 'Keine exakten Freundespositionen werden übertragen.' : 'No exact friend positions are transmitted.'}</li>
+                              <li>{language === 'de' ? 'Kein Standortverlauf wird gespeichert.' : 'No location history is saved.'}</li>
+                              <li>{language === 'de' ? 'Standortdaten werden nach 24 Stunden automatisch ungültig.' : 'Location data expires automatically after 24 hours.'}</li>
+                            </ul>
+                          </div>
+                        )}
                     </div>
+
+                    <RadarConsentDialog
+                      open={consentOpen}
+                      onOpenChange={setConsentOpen}
+                      onAccept={handleConsentAccept}
+                      onCancel={() => {
+                        toast({ title: language === 'de' ? 'Aktivierung abgebrochen' : 'Activation cancelled' });
+                      }}
+                      language={language}
+                    />
 
                     {/* Notifications Section */}
                     <div className="space-y-4">

@@ -20,6 +20,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CategoryFilters } from '@/components/aktiva/category-filters';
 import { ProximityRadarView } from '@/components/aktiva/proximity-radar-view';
+import { MobileRadarCard } from '@/components/radar/mobile-radar-card';
 import { cn, formatLabel } from '@/lib/utils';
 import { calculateDistance } from '@/lib/geo-utils';
 import { PlaceDetails } from '@/components/aktiva/place-details';
@@ -92,15 +93,7 @@ export default function ExplorePage() {
             }
         }
 
-        // 2. Fallback to profile location
-        if (userProfile?.lastLocation) {
-            const { lat, lng } = userProfile.lastLocation;
-            if (typeof lat === 'number' && typeof lng === 'number') {
-                setUserLocation({ lat, lng });
-                setIsLocationLoading(false);
-                return;
-            }
-        }
+        // Phase 2: direct userProfile.lastLocation fallback removed for privacy.
 
         // 3. Try Geolocation
         setIsLocationLoading(true);
@@ -450,6 +443,11 @@ export default function ExplorePage() {
                     </div>
 
                     <div className="flex-1 flex flex-col items-center justify-start relative min-h-0 pt-4 pb-36 w-full">
+                        {userLocation && (
+                          <div className="lg:hidden w-full max-w-[400px] mb-4 shrink-0 px-1">
+                            <MobileRadarCard />
+                          </div>
+                        )}
                         {!userLocation ? (
                             isLocationLoading ? (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">

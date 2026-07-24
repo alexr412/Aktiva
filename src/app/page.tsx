@@ -36,8 +36,10 @@ import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, 
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlaceCardSkeleton, FeaturedPlaceCardSkeleton, ActivityCardSkeleton, FeaturedActivityCardSkeleton } from '@/components/aktiva/card-skeletons';
 import { CreateActivityDialog } from '@/components/aktiva/create-activity-dialog';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { useFriendRadar } from '@/hooks/use-friend-radar';
+import type { SelectedMapEntity } from '@/components/map/map-types';
 import { createActivity, joinActivity, searchActivitiesBySemanticVector, castActivityVote, votePlace, updateUserLocation, subscribeCommunityActivities } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter, doc, documentId } from "firebase/firestore";
@@ -67,10 +69,14 @@ import { trackInteraction } from '@/lib/telemetry';
 import { isDuplicate } from '@/lib/duplicate-detector';
 import { monitoring } from '@/lib/monitoring';
 
-// Dynamic import for MapView to avoid SSR issues
-const MapView = dynamic(() => import('@/components/aktiva/map-view').then(mod => mod.MapView), {
+// Dynamic import for AktivaMap (MapLibre GL JS) to avoid SSR issues
+const AktivaMap = dynamic(() => import('@/components/map/aktiva-map').then(mod => mod.AktivaMap), {
   ssr: false,
-  loading: () => <div className="flex h-full w-full items-center justify-center bg-muted"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center bg-slate-50 dark:bg-neutral-900">
+      <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+    </div>
+  )
 });
 
 const CardSkeleton = () => (
@@ -131,6 +137,8 @@ export default function Home() {
   const sessionEpochRef = useRef(Date.now());
   const language = useLanguage();
   const discoverFeedRef = useRef<HTMLDivElement>(null);
+
+  const { enabled: radarEnabled, nearbyFriends, complete } = useFriendRadar();
 
   const TIME_REFRESH_INTERVAL_MS = 60000;
   const [currentTime, setCurrentTime] = useState<number>(Date.now());
@@ -303,9 +311,52 @@ export default function Home() {
   }, [userProfile, activePremiumFilters]);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const [selectedMapEntity, setSelectedMapEntity] = useState<SelectedMapEntity>(null);
   const { planningState, exitPlanningMode } = usePlanningMode();
   const { favorites, addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
   const [isMobile, setIsMobile] = useState(false);
+
+  // Deselect selected friend if they walk out of range, get blocked/unfriended, or radar is disabled
+  useEffect(() => {
+    if (selectedMapEntity?.type === 'friend') {
+      const friendId = selectedMapEntity.id;
+      const stillExists = nearbyFriends.some((f) => f.userId === friendId);
+      if (!radarEnabled) {
+        setSelectedMapEntity(null);
+      } else if (!stillExists) {
+        if (complete) {
+          setSelectedMapEntity(null);
+        } else {
+          // Incomplete response & missing -> keep details open but strip location/distance fields!
+          const prevData = (selectedMapEntity.data || {}) as any;
+          if ('approximateLatitude' in prevData || prevData.isLocationCurrent !== false) {
+            setSelectedMapEntity({
+              ...selectedMapEntity,
+              data: {
+                userId: prevData.userId,
+                username: prevData.username,
+                displayName: prevData.displayName,
+                avatarUrl: prevData.avatarUrl,
+                isLocationCurrent: false, // Explicitly false
+              } as any,
+            });
+          }
+        }
+      }
+    }
+  }, [nearbyFriends, radarEnabled, selectedMapEntity, complete]);
+
+  // Synchronize viewMode state with URL search parameter ?view=map without loops
+  useEffect(() => {
+    const urlView = searchParams ? searchParams.get('view') : null;
+    if (urlView === 'map' && viewMode !== 'map') {
+      setViewMode('map');
+    } else if (urlView !== 'map' && viewMode === 'map') {
+      setViewMode('list');
+    }
+  }, [searchParams, viewMode]);
 
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
     try {
@@ -1455,16 +1506,10 @@ export default function Home() {
   }, [authLoading, userProfile, planningState.isPlanning]);
 
   const handleUseHomeLocation = () => {
-    if (userProfile?.lastLocation) {
-      const { lat, lng } = userProfile.lastLocation;
-      setUserLocation({ lat, lng });
-      reverseGeocode(lat, lng);
-    } else {
-      // Fallback to defaults
-      setUserLocation({ lat: 53.5395, lng: 8.5809 });
-      setCityName("Bremerhaven");
-      setResolvedCityName("Bremerhaven");
-    }
+    // Fallback to default Bremerhaven location
+    setUserLocation({ lat: 53.5395, lng: 8.5809 });
+    setCityName("Bremerhaven");
+    setResolvedCityName("Bremerhaven");
     setShowLocationRequirement(false);
   };
 
@@ -1758,11 +1803,19 @@ export default function Home() {
   };
 
   const handleMapToggle = () => {
-    if (!userProfile?.isPremium) {
-      setIsPremiumUpsellOpen(true);
-      return;
+    const nextMode = viewMode === 'list' ? 'map' : 'list';
+    setViewMode(nextMode);
+
+    const params = new URLSearchParams(searchParams ? searchParams.toString() : '');
+    if (nextMode === 'map') {
+      params.set('view', 'map');
+    } else {
+      params.delete('view');
     }
-    setViewMode('map');
+
+    const queryString = params.toString();
+    const newPath = queryString ? `${pathname}?${queryString}` : pathname;
+    router.replace(newPath, { scroll: false });
   };
 
   const increaseRadiusToNextOption = () => {
@@ -2219,19 +2272,24 @@ export default function Home() {
     }
 
     if (viewMode === 'map') {
-      if (!userLocation) return <div className="flex h-full w-full items-center justify-center"><MapPin className="h-8 w-8 animate-bounce text-primary" /></div>;
-      if (!userProfile?.isPremium) {
-        return (
-          <div className="flex flex-col items-center justify-center p-10 h-[calc(100%-80px)] text-center space-y-6">
-            <div className="bg-white dark:bg-neutral-800 p-8 rounded-full shadow-xl relative"><Lock className="h-12 w-12 text-neutral-400" /></div>
-            <h2 className="">{language === 'de' ? 'Kartenansicht gesperrt' : 'Map View Locked'}</h2>
-            <Button disabled className="rounded-2xl px-10 h-14 font-black bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 opacity-60 cursor-not-allowed">
-              {language === 'de' ? 'Bald verfügbar' : 'Soon available'}
-            </Button>
-          </div>
-        );
-      }
-      return <MapView places={places} userLocation={userLocation} onPlaceSelect={handlePlaceSelect} />;
+      return (
+        <div className="h-[calc(100vh-80px)] w-full relative">
+          <AktivaMap
+            places={places}
+            communityActivities={communityActivities}
+            nearbyFriends={nearbyFriends}
+            userLocation={userLocation}
+            maxDistance={maxDistance}
+            planningDestination={planningState.isPlanning ? planningState.destination : null}
+            language={language}
+            isMobile={isMobile}
+            selectedEntity={selectedMapEntity}
+            onSelectEntity={setSelectedMapEntity}
+            onCreateActivity={(place) => setActivityModalPlace(place)}
+            onJoinActivity={handleJoin}
+          />
+        </div>
+      );
     }
   };
 
@@ -2251,7 +2309,7 @@ export default function Home() {
                       className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
                       photoURL={userProfile?.photoURL}
                       displayName={userProfile?.displayName}
-                      isPremium={userProfile?.isPremium}
+                      isPremium={isPremiumActive(userProfile)}
                       isCreator={userProfile?.isCreator}
                       isSupporter={userProfile?.isSupporter}
                     />
@@ -2261,11 +2319,14 @@ export default function Home() {
                 <div className="flex items-center gap-3">
                   <NotificationBell />
                   <Button 
-                    variant="ghost" 
+                    variant={viewMode === 'map' ? 'secondary' : 'ghost'} 
                     size="icon" 
-                    className="secondary-header-button" 
+                    className={cn(
+                      "secondary-header-button transition-all",
+                      viewMode === 'map' && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm"
+                    )} 
                     onClick={handleMapToggle}
-                    aria-label={viewMode === 'list' ? (language === 'de' ? 'Zur Kartenansicht wechseln' : 'Switch to map view') : (language === 'de' ? 'Zur Listenansicht wechseln' : 'Switch to list view')}
+                    aria-label={viewMode === 'list' ? (language === 'de' ? 'Karte öffnen' : 'Open map') : (language === 'de' ? 'Feed öffnen' : 'Open feed')}
                   >
                     {viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}
                   </Button>
@@ -2306,7 +2367,7 @@ export default function Home() {
                     className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
                     photoURL={userProfile?.photoURL}
                     displayName={userProfile?.displayName}
-                    isPremium={userProfile?.isPremium}
+                    isPremium={isPremiumActive(userProfile)}
                     isCreator={userProfile?.isCreator}
                     isSupporter={userProfile?.isSupporter}
                   />
@@ -2371,11 +2432,14 @@ export default function Home() {
               <div className="flex items-center gap-3 shrink-0">
                 <NotificationBell />
                 <Button 
-                  variant="ghost" 
+                  variant={viewMode === 'map' ? 'secondary' : 'ghost'} 
                   size="icon" 
-                  className="secondary-header-button" 
+                  className={cn(
+                    "secondary-header-button transition-all",
+                    viewMode === 'map' && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm"
+                  )} 
                   onClick={handleMapToggle}
-                  aria-label={viewMode === 'list' ? (language === 'de' ? 'Zur Kartenansicht wechseln' : 'Switch to map view') : (language === 'de' ? 'Zur Listenansicht wechseln' : 'Switch to list view')}
+                  aria-label={viewMode === 'list' ? (language === 'de' ? 'Karte öffnen' : 'Open map') : (language === 'de' ? 'Feed öffnen' : 'Open feed')}
                 >
                   {viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}
                 </Button>
@@ -2498,7 +2562,7 @@ export default function Home() {
       <LocationSearchDialog 
         open={isLocationSearchOpen} 
         onOpenChange={setIsLocationSearchOpen} 
-        isPremium={userProfile?.isPremium || false}
+        isPremium={isPremiumActive(userProfile)}
         onOpenPremiumUpgrade={() => setIsPremiumUpsellOpen(true)}
       />
       <LocationRequirementDialog
