@@ -238,3 +238,10 @@ const chats = require('./lib/chats');
 exports.sendChatMessage = chats.sendChatMessage;
 exports.onChatUpdated = chats.onChatUpdated;
 
+// Secure Radar (Server-Side)
+const radar = require('./lib/radar');
+exports.setRadarSettings = radar.setRadarSettings;
+exports.updateRadarLocation = radar.updateRadarLocation;
+exports.disableRadar = radar.disableRadar;
+exports.getNearbyFriends = radar.getNearbyFriends;
+

@@ -1,6 +1,5 @@
-import * as functions from 'firebase-functions';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
-import { HttpsError } from 'firebase-functions/v1/https';
 import {
   CURRENT_RADAR_CONSENT_VERSION,
   hasRadarAccessPermission,
@@ -51,12 +50,13 @@ async function enforceRateLimit(
  * 1. setRadarSettings Callable Function
  * Enables or disables radar settings.
  */
-export const setRadarSettings = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
+export const setRadarSettings = onCall(async (request) => {
+  const data = request.data;
+  if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Authentifizierung erforderlich.');
   }
 
-  const userId = context.auth.uid;
+  const userId = request.auth.uid;
   await enforceRateLimit(userId, 'setRadarSettings', 10, 600); // Max 10 per 10 min
 
   // Rejects unknown input properties
@@ -163,12 +163,13 @@ export const setRadarSettings = functions.https.onCall(async (data, context) => 
  * 2. updateRadarLocation Callable Function
  * Updates current temporary location with 5-minute transaction-safe rate limit.
  */
-export const updateRadarLocation = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
+export const updateRadarLocation = onCall(async (request) => {
+  const data = request.data;
+  if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Authentifizierung erforderlich.');
   }
 
-  const userId = context.auth.uid;
+  const userId = request.auth.uid;
 
   // Rejects unknown input properties
   const allowedKeys = new Set(['latitude', 'longitude']);
@@ -263,12 +264,12 @@ export const updateRadarLocation = functions.https.onCall(async (data, context) 
  * 3. disableRadar Callable Function
  * Explicit idempotent function to disable radar.
  */
-export const disableRadar = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
+export const disableRadar = onCall(async (request) => {
+  if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Authentifizierung erforderlich.');
   }
 
-  const userId = context.auth.uid;
+  const userId = request.auth.uid;
   await enforceRateLimit(userId, 'disableRadar', 10, 600);
 
   const nowTimestamp = admin.firestore.Timestamp.now();
@@ -292,12 +293,13 @@ export const disableRadar = functions.https.onCall(async (data, context) => {
  * 4. getNearbyFriends Callable Function
  * Returns privacy-safe obfuscated locations for confirmed nearby friends.
  */
-export const getNearbyFriends = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
+export const getNearbyFriends = onCall(async (request) => {
+  const data = request.data;
+  if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Authentifizierung erforderlich.');
   }
 
-  const userId = context.auth.uid;
+  const userId = request.auth.uid;
   await enforceRateLimit(userId, 'getNearbyFriends', 1, 30); // Max 1 call per 30 seconds
 
   // Rejects unknown input properties

@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && npm --prefix functions run build",
     "test:ranking": "npx tsx src/lib/ranking.test.ts",
     "test:duplicate": "npx tsx src/lib/duplicate-detector.test.ts",
     "test:moderation": "npx tsx src/lib/moderation/moderation.test.ts",

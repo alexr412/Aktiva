@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.secureAcceptFriendRequest = exports.secureSendFriendRequest = exports.resolveLoginIdentifier = exports.earnToken = exports.claimUsername = exports.checkUsernameAvailability = exports.searchUserByUsername = exports.getPublicProfile = exports.processReferralOnboardingCompletion = exports.applyReferralCode = exports.onUserDeleted = exports.cleanupEmptyChats = exports.checkAndRecordVerificationEmail = exports.verifyEmailStatus = exports.requireSocialEmailVerification = exports.onUserCreated = exports.syncUserProfileUpdates = void 0;
+exports.getOrganizerAnalytics = exports.secureAcceptFriendRequest = exports.secureSendFriendRequest = exports.resolveLoginIdentifier = exports.earnToken = exports.claimUsername = exports.checkUsernameAvailability = exports.searchUserByUsername = exports.getPublicProfile = exports.processReferralOnboardingCompletion = exports.applyReferralCode = exports.onUserDeleted = exports.cleanupEmptyChats = exports.checkAndRecordVerificationEmail = exports.verifyEmailStatus = exports.requireSocialEmailVerification = exports.onUserCreated = exports.syncUserProfileUpdates = void 0;
 exports.calculateLevel = calculateLevel;
 exports.maybeActivateReferral = maybeActivateReferral;
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -173,6 +173,62 @@ exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
         catch (error) {
             console.error(`Error in onUserCreated for social user ${user.uid}:`, error);
         }
+    }
+    // ─── LAUNCH CAMPAIGN 2026 AUTO-GRANT ──────────────────────────────────
+    try {
+        let creationTimeString = user.metadata?.creationTime;
+        if (!creationTimeString) {
+            try {
+                const fullUser = await admin.auth().getUser(user.uid);
+                creationTimeString = fullUser.metadata?.creationTime;
+            }
+            catch (e) {
+                console.warn(`Could not fetch Auth metadata for ${user.uid}:`, e);
+            }
+        }
+        if (creationTimeString) {
+            const creationDate = new Date(creationTimeString);
+            const creationMs = creationDate.getTime();
+            // UTC bounds for 01.08.2026 00:00:00 to 31.10.2026 23:59:59 Europe/Berlin
+            const CAMPAIGN_START_MS = Date.parse("2026-07-31T22:00:00.000Z");
+            const CAMPAIGN_END_MS = Date.parse("2026-10-31T22:59:59.999Z");
+            if (!isNaN(creationMs) && creationMs >= CAMPAIGN_START_MS && creationMs <= CAMPAIGN_END_MS) {
+                const userRef = db.collection('users').doc(user.uid);
+                await db.runTransaction(async (transaction) => {
+                    const userSnap = await transaction.get(userRef);
+                    const userData = userSnap.data() || {};
+                    // Idempotency & preservation checks
+                    if (userData.premiumCampaignId === "launch_2026") {
+                        return; // Already granted
+                    }
+                    if (userData.isPremium && (!userData.premiumExpiresAt || userData.premiumExpiresAt === null)) {
+                        return; // Preserve legacy permanent premium
+                    }
+                    const startsAt = firestore_2.Timestamp.fromDate(creationDate);
+                    const expiresAt = firestore_2.Timestamp.fromDate(new Date(creationMs + 14 * 24 * 60 * 60 * 1000));
+                    if (userData.premiumExpiresAt) {
+                        const existingExpMs = userData.premiumExpiresAt.toMillis ? userData.premiumExpiresAt.toMillis() : new Date(userData.premiumExpiresAt).getTime();
+                        if (existingExpMs > expiresAt.toMillis()) {
+                            return; // Preserve longer existing premium
+                        }
+                    }
+                    transaction.set(userRef, {
+                        isPremium: true,
+                        premiumStartsAt: startsAt,
+                        premiumExpiresAt: expiresAt,
+                        premiumSource: "launch_campaign_2026",
+                        premiumCampaignId: "launch_2026"
+                    }, { merge: true });
+                });
+                console.log(`Granted 14-day Launch Campaign Premium for user ${user.uid}`);
+            }
+        }
+        else {
+            console.warn(`No valid creationTime for user ${user.uid}. Launch Campaign grant skipped.`);
+        }
+    }
+    catch (campaignErr) {
+        console.error(`Error in Launch Campaign grant for user ${user.uid}:`, campaignErr);
     }
 });
 /**
@@ -496,16 +552,20 @@ exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
             batchCount = 0;
         }
     };
-    // 1. Guaranteed deletion of user profile document first
+    // 1. Guaranteed deletion of user profile document & private radar documents
     try {
         const userRef = db.collection('users').doc(userId);
+        const radarSettingsRef = db.collection('users').doc(userId).collection('private').doc('radarSettings');
+        const radarLocRef = db.collection('radar_locations').doc(userId);
         batch.delete(userRef);
-        batchCount++;
+        batch.delete(radarSettingsRef);
+        batch.delete(radarLocRef);
+        batchCount += 3;
         await commitBatch();
-        console.log(`Successfully deleted user profile document /users/${userId}`);
+        console.log(`Successfully deleted user profile, radarSettings, and radar_locations for ${userId}`);
     }
     catch (err) {
-        console.error(`Failed to delete user profile document /users/${userId}:`, err);
+        console.error(`Failed to delete user profile or radar documents for user ${userId}:`, err);
     }
     // 2. Clean up activities where the user is a participant
     try {
@@ -1438,5 +1498,94 @@ exports.secureAcceptFriendRequest = (0, https_1.onCall)(async (request) => {
             throw error;
         throw new https_1.HttpsError('internal', error.message || 'Fehler beim Bestätigen der Freundschaftsanfrage.');
     }
+});
+exports.getOrganizerAnalytics = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'User must be authenticated.');
+    }
+    const uid = request.auth.uid;
+    const entityId = request.data?.entityId || request.data?.placeId || request.data?.activityId;
+    const entityType = request.data?.entityType;
+    if (!entityId || typeof entityId !== 'string') {
+        throw new https_1.HttpsError('invalid-argument', 'Missing or invalid entityId.');
+    }
+    if (entityType !== 'activity' && entityType !== 'place') {
+        throw new https_1.HttpsError('invalid-argument', 'entityType must be explicitly "activity" or "place".');
+    }
+    const db = admin.firestore();
+    let isAuthorized = false;
+    // Admin bypass
+    const callerSnap = await db.collection('users').doc(uid).get();
+    const callerData = callerSnap.data() || {};
+    if (callerData.role === 'admin') {
+        isAuthorized = true;
+    }
+    else {
+        // Explicit ownership check per entityType
+        if (entityType === 'activity') {
+            const actSnap = await db.collection('activities').doc(entityId).get();
+            if (actSnap.exists) {
+                const aData = actSnap.data() || {};
+                // Canonical field: hostId. Proven legacy fallbacks: userId, creatorId
+                if (aData.hostId === uid || aData.userId === uid || aData.creatorId === uid) {
+                    isAuthorized = true;
+                }
+            }
+        }
+        else if (entityType === 'place') {
+            const placeSnap = await db.collection('places').doc(entityId).get();
+            if (placeSnap.exists) {
+                const pData = placeSnap.data() || {};
+                // Canonical fields: createdBy, ownerId. Proven legacy fallbacks: hostId, userId
+                if (pData.createdBy === uid || pData.ownerId === uid || pData.hostId === uid || pData.userId === uid) {
+                    isAuthorized = true;
+                }
+            }
+        }
+    }
+    if (!isAuthorized) {
+        throw new https_1.HttpsError('permission-denied', 'You do not have permission to view analytics for this item.');
+    }
+    // 90-day time range cap (max 90 days of telemetry)
+    const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+    const cutoffTime = Date.now() - NINETY_DAYS_MS;
+    // Query telemetry_events safely with hard cap
+    const telemetrySnap = await db.collection('telemetry_events')
+        .where('entity_id', '==', entityId)
+        .limit(1000)
+        .get();
+    let opens = 0;
+    let saves = 0;
+    let shares = 0;
+    let directions = 0;
+    // Whitelist restricted strictly to evaluated events returned in API response
+    const allowedTypes = new Set(['card_open', 'favorite', 'share', 'directions']);
+    telemetrySnap.docs.forEach(doc => {
+        const data = doc.data();
+        const type = data.event_type || data.interactionType;
+        // Parse event timestamp
+        let eventTime = 0;
+        if (typeof data.timestamp === 'number') {
+            eventTime = data.timestamp;
+        }
+        else if (typeof data.timestamp === 'string') {
+            eventTime = Date.parse(data.timestamp);
+        }
+        else if (data.timestamp?.toMillis) {
+            eventTime = data.timestamp.toMillis();
+        }
+        // Ignore events older than 90 days or unrecognized event types
+        if (eventTime >= cutoffTime && allowedTypes.has(type)) {
+            if (type === 'card_open')
+                opens++;
+            else if (type === 'favorite')
+                saves++;
+            else if (type === 'share')
+                shares++;
+            else if (type === 'directions')
+                directions++;
+        }
+    });
+    return { opens, saves, shares, directions };
 });
 //# sourceMappingURL=users.js.map
