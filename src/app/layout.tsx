@@ -87,10 +87,10 @@ export default function RootLayout({
         <AppInit />
         <ThemeProvider>
           <AuthProvider>
-            <FriendRadarProvider>
-              <FavoritesProvider>
-                <PlanningModeProvider>
-                  <LocationProvider>
+            <PlanningModeProvider>
+              <LocationProvider>
+                <FriendRadarProvider>
+                  <FavoritesProvider>
                     <ChatSyncProvider>
                       <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
                         <PlanningModeBanner />
@@ -101,12 +101,12 @@ export default function RootLayout({
                         <AdminQuickNavigator />
                       </div>
                       <Toaster />
+                      <StatusBorder />
                     </ChatSyncProvider>
-                  </LocationProvider>
-                </PlanningModeProvider>
-              </FavoritesProvider>
-              <StatusBorder />
-            </FriendRadarProvider>
+                  </FavoritesProvider>
+                </FriendRadarProvider>
+              </LocationProvider>
+            </PlanningModeProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
