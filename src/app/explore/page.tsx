@@ -28,6 +28,7 @@ import { CreateActivityDialog } from '@/components/aktiva/create-activity-dialog
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { getPrimaryIconData, ACTIVITY_EXPIRY_THRESHOLD_MS } from '@/lib/tag-config';
 import { usePlanningMode } from '@/contexts/planning-mode-context';
+import { useLocation } from '@/contexts/location-context';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 
 const QUARANTINE_THRESHOLD = 3;
@@ -44,8 +45,8 @@ export default function ExplorePage() {
     const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
     const animationControls = useAnimation();
     
-    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-    const [isLocationLoading, setIsLocationLoading] = useState(true);
+    const { effectiveLocation: userLocation, locationStatus, retryCurrentLocation } = useLocation();
+    const isLocationLoading = locationStatus === 'resolving';
     const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
     const [activeTabId, setActiveTabId] = useState<string>('all');
@@ -67,63 +68,8 @@ export default function ExplorePage() {
         setRadiusKm(null);
     };
 
-    // React to manual search destination selection
     useEffect(() => {
-        if (planningState.isPlanning && planningState.destination) {
-            setUserLocation(planningState.destination);
-            setIsLocationLoading(false);
-        }
-    }, [planningState]);
-
-    useEffect(() => {
-        if (userLocation) return;
-
-        // 1. Check cached location for instant boot
-        const cached = localStorage.getItem('aktiva_last_location');
-        if (cached) {
-            try {
-                const { lat, lng } = JSON.parse(cached);
-                if (typeof lat === 'number' && typeof lng === 'number') {
-                    setUserLocation({ lat, lng });
-                    setIsLocationLoading(false);
-                    return;
-                }
-            } catch (e) {
-                localStorage.removeItem('aktiva_last_location');
-            }
-        }
-
-        // Phase 2: direct userProfile.lastLocation fallback removed for privacy.
-
-        // 3. Try Geolocation
-        setIsLocationLoading(true);
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const loc = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                    };
-                    setUserLocation(loc);
-                    localStorage.setItem('aktiva_last_location', JSON.stringify({
-                        ...loc,
-                        timestamp: Date.now()
-                    }));
-                    setIsLocationLoading(false);
-                },
-                (error) => {
-                    console.warn('Geolocation error in /explore, no fallback available:', error);
-                    setIsLocationLoading(false);
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
-            );
-        } else {
-            setIsLocationLoading(false);
-        }
-    }, [userProfile?.lastLocation, userLocation]);
-
-    useEffect(() => {
-        if (!db || !user) return;
+        if (!db || !user || locationStatus === 'resolving') return;
 
         setIsLoading(true);
 
@@ -484,39 +430,7 @@ export default function ExplorePage() {
                                         
                                         <Button 
                                             variant="ghost"
-                                            onClick={() => {
-                                                setIsLocationLoading(true);
-                                                if (navigator.geolocation) {
-                                                    navigator.geolocation.getCurrentPosition(
-                                                        (position) => {
-                                                            const loc = {
-                                                                lat: position.coords.latitude,
-                                                                lng: position.coords.longitude,
-                                                            };
-                                                            setUserLocation(loc);
-                                                            localStorage.setItem('aktiva_last_location', JSON.stringify({
-                                                                ...loc,
-                                                                timestamp: Date.now()
-                                                            }));
-                                                            setIsLocationLoading(false);
-                                                        },
-                                                        (error) => {
-                                                            console.warn('Geolocation retry error:', error);
-                                                            setIsLocationLoading(false);
-                                                            toast({
-                                                                variant: "destructive",
-                                                                title: language === 'de' ? "Standort blockiert" : "Location blocked",
-                                                                description: language === 'de' 
-                                                                  ? "Bitte aktiviere den Standortzugriff in deinen Einstellungen." 
-                                                                  : "Please enable location access in your settings."
-                                                            });
-                                                        },
-                                                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
-                                                    );
-                                                } else {
-                                                    setIsLocationLoading(false);
-                                                }
-                                            }}
+                                            onClick={retryCurrentLocation}
                                             className="w-full h-12 rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-neutral-200 font-bold"
                                         >
                                             {language === 'de' ? 'GPS erneut versuchen' : 'Retry GPS'}

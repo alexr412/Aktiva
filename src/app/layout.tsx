@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/contexts/auth-context';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { PlanningModeProvider } from '@/contexts/planning-mode-context';
+import { LocationProvider } from '@/contexts/location-context';
 import { PlanningModeBanner } from '@/components/common/PlanningModeBanner';
 import { FavoritesProvider } from '@/contexts/favorites-context';
 import { AppInit } from '@/components/common/AppInit';
@@ -89,17 +90,19 @@ export default function RootLayout({
             <FriendRadarProvider>
               <FavoritesProvider>
                 <PlanningModeProvider>
-                  <ChatSyncProvider>
-                    <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
-                      <PlanningModeBanner />
-                      <main className="flex-1 relative flex flex-col overflow-hidden">
-                        {children}
-                      </main>
-                      <BottomNav />
-                      <AdminQuickNavigator />
-                    </div>
-                    <Toaster />
-                  </ChatSyncProvider>
+                  <LocationProvider>
+                    <ChatSyncProvider>
+                      <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
+                        <PlanningModeBanner />
+                        <main className="flex-1 relative flex flex-col overflow-hidden">
+                          {children}
+                        </main>
+                        <BottomNav />
+                        <AdminQuickNavigator />
+                      </div>
+                      <Toaster />
+                    </ChatSyncProvider>
+                  </LocationProvider>
                 </PlanningModeProvider>
               </FavoritesProvider>
               <StatusBorder />

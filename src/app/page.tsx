@@ -51,6 +51,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { usePlanningMode } from '@/contexts/planning-mode-context';
+import { useLocation } from '@/contexts/location-context';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
@@ -168,7 +169,24 @@ export default function Home() {
       };
     }
   }, [scrollTriggerId, isOpenRoomsMode]);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const {
+    locationMode,
+    effectiveLocation: userLocation,
+    city: contextCity,
+    locationSource,
+    locationStatus,
+    locationError,
+    resetToCurrentLocation: handleResetLocation,
+    retryCurrentLocation: requestLocation,
+  } = useLocation();
+
+  const cityName = contextCity || (language === 'de' ? "Standort wird ermittelt..." : "Determining location...");
+  const resolvedCityName = contextCity;
+  const isLocationLoading = locationStatus === 'resolving';
+  const locationPermissionDenied = locationError?.toLowerCase().includes('denied') || false;
+  const reverseGeocodeFailed = locationStatus === 'fallback' && !contextCity;
+  const [showLocationRequirement, setShowLocationRequirement] = useState(false);
+
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
   const [presetTitle, setPresetTitle] = useState('');
@@ -178,8 +196,6 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [cityName, setCityName] = useState<string>(language === 'de' ? "Wird geladen..." : "Loading...");
-  const [resolvedCityName, setResolvedCityName] = useState<string | null>(null);
   const [requestedActivityIds, setRequestedActivityIds] = useState<Record<string, boolean>>({});
   const [placesMetaMap, setPlacesMetaMap] = useState<Record<string, {
     upvotes: number;
@@ -204,15 +220,10 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
   const [shouldFilterByName, setShouldFilterByName] = useState(false);
   const [isSwitchingTab, setIsSwitchingTab] = useState(false);
-  const [showLocationRequirement, setShowLocationRequirement] = useState(false);
-  const [isLocationLoading, setIsLocationLoading] = useState(false);
   const [activePremiumFilters, setActivePremiumFilters] = useState<string[]>([]);
   const [communityActivities, setCommunityActivities] = useState<Activity[]>([]);
   const [isCommunityLoading, setIsCommunityLoading] = useState(false);
   const [communityError, setCommunityError] = useState<Error | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
-  const [reverseGeocodeFailed, setReverseGeocodeFailed] = useState(false);
   const [communityRetryTrigger, setCommunityRetryTrigger] = useState(0);
 
   const isOpenNow = (openingHours: string | null | undefined): boolean => {
@@ -358,37 +369,7 @@ export default function Home() {
     }
   }, [searchParams, viewMode]);
 
-  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
-    try {
-      const { reverseGeocode: geoapifyReverse } = await import('@/lib/geoapify');
-      const place = await geoapifyReverse(lat, lng);
 
-      if (place) {
-        // Geoapify properties usually contain city or address components
-        const props = (place as any)._rawProperties || {};
-        const rawCity = props.city || props.town || props.village || props.suburb || props.municipality || place.name || null;
-        const displayCity = rawCity || (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
-
-        setCityName(displayCity);
-        setResolvedCityName(rawCity);
-        setReverseGeocodeFailed(false);
-
-        if (user?.uid) {
-          updateUserLocation(user.uid, lat, lng, displayCity);
-        }
-
-        // Cache location for ultra-fast boot on next visit
-        localStorage.setItem('aktiva_last_location', JSON.stringify({
-          lat, lng, city: displayCity, timestamp: Date.now()
-        }));
-      }
-    } catch (error) {
-      console.error("Reverse geocoding failed:", error);
-      setCityName(language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
-      setResolvedCityName(null);
-      setReverseGeocodeFailed(true);
-    }
-  }, [language, user?.uid]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
@@ -1300,187 +1281,7 @@ export default function Home() {
     if (node) observer.current.observe(node);
   }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, displayData, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
 
-  const isRequestingLocation = useRef(false);
-  const requestLocation = useCallback(() => {
-    if (isRequestingLocation.current || isLocationLoading) return;
-    isRequestingLocation.current = true;
-    setIsLocationLoading(true);
-    setLocationError(null);
-    setLocationPermissionDenied(false);
 
-    const cleanup = () => {
-      isRequestingLocation.current = false;
-      setIsLocationLoading(false);
-    };
-
-    try {
-      // 1. Persistierter manueller Standort
-      if (typeof window !== 'undefined') {
-        const storedManual = localStorage.getItem('app-planning-mode');
-        if (storedManual) {
-          const parsed = JSON.parse(storedManual);
-          if (parsed && parsed.isPlanning && parsed.destination) {
-            const dest = parsed.destination;
-            const city = dest.city || dest.name || null;
-            setUserLocation(dest);
-            setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
-            setResolvedCityName(city);
-            cleanup();
-            return;
-          }
-        }
-      }
-
-      if (planningState.isPlanning && planningState.destination) {
-        const city = planningState.destination.city || planningState.destination.name || null;
-        setUserLocation(planningState.destination);
-        setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
-        setResolvedCityName(city);
-        cleanup();
-        return;
-      }
-
-      // 2. Bereits vorhandener regulärer Nutzerstandort (aus cache)
-      if (typeof window !== 'undefined') {
-        const cached = localStorage.getItem('aktiva_last_location');
-        if (cached) {
-          const { lat, lng, city, timestamp } = JSON.parse(cached);
-          const age = Date.now() - timestamp;
-          if (age < 4 * 60 * 60 * 1000) { // 4 hours TTL
-            setUserLocation({ lat, lng });
-            setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
-            setResolvedCityName(city || null);
-            cleanup();
-            return;
-          }
-        }
-      }
-
-      // 3. Gespeicherter Profilstandort
-      if (userProfile?.lastLocation) {
-        const { lat, lng } = userProfile.lastLocation;
-        setUserLocation({ lat, lng });
-        reverseGeocode(lat, lng);
-        cleanup();
-        return;
-      }
-
-      // 4. Browser-Geolocation
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            try {
-              const location = { lat: position.coords.latitude, lng: position.coords.longitude };
-              setUserLocation(location);
-              setShowLocationRequirement(false);
-              if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
-            } catch (err) {
-              console.error("Error in position callback:", err);
-            } finally {
-              cleanup();
-            }
-          },
-          (error) => {
-            try {
-              console.warn("Geolocation error:", error);
-              setShowLocationRequirement(true);
-              setLocationError(error.message);
-              if (error.code === 1) { // PERMISSION_DENIED
-                setLocationPermissionDenied(true);
-                toast({
-                  title: language === 'de' ? "Standort blockiert" : "Location blocked",
-                  description: language === 'de' ? "Bitte aktiviere den Standortzugriff in deinen Browsereinstellungen." : "Please enable location access in your browser settings.",
-                  variant: "destructive"
-                });
-              }
-              // Default fallback
-              setUserLocation({ lat: 53.5395, lng: 8.5809 });
-              setCityName("Bremerhaven");
-              setResolvedCityName("Bremerhaven");
-            } catch (err) {
-              console.error("Error in position error callback:", err);
-            } finally {
-              cleanup();
-            }
-          },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
-        );
-      } else {
-        setUserLocation({ lat: 53.5395, lng: 8.5809 });
-        setCityName("Bremerhaven");
-        setResolvedCityName("Bremerhaven");
-        setShowLocationRequirement(true);
-        setLocationError("Geolocation not supported by browser");
-        cleanup();
-      }
-    } catch (e) {
-      console.error("Synchronous error in requestLocation:", e);
-      setLocationError(e instanceof Error ? e.message : String(e));
-      cleanup();
-    }
-  }, [planningState, reverseGeocode, language, toast, userProfile, isLocationLoading]);
-
-  const handleResetLocation = () => {
-    exitPlanningMode();
-    
-    // Immediately restore regular location using priorities 2, 3, 4, 5
-    let restored = false;
-    
-    // 2. Check cached regular user location
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('aktiva_last_location');
-        if (cached) {
-          const { lat, lng, city } = JSON.parse(cached);
-          setUserLocation({ lat, lng });
-          setCityName(city || (language === 'de' ? "Unbekannter Ort" : "Unknown Place"));
-          setResolvedCityName(city || null);
-          restored = true;
-        }
-      } catch (e) {
-        console.error("Error restoring cached location", e);
-      }
-    }
-    
-    // 3. Check profile location
-    if (!restored && userProfile?.lastLocation) {
-      const { lat, lng } = userProfile.lastLocation;
-      setUserLocation({ lat, lng });
-      reverseGeocode(lat, lng);
-      restored = true;
-    }
-    
-    // 4. Browser Geolocation (using existing credentials/permissions, no forced popup)
-    if (!restored && navigator.geolocation && typeof navigator.permissions !== 'undefined') {
-      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-        if (result.state === 'granted') {
-          navigator.geolocation.getCurrentPosition((position) => {
-            const location = { lat: position.coords.latitude, lng: position.coords.longitude };
-            setUserLocation(location);
-            if (location.lat && location.lng) reverseGeocode(location.lat, location.lng);
-          });
-        } else {
-          // 5. Default fallback
-          setUserLocation({ lat: 53.5395, lng: 8.5809 });
-          setCityName("Bremerhaven");
-          setResolvedCityName("Bremerhaven");
-        }
-      }).catch(() => {
-        // Fallback if permission query fails
-        setUserLocation({ lat: 53.5395, lng: 8.5809 });
-        setCityName("Bremerhaven");
-        setResolvedCityName("Bremerhaven");
-      });
-      restored = true;
-    }
-    
-    // 5. Default Fallback
-    if (!restored) {
-      setUserLocation({ lat: 53.5395, lng: 8.5809 });
-      setCityName("Bremerhaven");
-      setResolvedCityName("Bremerhaven");
-    }
-  };
 
   useEffect(() => {
     if (user) {
@@ -1506,10 +1307,6 @@ export default function Home() {
   }, [authLoading, userProfile, planningState.isPlanning]);
 
   const handleUseHomeLocation = () => {
-    // Fallback to default Bremerhaven location
-    setUserLocation({ lat: 53.5395, lng: 8.5809 });
-    setCityName("Bremerhaven");
-    setResolvedCityName("Bremerhaven");
     setShowLocationRequirement(false);
   };
 
