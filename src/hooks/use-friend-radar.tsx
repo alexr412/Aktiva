@@ -1,13 +1,17 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from './use-auth';
 import { useActivePremium } from './use-active-premium';
+import { useLocation } from '@/contexts/location-context';
 import { db, functions } from '@/lib/firebase/client';
-import { CURRENT_RADAR_CONSENT_VERSION } from '../../functions/src/radar-types';
+import { CURRENT_RADAR_CONSENT_VERSION, calculateHaversineDistanceKm } from '../../functions/src/radar-types';
 import { useToast } from './use-toast';
 import { ToastAction } from '@/components/ui/toast';
+
+export const FRIEND_RADAR_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+export const FRIEND_RADAR_MIN_MOVEMENT_METERS = 200;
 
 export function validateRadarResponse(data: any): {
   friends: NearbyFriend[];
@@ -273,6 +277,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
   const { isPremium, isOrganizer } = useActivePremium(userProfile);
   const hasAccess = isPremium || isOrganizer;
   const { toast } = useToast();
+  const { effectiveLocation, locationStatus } = useLocation();
 
   // Local settings synced from Firestore
   const [enabled, setEnabled] = useState(false);
@@ -297,9 +302,14 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
   const [baselineState, setBaselineState] = useState<BaselineState>('uninitialized');
   const [complete, setComplete] = useState<boolean>(true);
 
-  // Serialized execution refs
+  // Serialized execution refs & polling tracking refs
   const lastProcessedTimestampRef = useRef<number>(0);
   const isEvaluatingRef = useRef<boolean>(false);
+  const lastSuccessfulFetchMsRef = useRef<number>(0);
+  const lastAttemptFetchMsRef = useRef<number>(0);
+  const nextAllowedFetchMsRef = useRef<number>(0);
+  const lastLocationFetchedRef = useRef<{ lat: number; lng: number } | null>(null);
+  const isFetchingRef = useRef<boolean>(false);
 
   // Keep track of active timers/intervals
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -674,11 +684,67 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
     });
   };
 
-  const refreshNearbyFriends = async () => {
+  const isCrossTabLocked = useCallback((uid: string) => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const lock = localStorage.getItem('aktiva_radar_fetch_lock');
+      if (lock) {
+        const { uid: lockUid, timestamp } = JSON.parse(lock);
+        if (lockUid === uid && Date.now() - timestamp < 30000) {
+          return true;
+        }
+      }
+    } catch (e) {}
+    return false;
+  }, []);
+
+  const acquireCrossTabLock = useCallback((uid: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('aktiva_radar_fetch_lock', JSON.stringify({ uid, timestamp: Date.now() }));
+    } catch (e) {}
+  }, []);
+
+  const requestNearbyFriends = useCallback(async (trigger: 'initial' | 'interval' | 'visibility' | 'movement' | 'manual') => {
     if (!user?.uid || !hasAccess || !enabled || partialFailure) {
       return;
     }
+    if (!effectiveLocation || (locationStatus !== 'resolved' && locationStatus !== 'fallback')) {
+      return;
+    }
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+      return;
+    }
 
+    const now = Date.now();
+
+    if (isFetchingRef.current) return;
+    if (now < nextAllowedFetchMsRef.current) return;
+    if (isCrossTabLocked(user.uid)) return;
+
+    if (trigger !== 'manual') {
+      // 5-minute minimum interval for non-manual triggers
+      if (now - lastAttemptFetchMsRef.current < FRIEND_RADAR_REFRESH_INTERVAL_MS) {
+        return;
+      }
+      if (trigger === 'movement') {
+        if (lastLocationFetchedRef.current) {
+          const distKm = calculateHaversineDistanceKm(
+            effectiveLocation.lat,
+            effectiveLocation.lng,
+            lastLocationFetchedRef.current.lat,
+            lastLocationFetchedRef.current.lng
+          );
+          if (distKm * 1000 < FRIEND_RADAR_MIN_MOVEMENT_METERS) {
+            return;
+          }
+        }
+      }
+    }
+
+    isFetchingRef.current = true;
+    lastAttemptFetchMsRef.current = now;
+    acquireCrossTabLock(user.uid);
     setIsLoadingFriends(true);
 
     try {
@@ -686,25 +752,46 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
       const getFriendsCall = httpsCallable<void, any>(functions!, 'getNearbyFriends');
       const res = await getFriendsCall();
 
-      // Validate and filter using defensive helper
       const parsed = validateRadarResponse(res.data);
-
       setNearbyFriends(parsed.friends.slice(0, 30));
       setComplete(parsed.complete);
 
+      lastSuccessfulFetchMsRef.current = Date.now();
+      lastLocationFetchedRef.current = { lat: effectiveLocation.lat, lng: effectiveLocation.lng };
+
       await processNearbyFriends(parsed.friends, parsed.generatedAtMs, parsed.complete);
     } catch (err: any) {
-      console.error('refreshNearbyFriends error:', err);
+      console.error('getNearbyFriends error:', err);
       setComplete(false);
-      if (err.code === 'resource-exhausted') {
-        // Ignored in background polling to not spam UI
+
+      const errCode = err.code || err.name || '';
+      const errMsg = err.message || '';
+      const isRateLimit =
+        errCode === 'resource-exhausted' ||
+        errCode === 'functions/resource-exhausted' ||
+        errMsg.includes('resource-exhausted') ||
+        errMsg.includes('Rate limit') ||
+        errMsg.includes('5 Minuten');
+
+      if (isRateLimit) {
+        const retryAfterMs = err.details?.retryAfterMs || 0;
+        const cooldownMs = Math.max(FRIEND_RADAR_REFRESH_INTERVAL_MS, retryAfterMs);
+        nextAllowedFetchMsRef.current = Date.now() + cooldownMs;
+        setError({ message: 'Updates nur alle 5 Minuten erlaubt.', type: 'rate-limit' });
       } else {
-        setError({ message: err.message || 'Freunde laden fehlgeschlagen.', type: 'unknown' });
+        // Normal network/server error: 60s cooldown to prevent visibility loops
+        nextAllowedFetchMsRef.current = Date.now() + 60000;
+        setError({ message: errMsg || 'Freunde laden fehlgeschlagen.', type: 'unknown' });
       }
     } finally {
+      isFetchingRef.current = false;
       setIsLoadingFriends(false);
     }
-  };
+  }, [user?.uid, hasAccess, enabled, partialFailure, effectiveLocation, locationStatus, isCrossTabLocked, acquireCrossTabLock]);
+
+  const refreshNearbyFriends = useCallback(async () => {
+    await requestNearbyFriends('manual');
+  }, [requestNearbyFriends]);
 
   const processNearbyFriends = async (newFriends: NearbyFriend[], serverTimestampMs: number, complete: boolean) => {
     if (!user?.uid) return;
@@ -911,7 +998,23 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
     setError(null);
   };
 
-  // 4. Timer background updates & Visibility polling
+  // Initial readiness trigger: Rule 1
+  useEffect(() => {
+    if (user?.uid && effectiveLocation && (locationStatus === 'resolved' || locationStatus === 'fallback') && enabled && hasAccess && !partialFailure) {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        requestNearbyFriends('initial');
+      }
+    }
+  }, [user?.uid, effectiveLocation?.lat, effectiveLocation?.lng, locationStatus, enabled, hasAccess, partialFailure, requestNearbyFriends]);
+
+  // Movement trigger: Rule 5
+  useEffect(() => {
+    if (user?.uid && effectiveLocation && (locationStatus === 'resolved' || locationStatus === 'fallback') && enabled && hasAccess && !partialFailure) {
+      requestNearbyFriends('movement');
+    }
+  }, [user?.uid, effectiveLocation?.lat, effectiveLocation?.lng, locationStatus, enabled, hasAccess, partialFailure, requestNearbyFriends]);
+
+  // Timer background updates (5 min interval): Rule 2, 9
   useEffect(() => {
     if (!enabled || !hasAccess || partialFailure) {
       if (updateIntervalRef.current) {
@@ -921,18 +1024,9 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
       return;
     }
 
-    // Interval to refresh friends and location every 5 mins when visible
     updateIntervalRef.current = setInterval(() => {
-      if (document.visibilityState === 'visible' && navigator.onLine !== false) {
-        const shouldUpdateLoc = !lastLocationUpdatedAt || (nextAllowedLocationUpdateAt && Date.now() >= nextAllowedLocationUpdateAt.getTime());
-        
-        if (shouldUpdateLoc) {
-          updateLocation().then(() => refreshNearbyFriends()).catch(() => {});
-        } else {
-          refreshNearbyFriends();
-        }
-      }
-    }, 5 * 60 * 1000);
+      requestNearbyFriends('interval');
+    }, FRIEND_RADAR_REFRESH_INTERVAL_MS);
 
     return () => {
       if (updateIntervalRef.current) {
@@ -940,21 +1034,14 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
         updateIntervalRef.current = null;
       }
     };
-  }, [enabled, hasAccess, lastLocationUpdatedAt, nextAllowedLocationUpdateAt, partialFailure]);
+  }, [enabled, hasAccess, partialFailure, requestNearbyFriends]);
 
-  // Page Visibility API change triggers
+  // Page Visibility API change triggers: Rule 3, 4
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         setBaselineState('baseline_pending');
-        if (enabled && hasAccess && !partialFailure && navigator.onLine !== false) {
-          const shouldUpdateLoc = !lastLocationUpdatedAt || (nextAllowedLocationUpdateAt && Date.now() >= nextAllowedLocationUpdateAt.getTime());
-          if (shouldUpdateLoc) {
-            updateLocation().then(() => refreshNearbyFriends()).catch(() => {});
-          } else {
-            refreshNearbyFriends();
-          }
-        }
+        requestNearbyFriends('visibility');
       } else {
         setBaselineState('uninitialized');
       }
@@ -964,14 +1051,14 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [enabled, hasAccess, lastLocationUpdatedAt, nextAllowedLocationUpdateAt, partialFailure]);
+  }, [requestNearbyFriends]);
 
   // Online / Offline resume triggers
   useEffect(() => {
     const handleOnline = () => {
       setBaselineState('baseline_pending');
       if (enabled && hasAccess && !partialFailure) {
-        refreshNearbyFriends();
+        requestNearbyFriends('visibility');
       }
     };
     const handleOffline = () => {
@@ -985,7 +1072,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [enabled, hasAccess, partialFailure]);
+  }, [enabled, hasAccess, partialFailure, requestNearbyFriends]);
 
   // Sync baseline pending state when settings activation gets active
   useEffect(() => {
@@ -995,6 +1082,24 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
       setBaselineState('uninitialized');
     }
   }, [enabled, hasAccess, partialFailure]);
+
+  // Reset all state & refs on Logout / Account Switch: Rule 10
+  useEffect(() => {
+    if (!user?.uid) {
+      setNearbyFriends([]);
+      setError(null);
+      setPartialFailure(false);
+      setBaselineState('uninitialized');
+      setComplete(false);
+      disableCalledOnExpiryRef.current = false;
+      lastSuccessfulFetchMsRef.current = 0;
+      lastAttemptFetchMsRef.current = 0;
+      nextAllowedFetchMsRef.current = 0;
+      lastLocationFetchedRef.current = null;
+      isFetchingRef.current = false;
+      try { localStorage.removeItem('aktiva_radar_fetch_lock'); } catch (e) {}
+    }
+  }, [user?.uid]);
 
   return (
     <FriendRadarContext.Provider

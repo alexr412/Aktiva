@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { test } from 'node:test';
-import { CURRENT_RADAR_CONSENT_VERSION } from '../../functions/src/radar-types';
+import { CURRENT_RADAR_CONSENT_VERSION, calculateHaversineDistanceKm } from '../../functions/src/radar-types';
 
 // Mock localStorage globally for testing
 class MockLocalStorage {
@@ -628,4 +628,300 @@ test('16. SelectedMapEntity location stripping on incomplete missing friend', ()
   // Result must be null (deselect)
   const deselected = checkCleanup(selectedFriend, [], true, true);
   assert.strictEqual(deselected, null);
+});
+
+// ----------------------------------------------------
+// Polling Dispatcher & 12 Rules Unit Tests (Rule 12)
+// ----------------------------------------------------
+
+class PollingDispatcherTester {
+  public userUid: string | null = null;
+  public effectiveLocation: { lat: number; lng: number } | null = null;
+  public locationStatus: string = 'uninitialized';
+  public visibilityState: 'visible' | 'hidden' = 'visible';
+  public enabled: boolean = true;
+  public hasAccess: boolean = true;
+  public partialFailure: boolean = false;
+
+  public isFetching = false;
+  public lastAttemptFetchMs = 0;
+  public lastSuccessfulFetchMs = 0;
+  public nextAllowedFetchMs = 0;
+  public lastLocationFetched: { lat: number; lng: number } | null = null;
+  public requestCount = 0;
+
+  public isCrossTabLocked(uid: string): boolean {
+    const lock = mockLocalStorage.getItem('aktiva_radar_fetch_lock');
+    if (lock) {
+      try {
+        const { uid: lockUid, timestamp } = JSON.parse(lock);
+        if (lockUid === uid && Date.now() - timestamp < 30000) {
+          return true;
+        }
+      } catch (e) {}
+    }
+    return false;
+  }
+
+  public acquireCrossTabLock(uid: string): void {
+    mockLocalStorage.setItem('aktiva_radar_fetch_lock', JSON.stringify({ uid, timestamp: Date.now() }));
+  }
+
+  public async requestNearbyFriends(trigger: 'initial' | 'interval' | 'visibility' | 'movement' | 'manual', mockError?: any): Promise<boolean> {
+    if (!this.userUid || !this.hasAccess || !this.enabled || this.partialFailure) return false;
+    if (!this.effectiveLocation || (this.locationStatus !== 'resolved' && this.locationStatus !== 'fallback')) return false;
+    if (this.visibilityState !== 'visible') return false;
+
+    const now = Date.now();
+
+    if (this.isFetching) return false;
+    if (now < this.nextAllowedFetchMs) return false;
+    if (this.isCrossTabLocked(this.userUid)) return false;
+
+    if (trigger !== 'manual') {
+      if (now - this.lastAttemptFetchMs < 5 * 60 * 1000) return false;
+
+      if (trigger === 'movement' && this.lastLocationFetched) {
+        const distKm = calculateHaversineDistanceKm(
+          this.effectiveLocation.lat,
+          this.effectiveLocation.lng,
+          this.lastLocationFetched.lat,
+          this.lastLocationFetched.lng
+        );
+        if (distKm * 1000 < 200) return false;
+      }
+    }
+
+    this.isFetching = true;
+    this.lastAttemptFetchMs = now;
+    this.acquireCrossTabLock(this.userUid);
+
+    try {
+      if (mockError) throw mockError;
+
+      this.requestCount++;
+      this.lastSuccessfulFetchMs = Date.now();
+      this.lastLocationFetched = { ...this.effectiveLocation };
+      return true;
+    } catch (err: any) {
+      const errCode = err.code || err.name || '';
+      const errMsg = err.message || '';
+      const isRateLimit =
+        errCode === 'resource-exhausted' ||
+        errCode === 'functions/resource-exhausted' ||
+        errMsg.includes('resource-exhausted') ||
+        errMsg.includes('Rate limit') ||
+        errMsg.includes('5 Minuten');
+
+      if (isRateLimit) {
+        const retryAfterMs = err.details?.retryAfterMs || 0;
+        const cooldownMs = Math.max(5 * 60 * 1000, retryAfterMs);
+        this.nextAllowedFetchMs = Date.now() + cooldownMs;
+      } else {
+        this.nextAllowedFetchMs = Date.now() + 60000;
+      }
+      return false;
+    } finally {
+      this.isFetching = false;
+    }
+  }
+
+  public resetAll(): void {
+    this.userUid = null;
+    this.effectiveLocation = null;
+    this.locationStatus = 'uninitialized';
+    this.visibilityState = 'visible';
+    this.enabled = true;
+    this.hasAccess = true;
+    this.partialFailure = false;
+    this.isFetching = false;
+    this.lastAttemptFetchMs = 0;
+    this.lastSuccessfulFetchMs = 0;
+    this.nextAllowedFetchMs = 0;
+    this.lastLocationFetched = null;
+    this.requestCount = 0;
+    mockLocalStorage.removeItem('aktiva_radar_fetch_lock');
+  }
+}
+
+test('17. No request before Auth and Location readiness', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  
+  // Case A: Missing userUid
+  let sent = await tester.requestNearbyFriends('initial');
+  assert.strictEqual(sent, false, 'Should not request when user.uid is missing');
+
+  // Case B: Missing location
+  tester.userUid = 'user123';
+  sent = await tester.requestNearbyFriends('initial');
+  assert.strictEqual(sent, false, 'Should not request when location is missing');
+
+  // Case C: locationStatus is resolving
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolving';
+  sent = await tester.requestNearbyFriends('initial');
+  assert.strictEqual(sent, false, 'Should not request when locationStatus === resolving');
+
+  // Case D: Document hidden
+  tester.locationStatus = 'resolved';
+  tester.visibilityState = 'hidden';
+  sent = await tester.requestNearbyFriends('initial');
+  assert.strictEqual(sent, false, 'Should not request when document is hidden');
+});
+
+test('18. Exactly 1 initial request after readiness', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolved';
+  tester.visibilityState = 'visible';
+
+  const sent = await tester.requestNearbyFriends('initial');
+  assert.strictEqual(sent, true);
+  assert.strictEqual(tester.requestCount, 1);
+});
+
+test('19. Parallel requests blocked', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolved';
+  tester.isFetching = true; // Simulating in-flight request
+
+  const sent = await tester.requestNearbyFriends('manual');
+  assert.strictEqual(sent, false, 'Parallel in-flight request must be blocked');
+});
+
+test('20. No repeated request within 5 minutes', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolved';
+
+  // First request
+  await tester.requestNearbyFriends('initial');
+  assert.strictEqual(tester.requestCount, 1);
+
+  // Second request 2 minutes later
+  mockLocalStorage.removeItem('aktiva_radar_fetch_lock'); // clear lock for same tab
+  const sent2 = await tester.requestNearbyFriends('interval');
+  assert.strictEqual(sent2, false, 'Interval request within 5 min must be blocked');
+  assert.strictEqual(tester.requestCount, 1);
+});
+
+test('21. Movement under 200m triggers no request', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.02600, lng: 8.52200 };
+  tester.locationStatus = 'resolved';
+
+  await tester.requestNearbyFriends('initial');
+  assert.strictEqual(tester.requestCount, 1);
+
+  // Simulate 5 minutes passing + 50m movement
+  tester.lastAttemptFetchMs = Date.now() - (6 * 60 * 1000);
+  mockLocalStorage.removeItem('aktiva_radar_fetch_lock');
+  tester.effectiveLocation = { lat: 52.02605, lng: 8.52205 }; // ~50m move
+
+  const sent = await tester.requestNearbyFriends('movement');
+  assert.strictEqual(sent, false, 'Movement under 200m must be ignored');
+});
+
+test('22. Movement over 200m respects 5-minute interval', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.0260, lng: 8.5220 };
+  tester.locationStatus = 'resolved';
+
+  await tester.requestNearbyFriends('initial');
+  assert.strictEqual(tester.requestCount, 1);
+
+  // Case A: 500m movement but ONLY 1 minute elapsed -> MUST BE BLOCKED
+  mockLocalStorage.removeItem('aktiva_radar_fetch_lock');
+  tester.effectiveLocation = { lat: 52.0300, lng: 8.5300 }; // ~500m move
+  const sentBlocked = await tester.requestNearbyFriends('movement');
+  assert.strictEqual(sentBlocked, false, 'Movement over 200m must STILL respect 5 min interval');
+
+  // Case B: 6 minutes elapsed + 500m movement -> ALLOWED
+  tester.lastAttemptFetchMs = Date.now() - (6 * 60 * 1000);
+  const sentAllowed = await tester.requestNearbyFriends('movement');
+  assert.strictEqual(sentAllowed, true, 'Movement over 200m allowed after 5 minutes');
+});
+
+test('23. Two tabs deduplicated via cross-tab lock', async () => {
+  mockLocalStorage.clear();
+  const tabA = new PollingDispatcherTester();
+  const tabB = new PollingDispatcherTester();
+  tabA.userUid = 'user123';
+  tabA.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tabA.locationStatus = 'resolved';
+
+  tabB.userUid = 'user123';
+  tabB.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tabB.locationStatus = 'resolved';
+
+  // Tab A sends request and acquires lock
+  await tabA.requestNearbyFriends('initial');
+  assert.strictEqual(tabA.requestCount, 1);
+
+  // Tab B attempts request while lock is active
+  const sentB = await tabB.requestNearbyFriends('initial');
+  assert.strictEqual(sentB, false, 'Tab B must be deduplicated when Tab A holds lock');
+  assert.strictEqual(tabB.requestCount, 0);
+});
+
+test('24. HTTP 429 respects retryAfterMs', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolved';
+
+  const error429 = { code: 'resource-exhausted', details: { retryAfterMs: 600000 } }; // 10 minutes
+  await tester.requestNearbyFriends('initial', error429);
+
+  // Cooldown should be set to 10 minutes from now
+  assert.strictEqual(tester.nextAllowedFetchMs >= Date.now() + 500000, true);
+});
+
+test('25. Normal error 60s cooldown prevents visibility request loop', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolved';
+
+  const networkErr = { code: 'unavailable', message: 'Network offline' };
+  await tester.requestNearbyFriends('initial', networkErr);
+
+  // Cooldown should be 60 seconds
+  assert.strictEqual(tester.nextAllowedFetchMs >= Date.now() + 50000, true);
+
+  mockLocalStorage.removeItem('aktiva_radar_fetch_lock');
+  // Visibility change immediately after error
+  const sentLoop = await tester.requestNearbyFriends('visibility');
+  assert.strictEqual(sentLoop, false, 'Visibility change during 60s error cooldown must be blocked');
+});
+
+test('26. Account switch / logout resets state and refs', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolved';
+  await tester.requestNearbyFriends('initial');
+  assert.strictEqual(tester.requestCount, 1);
+
+  // Simulate logout
+  tester.resetAll();
+  assert.strictEqual(tester.userUid, null);
+  assert.strictEqual(tester.requestCount, 0);
+  assert.strictEqual(tester.lastAttemptFetchMs, 0);
+  assert.strictEqual(mockLocalStorage.getItem('aktiva_radar_fetch_lock'), null);
 });

@@ -300,7 +300,7 @@ export const getNearbyFriends = onCall(async (request) => {
   }
 
   const userId = request.auth.uid;
-  await enforceRateLimit(userId, 'getNearbyFriends', 1, 30); // Max 1 call per 30 seconds
+  await enforceRateLimit(userId, 'getNearbyFriends', 2, 30); // Max 2 calls per 30 seconds to allow burst
 
   // Rejects unknown input properties
   if (data && Object.keys(data).length > 0) {
