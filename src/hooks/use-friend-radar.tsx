@@ -32,36 +32,38 @@ export function validateRadarResponse(data: any): {
     return result;
   }
 
+  const payload = (data && typeof data === 'object' && 'result' in data && data.result && typeof data.result === 'object') ? data.result : data;
+
   // Strict check: only boolean true is complete
-  if (data.complete === true) {
+  if (payload.complete === true) {
     result.complete = true;
   }
 
-  if (data.resultsTruncated === true) {
+  if (payload.resultsTruncated === true) {
     result.resultsTruncated = true;
   }
 
-  if (data.candidateScanTruncated === true) {
+  if (payload.candidateScanTruncated === true) {
     result.candidateScanTruncated = true;
   }
 
-  if (data.generatedAt) {
-    if (typeof data.generatedAt.toMillis === 'function') {
-      result.generatedAtMs = data.generatedAt.toMillis();
-    } else if (data.generatedAt._seconds) {
-      result.generatedAtMs = data.generatedAt._seconds * 1000;
-    } else if (typeof data.generatedAt === 'number') {
-      result.generatedAtMs = data.generatedAt;
-    } else if (typeof data.generatedAt === 'string') {
-      const parsed = Date.parse(data.generatedAt);
+  if (payload.generatedAt) {
+    if (typeof payload.generatedAt.toMillis === 'function') {
+      result.generatedAtMs = payload.generatedAt.toMillis();
+    } else if (payload.generatedAt._seconds) {
+      result.generatedAtMs = payload.generatedAt._seconds * 1000;
+    } else if (typeof payload.generatedAt === 'number') {
+      result.generatedAtMs = payload.generatedAt;
+    } else if (typeof payload.generatedAt === 'string') {
+      const parsed = Date.parse(payload.generatedAt);
       if (!isNaN(parsed)) {
         result.generatedAtMs = parsed;
       }
     }
   }
 
-  if (Array.isArray(data.friends)) {
-    result.friends = data.friends.map((f: any) => {
+  if (Array.isArray(payload.friends)) {
+    result.friends = payload.friends.map((f: any) => {
       if (!f || typeof f !== 'object') return null;
       return {
         userId: String(f.userId || ''),
@@ -765,7 +767,15 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
       const getFriendsCall = httpsCallable<void, any>(functions!, 'getNearbyFriends');
       const res = await getFriendsCall();
 
+      console.log("[FRIEND RADAR RESPONSE]", res.data);
+
       const parsed = validateRadarResponse(res.data);
+
+      console.log("[FRIEND RADAR NORMALIZED]", {
+        friendCount: parsed.friends.length,
+        friends: parsed.friends
+      });
+
       setNearbyFriends(parsed.friends.slice(0, 30));
       setComplete(parsed.complete);
 

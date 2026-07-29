@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import { test } from 'node:test';
 import { CURRENT_RADAR_CONSENT_VERSION, calculateHaversineDistanceKm } from '../../functions/src/radar-types';
+import { createFriendsGeoJSON } from '../components/map/map-marker-data';
 
 // Mock localStorage globally for testing
 class MockLocalStorage {
@@ -1042,4 +1043,28 @@ test('31. userProfile.lastLocation NEVER overwrites effectiveLocation in current
   // Effective location stays Bielefeld
   assert.strictEqual(tester.effectiveLocation.lat, 52.026);
   assert.strictEqual(tester.effectiveLocation.lng, 8.522);
+});
+
+test('32. NearbyFriend with approximateLatitude & approximateLongitude generates friend point marker with [longitude, latitude]', () => {
+  const friend: any = {
+    userId: 'friend_test_1',
+    username: 'testuser',
+    displayName: 'Test User',
+    avatarUrl: 'https://avatar.png',
+    distanceBucket: 'under_1_km',
+    approximateLatitude: 52.029,
+    approximateLongitude: 8.535,
+    precisionKm: 2.0,
+    updatedAt: new Date().toISOString()
+  };
+
+  const geoJson = createFriendsGeoJSON([friend]);
+
+  const pointFeature = geoJson.features.find((f: any) => f.properties?.type === 'friend-point');
+  assert.ok(pointFeature, 'Point feature for friend must exist');
+  assert.strictEqual(pointFeature.geometry.type, 'Point');
+
+  const coords = (pointFeature.geometry as any).coordinates;
+  assert.strictEqual(coords[0], 8.535, 'First coordinate must be approximateLongitude');
+  assert.strictEqual(coords[1], 52.029, 'Second coordinate must be approximateLatitude');
 });

@@ -81,7 +81,9 @@ export function AktivaMap({
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!hasRadarAccess || !radarEnabled) {
+    if (hasRadarAccess && radarEnabled) {
+      setLayers((prev) => ({ ...prev, friends: true }));
+    } else {
       setLayers((prev) => ({ ...prev, friends: false }));
     }
   }, [hasRadarAccess, radarEnabled]);
