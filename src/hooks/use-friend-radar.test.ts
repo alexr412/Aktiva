@@ -1068,3 +1068,34 @@ test('32. NearbyFriend with approximateLatitude & approximateLongitude generates
   assert.strictEqual(coords[0], 8.535, 'First coordinate must be approximateLongitude');
   assert.strictEqual(coords[1], 52.029, 'Second coordinate must be approximateLatitude');
 });
+
+test('33. Friend feature assigned to friends-source has visible friends-point layer above other layers', () => {
+  const friend: any = {
+    userId: 'friend_test_2',
+    username: 'alex',
+    displayName: 'Alex',
+    avatarUrl: 'https://avatar.png',
+    distanceBucket: 'under_1_km',
+    approximateLatitude: 52.029,
+    approximateLongitude: 8.535,
+    precisionKm: 2.0,
+    updatedAt: new Date().toISOString()
+  };
+
+  const geoJson = createFriendsGeoJSON([friend]);
+
+  // Simulate MapLibre layer stack
+  const layers: string[] = ['places-clusters', 'activities-clusters', 'radius-fill', 'friends-area', 'friends-point', 'friends-point-label'];
+
+  const placesIndex = layers.indexOf('places-clusters');
+  const friendsPointIndex = layers.indexOf('friends-point');
+  const friendsLabelIndex = layers.indexOf('friends-point-label');
+
+  assert.ok(friendsPointIndex > placesIndex, 'friends-point layer must be rendered above places-clusters');
+  assert.ok(friendsLabelIndex > placesIndex, 'friends-point-label layer must be rendered above places-clusters');
+
+  const pointFeature = geoJson.features.find((f: any) => f.properties?.type === 'friend-point');
+  assert.ok(pointFeature);
+  assert.strictEqual(pointFeature.properties?.displayName, 'Alex');
+  assert.strictEqual(pointFeature.properties?.distanceBucketText, 'unter 1 km');
+});

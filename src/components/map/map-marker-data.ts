@@ -201,6 +201,23 @@ export function createRadiusCircleGeoJSON(
   };
 }
 
+export function formatDistanceBucketText(bucket?: string): string {
+  switch (bucket) {
+    case 'under_1_km':
+      return 'unter 1 km';
+    case '1_to_2_km':
+      return '1 – 2 km';
+    case '2_to_5_km':
+      return '2 – 5 km';
+    case '5_to_10_km':
+      return '5 – 10 km';
+    case '10_to_25_km':
+      return '10 – 25 km';
+    default:
+      return 'in der Nähe';
+  }
+}
+
 /**
  * Generates GeoJSON FeatureCollection for MapLibre Native Layer rendering of friends.
  * Contains both Polygon cell circles and Point cell centers.
@@ -227,10 +244,12 @@ export function createFriendsGeoJSON(
         type: 'friend-area',
         userId: friend.userId,
         username: friend.username,
-        displayName: friend.displayName,
+        displayName: friend.displayName || friend.username,
         avatarUrl: friend.avatarUrl,
         distanceBucket: friend.distanceBucket,
+        distanceBucketText: formatDistanceBucketText(friend.distanceBucket),
         updatedAt: friend.updatedAt,
+        precisionKm: friend.precisionKm || 2.0,
       },
     });
 
@@ -245,10 +264,12 @@ export function createFriendsGeoJSON(
         type: 'friend-point',
         userId: friend.userId,
         username: friend.username,
-        displayName: friend.displayName,
+        displayName: friend.displayName || friend.username,
         avatarUrl: friend.avatarUrl,
         distanceBucket: friend.distanceBucket,
+        distanceBucketText: formatDistanceBucketText(friend.distanceBucket),
         updatedAt: friend.updatedAt,
+        precisionKm: friend.precisionKm || 2.0,
       },
     });
   }
