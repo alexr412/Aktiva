@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -56,6 +57,7 @@ export function AktivaMap({
   onCreateActivity,
   onJoinActivity,
 }: AktivaMapProps) {
+  const router = useRouter();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const selectedMarkerRef = useRef<maplibregl.Marker | null>(null);
@@ -541,24 +543,74 @@ export function AktivaMap({
             }
 
             const popupContent = document.createElement('div');
-            popupContent.className = 'p-3 text-center flex flex-col items-center min-w-[200px]';
+            popupContent.className =
+              'aktiva-friend-card relative overflow-hidden p-4 rounded-[22px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md border border-slate-200/80 dark:border-neutral-700/80 shadow-2xl flex flex-col items-center text-center w-[230px] sm:w-[245px] cursor-pointer group transition-all hover:border-blue-400/50';
+
             popupContent.innerHTML = `
-              <div class="w-14 h-14 rounded-full mb-2 overflow-hidden border-2 border-blue-500 shadow-md flex items-center justify-center bg-blue-600">
-                ${friend.avatarUrl
-                  ? `<img src="${friend.avatarUrl}" class="w-full h-full object-cover rounded-full" />`
-                  : `<span class="text-white text-lg font-black">${initial}</span>`}
+              <button type="button" class="friend-popup-close absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-slate-200/60 hover:bg-slate-200 dark:bg-neutral-800/80 dark:hover:bg-neutral-700 text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-all z-20 shadow-sm cursor-pointer" aria-label="Schließen">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+
+              <div class="w-14 h-14 rounded-full mb-2.5 overflow-hidden border-2 border-blue-500/80 ring-4 ring-blue-500/15 shadow-md flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-600 group-hover:scale-105 transition-transform duration-200">
+                ${
+                  friend.avatarUrl
+                    ? `<img src="${friend.avatarUrl}" class="w-full h-full object-cover rounded-full" alt="${fullName}" />`
+                    : `<span class="text-white text-lg font-black">${initial}</span>`
+                }
               </div>
-              <div class="font-black text-sm text-slate-800 dark:text-slate-100">${fullName}</div>
-              <div class="text-xs text-slate-400 mb-2">@${friend.username}</div>
-              <div class="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-full mb-2 border border-blue-200 dark:border-blue-800">
-                ${distText}
+
+              <div class="font-black text-base tracking-tight text-slate-900 dark:text-white leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                ${fullName}
               </div>
-              <div class="text-[10px] text-slate-400 italic border-t border-slate-100 dark:border-neutral-800 pt-1.5 w-full">
-                Ungefährer Standort<br/>(~${precMeters}-Meter-Raster)
+              <div class="text-xs font-medium text-slate-400 dark:text-neutral-400 mb-2">
+                @${friend.username}
               </div>
+
+              <div class="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 text-[11px] font-bold px-3 py-1 rounded-full mb-2.5 border border-blue-200/80 dark:border-blue-800/80 shadow-sm">
+                <svg class="w-3 h-3 text-blue-500 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <span>${distText}</span>
+              </div>
+
+              <div class="text-[10px] text-slate-500 dark:text-neutral-400 font-medium italic bg-slate-100/70 dark:bg-neutral-800/50 px-2.5 py-1 rounded-lg w-full mb-3 border border-slate-200/40 dark:border-neutral-700/40">
+                ${language === 'de' ? `Ungefährer Standort (~${precMeters}-Meter-Raster)` : `Approximate location (~${precMeters}m grid)`}
+              </div>
+
+              <button type="button" class="friend-popup-profile-btn w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all group-hover:shadow-blue-500/25">
+                <span>${language === 'de' ? 'Profil ansehen' : 'View profile'}</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
             `;
 
-            activePopupRef.current = new maplibregl.Popup({ offset: 25, closeButton: true })
+            const closeBtn = popupContent.querySelector('.friend-popup-close');
+            if (closeBtn) {
+              closeBtn.addEventListener('click', (closeEv) => {
+                closeEv.stopPropagation();
+                closeEv.preventDefault();
+                if (activePopupRef.current) {
+                  activePopupRef.current.remove();
+                  activePopupRef.current = null;
+                }
+              });
+            }
+
+            popupContent.addEventListener('click', (cardEv) => {
+              cardEv.stopPropagation();
+              cardEv.preventDefault();
+              if (activePopupRef.current) {
+                activePopupRef.current.remove();
+                activePopupRef.current = null;
+              }
+              router.push(`/users/${friend.userId}`);
+            });
+
+            activePopupRef.current = new maplibregl.Popup({ className: 'aktiva-friend-popup', offset: 25, closeButton: false })
               .setLngLat([renderLng, renderLat])
               .setDOMContent(popupContent)
               .addTo(map);

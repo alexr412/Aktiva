@@ -308,3 +308,17 @@
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* MapLibre Custom Friend Radar Popup Styling */
+.aktiva-friend-popup .maplibregl-popup-content {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border-radius: 22px !important;
+}
+.aktiva-friend-popup .maplibregl-popup-tip {
+  border-top-color: rgba(248, 250, 252, 0.95) !important;
+}
+.dark .aktiva-friend-popup .maplibregl-popup-tip {
+  border-top-color: rgba(23, 23, 23, 0.95) !important;
+}

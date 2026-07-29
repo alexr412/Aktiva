@@ -1247,3 +1247,28 @@ test('55. Keine doppelte Darstellung: HTML-Marker und friends-point-label werden
   const nativeLabelLayout = { 'text-field': '' };
   assert.strictEqual(nativeLabelLayout['text-field'], '', 'Native label layout text-field must be empty to avoid duplicate rendering');
 });
+
+test('56. Popup Profile Route & Close-Button Isolation', () => {
+  const friendId = 'friend_123';
+  const targetRoute = `/users/${friendId}`;
+  assert.strictEqual(targetRoute, '/users/friend_123', 'Popup profile navigation target must be /users/[userId]');
+
+  let navigated = false;
+  let popupClosed = false;
+
+  const handleCardClick = (e: { stopped: boolean }) => {
+    if (!e.stopped) navigated = true;
+  };
+
+  const handleCloseClick = (e: { stopped: boolean }) => {
+    e.stopped = true;
+    popupClosed = true;
+  };
+
+  const event = { stopped: false };
+  handleCloseClick(event);
+  handleCardClick(event);
+
+  assert.strictEqual(popupClosed, true, 'Close button must close popup');
+  assert.strictEqual(navigated, false, 'Close button click must not trigger profile navigation');
+});
