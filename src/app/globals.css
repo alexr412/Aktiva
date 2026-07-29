@@ -309,16 +309,25 @@
   }
 }
 
-/* MapLibre Custom Friend Radar Popup Styling */
-.aktiva-friend-popup .maplibregl-popup-content {
+/* MapLibre Custom Map Popups Styling (Friends, Places, Activities) */
+.aktiva-map-popup .maplibregl-popup-content,
+.aktiva-friend-popup .maplibregl-popup-content,
+.aktiva-place-popup .maplibregl-popup-content,
+.aktiva-activity-popup .maplibregl-popup-content {
   background: transparent !important;
   padding: 0 !important;
   box-shadow: none !important;
   border-radius: 22px !important;
 }
-.aktiva-friend-popup .maplibregl-popup-tip {
+.aktiva-map-popup .maplibregl-popup-tip,
+.aktiva-friend-popup .maplibregl-popup-tip,
+.aktiva-place-popup .maplibregl-popup-tip,
+.aktiva-activity-popup .maplibregl-popup-tip {
   border-top-color: rgba(248, 250, 252, 0.95) !important;
 }
-.dark .aktiva-friend-popup .maplibregl-popup-tip {
+.dark .aktiva-map-popup .maplibregl-popup-tip,
+.dark .aktiva-friend-popup .maplibregl-popup-tip,
+.dark .aktiva-place-popup .maplibregl-popup-tip,
+.dark .aktiva-activity-popup .maplibregl-popup-tip {
   border-top-color: rgba(23, 23, 23, 0.95) !important;
 }

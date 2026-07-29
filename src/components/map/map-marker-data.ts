@@ -311,3 +311,368 @@ export function createFriendsGeoJSON(
     features,
   };
 }
+
+/**
+ * Escapes HTML characters to prevent XSS in dynamic popups.
+ */
+export function escapeHTML(str?: string): string {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Formats activity date and time string cleanly.
+ */
+export function formatActivityDateTime(activityDate?: any, isTimeFlexible?: boolean, lang: 'de' | 'en' = 'de'): string {
+  if (!activityDate) return lang === 'de' ? 'Datum nach Absprache' : 'Flexible date';
+  const date = activityDate.toDate ? activityDate.toDate() : new Date(activityDate);
+  if (isNaN(date.getTime())) return lang === 'de' ? 'Datum nach Absprache' : 'Flexible date';
+
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow = date.toDateString() === tomorrow.toDateString();
+
+  const timeStr = date.toLocaleTimeString(lang === 'de' ? 'de-DE' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+
+  if (isToday) {
+    return lang === 'de' ? `Heute · ${timeStr}` : `Today · ${timeStr}`;
+  }
+  if (isTomorrow) {
+    return lang === 'de' ? `Morgen · ${timeStr}` : `Tomorrow · ${timeStr}`;
+  }
+  const dateStr = date.toLocaleDateString(lang === 'de' ? 'de-DE' : 'en-US', { day: '2-digit', month: '2-digit' });
+  return `${dateStr} · ${timeStr}`;
+}
+
+/**
+ * Calculates Haversine distance in km from user location.
+ */
+export function formatPlaceDistance(
+  lat: number,
+  lon: number,
+  userLocation: { lat: number; lng: number } | null,
+  lang: 'de' | 'en' = 'de'
+): string | null {
+  if (!userLocation || !isValidCoordinate(lat, lon) || !isValidCoordinate(userLocation.lat, userLocation.lng)) {
+    return null;
+  }
+  const R = 6371; // Earth radius in km
+  const dLat = ((userLocation.lat - lat) * Math.PI) / 180;
+  const dLon = ((userLocation.lng - lon) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat * Math.PI) / 180) * Math.cos((userLocation.lat * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distKm = R * c;
+
+  const formatted = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(1).replace('.', ',')} km`;
+  return lang === 'de' ? `${formatted} entfernt` : `${formatted} away`;
+}
+
+/**
+ * Calculates activity join state centrally.
+ */
+export function getActivityJoinState(
+  activity: Activity,
+  currentUserId?: string,
+  lang: 'de' | 'en' = 'de'
+): { action: string; label: string; disabled: boolean; btnClass: string } {
+  const isHost = currentUserId && activity.hostId === currentUserId;
+  const isJoined = currentUserId && activity.participantIds?.includes(currentUserId);
+  const isPending = currentUserId && (activity as any).pendingRequestIds?.includes(currentUserId);
+  
+  const count = activity.participantIds?.length ?? (activity.participantsPreview?.length || 1);
+  const max = activity.maxParticipants ?? 4;
+  const isFull = count >= max;
+
+  if (activity.status === 'cancelled') {
+    return { action: 'none', label: lang === 'de' ? 'Abgesagt' : 'Cancelled', disabled: true, btnClass: 'bg-slate-200 dark:bg-neutral-800 text-slate-400 cursor-not-allowed' };
+  }
+  if (activity.status === 'completed') {
+    return { action: 'none', label: lang === 'de' ? 'Beendet' : 'Ended', disabled: true, btnClass: 'bg-slate-200 dark:bg-neutral-800 text-slate-400 cursor-not-allowed' };
+  }
+  if (isHost) {
+    return { action: 'manage', label: lang === 'de' ? 'Verwalten' : 'Manage', disabled: false, btnClass: 'bg-purple-600 hover:bg-purple-700 text-white' };
+  }
+  if (isJoined) {
+    return { action: 'joined', label: lang === 'de' ? 'Beigetreten' : 'Joined', disabled: true, btnClass: 'bg-emerald-600/90 text-white cursor-default' };
+  }
+  if (isPending) {
+    return { action: 'pending', label: lang === 'de' ? 'Anfrage gesendet' : 'Request sent', disabled: true, btnClass: 'bg-amber-600/90 text-white cursor-default' };
+  }
+  if (isFull) {
+    return { action: 'full', label: lang === 'de' ? 'Ausgebucht' : 'Full', disabled: true, btnClass: 'bg-slate-300 dark:bg-neutral-800 text-slate-500 cursor-not-allowed' };
+  }
+  if (activity.joinMode === 'request' || (activity as any).requiresApproval) {
+    return { action: 'request', label: lang === 'de' ? 'Anfragen' : 'Request', disabled: false, btnClass: 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/25' };
+  }
+  return { action: 'join', label: lang === 'de' ? 'Teilnehmen' : 'Join', disabled: false, btnClass: 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/25' };
+}
+
+function createSafeElement(tag: string, className: string, htmlContent: string): any {
+  if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+    const el = document.createElement(tag);
+    el.className = className;
+    el.innerHTML = htmlContent;
+    return el;
+  }
+  const element: any = {
+    tagName: tag.toUpperCase(),
+    className,
+    innerHTML: htmlContent,
+    querySelector: (selector: string) => {
+      const classTarget = selector.startsWith('.') ? selector.slice(1) : selector;
+      if (htmlContent.includes(classTarget)) {
+        return {
+          className: classTarget,
+          innerHTML: htmlContent,
+          addEventListener: (_event: string, _fn: Function) => {},
+        };
+      }
+      return null;
+    },
+    querySelectorAll: () => [],
+    addEventListener: (_event: string, _fn: Function) => {},
+  };
+  return element;
+}
+
+/**
+ * Creates styled HTML DOM Element for Place Popups.
+ */
+export function createPlacePopupHTML(
+  place: Place,
+  userLocation: { lat: number; lng: number } | null,
+  lang: 'de' | 'en' = 'de',
+  isFavorite: boolean = false
+): {
+  container: HTMLDivElement;
+  closeBtn: HTMLElement | null;
+  detailsBtn: HTMLElement | null;
+  routeBtn: HTMLElement | null;
+  favBtn: HTMLElement | null;
+} {
+  const category = place.categories?.[0] || place.category || (lang === 'de' ? 'Ort' : 'Place');
+  const name = place.name || (lang === 'de' ? 'Unbenannter Ort' : 'Unnamed place');
+  const ratingText = typeof place.rating === 'number' && place.rating > 0 ? place.rating.toFixed(1) : null;
+  const distText = formatPlaceDistance(place.lat, place.lon ?? (place as any).lng, userLocation, lang);
+  const isOpen = (place as any).isOpenNow;
+  const openStatusText = isOpen === true ? (lang === 'de' ? 'Jetzt geöffnet' : 'Open now') : isOpen === false ? (lang === 'de' ? 'Geschlossen' : 'Closed') : '';
+
+  const htmlContent = `
+    <div class="relative w-full h-24 bg-gradient-to-br from-emerald-600 to-teal-700 overflow-hidden flex items-center justify-center">
+      <button type="button" class="friend-popup-close absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+
+      <button type="button" class="place-popup-fav-btn absolute top-2 left-2 w-7 h-7 rounded-full ${isFavorite ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 text-white'} flex items-center justify-center transition-all z-20 shadow-md cursor-pointer" aria-label="Favorit">
+        <svg class="w-3.5 h-3.5 ${isFavorite ? 'fill-white' : 'fill-none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+      </button>
+
+      ${
+        place.imageUrl
+          ? `<img src="${escapeHTML(place.imageUrl)}" class="w-full h-full object-cover" alt="${escapeHTML(name)}" />`
+          : `<svg class="w-10 h-10 text-emerald-100/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`
+      }
+
+      <div class="absolute bottom-2 left-2 bg-emerald-950/80 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-sm border border-emerald-500/30">
+        ${escapeHTML(category)}
+      </div>
+    </div>
+
+    <div class="p-3.5 flex flex-col gap-1.5 text-left">
+      <div class="font-black text-base text-slate-900 dark:text-white leading-tight line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+        ${escapeHTML(name)}
+      </div>
+
+      <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-neutral-300">
+        ${ratingText ? `<span class="inline-flex items-center gap-0.5 text-amber-500 font-bold"><svg class="w-3.5 h-3.5 fill-amber-400 inline" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>${ratingText} ★</span>` : ''}
+        ${distText ? `<span class="text-slate-400 dark:text-neutral-400">• ${distText}</span>` : ''}
+      </div>
+
+      <div class="text-[11px] text-slate-500 dark:text-neutral-400 truncate">
+        ${openStatusText ? `<span class="${isOpen ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-rose-500 font-bold'} mr-1.5">${openStatusText}</span>` : ''}
+        <span>${escapeHTML(place.address || (place as any).city || '')}</span>
+      </div>
+
+      <div class="mt-2 flex items-center gap-2">
+        <button type="button" class="place-popup-details-btn flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1 transition-all">
+          <span>${lang === 'de' ? 'Details ansehen' : 'View details'}</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+        <button type="button" class="place-popup-route-btn py-1.5 px-2.5 bg-slate-200/80 hover:bg-slate-300 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-700 dark:text-neutral-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition-all" title="Route">
+          <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+      </div>
+    </div>
+  `;
+  const containerClass = 'aktiva-place-card relative overflow-hidden rounded-[22px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md border border-emerald-500/30 dark:border-emerald-600/30 shadow-2xl flex flex-col w-[250px] sm:w-[270px] cursor-pointer group transition-all hover:border-emerald-400/60';
+  const container = createSafeElement('div', containerClass, htmlContent);
+
+  return {
+    container,
+    closeBtn: container.querySelector('.friend-popup-close'),
+    detailsBtn: container.querySelector('.place-popup-details-btn'),
+    routeBtn: container.querySelector('.place-popup-route-btn'),
+    favBtn: container.querySelector('.place-popup-fav-btn'),
+  };
+}
+
+/**
+ * Creates styled HTML DOM Element for Activity Popups.
+ */
+export function createActivityPopupHTML(
+  activity: Activity,
+  userLocation: { lat: number; lng: number } | null,
+  currentUserId?: string,
+  lang: 'de' | 'en' = 'de'
+): {
+  container: HTMLDivElement;
+  closeBtn: HTMLElement | null;
+  detailsBtn: HTMLElement | null;
+  joinBtn: HTMLElement | null;
+  joinState: { action: string; label: string; disabled: boolean; btnClass: string };
+} {
+  const title = activity.title || activity.name || activity.placeName || (lang === 'de' ? 'Aktivität' : 'Activity');
+  const category = activity.category || (lang === 'de' ? 'Community' : 'Community');
+  const dateTimeStr = formatActivityDateTime(activity.activityDate, activity.isTimeFlexible, lang);
+  const locationName = activity.placeName || activity.locationLabel || activity.address || (lang === 'de' ? 'Ort' : 'Location');
+  const hostName = activity.hostUsername || activity.hostName || 'host';
+
+  const count = activity.participantIds?.length ?? (activity.participantsPreview?.length || 1);
+  const max = activity.maxParticipants ?? 4;
+  const joinState = getActivityJoinState(activity, currentUserId, lang);
+
+  const htmlContent = `
+    <div class="relative w-full h-24 bg-gradient-to-br from-violet-600 to-purple-700 overflow-hidden flex items-center justify-center">
+      <button type="button" class="friend-popup-close absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+
+      ${
+        activity.imageUrl
+          ? `<img src="${escapeHTML(activity.imageUrl)}" class="w-full h-full object-cover" alt="${escapeHTML(title)}" />`
+          : `<svg class="w-10 h-10 text-purple-100/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`
+      }
+
+      <div class="absolute bottom-2 left-2 bg-purple-950/80 text-purple-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-sm border border-purple-500/30">
+        ${escapeHTML(category)}
+      </div>
+    </div>
+
+    <div class="p-3.5 flex flex-col gap-1.5 text-left">
+      <div class="font-black text-base text-slate-900 dark:text-white leading-tight line-clamp-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+        ${escapeHTML(title)}
+      </div>
+
+      <div class="flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-300">
+        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span>${dateTimeStr}</span>
+      </div>
+
+      <div class="text-[11px] text-slate-500 dark:text-neutral-400 flex items-center justify-between gap-1">
+        <span class="truncate">${escapeHTML(locationName)}</span>
+        <span class="font-bold shrink-0 text-slate-700 dark:text-neutral-200">${count}/${max} ${lang === 'de' ? 'Teilnehmer' : 'joined'}</span>
+      </div>
+
+      <div class="text-[10px] text-slate-400 dark:text-neutral-400 italic truncate">
+        ${lang === 'de' ? 'Organisiert von' : 'Hosted by'} @${escapeHTML(hostName)}
+      </div>
+
+      <div class="mt-2 flex items-center gap-2">
+        <button type="button" class="activity-popup-join-btn flex-1 py-1.5 px-2.5 ${joinState.btnClass} font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1 transition-all" ${joinState.disabled ? 'disabled' : ''}>
+          <span>${joinState.label}</span>
+        </button>
+        <button type="button" class="activity-popup-details-btn py-1.5 px-2.5 bg-slate-200/80 hover:bg-slate-300 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-700 dark:text-neutral-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition-all">
+          <span>Details</span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  const containerClass = 'aktiva-activity-card relative overflow-hidden rounded-[22px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md border border-purple-500/30 dark:border-purple-600/30 shadow-2xl flex flex-col w-[250px] sm:w-[270px] cursor-pointer group transition-all hover:border-purple-400/60';
+  const container = createSafeElement('div', containerClass, htmlContent);
+
+  return {
+    container,
+    closeBtn: container.querySelector('.friend-popup-close'),
+    detailsBtn: container.querySelector('.activity-popup-details-btn'),
+    joinBtn: container.querySelector('.activity-popup-join-btn'),
+    joinState,
+  };
+}
+
+/**
+ * Creates styled HTML DOM Element for Friend Popups.
+ */
+export function createFriendPopupHTML(
+  friend: NearbyFriend,
+  lang: 'de' | 'en' = 'de'
+): {
+  container: HTMLDivElement;
+  closeBtn: HTMLElement | null;
+  profileBtn: HTMLElement | null;
+} {
+  const fullName = friend.displayName || friend.username;
+  const initial = (fullName || '?').substring(0, 1).toUpperCase();
+  const distText = formatDistanceBucketText(friend.distanceBucket, lang);
+  const precMeters = normalizePrecisionMeters(friend);
+
+  const htmlContent = `
+    <button type="button" class="friend-popup-close absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-slate-200/60 hover:bg-slate-200 dark:bg-neutral-800/80 dark:hover:bg-neutral-700 text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-all z-20 shadow-sm cursor-pointer" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path>
+      </svg>
+    </button>
+
+    <div class="w-14 h-14 rounded-full mb-2.5 overflow-hidden border-2 border-blue-500/80 ring-4 ring-blue-500/15 shadow-md flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-600 group-hover:scale-105 transition-transform duration-200">
+      ${
+        friend.avatarUrl
+          ? `<img src="${escapeHTML(friend.avatarUrl)}" class="w-full h-full object-cover rounded-full" alt="${escapeHTML(fullName)}" />`
+          : `<span class="text-white text-lg font-black">${initial}</span>`
+      }
+    </div>
+
+    <div class="font-black text-base tracking-tight text-slate-900 dark:text-white leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+      ${escapeHTML(fullName)}
+    </div>
+    <div class="text-xs font-medium text-slate-400 dark:text-neutral-400 mb-2">
+      @${escapeHTML(friend.username)}
+    </div>
+
+    <div class="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 text-[11px] font-bold px-3 py-1 rounded-full mb-2.5 border border-blue-200/80 dark:border-blue-800/80 shadow-sm">
+      <svg class="w-3 h-3 text-blue-500 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+      </svg>
+      <span>${distText}</span>
+    </div>
+
+    <div class="text-[10px] text-slate-500 dark:text-neutral-400 font-medium italic bg-slate-100/70 dark:bg-neutral-800/50 px-2.5 py-1 rounded-lg w-full mb-3 border border-slate-200/40 dark:border-neutral-700/40">
+      ${lang === 'de' ? `Ungefährer Standort (~${precMeters}-Meter-Raster)` : `Approximate location (~${precMeters}m grid)`}
+    </div>
+
+    <button type="button" class="friend-popup-profile-btn w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all group-hover:shadow-blue-500/25">
+      <span>${lang === 'de' ? 'Profil ansehen' : 'View profile'}</span>
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
+      </svg>
+    </button>
+  `;
+
+  const containerClass = 'aktiva-friend-card relative overflow-hidden p-4 rounded-[22px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md border border-slate-200/80 dark:border-neutral-700/80 shadow-2xl flex flex-col items-center text-center w-[230px] sm:w-[245px] cursor-pointer group transition-all hover:border-blue-400/50';
+  const container = createSafeElement('div', containerClass, htmlContent);
+
+  return {
+    container,
+    closeBtn: container.querySelector('.friend-popup-close'),
+    profileBtn: container.querySelector('.friend-popup-profile-btn'),
+  };
+}
