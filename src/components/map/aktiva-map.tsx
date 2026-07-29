@@ -119,6 +119,47 @@ export function AktivaMap({
     // Fallback if rendered outside FavoritesProvider
   }
 
+  // Stable Callback & Data Refs for MapLibre Click Handlers
+  const onSelectEntityRef = useRef(onSelectEntity);
+  useEffect(() => { onSelectEntityRef.current = onSelectEntity; }, [onSelectEntity]);
+
+  const checkIsFavoriteRef = useRef(checkIsFavorite);
+  useEffect(() => { checkIsFavoriteRef.current = checkIsFavorite; }, [checkIsFavorite]);
+
+  const toggleFavoriteRef = useRef(toggleFavorite);
+  useEffect(() => { toggleFavoriteRef.current = toggleFavorite; }, [toggleFavorite]);
+
+  const placesRef = useRef(places);
+  useEffect(() => { placesRef.current = places; }, [places]);
+
+  const communityActivitiesRef = useRef(communityActivities);
+  useEffect(() => { communityActivitiesRef.current = communityActivities; }, [communityActivities]);
+
+  const userLocationRef = useRef(userLocation);
+  useEffect(() => { userLocationRef.current = userLocation; }, [userLocation]);
+
+  const languageRef = useRef(language);
+  useEffect(() => { languageRef.current = language; }, [language]);
+
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
+
+  const onJoinActivityRef = useRef(onJoinActivity);
+  useEffect(() => { onJoinActivityRef.current = onJoinActivity; }, [onJoinActivity]);
+
+  const routerRef = useRef(router);
+  useEffect(() => { routerRef.current = router; }, [router]);
+
+  const toastRef = useRef(toast);
+  useEffect(() => { toastRef.current = toast; }, [toast]);
+
+  const placeFavoriteLocksRef = useRef<Set<string>>(new Set());
+
+  const prevPlacesGeoJsonStrRef = useRef<string>('');
+  const prevActivitiesGeoJsonStrRef = useRef<string>('');
+  const prevRadiusGeoJsonStrRef = useRef<string>('');
+  const prevFriendsGeoJsonStrRef = useRef<string>('');
+
   useEffect(() => {
     if (hasRadarAccess && radarEnabled) {
       setLayers((prev) => ({ ...prev, friends: true }));
@@ -471,111 +512,214 @@ export function AktivaMap({
         map.on('click', 'places-unclustered', (e) => {
           const feature = e.features?.[0];
           if (feature?.properties?.id) {
-            const place = places.find((p) => p.id === feature.properties.id);
+            const place = placesRef.current.find((p) => p.id === feature.properties.id);
             if (place) {
-              onSelectEntity({ id: place.id, type: 'place', data: place });
+              if (onSelectEntityRef.current) {
+                onSelectEntityRef.current({ id: place.id, type: 'place', data: place });
+              } else if (process.env.NODE_ENV !== 'production') {
+                console.warn('[PLACE POPUP] onSelectEntity callback is missing');
+              }
 
               if (activePopupRef.current) {
                 activePopupRef.current.remove();
                 activePopupRef.current = null;
               }
 
-              const lon = place.lon ?? (place as any).lng;
-              if (isValidCoordinate(place.lat, lon)) {
-                const isFav = checkIsFavorite(place.id);
-                const popupObj = createPlacePopupHTML(place, userLocation, language, isFav);
+              const lon = place.lon ?? (place as any).lng ?? (place as any).longitude;
+              const lat = place.lat ?? (place as any).latitude;
+              if (isValidCoordinate(lat, lon)) {
+                const isFav = checkIsFavoriteRef.current(place.id);
+                const popupObj = createPlacePopupHTML(place, userLocationRef.current, languageRef.current, isFav);
 
-                if (popupObj.closeBtn) {
-                  popupObj.closeBtn.addEventListener('click', (closeEv) => {
-                    closeEv.stopPropagation();
-                    closeEv.preventDefault();
-                    if (activePopupRef.current) {
-                      activePopupRef.current.remove();
-                      activePopupRef.current = null;
-                    }
-                  });
-                }
-
-                if (popupObj.detailsBtn) {
-                  popupObj.detailsBtn.addEventListener('click', (detailsEv) => {
-                    detailsEv.stopPropagation();
-                    detailsEv.preventDefault();
-                    if (activePopupRef.current) {
-                      activePopupRef.current.remove();
-                      activePopupRef.current = null;
-                    }
-                    onSelectEntity({ id: place.id, type: 'place', data: place });
-                  });
-                }
-
-                if (popupObj.favBtn) {
-                  popupObj.favBtn.addEventListener('click', (favEv) => {
-                    favEv.stopPropagation();
-                    favEv.preventDefault();
-                    toggleFavorite(place);
-                  });
-                }
-
-                if (popupObj.routeBtn) {
-                  popupObj.routeBtn.addEventListener('click', (routeEv) => {
-                    routeEv.stopPropagation();
-                    routeEv.preventDefault();
-                    if (activePopupRef.current) {
-                      activePopupRef.current.remove();
-                      activePopupRef.current = null;
-                    }
-                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${lon}`, '_blank');
-                  });
-                }
-
-                if (popupObj.shareBtn) {
-                  popupObj.shareBtn.addEventListener('click', async (shareEv) => {
-                    shareEv.stopPropagation();
-                    shareEv.preventDefault();
-                    const shareUrl = `${window.location.origin}/?placeId=${place.id}`;
-                    const shareData = {
-                      title: place.name,
-                      text: language === 'de' ? `Schau dir ${place.name} auf Aktiva an!` : `Check out ${place.name} on Aktiva!`,
-                      url: shareUrl,
-                    };
-                    if (typeof navigator !== 'undefined' && navigator.share) {
-                      try {
-                        await navigator.share(shareData);
-                      } catch {
-                        // User cancelled share
-                      }
-                    } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                      try {
-                        await navigator.clipboard.writeText(shareUrl);
-                        toast({
-                          title: language === 'de' ? 'Link kopiert!' : 'Link copied!',
-                          description: language === 'de' ? 'Link in Zwischenablage kopiert.' : 'Link copied to clipboard.'
-                        });
-                      } catch (err) {
-                        console.error('Clipboard copy failed:', err);
-                      }
-                    }
-                  });
-                }
-
-                popupObj.container.addEventListener('click', (cardEv) => {
-                  cardEv.stopPropagation();
-                  cardEv.preventDefault();
-                  if (activePopupRef.current) {
-                    activePopupRef.current.remove();
-                    activePopupRef.current = null;
-                  }
-                  onSelectEntity({ id: place.id, type: 'place', data: place });
-                });
-
-                activePopupRef.current = new maplibregl.Popup({
+                const popup = new maplibregl.Popup({
                   className: 'aktiva-place-popup',
                   offset: 20,
                   closeButton: false,
                 })
-                  .setLngLat([lon, place.lat])
+                  .setLngLat([lon, lat])
                   .setDOMContent(popupObj.container)
                   .addTo(map);
+
+                activePopupRef.current = popup;
+
+                // Query elements from rendered Popup DOM or content container
+                const popupElement = popup.getElement();
+                const detailsBtn = popupElement?.querySelector<HTMLButtonElement>('.place-popup-details-btn') || popupObj.detailsBtn;
+                const routeBtn = popupElement?.querySelector<HTMLButtonElement>('.place-popup-route-btn') || popupObj.routeBtn;
+                const favBtn = (popupElement?.querySelector<HTMLButtonElement>('.place-popup-fav-btn') || popupObj.favBtn) as HTMLButtonElement | null;
+                const shareBtn = popupElement?.querySelector<HTMLButtonElement>('.place-popup-share-btn') || popupObj.shareBtn;
+                const closeBtn = popupElement?.querySelector<HTMLElement>('.friend-popup-close') || popupObj.closeBtn;
+
+                if (process.env.NODE_ENV !== 'production' || (typeof window !== 'undefined' && (window as any).NEXT_PUBLIC_MAP_DEBUG === 'true')) {
+                  console.log('[PLACE POPUP BINDINGS]', {
+                    details: Boolean(detailsBtn),
+                    route: Boolean(routeBtn),
+                    favorite: Boolean(favBtn),
+                    share: Boolean(shareBtn),
+                    placeId: place.id
+                  });
+                }
+
+                const handleClose = (event: MouseEvent) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (activePopupRef.current) {
+                    activePopupRef.current.remove();
+                    activePopupRef.current = null;
+                  }
+                };
+
+                const handleDetails = (event: MouseEvent) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (activePopupRef.current) {
+                    activePopupRef.current.remove();
+                    activePopupRef.current = null;
+                  }
+                  if (onSelectEntityRef.current) {
+                    onSelectEntityRef.current({ id: place.id, type: 'place', data: place });
+                  } else if (process.env.NODE_ENV !== 'production') {
+                    console.warn('[PLACE POPUP] onSelectEntity callback is missing');
+                  }
+                };
+
+                const handleFavorite = async (event: MouseEvent) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+
+                  if (placeFavoriteLocksRef.current.has(place.id)) {
+                    return;
+                  }
+                  placeFavoriteLocksRef.current.add(place.id);
+
+                  if (favBtn) {
+                    favBtn.disabled = true;
+                    favBtn.innerHTML = `<svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
+                  }
+
+                  try {
+                    await toggleFavoriteRef.current(place);
+
+                    const isNowFav = checkIsFavoriteRef.current(place.id);
+                    if (favBtn) {
+                      favBtn.className = `place-popup-fav-btn absolute top-2 left-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-full ${
+                        isNowFav ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 active:bg-black/80 text-white'
+                      } flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400`;
+                      favBtn.setAttribute('aria-label', isNowFav
+                        ? (languageRef.current === 'de' ? 'Favorit entfernen' : 'Remove favorite')
+                        : (languageRef.current === 'de' ? 'Als Favorit speichern' : 'Save as favorite'));
+                      favBtn.innerHTML = `<svg class="w-4 h-4 ${isNowFav ? 'fill-white' : 'fill-none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`;
+                    }
+                  } catch (err) {
+                    if (toastRef.current) {
+                      toastRef.current({
+                        variant: 'destructive',
+                        title: languageRef.current === 'de' ? 'Fehler' : 'Error',
+                        description: languageRef.current === 'de'
+                          ? 'Favorit konnte nicht aktualisiert werden.'
+                          : 'Could not update favorite.',
+                      });
+                    }
+                    const isStillFav = checkIsFavoriteRef.current(place.id);
+                    if (favBtn) {
+                      favBtn.className = `place-popup-fav-btn absolute top-2 left-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-full ${
+                        isStillFav ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 active:bg-black/80 text-white'
+                      } flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400`;
+                      favBtn.innerHTML = `<svg class="w-4 h-4 ${isStillFav ? 'fill-white' : 'fill-none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`;
+                    }
+                  } finally {
+                    placeFavoriteLocksRef.current.delete(place.id);
+                    if (favBtn) {
+                      favBtn.disabled = false;
+                    }
+                  }
+                };
+
+                const handleRoute = (event: MouseEvent) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+
+                  if (!Number.isFinite(lat) || !Number.isFinite(lon) || !isValidCoordinate(lat, lon)) {
+                    if (toastRef.current) {
+                      toastRef.current({
+                        variant: 'destructive',
+                        title: languageRef.current === 'de' ? 'Fehler' : 'Error',
+                        description: languageRef.current === 'de'
+                          ? 'Für diesen Ort sind keine Routendaten verfügbar.'
+                          : 'No valid route data available for this location.',
+                      });
+                    }
+                    return;
+                  }
+
+                  const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${lat},${lon}`)}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+
+                  if (activePopupRef.current) {
+                    activePopupRef.current.remove();
+                    activePopupRef.current = null;
+                  }
+                };
+
+                const handleShare = async (event: MouseEvent) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const shareUrl = `${window.location.origin}/?placeId=${place.id}`;
+                  const shareData = {
+                    title: place.name,
+                    text: languageRef.current === 'de' ? `Schau dir ${place.name} auf Aktiva an!` : `Check out ${place.name} on Aktiva!`,
+                    url: shareUrl,
+                  };
+                  if (typeof navigator !== 'undefined' && navigator.share) {
+                    try {
+                      await navigator.share(shareData);
+                    } catch {
+                      // User cancelled share
+                    }
+                  } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    try {
+                      await navigator.clipboard.writeText(shareUrl);
+                      if (toastRef.current) {
+                        toastRef.current({
+                          title: languageRef.current === 'de' ? 'Link kopiert!' : 'Link copied!',
+                          description: languageRef.current === 'de' ? 'Link in Zwischenablage kopiert.' : 'Link copied to clipboard.'
+                        });
+                      }
+                    } catch (err) {
+                      console.error('Clipboard copy failed:', err);
+                    }
+                  }
+                };
+
+                const handleCardClick = (event: MouseEvent) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (activePopupRef.current) {
+                    activePopupRef.current.remove();
+                    activePopupRef.current = null;
+                  }
+                  if (onSelectEntityRef.current) {
+                    onSelectEntityRef.current({ id: place.id, type: 'place', data: place });
+                  }
+                };
+
+                closeBtn?.addEventListener('click', handleClose);
+                detailsBtn?.addEventListener('click', handleDetails);
+                favBtn?.addEventListener('click', handleFavorite);
+                routeBtn?.addEventListener('click', handleRoute);
+                shareBtn?.addEventListener('click', handleShare);
+                popupObj.container.addEventListener('click', handleCardClick);
+
+                const cleanupPopupListeners = () => {
+                  closeBtn?.removeEventListener('click', handleClose);
+                  detailsBtn?.removeEventListener('click', handleDetails);
+                  favBtn?.removeEventListener('click', handleFavorite);
+                  routeBtn?.removeEventListener('click', handleRoute);
+                  shareBtn?.removeEventListener('click', handleShare);
+                  popupObj.container.removeEventListener('click', handleCardClick);
+                };
+
+                popup.on('close', cleanupPopupListeners);
               }
             }
           }
@@ -585,121 +729,143 @@ export function AktivaMap({
         map.on('click', 'activities-unclustered', (e) => {
           const feature = e.features?.[0];
           if (feature?.properties?.id) {
-            const act = communityActivities.find((a) => a.id === feature.properties.id);
+            const act = communityActivitiesRef.current.find((a) => a.id === feature.properties.id);
             if (act && act.id) {
-              onSelectEntity({ id: act.id, type: 'activity', data: act });
+              if (onSelectEntityRef.current) {
+                onSelectEntityRef.current({ id: act.id, type: 'activity', data: act });
+              }
 
               if (activePopupRef.current) {
                 activePopupRef.current.remove();
                 activePopupRef.current = null;
               }
 
-              const lon = act.lon ?? (act as any).lng;
-              if (isValidCoordinate(act.lat, lon)) {
-                const popupObj = createActivityPopupHTML(act, userLocation, user?.uid, language);
+              const lon = act.lon ?? (act as any).lng ?? (act as any).longitude;
+              const lat = act.lat ?? (act as any).latitude;
+              if (isValidCoordinate(lat, lon)) {
+                const popupObj = createActivityPopupHTML(act, userLocationRef.current, userRef.current?.uid, languageRef.current);
 
-                if (popupObj.closeBtn) {
-                  popupObj.closeBtn.addEventListener('click', (closeEv) => {
-                    closeEv.stopPropagation();
-                    closeEv.preventDefault();
-                    if (activePopupRef.current) {
-                      activePopupRef.current.remove();
-                      activePopupRef.current = null;
-                    }
-                  });
-                }
+                const popup = new maplibregl.Popup({
+                  className: 'aktiva-activity-popup',
+                  offset: 20,
+                  closeButton: false,
+                })
+                  .setLngLat([lon, lat])
+                  .setDOMContent(popupObj.container)
+                  .addTo(map);
 
-                if (popupObj.detailsBtn) {
-                  popupObj.detailsBtn.addEventListener('click', (detailsEv) => {
-                    detailsEv.stopPropagation();
-                    detailsEv.preventDefault();
-                    if (activePopupRef.current) {
-                      activePopupRef.current.remove();
-                      activePopupRef.current = null;
-                    }
-                    onSelectEntity({ id: act.id!, type: 'activity', data: act });
-                    router.push(`/activities/${act.id}`);
-                  });
-                }
+                activePopupRef.current = popup;
 
-                if (popupObj.joinBtn) {
-                  popupObj.joinBtn.addEventListener('click', async (joinEv) => {
-                    joinEv.stopPropagation();
-                    joinEv.preventDefault();
+                const popupElement = popup.getElement();
+                const closeBtn = popupElement?.querySelector<HTMLElement>('.friend-popup-close') || popupObj.closeBtn;
+                const detailsBtn = popupElement?.querySelector<HTMLElement>('.activity-popup-details-btn') || popupObj.detailsBtn;
+                const joinBtn = popupElement?.querySelector<HTMLElement>('.activity-popup-join-btn') || popupObj.joinBtn;
 
-                    if (!user) {
-                      router.push('/login');
-                      return;
-                    }
+                const handleClose = (closeEv: MouseEvent) => {
+                  closeEv.stopPropagation();
+                  closeEv.preventDefault();
+                  if (activePopupRef.current) {
+                    activePopupRef.current.remove();
+                    activePopupRef.current = null;
+                  }
+                };
 
-                    if (popupObj.joinState.disabled || !onJoinActivity) return;
+                const handleDetails = (detailsEv: MouseEvent) => {
+                  detailsEv.stopPropagation();
+                  detailsEv.preventDefault();
+                  if (activePopupRef.current) {
+                    activePopupRef.current.remove();
+                    activePopupRef.current = null;
+                  }
+                  if (onSelectEntityRef.current) {
+                    onSelectEntityRef.current({ id: act.id!, type: 'activity', data: act });
+                  }
+                  routerRef.current.push(`/activities/${act.id}`);
+                };
 
-                    // Synchronous in-flight lock check
-                    if (!tryAcquireActivityActionLock(act.id!)) {
-                      return;
-                    }
+                const handleJoin = async (joinEv: MouseEvent) => {
+                  joinEv.stopPropagation();
+                  joinEv.preventDefault();
 
-                    const isDirect = act.joinMode === 'direct';
-                    setActivityActionStatus(act.id!, 'submitting');
+                  if (!userRef.current) {
+                    routerRef.current.push('/login');
+                    return;
+                  }
 
-                    if (popupObj.joinBtn) {
-                      popupObj.joinBtn.setAttribute('disabled', 'true');
-                      popupObj.joinBtn.classList.add('opacity-80', 'cursor-wait');
-                      popupObj.joinBtn.innerHTML = `<span>${
-                        isDirect
-                          ? (language === 'de' ? 'Wird beigetreten …' : 'Joining …')
-                          : (language === 'de' ? 'Wird gesendet …' : 'Submitting …')
+                  if (popupObj.joinState.disabled || !onJoinActivityRef.current) return;
+
+                  // Synchronous in-flight lock check
+                  if (!tryAcquireActivityActionLock(act.id!)) {
+                    return;
+                  }
+
+                  const isDirect = act.joinMode === 'direct';
+                  setActivityActionStatus(act.id!, 'submitting');
+
+                  if (joinBtn) {
+                    joinBtn.setAttribute('disabled', 'true');
+                    joinBtn.classList.add('opacity-80', 'cursor-wait');
+                    joinBtn.innerHTML = `<span>${
+                      isDirect
+                        ? (languageRef.current === 'de' ? 'Wird beigetreten …' : 'Joining …')
+                        : (languageRef.current === 'de' ? 'Wird gesendet …' : 'Submitting …')
+                    }</span>`;
+                  }
+
+                  try {
+                    const resStatus = await onJoinActivityRef.current(act);
+                    const isJoinedRes = resStatus === 'joined' || isDirect;
+                    const newStatus = isJoinedRes ? 'joined' : 'requested';
+                    setActivityActionStatus(act.id!, newStatus);
+
+                    if (joinBtn) {
+                      joinBtn.setAttribute('disabled', 'true');
+                      joinBtn.className = `activity-popup-join-btn flex-1 min-h-[44px] py-2 px-3 ${
+                        isJoinedRes ? 'bg-emerald-600/90' : 'bg-amber-600/90'
+                      } text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-default`;
+                      joinBtn.innerHTML = `<span>${
+                        isJoinedRes
+                          ? (languageRef.current === 'de' ? 'Beigetreten' : 'Joined')
+                          : (languageRef.current === 'de' ? 'Anfrage gesendet' : 'Request sent')
                       }</span>`;
                     }
-
-                    try {
-                      const resStatus = await onJoinActivity(act);
-                      const isJoinedRes = resStatus === 'joined' || isDirect;
-                      const newStatus = isJoinedRes ? 'joined' : 'requested';
-                      setActivityActionStatus(act.id!, newStatus);
-
-                      if (popupObj.joinBtn) {
-                        popupObj.joinBtn.setAttribute('disabled', 'true');
-                        popupObj.joinBtn.className = `activity-popup-join-btn flex-1 min-h-[44px] py-2 px-3 ${
-                          isJoinedRes ? 'bg-emerald-600/90' : 'bg-amber-600/90'
-                        } text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-default`;
-                        popupObj.joinBtn.innerHTML = `<span>${
-                          isJoinedRes
-                            ? (language === 'de' ? 'Beigetreten' : 'Joined')
-                            : (language === 'de' ? 'Anfrage gesendet' : 'Request sent')
-                        }</span>`;
-                      }
-                    } catch (err: any) {
-                      setActivityActionStatus(act.id!, 'failed');
-                      if (popupObj.joinBtn) {
-                        popupObj.joinBtn.removeAttribute('disabled');
-                        const fallbackState = getActivityJoinState(act, user?.uid, language);
-                        popupObj.joinBtn.className = `activity-popup-join-btn flex-1 min-h-[44px] py-2 px-3 ${fallbackState.btnClass} font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all focus-visible:ring-2 focus-visible:ring-purple-400`;
-                        popupObj.joinBtn.innerHTML = `<span>${fallbackState.label}</span>`;
-                      }
+                  } catch (err: any) {
+                    setActivityActionStatus(act.id!, 'failed');
+                    if (joinBtn) {
+                      joinBtn.removeAttribute('disabled');
+                      const fallbackState = getActivityJoinState(act, userRef.current?.uid, languageRef.current);
+                      joinBtn.className = `activity-popup-join-btn flex-1 min-h-[44px] py-2 px-3 ${fallbackState.btnClass} font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all focus-visible:ring-2 focus-visible:ring-purple-400`;
+                      joinBtn.innerHTML = `<span>${fallbackState.label}</span>`;
                     }
-                  });
-                }
+                  }
+                };
 
-                popupObj.container.addEventListener('click', (cardEv) => {
+                const handleCardClick = (cardEv: MouseEvent) => {
                   cardEv.stopPropagation();
                   cardEv.preventDefault();
                   if (activePopupRef.current) {
                     activePopupRef.current.remove();
                     activePopupRef.current = null;
                   }
-                  onSelectEntity({ id: act.id!, type: 'activity', data: act });
-                  router.push(`/activities/${act.id}`);
-                });
+                  if (onSelectEntityRef.current) {
+                    onSelectEntityRef.current({ id: act.id!, type: 'activity', data: act });
+                  }
+                  routerRef.current.push(`/activities/${act.id}`);
+                };
 
-                activePopupRef.current = new maplibregl.Popup({
-                  className: 'aktiva-activity-popup',
-                  offset: 20,
-                  closeButton: false,
-                })
-                  .setLngLat([lon, act.lat!])
-                  .setDOMContent(popupObj.container)
-                  .addTo(map);
+                closeBtn?.addEventListener('click', handleClose);
+                detailsBtn?.addEventListener('click', handleDetails);
+                joinBtn?.addEventListener('click', handleJoin);
+                popupObj.container.addEventListener('click', handleCardClick);
+
+                const cleanupPopupListeners = () => {
+                  closeBtn?.removeEventListener('click', handleClose);
+                  detailsBtn?.removeEventListener('click', handleDetails);
+                  joinBtn?.removeEventListener('click', handleJoin);
+                  popupObj.container.removeEventListener('click', handleCardClick);
+                };
+
+                popup.on('close', cleanupPopupListeners);
               }
             }
           }
@@ -759,22 +925,35 @@ export function AktivaMap({
     const placeSource = map.getSource('places-source') as maplibregl.GeoJSONSource;
     if (placeSource) {
       const placeMarkers = layers.places ? parsePlaceMarkers(places) : [];
-      placeSource.setData(createMapGeoJSON(placeMarkers));
+      const geoJsonData = createMapGeoJSON(placeMarkers);
+      const geoJsonStr = JSON.stringify(geoJsonData);
+      if (geoJsonStr !== prevPlacesGeoJsonStrRef.current) {
+        prevPlacesGeoJsonStrRef.current = geoJsonStr;
+        placeSource.setData(geoJsonData);
+      }
     }
 
     // Update Activities Source
     const actSource = map.getSource('activities-source') as maplibregl.GeoJSONSource;
     if (actSource) {
       const actMarkers = layers.activities ? parseActivityMarkers(communityActivities) : [];
-      actSource.setData(createMapGeoJSON(actMarkers));
+      const geoJsonData = createMapGeoJSON(actMarkers);
+      const geoJsonStr = JSON.stringify(geoJsonData);
+      if (geoJsonStr !== prevActivitiesGeoJsonStrRef.current) {
+        prevActivitiesGeoJsonStrRef.current = geoJsonStr;
+        actSource.setData(geoJsonData);
+      }
     }
 
     // Update Radius Source
     const radSource = map.getSource('radius-source') as maplibregl.GeoJSONSource;
     if (radSource) {
-      radSource.setData(
-        createRadiusCircleGeoJSON(effectiveCenter[1], effectiveCenter[0], maxDistance || 10)
-      );
+      const radiusGeoJson = createRadiusCircleGeoJSON(effectiveCenter[1], effectiveCenter[0], maxDistance || 10);
+      const radiusGeoJsonStr = JSON.stringify(radiusGeoJson);
+      if (radiusGeoJsonStr !== prevRadiusGeoJsonStrRef.current) {
+        prevRadiusGeoJsonStrRef.current = radiusGeoJsonStr;
+        radSource.setData(radiusGeoJson);
+      }
     }
 
     // Update Friends Source
@@ -782,30 +961,37 @@ export function AktivaMap({
     if (friendsSource) {
       const parsedFriends = layers.friends ? nearbyFriends : [];
       const geoJsonData = createFriendsGeoJSON(parsedFriends);
-      friendsSource.setData(geoJsonData);
+      const geoJsonStr = JSON.stringify(geoJsonData);
 
-      console.log('[FRIEND MAP SOURCE]', {
-        friendCount: nearbyFriends.length,
-        geoJson: geoJsonData,
-        sourceExists: Boolean(friendsSource)
-      });
+      if (geoJsonStr !== prevFriendsGeoJsonStrRef.current) {
+        prevFriendsGeoJsonStrRef.current = geoJsonStr;
+        friendsSource.setData(geoJsonData);
 
-      if (map.getLayer('friends-area')) map.moveLayer('friends-area');
-      if (map.getLayer('friends-area-stroke')) map.moveLayer('friends-area-stroke');
-      if (map.getLayer('friends-point')) map.moveLayer('friends-point');
-      if (map.getLayer('friends-point-label')) map.moveLayer('friends-point-label');
+        const isDebugMode = process.env.NODE_ENV !== 'production' || (typeof window !== 'undefined' && ((window as any).NEXT_PUBLIC_MAP_DEBUG === 'true' || (window as any).NEXT_PUBLIC_RADAR_DEBUG === 'true'));
+        if (isDebugMode) {
+          console.log('[FRIEND MAP SOURCE]', {
+            friendCount: nearbyFriends.length,
+            geoJson: geoJsonData,
+            sourceExists: Boolean(friendsSource)
+          });
+        }
 
-      const isDebugMode = process.env.NODE_ENV !== 'production' || (typeof window !== 'undefined' && (window as any).NEXT_PUBLIC_RADAR_DEBUG === 'true');
-      if (isDebugMode) {
-        setTimeout(() => {
-          if (mapInstanceRef.current && mapInstanceRef.current.isStyleLoaded()) {
-            console.log('[FRIEND MAP RENDERED]', {
-              features: mapInstanceRef.current.queryRenderedFeatures({
-                layers: ['friends-point']
-              })
-            });
-          }
-        }, 100);
+        if (map.getLayer('friends-area')) map.moveLayer('friends-area');
+        if (map.getLayer('friends-area-stroke')) map.moveLayer('friends-area-stroke');
+        if (map.getLayer('friends-point')) map.moveLayer('friends-point');
+        if (map.getLayer('friends-point-label')) map.moveLayer('friends-point-label');
+
+        if (isDebugMode) {
+          setTimeout(() => {
+            if (mapInstanceRef.current && mapInstanceRef.current.isStyleLoaded()) {
+              console.log('[FRIEND MAP RENDERED]', {
+                features: mapInstanceRef.current.queryRenderedFeatures({
+                  layers: ['friends-point']
+                })
+              });
+            }
+          }, 100);
+        }
       }
 
       // Render interactive HTML markers for friends
@@ -820,7 +1006,7 @@ export function AktivaMap({
           const firstName = getFirstName(friend.displayName, friend.username);
           const fullName = friend.displayName || friend.username;
           const initial = (fullName || '?').substring(0, 1).toUpperCase();
-          const distText = formatDistanceBucketText(friend.distanceBucket, language);
+          const distText = formatDistanceBucketText(friend.distanceBucket, languageRef.current);
           const precMeters = normalizePrecisionMeters(friend);
 
           el.innerHTML = `
@@ -836,44 +1022,78 @@ export function AktivaMap({
 
           el.addEventListener('click', (ev) => {
             ev.stopPropagation();
-            onSelectEntity({ id: friend.userId, type: 'friend', data: friend });
+            if (onSelectEntityRef.current) {
+              onSelectEntityRef.current({ id: friend.userId, type: 'friend', data: friend });
+            }
 
             if (activePopupRef.current) {
               activePopupRef.current.remove();
               activePopupRef.current = null;
             }
 
-            const popupObj = createFriendPopupHTML(friend, language);
+            const popupObj = createFriendPopupHTML(friend, languageRef.current);
 
-            if (popupObj.closeBtn) {
-              popupObj.closeBtn.addEventListener('click', (closeEv) => {
-                closeEv.stopPropagation();
-                closeEv.preventDefault();
-                if (activePopupRef.current) {
-                  activePopupRef.current.remove();
-                  activePopupRef.current = null;
-                }
-              });
-            }
+            const popup = new maplibregl.Popup({
+              className: 'aktiva-friend-popup',
+              offset: 20,
+              closeButton: false,
+            })
+              .setLngLat([renderLng, renderLat])
+              .setDOMContent(popupObj.container)
+              .addTo(map);
 
-            popupObj.container.addEventListener('click', (cardEv) => {
+            activePopupRef.current = popup;
+
+            const popupElement = popup.getElement();
+            const closeBtn = popupElement?.querySelector<HTMLElement>('.friend-popup-close') || popupObj.closeBtn;
+            const profileBtn = popupElement?.querySelector<HTMLElement>('.friend-popup-profile-btn') || popupObj.profileBtn;
+
+            const handleClose = (closeEv: MouseEvent) => {
+              closeEv.stopPropagation();
+              closeEv.preventDefault();
+              if (activePopupRef.current) {
+                activePopupRef.current.remove();
+                activePopupRef.current = null;
+              }
+            };
+
+            const handleProfile = (profileEv: MouseEvent) => {
+              profileEv.stopPropagation();
+              profileEv.preventDefault();
+              if (activePopupRef.current) {
+                activePopupRef.current.remove();
+                activePopupRef.current = null;
+              }
+              if (onSelectEntityRef.current) {
+                onSelectEntityRef.current({ id: friend.userId, type: 'friend', data: friend });
+              }
+              routerRef.current.push(`/profile/${friend.userId}`);
+            };
+
+            const handleCardClick = (cardEv: MouseEvent) => {
               cardEv.stopPropagation();
               cardEv.preventDefault();
               if (activePopupRef.current) {
                 activePopupRef.current.remove();
                 activePopupRef.current = null;
               }
-              router.push(`/users/${friend.userId}`);
-            });
+              if (onSelectEntityRef.current) {
+                onSelectEntityRef.current({ id: friend.userId, type: 'friend', data: friend });
+              }
+              routerRef.current.push(`/profile/${friend.userId}`);
+            };
 
-            activePopupRef.current = new maplibregl.Popup({
-              className: 'aktiva-friend-popup',
-              offset: 25,
-              closeButton: false,
-            })
-              .setLngLat([renderLng, renderLat])
-              .setDOMContent(popupObj.container)
-              .addTo(map);
+            closeBtn?.addEventListener('click', handleClose);
+            profileBtn?.addEventListener('click', handleProfile);
+            popupObj.container.addEventListener('click', handleCardClick);
+
+            const cleanupPopupListeners = () => {
+              closeBtn?.removeEventListener('click', handleClose);
+              profileBtn?.removeEventListener('click', handleProfile);
+              popupObj.container.removeEventListener('click', handleCardClick);
+            };
+
+            popup.on('close', cleanupPopupListeners);
           });
 
           const marker = new maplibregl.Marker({ element: el })
@@ -884,11 +1104,6 @@ export function AktivaMap({
         });
       }
     }
-  }, [places, communityActivities, nearbyFriends, layers, maxDistance, effectiveCenter, isMapLoaded, language]);
-
-  // 3. Highlight Selected Marker with HTML Marker
-  useEffect(() => {
-    const map = mapInstanceRef.current;
     if (!map || !isMapLoaded) return;
 
     if (selectedMarkerRef.current) {

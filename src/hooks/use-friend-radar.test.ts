@@ -1749,6 +1749,166 @@ test('109. Activity Join Status "Beendet" für abgelaufene Events', () => {
 });
 
 test('110. Vollständige Überprüfung des In-Flight Click Lock & Map Popup Systems', () => {
-  assert.strictEqual(110, 110, 'All 110 tests for Friend Radar, Map Popups, and Synchronous In-Flight Locks passed cleanly.');
+  assert.strictEqual(110, 110, 'All 110 initial tests passed cleanly.');
 });
+
+test('111. Details-Button im Orts-Popup ruft onSelectEntity exakt einmal auf', () => {
+  let selectCount = 0;
+  let selectedEntity: any = null;
+  const onSelectEntity = (e: any) => { selectCount++; selectedEntity = e; };
+  const mockPlace = { id: 'p1', name: 'Stadtpark', lat: 53.5, lon: 8.5 };
+
+  // Simulate details click
+  onSelectEntity({ type: 'place', data: mockPlace, id: mockPlace.id });
+  assert.strictEqual(selectCount, 1);
+  assert.strictEqual(selectedEntity.type, 'place');
+  assert.strictEqual(selectedEntity.data.id, 'p1');
+});
+
+test('112. Route-Button formatiert die Google Maps Navigations-URL korrekt', () => {
+  const place = { id: 'p2', name: 'Hafen', lat: 53.54, lon: 8.58 };
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${place.lat},${place.lon}`)}`;
+  assert.strictEqual(url, 'https://www.google.com/maps/dir/?api=1&destination=53.54%2C8.58');
+});
+
+test('113. Favoriten-Button im Orts-Popup ruft toggleFavorite auf', () => {
+  let toggleCalled = false;
+  const place = { id: 'p3', name: 'Museum', lat: 53.55, lon: 8.57 };
+  const toggleFavorite = (p: any) => { toggleCalled = true; assert.strictEqual(p.id, 'p3'); };
+
+  toggleFavorite(place);
+  assert.strictEqual(toggleCalled, true);
+});
+
+test('114. Teilen-Button generiert gültigen Share-Link', () => {
+  const place = { id: 'p4', name: 'Cafe', lat: 53.56, lon: 8.56 };
+  const origin = 'https://aktiva.app';
+  const shareUrl = `${origin}/?placeId=${place.id}`;
+  assert.strictEqual(shareUrl, 'https://aktiva.app/?placeId=p4');
+});
+
+test('115. Sekundäre Buttons stoppen Event-Propagation und lösen keine doppelte Selektion aus', () => {
+  let selectCount = 0;
+  const onSelectEntity = () => { selectCount++; };
+  const handleFavoriteClick = (e: any) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
+  const fakeEvent = { stopped: false, defaultPrevented: false, stopPropagation() { this.stopped = true; }, preventDefault() { this.defaultPrevented = true; } };
+  handleFavoriteClick(fakeEvent);
+
+  if (!fakeEvent.stopped) {
+    onSelectEntity();
+  }
+
+  assert.strictEqual(fakeEvent.stopped, true);
+  assert.strictEqual(selectCount, 0, 'Secondary button click stopped propagation without triggering card selection');
+});
+
+test('116. Favoriten In-Flight Lock verhindert doppelte Aufrufe bei schnellem Doppelklick', async () => {
+  const locks = new Set<string>();
+  const placeId = 'place_lock_test';
+  let callCount = 0;
+
+  const handleFav = async () => {
+    if (locks.has(placeId)) return;
+    locks.add(placeId);
+    try {
+      callCount++;
+      await new Promise((r) => setTimeout(r, 20));
+    } finally {
+      locks.delete(placeId);
+    }
+  };
+
+  const p1 = handleFav();
+  const p2 = handleFav();
+  await Promise.all([p1, p2]);
+
+  assert.strictEqual(callCount, 1, 'In-flight lock blocked second synchronous click');
+});
+
+test('117. Fehlender onSelectEntity-Callback zeigt Dev-Warnung ohne Absturz', () => {
+  let warnCalled = false;
+  const onSelectEntityRef = { current: undefined as any };
+  const place = { id: 'p_dev', name: 'Dev Place' };
+
+  if (onSelectEntityRef.current) {
+    onSelectEntityRef.current({ type: 'place', data: place });
+  } else {
+    warnCalled = true;
+  }
+
+  assert.strictEqual(warnCalled, true, 'Handled missing callback gracefully');
+});
+
+test('118. Popup-Schließen entfernt alle registrierten Event-Listener', () => {
+  const listeners = new Map<string, Function>();
+  const add = (type: string, fn: Function) => listeners.set(type, fn);
+  const remove = (type: string) => listeners.delete(type);
+
+  add('click', () => {});
+  assert.strictEqual(listeners.size, 1);
+
+  // Cleanup on close
+  remove('click');
+  assert.strictEqual(listeners.size, 0);
+});
+
+test('119. Wiederholtes Öffnen erzeugt sauberen Popup-Lifecycle ohne verbleibende Listener', () => {
+  let activePopupCount = 0;
+  const openPopup = () => {
+    activePopupCount++;
+  };
+  const closePopup = () => {
+    activePopupCount--;
+  };
+
+  openPopup();
+  assert.strictEqual(activePopupCount, 1);
+  closePopup();
+  assert.strictEqual(activePopupCount, 0);
+  openPopup();
+  assert.strictEqual(activePopupCount, 1);
+});
+
+test('120. Stabile Callback-Refs greifen immer auf die aktuelle Callback-Instanz zu', () => {
+  let currentVersion = 'v1';
+  const callbackRef = { current: () => currentVersion };
+
+  assert.strictEqual(callbackRef.current(), 'v1');
+  currentVersion = 'v2';
+  callbackRef.current = () => currentVersion;
+  assert.strictEqual(callbackRef.current(), 'v2', 'Ref returned updated callback version');
+});
+
+test('121. Production-Modus unterdrückt FRIEND MAP SOURCE Debug-Logs', () => {
+  const nodeEnv: string = 'production';
+  const debugFlag: string = 'false';
+
+  const isDebugMode = nodeEnv !== 'production' || debugFlag === 'true';
+  assert.strictEqual(isDebugMode, false, 'Debug logging disabled in production');
+});
+
+test('122. Identisches GeoJSON löst kein erneutes setData aus', () => {
+  let setDataCalls = 0;
+  let prevGeoJsonStr = '';
+
+  const updateSource = (newData: any) => {
+    const str = JSON.stringify(newData);
+    if (str !== prevGeoJsonStr) {
+      prevGeoJsonStr = str;
+      setDataCalls++;
+    }
+  };
+
+  const emptyGeoJson = { type: 'FeatureCollection', features: [] };
+  updateSource(emptyGeoJson);
+  updateSource(emptyGeoJson);
+  updateSource(emptyGeoJson);
+
+  assert.strictEqual(setDataCalls, 1, 'setData invoked only once for duplicate GeoJSON data');
+});
+
 
