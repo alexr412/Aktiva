@@ -18,6 +18,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { getPrimaryIconData, translateTag, translateAppString } from '@/lib/tag-config';
 import { formatTags } from '@/lib/tag-parser';
 import { useToast } from '@/hooks/use-toast';
+import { tryAcquireActivityActionLock, releaseActivityActionLock, setActivityActionStatus } from '@/lib/activity-action-state';
 import Link from 'next/link';
 
 import { CategoryCardDecoration } from './category-card-decoration';
@@ -125,22 +126,32 @@ export function ActivityListItem({ activity, user, onJoin, hasRequested }: Activ
             return;
         }
 
+        if (!tryAcquireActivityActionLock(activity.id)) return;
+
         const resolvedMode = activity.joinMode === 'direct' ? 'direct' : 'request';
-        console.log("[JOIN_FLOW_DEBUG]", {
-            activityId: activity.id,
-            joinMode: activity.joinMode,
-            resolvedMode,
-            action: resolvedMode === 'direct' ? 'joinActivity' : 'requestJoinActivity'
-        });
+        if (process.env.NODE_ENV !== 'production') {
+            console.log("[JOIN_FLOW_DEBUG]", {
+                activityId: activity.id,
+                joinMode: activity.joinMode,
+                resolvedMode,
+                action: resolvedMode === 'direct' ? 'joinActivity' : 'requestJoinActivity'
+            });
+        }
 
         setIsJoining(true);
+        setActivityActionStatus(activity.id, 'submitting');
         try { 
             await onJoin(activity); 
             if (resolvedMode === 'request') {
                 setHasRequestedLocal(true);
+                setActivityActionStatus(activity.id, 'requested');
+            } else {
+                setActivityActionStatus(activity.id, 'joined');
             }
         } catch (error) { 
             setIsJoining(false); 
+            releaseActivityActionLock(activity.id);
+            setActivityActionStatus(activity.id, 'failed');
         }
     };
     

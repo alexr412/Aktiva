@@ -200,6 +200,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSocialLegalConsentPending(false);
 
       await currentUser.reload();
+      try {
+        await currentUser.getIdToken(true);
+      } catch (tokenErr) {
+        console.warn('Failed to refresh token after reload:', tokenErr);
+      }
       const freshUser = auth?.currentUser || currentUser;
       
 
@@ -486,6 +491,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (authUser) {
         
         authUser.reload().then(async () => {
+          try {
+            await authUser.getIdToken(true);
+          } catch (tokenErr) {
+            console.warn('Failed to refresh token after authUser reload:', tokenErr);
+          }
           const freshUser = auth?.currentUser || authUser;
           
           setUser(freshUser);

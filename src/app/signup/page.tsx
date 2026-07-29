@@ -312,6 +312,11 @@ function SignupPageContent() {
       }
 
       await user.reload();
+      try {
+        await user.getIdToken(true);
+      } catch (tokenErr) {
+        console.warn("Failed to refresh ID token in signup:", tokenErr);
+      }
       
       if (!user.emailVerified) {
         let verificationEmailSent = false;

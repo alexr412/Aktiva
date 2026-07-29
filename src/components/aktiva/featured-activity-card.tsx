@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { getPrimaryIconData, translateAppString } from '@/lib/tag-config';
 import { CategoryCardDecoration } from './category-card-decoration';
+import { tryAcquireActivityActionLock, releaseActivityActionLock, setActivityActionStatus } from '@/lib/activity-action-state';
 import Link from 'next/link';
 
 interface FeaturedActivityCardProps {
@@ -116,15 +117,23 @@ export function FeaturedActivityCard({ activity, user, onJoin, hasRequested }: F
             return;
         }
 
+        if (!tryAcquireActivityActionLock(activity.id)) return;
+
         const resolvedMode = activity.joinMode === 'direct' ? 'direct' : 'request';
         setIsJoining(true);
+        setActivityActionStatus(activity.id, 'submitting');
         try { 
             await onJoin(activity); 
             if (resolvedMode === 'request') {
                 setHasRequestedLocal(true);
+                setActivityActionStatus(activity.id, 'requested');
+            } else {
+                setActivityActionStatus(activity.id, 'joined');
             }
         } catch (error) { 
             setIsJoining(false); 
+            releaseActivityActionLock(activity.id);
+            setActivityActionStatus(activity.id, 'failed');
         }
     };
     

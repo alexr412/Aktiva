@@ -3303,6 +3303,92 @@ async function runTests() {
 
     console.log('✅ Aktiva Phase 2 Radar Security Rules Tests PASSED!');
     console.log('✅ Aktiva Premium & System Fields Security Tests PASSED!');
+
+    // =========================================================================
+    // Regression Test: Onboarding Full Flow
+    // Account creation -> Email verification -> Onboarding completion -> Save -> Redirect -> Load protected data
+    // =========================================================================
+    console.log('Running Suite: Onboarding Complete Flow Regression Test...');
+    
+    // Seed a sample place fixture for post-redirect protected data query
+    await seedDoc('places/place_onboarding_test', {
+      id: 'place_onboarding_test',
+      name: 'Aachen Cathedral',
+      activityCount: 1,
+      lastActivityId: 'act_1'
+    });
+
+    const flowUid = 'flow_user_123';
+    // User with email_verified: true context
+    const verifiedUserDb = testEnv.authenticatedContext(flowUid, { email_verified: true }).firestore();
+
+    // Step 1: Account creation (Initial user profile document creation)
+    const initialUserData = {
+      uid: flowUid,
+      displayName: 'Flow User',
+      email: 'flow@test.com',
+      photoURL: null,
+      onboardingCompleted: false,
+      friends: [],
+      friendRequestsSent: [],
+      friendRequestsReceived: [],
+      hiddenEntityIds: [],
+      activeTabs: ['Sights'],
+      likedTags: [],
+      dislikedTags: [],
+      categoryAffinities: {},
+      isPremium: false,
+      isSupporter: false,
+      isCreator: false,
+      tokens: 0,
+      successfulFreeHosts: 0,
+      fiatBalance: 0,
+      escrowBalance: 0,
+      balancesInCents: true,
+      successfulReferrals: 0,
+      pointsBalance: 0,
+      pointsLifetime: 0,
+      level: 1,
+      averageRating: 0,
+      ratingCount: 0,
+      kycStatus: 'unverified',
+      blacklist: { soft: [], hard: [] },
+      role: 'user',
+      isBanned: false,
+    };
+    await assertSucceeds(setDoc(doc(verifiedUserDb, `users/${flowUid}`), initialUserData));
+
+    // Step 2 & 3: Onboarding completion - Valid client payload without protected/system fields
+    const validOnboardingPayload = {
+      displayName: 'Flow User Updated',
+      birthday: '1998-10-20',
+      age: 27,
+      bio: 'Enthusiastic explorer',
+      location: 'Aachen',
+      interests: ['Sports', 'Outdoors'],
+      tinderInterests: [],
+      onboardingCompleted: true,
+      photoURL: 'https://example.com/avatar.jpg',
+      categoryAffinities: {}
+    };
+    await assertSucceeds(updateDoc(doc(verifiedUserDb, `users/${flowUid}`), validOnboardingPayload));
+
+    // Step 4: Verify user document in Firestore has onboardingCompleted == true
+    const updatedSnap = await getDoc(doc(verifiedUserDb, `users/${flowUid}`));
+    assert.strictEqual(updatedSnap.exists(), true);
+    assert.strictEqual(updatedSnap.data()?.onboardingCompleted, true);
+
+    // Step 5: Post-redirect load of protected data (reading /places/{placeId} requiring isUserOnboardedAndActive)
+    await assertSucceeds(getDoc(doc(verifiedUserDb, 'places/place_onboarding_test')));
+
+    // Step 6: Negative check - Ensure that sending protected fields during onboarding update (e.g. proximitySettings, premiumStartsAt, role) FAILS
+    const forbiddenPayload = {
+      ...validOnboardingPayload,
+      proximitySettings: { enabled: true, radiusKm: 25 },
+    };
+    await assertFails(updateDoc(doc(verifiedUserDb, `users/${flowUid}`), forbiddenPayload));
+
+    console.log('✅ Onboarding Complete Flow Regression Test PASSED!');
   }
 
   console.log('🎉 ALL SECURITY RULES TESTS PASSED SUCCESSFULLY! 🎉');

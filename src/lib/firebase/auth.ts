@@ -140,17 +140,21 @@ export async function handleSuccessfulSocialLogin(options: {
 
   if (typeof window !== 'undefined') {
     if ((window as any).__AKTIVA_LOGIN_PROCESSING__) {
-      console.warn("[LEGAL DEBUG] handleSuccessfulSocialLogin already processing/processed, skipping duplicate run.");
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn("[LEGAL DEBUG] handleSuccessfulSocialLogin already processing/processed, skipping duplicate run.");
+      }
       return;
     }
     (window as any).__AKTIVA_LOGIN_PROCESSING__ = true;
   }
 
-  console.warn("[LEGAL DEBUG] handleSuccessfulSocialLogin started", {
-    uid: user.uid,
-    email: user.email,
-    timestamp: Date.now()
-  });
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn("[LEGAL DEBUG] handleSuccessfulSocialLogin started", {
+      uid: user.uid,
+      email: user.email,
+      timestamp: Date.now()
+    });
+  }
 
   // 1. Profil laden / anlegen
   if (!db) throw new Error('Firestore is not initialized.');
@@ -159,7 +163,9 @@ export async function handleSuccessfulSocialLogin(options: {
   let profileData = userDocSnap.exists() ? userDocSnap.data() : null;
 
   if (!profileData) {
-    console.warn("[LEGAL DEBUG] Profile does not exist, creating profile", { uid: user.uid });
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn("[LEGAL DEBUG] Profile does not exist, creating profile", { uid: user.uid });
+    }
     await createUserProfileDocument(user);
     const freshSnap = await getDoc(userDocRef);
     profileData = freshSnap.exists() ? freshSnap.data() : null;
@@ -169,7 +175,9 @@ export async function handleSuccessfulSocialLogin(options: {
 
   // 2. Legal Consent prüfen
   if (!hasAcceptedLegal) {
-    console.warn("[LEGAL DEBUG] Legal consent not accepted, opening dialog", { uid: user.uid });
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn("[LEGAL DEBUG] Legal consent not accepted, opening dialog", { uid: user.uid });
+    }
     setSocialLegalConsentPending(true);
     setIsLoading?.(false);
     if (typeof window !== 'undefined') {
@@ -199,12 +207,14 @@ export async function handleSuccessfulSocialLogin(options: {
       console.warn("Could not check/resend email verification link:", verifError);
     }
 
-    console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
-      source: "handleSuccessfulSocialLogin - email unverified",
-      target: "signOut & redirect /login?verification=required",
-      uid: user.uid,
-      timestamp: Date.now()
-    });
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
+        source: "handleSuccessfulSocialLogin - email unverified",
+        target: "signOut & redirect /login?verification=required",
+        uid: user.uid,
+        timestamp: Date.now()
+      });
+    }
     await signOut();
 
     router.replace('/login?verification=required');
@@ -268,13 +278,15 @@ export async function handleSuccessfulSocialLogin(options: {
     }
   }
 
-  console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
-    source: "handleSuccessfulSocialLogin - flow completed",
-    target: onboardingCompleted ? resolvedTarget : "/onboarding",
-    uid: user.uid,
-    onboardingCompleted,
-    timestamp: Date.now()
-  });
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
+      source: "handleSuccessfulSocialLogin - flow completed",
+      target: onboardingCompleted ? resolvedTarget : "/onboarding",
+      uid: user.uid,
+      onboardingCompleted,
+      timestamp: Date.now()
+    });
+  }
   
   if (onboardingCompleted) {
     router.push(resolvedTarget);

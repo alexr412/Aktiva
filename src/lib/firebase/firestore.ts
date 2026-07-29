@@ -167,14 +167,108 @@ export async function getPublicProfileDirect(targetUserId: string): Promise<Publ
   return snap.data() as PublicUserProfile;
 }
 
+export const PROTECTED_USER_FIELDS = new Set([
+  'role',
+  'isAdmin',
+  'isBanned',
+  'isPremium',
+  'isSupporter',
+  'isCreator',
+  'isOrganizer',
+  'balancesInCents',
+  'kycStatus',
+  'premiumSource',
+  'premiumCampaignId',
+  'escrowBalance',
+  'fiatBalance',
+  'referralCode',
+  'referredBy',
+  'username',
+  'usernameLowercase',
+  'successfulFreeHosts',
+  'ratingCount',
+  'averageRating',
+  'successfulReferrals',
+  'pointsBalance',
+  'pointsLifetime',
+  'level',
+  'lastLocation',
+  'proximitySettings',
+  'friends',
+  'friendRequestsSent',
+  'friendRequestsReceived',
+  'blacklist',
+  'premiumEntitlements',
+  'usernameChangeHistory',
+  'premiumStartsAt',
+  'premiumExpiresAt',
+  'usernameLastChangedAt',
+  'subscriptionStatus',
+  'organizerStatus',
+  'createdAt',
+]);
+
 export async function updateUserProfile(userId: string, data: Partial<UserProfile>) {
     if (!db) throw new Error('Firestore is not initialized.');
     const userDocRef = doc(db, 'users', userId);
-    const { 
-      username, usernameLowercase, usernameLastChangedAt, usernameChangeHistory, 
-      ...filteredData 
-    } = data;
-    await updateDoc(userDocRef, removeUndefinedFields(filteredData));
+
+    const filteredData: Record<string, any> = {};
+    for (const key of Object.keys(data)) {
+      if (!PROTECTED_USER_FIELDS.has(key)) {
+        filteredData[key] = (data as any)[key];
+      }
+    }
+
+    const cleanedPayload = removeUndefinedFields(filteredData);
+    if (Object.keys(cleanedPayload).length === 0) return;
+
+    const snap = await getDoc(userDocRef);
+    if (!snap.exists()) {
+      const baseProfile: UserProfile = {
+        uid: userId,
+        displayName: data.displayName !== undefined ? data.displayName : null,
+        email: data.email !== undefined ? data.email : null,
+        photoURL: data.photoURL !== undefined ? data.photoURL : null,
+        onboardingCompleted: false,
+        friends: [],
+        friendRequestsSent: [],
+        friendRequestsReceived: [],
+        hiddenEntityIds: [],
+        activeTabs: ['Sights', 'Nature', 'Restaurants'],
+        likedTags: [],
+        dislikedTags: [],
+        categoryAffinities: {},
+        isPremium: false,
+        isSupporter: false,
+        isCreator: false,
+        tokens: 0,
+        successfulFreeHosts: 0,
+        fiatBalance: 0,
+        escrowBalance: 0,
+        balancesInCents: true,
+        successfulReferrals: 0,
+        pointsBalance: 0,
+        pointsLifetime: 0,
+        level: 1,
+        averageRating: 0,
+        ratingCount: 0,
+        kycStatus: 'unverified',
+        blacklist: { soft: [], hard: [] },
+        notificationSettings: {
+          localHighlights: false,
+          nearbyFriendActivityNotifications: true,
+          friendRequests: true,
+          activityInvites: true,
+          chatMessages: true,
+        },
+        role: 'user',
+        isBanned: false,
+        ...cleanedPayload,
+      };
+      await setDoc(userDocRef, removeUndefinedFields(baseProfile), { merge: true });
+    } else {
+      await setDoc(userDocRef, cleanedPayload, { merge: true });
+    }
 }
 
 export async function updatePresetAvatar(userId: string, avatarUrl: string) {
@@ -807,12 +901,14 @@ export async function joinActivity(
 
   try {
     const resolvedMode = joinMode === 'direct' ? 'direct' : 'request';
-    console.log("[JOIN_FLOW_DEBUG]", {
-      activityId,
-      joinMode,
-      resolvedMode,
-      action: resolvedMode === 'direct' ? 'joinActivity' : 'requestJoinActivity'
-    });
+    if (process.env.NODE_ENV !== 'production') {
+      console.log("[JOIN_FLOW_DEBUG]", {
+        activityId,
+        joinMode,
+        resolvedMode,
+        action: resolvedMode === 'direct' ? 'joinActivity' : 'requestJoinActivity'
+      });
+    }
 
     if (resolvedMode !== 'direct') {
       const res = await requestJoinActivity(activityId, user);
@@ -896,7 +992,7 @@ export async function joinActivity(
         throw `This activity has reached its maximum of ${activityData.maxParticipants} participants.`;
       }
 
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV !== 'production') {
         const activityRuleChecks = {
           isSignedIn: !!user?.uid,
           isUserOnboardedAndActive: userProfileData?.onboardingCompleted === true && !userProfileData?.isBanned,

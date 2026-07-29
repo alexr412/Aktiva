@@ -603,11 +603,7 @@ function OnboardingContent() {
         tinderInterests: data.tinderInterests || [],
         onboardingCompleted: true,
         photoURL: data.photoURL !== undefined ? data.photoURL : (userProfile?.photoURL || null),
-        categoryAffinities: data.affinities || {},
-        proximitySettings: {
-          enabled: true,
-          radiusKm: userProfile?.proximitySettings?.radiusKm || 25
-        }
+        categoryAffinities: data.affinities || {}
       };
 
       if (needsUsername && data.username) {
@@ -628,7 +624,14 @@ function OnboardingContent() {
         }
       }
 
-      // Phase 2: Direct writes to lastLocation on user profile are disabled for privacy.
+      // Phase 2: Direct writes to lastLocation/proximitySettings on user profile are disabled for privacy.
+
+      try {
+        await user.reload();
+        await user.getIdToken(true);
+      } catch (reloadErr) {
+        console.warn('User token refresh before onboarding save skipped:', reloadErr);
+      }
 
       await updateUserProfile(user.uid, updateData);
 

@@ -1,6 +1,7 @@
 import type { Place, Activity } from '@/lib/types';
 import type { ActivityCapacityStatus, MapMarkerItem } from './map-types';
 import { getFirstName, normalizePrecisionMeters, formatDistanceBucketText } from '../../lib/radar-types';
+import { getActivityActionStatus } from '../../lib/activity-action-state';
 
 /**
  * Validates latitude and longitude coordinates.
@@ -388,6 +389,21 @@ export function getActivityJoinState(
   const isHost = currentUserId && activity.hostId === currentUserId;
   const isJoined = currentUserId && activity.participantIds?.includes(currentUserId);
   const isPending = currentUserId && (activity as any).pendingRequestIds?.includes(currentUserId);
+
+  const persistentStatus = getActivityActionStatus(activity.id);
+  if (persistentStatus === 'submitting') {
+    const isDirect = activity.joinMode === 'direct';
+    const label = isDirect
+      ? (lang === 'de' ? 'Wird beigetreten …' : 'Joining …')
+      : (lang === 'de' ? 'Wird gesendet …' : 'Submitting …');
+    return { action: 'submitting', label, disabled: true, btnClass: 'bg-purple-400 dark:bg-purple-900/60 text-white cursor-wait opacity-80' };
+  }
+  if (persistentStatus === 'requested') {
+    return { action: 'pending', label: lang === 'de' ? 'Anfrage gesendet' : 'Request sent', disabled: true, btnClass: 'bg-amber-600/90 text-white cursor-default' };
+  }
+  if (persistentStatus === 'joined') {
+    return { action: 'joined', label: lang === 'de' ? 'Beigetreten' : 'Joined', disabled: true, btnClass: 'bg-emerald-600/90 text-white cursor-default' };
+  }
   
   const count = activity.participantIds?.length ?? (activity.participantsPreview?.length || 1);
   const max = activity.maxParticipants ?? 4;
@@ -412,9 +428,9 @@ export function getActivityJoinState(
     return { action: 'full', label: lang === 'de' ? 'Ausgebucht' : 'Full', disabled: true, btnClass: 'bg-slate-300 dark:bg-neutral-800 text-slate-500 cursor-not-allowed' };
   }
   if (activity.joinMode === 'request' || (activity as any).requiresApproval) {
-    return { action: 'request', label: lang === 'de' ? 'Anfragen' : 'Request', disabled: false, btnClass: 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/25' };
+    return { action: 'request', label: lang === 'de' ? 'Teilnahme anfragen' : 'Request to join', disabled: false, btnClass: 'bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white shadow-purple-500/25' };
   }
-  return { action: 'join', label: lang === 'de' ? 'Teilnehmen' : 'Join', disabled: false, btnClass: 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/25' };
+  return { action: 'join', label: lang === 'de' ? 'Teilnehmen' : 'Join', disabled: false, btnClass: 'bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white shadow-purple-500/25' };
 }
 
 function createSafeElement(tag: string, className: string, htmlContent: string): any {
@@ -431,8 +447,11 @@ function createSafeElement(tag: string, className: string, htmlContent: string):
     querySelector: (selector: string) => {
       const classTarget = selector.startsWith('.') ? selector.slice(1) : selector;
       if (htmlContent.includes(classTarget)) {
+        const classRegex = new RegExp(`class="([^"]*${classTarget}[^"]*)"`);
+        const match = htmlContent.match(classRegex);
+        const fullClassName = match ? match[1] : classTarget;
         return {
-          className: classTarget,
+          className: fullClassName,
           innerHTML: htmlContent,
           addEventListener: (_event: string, _fn: Function) => {},
         };
@@ -452,12 +471,14 @@ export function createPlacePopupHTML(
   place: Place,
   userLocation: { lat: number; lng: number } | null,
   lang: 'de' | 'en' = 'de',
-  isFavorite: boolean = false
+  isFavorite: boolean = false,
+  isFavoriteLoading: boolean = false
 ): {
   container: HTMLDivElement;
   closeBtn: HTMLElement | null;
   detailsBtn: HTMLElement | null;
   routeBtn: HTMLElement | null;
+  shareBtn: HTMLElement | null;
   favBtn: HTMLElement | null;
 } {
   const category = place.categories?.[0] || place.category || (lang === 'de' ? 'Ort' : 'Place');
@@ -469,12 +490,16 @@ export function createPlacePopupHTML(
 
   const htmlContent = `
     <div class="relative w-full h-24 bg-gradient-to-br from-emerald-600 to-teal-700 overflow-hidden flex items-center justify-center">
-      <button type="button" class="friend-popup-close absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
+      <button type="button" class="friend-popup-close absolute top-2 right-2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 active:bg-black/80 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
 
-      <button type="button" class="place-popup-fav-btn absolute top-2 left-2 w-7 h-7 rounded-full ${isFavorite ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 text-white'} flex items-center justify-center transition-all z-20 shadow-md cursor-pointer" aria-label="Favorit">
-        <svg class="w-3.5 h-3.5 ${isFavorite ? 'fill-white' : 'fill-none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+      <button type="button" class="place-popup-fav-btn absolute top-2 left-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-full ${isFavorite ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 active:bg-black/80 text-white'} flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400" aria-label="${isFavorite ? (lang === 'de' ? 'Favorit entfernen' : 'Remove favorite') : (lang === 'de' ? 'Als Favorit speichern' : 'Save as favorite')}" ${isFavoriteLoading ? 'disabled' : ''}>
+        ${
+          isFavoriteLoading
+            ? `<svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`
+            : `<svg class="w-4 h-4 ${isFavorite ? 'fill-white' : 'fill-none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`
+        }
       </button>
 
       ${
@@ -503,13 +528,21 @@ export function createPlacePopupHTML(
         <span>${escapeHTML(place.address || (place as any).city || '')}</span>
       </div>
 
-      <div class="mt-2 flex items-center gap-2">
-        <button type="button" class="place-popup-details-btn flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1 transition-all">
+      <div class="mt-2.5 flex flex-col gap-2">
+        <button type="button" class="place-popup-details-btn min-h-[44px] w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="${lang === 'de' ? 'Details ansehen' : 'View details'}">
           <span>${lang === 'de' ? 'Details ansehen' : 'View details'}</span>
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
         </button>
-        <button type="button" class="place-popup-route-btn py-1.5 px-2.5 bg-slate-200/80 hover:bg-slate-300 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-700 dark:text-neutral-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition-all" title="Route">
-          <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+        <div class="flex items-center gap-2">
+          <button type="button" class="place-popup-route-btn flex-1 min-h-[44px] py-2 px-3 bg-slate-200/80 hover:bg-slate-300 active:bg-slate-400/80 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-700 dark:text-neutral-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="Route">
+            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+            <span>Route</span>
+          </button>
+          <button type="button" class="place-popup-share-btn flex-1 min-h-[44px] py-2 px-3 bg-slate-200/80 hover:bg-slate-300 active:bg-slate-400/80 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-700 dark:text-neutral-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="${lang === 'de' ? 'Teilen' : 'Share'}">
+            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+            <span>${lang === 'de' ? 'Teilen' : 'Share'}</span>
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -521,6 +554,7 @@ export function createPlacePopupHTML(
     closeBtn: container.querySelector('.friend-popup-close'),
     detailsBtn: container.querySelector('.place-popup-details-btn'),
     routeBtn: container.querySelector('.place-popup-route-btn'),
+    shareBtn: container.querySelector('.place-popup-share-btn'),
     favBtn: container.querySelector('.place-popup-fav-btn'),
   };
 }
@@ -586,11 +620,11 @@ export function createActivityPopupHTML(
         ${lang === 'de' ? 'Organisiert von' : 'Hosted by'} @${escapeHTML(hostName)}
       </div>
 
-      <div class="mt-2 flex items-center gap-2">
-        <button type="button" class="activity-popup-join-btn flex-1 py-1.5 px-2.5 ${joinState.btnClass} font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1 transition-all" ${joinState.disabled ? 'disabled' : ''}>
+      <div class="mt-2.5 flex items-center gap-2">
+        <button type="button" class="activity-popup-join-btn flex-1 min-h-[44px] py-2 px-3 ${joinState.btnClass} font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all focus-visible:ring-2 focus-visible:ring-purple-400" ${joinState.disabled ? 'disabled' : ''} aria-label="${joinState.label}">
           <span>${joinState.label}</span>
         </button>
-        <button type="button" class="activity-popup-details-btn py-1.5 px-2.5 bg-slate-200/80 hover:bg-slate-300 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-700 dark:text-neutral-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition-all">
+        <button type="button" class="activity-popup-details-btn min-h-[44px] py-2 px-3 bg-slate-200/80 hover:bg-slate-300 active:bg-slate-400/80 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-700 dark:text-neutral-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all focus-visible:ring-2 focus-visible:ring-purple-400" aria-label="${lang === 'de' ? 'Details ansehen' : 'View details'}">
           <span>Details</span>
         </button>
       </div>

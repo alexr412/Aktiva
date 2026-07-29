@@ -24,8 +24,14 @@ import {
   createPlacePopupHTML,
   createActivityPopupHTML,
   createFriendPopupHTML,
+  getActivityJoinState,
 } from './map-marker-data';
 import { getFirstName, normalizePrecisionMeters, formatDistanceBucketText } from '@/lib/radar-types';
+import {
+  tryAcquireActivityActionLock,
+  setActivityActionStatus,
+  getActivityActionStatus,
+} from '@/lib/activity-action-state';
 import { MapControls } from './map-controls';
 import { MapResultPanel } from './map-result-panel';
 import { MapResultSheet } from './map-result-sheet';
@@ -195,6 +201,21 @@ export function AktivaMap({
       });
 
       mapInstanceRef.current = map;
+
+      // Handle missing style images gracefully (e.g. road_, poi icons) to eliminate console warnings
+      map.on('styleimagemissing', (e) => {
+        const id = e.id;
+        if (!map.hasImage(id)) {
+          const width = 1;
+          const height = 1;
+          const data = new Uint8Array(4); // transparent RGBA pixel
+          try {
+            map.addImage(id, { width, height, data });
+          } catch {
+            // Ignore if image was added concurrently
+          }
+        }
+      });
 
       map.on('load', () => {
         setIsMapLoaded(true);
@@ -475,6 +496,18 @@ export function AktivaMap({
                   });
                 }
 
+                if (popupObj.detailsBtn) {
+                  popupObj.detailsBtn.addEventListener('click', (detailsEv) => {
+                    detailsEv.stopPropagation();
+                    detailsEv.preventDefault();
+                    if (activePopupRef.current) {
+                      activePopupRef.current.remove();
+                      activePopupRef.current = null;
+                    }
+                    onSelectEntity({ id: place.id, type: 'place', data: place });
+                  });
+                }
+
                 if (popupObj.favBtn) {
                   popupObj.favBtn.addEventListener('click', (favEv) => {
                     favEv.stopPropagation();
@@ -487,7 +520,41 @@ export function AktivaMap({
                   popupObj.routeBtn.addEventListener('click', (routeEv) => {
                     routeEv.stopPropagation();
                     routeEv.preventDefault();
+                    if (activePopupRef.current) {
+                      activePopupRef.current.remove();
+                      activePopupRef.current = null;
+                    }
                     window.open(`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${lon}`, '_blank');
+                  });
+                }
+
+                if (popupObj.shareBtn) {
+                  popupObj.shareBtn.addEventListener('click', async (shareEv) => {
+                    shareEv.stopPropagation();
+                    shareEv.preventDefault();
+                    const shareUrl = `${window.location.origin}/?placeId=${place.id}`;
+                    const shareData = {
+                      title: place.name,
+                      text: language === 'de' ? `Schau dir ${place.name} auf Aktiva an!` : `Check out ${place.name} on Aktiva!`,
+                      url: shareUrl,
+                    };
+                    if (typeof navigator !== 'undefined' && navigator.share) {
+                      try {
+                        await navigator.share(shareData);
+                      } catch {
+                        // User cancelled share
+                      }
+                    } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                      try {
+                        await navigator.clipboard.writeText(shareUrl);
+                        toast({
+                          title: language === 'de' ? 'Link kopiert!' : 'Link copied!',
+                          description: language === 'de' ? 'Link in Zwischenablage kopiert.' : 'Link copied to clipboard.'
+                        });
+                      } catch (err) {
+                        console.error('Clipboard copy failed:', err);
+                      }
+                    }
                   });
                 }
 
@@ -519,8 +586,8 @@ export function AktivaMap({
           const feature = e.features?.[0];
           if (feature?.properties?.id) {
             const act = communityActivities.find((a) => a.id === feature.properties.id);
-            if (act) {
-              onSelectEntity({ id: act.id!, type: 'activity', data: act });
+            if (act && act.id) {
+              onSelectEntity({ id: act.id, type: 'activity', data: act });
 
               if (activePopupRef.current) {
                 activePopupRef.current.remove();
@@ -542,12 +609,74 @@ export function AktivaMap({
                   });
                 }
 
+                if (popupObj.detailsBtn) {
+                  popupObj.detailsBtn.addEventListener('click', (detailsEv) => {
+                    detailsEv.stopPropagation();
+                    detailsEv.preventDefault();
+                    if (activePopupRef.current) {
+                      activePopupRef.current.remove();
+                      activePopupRef.current = null;
+                    }
+                    onSelectEntity({ id: act.id!, type: 'activity', data: act });
+                    router.push(`/activities/${act.id}`);
+                  });
+                }
+
                 if (popupObj.joinBtn) {
-                  popupObj.joinBtn.addEventListener('click', (joinEv) => {
+                  popupObj.joinBtn.addEventListener('click', async (joinEv) => {
                     joinEv.stopPropagation();
                     joinEv.preventDefault();
-                    if (onJoinActivity && !popupObj.joinState.disabled) {
-                      onJoinActivity(act);
+
+                    if (!user) {
+                      router.push('/login');
+                      return;
+                    }
+
+                    if (popupObj.joinState.disabled || !onJoinActivity) return;
+
+                    // Synchronous in-flight lock check
+                    if (!tryAcquireActivityActionLock(act.id!)) {
+                      return;
+                    }
+
+                    const isDirect = act.joinMode === 'direct';
+                    setActivityActionStatus(act.id!, 'submitting');
+
+                    if (popupObj.joinBtn) {
+                      popupObj.joinBtn.setAttribute('disabled', 'true');
+                      popupObj.joinBtn.classList.add('opacity-80', 'cursor-wait');
+                      popupObj.joinBtn.innerHTML = `<span>${
+                        isDirect
+                          ? (language === 'de' ? 'Wird beigetreten …' : 'Joining …')
+                          : (language === 'de' ? 'Wird gesendet …' : 'Submitting …')
+                      }</span>`;
+                    }
+
+                    try {
+                      const resStatus = await onJoinActivity(act);
+                      const isJoinedRes = resStatus === 'joined' || isDirect;
+                      const newStatus = isJoinedRes ? 'joined' : 'requested';
+                      setActivityActionStatus(act.id!, newStatus);
+
+                      if (popupObj.joinBtn) {
+                        popupObj.joinBtn.setAttribute('disabled', 'true');
+                        popupObj.joinBtn.className = `activity-popup-join-btn flex-1 min-h-[44px] py-2 px-3 ${
+                          isJoinedRes ? 'bg-emerald-600/90' : 'bg-amber-600/90'
+                        } text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-default`;
+                        popupObj.joinBtn.innerHTML = `<span>${
+                          isJoinedRes
+                            ? (language === 'de' ? 'Beigetreten' : 'Joined')
+                            : (language === 'de' ? 'Anfrage gesendet' : 'Request sent')
+                        }</span>`;
+                      }
+                    } catch (err: any) {
+                      setActivityActionStatus(act.id!, 'failed');
+                      if (popupObj.joinBtn) {
+                        popupObj.joinBtn.removeAttribute('disabled');
+                        const fallbackState = getActivityJoinState(act, user?.uid, language);
+                        popupObj.joinBtn.className = `activity-popup-join-btn flex-1 min-h-[44px] py-2 px-3 ${fallbackState.btnClass} font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all focus-visible:ring-2 focus-visible:ring-purple-400`;
+                        popupObj.joinBtn.innerHTML = `<span>${fallbackState.label}</span>`;
+                      }
                     }
                   });
                 }
@@ -560,9 +689,7 @@ export function AktivaMap({
                     activePopupRef.current = null;
                   }
                   onSelectEntity({ id: act.id!, type: 'activity', data: act });
-                  if (act.id) {
-                    router.push(`/activities/${act.id}`);
-                  }
+                  router.push(`/activities/${act.id}`);
                 });
 
                 activePopupRef.current = new maplibregl.Popup({

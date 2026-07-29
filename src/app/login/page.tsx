@@ -404,6 +404,11 @@ function LoginPageContent() {
       }
 
       await user.reload();
+      try {
+        await user.getIdToken(true);
+      } catch (tokenErr) {
+        console.warn("Failed to refresh ID token in login:", tokenErr);
+      }
       
       if (!user.emailVerified) {
         let verificationEmailSent = false;

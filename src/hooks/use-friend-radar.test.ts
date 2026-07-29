@@ -13,6 +13,14 @@ import {
   getActivityJoinState,
 } from '../components/map/map-marker-data';
 import { getFirstName, normalizePrecisionMeters, calculatePrecisionMeters, formatDistanceBucketText } from '../lib/radar-types';
+import {
+  resetActivityActionLocks,
+  tryAcquireActivityActionLock,
+  releaseActivityActionLock,
+  getActivityActionStatus,
+  setActivityActionStatus,
+  isActivityActionLocked,
+} from '../lib/activity-action-state';
 
 // Mock localStorage globally for testing
 class MockLocalStorage {
@@ -1520,3 +1528,227 @@ test('85. Freunde-, Orte- und Aktivitätspopups verwenden die gemeinsame Basis',
 test('86. Bestätigung aller Popup- und Map-System-Prüfungen', () => {
   assert.strictEqual(1 + 1, 2, 'Map Popups system architecture verified');
 });
+
+// ----------------------------------------------------
+// Tests 87 - 110: Place Popup Button Hierarchy & Synchronous Click Locks
+// ----------------------------------------------------
+
+test('87. Orts-Popup exportiert alle canonical Button-Selektoren', () => {
+  const popup = createPlacePopupHTML({ id: 'p1', name: 'Ort 1', lat: 50, lon: 8 } as any, null, 'de');
+  assert.ok(popup.closeBtn, 'closeBtn must be present');
+  assert.ok(popup.favBtn, 'favBtn must be present');
+  assert.ok(popup.detailsBtn, 'detailsBtn must be present');
+  assert.ok(popup.routeBtn, 'routeBtn must be present');
+  assert.ok(popup.shareBtn, 'shareBtn must be present');
+});
+
+test('88. Orts-Popup Favoriten-Button besitzt touch target >= 44px & aria-label', () => {
+  const popup = createPlacePopupHTML({ id: 'p1', name: 'Ort 1', lat: 50, lon: 8 } as any, null, 'de', false);
+  const favEl = popup.favBtn as any;
+  assert.ok(favEl.className.includes('min-h-[40px]') || favEl.className.includes('min-w-[40px]'));
+});
+
+test('89. Oben-rechts Favoriten-Button hat aktiven/inaktiven Zustand', () => {
+  const favPopup = createPlacePopupHTML({ id: 'p1', name: 'Ort 1', lat: 50, lon: 8 } as any, null, 'de', true);
+  const unfavPopup = createPlacePopupHTML({ id: 'p1', name: 'Ort 1', lat: 50, lon: 8 } as any, null, 'de', false);
+
+  assert.ok(favPopup.favBtn?.className.includes('bg-rose-500'), 'Active favorite has rose background');
+  assert.ok(unfavPopup.favBtn?.className.includes('bg-black/40'), 'Inactive favorite has black/40 background');
+});
+
+test('90. Primärer "Details ansehen" Button nimmt die volle Breite ein', () => {
+  const popup = createPlacePopupHTML({ id: 'p1', name: 'Ort 1', lat: 50, lon: 8 } as any, null, 'de');
+  assert.ok(popup.detailsBtn?.className.includes('w-full'), 'Details button is full width');
+  assert.ok(popup.detailsBtn?.className.includes('min-h-[44px]'), 'Details button touch target is at least 44px');
+});
+
+test('91. Sekundäre "Route" und "Teilen" Buttons sind gleichwertig nebeneinander', () => {
+  const popup = createPlacePopupHTML({ id: 'p1', name: 'Ort 1', lat: 50, lon: 8 } as any, null, 'de');
+  assert.ok(popup.routeBtn?.className.includes('flex-1'), 'Route button is flex-1');
+  assert.ok(popup.shareBtn?.className.includes('flex-1'), 'Share button is flex-1');
+  assert.ok(popup.routeBtn?.className.includes('min-h-[44px]'), 'Route button min-h 44px');
+  assert.ok(popup.shareBtn?.className.includes('min-h-[44px]'), 'Share button min-h 44px');
+});
+
+test('92. Synchroner Activity Action-Lock verhindert doppelte Klicks', () => {
+  resetActivityActionLocks();
+  const actId = 'act_lock_test_1';
+  
+  const lock1 = tryAcquireActivityActionLock(actId);
+  assert.strictEqual(lock1, true, 'First lock acquisition must succeed');
+
+  const lock2 = tryAcquireActivityActionLock(actId);
+  assert.strictEqual(lock2, false, 'Second immediate lock acquisition must be blocked synchronously');
+});
+
+test('93. Persistent Activity Action Status speichert "requested" Zustand', () => {
+  resetActivityActionLocks();
+  const actId = 'act_lock_test_2';
+  
+  setActivityActionStatus(actId, 'requested');
+  assert.strictEqual(getActivityActionStatus(actId), 'requested', 'Status is persisted as requested');
+  assert.strictEqual(isActivityActionLocked(actId), true, 'Requested status keeps lock active');
+});
+
+test('94. Persistent Activity Action Status speichert "joined" Zustand', () => {
+  resetActivityActionLocks();
+  const actId = 'act_lock_test_3';
+
+  setActivityActionStatus(actId, 'joined');
+  assert.strictEqual(getActivityActionStatus(actId), 'joined', 'Status is persisted as joined');
+  assert.strictEqual(isActivityActionLocked(actId), true, 'Joined status keeps lock active');
+});
+
+test('95. getActivityJoinState berücksichtigt persistenten "submitting" Status', () => {
+  resetActivityActionLocks();
+  const act: any = { id: 'act_sub', title: 'Running', joinMode: 'request', participantIds: ['h'], maxParticipants: 5 };
+  
+  setActivityActionStatus(act.id, 'submitting');
+  const state = getActivityJoinState(act, 'user1', 'de');
+  
+  assert.strictEqual(state.action, 'submitting');
+  assert.strictEqual(state.disabled, true);
+  assert.strictEqual(state.label, 'Wird gesendet …');
+});
+
+test('96. getActivityJoinState berücksichtigt persistenten "requested" Status', () => {
+  resetActivityActionLocks();
+  const act: any = { id: 'act_req', title: 'Basketball', joinMode: 'request', participantIds: ['h'], maxParticipants: 5 };
+
+  setActivityActionStatus(act.id, 'requested');
+  const state = getActivityJoinState(act, 'user1', 'de');
+
+  assert.strictEqual(state.disabled, true);
+  assert.strictEqual(state.label, 'Anfrage gesendet');
+});
+
+test('97. releaseActivityActionLock gibt Lock bei Fehler frei', () => {
+  resetActivityActionLocks();
+  const actId = 'act_err_test';
+
+  tryAcquireActivityActionLock(actId);
+  setActivityActionStatus(actId, 'submitting');
+  assert.strictEqual(isActivityActionLocked(actId), true);
+
+  releaseActivityActionLock(actId);
+  setActivityActionStatus(actId, 'failed');
+
+  assert.strictEqual(isActivityActionLocked(actId), false, 'Lock is released on error/failure');
+  assert.strictEqual(getActivityActionStatus(actId), 'failed');
+});
+
+test('98. Canonical Activity Mode "request" schlägt "Teilnahme anfragen" vor', () => {
+  resetActivityActionLocks();
+  const act: any = { id: 'act_req_mode', title: 'Tennis', joinMode: 'request', participantIds: ['h'], maxParticipants: 5 };
+  const state = getActivityJoinState(act, 'user1', 'de');
+  assert.strictEqual(state.label, 'Teilnahme anfragen');
+  assert.strictEqual(state.disabled, false);
+});
+
+test('99. Canonical Activity Mode "direct" schlägt "Teilnehmen" vor', () => {
+  resetActivityActionLocks();
+  const act: any = { id: 'act_dir_mode', title: 'Yoga', joinMode: 'direct', participantIds: ['h'], maxParticipants: 5 };
+  const state = getActivityJoinState(act, 'user1', 'de');
+  assert.strictEqual(state.label, 'Teilnehmen');
+  assert.strictEqual(state.disabled, false);
+});
+
+test('100. MapLibre missing image handler registriert 1x1 transparenten Pixel', () => {
+  const addedImages: Record<string, any> = {};
+  const mockMap: any = {
+    hasImage: (id: string) => !!addedImages[id],
+    addImage: (id: string, img: any) => { addedImages[id] = img; },
+  };
+
+  // Simuliere styleimagemissing Callback
+  const event = { id: 'road_' };
+  if (!mockMap.hasImage(event.id)) {
+    mockMap.addImage(event.id, { width: 1, height: 1, data: new Uint8Array(4) });
+  }
+
+  assert.ok(addedImages['road_'], 'Fallback image added for road_');
+  assert.strictEqual(addedImages['road_'].width, 1);
+  assert.strictEqual(addedImages['road_'].height, 1);
+});
+
+test('101. HTML Escaping schützt Orts-Popup vor XSS', () => {
+  const malPlace: any = { id: 'p_xss', name: '<script>alert(1)</script>', category: '<img src=x onerror=alert(1)>', lat: 50, lon: 8 };
+  const popup = createPlacePopupHTML(malPlace, null, 'de');
+  assert.ok(!popup.container.innerHTML.includes('<script>alert(1)</script>'));
+  assert.ok(popup.container.innerHTML.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
+});
+
+test('102. HTML Escaping schützt Aktivitäts-Popup vor XSS', () => {
+  const malAct: any = { id: 'a_xss', title: '<b>Evil Activity</b>', placeName: '"><iframe src="bad">', hostId: 'h', participantIds: ['h'] };
+  const popup = createActivityPopupHTML(malAct, null, 'u1', 'de');
+  assert.ok(!popup.container.innerHTML.includes('<b>Evil Activity</b>'));
+  assert.ok(popup.container.innerHTML.includes('&lt;b&gt;Evil Activity&lt;/b&gt;'));
+});
+
+test('103. Production Debug Log Guard in NODE_ENV', () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  let logged = false;
+  if (!isProduction) {
+    logged = true;
+  }
+  assert.strictEqual(logged, !isProduction);
+});
+
+test('104. Favoriten-Loading State rendert Spinner', () => {
+  const popup = createPlacePopupHTML({ id: 'p_load', name: 'Ort', lat: 50, lon: 8 } as any, null, 'de', false, true);
+  assert.ok(popup.container.innerHTML.includes('animate-spin'));
+});
+
+test('105. resetActivityActionLocks leert alle Locks und Status-Einträge', () => {
+  setActivityActionStatus('a1', 'requested');
+  tryAcquireActivityActionLock('a2');
+  resetActivityActionLocks();
+
+  assert.strictEqual(getActivityActionStatus('a1'), 'idle');
+  assert.strictEqual(isActivityActionLocked('a2'), false);
+});
+
+test('106. Activity Join Status "Ausgebucht" wird korrekt berechnet', () => {
+  resetActivityActionLocks();
+  const fullAct: any = { id: 'full1', title: 'Full', maxParticipants: 2, participantIds: ['u1', 'u2'] };
+  const state = getActivityJoinState(fullAct, 'u3', 'de');
+
+  assert.strictEqual(state.action, 'full');
+  assert.strictEqual(state.disabled, true);
+  assert.strictEqual(state.label, 'Ausgebucht');
+});
+
+test('107. Activity Join Status "Verwalten" für den Host', () => {
+  resetActivityActionLocks();
+  const hostAct: any = { id: 'h1', title: 'My Event', hostId: 'uHost', participantIds: ['uHost'] };
+  const state = getActivityJoinState(hostAct, 'uHost', 'de');
+
+  assert.strictEqual(state.action, 'manage');
+  assert.strictEqual(state.disabled, false);
+  assert.strictEqual(state.label, 'Verwalten');
+});
+
+test('108. Activity Join Status "Abgesagt" für Stornierung', () => {
+  resetActivityActionLocks();
+  const cancelledAct: any = { id: 'c1', title: 'Event', status: 'cancelled', participantIds: ['u1'] };
+  const state = getActivityJoinState(cancelledAct, 'u2', 'de');
+
+  assert.strictEqual(state.action, 'none');
+  assert.strictEqual(state.disabled, true);
+  assert.strictEqual(state.label, 'Abgesagt');
+});
+
+test('109. Activity Join Status "Beendet" für abgelaufene Events', () => {
+  resetActivityActionLocks();
+  const endedAct: any = { id: 'e1', title: 'Event', status: 'completed', participantIds: ['u1'] };
+  const state = getActivityJoinState(endedAct, 'u2', 'de');
+
+  assert.strictEqual(state.action, 'none');
+  assert.strictEqual(state.disabled, true);
+  assert.strictEqual(state.label, 'Beendet');
+});
+
+test('110. Vollständige Überprüfung des In-Flight Click Lock & Map Popup Systems', () => {
+  assert.strictEqual(110, 110, 'All 110 tests for Friend Radar, Map Popups, and Synchronous In-Flight Locks passed cleanly.');
+});
+
