@@ -35,8 +35,9 @@ export interface ObfuscatedNearbyFriend {
   distanceBucket: DistanceBucket;
   approximateLatitude: number;
   approximateLongitude: number;
-  precisionKm: number;
-  updatedAt: any;
+  precisionMeters: number;
+  precisionKm?: number;
+  updatedAt?: any;
 }
 
 /**
@@ -72,32 +73,67 @@ export function calculateDistanceBucket(distanceKm: number): DistanceBucket {
   return '10_to_25_km';
 }
 
-/**
- * Metric grid location obfuscation.
- * Divides coordinate space into a metric grid of ~2.0 km (0.018° lat, 0.030° lon at ~53°N).
- * Returns the exact center coordinate of the grid cell and conservative precisionKm = 2.0.
- * Guaranteed deterministic: Repeated queries for the exact same coordinate yield the exact same cell center.
- */
-export function obfuscateMetricGridLocation(
+export function getFirstName(displayName?: string, username?: string): string {
+  const normalizedName = displayName?.trim();
+  if (normalizedName) {
+    return normalizedName.split(/\s+/)[0];
+  }
+  return username?.trim() || 'Freund';
+}
+
+export function calculatePrecisionMeters(accuracy?: number): number {
+  if (
+    typeof accuracy !== 'number' ||
+    !Number.isFinite(accuracy) ||
+    accuracy <= 0 ||
+    accuracy > 10000
+  ) {
+    return 250;
+  }
+  return Math.max(100, Math.ceil(accuracy / 25) * 25);
+}
+
+export function quantizeCoordinates(
   latitude: number,
-  longitude: number
-): { approximateLatitude: number; approximateLongitude: number; precisionKm: number } {
-  // ~2.0 km grid step sizes
-  const GRID_LAT_STEP = 0.018; // ~2.0 km latitude
-  const GRID_LON_STEP = 0.030; // ~2.0 km longitude at mid-latitudes (~53°N)
+  longitude: number,
+  precisionMeters: number
+): { approximateLatitude: number; approximateLongitude: number; precisionMeters: number } {
+  const safeLat = Math.max(-89.9, Math.min(89.9, latitude));
+  const latitudeStep = precisionMeters / 111_320;
+  const cosLat = Math.max(0.01, Math.cos((safeLat * Math.PI) / 180));
+  const longitudeStep = precisionMeters / (111_320 * cosLat);
 
-  // Determine integer grid cell indices
-  const latCellIndex = Math.floor(latitude / GRID_LAT_STEP);
-  const lonCellIndex = Math.floor(longitude / GRID_LON_STEP);
+  let approxLat = Math.round(latitude / latitudeStep) * latitudeStep;
+  let approxLon = Math.round(longitude / longitudeStep) * longitudeStep;
 
-  // Compute exact center of the grid cell
-  const approxLat = Number(((latCellIndex + 0.5) * GRID_LAT_STEP).toFixed(6));
-  const approxLon = Number(((lonCellIndex + 0.5) * GRID_LON_STEP).toFixed(6));
+  approxLat = Number(approxLat.toFixed(6));
+  approxLon = Number(approxLon.toFixed(6));
+
+  approxLat = Math.max(-90, Math.min(90, approxLat));
+  approxLon = Math.max(-180, Math.min(180, approxLon));
 
   return {
     approximateLatitude: approxLat,
     approximateLongitude: approxLon,
-    precisionKm: 2.0,
+    precisionMeters,
+  };
+}
+
+/**
+ * Metric grid location obfuscation (legacy fallback).
+ */
+export function obfuscateMetricGridLocation(
+  latitude: number,
+  longitude: number,
+  accuracy?: number
+): { approximateLatitude: number; approximateLongitude: number; precisionMeters: number; precisionKm: number } {
+  const precisionMeters = calculatePrecisionMeters(accuracy);
+  const { approximateLatitude, approximateLongitude } = quantizeCoordinates(latitude, longitude, precisionMeters);
+  return {
+    approximateLatitude,
+    approximateLongitude,
+    precisionMeters,
+    precisionKm: precisionMeters / 1000,
   };
 }
 

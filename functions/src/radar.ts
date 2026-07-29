@@ -5,6 +5,8 @@ import {
   hasRadarAccessPermission,
   calculateHaversineDistanceKm,
   calculateDistanceBucket,
+  calculatePrecisionMeters,
+  quantizeCoordinates,
   obfuscateMetricGridLocation,
 } from './radar-types';
 
@@ -172,7 +174,7 @@ export const updateRadarLocation = onCall(async (request) => {
   const userId = request.auth.uid;
 
   // Rejects unknown input properties
-  const allowedKeys = new Set(['latitude', 'longitude']);
+  const allowedKeys = new Set(['latitude', 'longitude', 'accuracy']);
   for (const key of Object.keys(data || {})) {
     if (!allowedKeys.has(key)) {
       throw new HttpsError('invalid-argument', `Unbekanntes Eingabefeld: ${key}`);
@@ -181,6 +183,7 @@ export const updateRadarLocation = onCall(async (request) => {
 
   const latitude = data?.latitude;
   const longitude = data?.longitude;
+  const accuracyRaw = data?.accuracy;
 
   if (
     typeof latitude !== 'number' ||
@@ -194,6 +197,14 @@ export const updateRadarLocation = onCall(async (request) => {
   ) {
     throw new HttpsError('invalid-argument', 'Gültige Breitengrad- und Längengradkoordinaten sind erforderlich.');
   }
+
+  let accuracy: number | undefined = undefined;
+  if (typeof accuracyRaw === 'number' && Number.isFinite(accuracyRaw) && accuracyRaw > 0 && accuracyRaw <= 10000) {
+    accuracy = accuracyRaw;
+  }
+
+  const precisionMeters = calculatePrecisionMeters(accuracy);
+  const { approximateLatitude, approximateLongitude } = quantizeCoordinates(latitude, longitude, precisionMeters);
 
   const now = new Date();
   const nowTimestamp = admin.firestore.Timestamp.fromDate(now);
@@ -242,6 +253,10 @@ export const updateRadarLocation = onCall(async (request) => {
     transaction.set(locationRef, {
       latitude,
       longitude,
+      accuracy: accuracy || null,
+      precisionMeters,
+      approximateLatitude,
+      approximateLongitude,
       updatedAt: nowTimestamp,
       expiresAt: admin.firestore.Timestamp.fromMillis(expiresAtMs),
     });
@@ -424,7 +439,7 @@ export const getNearbyFriends = onCall(async (request) => {
     distanceBucket: any;
     approximateLatitude: number;
     approximateLongitude: number;
-    precisionKm: number;
+    precisionMeters: number;
     updatedAt: any;
     exactDistance: number;
   }> = [];
@@ -451,8 +466,16 @@ export const getNearbyFriends = onCall(async (request) => {
     const exactDistance = calculateHaversineDistanceKm(callerLat, callerLon, fLat, fLon);
 
     if (exactDistance <= radiusKm) {
-      const { approximateLatitude, approximateLongitude, precisionKm } =
-        obfuscateMetricGridLocation(fLat, fLon);
+      const precisionMeters =
+        typeof locData?.precisionMeters === 'number' && locData.precisionMeters > 0
+          ? locData.precisionMeters
+          : calculatePrecisionMeters(locData?.accuracy);
+
+      const approx =
+        typeof locData?.approximateLatitude === 'number' && typeof locData?.approximateLongitude === 'number'
+          ? { approximateLatitude: locData.approximateLatitude, approximateLongitude: locData.approximateLongitude }
+          : quantizeCoordinates(fLat, fLon, precisionMeters);
+
       const distanceBucket = calculateDistanceBucket(exactDistance);
 
       nearbyResults.push({
@@ -461,9 +484,9 @@ export const getNearbyFriends = onCall(async (request) => {
         displayName: profileObj.displayName || undefined,
         avatarUrl: profileObj.photoURL || undefined,
         distanceBucket,
-        approximateLatitude,
-        approximateLongitude,
-        precisionKm,
+        approximateLatitude: approx.approximateLatitude,
+        approximateLongitude: approx.approximateLongitude,
+        precisionMeters,
         updatedAt: locData.updatedAt,
         exactDistance,
       });
@@ -482,7 +505,7 @@ export const getNearbyFriends = onCall(async (request) => {
     distanceBucket: item.distanceBucket,
     approximateLatitude: item.approximateLatitude,
     approximateLongitude: item.approximateLongitude,
-    precisionKm: item.precisionKm,
+    precisionMeters: item.precisionMeters,
     updatedAt: item.updatedAt,
   }));
 

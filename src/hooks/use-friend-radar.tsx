@@ -6,7 +6,7 @@ import { useAuth } from './use-auth';
 import { useActivePremium } from './use-active-premium';
 import { useLocation } from '@/contexts/location-context';
 import { db, functions } from '@/lib/firebase/client';
-import { CURRENT_RADAR_CONSENT_VERSION, calculateHaversineDistanceKm } from '../../functions/src/radar-types';
+import { CURRENT_RADAR_CONSENT_VERSION, calculateHaversineDistanceKm, normalizePrecisionMeters } from '@/lib/radar-types';
 import { useToast } from './use-toast';
 import { ToastAction } from '@/components/ui/toast';
 
@@ -65,6 +65,7 @@ export function validateRadarResponse(data: any): {
   if (Array.isArray(payload.friends)) {
     result.friends = payload.friends.map((f: any) => {
       if (!f || typeof f !== 'object') return null;
+      const precMeters = normalizePrecisionMeters(f);
       return {
         userId: String(f.userId || ''),
         username: String(f.username || ''),
@@ -73,7 +74,8 @@ export function validateRadarResponse(data: any): {
         distanceBucket: (f.distanceBucket || '10_to_25_km') as "under_1_km" | "1_to_2_km" | "2_to_5_km" | "5_to_10_km" | "10_to_25_km",
         approximateLatitude: Number(f.approximateLatitude || 0),
         approximateLongitude: Number(f.approximateLongitude || 0),
-        precisionKm: Number(f.precisionKm || 2.0),
+        precisionMeters: precMeters,
+        precisionKm: Number(f.precisionKm || precMeters / 1000),
         updatedAt: f.updatedAt
       };
     }).filter(Boolean) as NearbyFriend[];
@@ -637,13 +639,18 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
 
     try {
       const httpsCallable = await getFunctionsInstance();
-      const updateLocCall = httpsCallable<{ latitude: number; longitude: number }, any>(
+      const updateLocCall = httpsCallable<{ latitude: number; longitude: number; accuracy?: number }, any>(
         functions!,
         'updateRadarLocation'
       );
+      const acc = typeof (effectiveLocation as any).accuracy === 'number' && Number.isFinite((effectiveLocation as any).accuracy) && (effectiveLocation as any).accuracy > 0
+        ? (effectiveLocation as any).accuracy
+        : undefined;
+
       await updateLocCall({
         latitude: effectiveLocation.lat,
-        longitude: effectiveLocation.lng
+        longitude: effectiveLocation.lng,
+        accuracy: acc,
       });
       setIsUpdatingLocation(false);
       setPartialFailure(false);
@@ -741,13 +748,18 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
       if (isLocUpdateDue && (locationSource === 'geolocation' || locationStatus === 'resolved' || locationStatus === 'fallback')) {
         try {
           setIsUpdatingLocation(true);
-          const updateLocCall = httpsCallable<{ latitude: number; longitude: number }, any>(
+          const updateLocCall = httpsCallable<{ latitude: number; longitude: number; accuracy?: number }, any>(
             functions!,
             'updateRadarLocation'
           );
+          const acc = typeof (effectiveLocation as any).accuracy === 'number' && Number.isFinite((effectiveLocation as any).accuracy) && (effectiveLocation as any).accuracy > 0
+            ? (effectiveLocation as any).accuracy
+            : undefined;
+
           await updateLocCall({
             latitude: effectiveLocation.lat,
-            longitude: effectiveLocation.lng
+            longitude: effectiveLocation.lng,
+            accuracy: acc,
           });
           setIsUpdatingLocation(false);
           setLastLocationUpdatedAt(new Date());
@@ -767,14 +779,19 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
       const getFriendsCall = httpsCallable<void, any>(functions!, 'getNearbyFriends');
       const res = await getFriendsCall();
 
-      console.log("[FRIEND RADAR RESPONSE]", res.data);
+      const isDebugMode = process.env.NODE_ENV !== 'production' || (typeof window !== 'undefined' && (window as any).NEXT_PUBLIC_RADAR_DEBUG === 'true');
+      if (isDebugMode) {
+        console.log('[FRIEND RADAR RESPONSE]', res.data);
+      }
 
       const parsed = validateRadarResponse(res.data);
 
-      console.log("[FRIEND RADAR NORMALIZED]", {
-        friendCount: parsed.friends.length,
-        friends: parsed.friends
-      });
+      if (isDebugMode) {
+        console.log('[FRIEND RADAR NORMALIZED]', {
+          friendCount: parsed.friends.length,
+          friends: parsed.friends
+        });
+      }
 
       setNearbyFriends(parsed.friends.slice(0, 30));
       setComplete(parsed.complete);

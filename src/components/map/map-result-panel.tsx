@@ -10,6 +10,7 @@ import type { Place, Activity } from '@/lib/types';
 import type { SelectedMapEntity } from './map-types';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
+import { formatDistanceBucketText, normalizePrecisionMeters } from '@/lib/radar-types';
 
 interface MapResultPanelProps {
   selectedEntity: SelectedMapEntity;
@@ -114,11 +115,14 @@ export function MapResultPanel({
                 </span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-slate-400">{language === 'de' ? 'Zuletzt aktiv:' : 'Last active:'}</span>
+                <span className="text-slate-400">{language === 'de' ? 'Genauigkeit:' : 'Precision:'}</span>
                 <span className="font-bold text-slate-700 dark:text-neutral-300">
-                  {formatRelativeTime((selectedEntity.data as any).updatedAt, language)}
+                  ~{normalizePrecisionMeters(selectedEntity.data)}m Raster
                 </span>
               </div>
+            </div>
+            <div className="text-[10px] text-slate-400 italic">
+              {language === 'de' ? `Ungefährer Standort (~${normalizePrecisionMeters(selectedEntity.data)}-Meter-Raster)` : `Approximate location (~${normalizePrecisionMeters(selectedEntity.data)}m grid)`}
             </div>
           </div>
         ) : (
@@ -136,20 +140,7 @@ export function MapResultPanel({
 }
 
 function formatDistanceBucket(bucket: string, lang: 'de' | 'en'): string {
-  switch (bucket) {
-    case 'under_1_km':
-      return lang === 'de' ? 'Unter 1 km' : 'Under 1 km';
-    case '1_to_2_km':
-      return '1 - 2 km';
-    case '2_to_5_km':
-      return '2 - 5 km';
-    case '5_to_10_km':
-      return '5 - 10 km';
-    case '10_to_25_km':
-      return '10 - 25 km';
-    default:
-      return bucket;
-  }
+  return formatDistanceBucketText(bucket, lang);
 }
 
 function formatRelativeTime(updatedAt: any, lang: 'de' | 'en'): string {

@@ -1,5 +1,6 @@
 import type { Place, Activity } from '@/lib/types';
 import type { ActivityCapacityStatus, MapMarkerItem } from './map-types';
+import { getFirstName, normalizePrecisionMeters, formatDistanceBucketText } from '../../lib/radar-types';
 
 /**
  * Validates latitude and longitude coordinates.
@@ -146,37 +147,22 @@ export function generateCircleCoordinates(
   radiusKm: number,
   points = 64
 ): [number, number][] {
-  const coordinates: [number, number][] = [];
-  const earthRadiusKm = 6371;
-  const latRad = (centerLat * Math.PI) / 180;
-  const lonRad = (centerLon * Math.PI) / 180;
+  const coords: [number, number][] = [];
+  const kmInLat = 111.32;
+  const kmInLon = 111.32 * Math.cos((centerLat * Math.PI) / 180);
 
-  for (let i = 0; i <= points; i++) {
-    const bearing = (i * 360) / points;
-    const bearingRad = (bearing * Math.PI) / 180;
-
-    const pointLatRad = Math.asin(
-      Math.sin(latRad) * Math.cos(radiusKm / earthRadiusKm) +
-        Math.cos(latRad) * Math.sin(radiusKm / earthRadiusKm) * Math.cos(bearingRad)
-    );
-
-    const pointLonRad =
-      lonRad +
-      Math.atan2(
-        Math.sin(bearingRad) * Math.sin(radiusKm / earthRadiusKm) * Math.cos(latRad),
-        Math.cos(radiusKm / earthRadiusKm) - Math.sin(latRad) * Math.sin(pointLatRad)
-      );
-
-    const pointLat = (pointLatRad * 180) / Math.PI;
-    const pointLon = (pointLonRad * 180) / Math.PI;
-
-    coordinates.push([pointLon, pointLat]);
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    const dLat = (radiusKm * Math.sin(theta)) / kmInLat;
+    const dLon = (radiusKm * Math.cos(theta)) / kmInLon;
+    coords.push([centerLon + dLon, centerLat + dLat]);
   }
-  return coordinates;
+  coords.push(coords[0]); // Close polygon
+  return coords;
 }
 
 /**
- * Generates a GeoJSON polygon feature representing a radius circle around a center coordinate.
+ * Generates GeoJSON FeatureCollection for radius circle visualization.
  */
 export function createRadiusCircleGeoJSON(
   centerLat: number,
@@ -201,21 +187,59 @@ export function createRadiusCircleGeoJSON(
   };
 }
 
-export function formatDistanceBucketText(bucket?: string): string {
-  switch (bucket) {
-    case 'under_1_km':
-      return 'unter 1 km';
-    case '1_to_2_km':
-      return '1 – 2 km';
-    case '2_to_5_km':
-      return '2 – 5 km';
-    case '5_to_10_km':
-      return '5 – 10 km';
-    case '10_to_25_km':
-      return '10 – 25 km';
-    default:
-      return 'in der Nähe';
+export interface PositionedFriend {
+  friend: NearbyFriend;
+  renderLat: number;
+  renderLng: number;
+}
+
+export function applyGridOffset(friends: NearbyFriend[]): PositionedFriend[] {
+  if (!Array.isArray(friends)) return [];
+  const cellGroups = new Map<string, NearbyFriend[]>();
+  for (const f of friends) {
+    if (!f || typeof f !== 'object') continue;
+    const lat = Number(f.approximateLatitude || 0);
+    const lng = Number(f.approximateLongitude || 0);
+    const key = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
+    const group = cellGroups.get(key) || [];
+    group.push(f);
+    cellGroups.set(key, group);
   }
+
+  const result: PositionedFriend[] = [];
+
+  for (const [_, group] of cellGroups.entries()) {
+    if (group.length === 1) {
+      result.push({
+        friend: group[0],
+        renderLat: Number(group[0].approximateLatitude || 0),
+        renderLng: Number(group[0].approximateLongitude || 0),
+      });
+    } else {
+      const count = group.length;
+      const offsetRadiusMeters = 18;
+      const dLatStep = offsetRadiusMeters / 111320;
+
+      group.forEach((f, idx) => {
+        const angle = (2 * Math.PI * idx) / count;
+        const lat = Number(f.approximateLatitude || 0);
+        const lng = Number(f.approximateLongitude || 0);
+        const cosLat = Math.max(0.01, Math.cos((lat * Math.PI) / 180));
+        const dLonStep = offsetRadiusMeters / (111320 * cosLat);
+
+        const renderLat = Number((lat + dLatStep * Math.sin(angle)).toFixed(6));
+        const renderLng = Number((lng + dLonStep * Math.cos(angle)).toFixed(6));
+
+        result.push({
+          friend: f,
+          renderLat,
+          renderLng,
+        });
+      });
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -226,14 +250,20 @@ export function createFriendsGeoJSON(
   friends: NearbyFriend[]
 ): GeoJSON.FeatureCollection<GeoJSON.Geometry> {
   const features: GeoJSON.Feature<GeoJSON.Geometry>[] = [];
+  const positionedFriends = applyGridOffset(friends);
 
-  for (const friend of friends) {
+  for (const posFriend of positionedFriends) {
+    const friend = posFriend.friend;
     const lat = friend.approximateLatitude;
     const lon = friend.approximateLongitude;
     if (!isValidCoordinate(lat, lon)) continue;
 
-    // 1. Polygon representing cell uncertainty
-    const coordinates = generateCircleCoordinates(lat, lon, friend.precisionKm || 2.0);
+    const precM = normalizePrecisionMeters(friend);
+    const radiusKm = precM / 1000;
+    const firstName = getFirstName(friend.displayName, friend.username);
+
+    // 1. Polygon representing precisionMeters uncertainty grid cell
+    const coordinates = generateCircleCoordinates(lat, lon, radiusKm);
     features.push({
       type: 'Feature',
       geometry: {
@@ -245,31 +275,33 @@ export function createFriendsGeoJSON(
         userId: friend.userId,
         username: friend.username,
         displayName: friend.displayName || friend.username,
+        firstName,
         avatarUrl: friend.avatarUrl,
         distanceBucket: friend.distanceBucket,
         distanceBucketText: formatDistanceBucketText(friend.distanceBucket),
+        precisionMeters: precM,
         updatedAt: friend.updatedAt,
-        precisionKm: friend.precisionKm || 2.0,
       },
     });
 
-    // 2. Point representing cell center
+    // 2. Point representing cell center (positioned with offset if multiple friends in same cell)
     features.push({
       type: 'Feature',
       geometry: {
         type: 'Point',
-        coordinates: [lon, lat],
+        coordinates: [posFriend.renderLng, posFriend.renderLat],
       },
       properties: {
         type: 'friend-point',
         userId: friend.userId,
         username: friend.username,
         displayName: friend.displayName || friend.username,
+        firstName,
         avatarUrl: friend.avatarUrl,
         distanceBucket: friend.distanceBucket,
         distanceBucketText: formatDistanceBucketText(friend.distanceBucket),
+        precisionMeters: precM,
         updatedAt: friend.updatedAt,
-        precisionKm: friend.precisionKm || 2.0,
       },
     });
   }

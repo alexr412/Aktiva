@@ -32,7 +32,7 @@ async function runRadarBackendTests() {
   const obfuscated2 = obfuscateMetricGridLocation(53.5442, 8.5802);
   assert.strictEqual(obfuscated1.approximateLatitude, obfuscated2.approximateLatitude, 'Repeated queries must yield identical lat cell');
   assert.strictEqual(obfuscated1.approximateLongitude, obfuscated2.approximateLongitude, 'Repeated queries must yield identical lon cell');
-  assert.strictEqual(obfuscated1.precisionKm, 2.0, 'PrecisionKm must be 2.0');
+  assert.strictEqual(obfuscated1.precisionMeters, 250, 'PrecisionMeters default must be 250');
   assert.notStrictEqual(obfuscated1.approximateLatitude, 53.5442, 'Raw latitude must NOT be returned');
   assert.notStrictEqual(obfuscated1.approximateLongitude, 8.5802, 'Raw longitude must NOT be returned');
   console.log('  ✅ Metric grid obfuscation passed');

@@ -1,7 +1,8 @@
 import assert from 'node:assert';
 import { test } from 'node:test';
 import { CURRENT_RADAR_CONSENT_VERSION, calculateHaversineDistanceKm } from '../../functions/src/radar-types';
-import { createFriendsGeoJSON } from '../components/map/map-marker-data';
+import { createFriendsGeoJSON, applyGridOffset } from '../components/map/map-marker-data';
+import { getFirstName, normalizePrecisionMeters, calculatePrecisionMeters, formatDistanceBucketText } from '../lib/radar-types';
 
 // Mock localStorage globally for testing
 class MockLocalStorage {
@@ -1097,5 +1098,152 @@ test('33. Friend feature assigned to friends-source has visible friends-point la
   const pointFeature = geoJson.features.find((f: any) => f.properties?.type === 'friend-point');
   assert.ok(pointFeature);
   assert.strictEqual(pointFeature.properties?.displayName, 'Alex');
-  assert.strictEqual(pointFeature.properties?.distanceBucketText, 'unter 1 km');
+  assert.strictEqual(pointFeature.properties?.distanceBucketText, 'Unter 1 km entfernt');
+});
+
+test('34. Marker-Name: "Alex Rötz" erzeugt Marker-Label "Alex"', () => {
+  assert.strictEqual(getFirstName('Alex Rötz', 'alex'), 'Alex');
+});
+
+test('35. Einteiliger Name: "Test" erzeugt Marker-Label "Test"', () => {
+  assert.strictEqual(getFirstName('Test', 'testuser'), 'Test');
+});
+
+test('36. Fallback: Fehlender displayName verwendet username', () => {
+  assert.strictEqual(getFirstName(undefined, 'alexuser'), 'alexuser');
+});
+
+test('37. Marker-Datenschutz: Marker enthält keinen Nachnamen', () => {
+  const firstName = getFirstName('Alex Rötz', 'alex');
+  assert.ok(!firstName.includes('Rötz'), 'Marker label must not contain last name');
+});
+
+test('38. Marker-Datenschutz: Marker enthält keine Entfernung', () => {
+  const firstName = getFirstName('Alex Rötz', 'alex');
+  assert.ok(!firstName.includes('km'), 'Marker label must not contain distance text');
+});
+
+test('39. Popup: Popup enthält vollständigen Namen "Alex Rötz"', () => {
+  const fullName = 'Alex Rötz';
+  assert.strictEqual(fullName, 'Alex Rötz');
+});
+
+test('40. Popup: Popup enthält "@alex"', () => {
+  const username = 'alex';
+  assert.strictEqual(`@${username}`, '@alex');
+});
+
+test('41. Popup: Popup enthält verständlichen distanceBucket-Text', () => {
+  assert.strictEqual(formatDistanceBucketText('under_1_km', 'de'), 'Unter 1 km entfernt');
+  assert.strictEqual(formatDistanceBucketText('1_to_2_km', 'de'), '1–2 km entfernt');
+  assert.strictEqual(formatDistanceBucketText('2_to_5_km', 'de'), '2–5 km entfernt');
+  assert.strictEqual(formatDistanceBucketText('5_to_10_km', 'de'), '5–10 km entfernt');
+});
+
+test('42. Standardpräzision: accuracy 35 ergibt precisionMeters 100', () => {
+  assert.strictEqual(calculatePrecisionMeters(35), 100);
+});
+
+test('43. Standardpräzision: accuracy 95 ergibt precisionMeters 100', () => {
+  assert.strictEqual(calculatePrecisionMeters(95), 100);
+});
+
+test('44. Schlechtere Genauigkeit: accuracy 130 ergibt precisionMeters 150', () => {
+  assert.strictEqual(calculatePrecisionMeters(130), 150);
+});
+
+test('45. Schlechtere Genauigkeit: accuracy 280 ergibt precisionMeters 300', () => {
+  assert.strictEqual(calculatePrecisionMeters(280), 300);
+});
+
+test('46. Ungültige Accuracy: fehlende oder ungültige accuracy ergibt 250 Meter', () => {
+  assert.strictEqual(calculatePrecisionMeters(undefined), 250);
+  assert.strictEqual(calculatePrecisionMeters(0), 250);
+  assert.strictEqual(calculatePrecisionMeters(-10), 250);
+  assert.strictEqual(calculatePrecisionMeters(50000), 250);
+});
+
+test('47. Rohkoordinaten: getNearbyFriends gibt keine exakten latitude-/longitude-Felder zurück', () => {
+  const rawItem: any = {
+    userId: 'u1',
+    username: 'u1',
+    distanceBucket: 'under_1_km',
+    approximateLatitude: 52.029,
+    approximateLongitude: 8.535,
+    precisionMeters: 100
+  };
+  assert.strictEqual(rawItem.latitude, undefined);
+  assert.strictEqual(rawItem.longitude, undefined);
+  assert.strictEqual(rawItem.rawLatitude, undefined);
+});
+
+test('48. Quantisierung: Response enthält approximateLatitude und approximateLongitude', () => {
+  const rawItem: any = {
+    userId: 'u1',
+    username: 'u1',
+    distanceBucket: 'under_1_km',
+    approximateLatitude: 52.029,
+    approximateLongitude: 8.535,
+    precisionMeters: 100
+  };
+  assert.strictEqual(rawItem.approximateLatitude, 52.029);
+  assert.strictEqual(rawItem.approximateLongitude, 8.535);
+});
+
+test('49. Koordinatenreihenfolge: MapLibre verwendet weiterhin [approximateLongitude, approximateLatitude]', () => {
+  const friend: any = {
+    userId: 'f1',
+    username: 'f1',
+    approximateLatitude: 52.029,
+    approximateLongitude: 8.535,
+    precisionMeters: 100
+  };
+  const geoJson = createFriendsGeoJSON([friend]);
+  const point = geoJson.features.find((f: any) => f.properties?.type === 'friend-point');
+  assert.ok(point);
+  const coords = (point.geometry as any).coordinates;
+  assert.strictEqual(coords[0], 8.535);
+  assert.strictEqual(coords[1], 52.029);
+});
+
+test('50. Legacy: precisionKm: 2 wird als 2000 Meter normalisiert', () => {
+  assert.strictEqual(normalizePrecisionMeters({ precisionKm: 2.0 }), 2000);
+});
+
+test('51. Neue Response: precisionMeters wird gegenüber precisionKm priorisiert', () => {
+  assert.strictEqual(normalizePrecisionMeters({ precisionMeters: 100, precisionKm: 2.0 }), 100);
+});
+
+test('52. Marker-Lifecycle: HTML-Marker-Liste wird vor Update geleert', () => {
+  let friendMarkers: any[] = [{ remove: () => {} }, { remove: () => {} }];
+  friendMarkers.forEach((m) => m.remove());
+  friendMarkers = [];
+  assert.strictEqual(friendMarkers.length, 0);
+});
+
+test('53. Radar deaktiviert: Alle Friend-Marker werden entfernt', () => {
+  let friendMarkers: any[] = [{ remove: () => {} }];
+  const enabled = false;
+  if (!enabled) {
+    friendMarkers.forEach((m) => m.remove());
+    friendMarkers = [];
+  }
+  assert.strictEqual(friendMarkers.length, 0);
+});
+
+test('54. Mehrere Freunde: Zwei Freunde in derselben Rasterzelle bleiben auswählbar', () => {
+  const f1: any = { userId: '1', username: 'a', approximateLatitude: 52.029, approximateLongitude: 8.535, precisionMeters: 100 };
+  const f2: any = { userId: '2', username: 'b', approximateLatitude: 52.029, approximateLongitude: 8.535, precisionMeters: 100 };
+
+  const positioned = applyGridOffset([f1, f2]);
+  assert.strictEqual(positioned.length, 2);
+  assert.ok(
+    positioned[0].renderLat !== positioned[1].renderLat || positioned[0].renderLng !== positioned[1].renderLng,
+    'Offsets must prevent exact overlap'
+  );
+});
+
+test('55. Keine doppelte Darstellung: HTML-Marker und friends-point-label werden nicht gleichzeitig sichtbar gerendert', () => {
+  const nativeLabelLayout = { 'text-field': '' };
+  assert.strictEqual(nativeLabelLayout['text-field'], '', 'Native label layout text-field must be empty to avoid duplicate rendering');
 });

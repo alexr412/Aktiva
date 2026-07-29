@@ -17,9 +17,10 @@ import {
   createMapGeoJSON,
   createRadiusCircleGeoJSON,
   createFriendsGeoJSON,
-  formatDistanceBucketText,
+  applyGridOffset,
   isValidCoordinate,
 } from './map-marker-data';
+import { getFirstName, normalizePrecisionMeters, formatDistanceBucketText } from '@/lib/radar-types';
 import { MapControls } from './map-controls';
 import { MapResultPanel } from './map-result-panel';
 import { MapResultSheet } from './map-result-sheet';
@@ -224,7 +225,7 @@ export function AktivaMap({
           },
         });
 
-        // Friends Point Layer (Circle representing center of cells)
+        // Friends Point Layer (Circle representing center of cells - transparent to avoid duplicate visual marker)
         map.addLayer({
           id: 'friends-point',
           type: 'circle',
@@ -232,34 +233,25 @@ export function AktivaMap({
           filter: ['==', ['get', 'type'], 'friend-point'],
           paint: {
             'circle-color': '#2563eb',
-            'circle-radius': 16,
-            'circle-stroke-width': 3,
+            'circle-radius': 4,
+            'circle-stroke-width': 0,
             'circle-stroke-color': '#ffffff',
-            'circle-opacity': 1,
+            'circle-opacity': 0,
           },
         });
 
-        // Friends Point Label Symbol Layer
+        // Friends Point Label Symbol Layer (Disabled/Empty text to prevent duplicate rendering with HTML Avatar markers)
         map.addLayer({
           id: 'friends-point-label',
           type: 'symbol',
           source: 'friends-source',
           filter: ['==', ['get', 'type'], 'friend-point'],
           layout: {
-            'text-field': ['concat', ['get', 'displayName'], '\n(', ['get', 'distanceBucketText'], ')'],
-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-            'text-size': 12,
-            'text-offset': [0, 1.8],
-            'text-anchor': 'top',
+            'text-field': '',
             'text-allow-overlap': true,
             'text-ignore-placement': true,
             'icon-allow-overlap': true,
             'icon-ignore-placement': true,
-          },
-          paint: {
-            'text-color': '#1e293b',
-            'text-halo-color': '#ffffff',
-            'text-halo-width': 2.5,
           },
         });
 
@@ -501,39 +493,42 @@ export function AktivaMap({
       if (map.getLayer('friends-point')) map.moveLayer('friends-point');
       if (map.getLayer('friends-point-label')) map.moveLayer('friends-point-label');
 
-      setTimeout(() => {
-        if (mapInstanceRef.current && mapInstanceRef.current.isStyleLoaded()) {
-          console.log('[FRIEND MAP RENDERED]', {
-            features: mapInstanceRef.current.queryRenderedFeatures({
-              layers: ['friends-point']
-            })
-          });
-        }
-      }, 100);
+      const isDebugMode = process.env.NODE_ENV !== 'production' || (typeof window !== 'undefined' && (window as any).NEXT_PUBLIC_RADAR_DEBUG === 'true');
+      if (isDebugMode) {
+        setTimeout(() => {
+          if (mapInstanceRef.current && mapInstanceRef.current.isStyleLoaded()) {
+            console.log('[FRIEND MAP RENDERED]', {
+              features: mapInstanceRef.current.queryRenderedFeatures({
+                layers: ['friends-point']
+              })
+            });
+          }
+        }, 100);
+      }
 
       // Render interactive HTML markers for friends
       if (layers.friends) {
-        nearbyFriends.forEach((friend) => {
-          const lat = friend.approximateLatitude;
-          const lon = friend.approximateLongitude;
-          if (!isValidCoordinate(lat, lon)) return;
+        const positionedFriends = applyGridOffset(nearbyFriends);
+        positionedFriends.forEach(({ friend, renderLat, renderLng }) => {
+          if (!isValidCoordinate(renderLat, renderLng)) return;
 
           const el = document.createElement('div');
           el.className = 'friend-map-marker group cursor-pointer flex flex-col items-center z-50 transition-transform hover:scale-110';
 
-          const nameText = friend.displayName || friend.username;
-          const initial = (nameText || '?').substring(0, 1).toUpperCase();
-          const distText = formatDistanceBucketText(friend.distanceBucket);
+          const firstName = getFirstName(friend.displayName, friend.username);
+          const fullName = friend.displayName || friend.username;
+          const initial = (fullName || '?').substring(0, 1).toUpperCase();
+          const distText = formatDistanceBucketText(friend.distanceBucket, language);
+          const precMeters = normalizePrecisionMeters(friend);
 
           el.innerHTML = `
             <div class="w-10 h-10 rounded-full border-2 border-white ring-2 ring-blue-600 shadow-xl bg-blue-600 flex items-center justify-center overflow-hidden">
               ${friend.avatarUrl
-                ? `<img src="${friend.avatarUrl}" class="w-full h-full object-cover rounded-full" alt="${nameText}" />`
+                ? `<img src="${friend.avatarUrl}" class="w-full h-full object-cover rounded-full" alt="${firstName}" />`
                 : `<span class="text-white text-sm font-black">${initial}</span>`}
             </div>
             <div class="mt-1 bg-slate-900/90 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-lg backdrop-blur-sm flex items-center gap-1 border border-white/20 whitespace-nowrap">
-              <span>${nameText}</span>
-              <span class="text-blue-300 text-[10px]">(${distText})</span>
+              <span>${firstName}</span>
             </div>
           `;
 
@@ -553,31 +548,31 @@ export function AktivaMap({
                   ? `<img src="${friend.avatarUrl}" class="w-full h-full object-cover rounded-full" />`
                   : `<span class="text-white text-lg font-black">${initial}</span>`}
               </div>
-              <div class="font-black text-sm text-slate-800 dark:text-slate-100">${nameText}</div>
+              <div class="font-black text-sm text-slate-800 dark:text-slate-100">${fullName}</div>
               <div class="text-xs text-slate-400 mb-2">@${friend.username}</div>
               <div class="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs font-bold px-3 py-1 rounded-full mb-2 border border-blue-200 dark:border-blue-800">
                 ${distText}
               </div>
               <div class="text-[10px] text-slate-400 italic border-t border-slate-100 dark:border-neutral-800 pt-1.5 w-full">
-                Ungefährer Standort (~2 km Raster)
+                Ungefährer Standort<br/>(~${precMeters}-Meter-Raster)
               </div>
             `;
 
             activePopupRef.current = new maplibregl.Popup({ offset: 25, closeButton: true })
-              .setLngLat([lon, lat])
+              .setLngLat([renderLng, renderLat])
               .setDOMContent(popupContent)
               .addTo(map);
           });
 
           const marker = new maplibregl.Marker({ element: el })
-            .setLngLat([lon, lat])
+            .setLngLat([renderLng, renderLat])
             .addTo(map);
 
           friendHTMLMarkersRef.current.push(marker);
         });
       }
     }
-  }, [places, communityActivities, nearbyFriends, layers, maxDistance, effectiveCenter, isMapLoaded]);
+  }, [places, communityActivities, nearbyFriends, layers, maxDistance, effectiveCenter, isMapLoaded, language]);
 
   // 3. Highlight Selected Marker with HTML Marker
   useEffect(() => {
