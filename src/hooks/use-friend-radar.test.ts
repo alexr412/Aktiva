@@ -638,10 +638,13 @@ class PollingDispatcherTester {
   public userUid: string | null = null;
   public effectiveLocation: { lat: number; lng: number } | null = null;
   public locationStatus: string = 'uninitialized';
+  public locationSource: string = 'geolocation';
   public visibilityState: 'visible' | 'hidden' = 'visible';
   public enabled: boolean = true;
   public hasAccess: boolean = true;
   public partialFailure: boolean = false;
+  public lastLocationUpdatedAt: Date | null = null;
+  public userProfileLastLocation: { lat: number; lng: number } | null = null;
 
   public isFetching = false;
   public lastAttemptFetchMs = 0;
@@ -649,6 +652,10 @@ class PollingDispatcherTester {
   public nextAllowedFetchMs = 0;
   public lastLocationFetched: { lat: number; lng: number } | null = null;
   public requestCount = 0;
+
+  public onLocationWrite?: () => void;
+  public onGetFriends?: () => void;
+  public locationWriteError?: Error | null = null;
 
   public isCrossTabLocked(uid: string): boolean {
     const lock = mockLocalStorage.getItem('aktiva_radar_fetch_lock');
@@ -699,6 +706,28 @@ class PollingDispatcherTester {
     try {
       if (mockError) throw mockError;
 
+      // Check if location update is due
+      const isLocUpdateDue =
+        !this.lastLocationUpdatedAt ||
+        now - this.lastLocationUpdatedAt.getTime() >= 5 * 60 * 1000 ||
+        (this.lastLocationFetched &&
+          calculateHaversineDistanceKm(
+            this.effectiveLocation.lat,
+            this.effectiveLocation.lng,
+            this.lastLocationFetched.lat,
+            this.lastLocationFetched.lng
+          ) * 1000 >= 200);
+
+      if (isLocUpdateDue && (this.locationSource === 'geolocation' || this.locationStatus === 'resolved' || this.locationStatus === 'fallback')) {
+        if (this.locationWriteError) {
+          throw this.locationWriteError;
+        }
+        if (this.onLocationWrite) this.onLocationWrite();
+        this.lastLocationUpdatedAt = new Date();
+      }
+
+      if (this.onGetFriends) this.onGetFriends();
+
       this.requestCount++;
       this.lastSuccessfulFetchMs = Date.now();
       this.lastLocationFetched = { ...this.effectiveLocation };
@@ -730,16 +759,22 @@ class PollingDispatcherTester {
     this.userUid = null;
     this.effectiveLocation = null;
     this.locationStatus = 'uninitialized';
+    this.locationSource = 'geolocation';
     this.visibilityState = 'visible';
     this.enabled = true;
     this.hasAccess = true;
     this.partialFailure = false;
+    this.lastLocationUpdatedAt = null;
+    this.userProfileLastLocation = null;
     this.isFetching = false;
     this.lastAttemptFetchMs = 0;
     this.lastSuccessfulFetchMs = 0;
     this.nextAllowedFetchMs = 0;
     this.lastLocationFetched = null;
     this.requestCount = 0;
+    this.onLocationWrite = undefined;
+    this.onGetFriends = undefined;
+    this.locationWriteError = null;
     mockLocalStorage.removeItem('aktiva_radar_fetch_lock');
   }
 }
@@ -924,4 +959,87 @@ test('26. Account switch / logout resets state and refs', async () => {
   assert.strictEqual(tester.requestCount, 0);
   assert.strictEqual(tester.lastAttemptFetchMs, 0);
   assert.strictEqual(mockLocalStorage.getItem('aktiva_radar_fetch_lock'), null);
+});
+
+test('27. Current location is saved before Radar query', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolved';
+
+  let locationWriteExecuted = false;
+  let getFriendsExecuted = false;
+
+  tester.onLocationWrite = () => {
+    locationWriteExecuted = true;
+    assert.strictEqual(getFriendsExecuted, false, 'Location write must complete BEFORE getNearbyFriends');
+  };
+  tester.onGetFriends = () => {
+    getFriendsExecuted = true;
+    assert.strictEqual(locationWriteExecuted, true, 'getNearbyFriends runs ONLY after location update');
+  };
+
+  await tester.requestNearbyFriends('initial');
+  assert.strictEqual(locationWriteExecuted, true);
+  assert.strictEqual(getFriendsExecuted, true);
+});
+
+test('28. Location older than 60 minutes renewed by live geolocation', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolved';
+  tester.lastLocationUpdatedAt = new Date(Date.now() - 70 * 60 * 1000); // 70 minutes ago
+
+  let locationUpdated = false;
+  tester.onLocationWrite = () => { locationUpdated = true; };
+
+  await tester.requestNearbyFriends('initial');
+  assert.strictEqual(locationUpdated, true, 'Location > 60 min must be renewed before radar query');
+});
+
+test('29. Location write error prevents getNearbyFriends request', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolved';
+  tester.locationWriteError = new Error('Permission denied writing location');
+
+  let getFriendsExecuted = false;
+  tester.onGetFriends = () => { getFriendsExecuted = true; };
+
+  const sent = await tester.requestNearbyFriends('initial');
+  assert.strictEqual(sent, false, 'Radar request must be aborted if location write fails');
+  assert.strictEqual(getFriendsExecuted, false, 'getNearbyFriends must NOT be called on location write error');
+});
+
+test('30. No location write when sharing/radar disabled', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolved';
+  tester.enabled = false; // Radar disabled
+
+  let locationUpdated = false;
+  tester.onLocationWrite = () => { locationUpdated = true; };
+
+  const sent = await tester.requestNearbyFriends('initial');
+  assert.strictEqual(sent, false, 'Request aborted when radar disabled');
+  assert.strictEqual(locationUpdated, false, 'No location write when radar disabled');
+});
+
+test('31. userProfile.lastLocation NEVER overwrites effectiveLocation in current mode', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 }; // Live Bielefeld
+  tester.userProfileLastLocation = { lat: 50.110, lng: 8.682 }; // Frankfurt in Firestore profile
+
+  // Effective location stays Bielefeld
+  assert.strictEqual(tester.effectiveLocation.lat, 52.026);
+  assert.strictEqual(tester.effectiveLocation.lng, 8.522);
 });

@@ -277,7 +277,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
   const { isPremium, isOrganizer } = useActivePremium(userProfile);
   const hasAccess = isPremium || isOrganizer;
   const { toast } = useToast();
-  const { effectiveLocation, locationStatus } = useLocation();
+  const { effectiveLocation, locationStatus, locationSource } = useLocation();
 
   // Local settings synced from Firestore
   const [enabled, setEnabled] = useState(false);
@@ -623,65 +623,39 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
   };
 
   const updateLocation = async () => {
-    if (!user?.uid) return;
-    if (!hasAccess || !enabled) return;
+    if (!user?.uid || !hasAccess || !enabled) return;
+    if (!effectiveLocation || (locationStatus !== 'resolved' && locationStatus !== 'fallback')) return;
 
     if (nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime()) {
-      // Cooldown in action
-      return;
-    }
-
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      return;
-    }
-
-    // Only auto-update if permission is explicitly granted
-    if (permissionState !== 'granted' && permissionState !== 'unknown') {
       return;
     }
 
     setIsUpdatingLocation(true);
     setError(null);
 
-    return new Promise<void>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            const httpsCallable = await getFunctionsInstance();
-            const updateLocCall = httpsCallable<{ latitude: number; longitude: number }, any>(
-              functions!,
-              'updateRadarLocation'
-            );
-            await updateLocCall({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude
-            });
-            setIsUpdatingLocation(false);
-            setPartialFailure(false);
-            resolve();
-          } catch (err: any) {
-            console.error('updateLocation error:', err);
-            setIsUpdatingLocation(false);
-            if (err.code === 'resource-exhausted') {
-              setError({ message: 'Updates nur alle 5 Minuten erlaubt.', type: 'rate-limit' });
-            } else {
-              setError({ message: err.message || 'Standort-Aktualisierung fehlgeschlagen.', type: 'unknown' });
-            }
-            reject(err);
-          }
-        },
-        (geoErr) => {
-          setIsUpdatingLocation(false);
-          let msg = 'Standort-Aktualisierung fehlgeschlagen.';
-          if (geoErr.code === geoErr.PERMISSION_DENIED) {
-            msg = 'Standortzugriff im Browser blockiert.';
-          }
-          setError({ message: msg, type: 'position' });
-          reject(new Error(msg));
-        },
-        GEOLOCATION_OPTIONS
+    try {
+      const httpsCallable = await getFunctionsInstance();
+      const updateLocCall = httpsCallable<{ latitude: number; longitude: number }, any>(
+        functions!,
+        'updateRadarLocation'
       );
-    });
+      await updateLocCall({
+        latitude: effectiveLocation.lat,
+        longitude: effectiveLocation.lng
+      });
+      setIsUpdatingLocation(false);
+      setPartialFailure(false);
+      setLastLocationUpdatedAt(new Date());
+    } catch (err: any) {
+      console.error('updateLocation error:', err);
+      setIsUpdatingLocation(false);
+      if (err.code === 'resource-exhausted') {
+        setError({ message: 'Updates nur alle 5 Minuten erlaubt.', type: 'rate-limit' });
+      } else {
+        setError({ message: err.message || 'Standort-Aktualisierung fehlgeschlagen.', type: 'unknown' });
+      }
+      throw err;
+    }
   };
 
   const isCrossTabLocked = useCallback((uid: string) => {
@@ -749,6 +723,45 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
 
     try {
       const httpsCallable = await getFunctionsInstance();
+
+      // Perform server-side location update to radar_locations/{userId} if due
+      const isLocUpdateDue =
+        !lastLocationUpdatedAt ||
+        now - lastLocationUpdatedAt.getTime() >= 5 * 60 * 1000 ||
+        (lastLocationFetchedRef.current &&
+          calculateHaversineDistanceKm(
+            effectiveLocation.lat,
+            effectiveLocation.lng,
+            lastLocationFetchedRef.current.lat,
+            lastLocationFetchedRef.current.lng
+          ) * 1000 >= FRIEND_RADAR_MIN_MOVEMENT_METERS);
+
+      if (isLocUpdateDue && (locationSource === 'geolocation' || locationStatus === 'resolved' || locationStatus === 'fallback')) {
+        try {
+          setIsUpdatingLocation(true);
+          const updateLocCall = httpsCallable<{ latitude: number; longitude: number }, any>(
+            functions!,
+            'updateRadarLocation'
+          );
+          await updateLocCall({
+            latitude: effectiveLocation.lat,
+            longitude: effectiveLocation.lng
+          });
+          setIsUpdatingLocation(false);
+          setLastLocationUpdatedAt(new Date());
+        } catch (locErr: any) {
+          console.error('updateRadarLocation failed before getNearbyFriends:', locErr);
+          setIsUpdatingLocation(false);
+          setPartialFailure(true);
+          setError({
+            message: locErr.message || 'Standort-Aktualisierung fehlgeschlagen.',
+            type: 'position'
+          });
+          // Abort getNearbyFriends if location write fails
+          return;
+        }
+      }
+
       const getFriendsCall = httpsCallable<void, any>(functions!, 'getNearbyFriends');
       const res = await getFriendsCall();
 
