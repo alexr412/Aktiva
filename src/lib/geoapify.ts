@@ -809,6 +809,32 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place | 
   return null;
 }
 
+export async function reverseGeocodeCity(lat: number, lon: number): Promise<string | null> {
+  const url = `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${GEOAPIFY_API_KEY}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.features && data.features.length > 0) {
+      const properties = data.features[0].properties || {};
+      const resolvedName =
+        properties.city ??
+        properties.town ??
+        properties.village ??
+        properties.municipality ??
+        properties.county ??
+        properties.state ??
+        null;
+      return typeof resolvedName === 'string' && resolvedName.trim().length > 0 ? resolvedName.trim() : null;
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[CITY TRACE] reverse geocode failed');
+    }
+  }
+  return null;
+}
+
 export function formatOnboardingLocationDisplay(location: {
   postalCode?: string | null;
   postcode?: string | null;

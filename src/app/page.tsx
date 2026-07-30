@@ -168,12 +168,12 @@ export default function Home() {
       };
     }
   }, [scrollTriggerId, isOpenRoomsMode]);
-  const { gateState, position, requestLocation } = useLocation();
+  const { gateState, position, cityName: resolvedCityName, isResolvingCity, requestLocation } = useLocation();
   const userLocation = useMemo(() => {
     return position ? { lat: position.latitude, lng: position.longitude } : null;
   }, [position]);
-  const cityName = language === 'de' ? "Aktueller Standort" : "Current location";
-  const resolvedCityName = null;
+  const defaultLocationLabel = language === 'de' ? "Aktueller Standort" : "Current location";
+  const cityName = resolvedCityName || defaultLocationLabel;
   const isLocationLoading = gateState === 'requesting';
 
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);

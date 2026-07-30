@@ -19,6 +19,8 @@ export type LocationPosition = {
 export type LocationContextValue = {
   gateState: LocationGateState;
   position: LocationPosition | null;
+  cityName: string | null;
+  isResolvingCity: boolean;
   errorMessage: string | null;
   requestLocation: () => void;
 };
@@ -33,11 +35,14 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
   const [gateState, setGateStateState] = useState<LocationGateState>('idle');
   const [position, setPosition] = useState<LocationPosition | null>(null);
+  const [cityName, setCityName] = useState<string | null>(null);
+  const [isResolvingCity, setIsResolvingCity] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const requestInFlightRef = useRef(false);
   const activeRequestIdRef = useRef<number | null>(null);
   const requestCounterRef = useRef(0);
+  const cityRequestCounterRef = useRef(0);
 
   const setGateState = useCallback((newState: LocationGateState) => {
     console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} gateState=${newState}`);
@@ -57,6 +62,37 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       try {
         localStorage.removeItem('aktiva_last_location');
       } catch (e) {}
+    }
+  }, []);
+
+  const resolveCityName = useCallback(async (lat: number, lon: number) => {
+    const cityRequestId = ++cityRequestCounterRef.current;
+    setIsResolvingCity(true);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[CITY TRACE] reverse geocode started');
+    }
+    try {
+      const { reverseGeocodeCity } = await import('@/lib/geoapify');
+      const resolved = await reverseGeocodeCity(lat, lon);
+      if (cityRequestId !== cityRequestCounterRef.current) return;
+      setCityName(resolved);
+      if (process.env.NODE_ENV === 'development') {
+        if (resolved) {
+          console.log(`[CITY TRACE] resolved city=${resolved}`);
+        } else {
+          console.log('[CITY TRACE] reverse geocode failed');
+        }
+      }
+    } catch (e) {
+      if (cityRequestId !== cityRequestCounterRef.current) return;
+      setCityName(null);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[CITY TRACE] reverse geocode failed');
+      }
+    } finally {
+      if (cityRequestId === cityRequestCounterRef.current) {
+        setIsResolvingCity(false);
+      }
     }
   }, []);
 
@@ -122,6 +158,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         });
 
         setGateState('granted');
+        void resolveCityName(latitude, longitude);
       },
       error => {
         if (activeRequestIdRef.current !== requestId) {
@@ -168,13 +205,15 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         timeout: 15000,
       }
     );
-  }, [setGateState]);
+  }, [setGateState, resolveCityName]);
 
   return (
     <LocationContext.Provider
       value={{
         gateState,
         position,
+        cityName,
+        isResolvingCity,
         errorMessage,
         requestLocation,
       }}
