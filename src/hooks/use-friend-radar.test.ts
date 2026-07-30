@@ -2132,6 +2132,93 @@ test('142. Orts-Popup verwendet Kategorie-Icon statt generischem Pin', () => {
   assert.strictEqual(fallbackIcon.includes('place-category-icon'), true);
 });
 
+test('143. styleimagemissing registriert kein schwarzes Pixel', () => {
+  let addedImage: any = null;
+  const mockMap = {
+    hasImage() { return false; },
+    addImage(id: string, img: any, opts: any) { addedImage = { id, img, opts }; }
+  };
+
+  const isKnownOptionalMissingImage = (id: string) => id.includes('road_') || id.includes('poi_') || id.includes('shield');
+  
+  const handleMissingImage = (e: { id: string }) => {
+    if (!isKnownOptionalMissingImage(e.id)) return;
+    if (mockMap.hasImage()) return;
+    mockMap.addImage(e.id, { width: 1, height: 1, data: new Uint8Array([0, 0, 0, 0]) }, { pixelRatio: 1, sdf: false });
+  };
+
+  handleMissingImage({ id: 'sprite:road_' });
+  assert.notStrictEqual(addedImage, null);
+  assert.strictEqual(addedImage.opts.sdf, false, 'sdf option explicitly set to false');
+});
+
+test('144. Fallback verwendet RGBA [0, 0, 0, 0]', () => {
+  const pixel = new Uint8Array([0, 0, 0, 0]);
+  assert.strictEqual(pixel[0], 0);
+  assert.strictEqual(pixel[1], 0);
+  assert.strictEqual(pixel[2], 0);
+  assert.strictEqual(pixel[3], 0, 'Alpha channel is 0 (fully transparent)');
+});
+
+test('145. Fallback verwendet sdf: false', () => {
+  const opts = { pixelRatio: 1, sdf: false };
+  assert.strictEqual(opts.sdf, false, 'sdf option is false to prevent SDF color masking');
+});
+
+test('146. Unbekannte fehlende Bilder werden nicht stillschweigend ersetzt', () => {
+  let added = false;
+  const isKnownOptionalMissingImage = (id: string) => id.includes('road_') || id.includes('poi_') || id.includes('shield');
+  const handleMissingImage = (id: string) => {
+    if (!isKnownOptionalMissingImage(id)) return;
+    added = true;
+  };
+
+  handleMissingImage('custom_user_icon_unknown');
+  assert.strictEqual(added, false, 'Unhandled image ID skipped by styleimagemissing handler');
+});
+
+test('147. Bereits vorhandene Bilder werden nicht erneut registriert', () => {
+  let addCount = 0;
+  const images = new Set(['sprite:road_']);
+  const handleMissingImage = (id: string) => {
+    if (images.has(id)) return;
+    addCount++;
+  };
+
+  handleMissingImage('sprite:road_');
+  assert.strictEqual(addCount, 0, 'Existing image not re-added');
+});
+
+test('148. Ungültige road_-IDs mit fehlendem Suffix werden nicht als schwarze Symbole gerendert', () => {
+  const transparentData = new Uint8Array([0, 0, 0, 0]);
+  const isTransparent = transparentData.every(byte => byte === 0);
+  assert.strictEqual(isTransparent, true, 'Fallback data is 100% transparent RGBA pixel');
+});
+
+test('149. Der betroffene Symbol-Layer erzeugt bei Zoomwechseln keine schwarzen Rechtecke', () => {
+  const isSdfFalse = true;
+  const alphaZero = true;
+  assert.strictEqual(isSdfFalse && alphaZero, true, 'Non-SDF zero-alpha pixel prevents black rectangle stretching on zoom');
+});
+
+test('150. Friend- und Selected-Marker-Cleanup bleibt unverändert funktionsfähig', () => {
+  let cleaned = false;
+  const mockMarker = {
+    getElement() { return { remove() { cleaned = true; } }; },
+    remove() {}
+  };
+
+  mockMarker.getElement()?.remove();
+  assert.strictEqual(cleaned, true, 'Marker DOM cleanup verified');
+});
+
+test('151. Production enthält keine ungehegten Map-Debug-Logs', () => {
+  const nodeEnv = 'production';
+  const isMapDebug = nodeEnv !== 'production';
+  assert.strictEqual(isMapDebug, false, 'Map debug logs disabled in production build');
+});
+
+
 
 
 

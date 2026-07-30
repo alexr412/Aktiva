@@ -243,20 +243,80 @@ export function AktivaMap({
 
       mapInstanceRef.current = map;
 
-      // Handle missing style images gracefully (e.g. road_, poi icons) to eliminate console warnings
+      const isKnownOptionalMissingImage = (imageId: string) =>
+        imageId.includes('road_') ||
+        imageId.includes('poi_') ||
+        imageId.includes('shield') ||
+        imageId.endsWith(':road_') ||
+        imageId.endsWith(':poi_');
+
+      // Handle missing style images gracefully (e.g. road_, poi icons) with explicit transparent non-SDF pixel
       map.on('styleimagemissing', (e) => {
-        const id = e.id;
-        if (!map.hasImage(id)) {
-          const width = 1;
-          const height = 1;
-          const data = new Uint8Array(4); // transparent RGBA pixel
-          try {
-            map.addImage(id, { width, height, data });
-          } catch {
-            // Ignore if image was added concurrently
+        const imageId = e.id;
+        if (!isKnownOptionalMissingImage(imageId)) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('[UNHANDLED MAP IMAGE]', imageId);
           }
+          return;
+        }
+
+        if (map.hasImage(imageId)) {
+          return;
+        }
+
+        try {
+          map.addImage(
+            imageId,
+            {
+              width: 1,
+              height: 1,
+              data: new Uint8Array([0, 0, 0, 0]),
+            },
+            {
+              pixelRatio: 1,
+              sdf: false,
+            }
+          );
+        } catch {
+          // Ignore if image was added concurrently
         }
       });
+
+      // Dev-only click feature inspector & symbol audit
+      if (process.env.NODE_ENV !== 'production') {
+        map.on('click', (e) => {
+          const features = map.queryRenderedFeatures(e.point);
+          if (features && features.length > 0) {
+            console.table(
+              features.map((feature) => ({
+                layerId: feature.layer?.id,
+                layerType: feature.layer?.type,
+                source: feature.source,
+                sourceLayer: feature.sourceLayer,
+                properties: feature.properties,
+              }))
+            );
+          }
+        });
+
+        map.on('load', () => {
+          const suspiciousLayers = map
+            .getStyle()
+            .layers
+            ?.filter((layer) => {
+              if (layer.type !== 'symbol') return false;
+              const layout = JSON.stringify(layer.layout ?? {});
+              return (
+                layout.includes('road_') ||
+                layout.includes('poi_') ||
+                layout.includes('icon-text-fit')
+              );
+            });
+          if (suspiciousLayers && suspiciousLayers.length > 0) {
+            console.log('[MAP SYMBOL AUDIT]', suspiciousLayers);
+          }
+        });
+      }
 
       map.on('load', () => {
         setIsMapLoaded(true);
