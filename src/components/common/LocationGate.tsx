@@ -42,6 +42,28 @@ export function LocationGate({ children }: { children?: ReactNode }) {
   const isDenied = gateState === 'denied';
   const isRequesting = gateState === 'requesting';
 
+  const handleLocationRetry = (event: React.MouseEvent<HTMLButtonElement>): void => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    console.log('[LOCATION BUTTON] clicked');
+    console.log(`[LOCATION BUTTON] element tag=${event.currentTarget.tagName}`);
+    console.log(`[LOCATION BUTTON] type=${event.currentTarget.type || 'button'}`);
+    console.log(`[LOCATION BUTTON] defaultPrevented=${event.defaultPrevented}`);
+
+    if (typeof window !== 'undefined') {
+      console.log(`[LOCATION BUTTON] window.location.href before=${window.location.href}`);
+      console.log(`[LOCATION BUTTON] window.scrollY before=${window.scrollY}`);
+    }
+
+    requestLocation();
+
+    if (typeof window !== 'undefined') {
+      console.log(`[LOCATION BUTTON] window.location.href after=${window.location.href}`);
+      console.log(`[LOCATION BUTTON] window.scrollY after=${window.scrollY}`);
+    }
+  };
+
   return (
     <>
       {/* App content is rendered permanently underneath */}
@@ -122,7 +144,7 @@ export function LocationGate({ children }: { children?: ReactNode }) {
               <div>
                 <Button
                   type="button"
-                  onClick={requestLocation}
+                  onClick={handleLocationRetry}
                   disabled={isRequesting}
                   className="w-full h-14 rounded-2xl bg-primary hover:opacity-90 text-white font-black text-base shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-3 border-none disabled:opacity-80 cursor-pointer"
                 >

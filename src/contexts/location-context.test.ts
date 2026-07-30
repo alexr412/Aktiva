@@ -307,15 +307,19 @@ async function runTests() {
     console.log('  ✅ Header display logic correctly wired.\n');
   }
 
-  // Test 10: Provider hierarchy and route-purity intact
+  // Test 10: LocationGate button renders as real BUTTON element with type="button" and e.preventDefault()
   {
-    console.log('10. Section 8: Provider hierarchy and route-purity maintained');
-    const locCode = readFileSync(path.join(srcDir, 'contexts', 'location-context.tsx'), 'utf8');
-    assert.strictEqual(locCode.includes('router.'), false, 'LocationContext remains 100% route-pure');
-    console.log('  ✅ Route purity and provider structure maintained.\n');
+    console.log('10. LocationGate button renders as real BUTTON element with type="button" and e.preventDefault()');
+    const gateCode = readFileSync(path.join(srcDir, 'components', 'common', 'LocationGate.tsx'), 'utf8');
+    assert.ok(gateCode.includes('type="button"'), 'Button must specify type="button" explicitly');
+    assert.ok(gateCode.includes('event.preventDefault()'), 'Click handler must call event.preventDefault()');
+    assert.ok(gateCode.includes('event.stopPropagation()'), 'Click handler must call event.stopPropagation()');
+    assert.strictEqual(gateCode.includes('href='), false, 'LocationGate must not contain href links');
+    assert.strictEqual(gateCode.includes('<form'), false, 'LocationGate must not be wrapped in a form');
+    console.log('  ✅ Real BUTTON element with type="button" and preventDefault() verified.\n');
   }
 
-  console.log('🎉 ALL LOCATION GATE, REVERSE GEOCODING & ROUTE-PURITY TESTS PASSED DETERMINISTICALLY!');
+  console.log('🎉 ALL LOCATION GATE, REVERSE GEOCODING & BUTTON EVENT TESTS PASSED DETERMINISTICALLY!');
 }
 
 runTests().catch((err) => {
