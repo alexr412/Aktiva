@@ -57,6 +57,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useLocation } from '@/contexts/location-context';
+import { getLocationPermissionInstructions } from '@/lib/device-detection';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { updateUserProfile, isUsernameTaken, claimUsernameServer } from '@/lib/firebase/firestore';
@@ -817,26 +818,44 @@ function OnboardingContent() {
                               ? 'Aktiva funktioniert über Aktivitäten und Menschen in deiner Nähe. Aktiviere den Standortzugriff für diese Website in deinen Browser- oder Geräteeinstellungen.'
                               : 'Aktiva relies on activities and people nearby. Enable location access for this site in your browser settings.'}
                           </p>
-                          <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-amber-200/60 dark:border-amber-800/40 text-left text-xs space-y-2">
-                            <div className="font-black uppercase tracking-wider text-[10px] text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
-                              <ShieldAlert className="w-4 h-4" />
-                              {language === 'de' ? 'So aktivierst du den Standort:' : 'How to enable location:'}
-                            </div>
-                            <ol className="list-decimal list-inside space-y-1 text-slate-700 dark:text-neutral-300 text-[11px] leading-relaxed">
-                              <li>{language === 'de' ? 'Klicke auf das Schloss-Symbol 🔒 in der Adressleiste' : 'Click the lock icon 🔒 in the address bar'}</li>
-                              <li>{language === 'de' ? 'Wähle "Website-Einstellungen" oder "Standort"' : 'Select "Site settings" or "Location"'}</li>
-                              <li>{language === 'de' ? 'Ändere die Berechtigung auf "Zulassen"' : 'Change permission to "Allow"'}</li>
-                              <li>{language === 'de' ? 'Klicke unten auf "Erneut versuchen"' : 'Click "Retry" below'}</li>
-                            </ol>
-                          </div>
+                          {(() => {
+                            const instructions = getLocationPermissionInstructions(language === 'de' ? 'de' : 'en');
+                            return (
+                              <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-amber-200/60 dark:border-amber-800/40 text-left text-xs space-y-2">
+                                <div className="font-black uppercase tracking-wider text-[10px] text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                                  <ShieldAlert className="w-4 h-4" />
+                                  {instructions.platformTitle}
+                                </div>
+                                <ol className="list-decimal list-inside space-y-1.5 text-slate-700 dark:text-neutral-300 text-[11px] leading-relaxed">
+                                  {instructions.steps.map((s, idx) => (
+                                    <li key={idx}>{s}</li>
+                                  ))}
+                                </ol>
+                                {instructions.quickTip && (
+                                  <p className="mt-2 pt-2 border-t border-amber-200/60 dark:border-amber-800/40 text-[10px] italic text-amber-800 dark:text-amber-300">
+                                    {instructions.quickTip}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
                           <Button
                             type="button"
                             onClick={handleLocate}
                             disabled={isLocating || isSubmitting}
                             className="w-full h-14 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-base shadow-lg flex items-center justify-center gap-2 border-none"
                           >
-                            {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
-                            {language === 'de' ? 'Erneut versuchen' : 'Retry'}
+                            {isLocating ? (
+                              <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <span>{language === 'de' ? 'Standort wird geprüft …' : 'Checking location …'}</span>
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="w-5 h-5" />
+                                <span>{language === 'de' ? 'Erneut versuchen' : 'Retry'}</span>
+                              </>
+                            )}
                           </Button>
                         </div>
                       ) : effectiveLocation ? (

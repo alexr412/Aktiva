@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Navigation, Loader2, AlertTriangle, Lock, RefreshCw, ShieldAlert } from 'lucide-react';
+import { MapPin, Navigation, Loader2, Lock, RefreshCw, ShieldAlert } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,16 +9,15 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
+import { getLocationPermissionInstructions } from '@/lib/device-detection';
 
 interface LocationRequirementDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onRetry: () => void;
+  onRetry: () => Promise<boolean> | void;
   permissionState?: 'granted' | 'prompt' | 'denied' | null;
   isLoading?: boolean;
-  onUseHomeLocation?: () => void;
-  homeCity?: string;
-  onSearchManually?: () => void;
+  locationError?: string | null;
 }
 
 export function LocationRequirementDialog({
@@ -26,10 +25,38 @@ export function LocationRequirementDialog({
   onOpenChange,
   onRetry,
   permissionState,
-  isLoading,
+  isLoading: externalLoading = false,
+  locationError = null,
 }: LocationRequirementDialogProps) {
   const language = useLanguage();
   const isDenied = permissionState === 'denied';
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryFeedbackError, setRetryFeedbackError] = useState<string | null>(null);
+
+  const instructions = getLocationPermissionInstructions(language === 'de' ? 'de' : 'en');
+  const showLoading = externalLoading || isRetrying;
+
+  const handleRetryClick = async () => {
+    if (showLoading) return;
+    setIsRetrying(true);
+    setRetryFeedbackError(null);
+    try {
+      const res = await onRetry();
+      if (res === false) {
+        setRetryFeedbackError(
+          locationError || (
+            language === 'de'
+              ? 'Der Standortzugriff ist weiterhin deaktiviert. Ändere die Berechtigung in deinen Geräte- oder Browser-Einstellungen.'
+              : 'Location access remains disabled. Please update your device or browser settings.'
+          )
+        );
+      }
+    } catch (err: any) {
+      setRetryFeedbackError(err.message || 'Error checking location');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={(val) => { if (val) onOpenChange(val); }}>
@@ -84,25 +111,38 @@ export function LocationRequirementDialog({
             <div className="mt-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-left text-xs font-semibold text-amber-900 dark:text-amber-200 space-y-2">
               <div className="flex items-center gap-2 font-black uppercase tracking-wider text-[10px] text-amber-700 dark:text-amber-300">
                 <ShieldAlert className="h-4 w-4" />
-                {language === 'de' ? 'So aktivierst du den Standort:' : 'How to enable location:'}
+                {instructions.platformTitle}
               </div>
-              <ol className="list-decimal list-inside space-y-1 text-slate-700 dark:text-amber-100 text-[11px] leading-relaxed">
-                <li>{language === 'de' ? 'Klicke auf das Schloss-Symbol 🔒 in der Adressleiste' : 'Click the lock icon 🔒 in the address bar'}</li>
-                <li>{language === 'de' ? 'Wähle "Website-Einstellungen" oder "Standort"' : 'Select "Site settings" or "Location"'}</li>
-                <li>{language === 'de' ? 'Ändere die Berechtigung auf "Zulassen"' : 'Change permission to "Allow"'}</li>
-                <li>{language === 'de' ? 'Klicke unten auf "Erneut versuchen"' : 'Click "Retry" below'}</li>
+              <ol className="list-decimal list-inside space-y-1.5 text-slate-700 dark:text-amber-100 text-[11px] leading-relaxed">
+                {instructions.steps.map((step, idx) => (
+                  <li key={idx}>{step}</li>
+                ))}
               </ol>
+              {instructions.quickTip && (
+                <p className="mt-2 pt-2 border-t border-amber-200/60 dark:border-amber-800/40 text-[10px] italic text-amber-800 dark:text-amber-300">
+                  {instructions.quickTip}
+                </p>
+              )}
+            </div>
+          )}
+
+          {(retryFeedbackError || locationError) && isDenied && (
+            <div className="mt-3 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-left text-xs font-bold text-red-700 dark:text-red-300">
+              {retryFeedbackError || locationError}
             </div>
           )}
 
           <div className="mt-6 space-y-3">
             <Button 
-              onClick={onRetry}
-              disabled={isLoading}
+              onClick={handleRetryClick}
+              disabled={showLoading}
               className="w-full h-14 rounded-2xl bg-primary hover:opacity-90 text-white font-black text-base shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-3 border-none transition-all active:scale-95 disabled:opacity-80"
             >
-              {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+              {showLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>{language === 'de' ? 'Standort wird geprüft …' : 'Checking location …'}</span>
+                </>
               ) : isDenied ? (
                 <>
                   <RefreshCw className="h-5 w-5" />

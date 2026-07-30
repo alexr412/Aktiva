@@ -2387,6 +2387,7 @@ export default function Home() {
         onRetry={requestLocation}
         permissionState={locationPermissionState}
         isLoading={isLocationLoading}
+        locationError={locationError}
       />
       <PremiumUpgradeModal
         isOpen={isPremiumUpsellOpen}

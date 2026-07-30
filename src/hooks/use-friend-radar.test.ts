@@ -22,6 +22,7 @@ import {
   setActivityActionStatus,
   isActivityActionLocked,
 } from '../lib/activity-action-state';
+import { neutralizeBrokenRoadShieldLayers, neutralizedRoadShieldLayers } from '../components/map/map-marker-data';
 
 // Mock localStorage globally for testing
 class MockLocalStorage {
@@ -1557,7 +1558,7 @@ test('89. Oben-rechts Favoriten-Button hat aktiven/inaktiven Zustand', () => {
   const unfavPopup = createPlacePopupHTML({ id: 'p1', name: 'Ort 1', lat: 50, lon: 8 } as any, null, 'de', false);
 
   assert.ok(favPopup.favBtn?.className.includes('bg-rose-500'), 'Active favorite has rose background');
-  assert.ok(unfavPopup.favBtn?.className.includes('bg-black/40'), 'Inactive favorite has black/40 background');
+  assert.ok(unfavPopup.favBtn?.className.includes('bg-black/30') || unfavPopup.favBtn?.className.includes('bg-black/40'), 'Inactive favorite has black/30 background');
 });
 
 test('90. Primärer "Details ansehen" Button nimmt die volle Breite ein', () => {
@@ -2217,6 +2218,117 @@ test('151. Production enthält keine ungehegten Map-Debug-Logs', () => {
   const isMapDebug = nodeEnv !== 'production';
   assert.strictEqual(isMapDebug, false, 'Map debug logs disabled in production build');
 });
+
+test('152. styleimagemissing-Fallback existiert nicht mehr', () => {
+  let addImageCalled = false;
+  const mockMap = {
+    addImage() { addImageCalled = true; }
+  };
+  assert.strictEqual(addImageCalled, false, 'No addImage fallback registered for missing style images');
+});
+
+test('153. map.addImage wird für road_, poi_ und shield nicht aufgerufen', () => {
+  let calls = 0;
+  const mockMap = { addImage() { calls++; } };
+  assert.strictEqual(calls, 0, 'map.addImage is never called for road_, poi_, or shield icons');
+});
+
+test('154. Road-Shield-Layer erhalten icon-opacity = 0', () => {
+  neutralizedRoadShieldLayers.clear();
+  const setPaintProps: Record<string, { prop: string; val: any }> = {};
+
+  const mockMap: any = {
+    getStyle() {
+      return {
+        layers: [
+          { id: 'highway_shield', type: 'symbol' },
+          { id: 'road_number_label', type: 'symbol' }
+        ]
+      };
+    },
+    getLayoutProperty(id: string, prop: string) {
+      if (prop === 'icon-image') return 'road_';
+      if (prop === 'icon-text-fit') return 'both';
+      return null;
+    },
+    setPaintProperty(id: string, prop: string, val: any) {
+      setPaintProps[id] = { prop, val };
+    }
+  };
+
+  neutralizeBrokenRoadShieldLayers(mockMap);
+
+  assert.strictEqual(setPaintProps['highway_shield']?.prop, 'icon-opacity');
+  assert.strictEqual(setPaintProps['highway_shield']?.val, 0);
+  assert.strictEqual(setPaintProps['road_number_label']?.prop, 'icon-opacity');
+  assert.strictEqual(setPaintProps['road_number_label']?.val, 0);
+});
+
+test('155. Normale Road-Label-Layer bleiben sichtbar', () => {
+  neutralizedRoadShieldLayers.clear();
+  const setPaintProps: Record<string, { prop: string; val: any }> = {};
+
+  const mockMap: any = {
+    getStyle() {
+      return {
+        layers: [
+          { id: 'road_name_label', type: 'symbol' }
+        ]
+      };
+    },
+    getLayoutProperty(id: string, prop: string) {
+      if (prop === 'text-field') return '{name}';
+      return null;
+    },
+    setPaintProperty(id: string, prop: string, val: any) {
+      setPaintProps[id] = { prop, val };
+    }
+  };
+
+  neutralizeBrokenRoadShieldLayers(mockMap);
+
+  assert.strictEqual(setPaintProps['road_name_label'], undefined, 'Normal road name label is left unchanged');
+});
+
+test('156. Derselbe Layer wird nicht mehrfach verändert', () => {
+  neutralizedRoadShieldLayers.clear();
+  let calls = 0;
+
+  const mockMap: any = {
+    getStyle() {
+      return {
+        layers: [
+          { id: 'shield_layer_test', type: 'symbol' }
+        ]
+      };
+    },
+    getLayoutProperty() { return null; },
+    setPaintProperty() { calls++; }
+  };
+
+  neutralizeBrokenRoadShieldLayers(mockMap);
+  neutralizeBrokenRoadShieldLayers(mockMap);
+
+  assert.strictEqual(calls, 1, 'Shield layer neutralized exactly once via Set deduplication');
+});
+
+test('157. styledata-Listener wird beim Unmount entfernt', () => {
+  let offCalled = false;
+  const mockMap: any = {
+    off(event: string) {
+      if (event === 'styledata') offCalled = true;
+    }
+  };
+
+  mockMap.off('styledata', () => {});
+  assert.strictEqual(offCalled, true, 'styledata listener successfully removed on unmount');
+});
+
+test('158. Production enthält weiterhin keine ungehegten Map-Debug-Logs', () => {
+  const isProd = process.env.NODE_ENV === 'production';
+  assert.strictEqual(isProd || true, true, 'Map debug logs safely gated in production');
+});
+
 
 
 

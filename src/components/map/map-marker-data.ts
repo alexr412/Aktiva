@@ -739,3 +739,44 @@ export function createFriendPopupHTML(
     profileBtn: container.querySelector('.friend-popup-profile-btn'),
   };
 }
+
+export const neutralizedRoadShieldLayers = new Set<string>();
+
+export function neutralizeBrokenRoadShieldLayers(map: any): void {
+  const layers = map.getStyle()?.layers ?? [];
+
+  for (const layer of layers) {
+    if (layer.type !== 'symbol') continue;
+    if (neutralizedRoadShieldLayers.has(layer.id)) continue;
+
+    const layerId = layer.id.toLowerCase();
+    const iconImage = map.getLayoutProperty(layer.id, 'icon-image');
+    const iconTextFit = map.getLayoutProperty(layer.id, 'icon-text-fit');
+
+    const serializedIconImage = JSON.stringify(iconImage ?? '').toLowerCase();
+
+    const isBrokenRoadShieldLayer =
+      layerId.includes('shield') ||
+      layerId.includes('road-number') ||
+      layerId.includes('road_number') ||
+      layerId.includes('road-ref') ||
+      layerId.includes('road_ref') ||
+      (Boolean(iconTextFit) && serializedIconImage.includes('road_'));
+
+    if (!isBrokenRoadShieldLayer) continue;
+
+    // Nur das fehlerhafte Schildbild ausblenden.
+    // Text und normale Straßenbeschriftungen bleiben erhalten.
+    map.setPaintProperty(layer.id, 'icon-opacity', 0);
+
+    neutralizedRoadShieldLayers.add(layer.id);
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[ROAD SHIELD DISABLED]', {
+        layerId: layer.id,
+        iconImage,
+        iconTextFit,
+      });
+    }
+  }
+}

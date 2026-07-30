@@ -25,6 +25,8 @@ import {
   createActivityPopupHTML,
   createFriendPopupHTML,
   getActivityJoinState,
+  neutralizeBrokenRoadShieldLayers,
+  neutralizedRoadShieldLayers,
 } from './map-marker-data';
 import { getFirstName, normalizePrecisionMeters, formatDistanceBucketText } from '@/lib/radar-types';
 import {
@@ -53,6 +55,8 @@ interface AktivaMapProps {
   onJoinActivity?: (activity: Activity) => Promise<any>;
 }
 
+export { neutralizedRoadShieldLayers, neutralizeBrokenRoadShieldLayers };
+
 export function AktivaMap({
   places,
   communityActivities,
@@ -74,6 +78,7 @@ export function AktivaMap({
   const friendHTMLMarkersRef = useRef<maplibregl.Marker[]>([]);
   const activePopupRef = useRef<maplibregl.Popup | null>(null);
   const nearbyFriendsRef = useRef<NearbyFriend[]>([]);
+  const styleDataHandlerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     nearbyFriendsRef.current = nearbyFriends;
@@ -243,82 +248,17 @@ export function AktivaMap({
 
       mapInstanceRef.current = map;
 
-      const isKnownOptionalMissingImage = (imageId: string) =>
-        imageId.includes('road_') ||
-        imageId.includes('poi_') ||
-        imageId.includes('shield') ||
-        imageId.endsWith(':road_') ||
-        imageId.endsWith(':poi_');
 
-      // Handle missing style images gracefully (e.g. road_, poi icons) with explicit transparent non-SDF pixel
-      map.on('styleimagemissing', (e) => {
-        const imageId = e.id;
-        if (!isKnownOptionalMissingImage(imageId)) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn('[UNHANDLED MAP IMAGE]', imageId);
-          }
-          return;
-        }
 
-        if (map.hasImage(imageId)) {
-          return;
-        }
+      const handleStyleData = () => {
+        neutralizeBrokenRoadShieldLayers(map);
+      };
+      styleDataHandlerRef.current = handleStyleData;
 
-        try {
-          map.addImage(
-            imageId,
-            {
-              width: 1,
-              height: 1,
-              data: new Uint8Array([0, 0, 0, 0]),
-            },
-            {
-              pixelRatio: 1,
-              sdf: false,
-            }
-          );
-        } catch {
-          // Ignore if image was added concurrently
-        }
-      });
-
-      // Dev-only click feature inspector & symbol audit
-      if (process.env.NODE_ENV !== 'production') {
-        map.on('click', (e) => {
-          const features = map.queryRenderedFeatures(e.point);
-          if (features && features.length > 0) {
-            console.table(
-              features.map((feature) => ({
-                layerId: feature.layer?.id,
-                layerType: feature.layer?.type,
-                source: feature.source,
-                sourceLayer: feature.sourceLayer,
-                properties: feature.properties,
-              }))
-            );
-          }
-        });
-
-        map.on('load', () => {
-          const suspiciousLayers = map
-            .getStyle()
-            .layers
-            ?.filter((layer) => {
-              if (layer.type !== 'symbol') return false;
-              const layout = JSON.stringify(layer.layout ?? {});
-              return (
-                layout.includes('road_') ||
-                layout.includes('poi_') ||
-                layout.includes('icon-text-fit')
-              );
-            });
-          if (suspiciousLayers && suspiciousLayers.length > 0) {
-            console.log('[MAP SYMBOL AUDIT]', suspiciousLayers);
-          }
-        });
-      }
+      map.on('styledata', handleStyleData);
 
       map.on('load', () => {
+        neutralizeBrokenRoadShieldLayers(map);
         setIsMapLoaded(true);
 
         // Add Attribution Control
@@ -960,6 +900,11 @@ export function AktivaMap({
         activePopupRef.current.remove();
       }
       if (mapInstanceRef.current) {
+        try {
+          if (styleDataHandlerRef.current) {
+            mapInstanceRef.current.off('styledata', styleDataHandlerRef.current);
+          }
+        } catch {}
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }

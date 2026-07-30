@@ -40,7 +40,7 @@ export interface LocationContextType {
   expiresAt: number | null;
   setManualLocation: (destination: Destination) => void;
   resetToCurrentLocation: () => void;
-  retryCurrentLocation: () => void;
+  retryCurrentLocation: () => Promise<boolean>;
   requestGpsLocation: (forceExplicit?: boolean) => Promise<boolean>;
 }
 
@@ -64,7 +64,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
 
   const previousLocationRef = useRef<{ lat: number; lng: number } | null>(null);
-  const isResolvingRef = useRef<boolean>(false);
+  const isRequestingLocationRef = useRef<boolean>(false);
   const currentRequestIdRef = useRef<number>(0);
   const lastLocationRef = useRef<{ lat: number; lng: number; updatedAt: number } | null>(null);
 
@@ -144,6 +144,21 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Check Permissions API supplementary state
+  const refreshPermissionState = useCallback(async (): Promise<'granted' | 'prompt' | 'denied' | null> => {
+    if (typeof navigator === 'undefined' || !navigator.permissions || !navigator.permissions.query) {
+      return null;
+    }
+    try {
+      const status = await navigator.permissions.query({ name: 'geolocation' as any });
+      setPermissionState(status.state as 'granted' | 'prompt' | 'denied');
+      return status.state as 'granted' | 'prompt' | 'denied';
+    } catch (err) {
+      console.warn('[LOCATION DEBUG] Permissions query failed:', err);
+      return null;
+    }
+  }, []);
+
   // Async Reverse-Geocoding (Best Effort - never blocks or sets Bremerhaven fallback)
   const executeReverseGeocode = useCallback(async (
     lat: number,
@@ -191,26 +206,41 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       if (requestId !== currentRequestIdRef.current) return;
       console.warn("[LOCATION DEBUG] Best-effort reverse geocoding failed (coordinates remain valid):", err);
-      // Do NOT set a fallback city on error! Keep existing city or null.
     }
   }, [accuracy, logLocationChange]);
 
-  // Primary GPS Resolution Logic
+  // Primary GPS Resolution Logic (Direct getCurrentPosition invocation)
   const requestGpsLocation = useCallback(async (forceExplicit = false): Promise<boolean> => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       setLocationStatus('error');
-      setLocationError('Geolocation is not supported by this browser.');
+      setLocationError(language === 'de' ? 'Geolokalisierung wird von deinem Browser nicht unterstützt.' : 'Geolocation is not supported by your browser.');
+      return false;
+    }
+
+    // Prevent duplicate concurrent requests
+    if (isRequestingLocationRef.current) {
+      console.log('[LOCATION DEBUG] Location request already in progress. Skipping duplicate call.');
       return false;
     }
 
     const requestId = ++currentRequestIdRef.current;
-    isResolvingRef.current = true;
+    isRequestingLocationRef.current = true;
     setLocationStatus('loading');
     setLocationError(null);
 
+    const startTime = Date.now();
+
     return new Promise<boolean>((resolvePromise) => {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
+          // Enforce minimum visual loading time for crisp UI feedback
+          const elapsed = Date.now() - startTime;
+          if (elapsed < 400) {
+            await new Promise((r) => setTimeout(r, 400 - elapsed));
+          }
+
+          isRequestingLocationRef.current = false;
+
           if (requestId !== currentRequestIdRef.current) {
             resolvePromise(false);
             return;
@@ -224,8 +254,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
             console.error('[LOCATION DEBUG] Invalid GPS coordinates received:', { lat, lng });
             setLocationStatus('error');
-            setLocationError('Ungültige GPS-Koordinaten empfangen.');
-            isResolvingRef.current = false;
+            setLocationError(language === 'de' ? 'Ungültige GPS-Koordinaten empfangen.' : 'Invalid GPS coordinates received.');
             resolvePromise(false);
             return;
           }
@@ -239,10 +268,10 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           setAccuracy(acc);
           setLocationSource('gps');
           setLocationStatus('ready');
+          setLocationError(null);
           setUpdatedAt(now);
           setExpiresAt(now + LOCATION_MAX_TTL_MS);
           setPermissionState('granted');
-          isResolvingRef.current = false;
 
           // Save fresh GPS location to localStorage
           try {
@@ -266,24 +295,52 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
           // Best-effort reverse geocoding
           executeReverseGeocode(lat, lng, requestId, 'gps', 'ready', 'current');
+          refreshPermissionState();
           resolvePromise(true);
         },
-        (error) => {
+        async (error) => {
+          const elapsed = Date.now() - startTime;
+          if (elapsed < 400) {
+            await new Promise((r) => setTimeout(r, 400 - elapsed));
+          }
+
+          isRequestingLocationRef.current = false;
+
           if (requestId !== currentRequestIdRef.current) {
             resolvePromise(false);
             return;
           }
 
           console.warn("[LOCATION DEBUG] Geolocation error:", error.code, error.message);
-          setLocationError(error.message);
-          isResolvingRef.current = false;
 
+          let friendlyMessage = '';
           if (error.code === error.PERMISSION_DENIED) {
             setPermissionState('denied');
             setLocationStatus('denied');
+            friendlyMessage = language === 'de'
+              ? 'Der Standortzugriff ist weiterhin deaktiviert. Ändere die Berechtigung in deinen Geräte- oder Browser-Einstellungen.'
+              : 'Location access remains disabled. Please update your device or browser settings.';
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            setLocationStatus('error');
+            friendlyMessage = language === 'de'
+              ? 'Dein Standort ist momentan nicht verfügbar. Prüfe, ob die Ortungsdienste auf deinem Gerät aktiviert sind.'
+              : 'Your location is currently unavailable. Please check if Location Services are enabled on your device.';
+          } else if (error.code === error.TIMEOUT) {
+            setLocationStatus('error');
+            friendlyMessage = language === 'de'
+              ? 'Die Standortermittlung hat zu lange gedauert. Versuche es erneut.'
+              : 'Location detection timed out. Please try again.';
           } else {
             setLocationStatus('error');
+            friendlyMessage = error.message || (
+              language === 'de' 
+                ? 'Ein unerwarteter Fehler ist bei der Standortermittlung aufgetreten.' 
+                : 'An unexpected error occurred during location detection.'
+            );
           }
+
+          setLocationError(friendlyMessage);
+          refreshPermissionState();
 
           // Check if we have a valid, non-expired cached GPS location to use during refresh
           const cached = getSanitizedCache();
@@ -312,10 +369,10 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           setLocationSource(null);
           resolvePromise(false);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     });
-  }, [city, executeReverseGeocode, getSanitizedCache, logLocationChange]);
+  }, [city, executeReverseGeocode, getSanitizedCache, language, logLocationChange, refreshPermissionState]);
 
   // Main resolution trigger
   const resolveCurrentLocation = useCallback(() => {
@@ -355,12 +412,14 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Otherwise, attempt GPS fetch if permission is granted
+    // Otherwise, attempt GPS fetch if permission is granted or prompt
     requestGpsLocation();
   }, [planningState, getSanitizedCache, requestGpsLocation, logLocationChange]);
 
   // Permissions API Monitoring
   useEffect(() => {
+    refreshPermissionState();
+
     if (typeof navigator === 'undefined' || !navigator.permissions || !navigator.permissions.query) return;
 
     let statusObj: PermissionStatus | null = null;
@@ -368,14 +427,6 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       .then((status) => {
         statusObj = status;
         setPermissionState(status.state as 'granted' | 'prompt' | 'denied');
-
-        if (status.state === 'denied') {
-          setLocationStatus('denied');
-        } else if (status.state === 'prompt') {
-          setLocationStatus('prompt');
-        } else if (status.state === 'granted') {
-          resolveCurrentLocation();
-        }
 
         status.onchange = () => {
           console.log('[LOCATION DEBUG] Permissions API status changed to:', status.state);
@@ -385,7 +436,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
             setEffectiveLocation(null);
             setCity(null);
           } else if (status.state === 'granted') {
-            requestGpsLocation();
+            requestGpsLocation(true);
           } else if (status.state === 'prompt') {
             setLocationStatus('prompt');
           }
@@ -400,26 +451,35 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         statusObj.onchange = null;
       }
     };
-  }, [resolveCurrentLocation, requestGpsLocation]);
+  }, [refreshPermissionState, requestGpsLocation]);
 
-  // VisibilityChange Auto-Refresh (Staleness > 15 minutes)
+  // App Switch / System Settings Return Listeners (visibilitychange, focus, pageshow)
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    const handleAppReturn = () => {
       if (document.visibilityState === 'visible') {
+        console.log('[LOCATION DEBUG] App returned/focused. Re-checking location permissions...');
+        refreshPermissionState();
+
         const lastUpdated = updatedAt || 0;
         const isStale = Date.now() - lastUpdated > LOCATION_STALE_AFTER_MS;
-        if (isStale) {
-          console.log('[LOCATION DEBUG] Tab became visible and location is stale. Refreshing GPS...');
-          requestGpsLocation();
+        const isDeniedOrPrompt = locationStatus === 'denied' || locationStatus === 'prompt' || !effectiveLocation;
+
+        if (isStale || isDeniedOrPrompt) {
+          requestGpsLocation(true);
         }
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleAppReturn);
+    window.addEventListener('focus', handleAppReturn);
+    window.addEventListener('pageshow', handleAppReturn);
+
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleAppReturn);
+      window.removeEventListener('focus', handleAppReturn);
+      window.removeEventListener('pageshow', handleAppReturn);
     };
-  }, [updatedAt, requestGpsLocation]);
+  }, [updatedAt, locationStatus, effectiveLocation, refreshPermissionState, requestGpsLocation]);
 
   // Initial resolve effect
   useEffect(() => {
@@ -438,8 +498,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     resolveCurrentLocation();
   }, [exitPlanningMode, resolveCurrentLocation]);
 
-  const retryCurrentLocation = useCallback(() => {
-    requestGpsLocation(true);
+  const retryCurrentLocation = useCallback(async (): Promise<boolean> => {
+    console.log('[LOCATION DEBUG] Explicit retry triggered by user click.');
+    return requestGpsLocation(true);
   }, [requestGpsLocation]);
 
   return (
