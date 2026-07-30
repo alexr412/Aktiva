@@ -281,7 +281,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
   const { isPremium, isOrganizer } = useActivePremium(userProfile);
   const hasAccess = isPremium || isOrganizer;
   const { toast } = useToast();
-  const { effectiveLocation, locationStatus, locationSource } = useLocation();
+  const { effectiveLocation, locationStatus, locationSource, permissionState: locationPermissionState } = useLocation();
 
   // Local settings synced from Firestore
   const [enabled, setEnabled] = useState(false);
@@ -293,8 +293,8 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
   const [nextAllowedLocationUpdateAt, setNextAllowedLocationUpdateAt] = useState<Date | null>(null);
   const [locationExpiresAt, setLocationExpiresAt] = useState<Date | null>(null);
 
-  // Client states
-  const [permissionState, setPermissionState] = useState<'unknown' | 'prompt' | 'granted' | 'denied' | 'unavailable'>('unknown');
+  // Client states derived strictly from LocationContext
+  const permissionState = (locationPermissionState || 'unknown') as 'unknown' | 'prompt' | 'granted' | 'denied' | 'unavailable';
   const [nearbyFriends, setNearbyFriends] = useState<NearbyFriend[]>([]);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
@@ -321,41 +321,6 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
 
   // language helper (fallback to 'de')
   const language = (userProfile as any)?.language || 'de';
-
-  // 1. Monitor Geolocation API Permission
-  useEffect(() => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      setPermissionState('unavailable');
-      return;
-    }
-
-    if (!navigator.permissions || !navigator.permissions.query) {
-      setPermissionState('prompt'); // Defensive default fallback if Permissions API is missing
-      return;
-    }
-
-    let permissionObj: PermissionStatus | null = null;
-
-    const updatePermission = () => {
-      if (permissionObj) {
-        setPermissionState(permissionObj.state as any);
-      }
-    };
-
-    navigator.permissions.query({ name: 'geolocation' as any }).then((perm) => {
-      permissionObj = perm;
-      setPermissionState(perm.state as any);
-      perm.onchange = updatePermission;
-    }).catch(() => {
-      setPermissionState('prompt');
-    });
-
-    return () => {
-      if (permissionObj) {
-        permissionObj.onchange = null;
-      }
-    };
-  }, []);
 
   // 2. Real-time sync of radar settings document from Firestore
   useEffect(() => {

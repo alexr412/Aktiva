@@ -20,6 +20,34 @@ interface LocationRequirementDialogProps {
   locationError?: string | null;
 }
 
+export type LocationDialogMode = 'loading' | 'denied' | 'closed' | 'prompt';
+
+export function getDeterministicDialogMode(params: {
+  locationStatus: string;
+  permissionState: 'granted' | 'prompt' | 'denied' | null | undefined;
+  effectiveLocation: { lat: number; lng: number } | null | undefined;
+}): LocationDialogMode {
+  const { locationStatus, permissionState, effectiveLocation } = params;
+
+  // Priority 1: Active request in progress -> loading
+  if (locationStatus === 'loading') {
+    return 'loading';
+  }
+
+  // Priority 2: Explicitly denied permission -> denied (CACHE DOES NOT BYPASS EXPLICIT DENIAL)
+  if ((permissionState as string) === 'denied' || locationStatus === 'denied') {
+    return 'denied';
+  }
+
+  // Priority 3: Valid position AND permission NOT denied -> closed
+  if (effectiveLocation && (locationStatus === 'ready' || locationStatus === 'resolved') && (permissionState as string) !== 'denied') {
+    return 'closed';
+  }
+
+  // Priority 4: Initial/undecided state -> prompt
+  return 'prompt';
+}
+
 export function LocationRequirementDialog({
   open,
   onOpenChange,

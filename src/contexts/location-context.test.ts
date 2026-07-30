@@ -264,6 +264,38 @@ async function runTests() {
     console.log('  ✅ Location permission instructions returned correctly.\n');
   }
 
+  // Test 10: getDeterministicDialogMode priority rules (cache alone does NOT bypass denied permission)
+  {
+    console.log('Test 10: getDeterministicDialogMode priority rules');
+    const { getDeterministicDialogMode } = await import('../components/common/LocationRequirementDialog');
+
+    // 10a: Cached location + permissionState === 'denied' MUST return 'denied' (cache does NOT bypass denied!)
+    const mode1 = getDeterministicDialogMode({
+      locationStatus: 'ready',
+      permissionState: 'denied',
+      effectiveLocation: { lat: 52.026, lng: 8.522 }
+    });
+    assert.strictEqual(mode1, 'denied');
+
+    // 10b: In-flight request (locationStatus === 'loading') MUST return 'loading' even if permissionState was 'denied'
+    const mode2 = getDeterministicDialogMode({
+      locationStatus: 'loading',
+      permissionState: 'denied',
+      effectiveLocation: null
+    });
+    assert.strictEqual(mode2, 'loading');
+
+    // 10c: Valid position + ready + granted permission MUST return 'closed'
+    const mode3 = getDeterministicDialogMode({
+      locationStatus: 'ready',
+      permissionState: 'granted',
+      effectiveLocation: { lat: 52.026, lng: 8.522 }
+    });
+    assert.strictEqual(mode3, 'closed');
+
+    console.log('  ✅ getDeterministicDialogMode correctly prioritized loading > denied > closed > prompt.\n');
+  }
+
   console.log('🎉 ALL LOCATION LOCK SCREEN & USER GESTURE TESTS PASSED SUCCESSFULLY!');
 }
 

@@ -71,6 +71,13 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
   const locationMode: LocationMode = planningState.isPlanning && planningState.destination ? 'manual' : 'current';
 
+  useEffect(() => {
+    console.log('[LOCATION TRACE] provider mounted');
+    return () => {
+      console.log('[LOCATION TRACE] provider unmounted');
+    };
+  }, []);
+
   // Centralized Debug Logger
   const logLocationChange = useCallback((
     source: LocationSource,
@@ -472,19 +479,25 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
   // App Switch / System Settings Return Listeners (visibilitychange, focus, pageshow)
   useEffect(() => {
-    const handleAppReturn = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[LOCATION DEBUG] App returned/focused. Re-checking location permissions...');
-        refreshPermissionState();
+    let debounceTimer: NodeJS.Timeout | null = null;
 
-        const lastUpdated = updatedAt || 0;
-        const isStale = Date.now() - lastUpdated > LOCATION_STALE_AFTER_MS;
-        const isDeniedOrPrompt = locationStatus === 'denied' || locationStatus === 'prompt' || !effectiveLocation;
+    const handleAppReturn = async () => {
+      if (document.visibilityState !== 'visible') return;
 
-        if (isStale || isDeniedOrPrompt) {
-          requestGpsLocation(true);
+      if (debounceTimer) clearTimeout(debounceTimer);
+
+      debounceTimer = setTimeout(async () => {
+        console.log('[LOCATION DEBUG] App returned/focused. Re-checking live location permissions...');
+        const freshState = await refreshPermissionState();
+
+        // Only automatic trigger if live permission is explicitly granted
+        if (freshState === 'granted' && !isRequestingLocationRef.current) {
+          console.log('[LOCATION DEBUG] Live permission is granted. Refreshing GPS location...');
+          requestCurrentLocationFromUserGesture();
+        } else {
+          console.log('[LOCATION DEBUG] Resume skipped GPS request because live permissionState is:', freshState);
         }
-      }
+      }, 300);
     };
 
     document.addEventListener('visibilitychange', handleAppReturn);
@@ -492,11 +505,12 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     window.addEventListener('pageshow', handleAppReturn);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       document.removeEventListener('visibilitychange', handleAppReturn);
       window.removeEventListener('focus', handleAppReturn);
       window.removeEventListener('pageshow', handleAppReturn);
     };
-  }, [updatedAt, locationStatus, effectiveLocation, refreshPermissionState, requestGpsLocation]);
+  }, [refreshPermissionState, requestCurrentLocationFromUserGesture]);
 
   // Initial resolve effect
   useEffect(() => {

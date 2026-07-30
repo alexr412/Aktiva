@@ -40,7 +40,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useFriendRadar } from '@/hooks/use-friend-radar';
 import type { SelectedMapEntity } from '@/components/map/map-types';
-import { createActivity, joinActivity, searchActivitiesBySemanticVector, castActivityVote, votePlace, updateUserLocation, subscribeCommunityActivities } from '@/lib/firebase/firestore';
+import { createActivity, joinActivity, searchActivitiesBySemanticVector, castActivityVote, votePlace, subscribeCommunityActivities } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter, doc, documentId } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
@@ -190,7 +190,7 @@ export default function Home() {
   useEffect(() => {
     if (locationStatus === 'denied' || locationPermissionState === 'denied' || (!userLocation && locationStatus === 'error')) {
       setShowLocationRequirement(true);
-    } else if (userLocation && (locationStatus === 'ready' || locationSource === 'gps' || locationSource === 'cache')) {
+    } else if (userLocation && (locationStatus === 'ready' || locationSource === 'gps' || locationSource === 'cache') && (locationPermissionState as string) !== 'denied') {
       setShowLocationRequirement(false);
     }
   }, [locationStatus, locationPermissionState, userLocation, locationSource]);

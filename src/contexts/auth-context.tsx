@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useState, useEffect, useMemo, type ReactNode } from 'react';
+import { createContext, useState, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import type { User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase/client';
 import { onAuthStateChanged, deleteUser, sendEmailVerification, signOut as firebaseSignOut, getRedirectResult, getAdditionalUserInfo } from 'firebase/auth';
@@ -76,6 +76,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [dbProfile, setDbProfile] = useState<UserProfile | null>(null);
   const [simulatedRole, setSimulatedRoleState] = useState<'admin' | 'supporter' | 'user' | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authInitializing, setAuthInitializing] = useState(true);
+  const isAuthInitializedRef = useRef(false);
   const language = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
@@ -473,23 +475,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
-      
-
-      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-      const cleanPath = currentPath.replace(/\/+$/, '') || '/';
-
-      const isPublicAuthRoute = cleanPath === '/login' || cleanPath === '/signup' || cleanPath === '/onboarding';
-      if (!isPublicAuthRoute) {
-        setLoading(true);
-      }
       if (unsubscribeDoc) {
-        
         unsubscribeDoc();
         unsubscribeDoc = undefined;
       }
 
       if (authUser) {
-        
         authUser.reload().then(async () => {
           try {
             await authUser.getIdToken(true);
@@ -527,7 +518,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(authUser);
           setupUserDocListener(authUser);
 
-          // Safety fallback for redirect login on reload failure
           const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
           const cleanPath = currentPath.replace(/\/+$/, '') || '/';
           const isLoginPage = cleanPath === '/login';
@@ -548,15 +538,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               setSocialLegalConsentPending,
             });
           }
+        }).finally(() => {
+          if (!isAuthInitializedRef.current) {
+            isAuthInitializedRef.current = true;
+            setAuthInitializing(false);
+          }
         });
       } else {
-        
         setUser(null);
         setDbProfile(null);
         setSocialLegalConsentPending(false);
         setLoading(false);
+        if (!isAuthInitializedRef.current) {
+          isAuthInitializedRef.current = true;
+          setAuthInitializing(false);
+        }
       }
-      
     });
 
     return () => {
@@ -770,10 +767,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   if (!isMounted) return null;
 
   const isSyncingVerification = !!(user && user.emailVerified && dbProfile?.emailVerificationRequired === true);
-
   return (
     <AuthContext.Provider value={contextValue}>
-      {(loading || isSyncingVerification) && !socialLegalConsentPending ? (
+      {authInitializing ? (
         <div className="flex items-center justify-center min-h-screen bg-white dark:bg-neutral-950">
           <Loader2 className="w-8 h-8 animate-spin text-[#10b981]" />
         </div>
