@@ -174,13 +174,15 @@ function OnboardingContent() {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const { 
-    effectiveLocation, 
-    city: locationCity, 
-    locationStatus, 
-    permissionState, 
-    requestGpsLocation,
-    requestCurrentLocationFromUserGesture
+    gateState, 
+    position, 
+    errorMessage: locationErrorMessage, 
+    requestLocation
   } = useLocation();
+
+  const handleLocate = () => {
+    requestLocation();
+  };
 
   const getSanitizedRedirect = (clearSession = true): string | null => {
     if (typeof window === 'undefined') return null;
@@ -199,7 +201,7 @@ function OnboardingContent() {
   const [isUsernameChecking, setIsUsernameChecking] = useState(false);
   const [usernameAvailability, setUsernameAvailability] = useState<'available' | 'taken' | 'invalid' | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const isLocating = locationStatus === 'loading';
+  const isLocating = gateState === 'requesting';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -321,10 +323,9 @@ function OnboardingContent() {
     return () => clearTimeout(timeoutId);
   }, [usernameValue, step, isUsernameValid, needsUsername]);
 
-  const nextStep = async () => {
-    const fieldsToValidate = onboardingSteps.find(s => s.id === step)?.fields as (keyof ProfileFormData)[] | undefined;
-    if (fieldsToValidate) {
-      const isValid = await form.trigger(fieldsToValidate);
+  const handleNext = async () => {
+    if (step === 5) {
+      const isValid = await form.trigger();
       if (!isValid) {
         const errors = form.formState.errors;
         const firstErrorKey = Object.keys(errors)[0];
@@ -337,18 +338,16 @@ function OnboardingContent() {
     }
 
     if (step === 1) {
-      if (!effectiveLocation || locationStatus === 'denied' || locationStatus === 'error') {
-        const success = await requestGpsLocation(true);
-        if (!success) {
-          toast({
-            variant: "destructive",
-            title: language === 'de' ? "Standort erforderlich" : "Location Required",
-            description: language === 'de' 
-              ? "Ein gültiger GPS-Standort ist erforderlich, um Aktiva zu nutzen." 
-              : "A valid GPS location is required to use Aktiva."
-          });
-          return;
-        }
+      if (gateState !== 'granted' || !position) {
+        requestLocation();
+        toast({
+          variant: "destructive",
+          title: language === 'de' ? "Standort erforderlich" : "Location Required",
+          description: language === 'de' 
+            ? "Ein gültiger GPS-Standort ist erforderlich, um Aktiva zu nutzen." 
+            : "A valid GPS location is required to use Aktiva."
+        });
+        return;
       }
     }
 
@@ -490,11 +489,6 @@ function OnboardingContent() {
     }
   };
 
-  const handleLocate = () => {
-    if (isSubmitting || isLocating) return;
-    requestCurrentLocationFromUserGesture();
-  };
-
   const handleRandomAvatar = () => {
     if (randomAvatarLimitReached || uploadingImage || isSubmitting) return;
 
@@ -514,7 +508,7 @@ function OnboardingContent() {
   const onSubmit = async (data: ProfileFormData) => {
     if (!user || isSubmitting) return;
     
-    if (!effectiveLocation) {
+    if (!position || gateState !== 'granted') {
       toast({
         variant: "destructive",
         title: language === 'de' ? "Standort erforderlich" : "Location Required",
@@ -557,12 +551,13 @@ function OnboardingContent() {
         }
       }
 
-      const birthDateToUse = data.birthDate || userProfile?.birthday || '';
-      const nameToUse = data.displayName || userProfile?.displayName || userProfile?.username || 'Aktiva User';
+      let nameToUse = data.displayName;
 
       let ageValue = 0;
-      if (birthDateToUse) {
-        const birth = new Date(birthDateToUse.split('/').reverse().join('-'));
+      let birthDateToUse: any = null;
+      if (data.birthDate) {
+        const birth = new Date(data.birthDate);
+        birthDateToUse = birth;
         const today = new Date();
         ageValue = today.getFullYear() - birth.getFullYear();
         const m = today.getMonth() - birth.getMonth();
@@ -572,13 +567,13 @@ function OnboardingContent() {
       }
 
       // Securely update radar location (idempotent call)
-      if (effectiveLocation) {
+      if (position && gateState === 'granted') {
         try {
           const { functions: clientFunctions } = await import('@/lib/firebase/client');
           if (clientFunctions) {
             const { httpsCallable } = await import('firebase/functions');
             const updateRadarFn = httpsCallable(clientFunctions, 'updateRadarLocation');
-            await updateRadarFn({ latitude: effectiveLocation.lat, longitude: effectiveLocation.lng, accuracy: 95 });
+            await updateRadarFn({ latitude: position.latitude, longitude: position.longitude, accuracy: position.accuracy });
           }
         } catch (radarErr) {
           console.warn("updateRadarLocation during onSubmit skipped or failed:", radarErr);
@@ -590,7 +585,7 @@ function OnboardingContent() {
         birthday: birthDateToUse,
         age: ageValue > 0 ? ageValue : (userProfile?.age || 0),
         bio: data.bio || '',
-        location: locationCity || 'Aktueller Standort',
+        location: 'Aktueller Standort',
         interests: data.interests || [],
         tinderInterests: data.tinderInterests || [],
         onboardingCompleted: true,
@@ -768,7 +763,7 @@ function OnboardingContent() {
                 >
                   {step === 1 && (
                     <div className="space-y-6">
-                      {permissionState === 'denied' || locationStatus === 'denied' ? (
+                      {gateState === 'denied' ? (
                         <div className="p-6 md:p-8 rounded-[2rem] bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-4 text-center">
                           <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-inner">
                             <Lock className="w-8 h-8" />
@@ -816,12 +811,12 @@ function OnboardingContent() {
                             ) : (
                               <>
                                 <RefreshCw className="w-5 h-5" />
-                                <span>{language === 'de' ? 'Erneut versuchen' : 'Retry'}</span>
+                                <span>{language === 'de' ? 'Standort prüfen' : 'Check Location'}</span>
                               </>
                             )}
                           </Button>
                         </div>
-                      ) : effectiveLocation ? (
+                      ) : gateState === 'granted' && position !== null ? (
                         <div className="p-6 md:p-8 rounded-[2rem] bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-4 text-center">
                           <div className="mx-auto w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-inner">
                             <Check className="w-8 h-8" />
@@ -831,19 +826,9 @@ function OnboardingContent() {
                               {language === 'de' ? 'Standort erfasst' : 'Location Captured'}
                             </h2>
                             <p className="text-base font-black text-emerald-600 dark:text-emerald-400">
-                              {locationCity || (language === 'de' ? 'Aktueller Standort (GPS)' : 'Current Location (GPS)')}
+                              {language === 'de' ? 'Aktueller Standort (GPS)' : 'Current Location (GPS)'}
                             </p>
                           </div>
-                          <Button
-                            type="button"
-                            onClick={handleLocate}
-                            disabled={isLocating || isSubmitting}
-                            variant="outline"
-                            className="w-full h-12 rounded-2xl font-bold border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-2"
-                          >
-                            {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4 fill-current" />}
-                            {language === 'de' ? 'Standort erneuen' : 'Refresh location'}
-                          </Button>
                         </div>
                       ) : (
                         <div className="p-6 md:p-8 rounded-[2rem] bg-slate-50 dark:bg-neutral-900/60 border border-slate-100 dark:border-neutral-800 space-y-6 text-center">
@@ -856,9 +841,9 @@ function OnboardingContent() {
                               {language === 'de' ? 'Aktiva benötigt deinen Standort' : 'Aktiva needs your location'}
                             </h2>
                             <p className="text-sm font-medium text-slate-500 dark:text-neutral-400 leading-relaxed px-2">
-                              {language === 'de'
+                              {locationErrorMessage || (language === 'de'
                                 ? 'Damit wir dir Aktivitäten, Orte und Menschen in deiner Nähe zeigen können, benötigen wir Zugriff auf deinen aktuellen Standort.'
-                                : 'To show you activities, places, and people nearby, we need access to your current location.'}
+                                : 'To show you activities, places, and people nearby, we need access to your current location.')}
                             </p>
                           </div>
                           <Button
@@ -868,7 +853,10 @@ function OnboardingContent() {
                             className="w-full h-16 rounded-2xl bg-primary hover:opacity-90 text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-3 border-none transition-all active:scale-95 disabled:opacity-80"
                           >
                             {isLocating ? (
-                              <Loader2 className="w-6 h-6 animate-spin" />
+                              <>
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                                <span>{language === 'de' ? 'Standort wird geprüft …' : 'Checking location …'}</span>
+                              </>
                             ) : (
                               <>
                                 <Navigation className="w-5 h-5 fill-current" />
@@ -1359,7 +1347,7 @@ function OnboardingContent() {
                   <Button 
                     key="next-btn"
                     type="button" 
-                    onClick={nextStep} 
+                    onClick={handleNext} 
                     disabled={isSubmitting || uploadingImage}
                     className="flex-1 h-14 rounded-full font-black uppercase tracking-widest text-[11px] shadow-none transition-all active:scale-[0.98]"
                   >

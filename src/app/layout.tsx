@@ -7,6 +7,8 @@ import { AuthProvider } from '@/contexts/auth-context';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { PlanningModeProvider } from '@/contexts/planning-mode-context';
 import { LocationProvider } from '@/contexts/location-context';
+import { AppBootstrapGate } from '@/components/common/AppBootstrapGate';
+import { LocationGate } from '@/components/common/LocationGate';
 import { PlanningModeBanner } from '@/components/common/PlanningModeBanner';
 import { FavoritesProvider } from '@/contexts/favorites-context';
 import { AppInit } from '@/components/common/AppInit';
@@ -87,26 +89,30 @@ export default function RootLayout({
         <AppInit />
         <ThemeProvider>
           <AuthProvider>
-            <PlanningModeProvider>
-              <LocationProvider>
-                <FriendRadarProvider>
-                  <FavoritesProvider>
-                    <ChatSyncProvider>
-                      <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
-                        <PlanningModeBanner />
-                        <main className="flex-1 relative flex flex-col overflow-hidden">
-                          {children}
-                        </main>
-                        <BottomNav />
-                        <AdminQuickNavigator />
-                      </div>
-                      <Toaster />
-                      <StatusBorder />
-                    </ChatSyncProvider>
-                  </FavoritesProvider>
-                </FriendRadarProvider>
-              </LocationProvider>
-            </PlanningModeProvider>
+            <LocationProvider>
+              <AppBootstrapGate>
+                <LocationGate>
+                  <PlanningModeProvider>
+                    <FriendRadarProvider>
+                      <FavoritesProvider>
+                        <ChatSyncProvider>
+                          <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
+                            <PlanningModeBanner />
+                            <main className="flex-1 relative flex flex-col overflow-hidden">
+                              {children}
+                            </main>
+                            <BottomNav />
+                            <AdminQuickNavigator />
+                          </div>
+                          <Toaster />
+                          <StatusBorder />
+                        </ChatSyncProvider>
+                      </FavoritesProvider>
+                    </FriendRadarProvider>
+                  </PlanningModeProvider>
+                </LocationGate>
+              </AppBootstrapGate>
+            </LocationProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

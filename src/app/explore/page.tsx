@@ -45,8 +45,11 @@ export default function ExplorePage() {
     const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
     const animationControls = useAnimation();
     
-    const { effectiveLocation: userLocation, locationStatus, retryCurrentLocation } = useLocation();
-    const isLocationLoading = locationStatus === 'resolving';
+    const { gateState, position, requestLocation } = useLocation();
+    const userLocation = useMemo(() => {
+      return position ? { lat: position.latitude, lng: position.longitude } : null;
+    }, [position]);
+    const isLocationLoading = gateState === 'requesting';
     const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
     const [activeTabId, setActiveTabId] = useState<string>('all');
@@ -69,7 +72,7 @@ export default function ExplorePage() {
     };
 
     useEffect(() => {
-        if (!db || !user || locationStatus === 'resolving') return;
+        if (!db || !user || isLocationLoading) return;
 
         setIsLoading(true);
 
@@ -430,7 +433,7 @@ export default function ExplorePage() {
                                         
                                         <Button 
                                             variant="ghost"
-                                            onClick={retryCurrentLocation}
+                                            onClick={requestLocation}
                                             className="w-full h-12 rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-neutral-200 font-bold"
                                         >
                                             {language === 'de' ? 'GPS erneut versuchen' : 'Retry GPS'}

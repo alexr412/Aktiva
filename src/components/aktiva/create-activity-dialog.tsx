@@ -21,6 +21,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
+import { useLocation } from '@/contexts/location-context';
 import { earnToken } from '@/lib/firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { reverseGeocode, autocompletePlaces } from '@/lib/geoapify';
@@ -180,23 +181,25 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
     setIsSearching(false);
   };
 
-  const handleGetCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: language === 'de' ? 'GPS wird nicht unterstützt.' : 'GPS not supported.' });
+  const { gateState, position } = useLocation();
+
+  const handleGetCurrentLocation = async () => {
+    if (gateState !== 'granted' || !position) {
+      toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: language === 'de' ? 'Standort nicht verfügbar.' : 'Location not available.' });
       return;
     }
     setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      const place = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+    try {
+      const place = await reverseGeocode(position.latitude, position.longitude);
       if (place) {
         setSelectedLocation(place);
         toast({ title: language === 'de' ? 'Standort verifiziert' : 'Location verified', description: place.address });
       }
-      setIsLocating(false);
-    }, (err) => {
-      setIsLocating(false);
+    } catch (err) {
       toast({ variant: 'destructive', title: language === 'de' ? 'GPS Fehler' : 'GPS Error', description: language === 'de' ? 'Standort konnte nicht ermittelt werden.' : 'Location could not be determined.' });
-    }, { enableHighAccuracy: true, timeout: 10000 });
+    } finally {
+      setIsLocating(false);
+    }
   };
 
   /**

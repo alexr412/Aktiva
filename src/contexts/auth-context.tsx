@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Loader2, Ban } from 'lucide-react';
 import { doc, onSnapshot, updateDoc, deleteField, setDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
-import { updateUserLocation, updateUserProfile } from '@/lib/firebase/firestore';
+import { updateUserProfile } from '@/lib/firebase/firestore';
 import { requestAndGetFCMToken, onForegroundMessage } from '@/lib/firebase/messaging';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [simulatedRole, setSimulatedRoleState] = useState<'admin' | 'supporter' | 'user' | null>(null);
   const [loading, setLoading] = useState(true);
   const [authInitializing, setAuthInitializing] = useState(true);
-  const isAuthInitializedRef = useRef(false);
+  const initialAuthResolutionRef = useRef(false);
   const language = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
@@ -88,15 +88,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const val = sessionStorage.getItem('aktiva:socialLegalConsentPending') === 'true';
-      
       setSocialLegalConsentPendingState(val);
     }
   }, []);
 
   const setSocialLegalConsentPending = (pending: boolean) => {
-    if (typeof window !== 'undefined') {
-      
-    }
     setSocialLegalConsentPendingState(pending);
     if (typeof window !== 'undefined') {
       if (pending) {
@@ -104,7 +100,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         sessionStorage.removeItem("aktiva:socialLegalConsentPending");
       }
-      
     }
   };
 
@@ -130,12 +125,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user, dbProfile, socialLegalConsentPending]);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      
-    }
-  }, [socialLegalConsentPending, user, dbProfile, loading, pathname]);
-
   // Expose __LEGAL_DEBUG__ on window in dev mode
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -152,7 +141,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         forcePending: () => setSocialLegalConsentPending(true),
         clearPending: () => setSocialLegalConsentPending(false),
       };
-      
     }
   }, [socialLegalConsentPending, dbProfile, pathname]);
 
@@ -173,21 +161,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { serverTimestamp } = await import('firebase/firestore');
       const userDocRef = doc(db!, 'users', currentUser.uid);
       
-      console.warn("[LEGAL DEBUG] Legal consent write detected", {
-        source: "handleAcceptSocialConsent",
-        uid: currentUser.uid,
-        isExplicitAcceptFlow: true,
-        data: {
-          legalAcceptedAt: 'serverTimestamp()',
-          termsAcceptedAt: 'serverTimestamp()',
-          useTermsAcceptedAt: 'serverTimestamp()',
-          privacyAcceptedAt: 'serverTimestamp()',
-          cookiesAcceptedAt: 'serverTimestamp()',
-          legalVersion: '1.0',
-          legalLocale: language
-        },
-        timestamp: Date.now()
-      });
       await setDoc(userDocRef, {
         legalAcceptedAt: serverTimestamp(),
         termsAcceptedAt: serverTimestamp(),
@@ -198,7 +171,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         legalLocale: language
       }, { merge: true });
 
-      
       setSocialLegalConsentPending(false);
 
       await currentUser.reload();
@@ -208,7 +180,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.warn('Failed to refresh token after reload:', tokenErr);
       }
       const freshUser = auth?.currentUser || currentUser;
-      
 
       if (freshUser.emailVerified) {
         toast({
@@ -227,7 +198,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.warn("Could not check onboarding status:", e);
         }
 
-        
         if (onboardingCompleted) {
           router.replace('/');
         } else {
@@ -247,7 +217,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.warn("Could not send verification email:", verifError);
         }
 
-        
         router.replace('/login?verification=required');
         const { signOut: authSignOut } = await import('@/lib/firebase/auth');
         await authSignOut();
@@ -259,17 +228,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
       }
     } catch (error: any) {
-      console.error("[LEGAL DEBUG] handleAcceptSocialConsent failed", {
-        error: error.message || error,
-        timestamp: Date.now()
-      });
       toast({
         variant: 'destructive',
         title: language === 'de' ? 'Fehler' : 'Error',
         description: error.message || (language === 'de' ? 'Es gab ein Problem bei der Registrierung.' : 'Something went wrong during registration.'),
       });
     } finally {
-      
       setLoading(false);
     }
   };
@@ -280,9 +244,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       if (currentUser) {
-        // Cascading deletion of user profile and data is handled asynchronously by the server-side onDelete Auth trigger (onUserDeleted)
         try {
-          console.warn("[LEGAL DEBUG] deleting user in decline flow", { uid: currentUser.uid, timestamp: Date.now() });
           await deleteUser(currentUser);
         } catch (e) {
           console.warn("Could not delete user in decline flow:", e);
@@ -300,14 +262,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           : 'You must accept the legal agreements to register.',
       });
     } catch (error: any) {
-      console.error("[LEGAL DEBUG] handleDeclineSocialConsent failed", {
-        error: error.message || error,
-        timestamp: Date.now()
-      });
       const { signOut: authSignOut } = await import('@/lib/firebase/auth');
       await authSignOut();
     } finally {
-      
       setSocialLegalConsentPending(false);
       setLoading(false);
       router.replace('/login');
@@ -337,10 +294,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const userProfile = useMemo(() => {
     if (!dbProfile) return null;
     
-    // Determine the active role
     let activeRole = dbProfile.role || 'user';
-    
-    // Only allow simulation in development mode if the real role in database is admin or supporter
     const isDev = process.env.NODE_ENV === 'development';
     const isEligibleForSimulation = isDev && (dbProfile.role === 'admin' || dbProfile.role === 'supporter');
     if (isEligibleForSimulation && simulatedRole) {
@@ -353,39 +307,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [dbProfile, simulatedRole]);
 
-
   const publicRoutes = ['/login', '/signup', '/terms', '/privacy', '/imprint', '/licenses', '/accessibility', '/cancellation'];
   const isPublicInviteRoute = pathname ? (
     /^\/activities\/[^/]+\/invite$/.test(pathname) ||
     /^\/activity\/[^/]+\/invite$/.test(pathname)
   ) : false;
   const isPublicRoute = publicRoutes.includes(pathname) || isPublicInviteRoute;
-
   const legalPages = ['/terms', '/privacy', '/imprint', '/licenses', '/accessibility', '/cancellation'];
   const isLegalPage = legalPages.includes(pathname);
 
   useEffect(() => {
     setIsMounted(true);
     if (!auth || !db) {
-        setLoading(false);
-        return;
+      setLoading(false);
+      if (!initialAuthResolutionRef.current) {
+        initialAuthResolutionRef.current = true;
+        setAuthInitializing(false);
+      }
+      return;
     }
 
     if (!isRedirectProcessing) {
       isRedirectProcessing = true;
-      console.log("[LEGAL DEBUG] Redirect result check started", {
-        timestamp: Date.now(),
-        href: window.location.href,
-      });
       getRedirectResult(auth)
         .then(async (result) => {
-          console.log("[LEGAL DEBUG] Redirect result received", {
-            hasResult: !!result,
-            uid: result?.user?.uid ?? null,
-            email: result?.user?.email ?? null,
-            providerId: result?.providerId ?? null,
-            timestamp: Date.now(),
-          });
           if (result) {
             hasProcessedPostLogin = true;
             await handleSuccessfulSocialLogin({
@@ -398,7 +343,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         })
         .catch((error) => {
-          console.error("[LEGAL DEBUG] Redirect result failed", error);
           toast({
             variant: 'destructive',
             title: language === 'de' ? 'Login fehlgeschlagen' : 'Login failed',
@@ -413,27 +357,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const setupUserDocListener = (currentAuthUser: User) => {
       if (unsubscribeDoc) {
-        
         unsubscribeDoc();
       }
       const userRef = doc(db!, 'users', currentAuthUser.uid);
       
       unsubscribeDoc = onSnapshot(userRef, (docSnap) => {
-        
         if (docSnap.exists()) {
           const data = docSnap.data();
-          
-          // Lazy migration check: if they have 'isAdmin' but not 'role'
           if (data.isAdmin !== undefined && data.role === undefined) {
             const targetRole = data.isAdmin === true ? 'admin' : 'user';
-            
             updateDoc(userRef, {
               isAdmin: deleteField(),
               role: targetRole
             }).catch(err => console.error("Lazy migration failed:", err));
           }
 
-          // Explizite Zuweisung wichtiger Felder zur Vermeidung von State-Verlust
           const profile: UserProfile = {
             uid: docSnap.id,
             ...data,
@@ -445,31 +383,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           } as UserProfile;
           
           setDbProfile(prev => {
-            // Deep equality check using JSON stringify to avoid state flutter
             if (prev) {
               try {
                 if (JSON.stringify(prev) === JSON.stringify(profile)) {
-                  
                   return prev;
                 }
               } catch (e) {
                 console.error("Profile comparison failed, forcing update:", e);
               }
             }
-            
             return profile;
           });
         } else {
-          console.warn("[LEGAL DEBUG] setupUserDocListener - user doc does not exist", { uid: currentAuthUser.uid, timestamp: Date.now() });
           setDbProfile(null);
         }
         setLoading(false);
       }, (error) => {
-        console.error("[LEGAL DEBUG] User document stream error:", {
-          uid: currentAuthUser.uid,
-          error: error.message || error,
-          timestamp: Date.now()
-        });
+        console.error("User document stream error:", error);
         setLoading(false);
       });
     };
@@ -492,7 +422,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(freshUser);
           setupUserDocListener(freshUser);
 
-          // Safety fallback for redirect login
           const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
           const cleanPath = currentPath.replace(/\/+$/, '') || '/';
           const isLoginPage = cleanPath === '/login';
@@ -500,10 +429,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const isAuthPage = isLoginPage || isSignupPage;
 
           if (isAuthPage && !hasProcessedPostLogin) {
-            console.warn("[LEGAL DEBUG] onAuthStateChanged safety fallback triggered", {
-              uid: freshUser.uid,
-              timestamp: Date.now()
-            });
             hasProcessedPostLogin = true;
             await handleSuccessfulSocialLogin({
               user: freshUser,
@@ -514,7 +439,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
           }
         }).catch(async (err) => {
-          console.warn("[LEGAL DEBUG] onAuthStateChanged - failed to reload user:", err);
           setUser(authUser);
           setupUserDocListener(authUser);
 
@@ -525,10 +449,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const isAuthPage = isLoginPage || isSignupPage;
 
           if (isAuthPage && !hasProcessedPostLogin) {
-            console.warn("[LEGAL DEBUG] onAuthStateChanged safety fallback triggered on reload error", {
-              uid: authUser.uid,
-              timestamp: Date.now()
-            });
             hasProcessedPostLogin = true;
             await handleSuccessfulSocialLogin({
               user: authUser,
@@ -539,8 +459,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
           }
         }).finally(() => {
-          if (!isAuthInitializedRef.current) {
-            isAuthInitializedRef.current = true;
+          if (!initialAuthResolutionRef.current) {
+            initialAuthResolutionRef.current = true;
             setAuthInitializing(false);
           }
         });
@@ -549,8 +469,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setDbProfile(null);
         setSocialLegalConsentPending(false);
         setLoading(false);
-        if (!isAuthInitializedRef.current) {
-          isAuthInitializedRef.current = true;
+        if (!initialAuthResolutionRef.current) {
+          initialAuthResolutionRef.current = true;
           setAuthInitializing(false);
         }
       }
@@ -575,7 +495,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (clientFunctions) {
             const verifyFn = httpsCallable(clientFunctions, 'verifyEmailStatus');
             await verifyFn();
-            
           }
         } catch (err) {
           console.error("Failed to sync email verification status:", err);
@@ -585,16 +504,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user?.emailVerified, dbProfile?.emailVerificationRequired, user?.uid, pathname]);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      
-    }
-  }, [pathname]);
-
-  // Separate effect strictly for routing
+  // Route guard
   useEffect(() => {
     if (!isMounted || loading) {
-      
       return;
     }
 
@@ -607,16 +519,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const isSignupPage = pathname === '/signup';
 
     if (user && !user.emailVerified && !isLoginPage && !isSignupPage && !isPublicRoute) {
-      console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
-        source: "route guard - email unverified",
-        target: "/login",
-        pathname,
-        socialLegalConsentPending,
-        sessionStoragePending: sessionStorage.getItem("aktiva:socialLegalConsentPending"),
-        uid: auth?.currentUser?.uid ?? null,
-        timestamp: Date.now()
-      });
-      
       toast({
         variant: 'destructive',
         title: language === 'de' ? 'Verifizierung erforderlich' : 'Verification Required',
@@ -632,52 +534,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     if (user && userProfile) {
-        // Only redirect if email is verified AND onboarding is definitely not completed
-        // AND we are not already on the onboarding page
-        // AND we are not on the login/signup page (to prevent race conditions during OAuth check)
-        // AND the user does not require email verification
-        if (user.emailVerified && dbProfile?.emailVerificationRequired !== true && userProfile.onboardingCompleted === false && !isInternalOnboarding && !isLoginPage && !isSignupPage && !isLegalPage && !isPublicRoute) {
-            console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
-              source: "route guard - onboarding not completed",
-              target: "/onboarding",
-              pathname,
-              socialLegalConsentPending,
-              sessionStoragePending: sessionStorage.getItem("aktiva:socialLegalConsentPending"),
-              uid: auth?.currentUser?.uid ?? null,
-              timestamp: Date.now()
-            });
-            
-            router.replace('/onboarding');
-        }
+      if (user.emailVerified && dbProfile?.emailVerificationRequired !== true && userProfile.onboardingCompleted === false && !isInternalOnboarding && !isLoginPage && !isSignupPage && !isLegalPage && !isPublicRoute) {
+        router.replace('/onboarding');
+      }
     } else if (!user && !loading && !isPublicRoute && !isLoginPage && !isSignupPage) {
-        const isDev = process.env.NODE_ENV === 'development';
-        const isTestingBypass = isDev && typeof window !== 'undefined' && (
-          window.location.search.includes('bypass_auth=true') ||
-          localStorage.getItem('bypass_auth') === 'true'
-        );
-        if (isTestingBypass) {
-          
-          return;
-        }
-        const fullPath = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : pathname;
-        if (typeof window !== 'undefined' && window.sessionStorage && fullPath && (/^\/[^/]+/.test(fullPath) || fullPath === '/')) {
-          sessionStorage.setItem('postLoginRedirect', fullPath);
-        }
-        console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
-          source: "route guard - unauthenticated user",
-          target: `/login?redirect=${encodeURIComponent(fullPath)}`,
-          pathname,
-          socialLegalConsentPending,
-          sessionStoragePending: sessionStorage.getItem("aktiva:socialLegalConsentPending"),
-          uid: auth?.currentUser?.uid ?? null,
-          timestamp: Date.now()
-        });
-        
-        router.replace(`/login?redirect=${encodeURIComponent(fullPath)}`);
+      const isDev = process.env.NODE_ENV === 'development';
+      const isTestingBypass = isDev && typeof window !== 'undefined' && (
+        window.location.search.includes('bypass_auth=true') ||
+        localStorage.getItem('bypass_auth') === 'true'
+      );
+      if (isTestingBypass) {
+        return;
+      }
+      const fullPath = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : pathname;
+      if (typeof window !== 'undefined' && window.sessionStorage && fullPath && (/^\/[^/]+/.test(fullPath) || fullPath === '/')) {
+        sessionStorage.setItem('postLoginRedirect', fullPath);
+      }
+      router.replace(`/login?redirect=${encodeURIComponent(fullPath)}`);
     }
   }, [user, userProfile?.onboardingCompleted, dbProfile?.emailVerificationRequired, loading, isMounted, pathname, isPublicRoute, router, socialLegalConsentPending]);
 
-  // FCM Integration - Optimized to prevent loops
+  // FCM Integration
   useEffect(() => {
     if (!user || !userProfile?.notificationSettings?.localHighlights) return;
 
@@ -710,40 +587,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [user?.uid, userProfile?.notificationSettings?.localHighlights, userProfile?.fcmToken]);
 
-  // Proximity Radar
-  useEffect(() => {
-    if (!user || !userProfile?.proximitySettings?.enabled) return;
-
-    const updateLocation = () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
-            
-            // Try to get city name for friends list using our reliable helper
-            let cityName = undefined;
-            try {
-              const { reverseGeocode: geoapifyReverse } = await import('@/lib/geoapify');
-              const place = await geoapifyReverse(latitude, longitude);
-              if (place) {
-                const props = (place as any)._rawProperties || {};
-                cityName = props.city || props.town || props.village || props.suburb || props.municipality || place.name;
-              }
-            } catch (e) {}
-
-            updateUserLocation(user.uid, latitude, longitude, cityName);
-          },
-          (error) => console.warn("Location update failed:", error),
-          { enableHighAccuracy: true, timeout: 10000 }
-        );
-      }
-    };
-
-    updateLocation();
-    const interval = setInterval(updateLocation, 15 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [user, userProfile?.proximitySettings?.enabled]);
-
   const contextValue = useMemo(() => ({ 
     user, 
     userProfile, 
@@ -763,10 +606,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return <BannedScreen />;
   }
 
-  // Hydration-Sicherheit: Auf dem Server rendern wir nichts Kritisches
   if (!isMounted) return null;
 
-  const isSyncingVerification = !!(user && user.emailVerified && dbProfile?.emailVerificationRequired === true);
   return (
     <AuthContext.Provider value={contextValue}>
       {authInitializing ? (
@@ -790,3 +631,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+

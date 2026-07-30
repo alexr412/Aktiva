@@ -64,7 +64,6 @@ import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { UserBadge } from '@/components/common/UserBadge';
 import { calculateDistance } from '@/lib/geo-utils';
 import { useLanguage } from '@/hooks/use-language';
-import { LocationRequirementDialog } from '@/components/common/LocationRequirementDialog';
 import { getFeedCacheKey, getFeedCache, setFeedCache } from '@/lib/feed-cache';
 import { trackInteraction } from '@/lib/telemetry';
 import { isDuplicate } from '@/lib/duplicate-detector';
@@ -169,31 +168,13 @@ export default function Home() {
       };
     }
   }, [scrollTriggerId, isOpenRoomsMode]);
-  const {
-    locationMode,
-    effectiveLocation: userLocation,
-    city: contextCity,
-    locationSource,
-    locationStatus,
-    locationError,
-    permissionState: locationPermissionState,
-    resetToCurrentLocation: handleResetLocation,
-    retryCurrentLocation: requestLocation,
-    requestCurrentLocationFromUserGesture,
-  } = useLocation();
-
-  const cityName = contextCity || (language === 'de' ? "Aktueller Standort" : "Current location");
-  const resolvedCityName = contextCity;
-  const isLocationLoading = locationStatus === 'loading';
-  const [showLocationRequirement, setShowLocationRequirement] = useState(false);
-
-  useEffect(() => {
-    if (locationStatus === 'denied' || locationPermissionState === 'denied' || (!userLocation && locationStatus === 'error')) {
-      setShowLocationRequirement(true);
-    } else if (userLocation && (locationStatus === 'ready' || locationSource === 'gps' || locationSource === 'cache') && (locationPermissionState as string) !== 'denied') {
-      setShowLocationRequirement(false);
-    }
-  }, [locationStatus, locationPermissionState, userLocation, locationSource]);
+  const { gateState, position, requestLocation } = useLocation();
+  const userLocation = useMemo(() => {
+    return position ? { lat: position.latitude, lng: position.longitude } : null;
+  }, [position]);
+  const cityName = language === 'de' ? "Aktueller Standort" : "Current location";
+  const resolvedCityName = null;
+  const isLocationLoading = gateState === 'requesting';
 
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
@@ -1304,7 +1285,7 @@ export default function Home() {
     const isPremium = isPremiumActive(userProfile);
     if (!isPremium && planningState.isPlanning) {
       console.warn("[LOCATION DEBUG] Non-premium user has active planning mode. Resetting location.");
-      handleResetLocation();
+      requestLocation();
       toast({
         title: language === 'de' ? 'Premium erforderlich' : 'Premium Required',
         description: language === 'de'
@@ -1313,10 +1294,6 @@ export default function Home() {
       });
     }
   }, [authLoading, userProfile, planningState.isPlanning]);
-
-  const handleUseHomeLocation = () => {
-    setShowLocationRequirement(false);
-  };
 
   useEffect(() => {
     // Fallback termination: If we are specifically searching for a name, we don't fallback to defaults.
@@ -1714,7 +1691,7 @@ export default function Home() {
 
     const hasStructuredLocationFailure =
       !isLocationLoading &&
-      Boolean(locationError || locationPermissionState === 'denied' || locationStatus === 'error');
+      gateState !== 'granted';
 
     const hasTerminalActiveError =
       Boolean(activeFeedError) &&
@@ -2163,7 +2140,7 @@ export default function Home() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        handleResetLocation();
+                        requestLocation();
                       }}
                       className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[11px] leading-none"
                     >
@@ -2202,7 +2179,7 @@ export default function Home() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          handleResetLocation();
+                          requestLocation();
                         }}
                         className="ml-1 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[10px] leading-none"
                       >
@@ -2381,14 +2358,6 @@ export default function Home() {
         onOpenChange={setIsLocationSearchOpen} 
         isPremium={isPremiumActive(userProfile)}
         onOpenPremiumUpgrade={() => setIsPremiumUpsellOpen(true)}
-      />
-      <LocationRequirementDialog
-        open={showLocationRequirement}
-        onOpenChange={setShowLocationRequirement}
-        onRetry={requestCurrentLocationFromUserGesture}
-        permissionState={locationPermissionState}
-        isLoading={isLocationLoading}
-        locationError={locationError}
       />
       <PremiumUpgradeModal
         isOpen={isPremiumUpsellOpen}

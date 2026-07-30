@@ -281,7 +281,8 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
   const { isPremium, isOrganizer } = useActivePremium(userProfile);
   const hasAccess = isPremium || isOrganizer;
   const { toast } = useToast();
-  const { effectiveLocation, locationStatus, locationSource, permissionState: locationPermissionState } = useLocation();
+  const { gateState, position } = useLocation();
+  const effectiveLocation = position ? { lat: position.latitude, lng: position.longitude, accuracy: position.accuracy } : null;
 
   // Local settings synced from Firestore
   const [enabled, setEnabled] = useState(false);
@@ -294,7 +295,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
   const [locationExpiresAt, setLocationExpiresAt] = useState<Date | null>(null);
 
   // Client states derived strictly from LocationContext
-  const permissionState = (locationPermissionState || 'unknown') as 'unknown' | 'prompt' | 'granted' | 'denied' | 'unavailable';
+  const permissionState = (gateState === 'granted' ? 'granted' : gateState === 'denied' ? 'denied' : 'unknown') as 'unknown' | 'prompt' | 'granted' | 'denied' | 'unavailable';
   const [nearbyFriends, setNearbyFriends] = useState<NearbyFriend[]>([]);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
@@ -464,104 +465,84 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
       throw new Error(errObj.message);
     }
 
+    if (gateState !== 'granted' || !position) {
+      const errObj: RadarClientError = {
+        message: 'Standort freigabe erforderlich.',
+        type: 'position'
+      };
+      setError(errObj);
+      throw new Error(errObj.message);
+    }
+
     setError(null);
     setPartialFailure(false);
     setBaselineState('baseline_pending');
 
-    // Step A: Request geolocation position
-    return new Promise<void>((resolve, reject) => {
-      if (typeof window === 'undefined' || !navigator.geolocation) {
-        const errObj: RadarClientError = { message: 'Browser unterstützt Geolocation nicht.', type: 'position' };
-        setError(errObj);
-        reject(new Error(errObj.message));
+    const lat = position.latitude;
+    const lon = position.longitude;
+
+    try {
+      const httpsCallable = await getFunctionsInstance();
+
+      // Step B: Set settings
+      const setSettingsCall = httpsCallable<{ enabled: boolean; radiusKm: number; consentVersion: string }, any>(
+        functions!,
+        'setRadarSettings'
+      );
+      await setSettingsCall({
+        enabled: true,
+        radiusKm: radius,
+        consentVersion: CURRENT_RADAR_CONSENT_VERSION
+      });
+
+      // Step C: Update location
+      try {
+        setIsUpdatingLocation(true);
+        const updateLocCall = httpsCallable<{ latitude: number; longitude: number }, any>(
+          functions!,
+          'updateRadarLocation'
+        );
+        await updateLocCall({ latitude: lat, longitude: lon });
+      } catch (updateErr: any) {
+        console.error('updateRadarLocation failed during activation:', updateErr);
+        setPartialFailure(true);
+        setNearbyFriends([]);
+        setError({
+          message: 'Einstellungen aktiviert, aber Standortaktualisierung fehlgeschlagen.',
+          type: 'position'
+        });
+        setIsUpdatingLocation(false);
         return;
       }
 
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
+      setIsUpdatingLocation(false);
 
-          try {
-            const httpsCallable = await getFunctionsInstance();
+      try {
+        setIsLoadingFriends(true);
+        const getFriendsCall = httpsCallable<void, any>(functions!, 'getNearbyFriends');
+        const res = await getFriendsCall();
+        
+        // Validate and filter using defensive helper
+        const parsed = validateRadarResponse(res.data);
+        
+        setNearbyFriends(parsed.friends.slice(0, 30));
+        setComplete(parsed.complete);
 
-            // Step B: Set settings
-            const setSettingsCall = httpsCallable<{ enabled: boolean; radiusKm: number; consentVersion: string }, any>(
-              functions!,
-              'setRadarSettings'
-            );
-            await setSettingsCall({
-              enabled: true,
-              radiusKm: radius,
-              consentVersion: CURRENT_RADAR_CONSENT_VERSION
-            });
-
-            // Step C: Update location
-            try {
-              setIsUpdatingLocation(true);
-              const updateLocCall = httpsCallable<{ latitude: number; longitude: number }, any>(
-                functions!,
-                'updateRadarLocation'
-              );
-              await updateLocCall({ latitude: lat, longitude: lon });
-            } catch (updateErr: any) {
-              console.error('updateRadarLocation failed during activation:', updateErr);
-              setPartialFailure(true);
-              setNearbyFriends([]);
-              setError({
-                message: 'Einstellungen aktiviert, aber Standortaktualisierung fehlgeschlagen.',
-                type: 'position'
-              });
-              setIsUpdatingLocation(false);
-              resolve(); // Partially active (settings set, location missing)
-              return;
-            }
-
-            setIsUpdatingLocation(false);
-
-            try {
-              setIsLoadingFriends(true);
-              const getFriendsCall = httpsCallable<void, any>(functions!, 'getNearbyFriends');
-              const res = await getFriendsCall();
-              
-              // Validate and filter using defensive helper
-              const parsed = validateRadarResponse(res.data);
-              
-              setNearbyFriends(parsed.friends.slice(0, 30));
-              setComplete(parsed.complete);
-
-              // Process entry baseline
-              await processNearbyFriends(parsed.friends, parsed.generatedAtMs, parsed.complete);
-            } catch (friendsErr) {
-              console.warn('Failed to load friends on activation:', friendsErr);
-              setComplete(false);
-            } finally {
-              setIsLoadingFriends(false);
-            }
-
-            resolve();
-          } catch (err: any) {
-            console.error('activateRadar error:', err);
-            setComplete(false);
-            const errType = err.code === 'permission-denied' ? 'permission' : 'unknown';
-            setError({ message: err.message || 'Aktivierung fehlgeschlagen.', type: errType as any });
-            reject(err);
-          }
-        },
-        (geoErr) => {
-          console.error('Geolocation error during activation:', geoErr);
-          let msg = 'Standortzugriff fehlgeschlagen.';
-          let type: any = 'position';
-          if (geoErr.code === geoErr.PERMISSION_DENIED) {
-            msg = 'Standortzugriff im Browser blockiert.';
-            type = 'denied';
-          }
-          setError({ message: msg, type });
-          reject(new Error(msg));
-        },
-        GEOLOCATION_OPTIONS
-      );
-    });
+        // Process entry baseline
+        await processNearbyFriends(parsed.friends, parsed.generatedAtMs, parsed.complete);
+      } catch (friendsErr) {
+        console.warn('Failed to load friends on activation:', friendsErr);
+        setComplete(false);
+      } finally {
+        setIsLoadingFriends(false);
+      }
+    } catch (err: any) {
+      console.error('activateRadar error:', err);
+      setComplete(false);
+      const errType = err.code === 'permission-denied' ? 'permission' : 'unknown';
+      setError({ message: err.message || 'Aktivierung fehlgeschlagen.', type: errType as any });
+      throw err;
+    }
   };
 
   const deactivateRadar = async () => {
@@ -593,7 +574,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
 
   const updateLocation = async () => {
     if (!user?.uid || !hasAccess || !enabled) return;
-    if (!effectiveLocation || (locationStatus !== 'resolved' && locationStatus !== 'fallback')) return;
+    if (!effectiveLocation || gateState !== 'granted') return;
 
     if (nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime()) {
       return;
@@ -657,7 +638,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
     if (!user?.uid || !hasAccess || !enabled || partialFailure) {
       return;
     }
-    if (!effectiveLocation || (locationStatus !== 'resolved' && locationStatus !== 'fallback')) {
+    if (!effectiveLocation || gateState !== 'granted') {
       return;
     }
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
@@ -710,7 +691,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
             lastLocationFetchedRef.current.lng
           ) * 1000 >= FRIEND_RADAR_MIN_MOVEMENT_METERS);
 
-      if (isLocUpdateDue && (locationSource === 'geolocation' || locationStatus === 'resolved' || locationStatus === 'fallback')) {
+      if (isLocUpdateDue && gateState === 'granted') {
         try {
           setIsUpdatingLocation(true);
           const updateLocCall = httpsCallable<{ latitude: number; longitude: number; accuracy?: number }, any>(
@@ -792,7 +773,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
       isFetchingRef.current = false;
       setIsLoadingFriends(false);
     }
-  }, [user?.uid, hasAccess, enabled, partialFailure, effectiveLocation, locationStatus, isCrossTabLocked, acquireCrossTabLock]);
+  }, [user?.uid, hasAccess, enabled, partialFailure, effectiveLocation, gateState, isCrossTabLocked, acquireCrossTabLock]);
 
   const refreshNearbyFriends = useCallback(async () => {
     await requestNearbyFriends('manual');
@@ -1005,19 +986,19 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
 
   // Initial readiness trigger: Rule 1
   useEffect(() => {
-    if (user?.uid && effectiveLocation && (locationStatus === 'resolved' || locationStatus === 'fallback') && enabled && hasAccess && !partialFailure) {
+    if (user?.uid && effectiveLocation && gateState === 'granted' && enabled && hasAccess && !partialFailure) {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         requestNearbyFriends('initial');
       }
     }
-  }, [user?.uid, effectiveLocation?.lat, effectiveLocation?.lng, locationStatus, enabled, hasAccess, partialFailure, requestNearbyFriends]);
+  }, [user?.uid, effectiveLocation?.lat, effectiveLocation?.lng, gateState, enabled, hasAccess, partialFailure, requestNearbyFriends]);
 
   // Movement trigger: Rule 5
   useEffect(() => {
-    if (user?.uid && effectiveLocation && (locationStatus === 'resolved' || locationStatus === 'fallback') && enabled && hasAccess && !partialFailure) {
+    if (user?.uid && effectiveLocation && gateState === 'granted' && enabled && hasAccess && !partialFailure) {
       requestNearbyFriends('movement');
     }
-  }, [user?.uid, effectiveLocation?.lat, effectiveLocation?.lng, locationStatus, enabled, hasAccess, partialFailure, requestNearbyFriends]);
+  }, [user?.uid, effectiveLocation?.lat, effectiveLocation?.lng, gateState, enabled, hasAccess, partialFailure, requestNearbyFriends]);
 
   // Timer background updates (5 min interval): Rule 2, 9
   useEffect(() => {
