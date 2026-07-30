@@ -465,6 +465,33 @@ function createSafeElement(tag: string, className: string, htmlContent: string):
 }
 
 /**
+ * Returns a category-specific SVG icon string based on place categories.
+ */
+export function getPlaceCategoryIconSVG(categories?: string[], primaryCategory?: string): string {
+  const combined = [...(categories || []), primaryCategory || ''].map((c) => (c || '').toLowerCase()).join(' ');
+
+  if (/catering|restaurant|food|caf[eé]|bar|dining|gastronomy|bakery|fast_food|pub/.test(combined)) {
+    // Gastronomy / Food
+    return `<svg class="w-10 h-10 text-white/95 drop-shadow-md place-category-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6v6m0 0v6m0-6h6m-6 0H6M18 9v6m-12-6v6"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 3v4a2 2 0 01-2 2H5a2 2 0 01-2-2V3m3 0v18M18 3v7a2 2 0 002 2h0a2 2 0 002-2V3m-3 0v18"></path></svg>`;
+  } else if (/park|nature|outdoor|garden|beach|forest|lake|playground|recreation/.test(combined)) {
+    // Nature / Outdoor
+    return `<svg class="w-10 h-10 text-white/95 drop-shadow-md place-category-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 3v4M3 5h4m6 0a9 9 0 019 9c0 4.97-4.03 9-9 9a9 9 0 01-9-9c0-4.97 4.03-9 9-9zm0 0c0 4.97 4.03 9 9 9"></path></svg>`;
+  } else if (/museum|historic|landmark|building|memorial|monument|architecture|tourism/.test(combined)) {
+    // Culture / Landmark
+    return `<svg class="w-10 h-10 text-white/95 drop-shadow-md place-category-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>`;
+  } else if (/sport|fitness|gym|swimming|climbing|stadium|sports_centre|bouldering|active/.test(combined)) {
+    // Sport / Activity
+    return `<svg class="w-10 h-10 text-white/95 drop-shadow-md place-category-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`;
+  } else if (/entertainment|leisure|culture|event|arts|theater|cinema|nightlife|attraction|sightseeing/.test(combined)) {
+    // Entertainment / Ticket
+    return `<svg class="w-10 h-10 text-white/95 drop-shadow-md place-category-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>`;
+  } else {
+    // Fallback compass/location star icon
+    return `<svg class="w-10 h-10 text-white/95 drop-shadow-md place-category-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>`;
+  }
+}
+
+/**
  * Creates styled HTML DOM Element for Place Popups.
  */
 export function createPlacePopupHTML(
@@ -488,13 +515,15 @@ export function createPlacePopupHTML(
   const isOpen = (place as any).isOpenNow;
   const openStatusText = isOpen === true ? (lang === 'de' ? 'Jetzt geöffnet' : 'Open now') : isOpen === false ? (lang === 'de' ? 'Geschlossen' : 'Closed') : '';
 
+  const categoryIconSVG = getPlaceCategoryIconSVG(place.categories, place.category);
+
   const htmlContent = `
-    <div class="relative w-full h-24 bg-gradient-to-br from-emerald-600 to-teal-700 overflow-hidden flex items-center justify-center">
-      <button type="button" class="friend-popup-close absolute top-2 right-2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 active:bg-black/80 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
+    <div class="relative w-full h-24 bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-500 overflow-hidden flex items-center justify-center place-popup-header">
+      <button type="button" class="friend-popup-close absolute top-2 right-2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 active:bg-black/70 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
 
-      <button type="button" class="place-popup-fav-btn absolute top-2 left-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-full ${isFavorite ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 active:bg-black/80 text-white'} flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400" aria-label="${isFavorite ? (lang === 'de' ? 'Favorit entfernen' : 'Remove favorite') : (lang === 'de' ? 'Als Favorit speichern' : 'Save as favorite')}" ${isFavoriteLoading ? 'disabled' : ''}>
+      <button type="button" class="place-popup-fav-btn absolute top-2 left-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-full ${isFavorite ? 'bg-rose-500 text-white' : 'bg-black/30 hover:bg-black/50 active:bg-black/70 text-white'} flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400" aria-label="${isFavorite ? (lang === 'de' ? 'Favorit entfernen' : 'Remove favorite') : (lang === 'de' ? 'Als Favorit speichern' : 'Save as favorite')}" ${isFavoriteLoading ? 'disabled' : ''}>
         ${
           isFavoriteLoading
             ? `<svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`
@@ -505,10 +534,10 @@ export function createPlacePopupHTML(
       ${
         place.imageUrl
           ? `<img src="${escapeHTML(place.imageUrl)}" class="w-full h-full object-cover" alt="${escapeHTML(name)}" />`
-          : `<svg class="w-10 h-10 text-emerald-100/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`
+          : categoryIconSVG
       }
 
-      <div class="absolute bottom-2 left-2 bg-emerald-950/80 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-sm border border-emerald-500/30">
+      <div class="absolute bottom-2 left-2 bg-white/95 dark:bg-neutral-900/90 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full backdrop-blur-sm border border-emerald-500/20 shadow-sm">
         ${escapeHTML(category)}
       </div>
     </div>
@@ -529,7 +558,7 @@ export function createPlacePopupHTML(
       </div>
 
       <div class="mt-2.5 flex flex-col gap-2">
-        <button type="button" class="place-popup-details-btn min-h-[44px] w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="${lang === 'de' ? 'Details ansehen' : 'View details'}">
+        <button type="button" class="place-popup-details-btn min-h-[44px] w-full py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="${lang === 'de' ? 'Details ansehen' : 'View details'}">
           <span>${lang === 'de' ? 'Details ansehen' : 'View details'}</span>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
         </button>

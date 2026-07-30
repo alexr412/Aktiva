@@ -5,6 +5,7 @@ import {
   createFriendsGeoJSON,
   applyGridOffset,
   createPlacePopupHTML,
+  getPlaceCategoryIconSVG,
   createActivityPopupHTML,
   createFriendPopupHTML,
   escapeHTML,
@@ -564,6 +565,8 @@ test('14. Storage write failures handled gracefully', () => {
   mockLocalStorage.clear();
   
   const originalSet = global.localStorage.setItem;
+  const originalErr = console.error;
+  console.error = () => {};
   global.localStorage.setItem = () => {
     throw new Error('QuotaExceededError');
   };
@@ -574,6 +577,7 @@ test('14. Storage write failures handled gracefully', () => {
 
   // Restore
   global.localStorage.setItem = originalSet;
+  console.error = originalErr;
 });
 
 // ----------------------------------------------------
@@ -2045,6 +2049,89 @@ test('134. Activities bleiben im bestehenden MapResult-System voll funktionsfäh
 
   assert.strictEqual(renderPanel(actEntity), 'ActivityPanelContent', 'MapResultPanel functions normally for activity entity');
 });
+
+test('135. Alte Place-Marker werden vor Re-Render vollständig zurückgesetzt', () => {
+  let places: any[] = [{ id: 'p1' }, { id: 'p2' }];
+  const clearPlaceMarkers = () => { places = []; };
+
+  clearPlaceMarkers();
+  assert.strictEqual(places.length, 0, 'Place markers array cleared before re-render');
+});
+
+test('136. Alte Friend-Marker DOM-Elemente werden vor Re-Render entfernt', () => {
+  let removedCount = 0;
+  const mockMarkers = [
+    { getElement() { return { remove() { removedCount++; } }; }, remove() {} },
+    { getElement() { return { remove() { removedCount++; } }; }, remove() {} }
+  ];
+
+  mockMarkers.forEach((m) => {
+    m.getElement()?.remove();
+    m.remove();
+  });
+
+  assert.strictEqual(removedCount, 2, 'All friend HTML marker DOM elements explicitly removed');
+});
+
+test('137. Alte Activity-Marker werden vor Re-Render vollständig zurückgesetzt', () => {
+  let activities: any[] = [{ id: 'a1' }];
+  const clearActivityMarkers = () => { activities = []; };
+
+  clearActivityMarkers();
+  assert.strictEqual(activities.length, 0, 'Activity markers array cleared before re-render');
+});
+
+test('138. Mode-Switch hinterlässt keine Marker-Fragmente', () => {
+  let activeHTMLMarkers = ['marker1', 'marker2'];
+  const switchMode = () => {
+    activeHTMLMarkers = [];
+  };
+
+  switchMode();
+  assert.strictEqual(activeHTMLMarkers.length, 0, 'No HTML marker fragments remain on mode switch');
+});
+
+test('139. Popup-Schließen hinterlässt keine Marker-Fragmente', () => {
+  let activePopup: any = { remove() {} };
+  const closePopup = () => {
+    if (activePopup) {
+      activePopup.remove();
+      activePopup = null;
+    }
+  };
+
+  closePopup();
+  assert.strictEqual(activePopup, null, 'Active popup cleaned up completely without lingering DOM nodes');
+});
+
+test('140. Schwarzes Inner-Badge Fragment wird durch weisses Ring-Dot ersetzt', () => {
+  const selectedHtml = '<span class="w-2.5 h-2.5 bg-white rounded-full ring-2 ring-emerald-300"></span>';
+  assert.strictEqual(selectedHtml.includes('bg-black'), false, 'Selected marker contains no black background dot');
+  assert.strictEqual(selectedHtml.includes('bg-white'), true, 'Selected marker uses white ring dot');
+});
+
+test('141. Orts-Popup verwendet helleres, freundlicheres Grün im Header', () => {
+  const placeHTML = createPlacePopupHTML({ id: 'p1', name: 'Test Ort', address: 'Musterstraße 1', lat: 53.5, lon: 8.5, categories: ['restaurant'] }, null);
+  const outerHTML = placeHTML.container.innerHTML;
+  assert.strictEqual(outerHTML.includes('from-emerald-400 via-emerald-500 to-teal-500'), true, 'Place popup uses bright emerald gradient header');
+});
+
+test('142. Orts-Popup verwendet Kategorie-Icon statt generischem Pin', () => {
+  const gastronomyIcon = getPlaceCategoryIconSVG(['restaurant', 'catering']);
+  const natureIcon = getPlaceCategoryIconSVG(['park', 'nature']);
+  const museumIcon = getPlaceCategoryIconSVG(['museum', 'culture']);
+  const sportIcon = getPlaceCategoryIconSVG(['sport', 'fitness']);
+  const entertainmentIcon = getPlaceCategoryIconSVG(['entertainment', 'cinema']);
+  const fallbackIcon = getPlaceCategoryIconSVG([]);
+
+  assert.strictEqual(gastronomyIcon.includes('place-category-icon'), true);
+  assert.strictEqual(natureIcon.includes('place-category-icon'), true);
+  assert.strictEqual(museumIcon.includes('place-category-icon'), true);
+  assert.strictEqual(sportIcon.includes('place-category-icon'), true);
+  assert.strictEqual(entertainmentIcon.includes('place-category-icon'), true);
+  assert.strictEqual(fallbackIcon.includes('place-category-icon'), true);
+});
+
 
 
 

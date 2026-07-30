@@ -911,8 +911,13 @@ export function AktivaMap({
     const map = mapInstanceRef.current;
     if (!map || !isMapLoaded) return;
 
-    // Clear old HTML friend markers
-    friendHTMLMarkersRef.current.forEach((m) => m.remove());
+    // Clear old HTML friend markers with explicit DOM element removal
+    friendHTMLMarkersRef.current.forEach((m) => {
+      try {
+        m.getElement()?.remove();
+        m.remove();
+      } catch {}
+    });
     friendHTMLMarkersRef.current = [];
 
     // Update Places Source
@@ -1101,7 +1106,10 @@ export function AktivaMap({
     if (!map || !isMapLoaded) return;
 
     if (selectedMarkerRef.current) {
-      selectedMarkerRef.current.remove();
+      try {
+        selectedMarkerRef.current.getElement()?.remove();
+        selectedMarkerRef.current.remove();
+      } catch {}
       selectedMarkerRef.current = null;
     }
 
@@ -1123,8 +1131,8 @@ export function AktivaMap({
           }
         } else {
           el.className =
-            'w-7 h-7 bg-amber-400 border-2 border-white rounded-full shadow-xl animate-bounce flex items-center justify-center';
-          el.innerHTML = '<span class="w-2.5 h-2.5 bg-black rounded-full"></span>';
+            'w-7 h-7 bg-emerald-500 border-2 border-white rounded-full shadow-xl animate-bounce flex items-center justify-center';
+          el.innerHTML = '<span class="w-2.5 h-2.5 bg-white rounded-full ring-2 ring-emerald-300"></span>';
         }
 
         selectedMarkerRef.current = new maplibregl.Marker({ element: el })
