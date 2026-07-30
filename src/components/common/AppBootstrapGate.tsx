@@ -1,11 +1,24 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Loader2 } from 'lucide-react';
 
 export function AppBootstrapGate({ children }: { children: ReactNode }) {
   const { loading } = useAuth();
+  const instanceIdRef = useRef<string | null>(null);
+  if (!instanceIdRef.current) {
+    instanceIdRef.current = 'ABG-' + Math.random().toString(36).substring(2, 6);
+  }
+
+  useEffect(() => {
+    console.log(`[BOOTSTRAP TRACE] gate=${instanceIdRef.current} event=MOUNT`);
+    return () => {
+      console.log(`[BOOTSTRAP TRACE] gate=${instanceIdRef.current} event=UNMOUNT`);
+    };
+  }, []);
+
+  console.log(`[BOOTSTRAP TRACE] gate=${instanceIdRef.current} state=loading:${loading} childrenRendered=true`);
 
   return (
     <>

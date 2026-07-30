@@ -91,27 +91,26 @@ export default function RootLayout({
           <AuthProvider>
             <LocationProvider>
               <AppBootstrapGate>
-                <LocationGate>
-                  <PlanningModeProvider>
-                    <FriendRadarProvider>
-                      <FavoritesProvider>
-                        <ChatSyncProvider>
-                          <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
-                            <PlanningModeBanner />
-                            <main className="flex-1 relative flex flex-col overflow-hidden">
-                              {children}
-                            </main>
-                            <BottomNav />
-                            <AdminQuickNavigator />
-                          </div>
-                          <Toaster />
-                          <StatusBorder />
-                        </ChatSyncProvider>
-                      </FavoritesProvider>
-                    </FriendRadarProvider>
-                  </PlanningModeProvider>
-                </LocationGate>
+                <PlanningModeProvider>
+                  <FriendRadarProvider>
+                    <FavoritesProvider>
+                      <ChatSyncProvider>
+                        <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
+                          <PlanningModeBanner />
+                          <main className="flex-1 relative flex flex-col overflow-hidden">
+                            {children}
+                          </main>
+                          <BottomNav />
+                          <AdminQuickNavigator />
+                        </div>
+                        <Toaster />
+                        <StatusBorder />
+                      </ChatSyncProvider>
+                    </FavoritesProvider>
+                  </FriendRadarProvider>
+                </PlanningModeProvider>
               </AppBootstrapGate>
+              <LocationGate />
             </LocationProvider>
           </AuthProvider>
         </ThemeProvider>

@@ -763,60 +763,7 @@ function OnboardingContent() {
                 >
                   {step === 1 && (
                     <div className="space-y-6">
-                      {gateState === 'denied' ? (
-                        <div className="p-6 md:p-8 rounded-[2rem] bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-4 text-center">
-                          <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-inner">
-                            <Lock className="w-8 h-8" />
-                          </div>
-                          <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100">
-                            {language === 'de' ? 'Standortzugriff erforderlich' : 'Location Access Required'}
-                          </h2>
-                          <p className="text-sm font-medium text-slate-600 dark:text-neutral-300 leading-relaxed">
-                            {language === 'de'
-                              ? 'Aktiva funktioniert über Aktivitäten und Menschen in deiner Nähe. Aktiviere den Standortzugriff für diese Website in deinen Browser- oder Geräteeinstellungen.'
-                              : 'Aktiva relies on activities and people nearby. Enable location access for this site in your browser settings.'}
-                          </p>
-                          {(() => {
-                            const instructions = getLocationPermissionInstructions(language === 'de' ? 'de' : 'en');
-                            return (
-                              <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-amber-200/60 dark:border-amber-800/40 text-left text-xs space-y-2">
-                                <div className="font-black uppercase tracking-wider text-[10px] text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
-                                  <ShieldAlert className="w-4 h-4" />
-                                  {instructions.platformTitle}
-                                </div>
-                                <ol className="list-decimal list-inside space-y-1.5 text-slate-700 dark:text-neutral-300 text-[11px] leading-relaxed">
-                                  {instructions.steps.map((s, idx) => (
-                                    <li key={idx}>{s}</li>
-                                  ))}
-                                </ol>
-                                {instructions.quickTip && (
-                                  <p className="mt-2 pt-2 border-t border-amber-200/60 dark:border-amber-800/40 text-[10px] italic text-amber-800 dark:text-amber-300">
-                                    {instructions.quickTip}
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          })()}
-                          <Button
-                            type="button"
-                            onClick={handleLocate}
-                            disabled={isLocating || isSubmitting}
-                            className="w-full h-14 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-base shadow-lg flex items-center justify-center gap-2 border-none"
-                          >
-                            {isLocating ? (
-                              <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                <span>{language === 'de' ? 'Standort wird geprüft …' : 'Checking location …'}</span>
-                              </>
-                            ) : (
-                              <>
-                                <RefreshCw className="w-5 h-5" />
-                                <span>{language === 'de' ? 'Standort prüfen' : 'Check Location'}</span>
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      ) : gateState === 'granted' && position !== null ? (
+                      {gateState === 'granted' && position !== null ? (
                         <div className="p-6 md:p-8 rounded-[2rem] bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-4 text-center">
                           <div className="mx-auto w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-inner">
                             <Check className="w-8 h-8" />
@@ -831,39 +778,18 @@ function OnboardingContent() {
                           </div>
                         </div>
                       ) : (
-                        <div className="p-6 md:p-8 rounded-[2rem] bg-slate-50 dark:bg-neutral-900/60 border border-slate-100 dark:border-neutral-800 space-y-6 text-center">
-                          <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 relative">
-                            <MapPin className="w-10 h-10" />
-                            <div className="absolute inset-0 border-2 border-emerald-500/30 rounded-full animate-ping scale-125 opacity-40" />
+                        <div className="p-6 md:p-8 rounded-[2rem] bg-slate-50 dark:bg-neutral-900/60 border border-slate-100 dark:border-neutral-800 space-y-4 text-center">
+                          <div className="mx-auto w-16 h-16 rounded-full bg-slate-100 dark:bg-neutral-800 flex items-center justify-center text-slate-500">
+                            <MapPin className="w-8 h-8" />
                           </div>
-                          <div className="space-y-2">
-                            <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100">
-                              {language === 'de' ? 'Aktiva benötigt deinen Standort' : 'Aktiva needs your location'}
-                            </h2>
-                            <p className="text-sm font-medium text-slate-500 dark:text-neutral-400 leading-relaxed px-2">
-                              {locationErrorMessage || (language === 'de'
-                                ? 'Damit wir dir Aktivitäten, Orte und Menschen in deiner Nähe zeigen können, benötigen wir Zugriff auf deinen aktuellen Standort.'
-                                : 'To show you activities, places, and people nearby, we need access to your current location.')}
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            onClick={handleLocate}
-                            disabled={isLocating || isSubmitting}
-                            className="w-full h-16 rounded-2xl bg-primary hover:opacity-90 text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-3 border-none transition-all active:scale-95 disabled:opacity-80"
-                          >
-                            {isLocating ? (
-                              <>
-                                <Loader2 className="w-6 h-6 animate-spin" />
-                                <span>{language === 'de' ? 'Standort wird geprüft …' : 'Checking location …'}</span>
-                              </>
-                            ) : (
-                              <>
-                                <Navigation className="w-5 h-5 fill-current" />
-                                {language === 'de' ? 'Standort verwenden' : 'Use location'}
-                              </>
-                            )}
-                          </Button>
+                          <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100">
+                            {language === 'de' ? 'Standortfreigabe erforderlich' : 'Location Permission Required'}
+                          </h2>
+                          <p className="text-sm text-slate-500 dark:text-neutral-400">
+                            {language === 'de'
+                              ? 'Bitte gib deinen Standort im zentralen Standort-Dialog frei, um fortzufahren.'
+                              : 'Please grant location access in the location dialog to continue.'}
+                          </p>
                         </div>
                       )}
                     </div>

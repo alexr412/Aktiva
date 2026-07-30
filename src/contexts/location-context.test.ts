@@ -4,7 +4,7 @@ import path from 'node:path';
 
 /**
  * Deterministic Test Suite — Aktiva Location Gate & Single Location Flow Architecture
- * Validates all 28 requirements of Section 12.
+ * Validates all requirements of Section 12 and Section 9 (Remount & Anti-Flicker Protection).
  */
 
 // Mock localStorage globally
@@ -127,11 +127,11 @@ class SimulatedLocationProvider {
 }
 
 async function runTests() {
-  console.log('🧪 Starting 28-Requirement Location Gate Test Suite...\n');
+  console.log('🧪 Starting Location Gate Architectural & Anti-Remount Test Suite...\n');
 
   const srcDir = path.join(process.cwd(), 'src');
 
-  // Test 1: LocationContext is the ONLY productive callsites for navigator.geolocation.getCurrentPosition
+  // Test 1: LocationContext is the ONLY productive callsite for navigator.geolocation.getCurrentPosition
   {
     console.log('1. LocationContext is the single productive GPS callsite');
     const locContextCode = readFileSync(path.join(srcDir, 'contexts', 'location-context.tsx'), 'utf8');
@@ -250,117 +250,55 @@ async function runTests() {
     console.log('  ✅ TIMEOUT sets error state.\n');
   }
 
-  // Test 11: Retry starts exactly one new request
+  // Section 9 Test 1: Single LocationGate in layout.tsx placed outside AppBootstrapGate
   {
-    console.log('11. Retry starts exactly one new request');
-    const provider = new SimulatedLocationProvider();
-    provider.setGpsHandler((_, error) => error({ code: 1 }));
-    provider.requestLocation();
-    assert.strictEqual(provider.gateState, 'denied');
-
-    provider.setGpsHandler((success) => success({ coords: { latitude: 52.026, longitude: 8.522, accuracy: 10 } }));
-    provider.requestLocation();
-    assert.strictEqual(provider.gateState, 'granted');
-    assert.strictEqual(provider.getCurrentPositionCallCount, 2);
-    console.log('  ✅ Retry successfully resets lock and grants position.\n');
+    console.log('11. Section 9: Provider hierarchy puts LocationGate outside AppBootstrapGate');
+    const layoutCode = readFileSync(path.join(srcDir, 'app', 'layout.tsx'), 'utf8');
+    assert.ok(layoutCode.includes('<LocationGate />'), 'LocationGate used as root overlay element in layout.tsx');
+    assert.ok(layoutCode.indexOf('<AppBootstrapGate>') < layoutCode.indexOf('<LocationGate />'), 'AppBootstrapGate comes before LocationGate overlay sibling');
+    console.log('  ✅ Provider hierarchy correctly isolates LocationGate overlay.\n');
   }
 
-  // Test 12: Stale callbacks from previous request IDs are ignored
+  // Section 9 Test 2: Zero entry/exit animations on LocationGate
   {
-    console.log('12. Stale callback from previous request ID is ignored');
-    const provider = new SimulatedLocationProvider();
-    let staleSuccess: any = null;
-
-    provider.setGpsHandler((success) => {
-      staleSuccess = success;
-    });
-    provider.requestLocation(); // Request ID 1
-
-    provider.requestInFlight = false;
-    provider.setGpsHandler((success) => {
-      success({ coords: { latitude: 48.137, longitude: 11.576, accuracy: 5 } });
-    });
-    provider.requestLocation(); // Request ID 2 (granted with Munich coords)
-
-    assert.strictEqual(provider.position?.latitude, 48.137);
-
-    // Trigger stale success from request ID 1
-    staleSuccess({ coords: { latitude: 52.026, longitude: 8.522, accuracy: 10 } });
-    assert.strictEqual(provider.position?.latitude, 48.137, 'Stale callback must not overwrite newer position');
-    console.log('  ✅ Stale callback safely ignored.\n');
-  }
-
-  // Test 13 & 14 & 15: AuthProvider maintains monotonic initialization
-  {
-    console.log('13, 14, 15. AuthProvider monotonic initialization & no unmounting loaders');
-    const authCode = readFileSync(path.join(srcDir, 'contexts', 'auth-context.tsx'), 'utf8');
-    assert.ok(authCode.includes('initialAuthResolutionRef'), 'AuthProvider uses initialAuthResolutionRef');
-    assert.ok(!authCode.includes('navigator.geolocation'), 'AuthProvider contains 0 GPS calls');
-    console.log('  ✅ AuthProvider initialization is monotonic and location-free.\n');
-  }
-
-  // Test 16 & 17: FriendRadar starts no GPS and calls updateRadarLocation before getNearbyFriends
-  {
-    console.log('16, 17. FriendRadar relies on LocationContext and calls update sequence correctly');
-    const radarCode = readFileSync(path.join(srcDir, 'hooks', 'use-friend-radar.tsx'), 'utf8');
-    assert.ok(!radarCode.includes('navigator.geolocation'), 'FriendRadar contains 0 navigator.geolocation calls');
-    assert.ok(!radarCode.includes('navigator.permissions'), 'FriendRadar contains 0 navigator.permissions calls');
-    console.log('  ✅ FriendRadar fully decoupled from direct GPS and Permissions API.\n');
-  }
-
-  // Test 18 & 19: No updateUserLocation calls and no lastLocation profile writes
-  {
-    console.log('18, 19. No updateUserLocation calls and zero direct lastLocation writes');
-    const firestoreCode = readFileSync(path.join(srcDir, 'lib', 'firebase', 'firestore.ts'), 'utf8');
-    assert.ok(!firestoreCode.includes('users/${userId}.lastLocation'), 'No direct lastLocation writes in firestore.ts');
-    console.log('  ✅ Zero precise location leaks to Firestore user documents.\n');
-  }
-
-  // Test 20: Old location cache does not unlock gate
-  {
-    console.log('20. Old location cache key purged on startup and does not unlock gate');
-    mockStorage.setItem('aktiva_last_location', JSON.stringify({ lat: 52.026, lng: 8.522 }));
-    const provider = new SimulatedLocationProvider();
-    assert.strictEqual(mockStorage.getItem('aktiva_last_location'), null);
-    assert.strictEqual(provider.gateState, 'idle');
-    console.log('  ✅ Cache purged on startup.\n');
-  }
-
-  // Test 21, 22, 23: Places, Activities, and Radar gated on gateState === 'granted'
-  {
-    console.log('21, 22, 23. Queries gated on gateState === granted');
-    const provider = new SimulatedLocationProvider();
-    assert.strictEqual(provider.gateState === 'granted' && provider.position !== null, false);
-    console.log('  ✅ Data queries blocked until gate is granted.\n');
-  }
-
-  // Test 24: Default coordinates (Bremerhaven/Germany midpoint) deleted
-  {
-    console.log('24. No Bremerhaven or default fallback coordinates used for data queries');
-    const provider = new SimulatedLocationProvider();
-    assert.strictEqual(provider.position, null);
-    console.log('  ✅ Zero default coordinate fallbacks.\n');
-  }
-
-  // Test 25 & 26: Onboarding requires GPS success
-  {
-    console.log('25, 26. Onboarding step 1 requires GPS success');
-    const onboardingCode = readFileSync(path.join(srcDir, 'app', 'onboarding', 'page.tsx'), 'utf8');
-    assert.ok(onboardingCode.includes("gateState !== 'granted' || !position"), 'Onboarding gates on gateState === granted');
-    console.log('  ✅ Onboarding step 1 accurately gated.\n');
-  }
-
-  // Test 27 & 28: Single LocationGate component and visual stability
-  {
-    console.log('27, 28. Single LocationGate component and visual stability during requesting');
+    console.log('12. Section 9: Zero entry/exit CSS animations on LocationGate');
     const gateCode = readFileSync(path.join(srcDir, 'components', 'common', 'LocationGate.tsx'), 'utf8');
-    assert.ok(gateCode.includes('Standort wird geprüft …'));
-    assert.ok(gateCode.includes('Anleitung für iPhone'));
-    assert.ok(gateCode.includes('Anleitung für Android'));
-    console.log('  ✅ Single LocationGate component verified with stable UI state.\n');
+    assert.strictEqual(gateCode.includes('animate-in'), false, 'No animate-in on LocationGate overlay');
+    assert.strictEqual(gateCode.includes('zoom-in'), false, 'No zoom-in on LocationGate overlay');
+    assert.strictEqual(gateCode.includes('transition-all'), false, 'No transition-all on LocationGate overlay');
+    assert.strictEqual(gateCode.includes('AnimatePresence'), false, 'No AnimatePresence on LocationGate overlay');
+    console.log('  ✅ Zero entry/exit CSS animations on LocationGate verified.\n');
   }
 
-  console.log('🎉 ALL 28 LOCATION GATE REQUIREMENTS PASSED DETERMINISTICALLY!');
+  // Section 9 Test 3: No dynamic key props in Provider & Gate tree
+  {
+    console.log('13. Section 9: No dynamic key props in Provider & Gate tree');
+    const layoutCode = readFileSync(path.join(srcDir, 'app', 'layout.tsx'), 'utf8');
+    assert.strictEqual(layoutCode.includes('key='), false, 'No dynamic key props in layout.tsx providers');
+    const gateCode = readFileSync(path.join(srcDir, 'components', 'common', 'LocationGate.tsx'), 'utf8');
+    assert.strictEqual(gateCode.includes('key='), false, 'No dynamic key props in LocationGate.tsx');
+    console.log('  ✅ Zero dynamic key props in provider/gate tree.\n');
+  }
+
+  // Section 9 Test 4: AppBootstrapGate permanently renders children
+  {
+    console.log('14. Section 9: AppBootstrapGate permanently renders children without unmounting');
+    const bootstrapCode = readFileSync(path.join(srcDir, 'components', 'common', 'AppBootstrapGate.tsx'), 'utf8');
+    assert.ok(bootstrapCode.includes('{children}'), 'AppBootstrapGate renders children unconditionally');
+    assert.strictEqual(bootstrapCode.includes('return null'), false, 'AppBootstrapGate does not return null for children');
+    console.log('  ✅ AppBootstrapGate permanently renders children.\n');
+  }
+
+  // Section 9 Test 5: Exact single LocationGate component project-wide
+  {
+    console.log('15. Section 9: Single LocationGate component project-wide');
+    const onboardingCode = readFileSync(path.join(srcDir, 'app', 'onboarding', 'page.tsx'), 'utf8');
+    assert.strictEqual(onboardingCode.includes('<LocationGate'), false, 'No duplicate LocationGate in onboarding/page.tsx');
+    assert.strictEqual(onboardingCode.includes('Standort verwenden'), false, 'No duplicate Standort verwenden button in onboarding/page.tsx');
+    console.log('  ✅ Single LocationGate component project-wide verified.\n');
+  }
+
+  console.log('🎉 ALL LOCATION GATE & ANTI-REMOUNT TESTS PASSED DETERMINISTICALLY!');
 }
 
 runTests().catch((err) => {

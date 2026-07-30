@@ -608,6 +608,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   if (!isMounted) return null;
 
+  console.log(`[AUTH TRACE] authInitializing=${authInitializing} childrenRendered=${!authInitializing}`);
+
   return (
     <AuthContext.Provider value={contextValue}>
       {authInitializing ? (

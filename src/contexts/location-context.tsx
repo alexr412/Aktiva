@@ -26,13 +26,30 @@ export type LocationContextValue = {
 const LocationContext = createContext<LocationContextValue | undefined>(undefined);
 
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const [gateState, setGateState] = useState<LocationGateState>('idle');
+  const instanceIdRef = useRef<string | null>(null);
+  if (!instanceIdRef.current) {
+    instanceIdRef.current = 'LP-' + Math.random().toString(36).substring(2, 6);
+  }
+
+  const [gateState, setGateStateState] = useState<LocationGateState>('idle');
   const [position, setPosition] = useState<LocationPosition | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const requestInFlightRef = useRef(false);
   const activeRequestIdRef = useRef<number | null>(null);
   const requestCounterRef = useRef(0);
+
+  const setGateState = useCallback((newState: LocationGateState) => {
+    console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} gateState=${newState}`);
+    setGateStateState(newState);
+  }, []);
+
+  useEffect(() => {
+    console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} event=MOUNT`);
+    return () => {
+      console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} event=UNMOUNT`);
+    };
+  }, []);
 
   // Purge old location cache key on startup as specified in architecture
   useEffect(() => {
@@ -45,6 +62,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
   const requestLocation = useCallback((): void => {
     if (requestInFlightRef.current) {
+      console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} requestLocation suppressed (in flight)`);
       return;
     }
 
@@ -59,6 +77,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
 
     const requestId = ++requestCounterRef.current;
+    console.log(`[GPS TRACE] requestId=${requestId} started`);
 
     requestInFlightRef.current = true;
     activeRequestIdRef.current = requestId;
@@ -67,11 +86,13 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     navigator.geolocation.getCurrentPosition(
       pos => {
         if (activeRequestIdRef.current !== requestId) {
+          console.log(`[GPS TRACE] requestId=${requestId} ignored stale callback`);
           return;
         }
 
         activeRequestIdRef.current = null;
         requestInFlightRef.current = false;
+        console.log(`[GPS TRACE] requestId=${requestId} success`);
 
         const latitude = pos.coords.latitude;
         const longitude = pos.coords.longitude;
@@ -104,11 +125,13 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       },
       error => {
         if (activeRequestIdRef.current !== requestId) {
+          console.log(`[GPS TRACE] requestId=${requestId} ignored stale error callback`);
           return;
         }
 
         activeRequestIdRef.current = null;
         requestInFlightRef.current = false;
+        console.log(`[GPS TRACE] requestId=${requestId} error code=${error.code}`);
 
         switch (error.code) {
           case 1:
@@ -145,7 +168,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         timeout: 15000,
       }
     );
-  }, []);
+  }, [setGateState]);
 
   return (
     <LocationContext.Provider
