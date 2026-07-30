@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { MapPin, Navigation, Loader2, Lock, RefreshCw, ShieldAlert } from 'lucide-react';
+import React from 'react';
+import { MapPin, Navigation, Loader2, Lock, RefreshCw, ShieldAlert, ExternalLink } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,12 +9,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/hooks/use-language';
-import { getLocationPermissionInstructions } from '@/lib/device-detection';
+import { detectDevice, getLocationPermissionInstructions, openInExternalBrowser } from '@/lib/device-detection';
 
 interface LocationRequirementDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onRetry: () => Promise<boolean> | void;
+  onRetry: () => void;
   permissionState?: 'granted' | 'prompt' | 'denied' | null;
   isLoading?: boolean;
   locationError?: string | null;
@@ -30,32 +30,19 @@ export function LocationRequirementDialog({
 }: LocationRequirementDialogProps) {
   const language = useLanguage();
   const isDenied = permissionState === 'denied';
-  const [isRetrying, setIsRetrying] = useState(false);
-  const [retryFeedbackError, setRetryFeedbackError] = useState<string | null>(null);
+  const device = detectDevice();
 
   const instructions = getLocationPermissionInstructions(language === 'de' ? 'de' : 'en');
-  const showLoading = externalLoading || isRetrying;
+  const showLoading = externalLoading;
 
-  const handleRetryClick = async () => {
+  const handleRetryClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    console.log('[LocationDialog] location button clicked');
+    console.log('[LocationDialog] permissionState', permissionState);
+    console.log('[LocationDialog] locationStatus', externalLoading ? 'loading' : 'idle');
+
     if (showLoading) return;
-    setIsRetrying(true);
-    setRetryFeedbackError(null);
-    try {
-      const res = await onRetry();
-      if (res === false) {
-        setRetryFeedbackError(
-          locationError || (
-            language === 'de'
-              ? 'Der Standortzugriff ist weiterhin deaktiviert. Ändere die Berechtigung in deinen Geräte- oder Browser-Einstellungen.'
-              : 'Location access remains disabled. Please update your device or browser settings.'
-          )
-        );
-      }
-    } catch (err: any) {
-      setRetryFeedbackError(err.message || 'Error checking location');
-    } finally {
-      setIsRetrying(false);
-    }
+    onRetry();
   };
 
   return (
@@ -64,7 +51,7 @@ export function LocationRequirementDialog({
         hideCloseButton={true}
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
-        className="sm:max-w-[440px] p-0 overflow-hidden border-none bg-white dark:bg-neutral-900 rounded-[2.5rem] shadow-2xl"
+        className="sm:max-w-[440px] p-0 overflow-hidden border-none bg-white dark:bg-neutral-900 rounded-[2.5rem] shadow-2xl z-50 pointer-events-auto"
       >
         <div className={`relative h-44 flex items-center justify-center overflow-hidden transition-colors ${
           isDenied 
@@ -107,6 +94,25 @@ export function LocationRequirementDialog({
             </DialogDescription>
           </DialogHeader>
 
+          {device.isInAppBrowser && (
+            <div className="mt-4 p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 text-left text-xs space-y-2">
+              <p className="text-slate-700 dark:text-blue-200 text-[11px] font-medium leading-relaxed">
+                {instructions.inAppWarning}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => openInExternalBrowser()}
+                className="w-full h-11 rounded-xl border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center gap-2 mt-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                {device.isIOS
+                  ? (language === 'de' ? 'In Safari öffnen' : 'Open in Safari')
+                  : (language === 'de' ? 'In Chrome öffnen' : 'Open in Chrome')}
+              </Button>
+            </div>
+          )}
+
           {isDenied && (
             <div className="mt-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-left text-xs font-semibold text-amber-900 dark:text-amber-200 space-y-2">
               <div className="flex items-center gap-2 font-black uppercase tracking-wider text-[10px] text-amber-700 dark:text-amber-300">
@@ -126,17 +132,18 @@ export function LocationRequirementDialog({
             </div>
           )}
 
-          {(retryFeedbackError || locationError) && isDenied && (
+          {locationError && isDenied && (
             <div className="mt-3 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-left text-xs font-bold text-red-700 dark:text-red-300">
-              {retryFeedbackError || locationError}
+              {locationError}
             </div>
           )}
 
           <div className="mt-6 space-y-3">
             <Button 
+              type="button"
               onClick={handleRetryClick}
               disabled={showLoading}
-              className="w-full h-14 rounded-2xl bg-primary hover:opacity-90 text-white font-black text-base shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-3 border-none transition-all active:scale-95 disabled:opacity-80"
+              className="w-full h-14 rounded-2xl bg-primary hover:opacity-90 text-white font-black text-base shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-3 border-none transition-all active:scale-95 disabled:opacity-80 cursor-pointer pointer-events-auto"
             >
               {showLoading ? (
                 <>

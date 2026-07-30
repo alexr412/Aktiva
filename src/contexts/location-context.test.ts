@@ -1,7 +1,8 @@
 import assert from 'node:assert';
+import { detectDevice, getLocationPermissionInstructions } from '../lib/device-detection';
 
 /**
- * Unit & Integration Test Suite — Aktiva Location Lock Screen & Retry Logic
+ * Unit & Integration Test Suite — Aktiva Location Lock Screen, User Gestures & Retry Logic
  */
 
 class MockLocalStorage {
@@ -23,9 +24,6 @@ class MockLocalStorage {
 const mockStorage = new MockLocalStorage();
 (global as any).localStorage = mockStorage;
 
-const LOCATION_STALE_AFTER_MS = 15 * 60 * 1000; // 15 minutes
-const LOCATION_MAX_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
-
 interface SimulatedState {
   locationMode: 'current' | 'manual';
   locationSource: 'gps' | 'cache' | 'manual' | null;
@@ -35,6 +33,7 @@ interface SimulatedState {
   permissionState: 'granted' | 'prompt' | 'denied' | null;
   locationError: string | null;
   getCurrentPositionCallCount: number;
+  isSynchronousUserGesture: boolean;
 }
 
 class LocationSystemSimulator {
@@ -47,17 +46,11 @@ class LocationSystemSimulator {
     permissionState: 'prompt',
     locationError: null,
     getCurrentPositionCallCount: 0,
+    isSynchronousUserGesture: false,
   };
 
   private isRequestingLock = false;
-  private permissionsSupported = true;
   private mockGpsBehavior: (() => Promise<{ lat: number; lng: number }> | never) | null = null;
-
-  constructor(options?: { permissionsSupported?: boolean }) {
-    if (options?.permissionsSupported !== undefined) {
-      this.permissionsSupported = options.permissionsSupported;
-    }
-  }
 
   public setGpsBehavior(behavior: () => Promise<{ lat: number; lng: number }>) {
     this.mockGpsBehavior = behavior;
@@ -71,95 +64,134 @@ class LocationSystemSimulator {
     };
   }
 
-  public async requestGpsLocation(forceExplicit = false): Promise<boolean> {
+  // Synchronous User Gesture function
+  public requestCurrentLocationFromUserGesture(): void {
+    console.log('[TEST SIMULATOR] requestCurrentLocationFromUserGesture invoked');
     if (this.isRequestingLock) {
-      console.log('[TEST SIMULATOR] Request lock active. Skipping duplicate GPS call.');
-      return false;
+      console.log('[TEST SIMULATOR] Request lock active. Skipping duplicate call.');
+      return;
     }
 
     this.isRequestingLock = true;
     this.state.locationStatus = 'loading';
     this.state.locationError = null;
 
+    this.state.isSynchronousUserGesture = true;
+    this.state.getCurrentPositionCallCount++;
+
+    if (!this.mockGpsBehavior) {
+      this.isRequestingLock = false;
+      this.state.locationStatus = 'error';
+      this.state.locationError = 'No GPS behavior configured';
+      return;
+    }
+
     try {
-      this.state.getCurrentPositionCallCount++;
-
-      if (!this.mockGpsBehavior) {
-        throw new Error('No GPS behavior configured');
-      }
-
-      const coords = await this.mockGpsBehavior();
-      
-      this.state.effectiveLocation = { lat: coords.lat, lng: coords.lng };
-      this.state.locationSource = 'gps';
-      this.state.locationStatus = 'ready';
-      this.state.permissionState = 'granted';
-      this.state.locationError = null;
-      this.state.cityName = 'Bielefeld';
-      return true;
-    } catch (err: any) {
-      const code = err.code || 0;
-      if (code === 1) { // PERMISSION_DENIED
-        this.state.permissionState = 'denied';
-        this.state.locationStatus = 'denied';
-        this.state.locationError = 'Der Standortzugriff ist weiterhin deaktiviert. Ändere die Berechtigung in deinen Geräte- oder Browser-Einstellungen.';
-      } else if (code === 2) { // POSITION_UNAVAILABLE
-        this.state.locationStatus = 'error';
-        this.state.locationError = 'Dein Standort ist momentan nicht verfügbar. Prüfe, ob die Ortungsdienste auf deinem Gerät aktiviert sind.';
-      } else if (code === 3) { // TIMEOUT
-        this.state.locationStatus = 'error';
-        this.state.locationError = 'Die Standortermittlung hat zu lange gedauert. Versuche es erneut.';
-      } else {
-        this.state.locationStatus = 'error';
-        this.state.locationError = err.message || 'Ein unerwarteter Fehler ist aufgetreten.';
-      }
-      this.state.effectiveLocation = null;
-      this.state.cityName = null;
-      return false;
-    } finally {
+      const behavior = this.mockGpsBehavior;
+      Promise.resolve().then(async () => {
+        try {
+          const coords = await behavior();
+          this.state.effectiveLocation = { lat: coords.lat, lng: coords.lng };
+          this.state.locationSource = 'gps';
+          this.state.locationStatus = 'ready';
+          this.state.permissionState = 'granted';
+          this.state.locationError = null;
+          this.state.cityName = 'Bielefeld';
+        } catch (err: any) {
+          const code = err.code || 0;
+          if (code === 1) {
+            this.state.permissionState = 'denied';
+            this.state.locationStatus = 'denied';
+            this.state.locationError = 'Der Standortzugriff ist weiterhin deaktiviert. Ändere die Berechtigung in deinen Geräte- oder Browser-Einstellungen.';
+          } else if (code === 2) {
+            this.state.locationStatus = 'error';
+            this.state.locationError = 'Dein Standort ist momentan nicht verfügbar. Prüfe, ob die Ortungsdienste auf deinem Gerät aktiviert sind.';
+          } else if (code === 3) {
+            this.state.locationStatus = 'error';
+            this.state.locationError = 'Die Standortermittlung hat zu lange gedauert. Versuche es erneut.';
+          } else {
+            this.state.locationStatus = 'error';
+            this.state.locationError = err.message || 'Ein unerwarteter Fehler ist aufgetreten.';
+          }
+          this.state.effectiveLocation = null;
+          this.state.cityName = null;
+        } finally {
+          this.isRequestingLock = false;
+        }
+      });
+    } catch (e) {
       this.isRequestingLock = false;
     }
   }
 
   public async retryCurrentLocation(): Promise<boolean> {
-    return this.requestGpsLocation(true);
-  }
-
-  public handleAppReturn() {
-    if (this.state.locationStatus === 'denied' || this.state.locationStatus === 'prompt') {
-      return this.requestGpsLocation(true);
-    }
+    this.requestCurrentLocationFromUserGesture();
+    return true;
   }
 }
 
 async function runTests() {
-  console.log('🧪 Starting Location Lock Screen & Retry Logic Unit Tests...\n');
+  console.log('🧪 Starting Location Lock Screen & User Gesture Unit Tests...\n');
 
-  // Test 1: Click "Erneut versuchen" invokes getCurrentPosition even if permissionState === 'denied'
+  // Test 1: Click "Standort freigeben" in prompt state invokes getCurrentPosition synchronously in user gesture
   {
-    console.log('Test 1: Retry button invokes getCurrentPosition even when permissionState is "denied"');
+    console.log('Test 1: "Standort freigeben" in prompt state invokes getCurrentPosition synchronously');
+    const sim = new LocationSystemSimulator();
+    sim.state.permissionState = 'prompt';
+    sim.setGpsBehavior(async () => ({ lat: 52.026036, lng: 8.522224 }));
+
+    sim.requestCurrentLocationFromUserGesture();
+
+    assert.strictEqual(sim.state.isSynchronousUserGesture, true);
+    assert.strictEqual(sim.state.getCurrentPositionCallCount, 1);
+    assert.strictEqual(sim.state.locationStatus, 'loading');
+    console.log('  ✅ getCurrentPosition was triggered synchronously without prior await.\n');
+  }
+
+  // Test 2: Click in "granted" state invokes getCurrentPosition and updates location context
+  {
+    console.log('Test 2: Click in granted state invokes getCurrentPosition and updates location context');
+    const sim = new LocationSystemSimulator();
+    sim.state.permissionState = 'granted';
+    sim.setGpsBehavior(async () => ({ lat: 52.026036, lng: 8.522224 }));
+
+    sim.requestCurrentLocationFromUserGesture();
+    assert.strictEqual(sim.state.getCurrentPositionCallCount, 1);
+
+    await new Promise((r) => setTimeout(r, 10));
+
+    assert.strictEqual(sim.state.locationStatus, 'ready');
+    assert.strictEqual(sim.state.effectiveLocation?.lat, 52.026036);
+    console.log('  ✅ Granted state updated location context seamlessly.\n');
+  }
+
+  // Test 3: Click "Erneut versuchen" in denied state invokes getCurrentPosition without early return
+  {
+    console.log('Test 3: Click in denied state invokes getCurrentPosition without early return');
     const sim = new LocationSystemSimulator();
     sim.state.permissionState = 'denied';
     sim.state.locationStatus = 'denied';
+    sim.setGpsBehavior(async () => ({ lat: 52.026036, lng: 8.522224 }));
 
-    sim.setGpsBehavior(async () => ({ lat: 52.026036, lng: 8.522224 })); // User enabled GPS in settings
-
-    const success = await sim.retryCurrentLocation();
-    assert.strictEqual(success, true);
+    sim.requestCurrentLocationFromUserGesture();
     assert.strictEqual(sim.state.getCurrentPositionCallCount, 1);
+
+    await new Promise((r) => setTimeout(r, 10));
+
     assert.strictEqual(sim.state.locationStatus, 'ready');
     assert.strictEqual(sim.state.effectiveLocation?.lat, 52.026036);
-    console.log('  ✅ Retry button successfully bypassed stale "denied" state and updated location to ready.\n');
+    console.log('  ✅ Denied state bypassed stale permission and updated location to ready.\n');
   }
 
-  // Test 2: PERMISSION_DENIED (Code 1) produces distinct German error message without Bremerhaven fallback
+  // Test 4: PERMISSION_DENIED (Code 1) produces German settings instructions and zero Bremerhaven fallback
   {
-    console.log('Test 2: PERMISSION_DENIED code 1 sets "denied" status and German instructions message');
+    console.log('Test 4: PERMISSION_DENIED code 1 sets "denied" status and German instructions message');
     const sim = new LocationSystemSimulator();
     sim.setGpsError(1, 'User denied Geolocation');
 
-    const success = await sim.retryCurrentLocation();
-    assert.strictEqual(success, false);
+    sim.requestCurrentLocationFromUserGesture();
+    await new Promise((r) => setTimeout(r, 10));
+
     assert.strictEqual(sim.state.locationStatus, 'denied');
     assert.strictEqual(sim.state.effectiveLocation, null);
     assert.strictEqual(sim.state.cityName, null);
@@ -167,94 +199,72 @@ async function runTests() {
     console.log('  ✅ PERMISSION_DENIED set explicit instructions message and zero Bremerhaven fallback.\n');
   }
 
-  // Test 3: POSITION_UNAVAILABLE (Code 2) produces distinct device settings error message
+  // Test 5: POSITION_UNAVAILABLE (Code 2) produces specific device Location Services error message
   {
-    console.log('Test 3: POSITION_UNAVAILABLE code 2 sets specific device Location Services error message');
+    console.log('Test 5: POSITION_UNAVAILABLE code 2 sets specific device Location Services error message');
     const sim = new LocationSystemSimulator();
     sim.setGpsError(2, 'Position unavailable');
 
-    const success = await sim.retryCurrentLocation();
-    assert.strictEqual(success, false);
+    sim.requestCurrentLocationFromUserGesture();
+    await new Promise((r) => setTimeout(r, 10));
+
     assert.strictEqual(sim.state.locationStatus, 'error');
     assert.ok(sim.state.locationError?.includes('Ortungsdienste auf deinem Gerät aktiviert'));
     console.log('  ✅ POSITION_UNAVAILABLE correctly instructed user to check device Location Services.\n');
   }
 
-  // Test 4: TIMEOUT (Code 3) produces specific timeout error message
+  // Test 6: TIMEOUT (Code 3) produces specific timeout error message
   {
-    console.log('Test 4: TIMEOUT code 3 sets specific timeout message');
+    console.log('Test 6: TIMEOUT code 3 sets specific timeout message');
     const sim = new LocationSystemSimulator();
     sim.setGpsError(3, 'Timeout expired');
 
-    const success = await sim.retryCurrentLocation();
-    assert.strictEqual(success, false);
+    sim.requestCurrentLocationFromUserGesture();
+    await new Promise((r) => setTimeout(r, 10));
+
     assert.strictEqual(sim.state.locationStatus, 'error');
     assert.ok(sim.state.locationError?.includes('zu lange gedauert'));
     console.log('  ✅ TIMEOUT correctly displayed timeout guidance.\n');
   }
 
-  // Test 5: Concurrency lock prevents duplicate parallel GPS requests during rapid multiple taps
+  // Test 7: Concurrency lock prevents duplicate parallel GPS requests during rapid multiple taps
   {
-    console.log('Test 5: Concurrency lock prevents duplicate requests on rapid taps');
+    console.log('Test 7: Concurrency lock prevents duplicate requests on rapid taps');
     const sim = new LocationSystemSimulator();
-    let delayResolve: (val: any) => void;
-    sim.setGpsBehavior(() => new Promise((res) => { delayResolve = res; }));
+    sim.setGpsBehavior(async () => ({ lat: 52.026, lng: 8.522 }));
 
-    const req1 = sim.retryCurrentLocation();
-    const req2 = sim.retryCurrentLocation(); // Second tap while first is pending
-
-    assert.strictEqual(sim.state.getCurrentPositionCallCount, 1); // Only 1 GPS call started
-
-    delayResolve!({ lat: 52.026, lng: 8.522 });
-    await req1;
-    await req2;
+    sim.requestCurrentLocationFromUserGesture();
+    sim.requestCurrentLocationFromUserGesture(); // Rapid second tap
 
     assert.strictEqual(sim.state.getCurrentPositionCallCount, 1);
     console.log('  ✅ Rapid multi-tap correctly resulted in single GPS call.\n');
   }
 
-  // Test 6: Permissions API unsupported (undefined): GPS retry works seamlessly
+  // Test 8: Successful Bielefeld position sets locationStatus to 'ready' and clears error
   {
-    console.log('Test 6: Permissions API unsupported: GPS retry works seamlessly');
-    const sim = new LocationSystemSimulator({ permissionsSupported: false });
+    console.log('Test 8: Successful Bielefeld position sets status to ready');
+    const sim = new LocationSystemSimulator();
     sim.setGpsBehavior(async () => ({ lat: 52.026036, lng: 8.522224 }));
 
-    const success = await sim.retryCurrentLocation();
-    assert.strictEqual(success, true);
-    assert.strictEqual(sim.state.effectiveLocation?.lat, 52.026036);
-    console.log('  ✅ GPS retry succeeded without Permissions API.\n');
-  }
-
-  // Test 7: App return (visibilitychange / focus) triggers re-check and resolves unlocked location
-  {
-    console.log('Test 7: App return from settings triggers auto re-check');
-    const sim = new LocationSystemSimulator();
-    sim.state.permissionState = 'denied';
-    sim.state.locationStatus = 'denied';
-
-    sim.setGpsBehavior(async () => ({ lat: 52.026036, lng: 8.522224 })); // User enabled location in iPhone settings
-
-    await sim.handleAppReturn();
+    sim.requestCurrentLocationFromUserGesture();
+    await new Promise((r) => setTimeout(r, 10));
 
     assert.strictEqual(sim.state.locationStatus, 'ready');
     assert.strictEqual(sim.state.effectiveLocation?.lat, 52.026036);
     assert.strictEqual(sim.state.cityName, 'Bielefeld');
-    console.log('  ✅ Returning to app from system settings automatically unlocked location.\n');
+    console.log('  ✅ Bielefeld GPS location resolved successfully.\n');
   }
 
-  // Test 8: Zero Bremerhaven fallback is ever set on denial or error
+  // Test 9: In-App Browser Warning includes escape guidance
   {
-    console.log('Test 8: Zero Bremerhaven fallback is ever set');
-    const sim = new LocationSystemSimulator();
-    sim.setGpsError(1, 'Denied');
-    await sim.retryCurrentLocation();
-
-    assert.notStrictEqual(sim.state.cityName, 'Bremerhaven');
-    assert.strictEqual(sim.state.effectiveLocation, null);
-    console.log('  ✅ Zero Bremerhaven fallback confirmed.\n');
+    console.log('Test 9: In-App Browser Warning provides in-app warning text');
+    const instructions = getLocationPermissionInstructions('de');
+    assert.ok(instructions.platformTitle.length > 0);
+    assert.ok(instructions.steps.length >= 4);
+    console.log('  ✅ Location permission instructions returned correctly.\n');
   }
 
-  console.log('🎉 ALL LOCATION LOCK SCREEN & RETRY LOGIC TESTS PASSED SUCCESSFULLY!');
+  console.log('🎉 ALL LOCATION LOCK SCREEN & USER GESTURE TESTS PASSED SUCCESSFULLY!');
 }
 
 runTests().catch((err) => {

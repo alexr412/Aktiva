@@ -42,6 +42,7 @@ export interface LocationContextType {
   resetToCurrentLocation: () => void;
   retryCurrentLocation: () => Promise<boolean>;
   requestGpsLocation: (forceExplicit?: boolean) => Promise<boolean>;
+  requestCurrentLocationFromUserGesture: () => void;
 }
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
@@ -209,170 +210,186 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
   }, [accuracy, logLocationChange]);
 
-  // Primary GPS Resolution Logic (Direct getCurrentPosition invocation)
-  const requestGpsLocation = useCallback(async (forceExplicit = false): Promise<boolean> => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setLocationStatus('error');
-      setLocationError(language === 'de' ? 'Geolokalisierung wird von deinem Browser nicht unterstützt.' : 'Geolocation is not supported by your browser.');
-      return false;
+  // Synchronous User Gesture GPS Trigger (CRITICAL FOR iOS SAFARI)
+  const requestCurrentLocationFromUserGesture = useCallback(() => {
+    console.log('[LocationDialog] location button clicked');
+    console.log('[LocationDialog] permissionState', permissionState);
+    console.log('[LocationDialog] locationStatus', locationStatus);
+
+    if (isRequestingLocationRef.current) {
+      console.log('[LocationDialog] Location request already in progress (locked). Skipping duplicate call.');
+      return;
     }
 
-    // Prevent duplicate concurrent requests
-    if (isRequestingLocationRef.current) {
-      console.log('[LOCATION DEBUG] Location request already in progress. Skipping duplicate call.');
-      return false;
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      console.error('[LocationDialog] navigator.geolocation not supported');
+      setLocationStatus('error');
+      setLocationError(
+        language === 'de'
+          ? 'Die Standortermittlung wird von diesem Browser nicht unterstützt.'
+          : 'Geolocation is not supported by this browser.'
+      );
+      return;
     }
 
     const requestId = ++currentRequestIdRef.current;
     isRequestingLocationRef.current = true;
+    console.log('[LocationDialog] Request lock set. Request ID:', requestId);
     setLocationStatus('loading');
     setLocationError(null);
 
-    const startTime = Date.now();
+    let isFinished = false;
 
-    return new Promise<boolean>((resolvePromise) => {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          // Enforce minimum visual loading time for crisp UI feedback
-          const elapsed = Date.now() - startTime;
-          if (elapsed < 400) {
-            await new Promise((r) => setTimeout(r, 400 - elapsed));
-          }
+    // Safety 15s timeout to guarantee request lock release
+    const safetyTimeoutId = setTimeout(() => {
+      if (!isFinished && requestId === currentRequestIdRef.current && isRequestingLocationRef.current) {
+        console.warn('[LocationDialog] GPS request safety timeout (15s) reached.');
+        finishRequest();
+        setLocationStatus('error');
+        setLocationError(
+          language === 'de'
+            ? 'Die Standortermittlung hat zu lange gedauert. Versuche es erneut.'
+            : 'Location detection timed out. Please try again.'
+        );
+      }
+    }, 15000);
 
-          isRequestingLocationRef.current = false;
+    const finishRequest = () => {
+      if (isFinished) return;
+      isFinished = true;
+      clearTimeout(safetyTimeoutId);
+      isRequestingLocationRef.current = false;
+      console.log('[LocationDialog] Request lock released for ID:', requestId);
+    };
 
-          if (requestId !== currentRequestIdRef.current) {
-            resolvePromise(false);
-            return;
-          }
+    console.log('[LocationDialog] GPS call started synchronously in click callstack');
 
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          const acc = position.coords.accuracy || 50;
+    // MUST BE SYNCHRONOUS: Called directly in the click event stack without any prior await or Promise turn
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        console.log('[LocationDialog] GPS success callback received for ID:', requestId);
+        finishRequest();
 
-          // Reject invalid coordinates
-          if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-            console.error('[LOCATION DEBUG] Invalid GPS coordinates received:', { lat, lng });
-            setLocationStatus('error');
-            setLocationError(language === 'de' ? 'Ungültige GPS-Koordinaten empfangen.' : 'Invalid GPS coordinates received.');
-            resolvePromise(false);
-            return;
-          }
+        if (requestId !== currentRequestIdRef.current) return;
 
-          const now = Date.now();
-          const loc = { lat, lng };
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const acc = position.coords.accuracy || 50;
 
-          setEffectiveLocation(loc);
-          setLatitude(lat);
-          setLongitude(lng);
-          setAccuracy(acc);
-          setLocationSource('gps');
-          setLocationStatus('ready');
-          setLocationError(null);
-          setUpdatedAt(now);
-          setExpiresAt(now + LOCATION_MAX_TTL_MS);
-          setPermissionState('granted');
+        if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+          console.error('[LocationDialog] Invalid GPS coordinates:', { lat, lng });
+          setLocationStatus('error');
+          setLocationError(
+            language === 'de' ? 'Ungültige GPS-Koordinaten empfangen.' : 'Invalid GPS coordinates received.'
+          );
+          return;
+        }
 
-          // Save fresh GPS location to localStorage
-          try {
-            const cacheData = {
-              lat,
-              lng,
-              latitude: lat,
-              longitude: lng,
-              accuracy: acc,
-              source: 'gps',
-              city: city || null,
-              cityName: city || null,
-              timestamp: now,
-              updatedAt: now,
-              expiresAt: now + LOCATION_MAX_TTL_MS
-            };
-            localStorage.setItem('aktiva_last_location', JSON.stringify(cacheData));
-          } catch (e) {}
+        const now = Date.now();
+        const loc = { lat, lng };
 
-          logLocationChange('gps', 'ready', loc, city, 'current');
+        setEffectiveLocation(loc);
+        setLatitude(lat);
+        setLongitude(lng);
+        setAccuracy(acc);
+        setLocationSource('gps');
+        setLocationStatus('ready');
+        setLocationError(null);
+        setUpdatedAt(now);
+        setExpiresAt(now + LOCATION_MAX_TTL_MS);
+        setPermissionState('granted');
 
-          // Best-effort reverse geocoding
-          executeReverseGeocode(lat, lng, requestId, 'gps', 'ready', 'current');
-          refreshPermissionState();
-          resolvePromise(true);
-        },
-        async (error) => {
-          const elapsed = Date.now() - startTime;
-          if (elapsed < 400) {
-            await new Promise((r) => setTimeout(r, 400 - elapsed));
-          }
+        try {
+          const cacheData = {
+            lat,
+            lng,
+            latitude: lat,
+            longitude: lng,
+            accuracy: acc,
+            source: 'gps',
+            city: city || null,
+            cityName: city || null,
+            timestamp: now,
+            updatedAt: now,
+            expiresAt: now + LOCATION_MAX_TTL_MS,
+          };
+          localStorage.setItem('aktiva_last_location', JSON.stringify(cacheData));
+        } catch (e) {}
 
-          isRequestingLocationRef.current = false;
+        logLocationChange('gps', 'ready', loc, city, 'current');
+        executeReverseGeocode(lat, lng, requestId, 'gps', 'ready', 'current');
+        refreshPermissionState();
+      },
+      (error) => {
+        console.warn('[LocationDialog] GPS error callback received. Code:', error.code, 'Message:', error.message);
+        finishRequest();
 
-          if (requestId !== currentRequestIdRef.current) {
-            resolvePromise(false);
-            return;
-          }
+        if (requestId !== currentRequestIdRef.current) return;
 
-          console.warn("[LOCATION DEBUG] Geolocation error:", error.code, error.message);
-
-          let friendlyMessage = '';
-          if (error.code === error.PERMISSION_DENIED) {
-            setPermissionState('denied');
-            setLocationStatus('denied');
-            friendlyMessage = language === 'de'
+        let friendlyMessage = '';
+        if (error.code === error.PERMISSION_DENIED) {
+          setPermissionState('denied');
+          setLocationStatus('denied');
+          friendlyMessage =
+            language === 'de'
               ? 'Der Standortzugriff ist weiterhin deaktiviert. Ändere die Berechtigung in deinen Geräte- oder Browser-Einstellungen.'
               : 'Location access remains disabled. Please update your device or browser settings.';
-          } else if (error.code === error.POSITION_UNAVAILABLE) {
-            setLocationStatus('error');
-            friendlyMessage = language === 'de'
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          setLocationStatus('error');
+          friendlyMessage =
+            language === 'de'
               ? 'Dein Standort ist momentan nicht verfügbar. Prüfe, ob die Ortungsdienste auf deinem Gerät aktiviert sind.'
               : 'Your location is currently unavailable. Please check if Location Services are enabled on your device.';
-          } else if (error.code === error.TIMEOUT) {
-            setLocationStatus('error');
-            friendlyMessage = language === 'de'
+        } else if (error.code === error.TIMEOUT) {
+          setLocationStatus('error');
+          friendlyMessage =
+            language === 'de'
               ? 'Die Standortermittlung hat zu lange gedauert. Versuche es erneut.'
               : 'Location detection timed out. Please try again.';
-          } else {
-            setLocationStatus('error');
-            friendlyMessage = error.message || (
-              language === 'de' 
-                ? 'Ein unerwarteter Fehler ist bei der Standortermittlung aufgetreten.' 
-                : 'An unexpected error occurred during location detection.'
-            );
-          }
+        } else {
+          setLocationStatus('error');
+          friendlyMessage =
+            error.message ||
+            (language === 'de'
+              ? 'Ein unerwarteter Fehler ist bei der Standortermittlung aufgetreten.'
+              : 'An unexpected error occurred during location detection.');
+        }
 
-          setLocationError(friendlyMessage);
-          refreshPermissionState();
+        setLocationError(friendlyMessage);
+        refreshPermissionState();
 
-          // Check if we have a valid, non-expired cached GPS location to use during refresh
-          const cached = getSanitizedCache();
-          if (cached && cached.source === 'gps') {
-            console.log('[LOCATION DEBUG] Using valid cached GPS position as secondary fallback during refresh');
-            const loc = { lat: cached.lat, lng: cached.lng };
-            setEffectiveLocation(loc);
-            setLatitude(cached.lat);
-            setLongitude(cached.lng);
-            setAccuracy(cached.accuracy);
-            setCity(cached.city);
-            setLocationSource('cache');
-            setUpdatedAt(cached.updatedAt);
-            setExpiresAt(cached.expiresAt);
-            logLocationChange('cache', 'ready', loc, cached.city, 'current');
-            resolvePromise(true);
-            return;
-          }
+        const cached = getSanitizedCache();
+        if (cached && cached.source === 'gps') {
+          console.log('[LocationDialog] Using valid cached GPS position as secondary fallback');
+          const loc = { lat: cached.lat, lng: cached.lng };
+          setEffectiveLocation(loc);
+          setLatitude(cached.lat);
+          setLongitude(cached.lng);
+          setAccuracy(cached.accuracy);
+          setCity(cached.city);
+          setLocationSource('cache');
+          setUpdatedAt(cached.updatedAt);
+          setExpiresAt(cached.expiresAt);
+          logLocationChange('cache', 'ready', loc, cached.city, 'current');
+          return;
+        }
 
-          // ZERO DEFAULT FALLBACK TO BREMERHAVEN
-          setEffectiveLocation(null);
-          setLatitude(null);
-          setLongitude(null);
-          setAccuracy(null);
-          setCity(null);
-          setLocationSource(null);
-          resolvePromise(false);
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-      );
-    });
-  }, [city, executeReverseGeocode, getSanitizedCache, language, logLocationChange, refreshPermissionState]);
+        setEffectiveLocation(null);
+        setLatitude(null);
+        setLongitude(null);
+        setAccuracy(null);
+        setCity(null);
+        setLocationSource(null);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }, [city, executeReverseGeocode, getSanitizedCache, language, logLocationChange, permissionState, locationStatus, refreshPermissionState]);
+
+  // Primary GPS Resolution Logic (Programmatic wrapper calling synchronous gesture trigger)
+  const requestGpsLocation = useCallback(async (forceExplicit = false): Promise<boolean> => {
+    requestCurrentLocationFromUserGesture();
+    return true;
+  }, [requestCurrentLocationFromUserGesture]);
 
   // Main resolution trigger
   const resolveCurrentLocation = useCallback(() => {
@@ -500,8 +517,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
   const retryCurrentLocation = useCallback(async (): Promise<boolean> => {
     console.log('[LOCATION DEBUG] Explicit retry triggered by user click.');
-    return requestGpsLocation(true);
-  }, [requestGpsLocation]);
+    requestCurrentLocationFromUserGesture();
+    return true;
+  }, [requestCurrentLocationFromUserGesture]);
 
   return (
     <LocationContext.Provider
@@ -524,6 +542,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         resetToCurrentLocation,
         retryCurrentLocation,
         requestGpsLocation,
+        requestCurrentLocationFromUserGesture,
       }}
     >
       {children}
@@ -553,7 +572,8 @@ export function useCurrentLocation() {
     locationError,
     permissionState,
     updatedAt,
-    expiresAt
+    expiresAt,
+    requestCurrentLocationFromUserGesture
   } = useLocation();
   return {
     effectiveLocation,
@@ -569,5 +589,6 @@ export function useCurrentLocation() {
     permissionState,
     updatedAt,
     expiresAt,
+    requestCurrentLocationFromUserGesture
   };
 }

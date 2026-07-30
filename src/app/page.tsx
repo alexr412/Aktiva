@@ -179,6 +179,7 @@ export default function Home() {
     permissionState: locationPermissionState,
     resetToCurrentLocation: handleResetLocation,
     retryCurrentLocation: requestLocation,
+    requestCurrentLocationFromUserGesture,
   } = useLocation();
 
   const cityName = contextCity || (language === 'de' ? "Aktueller Standort" : "Current location");
@@ -2384,7 +2385,7 @@ export default function Home() {
       <LocationRequirementDialog
         open={showLocationRequirement}
         onOpenChange={setShowLocationRequirement}
-        onRetry={requestLocation}
+        onRetry={requestCurrentLocationFromUserGesture}
         permissionState={locationPermissionState}
         isLoading={isLocationLoading}
         locationError={locationError}

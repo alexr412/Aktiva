@@ -178,7 +178,8 @@ function OnboardingContent() {
     city: locationCity, 
     locationStatus, 
     permissionState, 
-    requestGpsLocation 
+    requestGpsLocation,
+    requestCurrentLocationFromUserGesture
   } = useLocation();
 
   const getSanitizedRedirect = (clearSession = true): string | null => {
@@ -198,7 +199,7 @@ function OnboardingContent() {
   const [isUsernameChecking, setIsUsernameChecking] = useState(false);
   const [usernameAvailability, setUsernameAvailability] = useState<'available' | 'taken' | 'invalid' | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
+  const isLocating = locationStatus === 'loading';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -337,9 +338,7 @@ function OnboardingContent() {
 
     if (step === 1) {
       if (!effectiveLocation || locationStatus === 'denied' || locationStatus === 'error') {
-        setIsLocating(true);
         const success = await requestGpsLocation(true);
-        setIsLocating(false);
         if (!success) {
           toast({
             variant: "destructive",
@@ -491,45 +490,9 @@ function OnboardingContent() {
     }
   };
 
-  const handleLocate = async () => {
+  const handleLocate = () => {
     if (isSubmitting || isLocating) return;
-    setIsLocating(true);
-    try {
-      const success = await requestGpsLocation(true);
-      if (success) {
-        toast({
-          title: language === 'de' ? "Standort erkannt" : "Location detected",
-          description: locationCity 
-            ? (language === 'de' ? `Dein Standort in ${locationCity} wurde erfasst.` : `Your location in ${locationCity} was captured.`)
-            : (language === 'de' ? 'Dein GPS-Standort wurde erfolgreich erfasst.' : 'Your GPS location was captured successfully.')
-        });
-
-        if (effectiveLocation) {
-          try {
-            const { functions: clientFunctions } = await import('@/lib/firebase/client');
-            if (clientFunctions) {
-              const { httpsCallable } = await import('firebase/functions');
-              const updateRadarFn = httpsCallable(clientFunctions, 'updateRadarLocation');
-              await updateRadarFn({ latitude: effectiveLocation.lat, longitude: effectiveLocation.lng, accuracy: 95 });
-            }
-          } catch (radarErr) {
-            console.warn("updateRadarLocation during onboarding location step skipped or failed:", radarErr);
-          }
-        }
-      } else {
-        toast({
-          variant: "destructive",
-          title: language === 'de' ? "Standort-Fehler" : "Location Error",
-          description: language === 'de' 
-            ? "GPS-Standort konnte nicht ermittelt werden. Bitte prüfe deine Browser-Berechtigungen." 
-            : "Could not detect GPS location. Please check browser permissions."
-        });
-      }
-    } catch (error) {
-      console.error("GPS detection error:", error);
-    } finally {
-      setIsLocating(false);
-    }
+    requestCurrentLocationFromUserGesture();
   };
 
   const handleRandomAvatar = () => {
