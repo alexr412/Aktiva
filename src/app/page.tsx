@@ -176,16 +176,23 @@ export default function Home() {
     locationSource,
     locationStatus,
     locationError,
+    permissionState: locationPermissionState,
     resetToCurrentLocation: handleResetLocation,
     retryCurrentLocation: requestLocation,
   } = useLocation();
 
-  const cityName = contextCity || (language === 'de' ? "Standort wird ermittelt..." : "Determining location...");
+  const cityName = contextCity || (language === 'de' ? "Aktueller Standort" : "Current location");
   const resolvedCityName = contextCity;
-  const isLocationLoading = locationStatus === 'resolving';
-  const locationPermissionDenied = locationError?.toLowerCase().includes('denied') || false;
-  const reverseGeocodeFailed = locationStatus === 'fallback' && !contextCity;
+  const isLocationLoading = locationStatus === 'loading';
   const [showLocationRequirement, setShowLocationRequirement] = useState(false);
+
+  useEffect(() => {
+    if (locationStatus === 'denied' || locationPermissionState === 'denied' || (!userLocation && locationStatus === 'error')) {
+      setShowLocationRequirement(true);
+    } else if (userLocation && (locationStatus === 'ready' || locationSource === 'gps' || locationSource === 'cache')) {
+      setShowLocationRequirement(false);
+    }
+  }, [locationStatus, locationPermissionState, userLocation, locationSource]);
 
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
@@ -1440,7 +1447,19 @@ export default function Home() {
     trackInteraction(place.id, place.categories, 'card_open', user?.uid);
   }, [user?.uid]);
 
-  const handleDialogClose = () => setSelectedPlace(null);
+  const handleDialogClose = () => {
+    setSelectedPlace(null);
+    setSelectedMapEntity(null);
+  };
+
+  const handleSelectMapEntity = (entity: SelectedMapEntity) => {
+    setSelectedMapEntity(entity);
+    if (entity?.type === 'place' && entity.data) {
+      setSelectedPlace(entity.data as Place);
+    } else if (!entity) {
+      setSelectedPlace(null);
+    }
+  };
 
   const handleOpenActivityModal = useCallback((place: Place) => {
     if (!user) {
@@ -1694,7 +1713,7 @@ export default function Home() {
 
     const hasStructuredLocationFailure =
       !isLocationLoading &&
-      Boolean(locationError || locationPermissionDenied || reverseGeocodeFailed);
+      Boolean(locationError || locationPermissionState === 'denied' || locationStatus === 'error');
 
     const hasTerminalActiveError =
       Boolean(activeFeedError) &&
@@ -2081,7 +2100,7 @@ export default function Home() {
             language={language}
             isMobile={isMobile}
             selectedEntity={selectedMapEntity}
-            onSelectEntity={setSelectedMapEntity}
+            onSelectEntity={handleSelectMapEntity}
             onCreateActivity={(place) => setActivityModalPlace(place)}
             onJoinActivity={handleJoin}
           />
@@ -2366,13 +2385,8 @@ export default function Home() {
         open={showLocationRequirement}
         onOpenChange={setShowLocationRequirement}
         onRetry={requestLocation}
-        onUseHomeLocation={handleUseHomeLocation}
-        homeCity="Bremerhaven"
+        permissionState={locationPermissionState}
         isLoading={isLocationLoading}
-        onSearchManually={() => {
-          setShowLocationRequirement(false);
-          setIsLocationSearchOpen(true);
-        }}
       />
       <PremiumUpgradeModal
         isOpen={isPremiumUpsellOpen}

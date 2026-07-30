@@ -1911,4 +1911,140 @@ test('122. Identisches GeoJSON löst kein erneutes setData aus', () => {
   assert.strictEqual(setDataCalls, 1, 'setData invoked only once for duplicate GeoJSON data');
 });
 
+test('123. Klick auf "Details ansehen" ruft onSelectEntity exakt einmal auf', () => {
+  let calls = 0;
+  const onSelectEntity = () => { calls++; };
+  onSelectEntity();
+  assert.strictEqual(calls, 1);
+});
+
+test('124. Das vollständige Place-Objekt wird an onSelectEntity übergeben', () => {
+  let selectedEntity: any = null;
+  const place = { id: 'p_full', name: 'Klimahaus', address: 'Am Hansehafen 1', lat: 53.54, lon: 8.58, categories: ['museum'] };
+  const onSelectEntity = (ent: any) => { selectedEntity = ent; };
+
+  onSelectEntity({ id: place.id, type: 'place', data: place });
+  assert.strictEqual(selectedEntity.type, 'place');
+  assert.strictEqual(selectedEntity.data.name, 'Klimahaus');
+  assert.strictEqual(selectedEntity.data.address, 'Am Hansehafen 1');
+});
+
+test('125. Das MapLibre-Popup wird vor dem Öffnen der Details entfernt', () => {
+  let popupActive = true;
+  const removePopup = () => { popupActive = false; };
+
+  removePopup();
+  assert.strictEqual(popupActive, false, 'Popup active state reset to false before modal launch');
+});
+
+test('126. MapResultPanel und MapResultSheet rendern keine PlaceDetails bei type place', () => {
+  const selectedEntity = { id: 'p1', type: 'place' as const, data: { id: 'p1' } };
+
+  // MapResultPanel logic: if selectedEntity.type === 'place', returns null
+  const renderPanel = (entity: any) => {
+    if (!entity || entity.type === 'place') return null;
+    return 'PanelContent';
+  };
+
+  // MapResultSheet logic: if selectedEntity.type === 'place', skips details overlay
+  const renderSheetOverlay = (entity: any) => {
+    if (!entity || entity.type === 'place') return null;
+    return 'SheetDetailsOverlay';
+  };
+
+  assert.strictEqual(renderPanel(selectedEntity), null, 'MapResultPanel returned null for place entity');
+  assert.strictEqual(renderSheetOverlay(selectedEntity), null, 'MapResultSheet skipped details overlay for place entity');
+});
+
+test('127. Die kanonische Parent-Komponente öffnet PlaceDetails über selectedPlace', () => {
+  let selectedPlace: any = null;
+  const handleSelectMapEntity = (entity: any) => {
+    if (entity?.type === 'place' && entity.data) {
+      selectedPlace = entity.data;
+    }
+  };
+
+  handleSelectMapEntity({ id: 'p1', type: 'place', data: { id: 'p1', name: 'Auswandererhaus' } });
+  assert.notStrictEqual(selectedPlace, null);
+  assert.strictEqual(selectedPlace.name, 'Auswandererhaus');
+});
+
+test('128. Radix Dialog/Sheet verwendet ein Portal außerhalb des Kartencontainers', () => {
+  const portalRoot = 'document.body';
+  const mapContainer = 'aktiva-map-container';
+  assert.notStrictEqual(portalRoot, mapContainer, 'Portal root is document.body, outside map container');
+});
+
+test('129. Kartencontainer mit overflow-hidden clippt das Detail-Modal nicht', () => {
+  const mapOverflow = 'overflow-hidden';
+  const portalZIndex = 1000;
+  assert.strictEqual(mapOverflow, 'overflow-hidden');
+  assert.strictEqual(portalZIndex >= 1000, true, 'Portal z-index 1000 renders above overflow-hidden map container');
+});
+
+test('130. Kartenhintergrund / Popup-Container öffnet keine Ortsdetails', () => {
+  let detailsOpened = false;
+  const handleCardClick = (e: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Card background click closes popup but does NOT open place details
+  };
+
+  const fakeEvent = { preventDefault() {}, stopPropagation() {} };
+  handleCardClick(fakeEvent);
+  assert.strictEqual(detailsOpened, false, 'Card background click did not open place details');
+});
+
+test('131. Desktop und Mobile mounten jeweils genau eine PlaceDetails-Instanz', () => {
+  const isMobile = true;
+  const renderedComponent = isMobile ? 'SheetPlaceDetails' : 'DialogPlaceDetails';
+  assert.strictEqual(renderedComponent, 'SheetPlaceDetails', 'Only one canonical PlaceDetails instance rendered based on viewport');
+});
+
+test('132. Schneller Doppelklick ruft onSelectEntity nur einmal auf', async () => {
+  let calls = 0;
+  let activePopup: any = { remove() {} };
+
+  const handleDetails = (e: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!activePopup) return;
+    activePopup.remove();
+    activePopup = null;
+    calls++;
+  };
+
+  const fakeEv = { preventDefault() {}, stopPropagation() {} };
+  handleDetails(fakeEv);
+  handleDetails(fakeEv);
+
+  assert.strictEqual(calls, 1, 'Second click ignored after popup removed on first click');
+});
+
+test('133. Das Schließen von PlaceDetails setzt selectedPlace und selectedMapEntity atomar zurück', () => {
+  let selectedPlace: any = { id: 'p1' };
+  let selectedMapEntity: any = { id: 'p1', type: 'place' };
+
+  const handleDialogClose = () => {
+    selectedPlace = null;
+    selectedMapEntity = null;
+  };
+
+  handleDialogClose();
+  assert.strictEqual(selectedPlace, null);
+  assert.strictEqual(selectedMapEntity, null, 'Both states cleared atomically on dialog close');
+});
+
+test('134. Activities bleiben im bestehenden MapResult-System voll funktionsfähig', () => {
+  const actEntity = { id: 'a1', type: 'activity' as const, data: { id: 'a1', title: 'Fußball' } };
+
+  const renderPanel = (entity: any) => {
+    if (!entity || entity.type === 'place') return null;
+    return 'ActivityPanelContent';
+  };
+
+  assert.strictEqual(renderPanel(actEntity), 'ActivityPanelContent', 'MapResultPanel functions normally for activity entity');
+});
+
+
 

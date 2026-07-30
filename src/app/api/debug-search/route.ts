@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { rateLimit } from '@/lib/rate-limit';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   // Strikter Server-Schutz: Im Produktionsmodus wird ein echtes HTTP 404 zurückgegeben
   if (process.env.NODE_ENV !== 'development') {

@@ -43,12 +43,18 @@ async function getActivityRest(activityId: string) {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'activa-444220';
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/activities/${activityId}`;
   
-  const res = await fetch(url, { next: { revalidate: 0 } });
-  if (!res.ok) {
+  try {
+    const res = await fetch(url, { next: { revalidate: 0 } });
+    if (!res.ok) {
+      return null;
+    }
+    const text = await res.text();
+    if (!text || !text.trim()) return null;
+    const data = JSON.parse(text) as any;
+    return parseFirestoreRestDoc(data.fields);
+  } catch (e) {
     return null;
   }
-  const data = await res.json() as any;
-  return parseFirestoreRestDoc(data.fields);
 }
 
 export async function GET(

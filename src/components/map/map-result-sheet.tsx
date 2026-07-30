@@ -90,14 +90,12 @@ export function MapResultSheet({
           </div>
         </div>
 
-        {/* Selected Entity Details Overlay (if selected) */}
-        {selectedEntity ? (
+        {/* Selected Entity Details Overlay (if selected and not a place) */}
+        {selectedEntity && selectedEntity.type !== 'place' ? (
           <div className="flex-1 overflow-y-auto pb-20">
             <div className="p-3 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between bg-slate-50 dark:bg-neutral-900">
               <span className="text-xs font-black text-slate-500 uppercase tracking-wider">
-                {selectedEntity.type === 'place'
-                  ? (language === 'de' ? 'Ort Details' : 'Place Details')
-                  : selectedEntity.type === 'friend'
+                {selectedEntity.type === 'friend'
                   ? (language === 'de' ? 'Freund Details' : 'Friend Details')
                   : (language === 'de' ? 'Aktivität Details' : 'Activity Details')}
               </span>
@@ -110,15 +108,7 @@ export function MapResultSheet({
                 {language === 'de' ? 'Zurück zur Liste' : 'Back to list'}
               </Button>
             </div>
-            {selectedEntity.type === 'place' ? (
-              <PlaceDetails
-                place={selectedEntity.data as Place}
-                onClose={onCloseDetails}
-                onCreateActivity={
-                  onCreateActivity ? () => onCreateActivity(selectedEntity.data as Place) : () => {}
-                }
-              />
-            ) : selectedEntity.type === 'friend' ? (
+            {selectedEntity.type === 'friend' ? (
               <div className="p-6 flex flex-col items-center text-center space-y-4">
                 <ProfileAvatar
                   photoURL={(selectedEntity.data as any).avatarUrl}

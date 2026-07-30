@@ -7,20 +7,41 @@ import { reverseGeocode as geoapifyReverseGeocode } from '@/lib/geoapify';
 import type { Destination } from '@/lib/types';
 
 export type LocationMode = 'current' | 'manual';
-export type LocationSource = 'geolocation' | 'cache' | 'manual' | 'fallback';
-export type LocationStatus = 'uninitialized' | 'resolving' | 'resolved' | 'fallback' | 'error';
+export type LocationSource = 'gps' | 'cache' | 'manual' | 'geolocation' | 'fallback';
+export type LocationStatus = 
+  | 'idle'
+  | 'loading'
+  | 'ready'
+  | 'prompt'
+  | 'denied'
+  | 'error'
+  | 'uninitialized'
+  | 'resolving'
+  | 'resolved'
+  | 'fallback';
+
+export const LOCATION_STALE_AFTER_MS = 15 * 60 * 1000; // 15 minutes
+export const LOCATION_MAX_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 export interface LocationContextType {
   locationMode: LocationMode;
   effectiveLocation: { lat: number; lng: number } | null;
+  latitude: number | null;
+  longitude: number | null;
+  accuracy: number | null;
   city: string | null;
+  cityName: string | null;
   locationSource: LocationSource | null;
   locationStatus: LocationStatus;
   locationError: string | null;
+  permissionState: 'granted' | 'prompt' | 'denied' | null;
   manualLocation: Destination | null;
+  updatedAt: number | null;
+  expiresAt: number | null;
   setManualLocation: (destination: Destination) => void;
   resetToCurrentLocation: () => void;
   retryCurrentLocation: () => void;
+  requestGpsLocation: (forceExplicit?: boolean) => Promise<boolean>;
 }
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
@@ -30,15 +51,22 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const language = useLanguage();
 
   const [effectiveLocation, setEffectiveLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
   const [city, setCity] = useState<string | null>(null);
   const [locationSource, setLocationSource] = useState<LocationSource | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('uninitialized');
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [permissionState, setPermissionState] = useState<'granted' | 'prompt' | 'denied' | null>(null);
   const [manualLocation, setManualLocationState] = useState<Destination | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
 
   const previousLocationRef = useRef<{ lat: number; lng: number } | null>(null);
   const isResolvingRef = useRef<boolean>(false);
   const currentRequestIdRef = useRef<number>(0);
+  const lastLocationRef = useRef<{ lat: number; lng: number; updatedAt: number } | null>(null);
 
   const locationMode: LocationMode = planningState.isPlanning && planningState.destination ? 'manual' : 'current';
 
@@ -47,14 +75,14 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     source: LocationSource,
     status: LocationStatus,
     newLoc: { lat: number; lng: number } | null,
-    cityName: string | null,
+    cityNameStr: string | null,
     mode: LocationMode
   ) => {
     console.log("[LOCATION DEBUG]", {
       source,
       latitude: newLoc?.lat ?? null,
       longitude: newLoc?.lng ?? null,
-      city: cityName,
+      city: cityNameStr,
       locationMode: mode,
       locationStatus: status,
       previousLocation: previousLocationRef.current,
@@ -63,10 +91,60 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     });
     if (newLoc) {
       previousLocationRef.current = newLoc;
+      lastLocationRef.current = { lat: newLoc.lat, lng: newLoc.lng, updatedAt: Date.now() };
     }
   }, []);
 
-  // Async Reverse-Geocoding with Request ID protection against race conditions
+  // Inspect & Clean localStorage cache on mount
+  const getSanitizedCache = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('aktiva_last_location');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+
+      // 1. Purge explicit fallback entries immediately
+      if (parsed.source === 'fallback') {
+        console.log('[LOCATION DEBUG] Purging explicit fallback cache entry');
+        localStorage.removeItem('aktiva_last_location');
+        return null;
+      }
+
+      const timestamp = parsed.timestamp || parsed.updatedAt || 0;
+      const age = Date.now() - timestamp;
+
+      // 2. Purge expired cache (> 4 hours max TTL)
+      if (age > LOCATION_MAX_TTL_MS) {
+        console.log('[LOCATION DEBUG] Purging expired location cache entry (> 4h TTL)');
+        localStorage.removeItem('aktiva_last_location');
+        return null;
+      }
+
+      const lat = parsed.lat ?? parsed.latitude;
+      const lng = parsed.lng ?? parsed.longitude;
+
+      if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
+        localStorage.removeItem('aktiva_last_location');
+        return null;
+      }
+
+      return {
+        lat,
+        lng,
+        accuracy: typeof parsed.accuracy === 'number' ? parsed.accuracy : 50,
+        source: (parsed.source as LocationSource) || 'gps',
+        city: parsed.city || parsed.cityName || null,
+        timestamp,
+        updatedAt: timestamp,
+        expiresAt: timestamp + LOCATION_MAX_TTL_MS,
+        isStale: age > LOCATION_STALE_AFTER_MS
+      };
+    } catch (e) {
+      return null;
+    }
+  }, []);
+
+  // Async Reverse-Geocoding (Best Effort - never blocks or sets Bremerhaven fallback)
   const executeReverseGeocode = useCallback(async (
     lat: number,
     lng: number,
@@ -77,7 +155,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   ) => {
     try {
       const place = await geoapifyReverseGeocode(lat, lng);
-      // Reject stale requests
+      // Discard stale responses
       if (requestId !== currentRequestIdRef.current) {
         console.log("[LOCATION DEBUG] Discarding stale reverse-geocode response", { requestId, current: currentRequestIdRef.current });
         return;
@@ -86,148 +164,264 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       if (place) {
         const props = (place as any)._rawProperties || {};
         const rawCity = props.city || props.town || props.village || props.suburb || props.municipality || place.name || null;
-        const displayCity = rawCity || (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
+        const displayCity = rawCity || null;
 
         setCity(displayCity);
         logLocationChange(source, status, { lat, lng }, displayCity, mode);
 
-        if (source === 'geolocation') {
+        if (source === 'gps' || source === 'geolocation') {
           try {
-            localStorage.setItem('aktiva_last_location', JSON.stringify({
-              lat, lng, city: displayCity, timestamp: Date.now()
-            }));
+            const cacheData = {
+              lat,
+              lng,
+              latitude: lat,
+              longitude: lng,
+              accuracy: accuracy || 50,
+              source: 'gps',
+              cityName: displayCity,
+              city: displayCity,
+              timestamp: Date.now(),
+              updatedAt: Date.now(),
+              expiresAt: Date.now() + LOCATION_MAX_TTL_MS
+            };
+            localStorage.setItem('aktiva_last_location', JSON.stringify(cacheData));
           } catch (e) {}
         }
-      } else {
-        const fallbackCity = language === 'de' ? 'Unbekannter Ort' : 'Unknown Place';
-        setCity(fallbackCity);
-        logLocationChange(source, status, { lat, lng }, fallbackCity, mode);
       }
     } catch (err) {
       if (requestId !== currentRequestIdRef.current) return;
-      console.warn("[LOCATION DEBUG] Reverse geocoding failed:", err);
-      const fallbackCity = language === 'de' ? 'Unbekannter Ort' : 'Unknown Place';
-      setCity(fallbackCity);
-      logLocationChange(source, status, { lat, lng }, fallbackCity, mode);
+      console.warn("[LOCATION DEBUG] Best-effort reverse geocoding failed (coordinates remain valid):", err);
+      // Do NOT set a fallback city on error! Keep existing city or null.
     }
-  }, [language, logLocationChange]);
+  }, [accuracy, logLocationChange]);
 
-  // Primary location determination logic
-  const resolveCurrentLocation = useCallback(() => {
+  // Primary GPS Resolution Logic
+  const requestGpsLocation = useCallback(async (forceExplicit = false): Promise<boolean> => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationStatus('error');
+      setLocationError('Geolocation is not supported by this browser.');
+      return false;
+    }
+
     const requestId = ++currentRequestIdRef.current;
     isResolvingRef.current = true;
-
-    // Rule 1: Set status to resolving; do NOT use cache during resolving
-    setLocationStatus('resolving');
+    setLocationStatus('loading');
     setLocationError(null);
 
-    // Rule 2: Check manual mode first
+    return new Promise<boolean>((resolvePromise) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (requestId !== currentRequestIdRef.current) {
+            resolvePromise(false);
+            return;
+          }
+
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const acc = position.coords.accuracy || 50;
+
+          // Reject invalid coordinates
+          if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            console.error('[LOCATION DEBUG] Invalid GPS coordinates received:', { lat, lng });
+            setLocationStatus('error');
+            setLocationError('Ungültige GPS-Koordinaten empfangen.');
+            isResolvingRef.current = false;
+            resolvePromise(false);
+            return;
+          }
+
+          const now = Date.now();
+          const loc = { lat, lng };
+
+          setEffectiveLocation(loc);
+          setLatitude(lat);
+          setLongitude(lng);
+          setAccuracy(acc);
+          setLocationSource('gps');
+          setLocationStatus('ready');
+          setUpdatedAt(now);
+          setExpiresAt(now + LOCATION_MAX_TTL_MS);
+          setPermissionState('granted');
+          isResolvingRef.current = false;
+
+          // Save fresh GPS location to localStorage
+          try {
+            const cacheData = {
+              lat,
+              lng,
+              latitude: lat,
+              longitude: lng,
+              accuracy: acc,
+              source: 'gps',
+              city: city || null,
+              cityName: city || null,
+              timestamp: now,
+              updatedAt: now,
+              expiresAt: now + LOCATION_MAX_TTL_MS
+            };
+            localStorage.setItem('aktiva_last_location', JSON.stringify(cacheData));
+          } catch (e) {}
+
+          logLocationChange('gps', 'ready', loc, city, 'current');
+
+          // Best-effort reverse geocoding
+          executeReverseGeocode(lat, lng, requestId, 'gps', 'ready', 'current');
+          resolvePromise(true);
+        },
+        (error) => {
+          if (requestId !== currentRequestIdRef.current) {
+            resolvePromise(false);
+            return;
+          }
+
+          console.warn("[LOCATION DEBUG] Geolocation error:", error.code, error.message);
+          setLocationError(error.message);
+          isResolvingRef.current = false;
+
+          if (error.code === error.PERMISSION_DENIED) {
+            setPermissionState('denied');
+            setLocationStatus('denied');
+          } else {
+            setLocationStatus('error');
+          }
+
+          // Check if we have a valid, non-expired cached GPS location to use during refresh
+          const cached = getSanitizedCache();
+          if (cached && cached.source === 'gps') {
+            console.log('[LOCATION DEBUG] Using valid cached GPS position as secondary fallback during refresh');
+            const loc = { lat: cached.lat, lng: cached.lng };
+            setEffectiveLocation(loc);
+            setLatitude(cached.lat);
+            setLongitude(cached.lng);
+            setAccuracy(cached.accuracy);
+            setCity(cached.city);
+            setLocationSource('cache');
+            setUpdatedAt(cached.updatedAt);
+            setExpiresAt(cached.expiresAt);
+            logLocationChange('cache', 'ready', loc, cached.city, 'current');
+            resolvePromise(true);
+            return;
+          }
+
+          // ZERO DEFAULT FALLBACK TO BREMERHAVEN
+          setEffectiveLocation(null);
+          setLatitude(null);
+          setLongitude(null);
+          setAccuracy(null);
+          setCity(null);
+          setLocationSource(null);
+          resolvePromise(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
+  }, [city, executeReverseGeocode, getSanitizedCache, logLocationChange]);
+
+  // Main resolution trigger
+  const resolveCurrentLocation = useCallback(() => {
+    // Check manual mode first
     if (planningState.isPlanning && planningState.destination) {
       const dest = planningState.destination;
       const lat = dest.lat || dest.latitude || 0;
       const lng = dest.lng || dest.longitude || 0;
-      const cityName = dest.city || dest.name || (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
+      const cityNameStr = dest.city || dest.name || null;
       const loc = { lat, lng };
 
       setManualLocationState(dest);
       setEffectiveLocation(loc);
-      setCity(cityName);
+      setLatitude(lat);
+      setLongitude(lng);
+      setCity(cityNameStr);
       setLocationSource('manual');
-      setLocationStatus('resolved');
-      logLocationChange('manual', 'resolved', loc, cityName, 'manual');
-      isResolvingRef.current = false;
+      setLocationStatus('ready');
+      logLocationChange('manual', 'ready', loc, cityNameStr, 'manual');
       return;
     }
 
-    // Mode is 'current': Use live navigator.geolocation (TOP PRIORITY)
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          if (requestId !== currentRequestIdRef.current) return;
-          const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
-          setEffectiveLocation(loc);
-          setLocationSource('geolocation');
-          setLocationStatus('resolved');
-          isResolvingRef.current = false;
-          executeReverseGeocode(loc.lat, loc.lng, requestId, 'geolocation', 'resolved', 'current');
-        },
-        (error) => {
-          if (requestId !== currentRequestIdRef.current) return;
-          console.warn("[LOCATION DEBUG] Geolocation error/denied:", error.message);
-          setLocationError(error.message);
-
-          // Geolocation failed/denied: NOW check localStorage cache as fallback
-          let cacheRestored = false;
-          if (typeof window !== 'undefined') {
-            try {
-              const cached = localStorage.getItem('aktiva_last_location');
-              if (cached) {
-                const { lat, lng, city: cachedCity, timestamp } = JSON.parse(cached);
-                const age = Date.now() - timestamp;
-                if (age < 4 * 60 * 60 * 1000 && typeof lat === 'number' && typeof lng === 'number') {
-                  const cachedLoc = { lat, lng };
-                  const displayCity = cachedCity || (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
-                  setEffectiveLocation(cachedLoc);
-                  setCity(displayCity);
-                  setLocationSource('cache');
-                  setLocationStatus('fallback');
-                  logLocationChange('cache', 'fallback', cachedLoc, displayCity, 'current');
-                  cacheRestored = true;
-                }
-              }
-            } catch (e) {}
-          }
-
-          // Default Fallback (Bremerhaven) if cache is also missing/invalid
-          if (!cacheRestored) {
-            const fallbackLoc = { lat: 53.5395, lng: 8.5809 };
-            const fallbackCity = 'Bremerhaven';
-            setEffectiveLocation(fallbackLoc);
-            setCity(fallbackCity);
-            setLocationSource('fallback');
-            setLocationStatus('fallback');
-            logLocationChange('fallback', 'fallback', fallbackLoc, fallbackCity, 'current');
-          }
-          isResolvingRef.current = false;
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      );
-    } else {
-      // Browser does not support geolocation: fallback to cache or Bremerhaven
-      if (requestId !== currentRequestIdRef.current) return;
-      let cacheRestored = false;
-      if (typeof window !== 'undefined') {
-        try {
-          const cached = localStorage.getItem('aktiva_last_location');
-          if (cached) {
-            const { lat, lng, city: cachedCity } = JSON.parse(cached);
-            if (typeof lat === 'number' && typeof lng === 'number') {
-              const cachedLoc = { lat, lng };
-              const displayCity = cachedCity || (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place');
-              setEffectiveLocation(cachedLoc);
-              setCity(displayCity);
-              setLocationSource('cache');
-              setLocationStatus('fallback');
-              logLocationChange('cache', 'fallback', cachedLoc, displayCity, 'current');
-              cacheRestored = true;
-            }
-          }
-        } catch (e) {}
-      }
-
-      if (!cacheRestored) {
-        const fallbackLoc = { lat: 53.5395, lng: 8.5809 };
-        const fallbackCity = 'Bremerhaven';
-        setEffectiveLocation(fallbackLoc);
-        setCity(fallbackCity);
-        setLocationSource('fallback');
-        setLocationStatus('fallback');
-        logLocationChange('fallback', 'fallback', fallbackLoc, fallbackCity, 'current');
-      }
-      isResolvingRef.current = false;
+    // Auto-fetch if cache exists or request GPS
+    const cached = getSanitizedCache();
+    if (cached && !cached.isStale && cached.source === 'gps') {
+      const loc = { lat: cached.lat, lng: cached.lng };
+      setEffectiveLocation(loc);
+      setLatitude(cached.lat);
+      setLongitude(cached.lng);
+      setAccuracy(cached.accuracy);
+      setCity(cached.city);
+      setLocationSource('cache');
+      setLocationStatus('ready');
+      setUpdatedAt(cached.updatedAt);
+      setExpiresAt(cached.expiresAt);
+      logLocationChange('cache', 'ready', loc, cached.city, 'current');
+      return;
     }
-  }, [planningState, language, executeReverseGeocode, logLocationChange]);
 
+    // Otherwise, attempt GPS fetch if permission is granted
+    requestGpsLocation();
+  }, [planningState, getSanitizedCache, requestGpsLocation, logLocationChange]);
+
+  // Permissions API Monitoring
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.permissions || !navigator.permissions.query) return;
+
+    let statusObj: PermissionStatus | null = null;
+    navigator.permissions.query({ name: 'geolocation' as any })
+      .then((status) => {
+        statusObj = status;
+        setPermissionState(status.state as 'granted' | 'prompt' | 'denied');
+
+        if (status.state === 'denied') {
+          setLocationStatus('denied');
+        } else if (status.state === 'prompt') {
+          setLocationStatus('prompt');
+        } else if (status.state === 'granted') {
+          resolveCurrentLocation();
+        }
+
+        status.onchange = () => {
+          console.log('[LOCATION DEBUG] Permissions API status changed to:', status.state);
+          setPermissionState(status.state as 'granted' | 'prompt' | 'denied');
+          if (status.state === 'denied') {
+            setLocationStatus('denied');
+            setEffectiveLocation(null);
+            setCity(null);
+          } else if (status.state === 'granted') {
+            requestGpsLocation();
+          } else if (status.state === 'prompt') {
+            setLocationStatus('prompt');
+          }
+        };
+      })
+      .catch((err) => {
+        console.warn('[LOCATION DEBUG] Permissions API query error:', err);
+      });
+
+    return () => {
+      if (statusObj) {
+        statusObj.onchange = null;
+      }
+    };
+  }, [resolveCurrentLocation, requestGpsLocation]);
+
+  // VisibilityChange Auto-Refresh (Staleness > 15 minutes)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const lastUpdated = updatedAt || 0;
+        const isStale = Date.now() - lastUpdated > LOCATION_STALE_AFTER_MS;
+        if (isStale) {
+          console.log('[LOCATION DEBUG] Tab became visible and location is stale. Refreshing GPS...');
+          requestGpsLocation();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [updatedAt, requestGpsLocation]);
+
+  // Initial resolve effect
   useEffect(() => {
     resolveCurrentLocation();
   }, [planningState.isPlanning, planningState.destination?.name, resolveCurrentLocation]);
@@ -245,22 +439,30 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   }, [exitPlanningMode, resolveCurrentLocation]);
 
   const retryCurrentLocation = useCallback(() => {
-    resolveCurrentLocation();
-  }, [resolveCurrentLocation]);
+    requestGpsLocation(true);
+  }, [requestGpsLocation]);
 
   return (
     <LocationContext.Provider
       value={{
         locationMode,
         effectiveLocation,
+        latitude,
+        longitude,
+        accuracy,
         city,
+        cityName: city,
         locationSource,
         locationStatus,
         locationError,
+        permissionState,
         manualLocation,
+        updatedAt,
+        expiresAt,
         setManualLocation,
         resetToCurrentLocation,
         retryCurrentLocation,
+        requestGpsLocation,
       }}
     >
       {children}
@@ -277,13 +479,34 @@ export function useLocation() {
 }
 
 export function useCurrentLocation() {
-  const { effectiveLocation, city, locationMode, locationSource, locationStatus, locationError } = useLocation();
+  const { 
+    effectiveLocation, 
+    latitude, 
+    longitude, 
+    accuracy, 
+    city, 
+    cityName, 
+    locationMode, 
+    locationSource, 
+    locationStatus, 
+    locationError,
+    permissionState,
+    updatedAt,
+    expiresAt
+  } = useLocation();
   return {
     effectiveLocation,
+    latitude,
+    longitude,
+    accuracy,
     city,
+    cityName,
     locationMode,
     locationSource,
     locationStatus,
     locationError,
+    permissionState,
+    updatedAt,
+    expiresAt,
   };
 }

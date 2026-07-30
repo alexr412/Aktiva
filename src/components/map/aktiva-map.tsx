@@ -201,8 +201,8 @@ export function AktivaMap({
     if (userLocation && isValidCoordinate(userLocation.lat, userLocation.lng)) {
       return [userLocation.lng, userLocation.lat];
     }
-    // Fallback: Bremerhaven / Germany default
-    return [8.5802, 53.5442];
+    // Neutral geographic center of Germany as fallback when user location is resolving
+    return [10.4515, 51.1657];
   })();
 
   // 1. Initialize MapLibre GL Map Client-Only
@@ -514,12 +514,6 @@ export function AktivaMap({
           if (feature?.properties?.id) {
             const place = placesRef.current.find((p) => p.id === feature.properties.id);
             if (place) {
-              if (onSelectEntityRef.current) {
-                onSelectEntityRef.current({ id: place.id, type: 'place', data: place });
-              } else if (process.env.NODE_ENV !== 'production') {
-                console.warn('[PLACE POPUP] onSelectEntity callback is missing');
-              }
-
               if (activePopupRef.current) {
                 activePopupRef.current.remove();
                 activePopupRef.current = null;
@@ -572,6 +566,9 @@ export function AktivaMap({
                 const handleDetails = (event: MouseEvent) => {
                   event.preventDefault();
                   event.stopPropagation();
+                  if (event.stopImmediatePropagation) {
+                    event.stopImmediatePropagation();
+                  }
                   if (activePopupRef.current) {
                     activePopupRef.current.remove();
                     activePopupRef.current = null;
@@ -697,9 +694,6 @@ export function AktivaMap({
                   if (activePopupRef.current) {
                     activePopupRef.current.remove();
                     activePopupRef.current = null;
-                  }
-                  if (onSelectEntityRef.current) {
-                    onSelectEntityRef.current({ id: place.id, type: 'place', data: place });
                   }
                 };
 

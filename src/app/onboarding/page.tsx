@@ -49,8 +49,14 @@ import {
   Building,
   Shuffle,
   Sparkles,
-  Crown
+  Crown,
+  Lock,
+  ShieldAlert,
+  Check,
+  Navigation,
+  RefreshCw
 } from 'lucide-react';
+import { useLocation } from '@/contexts/location-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { updateUserProfile, isUsernameTaken, claimUsernameServer } from '@/lib/firebase/firestore';
@@ -68,7 +74,7 @@ const profileSchema = z.object({
   displayName: z.string().min(2, { message: 'Name too short' }).optional(),
   birthDate: z.string().optional(),
   bio: z.string().max(160, { message: 'Bio too long' }).optional(),
-  location: z.string().min(1, { message: 'Bitte gib einen Ort ein.' }),
+  location: z.string().optional(),
   interests: z.array(z.string()).default([]),
   tinderInterests: z.array(z.string()).default([]),
   affinities: z.record(z.string(), z.number()).default({}),
@@ -80,7 +86,7 @@ const profileSchema = z.object({
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 const onboardingSteps = [
-  { id: 1, title: { de: "Wo suchst du?", en: "Where are you?" }, fields: ['location'] },
+  { id: 1, title: { de: "Aktiva benötigt deinen Standort", en: "Aktiva needs your location" }, fields: [] },
   { id: 2, title: { de: "Über dich", en: "About you" }, fields: ['username', 'bio', 'referralCode'] },
   { id: 3, title: { de: "Deine Interessen", en: "Your interests" }, fields: ['interests'] },
   { id: 4, title: { de: "Deine Hobbys", en: "Your Hobbies" }, fields: ['tinderInterests'] },
@@ -166,6 +172,13 @@ function OnboardingContent() {
   const router = useRouter();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
+  const { 
+    effectiveLocation, 
+    city: locationCity, 
+    locationStatus, 
+    permissionState, 
+    requestGpsLocation 
+  } = useLocation();
 
   const getSanitizedRedirect = (clearSession = true): string | null => {
     if (typeof window === 'undefined') return null;
@@ -322,22 +335,19 @@ function OnboardingContent() {
     }
 
     if (step === 1) {
-      const locationValue = form.getValues('location');
-      if (locationValue && locationValue.trim()) {
+      if (!effectiveLocation || locationStatus === 'denied' || locationStatus === 'error') {
         setIsLocating(true);
-        try {
-          const resolvedPlace = await geocodeAddress(locationValue.trim());
-          if (resolvedPlace) {
-            const formatted = formatOnboardingLocationDisplay(resolvedPlace._rawProperties || resolvedPlace);
-            if (formatted) {
-              form.setValue('location', formatted, { shouldValidate: true, shouldDirty: true });
-              setCoordinates({ lat: resolvedPlace.lat, lng: resolvedPlace.lon });
-            }
-          }
-        } catch (err) {
-          console.error("Geocoding manual input failed:", err);
-        } finally {
-          setIsLocating(false);
+        const success = await requestGpsLocation(true);
+        setIsLocating(false);
+        if (!success) {
+          toast({
+            variant: "destructive",
+            title: language === 'de' ? "Standort erforderlich" : "Location Required",
+            description: language === 'de' 
+              ? "Ein gültiger GPS-Standort ist erforderlich, um Aktiva zu nutzen." 
+              : "A valid GPS location is required to use Aktiva."
+          });
+          return;
         }
       }
     }
@@ -480,53 +490,45 @@ function OnboardingContent() {
     }
   };
 
-  const handleLocate = () => {
+  const handleLocate = async () => {
     if (isSubmitting || isLocating) return;
-    if (!navigator.geolocation) {
-      toast({
-        variant: "destructive",
-        title: language === 'de' ? "Fehler" : "Error",
-        description: language === 'de' ? "Geolokalisierung wird von deinem Browser nicht unterstützt." : "Geolocation is not supported by your browser.",
-      });
-      return;
-    }
-
     setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const result = await reverseGeocode(latitude, longitude);
-          if (result) {
-            const cityName = formatOnboardingLocationDisplay(result._rawProperties || result);
-            form.setValue('location', cityName, { shouldValidate: true, shouldDirty: true });
-            setCoordinates({ lat: latitude, lng: longitude });
-            toast({
-              title: language === 'de' ? "Standort erkannt" : "Location detected",
-              description: language === 'de' ? `Wir haben dich in ${cityName} gefunden.` : `We found you in ${cityName}.`,
-            });
+    try {
+      const success = await requestGpsLocation(true);
+      if (success) {
+        toast({
+          title: language === 'de' ? "Standort erkannt" : "Location detected",
+          description: locationCity 
+            ? (language === 'de' ? `Dein Standort in ${locationCity} wurde erfasst.` : `Your location in ${locationCity} was captured.`)
+            : (language === 'de' ? 'Dein GPS-Standort wurde erfolgreich erfasst.' : 'Your GPS location was captured successfully.')
+        });
+
+        if (effectiveLocation) {
+          try {
+            const { functions: clientFunctions } = await import('@/lib/firebase/client');
+            if (clientFunctions) {
+              const { httpsCallable } = await import('firebase/functions');
+              const updateRadarFn = httpsCallable(clientFunctions, 'updateRadarLocation');
+              await updateRadarFn({ latitude: effectiveLocation.lat, longitude: effectiveLocation.lng, accuracy: 95 });
+            }
+          } catch (radarErr) {
+            console.warn("updateRadarLocation during onboarding location step skipped or failed:", radarErr);
           }
-        } catch (error) {
-          console.error("Reverse geocoding failed:", error);
-        } finally {
-          setIsLocating(false);
         }
-      },
-      (error) => {
-        console.error("Geolocation error:", error);
-        setIsLocating(false);
+      } else {
         toast({
           variant: "destructive",
           title: language === 'de' ? "Standort-Fehler" : "Location Error",
-          description: language === 'de' ? "Der Zugriff auf deinen genauen Standort wurde verweigert oder ist fehlgeschlagen." : "Access to your precise location was denied or failed.",
+          description: language === 'de' 
+            ? "GPS-Standort konnte nicht ermittelt werden. Bitte prüfe deine Browser-Berechtigungen." 
+            : "Could not detect GPS location. Please check browser permissions."
         });
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
       }
-    );
+    } catch (error) {
+      console.error("GPS detection error:", error);
+    } finally {
+      setIsLocating(false);
+    }
   };
 
   const handleRandomAvatar = () => {
@@ -548,6 +550,18 @@ function OnboardingContent() {
   const onSubmit = async (data: ProfileFormData) => {
     if (!user || isSubmitting) return;
     
+    if (!effectiveLocation) {
+      toast({
+        variant: "destructive",
+        title: language === 'de' ? "Standort erforderlich" : "Location Required",
+        description: language === 'de'
+          ? "Bitte gib zuerst deinen Standort frei."
+          : "Please share your location first.",
+      });
+      setStep(1);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       if (needsUsername) {
@@ -593,12 +607,26 @@ function OnboardingContent() {
         }
       }
 
+      // Securely update radar location (idempotent call)
+      if (effectiveLocation) {
+        try {
+          const { functions: clientFunctions } = await import('@/lib/firebase/client');
+          if (clientFunctions) {
+            const { httpsCallable } = await import('firebase/functions');
+            const updateRadarFn = httpsCallable(clientFunctions, 'updateRadarLocation');
+            await updateRadarFn({ latitude: effectiveLocation.lat, longitude: effectiveLocation.lng, accuracy: 95 });
+          }
+        } catch (radarErr) {
+          console.warn("updateRadarLocation during onSubmit skipped or failed:", radarErr);
+        }
+      }
+
       const updateData: any = {
         displayName: nameToUse,
         birthday: birthDateToUse,
         age: ageValue > 0 ? ageValue : (userProfile?.age || 0),
         bio: data.bio || '',
-        location: data.location || 'Aachen',
+        location: locationCity || 'Aktueller Standort',
         interests: data.interests || [],
         tinderInterests: data.tinderInterests || [],
         onboardingCompleted: true,
@@ -714,13 +742,7 @@ function OnboardingContent() {
           <form 
             onSubmit={form.handleSubmit(onSubmit, (errors) => {
               console.warn("Onboarding form validation errors:", errors);
-              if (errors.location) {
-                setStep(1);
-                setTimeout(() => {
-                  const el = document.getElementsByName('location')[0];
-                  if (el) (el as any).focus();
-                }, 10);
-              } else if (errors.username) {
+              if (errors.username) {
                 setStep(2);
                 setTimeout(() => {
                   const el = document.getElementsByName('username')[0];
@@ -782,36 +804,98 @@ function OnboardingContent() {
                 >
                   {step === 1 && (
                     <div className="space-y-6">
-                      <FormField
-                        control={form.control}
-                        name="location"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-[11px] font-black uppercase tracking-widest text-primary">{language === 'de' ? "Stadt / Region" : "City / Region"}</FormLabel>
-                            <FormControl>
-                              <div className="relative group">
-                                <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 group-focus-within:text-primary transition-colors" />
-                                <Input placeholder={language === 'de' ? "z.B. Aachen" : "e.g. London"} {...field} className="h-16 pl-14 pr-14 rounded-full border-none bg-slate-50 font-black focus-visible:ring-0" />
-                                <button
-                                  type="button"
-                                  onClick={handleLocate}
-                                  disabled={isLocating || isSubmitting}
-                                  aria-label={language === 'de' ? "Standort automatisch ermitteln" : "Detect location automatically"}
-                                  title={language === 'de' ? "Standort automatisch ermitteln" : "Detect location automatically"}
-                                  className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-primary transition-colors disabled:opacity-50"
-                                >
-                                  {isLocating ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                  ) : (
-                                    <LocateFixed className="w-5 h-5" />
-                                  )}
-                                </button>
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {permissionState === 'denied' || locationStatus === 'denied' ? (
+                        <div className="p-6 md:p-8 rounded-[2rem] bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 space-y-4 text-center">
+                          <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-inner">
+                            <Lock className="w-8 h-8" />
+                          </div>
+                          <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100">
+                            {language === 'de' ? 'Standortzugriff erforderlich' : 'Location Access Required'}
+                          </h2>
+                          <p className="text-sm font-medium text-slate-600 dark:text-neutral-300 leading-relaxed">
+                            {language === 'de'
+                              ? 'Aktiva funktioniert über Aktivitäten und Menschen in deiner Nähe. Aktiviere den Standortzugriff für diese Website in deinen Browser- oder Geräteeinstellungen.'
+                              : 'Aktiva relies on activities and people nearby. Enable location access for this site in your browser settings.'}
+                          </p>
+                          <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-amber-200/60 dark:border-amber-800/40 text-left text-xs space-y-2">
+                            <div className="font-black uppercase tracking-wider text-[10px] text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                              <ShieldAlert className="w-4 h-4" />
+                              {language === 'de' ? 'So aktivierst du den Standort:' : 'How to enable location:'}
+                            </div>
+                            <ol className="list-decimal list-inside space-y-1 text-slate-700 dark:text-neutral-300 text-[11px] leading-relaxed">
+                              <li>{language === 'de' ? 'Klicke auf das Schloss-Symbol 🔒 in der Adressleiste' : 'Click the lock icon 🔒 in the address bar'}</li>
+                              <li>{language === 'de' ? 'Wähle "Website-Einstellungen" oder "Standort"' : 'Select "Site settings" or "Location"'}</li>
+                              <li>{language === 'de' ? 'Ändere die Berechtigung auf "Zulassen"' : 'Change permission to "Allow"'}</li>
+                              <li>{language === 'de' ? 'Klicke unten auf "Erneut versuchen"' : 'Click "Retry" below'}</li>
+                            </ol>
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={handleLocate}
+                            disabled={isLocating || isSubmitting}
+                            className="w-full h-14 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-base shadow-lg flex items-center justify-center gap-2 border-none"
+                          >
+                            {isLocating ? <Loader2 className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
+                            {language === 'de' ? 'Erneut versuchen' : 'Retry'}
+                          </Button>
+                        </div>
+                      ) : effectiveLocation ? (
+                        <div className="p-6 md:p-8 rounded-[2rem] bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 space-y-4 text-center">
+                          <div className="mx-auto w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-inner">
+                            <Check className="w-8 h-8" />
+                          </div>
+                          <div className="space-y-1">
+                            <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100">
+                              {language === 'de' ? 'Standort erfasst' : 'Location Captured'}
+                            </h2>
+                            <p className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                              {locationCity || (language === 'de' ? 'Aktueller Standort (GPS)' : 'Current Location (GPS)')}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={handleLocate}
+                            disabled={isLocating || isSubmitting}
+                            variant="outline"
+                            className="w-full h-12 rounded-2xl font-bold border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-2"
+                          >
+                            {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4 fill-current" />}
+                            {language === 'de' ? 'Standort erneuen' : 'Refresh location'}
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="p-6 md:p-8 rounded-[2rem] bg-slate-50 dark:bg-neutral-900/60 border border-slate-100 dark:border-neutral-800 space-y-6 text-center">
+                          <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 relative">
+                            <MapPin className="w-10 h-10" />
+                            <div className="absolute inset-0 border-2 border-emerald-500/30 rounded-full animate-ping scale-125 opacity-40" />
+                          </div>
+                          <div className="space-y-2">
+                            <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100">
+                              {language === 'de' ? 'Aktiva benötigt deinen Standort' : 'Aktiva needs your location'}
+                            </h2>
+                            <p className="text-sm font-medium text-slate-500 dark:text-neutral-400 leading-relaxed px-2">
+                              {language === 'de'
+                                ? 'Damit wir dir Aktivitäten, Orte und Menschen in deiner Nähe zeigen können, benötigen wir Zugriff auf deinen aktuellen Standort.'
+                                : 'To show you activities, places, and people nearby, we need access to your current location.'}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={handleLocate}
+                            disabled={isLocating || isSubmitting}
+                            className="w-full h-16 rounded-2xl bg-primary hover:opacity-90 text-white font-black text-lg shadow-xl shadow-emerald-200/50 flex items-center justify-center gap-3 border-none transition-all active:scale-95 disabled:opacity-80"
+                          >
+                            {isLocating ? (
+                              <Loader2 className="w-6 h-6 animate-spin" />
+                            ) : (
+                              <>
+                                <Navigation className="w-5 h-5 fill-current" />
+                                {language === 'de' ? 'Standort verwenden' : 'Use location'}
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
 
