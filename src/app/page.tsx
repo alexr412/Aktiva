@@ -348,15 +348,7 @@ export default function Home() {
     }
   }, [nearbyFriends, radarEnabled, selectedMapEntity, complete]);
 
-  // Synchronize viewMode state with URL search parameter ?view=map without loops
-  useEffect(() => {
-    const urlView = searchParams ? searchParams.get('view') : null;
-    if (urlView === 'map' && viewMode !== 'map') {
-      setViewMode('map');
-    } else if (urlView !== 'map' && viewMode === 'map') {
-      setViewMode('list');
-    }
-  }, [searchParams, viewMode]);
+  // Single source of truth: viewMode is managed purely via React state (Variante A)
 
 
 
@@ -1597,19 +1589,7 @@ export default function Home() {
   };
 
   const handleMapToggle = () => {
-    const nextMode = viewMode === 'list' ? 'map' : 'list';
-    setViewMode(nextMode);
-
-    const params = new URLSearchParams(searchParams ? searchParams.toString() : '');
-    if (nextMode === 'map') {
-      params.set('view', 'map');
-    } else {
-      params.delete('view');
-    }
-
-    const queryString = params.toString();
-    const newPath = queryString ? `${pathname}?${queryString}` : pathname;
-    router.replace(newPath, { scroll: false });
+    setViewMode((prev) => (prev === 'list' ? 'map' : 'list'));
   };
 
   const increaseRadiusToNextOption = () => {

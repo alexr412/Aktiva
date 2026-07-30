@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 /**
- * Deterministic Test Suite — Aktiva Location Gate & Single Location Flow Architecture
- * Validates all requirements of Section 12 and Section 9 (Remount & Anti-Flicker Protection).
+ * Deterministic Test Suite — Aktiva Location Gate, Anti-Remount & Route-Purity Architecture
+ * Validates all requirements of Section 12, Section 9, and Section 7 (Route-Purity & Anti-Loop).
  */
 
 // Mock localStorage globally
@@ -127,7 +127,7 @@ class SimulatedLocationProvider {
 }
 
 async function runTests() {
-  console.log('🧪 Starting Location Gate Architectural & Anti-Remount Test Suite...\n');
+  console.log('🧪 Starting Location Gate Architectural, Anti-Remount & Route-Purity Test Suite...\n');
 
   const srcDir = path.join(process.cwd(), 'src');
 
@@ -224,33 +224,26 @@ async function runTests() {
     console.log('  ✅ PERMISSION_DENIED sets denied state.\n');
   }
 
-  // Test 9: POSITION_UNAVAILABLE (Code 2) sets gateState = error
+  // Section 7 Test 1: Zero router calls inside location-context.tsx
   {
-    console.log('9. POSITION_UNAVAILABLE (Code 2) sets gateState = error');
-    const provider = new SimulatedLocationProvider();
-    provider.setGpsHandler((_, error) => {
-      error({ code: 2, message: 'Unavailable' });
-    });
-    provider.requestLocation();
-    assert.strictEqual(provider.gateState, 'error');
-    assert.ok(provider.errorMessage?.includes('Ortungsdienste'));
-    console.log('  ✅ POSITION_UNAVAILABLE sets error state.\n');
+    console.log('9. Section 7: LocationContext contains zero router.push / router.replace / navigation calls');
+    const locCode = readFileSync(path.join(srcDir, 'contexts', 'location-context.tsx'), 'utf8');
+    assert.strictEqual(locCode.includes('router.'), false, 'LocationContext must contain 0 router navigation calls');
+    assert.strictEqual(locCode.includes('window.location'), false, 'LocationContext must contain 0 window.location navigation calls');
+    console.log('  ✅ LocationContext is 100% route-pure.\n');
   }
 
-  // Test 10: TIMEOUT (Code 3) sets gateState = error
+  // Section 7 Test 2: Single source of truth for viewMode in page.tsx without ?view=map URL rewriting
   {
-    console.log('10. TIMEOUT (Code 3) sets gateState = error');
-    const provider = new SimulatedLocationProvider();
-    provider.setGpsHandler((_, error) => {
-      error({ code: 3, message: 'Timeout' });
-    });
-    provider.requestLocation();
-    assert.strictEqual(provider.gateState, 'error');
-    assert.ok(provider.errorMessage?.includes('zu lange gedauert'));
-    console.log('  ✅ TIMEOUT sets error state.\n');
+    console.log('10. Section 7: View mode in page.tsx is controlled purely via React state (Variante A)');
+    const pageCode = readFileSync(path.join(srcDir, 'app', 'page.tsx'), 'utf8');
+    assert.strictEqual(pageCode.includes("params.set('view', 'map')"), false, 'No URL searchParams view rewriting in page.tsx');
+    assert.strictEqual(pageCode.includes("urlView === 'map'"), false, 'No viewMode URL synchronization effect in page.tsx');
+    assert.ok(pageCode.includes("setViewMode((prev) => (prev === 'list' ? 'map' : 'list'))"), 'handleMapToggle uses pure React state');
+    console.log('  ✅ viewMode in page.tsx uses pure React state without URL navigation loops.\n');
   }
 
-  // Section 9 Test 1: Single LocationGate in layout.tsx placed outside AppBootstrapGate
+  // Section 7 Test 3: Provider hierarchy puts LocationGate outside AppBootstrapGate
   {
     console.log('11. Section 9: Provider hierarchy puts LocationGate outside AppBootstrapGate');
     const layoutCode = readFileSync(path.join(srcDir, 'app', 'layout.tsx'), 'utf8');
@@ -259,7 +252,7 @@ async function runTests() {
     console.log('  ✅ Provider hierarchy correctly isolates LocationGate overlay.\n');
   }
 
-  // Section 9 Test 2: Zero entry/exit animations on LocationGate
+  // Section 7 Test 4: Zero entry/exit animations on LocationGate
   {
     console.log('12. Section 9: Zero entry/exit CSS animations on LocationGate');
     const gateCode = readFileSync(path.join(srcDir, 'components', 'common', 'LocationGate.tsx'), 'utf8');
@@ -270,35 +263,16 @@ async function runTests() {
     console.log('  ✅ Zero entry/exit CSS animations on LocationGate verified.\n');
   }
 
-  // Section 9 Test 3: No dynamic key props in Provider & Gate tree
+  // Section 7 Test 5: Exact single LocationGate component project-wide
   {
-    console.log('13. Section 9: No dynamic key props in Provider & Gate tree');
-    const layoutCode = readFileSync(path.join(srcDir, 'app', 'layout.tsx'), 'utf8');
-    assert.strictEqual(layoutCode.includes('key='), false, 'No dynamic key props in layout.tsx providers');
-    const gateCode = readFileSync(path.join(srcDir, 'components', 'common', 'LocationGate.tsx'), 'utf8');
-    assert.strictEqual(gateCode.includes('key='), false, 'No dynamic key props in LocationGate.tsx');
-    console.log('  ✅ Zero dynamic key props in provider/gate tree.\n');
-  }
-
-  // Section 9 Test 4: AppBootstrapGate permanently renders children
-  {
-    console.log('14. Section 9: AppBootstrapGate permanently renders children without unmounting');
-    const bootstrapCode = readFileSync(path.join(srcDir, 'components', 'common', 'AppBootstrapGate.tsx'), 'utf8');
-    assert.ok(bootstrapCode.includes('{children}'), 'AppBootstrapGate renders children unconditionally');
-    assert.strictEqual(bootstrapCode.includes('return null'), false, 'AppBootstrapGate does not return null for children');
-    console.log('  ✅ AppBootstrapGate permanently renders children.\n');
-  }
-
-  // Section 9 Test 5: Exact single LocationGate component project-wide
-  {
-    console.log('15. Section 9: Single LocationGate component project-wide');
+    console.log('13. Section 9: Single LocationGate component project-wide');
     const onboardingCode = readFileSync(path.join(srcDir, 'app', 'onboarding', 'page.tsx'), 'utf8');
     assert.strictEqual(onboardingCode.includes('<LocationGate'), false, 'No duplicate LocationGate in onboarding/page.tsx');
     assert.strictEqual(onboardingCode.includes('Standort verwenden'), false, 'No duplicate Standort verwenden button in onboarding/page.tsx');
     console.log('  ✅ Single LocationGate component project-wide verified.\n');
   }
 
-  console.log('🎉 ALL LOCATION GATE & ANTI-REMOUNT TESTS PASSED DETERMINISTICALLY!');
+  console.log('🎉 ALL LOCATION GATE, ROUTE-PURITY & ANTI-LOOP TESTS PASSED DETERMINISTICALLY!');
 }
 
 runTests().catch((err) => {

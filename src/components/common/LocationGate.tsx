@@ -24,6 +24,7 @@ export function LocationGate({ children }: { children?: ReactNode }) {
   );
 
   useEffect(() => {
+    console.log(`[ROUTE TRACE] initial path=${typeof window !== 'undefined' ? window.location.pathname + window.location.search : pathname}`);
     console.log(`[LOCATION TRACE] gate=${instanceIdRef.current} event=MOUNT`);
     return () => {
       console.log(`[LOCATION TRACE] gate=${instanceIdRef.current} event=UNMOUNT`);
