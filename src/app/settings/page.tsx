@@ -628,23 +628,23 @@ export default function SettingsPage() {
                               </div>
                             ) : (
                               <div className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1 text-center", activitiesCount >= REQUIRED_ACTIVITIES_COUNT ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
-                                    <Activity className={cn("h-4 w-4", activitiesCount >= REQUIRED_ACTIVITIES_COUNT ? "text-primary" : "text-slate-400 dark:text-neutral-500")} />
-                                    <span className="text-lg font-black text-foreground">{activitiesCount} / {REQUIRED_ACTIVITIES_COUNT}</span>
-                                    <span className="text-[8px] font-bold uppercase text-slate-400 dark:text-neutral-500">{language === 'de' ? 'Aktivitäten' : 'Activities'}</span>
-                                  </div>
-                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1 text-center", (userProfile?.averageRating || 0) >= REQUIRED_AVERAGE_RATING ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
-                                    <Star className={cn("h-4 w-4", (userProfile?.averageRating || 0) >= REQUIRED_AVERAGE_RATING ? "text-amber-500 fill-amber-500" : "text-slate-400 dark:text-neutral-500")} />
-                                    <span className="text-lg font-black text-foreground">{userProfile?.averageRating?.toFixed(1) || '0.0'} / {REQUIRED_AVERAGE_RATING}</span>
-                                    <span className="text-[8px] font-bold uppercase text-slate-400 dark:text-neutral-500">{language === 'de' ? 'Bewertung' : 'Rating'}</span>
-                                  </div>
-                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1 text-center", (userProfile?.ratingCount || 0) >= REQUIRED_RATINGS_COUNT ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
-                                    <MessageSquare className={cn("h-4 w-4", (userProfile?.ratingCount || 0) >= REQUIRED_RATINGS_COUNT ? "text-blue-500" : "text-slate-400 dark:text-neutral-500")} />
-                                    <span className="text-lg font-black text-foreground">{userProfile?.ratingCount || 0} / {REQUIRED_RATINGS_COUNT}</span>
-                                    <span className="text-[8px] font-bold uppercase text-slate-400 dark:text-neutral-500">{language === 'de' ? 'Bewertungen' : 'Reviews'}</span>
-                                  </div>
-                                </div>
+                                 <div className="grid grid-cols-2 min-[380px]:grid-cols-3 gap-2">
+                                   <div className={cn("py-3.5 px-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 text-center h-full min-h-[90px]", activitiesCount >= REQUIRED_ACTIVITIES_COUNT ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
+                                     <Activity className={cn("h-4 w-4 shrink-0", activitiesCount >= REQUIRED_ACTIVITIES_COUNT ? "text-primary" : "text-slate-400 dark:text-neutral-500")} />
+                                     <span className="text-base min-[380px]:text-lg font-black text-foreground tracking-tight whitespace-nowrap">{activitiesCount} / {REQUIRED_ACTIVITIES_COUNT}</span>
+                                     <span className="text-[9px] min-[380px]:text-[10px] font-bold uppercase text-slate-400 dark:text-neutral-500 tracking-wider leading-tight">{language === 'de' ? 'Aktivitäten' : 'Activities'}</span>
+                                   </div>
+                                   <div className={cn("py-3.5 px-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 text-center h-full min-h-[90px]", (userProfile?.averageRating || 0) >= REQUIRED_AVERAGE_RATING ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
+                                     <Star className={cn("h-4 w-4 shrink-0", (userProfile?.averageRating || 0) >= REQUIRED_AVERAGE_RATING ? "text-amber-500 fill-amber-500" : "text-slate-400 dark:text-neutral-500")} />
+                                     <span className="text-base min-[380px]:text-lg font-black text-foreground tracking-tight whitespace-nowrap">{userProfile?.averageRating?.toFixed(1) || '0.0'} / {REQUIRED_AVERAGE_RATING}</span>
+                                     <span className="text-[9px] min-[380px]:text-[10px] font-bold uppercase text-slate-400 dark:text-neutral-500 tracking-wider leading-tight">{language === 'de' ? 'Bewertung' : 'Rating'}</span>
+                                   </div>
+                                   <div className={cn("col-span-2 min-[380px]:col-span-1 py-3.5 px-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 text-center h-full min-h-[90px]", (userProfile?.ratingCount || 0) >= REQUIRED_RATINGS_COUNT ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
+                                     <MessageSquare className={cn("h-4 w-4 shrink-0", (userProfile?.ratingCount || 0) >= REQUIRED_RATINGS_COUNT ? "text-blue-500" : "text-slate-400 dark:text-neutral-500")} />
+                                     <span className="text-base min-[380px]:text-lg font-black text-foreground tracking-tight whitespace-nowrap">{userProfile?.ratingCount || 0} / {REQUIRED_RATINGS_COUNT}</span>
+                                     <span className="text-[9px] min-[380px]:text-[10px] font-bold uppercase text-slate-400 dark:text-neutral-500 tracking-wider leading-tight">{language === 'de' ? 'Bewertungen' : 'Reviews'}</span>
+                                   </div>
+                                 </div>
 
                                 <Button 
                                   onClick={handleApplyCreator} 
