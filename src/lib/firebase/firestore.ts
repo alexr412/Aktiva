@@ -1956,17 +1956,12 @@ export async function banUser(userId: string) {
   });
 }
 
-export async function submitCreatorApplication(userId: string, userDisplayName: string | null, averageRating: number, activitiesCount: number) {
-  if (!db) throw new Error('Firestore is not initialized.');
-  const appRef = doc(collection(db, 'creator_applications'));
-  await setDoc(appRef, {
-    userId,
-    userDisplayName,
-    averageRating,
-    activitiesCount,
-    status: 'pending',
-    createdAt: serverTimestamp()
-  });
+export async function submitCreatorApplication(userId?: string, userDisplayName?: string | null, averageRating?: number, activitiesCount?: number, ratingCount?: number) {
+  const { getFunctions, httpsCallable } = await import('firebase/functions');
+  const functions = getFunctions(app || undefined, 'us-central1');
+  const submitFn = httpsCallable<void, { success: boolean; applicationId: string }>(functions, 'submitCreatorApplication');
+  const res = await submitFn();
+  return res.data;
 }
 
 export async function approveCreator(applicationId: string, userId: string) {

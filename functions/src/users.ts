@@ -893,18 +893,10 @@ export const applyReferralCode = onCall(async (request) => {
   }
 });
 
-const LEVEL_THRESHOLDS = [
-  0,    // Level 1
-  50,   // Level 2
-  150,  // Level 3
-  300,  // Level 4
-  500,  // Level 5
-  800,  // Level 6
-  1200, // Level 7
-  1700, // Level 8
-  2300, // Level 9
-  3000, // Level 10
-];
+export const LEVEL_THRESHOLDS: number[] = Array.from({ length: 100 }, (_, i) => {
+  if (i === 0) return 0;
+  return Math.round(30 * Math.pow(i, 1.68));
+});
 
 export function calculateLevel(pointsLifetime: number): number {
   let level = 1;
@@ -915,7 +907,7 @@ export function calculateLevel(pointsLifetime: number): number {
       break;
     }
   }
-  return level;
+  return Math.min(100, Math.max(1, level));
 }
 
 /**
@@ -1779,6 +1771,82 @@ export const getOrganizerAnalytics = onCall(async (request) => {
 
   return { opens, saves, shares, directions };
 });
+
+/**
+ * Canonical calculation helper for Creator Program activities count.
+ * Exclusively counts completed activities hosted by the user:
+ * WHERE hostId == userId AND status == "completed"
+ */
+export async function getCanonicalActivitiesCount(db: admin.firestore.Firestore, userId: string): Promise<number> {
+  const completedSnap = await db.collection('activities')
+    .where('hostId', '==', userId)
+    .where('status', '==', 'completed')
+    .get();
+
+  return completedSnap.size;
+}
+
+/**
+ * Callable function for Creator Program applications.
+ * Server-side source of truth for eligibility criteria:
+ * - activitiesCount >= 20
+ * - averageRating >= 4.4
+ * - ratingCount >= 10
+ */
+export const submitCreatorApplication = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  }
+
+  const callerUid = request.auth.uid;
+  const db = admin.firestore();
+
+  // 1. Check user profile
+  const userRef = db.collection('users').doc(callerUid);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new HttpsError('not-found', 'Benutzerprofil wurde nicht gefunden.');
+  }
+
+  const userData = userSnap.data() || {};
+  if (userData.isCreator) {
+    throw new HttpsError('failed-precondition', 'Du bist bereits als Creator verifiziert.');
+  }
+
+  // 2. Check for existing pending application
+  const existingAppSnap = await db.collection('creator_applications')
+    .where('userId', '==', callerUid)
+    .where('status', '==', 'pending')
+    .get();
+
+  if (!existingAppSnap.empty) {
+    throw new HttpsError('already-exists', 'Eine Creator-Bewerbung ist bereits in Prüfung.');
+  }
+
+  // 3. Server-side eligibility evaluation
+  const activitiesCount = await getCanonicalActivitiesCount(db, callerUid);
+  const averageRating = Number(userData.averageRating) || 0;
+  const ratingCount = Number(userData.ratingCount) || 0;
+
+  if (activitiesCount < 20 || averageRating < 4.4 || ratingCount < 10) {
+    throw new HttpsError('failed-precondition', 'Du erfüllst die Voraussetzungen für das Creator-Programm noch nicht.');
+  }
+
+  // 4. Create application snapshot
+  const appRef = db.collection('creator_applications').doc();
+  await appRef.set({
+    userId: callerUid,
+    userDisplayName: userData.displayName || null,
+    averageRating,
+    activitiesCount,
+    ratingCount,
+    status: 'pending',
+    createdAt: FieldValue.serverTimestamp()
+  });
+
+  return { success: true, applicationId: appRef.id };
+});
+
 
 
 

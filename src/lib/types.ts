@@ -498,6 +498,7 @@ export interface CreatorApplication {
   createdAt: Timestamp;
   averageRating: number;
   activitiesCount: number;
+  ratingCount?: number;
 }
 
 export interface Destination {

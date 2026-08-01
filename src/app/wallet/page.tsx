@@ -300,7 +300,7 @@ export default function WalletPage() {
                                     : "text-slate-405 hover:text-slate-600 dark:hover:text-slate-300"
                             )}
                         >
-                            {language === 'de' ? 'Aktiva Points' : 'Aktiva Points'}
+                            {language === 'de' ? 'Level & XP' : 'Level & XP'}
                         </button>
                     </div>
 
@@ -502,35 +502,30 @@ export default function WalletPage() {
                         </>
                     ) : (
                         <>
-                            {/* Points Balance Card */}
+                            {/* XP & Level Card */}
                             <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden text-left w-full">
                                 <div className="relative z-10">
                                     <div className="flex items-center justify-between mb-2 opacity-80">
                                         <div className="flex items-center gap-2">
                                             🏆
-                                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{language === 'de' ? 'Aktiva Points Kontostand' : 'Aktiva Points Balance'}</span>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{language === 'de' ? 'Gesammelte XP (Lifetime)' : 'Earned XP (Lifetime)'}</span>
                                         </div>
                                         <div className="bg-white/20 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase">
                                             {language === 'de' ? `Level ${userProfile?.level || 1}` : `Level ${userProfile?.level || 1}`}
                                         </div>
                                     </div>
                                     <div className="flex items-baseline gap-2 mt-4">
-                                        <span className="text-5xl font-black">{userProfile?.pointsBalance || 0}</span>
-                                        <span className="text-lg font-black uppercase tracking-wider text-emerald-200">Points</span>
-                                    </div>
-
-                                    <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/10 flex justify-between items-center backdrop-blur-sm">
-                                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-200">{language === 'de' ? 'Gesammelte XP (Lifetime)' : 'Earned XP (Lifetime)'}</span>
-                                        <span className="text-sm font-black text-white">{userProfile?.pointsLifetime || 0} XP</span>
+                                        <span className="text-5xl font-black">{userProfile?.pointsLifetime || 0}</span>
+                                        <span className="text-lg font-black uppercase tracking-wider text-emerald-200">XP</span>
                                     </div>
                                 </div>
                                 <Wallet className="absolute -bottom-6 -right-6 h-40 w-40 text-white/5 rotate-12" />
                             </div>
 
-                            {/* Points Ledger List */}
+                            {/* Points / XP Ledger List */}
                             <div className="space-y-4 pt-4 w-full text-left">
                                 <h3 className="font-black text-xs uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                                    <History className="h-3 w-3" /> {language === 'de' ? 'Punkte-Verlauf' : 'Points Ledger'}
+                                    <History className="h-3 w-3" /> {language === 'de' ? 'XP-Verlauf' : 'XP History'}
                                 </h3>
 
                                 {loadingLedger ? (

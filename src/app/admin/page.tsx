@@ -25,7 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { RotateCcw, Loader2, Ban, ShieldAlert, TrendingDown, UserCheck, Star, Activity, ShieldCheck, Check } from "lucide-react";
+import { RotateCcw, Loader2, Ban, ShieldAlert, TrendingDown, UserCheck, Star, Activity, ShieldCheck, Check, MessageSquare } from "lucide-react";
 import { formatFirstName } from '@/lib/utils';
 
 export default function AdminDashboardPage() {
@@ -297,20 +297,27 @@ export default function AdminDashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-2">
                     <div className="bg-slate-50 dark:bg-neutral-800/50 p-3 rounded-2xl text-center">
                       <div className="flex items-center justify-center gap-1 text-amber-500 mb-1">
                         <Star className="h-3 w-3 fill-amber-500" />
-                        <span className="text-[10px] font-black uppercase">Rating</span>
+                        <span className="text-[9px] font-black uppercase">Rating</span>
                       </div>
-                      <span className="text-xl font-black text-foreground">{app.averageRating.toFixed(1)}</span>
+                      <span className="text-lg font-black text-foreground">{app.averageRating.toFixed(1)}</span>
                     </div>
                     <div className="bg-slate-50 dark:bg-neutral-800/50 p-3 rounded-2xl text-center">
                       <div className="flex items-center justify-center gap-1 text-primary mb-1">
                         <Activity className="h-3 w-3" />
-                        <span className="text-[10px] font-black uppercase">Events</span>
+                        <span className="text-[9px] font-black uppercase">Events</span>
                       </div>
-                      <span className="text-xl font-black text-foreground">{app.activitiesCount}</span>
+                      <span className="text-lg font-black text-foreground">{app.activitiesCount}</span>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-neutral-800/50 p-3 rounded-2xl text-center">
+                      <div className="flex items-center justify-center gap-1 text-blue-500 mb-1">
+                        <MessageSquare className="h-3 w-3" />
+                        <span className="text-[9px] font-black uppercase">Reviews</span>
+                      </div>
+                      <span className="text-lg font-black text-foreground">{app.ratingCount ?? 0}</span>
                     </div>
                   </div>
                   <Button 

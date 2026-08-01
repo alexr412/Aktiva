@@ -811,10 +811,7 @@ service cloud.firestore {
     }
 
     match /creator_applications/{appId} {
-      allow create: if isSignedIn() && 
-        request.resource.data.userId == request.auth.uid && 
-        request.resource.data.status == 'pending' &&
-        request.resource.data.keys().hasOnly(['userId', 'userDisplayName', 'averageRating', 'activitiesCount', 'status', 'createdAt']);
+      allow create: if false;
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow update: if isAdmin();
       allow delete: if isAdmin();

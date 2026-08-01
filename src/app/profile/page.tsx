@@ -39,7 +39,7 @@ import { format } from 'date-fns';
 
 
 
-const LEVEL_THRESHOLDS = [0, 50, 150, 300, 500, 800, 1200, 1700, 2300, 3000];
+import { LEVEL_THRESHOLDS } from '@/lib/levels';
 
 export default function ProfilePage() {
     const { user, userProfile, loading: authLoading } = useAuth();
@@ -791,15 +791,13 @@ export default function ProfilePage() {
                                                 {language === 'de' ? `LEVEL ${userData.level || 1}` : `LEVEL ${userData.level || 1}`}
                                             </Badge>
                                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                                {userData.level && userData.level >= 10 
+                                                {userData.level && userData.level >= 100 
                                                     ? (language === 'de' ? 'Maximales Level erreicht' : 'Max Level Reached') 
-                                                    : (language === 'de' ? `${(LEVEL_THRESHOLDS[userData.level || 1] || 3000) - (userData.pointsLifetime || 0)} XP bis Level ${(userData.level || 1) + 1}` : `${(LEVEL_THRESHOLDS[userData.level || 1] || 3000) - (userData.pointsLifetime || 0)} XP to Level ${(userData.level || 1) + 1}`)}
+                                                    : (language === 'de' ? `${(LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]) - (userData.pointsLifetime || 0)} XP bis Level ${(userData.level || 1) + 1}` : `${(LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]) - (userData.pointsLifetime || 0)} XP to Level ${(userData.level || 1) + 1}`)}
                                             </span>
                                         </div>
                                         <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2 mt-1">
-                                            {userData.pointsBalance || 0} <span className="text-sm font-black uppercase text-slate-400 font-heading">Aktiva Points</span>
-                                            <span className="text-slate-300">|</span>
-                                            <span className="text-sm font-bold text-slate-500">{userData.pointsLifetime || 0} XP Lifetime</span>
+                                            {userData.pointsLifetime || 0} <span className="text-sm font-black uppercase text-slate-400 font-heading">{language === 'de' ? 'XP Gesamt' : 'Total XP'}</span>
                                         </h3>
                                     </div>
                                     <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-500 font-black text-lg">
@@ -808,7 +806,7 @@ export default function ProfilePage() {
                                 </div>
 
                                 {/* Progress bar */}
-                                {userData.level && userData.level < 10 && (
+                                {userData.level && userData.level < 100 && (
                                     <div className="w-full space-y-2">
                                         <div className="w-full bg-slate-100 dark:bg-neutral-800 h-3 rounded-full overflow-hidden">
                                             <div 
@@ -816,14 +814,14 @@ export default function ProfilePage() {
                                                 style={{ 
                                                     width: `${Math.max(0, Math.min(100, 
                                                         (((userData.pointsLifetime || 0) - LEVEL_THRESHOLDS[(userData.level || 1) - 1]) / 
-                                                        ((LEVEL_THRESHOLDS[userData.level || 1] || 3000) - LEVEL_THRESHOLDS[(userData.level || 1) - 1])) * 100
+                                                        ((LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]) - LEVEL_THRESHOLDS[(userData.level || 1) - 1])) * 100
                                                     ))}%` 
                                                 }}
                                             />
                                         </div>
                                         <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
                                             <span>{LEVEL_THRESHOLDS[(userData.level || 1) - 1]} XP</span>
-                                            <span>{LEVEL_THRESHOLDS[userData.level || 1] || 3000} XP</span>
+                                            <span>{LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]} XP</span>
                                         </div>
                                     </div>
                                 )}

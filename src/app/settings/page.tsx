@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Users, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2, ShieldBan, Scale } from 'lucide-react';
+import { ArrowLeft, User, Bell, Users, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2, ShieldBan, Scale, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -44,8 +44,9 @@ type NotificationSettings = {
     nearbyFriendActivityNotifications: boolean;
 };
 
-const REQUIRED_ACTIVITIES = 20;
-const REQUIRED_RATING = 4.4;
+const REQUIRED_ACTIVITIES_COUNT = 20;
+const REQUIRED_AVERAGE_RATING = 4.4;
+const REQUIRED_RATINGS_COUNT = 10;
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -139,7 +140,7 @@ export default function SettingsPage() {
 
       const fetchStats = async () => {
         if (!db) return;
-        const q = query(collection(db, 'activities'), where('hostId', '==', user.uid));
+        const q = query(collection(db, 'activities'), where('hostId', '==', user.uid), where('status', '==', 'completed'));
         const snap = await getDocs(q);
         setActivitiesCount(snap.size);
 
@@ -215,7 +216,7 @@ export default function SettingsPage() {
       if (!user || !userProfile) return;
       setIsApplying(true);
       try {
-        await submitCreatorApplication(user.uid, userProfile.displayName, userProfile.averageRating || 0, activitiesCount);
+        await submitCreatorApplication(user.uid, userProfile.displayName, userProfile.averageRating || 0, activitiesCount, userProfile.ratingCount || 0);
         setHasApplication(true);
         toast({ 
           title: language === 'de' ? "Bewerbung gesendet!" : "Application sent!", 
@@ -291,7 +292,9 @@ export default function SettingsPage() {
 
 
 
-    const canApply = activitiesCount >= REQUIRED_ACTIVITIES && (userProfile?.averageRating || 0) >= REQUIRED_RATING;
+    const canApply = activitiesCount >= REQUIRED_ACTIVITIES_COUNT &&
+                     (userProfile?.averageRating || 0) >= REQUIRED_AVERAGE_RATING &&
+                     (userProfile?.ratingCount || 0) >= REQUIRED_RATINGS_COUNT;
 
     if (authLoading || !user || (userProfile && userProfile.onboardingCompleted === false)) {
         return (
@@ -625,16 +628,21 @@ export default function SettingsPage() {
                               </div>
                             ) : (
                               <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", activitiesCount >= REQUIRED_ACTIVITIES ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
-                                    <Activity className={cn("h-4 w-4", activitiesCount >= REQUIRED_ACTIVITIES ? "text-primary" : "text-slate-400 dark:text-neutral-500")} />
-                                    <span className="text-xl font-black text-foreground">{activitiesCount} / {REQUIRED_ACTIVITIES}</span>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1 text-center", activitiesCount >= REQUIRED_ACTIVITIES_COUNT ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
+                                    <Activity className={cn("h-4 w-4", activitiesCount >= REQUIRED_ACTIVITIES_COUNT ? "text-primary" : "text-slate-400 dark:text-neutral-500")} />
+                                    <span className="text-lg font-black text-foreground">{activitiesCount} / {REQUIRED_ACTIVITIES_COUNT}</span>
                                     <span className="text-[8px] font-bold uppercase text-slate-400 dark:text-neutral-500">{language === 'de' ? 'Aktivitäten' : 'Activities'}</span>
                                   </div>
-                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
-                                    <Star className={cn("h-4 w-4", (userProfile?.averageRating || 0) >= REQUIRED_RATING ? "text-amber-500 fill-amber-500" : "text-slate-400 dark:text-neutral-500")} />
-                                    <span className="text-xl font-black text-foreground">{userProfile?.averageRating?.toFixed(1) || '0.0'} / {REQUIRED_RATING}</span>
+                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1 text-center", (userProfile?.averageRating || 0) >= REQUIRED_AVERAGE_RATING ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
+                                    <Star className={cn("h-4 w-4", (userProfile?.averageRating || 0) >= REQUIRED_AVERAGE_RATING ? "text-amber-500 fill-amber-500" : "text-slate-400 dark:text-neutral-500")} />
+                                    <span className="text-lg font-black text-foreground">{userProfile?.averageRating?.toFixed(1) || '0.0'} / {REQUIRED_AVERAGE_RATING}</span>
                                     <span className="text-[8px] font-bold uppercase text-slate-400 dark:text-neutral-500">{language === 'de' ? 'Bewertung' : 'Rating'}</span>
+                                  </div>
+                                  <div className={cn("p-3 rounded-xl border flex flex-col items-center gap-1 text-center", (userProfile?.ratingCount || 0) >= REQUIRED_RATINGS_COUNT ? "bg-primary/5 border-primary/20" : "bg-slate-50 dark:bg-neutral-900 border-slate-100 dark:border-neutral-800")}>
+                                    <MessageSquare className={cn("h-4 w-4", (userProfile?.ratingCount || 0) >= REQUIRED_RATINGS_COUNT ? "text-blue-500" : "text-slate-400 dark:text-neutral-500")} />
+                                    <span className="text-lg font-black text-foreground">{userProfile?.ratingCount || 0} / {REQUIRED_RATINGS_COUNT}</span>
+                                    <span className="text-[8px] font-bold uppercase text-slate-400 dark:text-neutral-500">{language === 'de' ? 'Bewertungen' : 'Reviews'}</span>
                                   </div>
                                 </div>
 
@@ -647,7 +655,7 @@ export default function SettingsPage() {
                                 </Button>
                                 
                                 {!canApply && (
-                                  <p className="text-[10px] text-center text-slate-400 dark:text-neutral-500 font-medium">{language === 'de' ? 'Erfülle beide Anforderungen, um dich zu bewerben.' : 'Meet both requirements to apply.'}</p>
+                                  <p className="text-[10px] text-center text-slate-400 dark:text-neutral-500 font-medium">{language === 'de' ? 'Erfülle alle drei Anforderungen, um dich zu bewerben.' : 'Meet all three requirements to apply.'}</p>
                                 )}
                               </div>
                             )}

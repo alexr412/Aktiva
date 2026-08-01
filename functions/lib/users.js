@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getOrganizerAnalytics = exports.secureAcceptFriendRequest = exports.secureSendFriendRequest = exports.resolveLoginIdentifier = exports.earnToken = exports.claimUsername = exports.checkUsernameAvailability = exports.searchUserByUsername = exports.getPublicProfile = exports.processReferralOnboardingCompletion = exports.applyReferralCode = exports.onUserDeleted = exports.cleanupEmptyChats = exports.checkAndRecordVerificationEmail = exports.verifyEmailStatus = exports.requireSocialEmailVerification = exports.onUserCreated = exports.syncUserProfileUpdates = void 0;
+exports.submitCreatorApplication = exports.getOrganizerAnalytics = exports.secureAcceptFriendRequest = exports.secureSendFriendRequest = exports.resolveLoginIdentifier = exports.earnToken = exports.claimUsername = exports.checkUsernameAvailability = exports.searchUserByUsername = exports.getPublicProfile = exports.processReferralOnboardingCompletion = exports.LEVEL_THRESHOLDS = exports.applyReferralCode = exports.onUserDeleted = exports.cleanupEmptyChats = exports.checkAndRecordVerificationEmail = exports.verifyEmailStatus = exports.requireSocialEmailVerification = exports.onUserCreated = exports.syncUserProfileUpdates = void 0;
 exports.calculateLevel = calculateLevel;
 exports.maybeActivateReferral = maybeActivateReferral;
+exports.getCanonicalActivitiesCount = getCanonicalActivitiesCount;
 const firestore_1 = require("firebase-functions/v2/firestore");
 const https_1 = require("firebase-functions/v2/https");
 const functions = require("firebase-functions/v1");
@@ -828,29 +829,22 @@ exports.applyReferralCode = (0, https_1.onCall)(async (request) => {
         throw new https_1.HttpsError('internal', error.message || 'Fehler beim Anwenden des Referral-Codes.');
     }
 });
-const LEVEL_THRESHOLDS = [
-    0, // Level 1
-    50, // Level 2
-    150, // Level 3
-    300, // Level 4
-    500, // Level 5
-    800, // Level 6
-    1200, // Level 7
-    1700, // Level 8
-    2300, // Level 9
-    3000, // Level 10
-];
+exports.LEVEL_THRESHOLDS = Array.from({ length: 100 }, (_, i) => {
+    if (i === 0)
+        return 0;
+    return Math.round(30 * Math.pow(i, 1.68));
+});
 function calculateLevel(pointsLifetime) {
     let level = 1;
-    for (let i = 0; i < LEVEL_THRESHOLDS.length; i++) {
-        if (pointsLifetime >= LEVEL_THRESHOLDS[i]) {
+    for (let i = 0; i < exports.LEVEL_THRESHOLDS.length; i++) {
+        if (pointsLifetime >= exports.LEVEL_THRESHOLDS[i]) {
             level = i + 1;
         }
         else {
             break;
         }
     }
-    return level;
+    return Math.min(100, Math.max(1, level));
 }
 /**
  * Triggers referral bonus payouts on email verification + onboarding completion.
@@ -1587,5 +1581,68 @@ exports.getOrganizerAnalytics = (0, https_1.onCall)(async (request) => {
         }
     });
     return { opens, saves, shares, directions };
+});
+/**
+ * Canonical calculation helper for Creator Program activities count.
+ * Exclusively counts completed activities hosted by the user:
+ * WHERE hostId == userId AND status == "completed"
+ */
+async function getCanonicalActivitiesCount(db, userId) {
+    const completedSnap = await db.collection('activities')
+        .where('hostId', '==', userId)
+        .where('status', '==', 'completed')
+        .get();
+    return completedSnap.size;
+}
+/**
+ * Callable function for Creator Program applications.
+ * Server-side source of truth for eligibility criteria:
+ * - activitiesCount >= 20
+ * - averageRating >= 4.4
+ * - ratingCount >= 10
+ */
+exports.submitCreatorApplication = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'User must be authenticated.');
+    }
+    const callerUid = request.auth.uid;
+    const db = admin.firestore();
+    // 1. Check user profile
+    const userRef = db.collection('users').doc(callerUid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+        throw new https_1.HttpsError('not-found', 'Benutzerprofil wurde nicht gefunden.');
+    }
+    const userData = userSnap.data() || {};
+    if (userData.isCreator) {
+        throw new https_1.HttpsError('failed-precondition', 'Du bist bereits als Creator verifiziert.');
+    }
+    // 2. Check for existing pending application
+    const existingAppSnap = await db.collection('creator_applications')
+        .where('userId', '==', callerUid)
+        .where('status', '==', 'pending')
+        .get();
+    if (!existingAppSnap.empty) {
+        throw new https_1.HttpsError('already-exists', 'Eine Creator-Bewerbung ist bereits in Prüfung.');
+    }
+    // 3. Server-side eligibility evaluation
+    const activitiesCount = await getCanonicalActivitiesCount(db, callerUid);
+    const averageRating = Number(userData.averageRating) || 0;
+    const ratingCount = Number(userData.ratingCount) || 0;
+    if (activitiesCount < 20 || averageRating < 4.4 || ratingCount < 10) {
+        throw new https_1.HttpsError('failed-precondition', 'Du erfüllst die Voraussetzungen für das Creator-Programm noch nicht.');
+    }
+    // 4. Create application snapshot
+    const appRef = db.collection('creator_applications').doc();
+    await appRef.set({
+        userId: callerUid,
+        userDisplayName: userData.displayName || null,
+        averageRating,
+        activitiesCount,
+        ratingCount,
+        status: 'pending',
+        createdAt: firestore_2.FieldValue.serverTimestamp()
+    });
+    return { success: true, applicationId: appRef.id };
 });
 //# sourceMappingURL=users.js.map

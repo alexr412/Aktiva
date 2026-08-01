@@ -156,22 +156,30 @@ exports.validateCreatorStatus = onSchedule("every 12 hours", async (event) => {
     const userData = userDoc.data();
     const userId = userDoc.id;
 
-    // 1. Abgeschlossene Aktivitäten zählen
-    const activitiesSnap = await db.collection("activities")
-      .where("hostId", "==", userId)
-      .where("status", "==", "completed")
+    // Nur Nutzer mit eingereichter Creator-Bewerbung ("pending") prüfen
+    const pendingAppSnap = await db.collection("creator_applications")
+      .where("userId", "==", userId)
+      .where("status", "==", "pending")
       .get();
 
-    const activitiesCount = activitiesSnap.size;
-    const avgRating = userData.averageRating || 0;
+    if (pendingAppSnap.empty) continue;
 
-    // 2. Schwellenwert-Prüfung: Min. 20 Events & 4.4 Sterne Reputation
-    if (activitiesCount >= 20 && avgRating >= 4.4) {
-      await userDoc.ref.update({
+    const activitiesCount = await users.getCanonicalActivitiesCount(db, userId);
+    const averageRating = Number(userData.averageRating) || 0;
+    const ratingCount = Number(userData.ratingCount) || 0;
+
+    // 2. Schwellenwert-Prüfung: Min. 20 Events, 4.4 Sterne Reputation & 10 Bewertungen
+    if (activitiesCount >= 20 && averageRating >= 4.4 && ratingCount >= 10) {
+      const batch = db.batch();
+      batch.update(userDoc.ref, {
         isCreator: true,
         creatorApprovedAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      console.log(`User ${userId} promoted to Creator status automatically based on metrics.`);
+      pendingAppSnap.docs.forEach(appDoc => {
+        batch.update(appDoc.ref, { status: "approved" });
+      });
+      await batch.commit();
+      console.log(`User ${userId} creator application approved automatically based on metrics.`);
     }
   }
 
@@ -203,6 +211,7 @@ exports.earnToken = users.earnToken;
 exports.resolveLoginIdentifier = users.resolveLoginIdentifier;
 exports.secureSendFriendRequest = users.secureSendFriendRequest;
 exports.secureAcceptFriendRequest = users.secureAcceptFriendRequest;
+exports.submitCreatorApplication = users.submitCreatorApplication;
 
 // Aktiva Points & Referrals Activities Triggers
 const activities = require('./lib/activities');

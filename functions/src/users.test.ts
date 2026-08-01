@@ -121,6 +121,7 @@ class MockQuery {
 
     return {
       empty: docs.length === 0,
+      size: docs.length,
       docs,
     };
   }
@@ -374,7 +375,7 @@ mockModule("firebase-functions/v1", mockFunctionsV1);
 
 // ─── IMPORTS UNDER TEST ──────────────────────────────────────────────────────
 
-const { applyReferralCode, onUserCreated, getOrganizerAnalytics } = require("./users");
+const { applyReferralCode, onUserCreated, getOrganizerAnalytics, submitCreatorApplication, getCanonicalActivitiesCount } = require("./users");
 
 // ─── TEST CASES ──────────────────────────────────────────────────────────────
 
@@ -816,6 +817,133 @@ async function testSecureAcceptFriendRequest() {
   console.log("✅ testSecureAcceptFriendRequest passed successfully!");
 }
 
+async function testSubmitCreatorApplication() {
+  console.log("Running testSubmitCreatorApplication...");
+
+  // 1. Unauthenticated call
+  resetMockDb();
+  await assert.rejects(
+    submitCreatorApplication({}, null),
+    (err: any) => err.name === "HttpsError" && err.code === "unauthenticated"
+  );
+
+  const db = mockAdmin.firestore() as any;
+
+  const setupUser = (uid: string, profile: any) => {
+    mockDbState["users"] = mockDbState["users"] || {};
+    mockDbState["users"][uid] = profile;
+  };
+
+  const setupActivities = (activities: Array<{ id: string; hostId: string; status: string }>) => {
+    mockDbState["activities"] = mockDbState["activities"] || {};
+    activities.forEach(act => {
+      mockDbState["activities"][act.id] = { hostId: act.hostId, status: act.status };
+    });
+  };
+
+  // 2. Direct unit tests for getCanonicalActivitiesCount
+  resetMockDb();
+  // 2a. 20 completed hosted activities => 20
+  const act20Completed = Array.from({ length: 20 }, (_, i) => ({ id: `act_c_${i}`, hostId: "u_test", status: "completed" }));
+  setupActivities(act20Completed);
+  const count1 = await getCanonicalActivitiesCount(db, "u_test");
+  assert.strictEqual(count1, 20, "20 completed hosted activities must return 20");
+
+  // 2b. 19 completed + 1 active hosted activity => 19
+  resetMockDb();
+  const act19Completed1Active = [
+    ...Array.from({ length: 19 }, (_, i) => ({ id: `act_c_${i}`, hostId: "u_test", status: "completed" })),
+    { id: "act_active_1", hostId: "u_test", status: "active" }
+  ];
+  setupActivities(act19Completed1Active);
+  const count2 = await getCanonicalActivitiesCount(db, "u_test");
+  assert.strictEqual(count2, 19, "19 completed + 1 active hosted activity must return 19");
+
+  // 2c. 19 completed + 1 cancelled hosted activity => 19
+  resetMockDb();
+  const act19Completed1Cancelled = [
+    ...Array.from({ length: 19 }, (_, i) => ({ id: `act_c_${i}`, hostId: "u_test", status: "completed" })),
+    { id: "act_canc_1", hostId: "u_test", status: "cancelled" }
+  ];
+  setupActivities(act19Completed1Cancelled);
+  const count3 = await getCanonicalActivitiesCount(db, "u_test");
+  assert.strictEqual(count3, 19, "19 completed + 1 cancelled hosted activity must return 19");
+
+  // 2d. 0 completed + 20 active hosted activities => 0
+  resetMockDb();
+  const act20Active = Array.from({ length: 20 }, (_, i) => ({ id: `act_a_${i}`, hostId: "u_test", status: "active" }));
+  setupActivities(act20Active);
+  const count4 = await getCanonicalActivitiesCount(db, "u_test");
+  assert.strictEqual(count4, 0, "0 completed + 20 active hosted activities must return 0");
+
+  // 2e. 20 completed activities of another host => 0
+  resetMockDb();
+  const act20OtherHost = Array.from({ length: 20 }, (_, i) => ({ id: `act_o_${i}`, hostId: "other_host", status: "completed" }));
+  setupActivities(act20OtherHost);
+  const count5 = await getCanonicalActivitiesCount(db, "u_test");
+  assert.strictEqual(count5, 0, "20 completed activities of another host must return 0");
+
+  // 2f. userData.activitiesCount = 20, but actual completed hosted activities = 19 => 19
+  resetMockDb();
+  setupUser("u_test", { activitiesCount: 20 });
+  setupActivities(act19Completed1Active);
+  const count6 = await getCanonicalActivitiesCount(db, "u_test");
+  assert.strictEqual(count6, 19, "userData.activitiesCount = 20 must be ignored when actual completed count is 19");
+
+  // 3. Callable Function tests (submitCreatorApplication)
+  // 3a. 20 completed hosted activities / 4.4 rating / 10 reviews => ALLOWED
+  resetMockDb();
+  setupUser("user1", { displayName: "User One", isCreator: false, averageRating: 4.4, ratingCount: 10 });
+  setupActivities(act20Completed.map(a => ({ ...a, hostId: "user1" })));
+  const res1 = await submitCreatorApplication({}, { uid: "user1" });
+  assert.strictEqual(res1.success, true);
+  assert.ok(res1.applicationId);
+  const createdApp = Object.values(mockDbState["creator_applications"] || {})[0] as any;
+  assert.strictEqual(createdApp.userId, "user1");
+  assert.strictEqual(createdApp.activitiesCount, 20);
+  assert.strictEqual(createdApp.averageRating, 4.4);
+  assert.strictEqual(createdApp.ratingCount, 10);
+  assert.strictEqual(createdApp.status, "pending");
+
+  // 3b. 19 completed + 1 active / 4.4 rating / 10 reviews => REJECTED
+  resetMockDb();
+  setupUser("user2", { displayName: "User Two", isCreator: false, averageRating: 4.4, ratingCount: 10 });
+  setupActivities(act19Completed1Active.map(a => ({ ...a, hostId: "user2" })));
+  await assert.rejects(
+    submitCreatorApplication({}, { uid: "user2" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  // 3c. 20 completed / 4.39 rating / 10 reviews => REJECTED
+  resetMockDb();
+  setupUser("user3", { displayName: "User Three", isCreator: false, averageRating: 4.39, ratingCount: 10 });
+  setupActivities(act20Completed.map(a => ({ ...a, hostId: "user3" })));
+  await assert.rejects(
+    submitCreatorApplication({}, { uid: "user3" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  // 3d. 20 completed / 4.4 rating / 9 reviews => REJECTED
+  resetMockDb();
+  setupUser("user4", { displayName: "User Four", isCreator: false, averageRating: 4.4, ratingCount: 9 });
+  setupActivities(act20Completed.map(a => ({ ...a, hostId: "user4" })));
+  await assert.rejects(
+    submitCreatorApplication({}, { uid: "user4" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  // 3e. Manipulated payload (client sends activitiesCount: 99), actual completed count = 19 => REJECTED
+  resetMockDb();
+  setupUser("user5", { displayName: "User Five", isCreator: false, averageRating: 5.0, ratingCount: 20 });
+  setupActivities(act19Completed1Active.map(a => ({ ...a, hostId: "user5" })));
+  await assert.rejects(
+    submitCreatorApplication({ activitiesCount: 99 }, { uid: "user5" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  console.log("✅ testSubmitCreatorApplication passed successfully!");
+}
+
 async function runAllTests() {
   try {
     await testLaunchCampaign2026();
@@ -825,6 +953,7 @@ async function runAllTests() {
     await testOnUserDeleted();
     await testSecureSendFriendRequest();
     await testSecureAcceptFriendRequest();
+    await testSubmitCreatorApplication();
     console.log("🎉 ALL USERS MODULE TESTS PASSED SUCCESSFULLY! 🎉");
   } catch (error) {
     console.error("❌ TEST RUNNER FAILED:", error);

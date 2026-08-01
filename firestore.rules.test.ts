@@ -1302,36 +1302,36 @@ async function runTests() {
     // Admin can read reports
     await assertSucceeds(getDoc(doc(adminDb, 'reports/rep1')));
 
-    // 2. Creator applications creation
-    // Alice can create creator application for herself
-    await assertSucceeds(setDoc(doc(aliceDb, 'creator_applications/newApp1'), {
+    // 2. Creator applications direct client operations (Callable function is Source of Truth)
+    // Normal user attempting direct create with valid values => DENIED
+    await assertFails(setDoc(doc(aliceDb, 'creator_applications/newApp1'), {
       userId: 'alice',
       userDisplayName: 'Alice',
       averageRating: 4.5,
-      activitiesCount: 3,
+      activitiesCount: 20,
+      ratingCount: 10,
       status: 'pending',
       createdAt: serverTimestamp()
     }));
 
-    // Alice cannot create creator application for Bob
+    // Normal user attempting direct create with manipulated values => DENIED
     await assertFails(setDoc(doc(aliceDb, 'creator_applications/newApp2'), {
-      userId: 'bob',
-      userDisplayName: 'Bob',
-      averageRating: 4.5,
-      activitiesCount: 3,
+      userId: 'alice',
+      userDisplayName: 'Alice',
+      averageRating: 5.0,
+      activitiesCount: 999,
+      ratingCount: 999,
       status: 'pending',
       createdAt: serverTimestamp()
     }));
 
-    // Alice cannot create creator application with status approved
-    await assertFails(setDoc(doc(aliceDb, 'creator_applications/newApp3'), {
-      userId: 'alice',
-      userDisplayName: 'Alice',
-      averageRating: 4.5,
-      activitiesCount: 3,
-      status: 'approved',
-      createdAt: serverTimestamp()
+    // Normal user attempting to modify existing application => DENIED
+    await assertFails(updateDoc(doc(aliceDb, 'creator_applications/appAlice'), {
+      averageRating: 5.0
     }));
+
+    // Normal user attempting to delete application => DENIED
+    await assertFails(deleteDoc(doc(aliceDb, 'creator_applications/appAlice')));
 
     // Alice can read her own application
     await assertSucceeds(getDoc(doc(aliceDb, 'creator_applications/appAlice')));
