@@ -22,14 +22,20 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         ('isAdmin' in request.auth.token && request.auth.token.isAdmin == true) ||
-        (request.auth.uid != null && 'role' in getUserData() && getUserData().role == 'admin') ||
+        (request.auth.uid != null && 'role' in getUserData() && (getUserData().role == 'admin' || getUserData().role == 'superadmin')) ||
         (request.auth.uid != null && 'isAdmin' in getUserData() && getUserData().isAdmin == true)
       );
     }
 
-    // legacy ban check
+    // legacy and active ban / suspension check
     function isBanned() {
-      return isSignedIn() && request.auth.uid != null && ('isBanned' in getUserData() && getUserData().isBanned == true);
+      return isSignedIn() && request.auth.uid != null && (
+        ('isBanned' in getUserData() && getUserData().isBanned == true) ||
+        ('accountStatus' in getUserData() && getUserData().accountStatus == 'banned') ||
+        ('accountStatus' in getUserData() && getUserData().accountStatus == 'suspended' &&
+         'suspendedUntil' in getUserData() && getUserData().suspendedUntil != null &&
+         getUserData().suspendedUntil > request.time)
+      );
     }
 
     function isUserOnboardedAndActive(userId) {
@@ -489,7 +495,10 @@ service cloud.firestore {
           'pointsLifetime', 'level', 'lastLocation', 'proximitySettings',
           'friends', 'friendRequestsSent', 'friendRequestsReceived', 'blacklist',
           'premiumEntitlements', 'usernameChangeHistory', 'premiumStartsAt',
-          'premiumExpiresAt', 'usernameLastChangedAt'
+          'premiumExpiresAt', 'usernameLastChangedAt', 'accountStatus',
+          'suspendedUntil', 'suspendedBy', 'suspensionReasonPublic', 'suspensionNoteInternal',
+          'bannedAt', 'bannedBy', 'banReasonPublic', 'banNoteInternal',
+          'displayNameLower', 'emailLower'
         ]) &&
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['tokens']) || (
           request.resource.data.get('tokens', 0) is int &&
@@ -634,6 +643,11 @@ service cloud.firestore {
     // Username lock collection — managed exclusively by Cloud Functions / Admin SDK.
     match /usernames/{usernameLower} {
       allow read: if false;
+      allow write: if false;
+    }
+
+    match /admin_audit_logs/{logId} {
+      allow read: if isAdmin();
       allow write: if false;
     }
 

@@ -16,13 +16,15 @@ import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { LegalConsentDialog } from '@/components/auth/LegalConsentDialog';
 
+import { isAccountActive, parseTimestampMillis } from '@/lib/types';
+
 export interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
-  actualRole: 'admin' | 'supporter' | 'user' | null;
-  simulatedRole: 'admin' | 'supporter' | 'user' | null;
-  setSimulatedRole: (role: 'admin' | 'supporter' | 'user') => void;
+  actualRole: 'superadmin' | 'admin' | 'moderator' | 'supporter' | 'user' | null;
+  simulatedRole: 'superadmin' | 'admin' | 'moderator' | 'supporter' | 'user' | null;
+  setSimulatedRole: (role: 'superadmin' | 'admin' | 'moderator' | 'supporter' | 'user') => void;
   socialLegalConsentPending: boolean;
   setSocialLegalConsentPending: (pending: boolean) => void;
 }
@@ -54,19 +56,50 @@ const NotConfigured = () => (
     </div>
 );
 
-const BannedScreen = () => (
-  <div className="flex h-screen w-full flex-col items-center justify-center p-6 bg-slate-900 text-white text-center">
-    <div className="bg-red-500 p-6 rounded-full mb-8 shadow-2xl shadow-red-500/20 animate-pulse">
-      <Ban className="h-16 w-16" />
+const AccountStatusScreen = ({ profile }: { profile: UserProfile | null }) => {
+  const isBanned = profile?.isBanned || profile?.accountStatus === 'banned';
+  const reason = isBanned 
+    ? (profile?.banReasonPublic || 'Verstoß gegen die Community-Richtlinien.') 
+    : (profile?.suspensionReasonPublic || 'Vorübergehende Kontosperrung.');
+  
+  let suspendedUntilFormatted: string | null = null;
+  if (!isBanned && profile?.suspendedUntil) {
+    const millis = parseTimestampMillis(profile.suspendedUntil);
+    if (millis) {
+      suspendedUntilFormatted = new Date(millis).toLocaleString('de-DE', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+    }
+  }
+
+  return (
+    <div className="flex h-screen w-full flex-col items-center justify-center p-6 bg-slate-900 text-white text-center">
+      <div className="bg-red-500 p-6 rounded-full mb-8 shadow-2xl shadow-red-500/20 animate-pulse">
+        <Ban className="h-16 w-16" />
+      </div>
+      <h1 className="text-2xl font-bold mb-3">{isBanned ? 'Account Gesperrt (Banned)' : 'Account Suspendiert'}</h1>
+      <div className="max-w-md text-slate-400 font-medium leading-relaxed space-y-4">
+        <p>
+          Dein Account wurde {isBanned ? 'permanent gesperrt' : 'vorübergehend suspendiert'}.
+        </p>
+        <div className="p-4 bg-slate-800/80 rounded-xl border border-slate-700 text-left text-sm text-slate-200">
+          <p className="font-semibold text-red-400 mb-1">Grund:</p>
+          <p>{reason}</p>
+          {suspendedUntilFormatted && (
+            <div className="mt-3 pt-3 border-t border-slate-700">
+              <p className="font-semibold text-amber-400">Suspendiert bis:</p>
+              <p>{suspendedUntilFormatted}</p>
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-slate-500">
+          Falls du glaubst, dass dies ein Fehler ist, kontaktiere bitte unseren Support unter{' '}
+          <strong className="text-slate-300">support@aktiva.app</strong>.
+        </p>
+      </div>
     </div>
-    <h1 className="">Account Suspended</h1>
-    <p className="max-w-md text-slate-400 font-medium leading-relaxed">
-      Dein Account wurde aufgrund von wiederholten Verstößen gegen unsere Community-Richtlinien permanent gesperrt. 
-      <br /><br />
-      Falls du glaubst, dass dies ein Fehler ist, kontaktiere bitte unseren Support unter <strong className="text-white">support@aktiva.app</strong>.
-    </p>
-  </div>
-);
+  );
+};
 
 let isRedirectProcessing = false;
 let hasProcessedPostLogin = false;
@@ -74,7 +107,7 @@ let hasProcessedPostLogin = false;
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [dbProfile, setDbProfile] = useState<UserProfile | null>(null);
-  const [simulatedRole, setSimulatedRoleState] = useState<'admin' | 'supporter' | 'user' | null>(null);
+  const [simulatedRole, setSimulatedRoleState] = useState<'superadmin' | 'admin' | 'moderator' | 'supporter' | 'user' | null>(null);
   const [loading, setLoading] = useState(true);
   const [authInitializing, setAuthInitializing] = useState(true);
   const initialAuthResolutionRef = useRef(false);
@@ -275,13 +308,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
       const stored = localStorage.getItem('simulated_role');
-      if (stored === 'admin' || stored === 'supporter' || stored === 'user') {
-        setSimulatedRoleState(stored as 'admin' | 'supporter' | 'user');
+      if (['superadmin', 'admin', 'moderator', 'supporter', 'user'].includes(stored || '')) {
+        setSimulatedRoleState(stored as any);
       }
     }
   }, []);
 
-  const setSimulatedRole = (role: 'admin' | 'supporter' | 'user') => {
+  const setSimulatedRole = (role: 'superadmin' | 'admin' | 'moderator' | 'supporter' | 'user') => {
     if (process.env.NODE_ENV !== 'development') return;
     setSimulatedRoleState(role);
     if (typeof window !== 'undefined') {
@@ -602,8 +635,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return <NotConfigured />;
   }
 
-  if (userProfile?.isBanned) {
-    return <BannedScreen />;
+  if (userProfile && !isAccountActive(userProfile)) {
+    return <AccountStatusScreen profile={userProfile} />;
   }
 
   if (!isMounted) return null;

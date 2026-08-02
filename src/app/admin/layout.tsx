@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         router.replace("/onboarding");
         return;
       }
-      if (userProfile.role !== 'admin') {
+      if (userProfile.role !== 'admin' && userProfile.role !== 'superadmin') {
         router.replace("/");
         return;
       }
@@ -42,12 +42,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   // Finaler Guard vor dem Rendering
-  if (!userProfile || userProfile.role !== 'admin') {
+  if (!userProfile || (userProfile.role !== 'admin' && userProfile.role !== 'superadmin')) {
     return null;
   }
 
   const navItems = [
     { href: "/admin", label: "Dashboard" },
+    { href: "/admin/users", label: "Nutzer" },
     { href: "/admin/reports", label: "Moderation" },
     { href: "/admin/payouts", label: "Auszahlungen" },
     { href: "/admin/refunds", label: "Rückzahlungen" },

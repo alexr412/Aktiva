@@ -346,8 +346,21 @@ export interface UserProfile {
     soft: string[];
     hard: string[];
   };
-  role?: 'user' | 'admin' | 'supporter';
+  role?: 'user' | 'moderator' | 'admin' | 'superadmin' | 'supporter';
   isBanned?: boolean;
+  accountStatus?: 'active' | 'suspended' | 'banned';
+  suspendedUntil?: Timestamp | null;
+  suspendedBy?: string | null;
+  suspensionReasonPublic?: string | null;
+  suspensionNoteInternal?: string | null;
+  bannedAt?: Timestamp | null;
+  bannedBy?: string | null;
+  banReasonPublic?: string | null;
+  banNoteInternal?: string | null;
+  displayNameLower?: string;
+  emailLower?: string;
+  createdAt?: Timestamp | any;
+  updatedAt?: Timestamp | any;
   isExplorer?: boolean;
   isOrganizer?: boolean;
   premiumEntitlements?: string[];
@@ -355,6 +368,22 @@ export interface UserProfile {
   premiumExpiresAt?: Timestamp | null;
   premiumSource?: string;
   premiumCampaignId?: string;
+}
+
+/**
+ * Helper to check if a user account is active (not banned and not currently suspended).
+ */
+export function isAccountActive(profile: UserProfile | null, now?: Date | number): boolean {
+  if (!profile) return false;
+  if (profile.isBanned || profile.accountStatus === 'banned') return false;
+  if (profile.accountStatus === 'suspended' && profile.suspendedUntil) {
+    const suspendedMillis = parseTimestampMillis(profile.suspendedUntil);
+    const currentMillis = now instanceof Date ? now.getTime() : (typeof now === 'number' ? now : Date.now());
+    if (suspendedMillis !== null && suspendedMillis > currentMillis) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export type PremiumFeature =

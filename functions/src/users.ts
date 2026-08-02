@@ -19,6 +19,26 @@ export const syncUserProfileUpdates = onDocumentUpdated({
 
   if (!before || !after) return null;
 
+  const userId = event.params.userId;
+  const db = admin.firestore();
+
+  // Maintain search normalization fields Eventually Consistent
+  const expectedDisplayNameLower = after.displayName ? after.displayName.trim().toLowerCase() : null;
+  const expectedEmailLower = after.email ? after.email.trim().toLowerCase() : null;
+  const expectedUsernameLowercase = after.username ? after.username.trim().toLowerCase().replace(/^@/, '') : null;
+
+  if (
+    after.displayNameLower !== expectedDisplayNameLower ||
+    after.emailLower !== expectedEmailLower ||
+    (expectedUsernameLowercase && after.usernameLowercase !== expectedUsernameLowercase)
+  ) {
+    await db.collection('users').doc(userId).set({
+      ...(expectedDisplayNameLower ? { displayNameLower: expectedDisplayNameLower } : {}),
+      ...(expectedEmailLower ? { emailLower: expectedEmailLower } : {}),
+      ...(expectedUsernameLowercase ? { usernameLowercase: expectedUsernameLowercase } : {}),
+    }, { merge: true }).catch(err => console.error(`Error updating search index fields for user ${userId}:`, err));
+  }
+
   // Nur triggern wenn Name, Foto, Username oder Badges sich ändern
   if (
     before.displayName === after.displayName && 
@@ -31,13 +51,11 @@ export const syncUserProfileUpdates = onDocumentUpdated({
     return null;
   }
 
-  const userId = event.params.userId;
   const newUsername = after.username || null;
   const newPhotoURL = after.photoURL || null;
   const userLanguage = after.language || 'de';
   const usernameFormatted = newUsername ? `@${newUsername.replace(/^@/, '')}` : (userLanguage === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
   const newName = usernameFormatted;
-  const db = admin.firestore();
 
   // 0. Update publicProfiles projection
   if (newUsername) {

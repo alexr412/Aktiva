@@ -213,6 +213,20 @@ exports.secureSendFriendRequest = users.secureSendFriendRequest;
 exports.secureAcceptFriendRequest = users.secureAcceptFriendRequest;
 exports.submitCreatorApplication = users.submitCreatorApplication;
 
+// Secure Admin User Management
+const adminUsers = require('./lib/admin-users');
+exports.adminListUsers = adminUsers.adminListUsers;
+exports.adminGetUserDetail = adminUsers.adminGetUserDetail;
+exports.adminSetUserRole = adminUsers.adminSetUserRole;
+exports.adminSetOrganizerStatus = adminUsers.adminSetOrganizerStatus;
+exports.adminSetUserPremium = adminUsers.adminSetUserPremium;
+exports.adminSuspendUser = adminUsers.adminSuspendUser;
+exports.adminUnsuspendUser = adminUsers.adminUnsuspendUser;
+exports.adminBanUser = adminUsers.adminBanUser;
+exports.adminUnbanUser = adminUsers.adminUnbanUser;
+exports.adminDeleteUser = adminUsers.adminDeleteUser;
+exports.adminBulkUpdateUsers = adminUsers.adminBulkUpdateUsers;
+
 // Aktiva Points & Referrals Activities Triggers
 const activities = require('./lib/activities');
 exports.onActivityCreated = activities.onActivityCreated;

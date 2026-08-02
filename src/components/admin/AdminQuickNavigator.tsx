@@ -58,8 +58,8 @@ export function AdminQuickNavigator() {
   const isSwitchEnabled = process.env.NEXT_PUBLIC_ENABLE_ADMIN_NAVIGATOR === 'true';
 
   // SECURITY GATE:
-  // - Strictly visible ONLY to logged-in users with role === 'admin' or role === 'supporter'.
-  const isNavigatorActive = userProfile?.role === 'admin' || userProfile?.role === 'supporter';
+  // - Strictly visible ONLY to logged-in users with role === 'admin' || 'superadmin' or 'supporter'.
+  const isNavigatorActive = userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
 
   // Static list of app routes
   const navItems = useMemo<NavItem[]>(() => [
@@ -74,6 +74,7 @@ export function AdminQuickNavigator() {
 
     // Admin Group
     { label: 'Admin Dashboard', path: '/admin', icon: Shield, category: 'admin', requiresAdmin: true },
+    { label: 'Nutzerverwaltung', path: '/admin/users', icon: Users, category: 'admin', requiresAdmin: true },
     { label: 'Meldungen & Berichte', path: '/admin/reports', icon: FileText, category: 'admin', requiresAdmin: true },
     { label: 'Auszahlungen', path: '/admin/payouts', icon: Wallet, category: 'admin', requiresAdmin: true },
     { label: 'Rückerstattungen', path: '/admin/refunds', icon: AlertTriangle, category: 'admin', requiresAdmin: true },
