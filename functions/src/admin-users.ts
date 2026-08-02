@@ -112,25 +112,83 @@ export async function assertNotLastSuperadmin(
 export const adminListUsers = onCall(async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'User must be authenticated.');
   const db = admin.firestore();
-  await verifyAdminCaller(db, request.auth.uid);
+  const { callerUid } = await verifyAdminCaller(db, request.auth.uid);
 
   const { search, role, isOrganizer, premium, accountStatus, limit = 50, startAfterDocId } = request.data || {};
   const queryLimit = Math.min(Math.max(1, Number(limit) || 50), 100);
+
+  console.log('[ADMIN USERS LIST]', {
+    callerUid,
+    search,
+    role,
+    isOrganizer,
+    premium,
+    accountStatus,
+    queryLimit,
+    startAfterDocId,
+  });
+
+  // Helper for response normalization & automatic background migration
+  const normalizeAndBackfillUser = (doc: admin.firestore.DocumentSnapshot) => {
+    const raw = doc.data() || {};
+    const roleVal = raw.role || (raw.isAdmin ? 'admin' : (raw.isSupporter ? 'supporter' : 'user'));
+    const statusVal = raw.accountStatus || (raw.isBanned ? 'banned' : 'active');
+    const isOrgVal = raw.isOrganizer === true;
+    const isPremVal = raw.isPremium === true;
+    const displayNameVal = raw.displayName || raw.username || 'Aktiva-Nutzer';
+    const emailVal = raw.email || null;
+    const createdAtVal = raw.createdAt || raw.creationTime || null;
+
+    const normalized = {
+      uid: doc.id,
+      ...raw,
+      role: roleVal,
+      accountStatus: statusVal,
+      isOrganizer: isOrgVal,
+      isPremium: isPremVal,
+      displayName: displayNameVal,
+      email: emailVal,
+      createdAt: createdAtVal,
+    };
+
+    // Fire-and-forget background backfill if critical normalization fields are missing
+    const needsBackfill = !raw.role || !raw.accountStatus || !raw.displayNameLower || (raw.email && !raw.emailLower);
+    if (needsBackfill) {
+      const updates: any = {
+        role: roleVal,
+        accountStatus: statusVal,
+        ...(displayNameVal ? { displayNameLower: displayNameVal.trim().toLowerCase() } : {}),
+        ...(emailVal ? { emailLower: emailVal.trim().toLowerCase() } : {}),
+        ...(raw.username ? { usernameLowercase: raw.username.trim().toLowerCase().replace(/^@/, '') } : {}),
+      };
+      db.collection('users').doc(doc.id).set(updates, { merge: true }).catch(err =>
+        console.warn(`Background backfill error for user ${doc.id}:`, err)
+      );
+    }
+
+    return normalized;
+  };
 
   // Exact Lookup: UID
   if (search && typeof search === 'string' && search.trim().length >= 20 && !search.includes(' ') && !search.includes('@')) {
     const docSnap = await db.collection('users').doc(search.trim()).get();
     if (docSnap.exists) {
-      return { users: [{ uid: docSnap.id, ...docSnap.data() }], hasMore: false };
+      const users = [normalizeAndBackfillUser(docSnap)];
+      console.log('[ADMIN USERS RESULT - UID MATCH]', { count: 1, uid: docSnap.id });
+      return { users, hasMore: false };
     }
   }
 
   // Exact Lookup: Email
   if (search && typeof search === 'string' && search.includes('@')) {
     const cleanEmail = search.trim().toLowerCase();
-    const emailSnap = await db.collection('users').where('emailLower', '==', cleanEmail).limit(10).get();
+    let emailSnap = await db.collection('users').where('emailLower', '==', cleanEmail).limit(10).get();
+    if (emailSnap.empty) {
+      emailSnap = await db.collection('users').where('email', '==', search.trim()).limit(10).get();
+    }
     if (!emailSnap.empty) {
-      const users = emailSnap.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+      const users = emailSnap.docs.map(normalizeAndBackfillUser);
+      console.log('[ADMIN USERS RESULT - EMAIL MATCH]', { count: users.length });
       return { users, hasMore: false };
     }
   }
@@ -138,35 +196,45 @@ export const adminListUsers = onCall(async (request) => {
   // Exact Lookup: Username
   if (search && typeof search === 'string' && search.startsWith('@')) {
     const cleanUsername = search.replace(/^@/, '').trim().toLowerCase();
-    const unameSnap = await db.collection('users').where('usernameLowercase', '==', cleanUsername).limit(10).get();
+    let unameSnap = await db.collection('users').where('usernameLowercase', '==', cleanUsername).limit(10).get();
+    if (unameSnap.empty) {
+      unameSnap = await db.collection('users').where('username', '==', search.trim()).limit(10).get();
+    }
     if (!unameSnap.empty) {
-      const users = unameSnap.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+      const users = unameSnap.docs.map(normalizeAndBackfillUser);
+      console.log('[ADMIN USERS RESULT - USERNAME MATCH]', { count: users.length });
       return { users, hasMore: false };
     }
   }
 
   let query: admin.firestore.Query = db.collection('users');
+  let hasFilteredField = false;
 
   // Filter: Role
-  if (role && ['user', 'moderator', 'admin', 'superadmin'].includes(role)) {
+  if (role && role !== 'all' && ['user', 'moderator', 'admin', 'superadmin'].includes(role)) {
     query = query.where('role', '==', role);
+    hasFilteredField = true;
   }
 
   // Filter: Organizer
   if (typeof isOrganizer === 'boolean') {
     query = query.where('isOrganizer', '==', isOrganizer);
+    hasFilteredField = true;
   }
 
   // Filter: Account Status
-  if (accountStatus && ['active', 'suspended', 'banned'].includes(accountStatus)) {
+  if (accountStatus && accountStatus !== 'all' && ['active', 'suspended', 'banned'].includes(accountStatus)) {
     query = query.where('accountStatus', '==', accountStatus);
+    hasFilteredField = true;
   }
 
   // Filter: Premium
   if (premium === 'active') {
     query = query.where('isPremium', '==', true);
+    hasFilteredField = true;
   } else if (premium === 'inactive') {
     query = query.where('isPremium', '==', false);
+    hasFilteredField = true;
   }
 
   // Prefix Search on Name if provided
@@ -174,10 +242,14 @@ export const adminListUsers = onCall(async (request) => {
     const term = search.trim().toLowerCase().replace(/^@/, '');
     query = query.where('displayNameLower', '>=', term).where('displayNameLower', '<=', term + '\uf8ff');
     query = query.orderBy('displayNameLower', 'asc');
+    hasFilteredField = true;
   } else {
-    query = query.orderBy('createdAt', 'desc');
+    // IMPORTANT: Sort by Document ID (FieldPath.documentId()) so that ALL legacy documents
+    // (even those missing createdAt) are included, and cursor pagination works 100%.
+    query = query.orderBy(admin.firestore.FieldPath.documentId(), 'desc');
   }
 
+  // Cursor Pagination (Page 2+)
   if (startAfterDocId) {
     const startDoc = await db.collection('users').doc(startAfterDocId).get();
     if (startDoc.exists) {
@@ -192,8 +264,16 @@ export const adminListUsers = onCall(async (request) => {
   const hasMore = docs.length > queryLimit;
   const resultDocs = hasMore ? docs.slice(0, queryLimit) : docs;
 
-  const users = resultDocs.map(doc => ({ uid: doc.id, ...doc.data() }));
+  const users = resultDocs.map(normalizeAndBackfillUser);
   const lastDocId = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1].id : undefined;
+
+  console.log('[ADMIN USERS RESULT]', {
+    count: snapshot.size,
+    returnedCount: users.length,
+    hasMore,
+    lastDocId,
+    sampleIds: users.slice(0, 5).map(u => u.uid),
+  });
 
   return { users, hasMore, lastDocId };
 });
@@ -751,3 +831,57 @@ export const adminBulkUpdateUsers = onCall(async (request) => {
 
   return { successCount, failureCount, errors };
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. adminBackfillUsers (Safe Legacy Migration Function)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const adminBackfillUsers = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  const db = admin.firestore();
+  await verifyAdminCaller(db, request.auth.uid);
+
+  const snapshot = await db.collection('users').get();
+  let updatedCount = 0;
+
+  for (const doc of snapshot.docs) {
+    const raw = doc.data() || {};
+    const updates: any = {};
+
+    if (!raw.role) {
+      updates.role = raw.isAdmin ? 'admin' : (raw.isSupporter ? 'supporter' : 'user');
+    }
+    if (!raw.accountStatus) {
+      updates.accountStatus = raw.isBanned ? 'banned' : 'active';
+    }
+    if (raw.displayName && !raw.displayNameLower) {
+      updates.displayNameLower = raw.displayName.trim().toLowerCase();
+    }
+    if (raw.email && !raw.emailLower) {
+      updates.emailLower = raw.email.trim().toLowerCase();
+    }
+    if (raw.username && !raw.usernameLowercase) {
+      updates.usernameLowercase = raw.username.trim().toLowerCase().replace(/^@/, '');
+    }
+
+    if (!raw.createdAt) {
+      try {
+        const authRecord = await admin.auth().getUser(doc.id);
+        if (authRecord.metadata.creationTime) {
+          updates.createdAt = Timestamp.fromDate(new Date(authRecord.metadata.creationTime));
+        }
+      } catch (err) {
+        console.warn(`Could not fetch creationTime for Auth user ${doc.id}`);
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await doc.ref.set(updates, { merge: true });
+      updatedCount++;
+    }
+  }
+
+  console.log(`[ADMIN BACKFILL COMPLETED] Scanned ${snapshot.size} users, backfilled ${updatedCount} legacy documents.`);
+  return { scanned: snapshot.size, backfilled: updatedCount };
+});
+

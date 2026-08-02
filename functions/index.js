@@ -226,6 +226,7 @@ exports.adminBanUser = adminUsers.adminBanUser;
 exports.adminUnbanUser = adminUsers.adminUnbanUser;
 exports.adminDeleteUser = adminUsers.adminDeleteUser;
 exports.adminBulkUpdateUsers = adminUsers.adminBulkUpdateUsers;
+exports.adminBackfillUsers = adminUsers.adminBackfillUsers;
 
 // Aktiva Points & Referrals Activities Triggers
 const activities = require('./lib/activities');

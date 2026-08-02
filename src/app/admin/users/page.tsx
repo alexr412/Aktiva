@@ -54,8 +54,10 @@ export default function AdminUsersPage() {
   // Data & Pagination State
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState<boolean>(false);
   const [lastDocId, setLastDocId] = useState<string | undefined>(undefined);
+  const [backfilling, setBackfilling] = useState<boolean>(false);
 
   // Filters State
   const [searchInput, setSearchInput] = useState<string>('');
@@ -90,6 +92,7 @@ export default function AdminUsersPage() {
   const fetchUsers = useCallback(async (startAfterId?: string) => {
     if (!functions) return;
     setLoading(true);
+    setError(null);
     try {
       const listUsersFn = httpsCallable(functions, 'adminListUsers');
       const payload: any = {
@@ -104,13 +107,18 @@ export default function AdminUsersPage() {
       if (selectedStatus !== 'all') payload.accountStatus = selectedStatus;
       if (startAfterId) payload.startAfterDocId = startAfterId;
 
+      console.log('[ADMIN USERS REQUEST PAYLOAD]', payload);
       const res: any = await listUsersFn(payload);
+      console.log('[ADMIN USERS RESPONSE]', res.data);
+
       if (res.data) {
         setUsers(res.data.users || []);
         setHasMore(!!res.data.hasMore);
         setLastDocId(res.data.lastDocId);
       }
     } catch (err: any) {
+      console.error('[ADMIN USERS ERROR]', err);
+      setError(err.message || 'Die Nutzerliste konnte nicht geladen werden.');
       toast({
         variant: 'destructive',
         title: 'Fehler beim Laden der Nutzer',
@@ -120,6 +128,30 @@ export default function AdminUsersPage() {
       setLoading(false);
     }
   }, [debouncedSearch, selectedRole, selectedOrganizer, selectedPremium, selectedStatus, pageSize]);
+
+  // Handle Manual Backfill
+  const handleRunBackfill = async () => {
+    if (!functions) return;
+    setBackfilling(true);
+    try {
+      const backfillFn = httpsCallable(functions, 'adminBackfillUsers');
+      const res: any = await backfillFn();
+      toast({
+        title: 'Migration abgeschlossen',
+        description: `${res.data?.scanned || 0} Dokumente gescannt, ${res.data?.backfilled || 0} Legacy-User aktualisiert.`,
+      });
+      fetchUsers();
+    } catch (err: any) {
+      console.error('Backfill error:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Fehler bei Migration',
+        description: err.message || 'Der Backfill konnte nicht ausgeführt werden.',
+      });
+    } finally {
+      setBackfilling(false);
+    }
+  };
 
   // Trigger fetch when filters change
   useEffect(() => {
@@ -183,14 +215,27 @@ export default function AdminUsersPage() {
           </p>
         </div>
 
-        {selectedUids.length > 0 && (
+        <div className="flex items-center gap-2">
           <Button
-            onClick={() => setActiveDialog('bulk')}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm animate-fade-in"
+            variant="outline"
+            size="sm"
+            onClick={handleRunBackfill}
+            disabled={backfilling}
+            title="Saniert ältere Nutzerdaten und liest fehlende Registrierungsdaten atomar aus Firebase Auth"
           >
-            <Layers className="h-4 w-4 mr-2" /> Bulk Aktion ({selectedUids.length})
+            {backfilling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Layers className="h-4 w-4 mr-2 text-muted-foreground" />}
+            Legacy-Daten Sanieren
           </Button>
-        )}
+
+          {selectedUids.length > 0 && (
+            <Button
+              onClick={() => setActiveDialog('bulk')}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm animate-fade-in"
+            >
+              <Layers className="h-4 w-4 mr-2" /> Bulk Aktion ({selectedUids.length})
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Search & Filters Controls */}
@@ -331,6 +376,17 @@ export default function AdminUsersPage() {
                     <td className="p-4 text-right"><div className="h-8 w-8 bg-slate-200 dark:bg-neutral-800 rounded ml-auto" /></td>
                   </tr>
                 ))
+              ) : error ? (
+                <tr>
+                  <td colSpan={11} className="p-8 text-center text-red-500 font-medium space-y-2">
+                    <AlertTriangle className="h-6 w-6 mx-auto text-red-500" />
+                    <p>Nutzer konnten nicht geladen werden.</p>
+                    <p className="text-xs text-muted-foreground font-mono">{error}</p>
+                    <Button variant="outline" size="sm" onClick={() => fetchUsers()} className="mt-2">
+                      Erneut versuchen
+                    </Button>
+                  </td>
+                </tr>
               ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="p-8 text-center text-muted-foreground">
