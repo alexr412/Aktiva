@@ -61,6 +61,22 @@ class SimulatedLocationProvider {
     this.mockGeocodeResolver = resolver;
   }
 
+  public handlePermissionStatusChange(newStatusState: 'granted' | 'denied' | 'prompt'): void {
+    if (newStatusState === 'granted') {
+      try {
+        mockStorage.setItem('activa_location_permission_granted', 'true');
+      } catch (e) {}
+      this.requestLocation({ interactive: false });
+    } else if (newStatusState === 'denied') {
+      this.gateState = 'denied';
+      try {
+        mockStorage.removeItem('activa_location_permission_granted');
+      } catch (e) {}
+    } else {
+      this.gateState = 'prompt';
+    }
+  }
+
   public requestLocation(options?: { interactive?: boolean }): void {
     const isInteractive = options?.interactive !== false;
 
@@ -353,6 +369,126 @@ async function runTests() {
     assert.strictEqual(provider.gateState, 'error', 'TIMEOUT must transition to "error", NOT "prompt"');
     assert.strictEqual(provider.isLocating, false);
     console.log('  ✅ TIMEOUT correctly transitions to "error" state.\n');
+  }
+
+  // Test A: Permission granted while GPS is running (gateState remains requesting, no 2nd GPS request, granted set ONLY after GPS success)
+  {
+    console.log('14 (Test A). Permission API granted while GPS running keeps gateState=requesting until GPS success');
+    const provider = new SimulatedLocationProvider();
+    let triggerGpsSuccess: () => void = () => {};
+
+    provider.setGpsHandler((success) => {
+      triggerGpsSuccess = () => {
+        success({ coords: { latitude: 52.026, longitude: 8.522, accuracy: 15 } });
+      };
+    });
+
+    // 1. User/App initiates interactive GPS request
+    provider.requestLocation({ interactive: true });
+    assert.strictEqual(provider.gateState, 'requesting');
+    assert.strictEqual(provider.getCurrentPositionCallCount, 1);
+
+    // 2. Permission API fires "granted" while GPS request is in flight
+    provider.handlePermissionStatusChange('granted');
+    assert.strictEqual(provider.gateState, 'requesting', 'gateState MUST remain "requesting" when Permission API reports granted');
+    assert.strictEqual(provider.getCurrentPositionCallCount, 1, 'In-flight protection MUST prevent duplicate GPS requests');
+
+    // 3. GPS completes with success
+    triggerGpsSuccess();
+    assert.strictEqual(provider.gateState, 'granted', 'gateState MUST transition to "granted" ONLY after GPS success');
+    assert.strictEqual(provider.isLocating, false);
+    console.log('  ✅ Permission granted while GPS running keeps gateState=requesting until GPS success.\n');
+  }
+
+  // Test B: Permission granted + GPS Timeout (code 3)
+  {
+    console.log('15 (Test B). Permission API granted + GPS Timeout code 3 transitions requesting -> error (never granted)');
+    const provider = new SimulatedLocationProvider();
+    let triggerGpsTimeout: () => void = () => {};
+
+    provider.setGpsHandler((_success, error) => {
+      triggerGpsTimeout = () => {
+        error({ code: 3, message: 'Timeout' });
+      };
+    });
+
+    provider.requestLocation({ interactive: true });
+    assert.strictEqual(provider.gateState, 'requesting');
+
+    provider.handlePermissionStatusChange('granted');
+    assert.strictEqual(provider.gateState, 'requesting', 'gateState MUST NOT prematurely become granted');
+
+    triggerGpsTimeout();
+    assert.strictEqual(provider.gateState, 'error', 'gateState MUST transition to "error" on TIMEOUT');
+    assert.strictEqual(provider.isLocating, false);
+    console.log('  ✅ Permission granted + GPS timeout correctly transitions to error without ever setting granted.\n');
+  }
+
+  // Test C: Permission granted + Position unavailable (code 2)
+  {
+    console.log('16 (Test C). Permission API granted + POSITION_UNAVAILABLE code 2 transitions requesting -> error');
+    const provider = new SimulatedLocationProvider();
+    let triggerGpsUnavailable: () => void = () => {};
+
+    provider.setGpsHandler((_success, error) => {
+      triggerGpsUnavailable = () => {
+        error({ code: 2, message: 'Position unavailable' });
+      };
+    });
+
+    provider.requestLocation({ interactive: true });
+    assert.strictEqual(provider.gateState, 'requesting');
+
+    provider.handlePermissionStatusChange('granted');
+    assert.strictEqual(provider.gateState, 'requesting');
+
+    triggerGpsUnavailable();
+    assert.strictEqual(provider.gateState, 'error', 'gateState MUST transition to "error" on POSITION_UNAVAILABLE');
+    assert.strictEqual(provider.isLocating, false);
+    console.log('  ✅ Permission granted + Position unavailable correctly transitions to error.\n');
+  }
+
+  // Test D: Successful GPS request updates position, sets gateState = granted and isLocating = false
+  {
+    console.log('17 (Test D). Successful GPS request saves position, sets gateState=granted and isLocating=false');
+    const provider = new SimulatedLocationProvider();
+    provider.setGpsHandler((success) => {
+      success({ coords: { latitude: 52.026, longitude: 8.522, accuracy: 15 } });
+    });
+
+    provider.requestLocation({ interactive: true });
+    assert.strictEqual(provider.gateState, 'granted');
+    assert.strictEqual(provider.isLocating, false);
+    assert.ok(provider.position !== null);
+    assert.strictEqual(provider.position.latitude, 52.026);
+    assert.strictEqual(provider.position.longitude, 8.522);
+    console.log('  ✅ Successful GPS request updates position, gateState, and isLocating.\n');
+  }
+
+  // Test E: In-Flight protection suppresses duplicate requestLocation calls
+  {
+    console.log('18 (Test E). In-Flight protection suppresses duplicate requestLocation calls');
+    const provider = new SimulatedLocationProvider();
+    provider.setGpsHandler(() => {}); // never finishes
+
+    provider.requestLocation({ interactive: true });
+    provider.requestLocation({ interactive: true });
+    provider.requestLocation({ interactive: false });
+    assert.strictEqual(provider.getCurrentPositionCallCount, 1, 'Only one getCurrentPosition call must be executed');
+    console.log('  ✅ In-Flight protection verified: only 1 GPS request fired.\n');
+  }
+
+  // Test F: Static analysis - setGateState('granted') occurs ONLY in getCurrentPosition success callback
+  {
+    console.log('19 (Test F). Static analysis - setGateState("granted") occurs ONLY in getCurrentPosition success');
+    const locCode = readFileSync(path.join(srcDir, 'contexts', 'location-context.tsx'), 'utf8');
+    const grantedMatches = locCode.match(/setGateState\(\s*'granted'\s*\)/g);
+    assert.strictEqual(
+      grantedMatches?.length,
+      1,
+      'setGateState("granted") MUST be called exactly once in location-context.tsx (in getCurrentPosition success handler)'
+    );
+    console.log('  ✅ setGateState("granted") is strictly unique to getCurrentPosition success callback.\n');
   }
 
   console.log('🎉 ALL LOCATION GATE ARCHITECTURAL, AUTO-GPS & SAFARI FALLBACK TESTS PASSED DETERMINISTICALLY!');

@@ -250,7 +250,6 @@ export function LocationProvider({ children }: { children: ReactNode }) {
             if (!isMounted) return;
             console.log(`[LOCATION TRACE] permissions API status changed: ${newStatusState}`);
             if (newStatusState === 'granted') {
-              setGateState('granted');
               try {
                 localStorage.setItem('activa_location_permission_granted', 'true');
               } catch (e) {}
