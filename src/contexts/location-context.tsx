@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, ReactNode } from 'react';
 
 export type LocationGateState =
-  | 'idle'
+  | 'checking'
+  | 'prompt'
   | 'requesting'
   | 'granted'
   | 'denied'
@@ -16,13 +17,19 @@ export type LocationPosition = {
   updatedAt: number;
 };
 
+export type RequestLocationOptions = {
+  interactive?: boolean;
+  positionOptions?: PositionOptions;
+};
+
 export type LocationContextValue = {
   gateState: LocationGateState;
+  isLocating: boolean;
   position: LocationPosition | null;
   cityName: string | null;
   isResolvingCity: boolean;
   errorMessage: string | null;
-  requestLocation: () => void;
+  requestLocation: (options?: RequestLocationOptions) => void;
 };
 
 const LocationContext = createContext<LocationContextValue | undefined>(undefined);
@@ -33,7 +40,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     instanceIdRef.current = 'LP-' + Math.random().toString(36).substring(2, 6);
   }
 
-  const [gateState, setGateStateState] = useState<LocationGateState>('idle');
+  const [gateState, setGateStateState] = useState<LocationGateState>('checking');
+  const [isLocating, setIsLocating] = useState(false);
   const [position, setPosition] = useState<LocationPosition | null>(null);
   const [cityName, setCityName] = useState<string | null>(null);
   const [isResolvingCity, setIsResolvingCity] = useState(false);
@@ -54,16 +62,6 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     return () => {
       console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} event=UNMOUNT`);
     };
-  }, []);
-
-  // Purge old location cache key on startup as specified in architecture
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.removeItem('activa_last_location');
-        localStorage.removeItem('aktiva_last_location');
-      } catch (e) {}
-    }
   }, []);
 
   const resolveCityName = useCallback(async (lat: number, lon: number) => {
@@ -97,7 +95,14 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const requestLocation = useCallback((): void => {
+  const requestLocation = useCallback((options?: RequestLocationOptions): void => {
+    const isInteractive = options?.interactive !== false;
+    const gpsOptions: PositionOptions = options?.positionOptions || {
+      enableHighAccuracy: true,
+      timeout: isInteractive ? 15000 : 10000,
+      maximumAge: isInteractive ? 0 : 60000,
+    };
+
     if (requestInFlightRef.current) {
       console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} requestLocation suppressed (in flight)`);
       return;
@@ -107,6 +112,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       setGateState('error');
+      setIsLocating(false);
       setErrorMessage(
         'Dieser Browser unterstützt keine Standortermittlung.'
       );
@@ -114,11 +120,15 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
 
     const requestId = ++requestCounterRef.current;
-    console.log(`[GPS TRACE] requestId=${requestId} started`);
+    console.log(`[GPS TRACE] requestId=${requestId} started (interactive=${isInteractive})`);
 
     requestInFlightRef.current = true;
     activeRequestIdRef.current = requestId;
-    setGateState('requesting');
+    setIsLocating(true);
+
+    if (isInteractive) {
+      setGateState('requesting');
+    }
 
     navigator.geolocation.getCurrentPosition(
       pos => {
@@ -129,6 +139,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
         activeRequestIdRef.current = null;
         requestInFlightRef.current = false;
+        setIsLocating(false);
         console.log(`[GPS TRACE] requestId=${requestId} success`);
 
         const latitude = pos.coords.latitude;
@@ -159,6 +170,10 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         });
 
         setGateState('granted');
+        try {
+          localStorage.setItem('activa_location_permission_granted', 'true');
+        } catch (e) {}
+
         void resolveCityName(latitude, longitude);
       },
       error => {
@@ -169,11 +184,15 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
         activeRequestIdRef.current = null;
         requestInFlightRef.current = false;
+        setIsLocating(false);
         console.log(`[GPS TRACE] requestId=${requestId} error code=${error.code}`);
 
         switch (error.code) {
           case 1:
             setGateState('denied');
+            try {
+              localStorage.removeItem('activa_location_permission_granted');
+            } catch (e) {}
             setErrorMessage(
               'Der Standortzugriff ist deaktiviert. Aktiviere ihn in den Browser- oder Geräteeinstellungen.'
             );
@@ -200,18 +219,100 @@ export function LocationProvider({ children }: { children: ReactNode }) {
             );
         }
       },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 15000,
-      }
+      gpsOptions
     );
   }, [setGateState, resolveCityName]);
+
+  // Startup permission check and automatic background GPS fetch if granted
+  useEffect(() => {
+    let isMounted = true;
+    let listenerCleanups: Array<() => void> = [];
+
+    const initPermissionState = async () => {
+      // Purge legacy coordinates cache
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('activa_last_location');
+          localStorage.removeItem('aktiva_last_location');
+        } catch (e) {}
+      }
+
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.permissions &&
+        typeof navigator.permissions.query === 'function'
+      ) {
+        try {
+          const status = await navigator.permissions.query({ name: 'geolocation' });
+          if (!isMounted) return;
+
+          const handleStatusChange = (newStatusState: PermissionState) => {
+            if (!isMounted) return;
+            console.log(`[LOCATION TRACE] permissions API status changed: ${newStatusState}`);
+            if (newStatusState === 'granted') {
+              setGateState('granted');
+              try {
+                localStorage.setItem('activa_location_permission_granted', 'true');
+              } catch (e) {}
+              requestLocation({ interactive: false });
+            } else if (newStatusState === 'denied') {
+              setGateState('denied');
+              try {
+                localStorage.removeItem('activa_location_permission_granted');
+              } catch (e) {}
+            } else {
+              setGateState('prompt');
+            }
+          };
+
+          handleStatusChange(status.state);
+
+          const listener = () => handleStatusChange(status.state);
+          if (status.addEventListener) {
+            status.addEventListener('change', listener);
+            listenerCleanups.push(() => status.removeEventListener('change', listener));
+          } else if ('onchange' in status) {
+            (status as any).onchange = listener;
+            listenerCleanups.push(() => {
+              (status as any).onchange = null;
+            });
+          }
+          return;
+        } catch (e) {
+          console.warn('[LOCATION TRACE] navigator.permissions.query failed:', e);
+        }
+      }
+
+      // Fallback for Safari / unsupported Permissions API
+      if (!isMounted) return;
+      let hasGrantedHint = false;
+      if (typeof window !== 'undefined') {
+        try {
+          hasGrantedHint = localStorage.getItem('activa_location_permission_granted') === 'true';
+        } catch (e) {}
+      }
+
+      if (hasGrantedHint) {
+        // Remain in 'checking' while verifying via getCurrentPosition
+        requestLocation({ interactive: false });
+      } else {
+        setGateState('prompt');
+      }
+    };
+
+    void initPermissionState();
+
+    return () => {
+      isMounted = false;
+      listenerCleanups.forEach(cleanup => cleanup());
+    };
+  }, [setGateState, requestLocation]);
 
   return (
     <LocationContext.Provider
       value={{
         gateState,
+        isLocating,
         position,
         cityName,
         isResolvingCity,
@@ -231,3 +332,4 @@ export function useLocation(): LocationContextValue {
   }
   return context;
 }
+

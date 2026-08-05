@@ -168,13 +168,13 @@ export default function Home() {
       };
     }
   }, [scrollTriggerId, isOpenRoomsMode]);
-  const { gateState, position, cityName: resolvedCityName, isResolvingCity, requestLocation } = useLocation();
+  const { gateState, isLocating, position, cityName: resolvedCityName, isResolvingCity, requestLocation } = useLocation();
   const userLocation = useMemo(() => {
     return position ? { lat: position.latitude, lng: position.longitude } : null;
   }, [position]);
   const defaultLocationLabel = language === 'de' ? "Aktueller Standort" : "Current location";
   const cityName = resolvedCityName || defaultLocationLabel;
-  const isLocationLoading = gateState === 'requesting';
+  const isLocationLoading = gateState === 'requesting' || gateState === 'checking' || isLocating;
 
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
@@ -1870,7 +1870,7 @@ export default function Home() {
               : 'Location permission is blocked or unavailable.'}
           </p>
           <Button 
-            onClick={requestLocation} 
+            onClick={() => requestLocation({ interactive: true })} 
             disabled={isLocationLoading}
             variant="outline" 
             className="h-9 px-4 rounded-xl font-bold text-xs active:scale-[0.985] transition-[color,background-color,border-color,transform,box-shadow] duration-200 animate-pulse"

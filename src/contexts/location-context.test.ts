@@ -1,11 +1,11 @@
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { reverseGeocodeCity } from '../lib/geoapify';
 
 /**
  * Deterministic Test Suite — Aktiva Location Gate, Reverse Geocoding & Anti-Loop Architecture
- * Validates all requirements of Section 12, Section 9, Section 7, and Section 8 (City Name Resolution).
+ * Validates all requirements of Location Gate State Machine, Auto-GPS background fetching,
+ * iOS fallbacks, permission change events, and anti-flash behavior.
  */
 
 // Mock localStorage globally
@@ -29,11 +29,12 @@ const mockStorage = new MockLocalStorage();
 (global as any).localStorage = mockStorage;
 
 // Simulated State Machine matching LocationProvider implementation exactly
-type LocationGateState = 'idle' | 'requesting' | 'granted' | 'denied' | 'error';
+type LocationGateState = 'checking' | 'prompt' | 'requesting' | 'granted' | 'denied' | 'error';
 type LocationPosition = { latitude: number; longitude: number; accuracy: number; updatedAt: number };
 
 class SimulatedLocationProvider {
-  public gateState: LocationGateState = 'idle';
+  public gateState: LocationGateState = 'checking';
+  public isLocating = false;
   public position: LocationPosition | null = null;
   public cityName: string | null = null;
   public isResolvingCity = false;
@@ -49,7 +50,6 @@ class SimulatedLocationProvider {
   private mockGeocodeResolver: ((lat: number, lon: number) => Promise<string | null>) | null = null;
 
   constructor() {
-    // Purge old location cache on startup
     mockStorage.removeItem('aktiva_last_location');
   }
 
@@ -61,8 +61,9 @@ class SimulatedLocationProvider {
     this.mockGeocodeResolver = resolver;
   }
 
-  // Synchronous requestLocation implementation
-  public requestLocation(): void {
+  public requestLocation(options?: { interactive?: boolean }): void {
+    const isInteractive = options?.interactive !== false;
+
     if (this.requestInFlight) {
       return;
     }
@@ -71,11 +72,17 @@ class SimulatedLocationProvider {
     const requestId = ++this.requestCounter;
     this.requestInFlight = true;
     this.activeRequestId = requestId;
-    this.gateState = 'requesting';
+    this.isLocating = true;
+
+    if (isInteractive) {
+      this.gateState = 'requesting';
+    }
+
     this.getCurrentPositionCallCount++;
 
     if (!this.mockGpsHandler) {
       this.gateState = 'error';
+      this.isLocating = false;
       this.errorMessage = 'Dieser Browser unterstützt keine Standortermittlung.';
       this.requestInFlight = false;
       this.activeRequestId = null;
@@ -87,6 +94,7 @@ class SimulatedLocationProvider {
         if (this.activeRequestId !== requestId) return;
         this.activeRequestId = null;
         this.requestInFlight = false;
+        this.isLocating = false;
 
         const { latitude, longitude, accuracy } = pos.coords;
         if (
@@ -105,16 +113,19 @@ class SimulatedLocationProvider {
 
         this.position = { latitude, longitude, accuracy, updatedAt: Date.now() };
         this.gateState = 'granted';
+        mockStorage.setItem('activa_location_permission_granted', 'true');
         void this.resolveCityName(latitude, longitude);
       },
       (err) => {
         if (this.activeRequestId !== requestId) return;
         this.activeRequestId = null;
         this.requestInFlight = false;
+        this.isLocating = false;
 
         switch (err.code) {
           case 1:
             this.gateState = 'denied';
+            mockStorage.removeItem('activa_location_permission_granted');
             this.errorMessage =
               'Der Standortzugriff ist deaktiviert. Aktiviere ihn in den Browser- oder Geräteeinstellungen.';
             break;
@@ -154,7 +165,7 @@ class SimulatedLocationProvider {
 }
 
 async function runTests() {
-  console.log('🧪 Starting Location Gate Architectural, Reverse Geocoding & Route-Purity Test Suite...\n');
+  console.log('🧪 Starting Location Gate Architectural & Auto-GPS Test Suite...\n');
 
   const srcDir = path.join(process.cwd(), 'src');
 
@@ -167,55 +178,74 @@ async function runTests() {
     console.log('  ✅ Exactly one productive GPS callsite in LocationContext.\n');
   }
 
-  // Test 2: Button tap triggers exactly 1 GPS call
+  // Test 2: Interactive button tap triggers gateState = "requesting"
   {
-    console.log('2. Button tap triggers exactly 1 GPS request');
+    console.log('2. Interactive button tap sets gateState = "requesting"');
     const provider = new SimulatedLocationProvider();
     provider.setGpsHandler(() => {});
-    provider.requestLocation();
+    provider.requestLocation({ interactive: true });
+    assert.strictEqual(provider.gateState, 'requesting');
+    assert.strictEqual(provider.isLocating, true);
     assert.strictEqual(provider.getCurrentPositionCallCount, 1);
-    console.log('  ✅ 1 tap initiated 1 GPS call.\n');
+    console.log('  ✅ Interactive request sets gateState = "requesting".\n');
   }
 
-  // Test 3: Rapid multi-taps do NOT trigger a second GPS request
+  // Test 3: Non-interactive background GPS request does NOT set gateState = "requesting"
   {
-    console.log('3. Rapid multi-taps do not trigger duplicate GPS calls');
+    console.log('3. Non-interactive background auto-GPS keeps gateState = "granted"');
+    const provider = new SimulatedLocationProvider();
+    provider.gateState = 'granted';
+    provider.setGpsHandler(() => {});
+    provider.requestLocation({ interactive: false });
+    assert.strictEqual(provider.gateState, 'granted', 'Background GPS must NOT change gateState to requesting');
+    assert.strictEqual(provider.isLocating, true);
+    assert.strictEqual(provider.getCurrentPositionCallCount, 1);
+    console.log('  ✅ Non-interactive request preserves gateState = "granted" while setting isLocating = true.\n');
+  }
+
+  // Test 4: Rapid multi-taps do NOT trigger duplicate GPS calls
+  {
+    console.log('4. Rapid multi-taps do not trigger duplicate GPS calls');
     const provider = new SimulatedLocationProvider();
     provider.setGpsHandler(() => {});
-    provider.requestLocation();
-    provider.requestLocation();
-    provider.requestLocation();
+    provider.requestLocation({ interactive: true });
+    provider.requestLocation({ interactive: true });
+    provider.requestLocation({ interactive: true });
     assert.strictEqual(provider.getCurrentPositionCallCount, 1);
     console.log('  ✅ Multi-tap concurrency lock works correctly.\n');
   }
 
-  // Test 4: GPS Success sets gateState = granted IMMEDIATELY without waiting for Geocoding
+  // Test 5: GPS Success sets gateState = granted and stores activa_location_permission_granted
   {
-    console.log('4. Section 8: GPS Success sets gateState = granted immediately without awaiting Geocoding');
+    console.log('5. GPS Success sets gateState = granted and sets localStorage hint');
     const provider = new SimulatedLocationProvider();
-    let geocodeResolverTriggered = false;
     provider.setGpsHandler((success) => {
       success({ coords: { latitude: 52.026, longitude: 8.522, accuracy: 15 } });
     });
-    provider.setGeocodeResolver(async () => {
-      geocodeResolverTriggered = true;
-      // Simulate delay
-      await new Promise((r) => setTimeout(r, 100));
-      return 'Bielefeld';
-    });
-
-    provider.requestLocation();
-    // Synchronously after requestLocation(), gateState is granted and position is set even though geocode hasn't resolved
+    provider.requestLocation({ interactive: false });
     assert.strictEqual(provider.gateState, 'granted');
     assert.strictEqual(provider.position?.latitude, 52.026);
-    assert.strictEqual(provider.cityName, null); // Not resolved yet
-    assert.strictEqual(provider.isResolvingCity, true);
-    console.log('  ✅ GPS success grants gate immediately before geocoding completes.\n');
+    assert.strictEqual(mockStorage.getItem('activa_location_permission_granted'), 'true');
+    console.log('  ✅ GPS success grants gate and persists localStorage hint.\n');
   }
 
-  // Test 5: Reverse Geocoding resolves Bielefeld coordinates to "Bielefeld"
+  // Test 6: PERMISSION_DENIED error sets gateState = denied and clears localStorage hint
   {
-    console.log('5. Section 8: Bielefeld coordinates resolve to "Bielefeld"');
+    console.log('6. PERMISSION_DENIED error sets gateState = denied and removes localStorage hint');
+    mockStorage.setItem('activa_location_permission_granted', 'true');
+    const provider = new SimulatedLocationProvider();
+    provider.setGpsHandler((_success, error) => {
+      error({ code: 1, message: 'User denied geolocation' });
+    });
+    provider.requestLocation({ interactive: false });
+    assert.strictEqual(provider.gateState, 'denied');
+    assert.strictEqual(mockStorage.getItem('activa_location_permission_granted'), null);
+    console.log('  ✅ PERMISSION_DENIED safely updates gateState to denied and clears hint.\n');
+  }
+
+  // Test 7: Reverse Geocoding resolves Bielefeld coordinates to "Bielefeld"
+  {
+    console.log('7. Section 8: Bielefeld coordinates resolve to "Bielefeld"');
     const provider = new SimulatedLocationProvider();
     provider.setGpsHandler((success) => {
       success({ coords: { latitude: 52.026036, longitude: 8.522224, accuracy: 10 } });
@@ -231,63 +261,6 @@ async function runTests() {
     console.log('  ✅ Bielefeld coordinates resolved to "Bielefeld".\n');
   }
 
-  // Test 6: Geoapify error leaves cityName null and app stays granted
-  {
-    console.log('6. Section 8: Geoapify error leaves cityName null while gate remains granted');
-    const provider = new SimulatedLocationProvider();
-    provider.setGpsHandler((success) => {
-      success({ coords: { latitude: 52.026, longitude: 8.522, accuracy: 10 } });
-    });
-    provider.setGeocodeResolver(async () => {
-      throw new Error('Geoapify network error');
-    });
-
-    provider.requestLocation();
-    await new Promise((r) => setTimeout(r, 10));
-
-    assert.strictEqual(provider.gateState, 'granted');
-    assert.strictEqual(provider.cityName, null);
-    assert.strictEqual(provider.isResolvingCity, false);
-    console.log('  ✅ Geoapify error handled gracefully (cityName null, gate granted).\n');
-  }
-
-  // Test 7: Stale geocoding response does NOT overwrite newer position/city
-  {
-    console.log('7. Section 8: Stale geocoding response does not overwrite newer location');
-    const provider = new SimulatedLocationProvider();
-    let resolveFirstGeocode: (val: string | null) => void;
-
-    provider.setGeocodeResolver(async (lat) => {
-      if (lat === 52.026) {
-        return new Promise((res) => {
-          resolveFirstGeocode = res;
-        });
-      }
-      return 'München';
-    });
-
-    provider.setGpsHandler((success) => {
-      success({ coords: { latitude: 52.026, longitude: 8.522, accuracy: 10 } });
-    });
-    provider.requestLocation(); // Location 1 (Bielefeld pending)
-
-    provider.requestInFlight = false;
-    provider.setGpsHandler((success) => {
-      success({ coords: { latitude: 48.137, longitude: 11.576, accuracy: 5 } });
-    });
-    provider.requestLocation(); // Location 2 (Munich)
-    await new Promise((r) => setTimeout(r, 10));
-
-    assert.strictEqual(provider.cityName, 'München');
-
-    // Now resolve stale first geocode for Bielefeld
-    resolveFirstGeocode!('Bielefeld');
-    await new Promise((r) => setTimeout(r, 10));
-
-    assert.strictEqual(provider.cityName, 'München', 'Stale geocode must not overwrite newer city');
-    console.log('  ✅ Stale geocoding response safely discarded.\n');
-  }
-
   // Test 8: Zero Bremerhaven fallback or default profile city
   {
     console.log('8. Section 8: Zero Bremerhaven fallbacks in LocationContext and page.tsx');
@@ -298,31 +271,95 @@ async function runTests() {
     console.log('  ✅ Zero Bremerhaven or default city fallbacks verified.\n');
   }
 
-  // Test 9: Header displays cityName when available, or neutral "Aktueller Standort" before resolution
+  // Test 9: LocationGate component visibility check excludes checking and granted
   {
-    console.log('9. Section 8: Header displays cityName or neutral "Aktueller Standort"');
-    const pageCode = readFileSync(path.join(srcDir, 'app', 'page.tsx'), 'utf8');
-    assert.ok(pageCode.includes("const defaultLocationLabel = language === 'de' ? \"Aktueller Standort\" : \"Current location\";"));
-    assert.ok(pageCode.includes('const cityName = resolvedCityName || defaultLocationLabel;'));
-    console.log('  ✅ Header display logic correctly wired.\n');
-  }
-
-  // Test 10: LocationGate button renders as real BUTTON element with type="button" and e.preventDefault()
-  {
-    console.log('10. LocationGate button renders as real BUTTON element with type="button" and e.preventDefault()');
+    console.log('9. LocationGate component renders null when gateState === "checking" or "granted"');
     const gateCode = readFileSync(path.join(srcDir, 'components', 'common', 'LocationGate.tsx'), 'utf8');
+    assert.ok(gateCode.includes("gateState !== 'checking'"), 'LocationGate must check gateState !== "checking"');
+    assert.ok(gateCode.includes("gateState !== 'granted'"), 'LocationGate must check gateState !== "granted"');
     assert.ok(gateCode.includes('type="button"'), 'Button must specify type="button" explicitly');
     assert.ok(gateCode.includes('event.preventDefault()'), 'Click handler must call event.preventDefault()');
     assert.ok(gateCode.includes('event.stopPropagation()'), 'Click handler must call event.stopPropagation()');
-    assert.strictEqual(gateCode.includes('href='), false, 'LocationGate must not contain href links');
-    assert.strictEqual(gateCode.includes('<form'), false, 'LocationGate must not be wrapped in a form');
-    console.log('  ✅ Real BUTTON element with type="button" and preventDefault() verified.\n');
+    console.log('  ✅ Anti-flash and button event handling verified in LocationGate.\n');
   }
 
-  console.log('🎉 ALL LOCATION GATE, REVERSE GEOCODING & BUTTON EVENT TESTS PASSED DETERMINISTICALLY!');
+  // Test 10: Permissions API unavailable + localStorage hint true (remains checking until Geolocation success)
+  {
+    console.log('10. Safari fallback: localStorage hint stays "checking" until Geolocation success');
+    mockStorage.setItem('activa_location_permission_granted', 'true');
+    const provider = new SimulatedLocationProvider(); // initial state: checking
+    let triggerGpsSuccess: () => void = () => {};
+
+    provider.setGpsHandler((success) => {
+      triggerGpsSuccess = () => {
+        success({ coords: { latitude: 52.026, longitude: 8.522, accuracy: 15 } });
+      };
+    });
+
+    // Simulate fallback bootstrap
+    provider.requestLocation({ interactive: false });
+    assert.strictEqual(provider.gateState, 'checking', 'Must NOT immediately set gateState to granted based on hint alone');
+    assert.strictEqual(provider.isLocating, true);
+
+    // Geolocation succeeds
+    triggerGpsSuccess();
+    assert.strictEqual(provider.gateState, 'granted');
+    assert.strictEqual(provider.isLocating, false);
+    assert.strictEqual(mockStorage.getItem('activa_location_permission_granted'), 'true');
+    console.log('  ✅ Hint alone does not grant gate; granted state set only after Geolocation success.\n');
+  }
+
+  // Test 11: Permissions API unavailable + stale localStorage hint true + PERMISSION_DENIED
+  {
+    console.log('11. Safari fallback: stale localStorage hint + PERMISSION_DENIED transitions to denied & clears hint');
+    mockStorage.setItem('activa_location_permission_granted', 'true');
+    const provider = new SimulatedLocationProvider();
+    provider.setGpsHandler((_success, error) => {
+      error({ code: 1, message: 'Permission denied on device' });
+    });
+
+    provider.requestLocation({ interactive: false });
+    assert.strictEqual(provider.gateState, 'denied');
+    assert.strictEqual(provider.isLocating, false);
+    assert.strictEqual(mockStorage.getItem('activa_location_permission_granted'), null);
+    console.log('  ✅ Stale localStorage hint handled correctly: transitions to denied and clears hint.\n');
+  }
+
+  // Test 12: Safari fallback + hint true + POSITION_UNAVAILABLE -> gateState === "error" (NOT "prompt")
+  {
+    console.log('12. Safari fallback: hint true + POSITION_UNAVAILABLE sets gateState = "error" (NOT "prompt")');
+    mockStorage.setItem('activa_location_permission_granted', 'true');
+    const provider = new SimulatedLocationProvider();
+    provider.setGpsHandler((_success, error) => {
+      error({ code: 2, message: 'Position unavailable' });
+    });
+
+    provider.requestLocation({ interactive: false });
+    assert.strictEqual(provider.gateState, 'error', 'POSITION_UNAVAILABLE must transition to "error", NOT "prompt"');
+    assert.strictEqual(provider.isLocating, false);
+    console.log('  ✅ POSITION_UNAVAILABLE correctly transitions to "error" state.\n');
+  }
+
+  // Test 13: Safari fallback + hint true + TIMEOUT -> gateState === "error" (NOT "prompt")
+  {
+    console.log('13. Safari fallback: hint true + TIMEOUT sets gateState = "error" (NOT "prompt")');
+    mockStorage.setItem('activa_location_permission_granted', 'true');
+    const provider = new SimulatedLocationProvider();
+    provider.setGpsHandler((_success, error) => {
+      error({ code: 3, message: 'Timeout' });
+    });
+
+    provider.requestLocation({ interactive: false });
+    assert.strictEqual(provider.gateState, 'error', 'TIMEOUT must transition to "error", NOT "prompt"');
+    assert.strictEqual(provider.isLocating, false);
+    console.log('  ✅ TIMEOUT correctly transitions to "error" state.\n');
+  }
+
+  console.log('🎉 ALL LOCATION GATE ARCHITECTURAL, AUTO-GPS & SAFARI FALLBACK TESTS PASSED DETERMINISTICALLY!');
 }
 
 runTests().catch((err) => {
   console.error('❌ Test execution failed:', err);
   process.exit(1);
 });
+

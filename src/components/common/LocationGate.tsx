@@ -56,7 +56,7 @@ export function LocationGate({ children }: { children?: ReactNode }) {
       console.log(`[LOCATION BUTTON] window.scrollY before=${window.scrollY}`);
     }
 
-    requestLocation();
+    requestLocation({ interactive: true });
 
     if (typeof window !== 'undefined') {
       console.log(`[LOCATION BUTTON] window.location.href after=${window.location.href}`);
@@ -64,13 +64,15 @@ export function LocationGate({ children }: { children?: ReactNode }) {
     }
   };
 
+  const shouldShowGate = !isPublicRoute && gateState !== 'granted' && gateState !== 'checking';
+
   return (
     <>
       {/* App content is rendered permanently underneath */}
       {children}
 
       {/* Root Fixed Overlay: rendered purely based on gateState without Remount or CSS entry animations */}
-      {!isPublicRoute && gateState !== 'granted' && (
+      {shouldShowGate && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
           <div className="w-full max-w-md overflow-hidden bg-white dark:bg-neutral-900 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-neutral-800 my-auto">
             {/* Header Header */}
