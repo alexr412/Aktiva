@@ -504,7 +504,7 @@ export async function createActivity({
   
   const usernameToUse = userProfileData?.username || null;
   const userProfileLang = userProfileData?.language || 'de';
-  const usernameFormatted = usernameToUse ? `@${usernameToUse.replace(/^@/, '')}` : (userProfileLang === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
+  const usernameFormatted = usernameToUse ? `@${usernameToUse.replace(/^@/, '')}` : (userProfileLang === 'de' ? 'Activa-Nutzer' : 'Activa user');
   const displayNameToUse = usernameFormatted;
   const photoURLToUse = userProfileData?.photoURL ?? null;
   
@@ -932,7 +932,7 @@ export async function joinActivity(
       const userProfileData = userDoc.data() as UserProfile | undefined;
       const userLanguage = userProfileData?.language || 'de';
       const usernameToUse = userProfileData?.username || null;
-      const usernameFormatted = usernameToUse ? `@${usernameToUse.replace(/^@/, '')}` : (userLanguage === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
+      const usernameFormatted = usernameToUse ? `@${usernameToUse.replace(/^@/, '')}` : (userLanguage === 'de' ? 'Activa-Nutzer' : 'Activa user');
       const displayNameToUse = usernameFormatted;
       const photoURLToUse = userProfileData?.photoURL ?? null;
       

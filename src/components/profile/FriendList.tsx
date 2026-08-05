@@ -157,7 +157,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
                       <div className="flex items-center gap-1 text-slate-400 overflow-hidden w-full justify-center">
                         <MapPin className="h-2.5 w-2.5 shrink-0 opacity-40" />
                         <span className="text-[10px] font-bold opacity-70 truncate max-w-[80px]">
-                          {friend.location?.split(',')[0] || "Aktiva"}
+                          {friend.location?.split(',')[0] || "Activa"}
                         </span>
                       </div>
                     </div>

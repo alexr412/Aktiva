@@ -139,13 +139,13 @@ export async function handleSuccessfulSocialLogin(options: {
   const { user, router, language, toast, setSocialLegalConsentPending, setIsLoading, redirectTarget } = options;
 
   if (typeof window !== 'undefined') {
-    if ((window as any).__AKTIVA_LOGIN_PROCESSING__) {
+    if ((window as any).__ACTIVA_LOGIN_PROCESSING__) {
       if (process.env.NODE_ENV !== 'production') {
         console.warn("[LEGAL DEBUG] handleSuccessfulSocialLogin already processing/processed, skipping duplicate run.");
       }
       return;
     }
-    (window as any).__AKTIVA_LOGIN_PROCESSING__ = true;
+    (window as any).__ACTIVA_LOGIN_PROCESSING__ = true;
   }
 
   if (process.env.NODE_ENV !== 'production') {
@@ -181,7 +181,7 @@ export async function handleSuccessfulSocialLogin(options: {
     setSocialLegalConsentPending(true);
     setIsLoading?.(false);
     if (typeof window !== 'undefined') {
-      (window as any).__AKTIVA_LOGIN_PROCESSING__ = false;
+      (window as any).__ACTIVA_LOGIN_PROCESSING__ = false;
     }
     return;
   }
@@ -231,7 +231,7 @@ export async function handleSuccessfulSocialLogin(options: {
     });
     setIsLoading?.(false);
     if (typeof window !== 'undefined') {
-      (window as any).__AKTIVA_LOGIN_PROCESSING__ = false;
+      (window as any).__ACTIVA_LOGIN_PROCESSING__ = false;
     }
     return;
   }

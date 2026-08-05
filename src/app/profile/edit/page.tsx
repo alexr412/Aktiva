@@ -15,7 +15,7 @@ import type { UserProfile } from '@/lib/types';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/image-utils';
 import { UserPreferenceSlider } from '@/components/profile/user-preference-slider';
-import { availableTabs } from '@/components/aktiva/category-filters-data';
+import { availableTabs } from '@/components/activa/category-filters-data';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

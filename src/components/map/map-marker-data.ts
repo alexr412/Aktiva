@@ -575,7 +575,7 @@ export function createPlacePopupHTML(
       </div>
     </div>
   `;
-  const containerClass = 'aktiva-place-card relative overflow-hidden rounded-[22px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md border border-emerald-500/30 dark:border-emerald-600/30 shadow-2xl flex flex-col w-[250px] sm:w-[270px] cursor-pointer group transition-all hover:border-emerald-400/60';
+  const containerClass = 'activa-place-card aktiva-place-card relative overflow-hidden rounded-[22px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md border border-emerald-500/30 dark:border-emerald-600/30 shadow-2xl flex flex-col w-[250px] sm:w-[270px] cursor-pointer group transition-all hover:border-emerald-400/60';
   const container = createSafeElement('div', containerClass, htmlContent);
 
   return {
@@ -660,7 +660,7 @@ export function createActivityPopupHTML(
     </div>
   `;
 
-  const containerClass = 'aktiva-activity-card relative overflow-hidden rounded-[22px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md border border-purple-500/30 dark:border-purple-600/30 shadow-2xl flex flex-col w-[250px] sm:w-[270px] cursor-pointer group transition-all hover:border-purple-400/60';
+  const containerClass = 'activa-activity-card aktiva-activity-card relative overflow-hidden rounded-[22px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md border border-purple-500/30 dark:border-purple-600/30 shadow-2xl flex flex-col w-[250px] sm:w-[270px] cursor-pointer group transition-all hover:border-purple-400/60';
   const container = createSafeElement('div', containerClass, htmlContent);
 
   return {
@@ -730,7 +730,7 @@ export function createFriendPopupHTML(
     </button>
   `;
 
-  const containerClass = 'aktiva-friend-card relative overflow-hidden p-4 rounded-[22px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md border border-slate-200/80 dark:border-neutral-700/80 shadow-2xl flex flex-col items-center text-center w-[230px] sm:w-[245px] cursor-pointer group transition-all hover:border-blue-400/50';
+  const containerClass = 'activa-friend-card aktiva-friend-card relative overflow-hidden p-4 rounded-[22px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md border border-slate-200/80 dark:border-neutral-700/80 shadow-2xl flex flex-col items-center text-center w-[230px] sm:w-[245px] cursor-pointer group transition-all hover:border-blue-400/50';
   const container = createSafeElement('div', containerClass, htmlContent);
 
   return {

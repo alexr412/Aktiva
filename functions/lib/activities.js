@@ -516,7 +516,7 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                 }
                 const userLanguage = userProfile.language || 'de';
                 const userUsername = userProfile.username || null;
-                const usernameFormatted = userUsername ? `@${userUsername.replace(/^@/, '')}` : (userLanguage === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
+                const usernameFormatted = userUsername ? `@${userUsername.replace(/^@/, '')}` : (userLanguage === 'de' ? 'Activa-Nutzer' : 'Activa user');
                 const displayNameToUse = usernameFormatted;
                 const photoURLToUse = userProfile.photoURL || null;
                 // Update activity
@@ -705,7 +705,7 @@ exports.secureRequestJoinActivity = (0, https_1.onCall)(async (request) => {
                 }
             }
             const requesterUsername = requesterData.username || null;
-            const usernameFormatted = requesterUsername ? `@${requesterUsername.replace(/^@/, '')}` : 'Aktiva-Nutzer';
+            const usernameFormatted = requesterUsername ? `@${requesterUsername.replace(/^@/, '')}` : 'Activa-Nutzer';
             const photoURLToUse = requesterData.photoURL || null;
             transaction.set(notificationRef, {
                 recipientId: hostId,

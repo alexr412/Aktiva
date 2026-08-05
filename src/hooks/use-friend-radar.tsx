@@ -168,10 +168,12 @@ export interface VersionedNotificationStorage {
   global: GlobalNotificationState;
 }
 
+import { getMigratedItem, setMigratedItem, removeMigratedItem } from '@/lib/storage-migration';
+
 const RADAR_NOTIFICATION_STORAGE_VERSION = 'v1.0';
 
 function getStorageKey(userId: string): string {
-  return `aktiva_radar_notifications_${userId}`;
+  return `activa_radar_notifications_${userId}`;
 }
 
 export function readNotificationStorage(userId: string): VersionedNotificationStorage {
@@ -191,7 +193,7 @@ export function readNotificationStorage(userId: string): VersionedNotificationSt
   if (typeof window === 'undefined') return defaultState;
 
   try {
-    const raw = localStorage.getItem(getStorageKey(userId));
+    const raw = getMigratedItem(getStorageKey(userId), `aktiva_radar_notifications_${userId}`);
     if (!raw) return defaultState;
 
     const parsed = JSON.parse(raw);
@@ -251,7 +253,7 @@ export function readNotificationStorage(userId: string): VersionedNotificationSt
 export function writeNotificationStorage(userId: string, data: VersionedNotificationStorage): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    localStorage.setItem(getStorageKey(userId), JSON.stringify(data));
+    setMigratedItem(getStorageKey(userId), `aktiva_radar_notifications_${userId}`, JSON.stringify(data));
     return true;
   } catch (err) {
     console.error('Failed to write radar notification storage:', err);
@@ -616,7 +618,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
   const isCrossTabLocked = useCallback((uid: string) => {
     if (typeof window === 'undefined') return false;
     try {
-      const lock = localStorage.getItem('aktiva_radar_fetch_lock');
+      const lock = getMigratedItem('activa_radar_fetch_lock', 'aktiva_radar_fetch_lock');
       if (lock) {
         const { uid: lockUid, timestamp } = JSON.parse(lock);
         if (lockUid === uid && Date.now() - timestamp < 30000) {
@@ -630,7 +632,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
   const acquireCrossTabLock = useCallback((uid: string) => {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem('aktiva_radar_fetch_lock', JSON.stringify({ uid, timestamp: Date.now() }));
+      setMigratedItem('activa_radar_fetch_lock', 'aktiva_radar_fetch_lock', JSON.stringify({ uid, timestamp: Date.now() }));
     } catch (e) {}
   }, []);
 
@@ -1083,7 +1085,7 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
       nextAllowedFetchMsRef.current = 0;
       lastLocationFetchedRef.current = null;
       isFetchingRef.current = false;
-      try { localStorage.removeItem('aktiva_radar_fetch_lock'); } catch (e) {}
+      try { removeMigratedItem('activa_radar_fetch_lock', 'aktiva_radar_fetch_lock'); } catch (e) {}
     }
   }, [user?.uid]);
 

@@ -67,12 +67,12 @@ async function getActivityRest(activityId: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { activityId } = await params;
-  if (!activityId) return { title: 'Aktivität Einladung | Aktiva' };
+  if (!activityId) return { title: 'Aktivität Einladung | Activa' };
 
   try {
     const activity = await getActivityRest(activityId);
     if (!activity || activity.status === 'blacklisted') {
-      return { title: 'Aktivität nicht gefunden | Aktiva' };
+      return { title: 'Aktivität nicht gefunden | Activa' };
     }
 
     const isCancelled = activity.status === 'cancelled';
@@ -103,7 +103,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (isCancelled) statusPrefix = '[Abgesagt] ';
     else if (isCompleted) statusPrefix = '[Beendet] ';
 
-    const activityTitle = `${statusPrefix}${activity.title || 'Treffen'} | Aktiva`;
+    const activityTitle = `${statusPrefix}${activity.title || 'Treffen'} | Activa`;
 
     const spotsLeft = (activity.maxParticipants || 0) - (activity.participantIds?.length || 0);
     const spotsStr = activity.maxParticipants ? `${spotsLeft} von ${activity.maxParticipants} Plätzen frei` : 'Plätze frei';
@@ -125,9 +125,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       dateDisplayStr = 'Zeitlich flexibel';
     }
 
-    const activityDescription = `${dateDisplayStr} · ${activity.placeName || 'Ort'} · ${spotsStr} · Beitreten über Aktiva`;
+    const activityDescription = `${dateDisplayStr} · ${activity.placeName || 'Ort'} · ${spotsStr} · Beitreten über Activa`;
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://aktiva-six.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://activa-444220.web.app';
     const inviteUrl = `${baseUrl}/activities/${activityId}/invite`;
     const imageUrl = `${baseUrl}/api/og/activity/${activityId}`;
 
@@ -140,7 +140,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
       openGraph: {
         type: 'website',
-        siteName: 'Aktiva',
+        siteName: 'Activa',
         locale: 'de_DE',
         url: inviteUrl,
         title: activityTitle,
@@ -152,7 +152,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             width: 1200,
             height: 630,
             type: 'image/png',
-            alt: `${activityTitle} – Einladung über Aktiva`,
+            alt: `${activityTitle} – Einladung über Activa`,
           },
         ],
       },
@@ -164,7 +164,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     };
   } catch (err) {
-    return { title: 'Aktivität Einladung | Aktiva' };
+    return { title: 'Aktivität Einladung | Activa' };
   }
 }
 
@@ -257,7 +257,7 @@ export default async function ActivityInvitePage({ params, searchParams }: Props
             <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-violet-500 to-indigo-600 flex items-center justify-center shadow-md shadow-violet-500/20">
               <span className="text-white font-black text-sm">A</span>
             </div>
-            <span className="font-black text-base tracking-widest text-white">AKTIVA</span>
+            <span className="font-black text-base tracking-widest text-white">ACTIVA</span>
           </div>
           <span className="text-[10px] font-black uppercase tracking-widest text-violet-400 bg-violet-500/10 px-3 py-1 rounded-full border border-violet-500/20">
             Einladung
@@ -348,7 +348,7 @@ export default async function ActivityInvitePage({ params, searchParams }: Props
           {/* Host Profile Info */}
           {(() => {
             const hostUsernameRaw = activity.hostUsername || null;
-            const hostUsernameFormatted = hostUsernameRaw ? `@${hostUsernameRaw.replace(/^@/, '')}` : "Aktiva-Nutzer";
+            const hostUsernameFormatted = hostUsernameRaw ? `@${hostUsernameRaw.replace(/^@/, '')}` : "Activa-Nutzer";
             return (
               <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl mt-2">
                 {activity.hostPhotoURL ? (
@@ -376,7 +376,7 @@ export default async function ActivityInvitePage({ params, searchParams }: Props
               disabled={isCancelled}
               className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-400 text-white rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 active:scale-[0.98] transition-all outline-none"
             >
-              <span>{isCompleted ? 'Aktivität ansehen' : 'Beitreten über Aktiva'}</span>
+              <span>{isCompleted ? 'Aktivität ansehen' : 'Beitreten über Activa'}</span>
               <ArrowRight className="h-5 w-5" />
             </button>
           </Link>

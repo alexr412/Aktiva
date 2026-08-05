@@ -324,7 +324,7 @@ export default function SettingsPage() {
                         <div className="space-y-2">
                             <button onClick={() => window.open('https://paypal.me/aktiva', '_blank')} className="flex w-full items-center justify-between rounded-lg border-2 border-red-500/20 bg-red-500/5 p-4 text-left transition-colors hover:bg-red-500/10">
                                 <div>
-                                    <p className="font-bold text-red-600">{language === 'de' ? 'Unterstütze Aktiva' : 'Support Aktiva'}</p>
+                                    <p className="font-bold text-red-600">{language === 'de' ? 'Unterstütze Activa' : 'Support Activa'}</p>
                                     <p className="text-sm text-red-600/70">{language === 'de' ? 'Spende einen kleinen Betrag & erhalte das Supporter-Badge.' : 'Donate a small amount & get the supporter badge.'}</p>
                                 </div>
                                 <ChevronRight className="h-5 w-5 text-red-500" />

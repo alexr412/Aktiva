@@ -92,12 +92,12 @@ export function LocationGate({ children }: { children?: ReactNode }) {
             <div className="p-6 md:p-8 text-center space-y-6">
               <div className="space-y-2">
                 <h1 className="text-2xl font-black text-slate-900 dark:text-neutral-100 tracking-tight leading-tight">
-                  {isDenied ? 'Standortzugriff erforderlich' : 'Aktiva benötigt deinen Standort'}
+                  {isDenied ? 'Standortzugriff erforderlich' : 'Activa benötigt deinen Standort'}
                 </h1>
                 <p className="text-slate-500 dark:text-neutral-400 font-medium text-sm leading-relaxed">
                   {isDenied
                     ? 'Der Standortzugriff ist deaktiviert. Aktiviere ihn in den Browser- oder Geräteeinstellungen und prüfe den Standort anschließend erneut.'
-                    : 'Aktiva zeigt dir Aktivitäten, Orte und Menschen in deiner Nähe. Dafür benötigen wir deinen aktuellen Standort.'}
+                    : 'Activa zeigt dir Aktivitäten, Orte und Menschen in deiner Nähe. Dafür benötigen wir deinen aktuellen Standort.'}
                 </p>
               </div>
 
@@ -116,15 +116,15 @@ export function LocationGate({ children }: { children?: ReactNode }) {
                         <li>Öffne Ortungsdienste.</li>
                         <li>Wähle Safari Websites oder Chrome.</li>
                         <li>Stelle den Zugriff auf „Beim Verwenden der App“.</li>
-                        <li>Kehre zu Aktiva zurück.</li>
+                        <li>Kehre zu Activa zurück.</li>
                         <li>Tippe auf „Standort prüfen“.</li>
                       </>
                     ) : (
                       <>
                         <li>Aktiviere die Standortdienste des Geräts.</li>
                         <li>Öffne die Website-Einstellungen des Browsers.</li>
-                        <li>Stelle den Standortzugriff für Aktiva auf „Zulassen“.</li>
-                        <li>Kehre zu Aktiva zurück.</li>
+                        <li>Stelle den Standortzugriff für Activa auf „Zulassen“.</li>
+                        <li>Kehre zu Activa zurück.</li>
                         <li>Tippe auf „Standort prüfen“.</li>
                       </>
                     )}

@@ -17,7 +17,7 @@ console.log(`[BACKFILL] Target project: ${projectIdArg}`);
 
 // Configure environment
 process.env.GCLOUD_PROJECT = projectIdArg;
-if (process.argv.includes('--emulator') || projectIdArg === 'aktiva-rules-test') {
+if (process.argv.includes('--emulator') || projectIdArg === 'activa-rules-test') {
   process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080';
   console.log(`[BACKFILL] Connecting to local emulator on 127.0.0.1:8080`);
 }

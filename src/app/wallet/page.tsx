@@ -539,8 +539,8 @@ export default function WalletPage() {
                                         </p>
                                         <p className="text-slate-400 text-xs mt-2 leading-relaxed">
                                             {language === 'de' 
-                                                ? 'Erstelle Aktivitäten oder nimm daran teil, um Aktiva Points zu erhalten!' 
-                                                : 'Create or join activities to earn Aktiva Points!'}
+                                                ? 'Erstelle Aktivitäten oder nimm daran teil, um Activa Points zu erhalten!' 
+                                                : 'Create or join activities to earn Activa Points!'}
                                         </p>
                                     </div>
                                 ) : (

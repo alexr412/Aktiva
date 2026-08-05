@@ -61,7 +61,7 @@ function testSetIntegrity() {
 
   // Spot-check expected entries
   const expectedEntries = [
-    'admin', 'aktiva', 'alex', 'hamburg', 'instagram', 'firebase',
+    'admin', 'aktiva', 'activa', 'alex', 'hamburg', 'instagram', 'firebase',
     'support', 'official', 'verified',
   ];
   for (const name of expectedEntries) {

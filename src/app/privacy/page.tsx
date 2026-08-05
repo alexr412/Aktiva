@@ -3,8 +3,8 @@ import { Shield } from 'lucide-react';
 import { LegalLayout } from '@/components/legal/LegalLayout';
 
 export const metadata: Metadata = {
-  title: 'Datenschutzerklärung - Aktiva',
-  description: 'Datenschutzerklärung und Informationen zur Datenverarbeitung für die Aktiva App.',
+  title: 'Datenschutzerklärung - Activa',
+  description: 'Datenschutzerklärung und Informationen zur Datenverarbeitung für die Activa App.',
 };
 
 export default function PrivacyPage() {
@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       versionText="Global Safety Standard • Stand 08.05.2026"
       icon={Shield}
     >
-      <p>Deine Privatsphäre ist unser höchstes Gut. Diese Erklärung informiert über die Verarbeitung personenbezogener Daten in der App Aktiva.</p>
+      <p>Deine Privatsphäre ist unser höchstes Gut. Diese Erklärung informiert über die Verarbeitung personenbezogener Daten in der App Activa.</p>
       
       <div className="space-y-4">
         <h3 className="text-slate-900 dark:text-white font-black uppercase text-sm tracking-wider">1. Verantwortlicher</h3>

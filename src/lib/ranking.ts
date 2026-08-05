@@ -1,7 +1,7 @@
 'use client';
 
 import { calculateDistance } from './geo-utils';
-import { availableTabs } from '../components/aktiva/category-filters-data';
+import { availableTabs } from '../components/activa/category-filters-data';
 import { debugLog } from './debug';
 
 // Dynamically derive categoryIdToQueries from availableTabs.

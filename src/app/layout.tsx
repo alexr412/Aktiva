@@ -18,13 +18,13 @@ import { ChatSyncProvider } from '@/contexts/chat-sync-context';
 import { FriendRadarProvider } from '@/hooks/use-friend-radar';
 
 export const metadata: Metadata = {
-  title: 'Aktiva',
+  title: 'Activa',
   description: 'Find interesting places near you.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Aktiva',
+    title: 'Activa',
   },
   formatDetection: {
     telephone: false,

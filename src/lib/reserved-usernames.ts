@@ -48,8 +48,8 @@ export const RESERVED_USERNAMES_RAW: string[] = [
   'plus', 'boost', 'booster',
 
   // Trust / abuse-sensitive
-  'police', 'interpol', 'government', 'officialsupport', 'aktivasupport',
-  'aktivateam', 'aktivaofficial', 'activaofficial', 'activaadmin', 'aktivaadmin',
+  'police', 'interpol', 'government', 'officialsupport', 'aktivasupport', 'activasupport',
+  'aktivateam', 'activateam', 'aktivaofficial', 'activaofficial', 'activaadmin', 'aktivaadmin',
 
   // Scam / abuse pattern
   'scam', 'scammer', 'spam', 'spammer', 'bots', 'hack', 'hacker', 'hacked',

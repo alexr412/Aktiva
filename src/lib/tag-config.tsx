@@ -571,8 +571,8 @@ export function getRoomVisualCategory({
  */
 const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => string); en: string | ((...args: any[]) => string) }> = {
   'pulse.eyebrow': {
-    de: 'AKTIVA PULSE',
-    en: 'AKTIVA PULSE'
+    de: 'ACTIVA PULSE',
+    en: 'ACTIVA PULSE'
   },
   'pulse.heading.near_you': {
     de: 'Was geht in deiner Nähe?',

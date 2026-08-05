@@ -83,7 +83,7 @@ export const sendChatMessage = onCall(async (request) => {
 
       const senderUsername = userData.username || null;
       const userLanguage = userData.language || 'de';
-      const usernameFormatted = senderUsername ? `@${senderUsername.replace(/^@/, '')}` : (userLanguage === 'en' ? 'Aktiva user' : 'Aktiva-Nutzer');
+      const usernameFormatted = senderUsername ? `@${senderUsername.replace(/^@/, '')}` : (userLanguage === 'en' ? 'Activa user' : 'Activa-Nutzer');
       const senderNameToUse = usernameFormatted;
 
       // 5. Create Message document
@@ -177,7 +177,7 @@ export const onChatUpdated = onDocumentUpdated({
   for (const uid of joinedUsers) {
     const details = after.participantDetails?.[uid] || {};
     const username = details.username || null;
-    const formattedName = username ? `@${username.replace(/^@/, '')}` : 'Aktiva-Nutzer';
+    const formattedName = username ? `@${username.replace(/^@/, '')}` : 'Activa-Nutzer';
     
     const msgRef = messagesRef.doc();
     batch.set(msgRef, {
@@ -205,7 +205,7 @@ export const onChatUpdated = onDocumentUpdated({
   for (const uid of leftUsers) {
     const details = before.participantDetails?.[uid] || {};
     const username = details.username || null;
-    const formattedName = username ? `@${username.replace(/^@/, '')}` : 'Aktiva-Nutzer';
+    const formattedName = username ? `@${username.replace(/^@/, '')}` : 'Activa-Nutzer';
 
     // Determine message text (check if user still exists in activity participants to differentiate leave vs remove)
     let text = `${formattedName} hat die Aktivität verlassen`;

@@ -54,7 +54,7 @@ export const syncUserProfileUpdates = onDocumentUpdated({
   const newUsername = after.username || null;
   const newPhotoURL = after.photoURL || null;
   const userLanguage = after.language || 'de';
-  const usernameFormatted = newUsername ? `@${newUsername.replace(/^@/, '')}` : (userLanguage === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
+  const usernameFormatted = newUsername ? `@${newUsername.replace(/^@/, '')}` : (userLanguage === 'de' ? 'Activa-Nutzer' : 'Activa user');
   const newName = usernameFormatted;
 
   // 0. Update publicProfiles projection
@@ -1576,7 +1576,7 @@ export const secureSendFriendRequest = onCall(async (request) => {
       });
 
       const senderUsername = fromUserProfile.username || null;
-      const usernameFormatted = senderUsername ? `@${senderUsername.replace(/^@/, '')}` : 'Aktiva-Nutzer';
+      const usernameFormatted = senderUsername ? `@${senderUsername.replace(/^@/, '')}` : 'Activa-Nutzer';
 
       // Write notification document with exact schema
       transaction.set(notificationRef, {

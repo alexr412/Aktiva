@@ -142,7 +142,7 @@ export function SaveToCollectionModal({ placeId, placeName, open, onOpenChange }
                   </div>
                   <div>
                     <p className="font-black text-xs text-slate-800 dark:text-neutral-200 uppercase tracking-tight flex items-center gap-1">
-                      Aktiva Premium
+                      Activa Premium
                     </p>
                     <p className="text-[10px] text-slate-500 dark:text-neutral-400 font-semibold mt-0.5">
                       {language === 'de' 

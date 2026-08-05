@@ -496,7 +496,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
               {renderedParticipantIds.map((uid) => {
                 const details = activity.participantDetails?.[uid];
                 const participantUsername = details?.username || (uid === activity.hostId ? activity.hostUsername : null) || null;
-                const displayName = participantUsername ? `@${participantUsername.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
+                const displayName = participantUsername ? `@${participantUsername.replace(/^@/, '')}` : (language === 'de' ? 'Activa-Nutzer' : 'Activa user');
                 const photoURL = details?.photoURL || (uid === activity.hostId ? activity.hostPhotoURL : null);
                 const isHostUser = uid === activity.hostId;
                 

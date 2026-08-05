@@ -363,7 +363,7 @@ function SignupPageContent() {
 
       toast({
         title: language === 'de' ? 'Erfolgreich eingeloggt' : 'Logged in successfully',
-        description: language === 'de' ? 'Willkommen zurück bei Aktiva!' : 'Welcome back to Aktiva!',
+        description: language === 'de' ? 'Willkommen zurück bei Activa!' : 'Welcome back to Activa!',
       });
 
       console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
@@ -485,7 +485,7 @@ function SignupPageContent() {
         >
           <div className="flex items-center justify-center gap-2 mb-10">
               <MapPin className="w-10 h-10 text-primary" />
-              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">aktiva<span className="text-primary">.</span></h1>
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">activa<span className="text-primary">.</span></h1>
           </div>
           
           <div className="mb-4">
@@ -809,7 +809,7 @@ function SignupPageContent() {
           open={isTermsDialogOpen}
           onOpenChange={setIsTermsDialogOpen}
           title={language === 'de' ? "AGB" : "AGB / Terms of Service"}
-          subtitle={language === 'de' ? "Vertragliche Grundlagen für die Nutzung von Aktiva." : "Contractual framework for using Aktiva."}
+          subtitle={language === 'de' ? "Vertragliche Grundlagen für die Nutzung von Activa." : "Contractual framework for using Activa."}
           icon={<FileText className="w-5 h-5 text-primary" />}
           closeText={language === 'de' ? "Schließen" : "Close"}
         >
@@ -821,7 +821,7 @@ function SignupPageContent() {
           open={isUseTermsDialogOpen}
           onOpenChange={setIsUseTermsDialogOpen}
           title={language === 'de' ? "Nutzungsbedingungen" : "Terms of Use"}
-          subtitle={language === 'de' ? "Regeln für ein sicheres und respektvolles Miteinander auf Aktiva." : "Rules for a safe and respectful community on Aktiva."}
+          subtitle={language === 'de' ? "Regeln für ein sicheres und respektvolles Miteinander auf Activa." : "Rules for a safe and respectful community on Activa."}
           icon={<FileText className="w-5 h-5 text-primary" />}
           closeText={language === 'de' ? "Schließen" : "Close"}
         >
@@ -833,7 +833,7 @@ function SignupPageContent() {
           open={isPrivacyDialogOpen}
           onOpenChange={setIsPrivacyDialogOpen}
           title={language === 'de' ? "Datenschutzerklärung" : "Datenschutzerklärung / Privacy Policy"}
-          subtitle={language === 'de' ? "Informationen darüber, wie Aktiva personenbezogene Daten verarbeitet." : "Information on how Aktiva processes personal data."}
+          subtitle={language === 'de' ? "Informationen darüber, wie Activa personenbezogene Daten verarbeitet." : "Information on how Activa processes personal data."}
           icon={<Shield className="w-5 h-5 text-primary" />}
           closeText={language === 'de' ? "Schließen" : "Close"}
         >

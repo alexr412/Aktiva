@@ -94,11 +94,12 @@ function LoginPageContent() {
     if (isDev && typeof window !== 'undefined') {
       import('firebase/auth').then(({ signInWithCustomToken }) => {
         import('@/lib/firebase/client').then(({ auth }) => {
-          (window as any).__AKTIVA_DEBUG_AUTH__ = {
-            signInWithCustomToken,
-            auth
+          (window as any).__ACTIVA_DEBUG_AUTH__ = {
+            state: { authLoading, userUid: user?.uid, isVerified: user?.emailVerified, profileLoaded: !!userProfile },
+            user,
+            userProfile,
           };
-          debugLog("auth", "Exposed __AKTIVA_DEBUG_AUTH__ on window");
+          debugLog("auth", "Exposed __ACTIVA_DEBUG_AUTH__ on window");
         });
       });
     }
@@ -507,7 +508,7 @@ function LoginPageContent() {
         >
           <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
               <MapPin className="w-9 h-9 sm:w-10 sm:h-10 text-primary" />
-              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">aktiva<span className="text-primary">.</span></h1>
+              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">activa<span className="text-primary">.</span></h1>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tighter text-slate-900 dark:text-neutral-100 font-heading leading-tight mb-2">EXPLORE MORE</h1>
           <p className="text-slate-500 font-black uppercase tracking-[0.2em] text-[10px]">Connect. Explore. Live.</p>

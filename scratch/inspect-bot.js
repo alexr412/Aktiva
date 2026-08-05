@@ -3,7 +3,7 @@ const https = require('https');
 function testBot(userAgent) {
   return new Promise((resolve) => {
     const options = {
-      hostname: 'aktiva-jod0jzalv-alexr412s-projects.vercel.app',
+      hostname: 'activa.app',
       port: 443,
       path: '/activities/FROS2L5HyZmAm640Pc1I/invite',
       method: 'GET',

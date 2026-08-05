@@ -3,8 +3,8 @@ import { Code, ExternalLink } from 'lucide-react';
 import { LegalLayout } from '@/components/legal/LegalLayout';
 
 export const metadata: Metadata = {
-  title: 'Open-Source-Lizenzen - Aktiva',
-  description: 'Informationen über Open-Source-Bibliotheken und Lizenzen, die in der Aktiva App verwendet werden.',
+  title: 'Open-Source-Lizenzen - Activa',
+  description: 'Informationen über Open-Source-Bibliotheken und Lizenzen, die in der Activa App verwendet werden.',
 };
 
 export default function LicensesPage() {
@@ -32,7 +32,7 @@ export default function LicensesPage() {
       icon={Code}
     >
       <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
-        Aktiva nutzt unter anderem folgende Bibliotheken. Vollständige Lizenztexte sind über die jeweiligen Links einsehbar.
+        Activa nutzt unter anderem folgende Bibliotheken. Vollständige Lizenztexte sind über die jeweiligen Links einsehbar.
       </p>
 
       <div className="grid gap-3 not-prose">

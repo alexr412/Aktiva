@@ -11,7 +11,7 @@ import type { Place, Activity } from '@/lib/types';
 import type { MapLayerVisibility } from './map-types';
 
 async function runMapTestSuite() {
-  console.log('🧪 Starting Aktiva Map Architecture Phase 1 Test Suite...\n');
+  console.log('🧪 Starting Activa Map Architecture Phase 1 Test Suite...\n');
 
   // Test 1: Coordinate Validation
   console.log('Test 1: Coordinate Validation');

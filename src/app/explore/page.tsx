@@ -18,13 +18,13 @@ import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
-import { CategoryFilters } from '@/components/aktiva/category-filters';
-import { ProximityRadarView } from '@/components/aktiva/proximity-radar-view';
+import { CategoryFilters } from '@/components/activa/category-filters';
+import { ProximityRadarView } from '@/components/activa/proximity-radar-view';
 import { MobileRadarCard } from '@/components/radar/mobile-radar-card';
 import { cn, formatLabel } from '@/lib/utils';
 import { calculateDistance } from '@/lib/geo-utils';
-import { PlaceDetails } from '@/components/aktiva/place-details';
-import { CreateActivityDialog } from '@/components/aktiva/create-activity-dialog';
+import { PlaceDetails } from '@/components/activa/place-details';
+import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { getPrimaryIconData, ACTIVITY_EXPIRY_THRESHOLD_MS } from '@/lib/tag-config';
 import { usePlanningMode } from '@/contexts/planning-mode-context';
@@ -313,7 +313,7 @@ export default function ExplorePage() {
 
                     <div className="space-y-6">
                         <div className="flex items-center justify-between px-2">
-                            <h3 className="">Aktiva Radar</h3>
+                            <h3 className="">Activa Radar</h3>
                             <div className="h-2 w-2 rounded-full bg-emerald-500" />
                         </div>
                         <div className="bg-slate-50/50 dark:bg-neutral-800/30 rounded-[2.25rem] p-5 border border-slate-50 dark:border-neutral-800/50">
@@ -419,8 +419,8 @@ export default function ExplorePage() {
                                     </h3>
                                     <p className="text-sm text-slate-500 dark:text-neutral-400 mb-8 max-w-[260px]">
                                         {language === 'de' 
-                                          ? 'Aktiva benötigt deinen Standort, um spannende Aktivitäten in deiner Nähe anzuzeigen.' 
-                                          : 'Aktiva requires your location to display exciting activities near you.'}
+                                          ? 'Activa benötigt deinen Standort, um spannende Aktivitäten in deiner Nähe anzuzeigen.' 
+                                          : 'Activa requires your location to display exciting activities near you.'}
                                     </p>
                                     
                                     <div className="w-full max-w-[240px] space-y-3">

@@ -4,7 +4,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import { Timestamp } from 'firebase/firestore';
 import type { Chat, Message, Activity, Place } from '@/lib/types';
 
-const DB_NAME = 'aktiva-client-cache';
+const DB_NAME = 'activa-client-cache';
 const DB_VERSION = 3;
 
 export interface SerializedChat {
@@ -42,6 +42,55 @@ function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }
 
+export const LEGACY_DB_NAME = 'aktiva-client-cache';
+
+export async function migrateLegacyIndexedDB(newDb: IDBPDatabase): Promise<boolean> {
+  if (!isBrowser() || !window.indexedDB) return false;
+  
+  try {
+    let legacyDb: IDBPDatabase | null = null;
+    try {
+      legacyDb = await openDB(LEGACY_DB_NAME, 3);
+    } catch {
+      return false;
+    }
+    
+    if (!legacyDb) return false;
+
+    const stores = ['chats', 'messages', 'activities', 'places'];
+    let hasMigratedAny = false;
+
+    for (const storeName of stores) {
+      if (legacyDb.objectStoreNames.contains(storeName) && newDb.objectStoreNames.contains(storeName)) {
+        try {
+          const items = await legacyDb.getAll(storeName);
+          if (items && items.length > 0) {
+            const tx = newDb.transaction(storeName, 'readwrite');
+            for (const item of items) {
+              await tx.store.put(item);
+            }
+            await tx.done;
+            hasMigratedAny = true;
+          }
+        } catch (e) {
+          // Ignore individual store copy errors
+        }
+      }
+    }
+
+    legacyDb.close();
+    try {
+      window.indexedDB.deleteDatabase(LEGACY_DB_NAME);
+    } catch (e) {
+      // Ignore delete database errors
+    }
+    return hasMigratedAny;
+  } catch (err) {
+    console.warn('[ACTIVA IDB MIGRATION] Legacy migration skipped:', err);
+    return false;
+  }
+}
+
 export function initDB(): Promise<IDBPDatabase> | null {
   if (!isBrowser()) return null;
   if (!dbPromise) {
@@ -77,6 +126,9 @@ export function initDB(): Promise<IDBPDatabase> | null {
           db.createObjectStore('places', { keyPath: 'id' });
         }
       },
+    }).then(async (db) => {
+      await migrateLegacyIndexedDB(db);
+      return db;
     });
   }
   return dbPromise;

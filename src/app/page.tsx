@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { CategoryFilters } from '@/components/aktiva/category-filters';
-import { AktivaPulseHero } from '@/components/aktiva/aktiva-pulse-hero';
+import { CategoryFilters } from '@/components/activa/category-filters';
+import { ActivaPulseHero } from '@/components/activa/activa-pulse-hero';
 import { translateAppString, ACTIVITY_EXPIRY_THRESHOLD_MS, isActivityRoomOpen } from '@/lib/tag-config';
-import { PlaceDetails } from '@/components/aktiva/place-details';
-import { PlaceCard } from '@/components/aktiva/place-card';
+import { PlaceDetails } from '@/components/activa/place-details';
+import { PlaceCard } from '@/components/activa/place-card';
 
 type DiscoverFeedState =
   | 'initial_loading'
@@ -20,9 +20,9 @@ type DiscoverFeedState =
   | 'location_unavailable'
   | 'recoverable_network_error'
   | 'complete_loading_failure';
-import { FeaturedPlaceCard } from '@/components/aktiva/featured-place-card';
-import { FeaturedActivityCard } from '@/components/aktiva/featured-activity-card';
-import { SpotActionSheet } from '@/components/aktiva/spot-action-sheet';
+import { FeaturedPlaceCard } from '@/components/activa/featured-place-card';
+import { FeaturedActivityCard } from '@/components/activa/featured-activity-card';
+import { SpotActionSheet } from '@/components/activa/spot-action-sheet';
 import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
 import { hasPremiumFeature, isPremiumActive } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -34,8 +34,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, X, Compass, Clock, Trophy, TreePine, VolumeX, Heart, Users2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlaceCardSkeleton, FeaturedPlaceCardSkeleton, ActivityCardSkeleton, FeaturedActivityCardSkeleton } from '@/components/aktiva/card-skeletons';
-import { CreateActivityDialog } from '@/components/aktiva/create-activity-dialog';
+import { PlaceCardSkeleton, FeaturedPlaceCardSkeleton, ActivityCardSkeleton, FeaturedActivityCardSkeleton } from '@/components/activa/card-skeletons';
+import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useFriendRadar } from '@/hooks/use-friend-radar';
@@ -45,7 +45,7 @@ import { Button } from '@/components/ui/button';
 import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter, doc, documentId } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { debugWarn, debugError } from '@/lib/debug';
-import { ActivityListItem } from "@/components/aktiva/activity-list-item";
+import { ActivityListItem } from "@/components/activa/activity-list-item";
 import { PremiumUpgradeModal } from '@/components/premium/PremiumUpgradeModal';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -69,8 +69,8 @@ import { trackInteraction } from '@/lib/telemetry';
 import { isDuplicate } from '@/lib/duplicate-detector';
 import { monitoring } from '@/lib/monitoring';
 
-// Dynamic import for AktivaMap (MapLibre GL JS) to avoid SSR issues
-const AktivaMap = dynamic(() => import('@/components/map/aktiva-map').then(mod => mod.AktivaMap), {
+// Dynamic import for ActivaMap (MapLibre GL JS) to avoid SSR issues
+const ActivaMap = dynamic(() => import('@/components/map/activa-map').then(mod => mod.ActivaMap), {
   ssr: false,
   loading: () => (
     <div className="flex h-full w-full items-center justify-center bg-slate-50 dark:bg-neutral-900">
@@ -2048,7 +2048,7 @@ export default function Home() {
     if (viewMode === 'map') {
       return (
         <div className="h-[calc(100vh-80px)] w-full relative">
-          <AktivaMap
+          <ActivaMap
             places={places}
             communityActivities={communityActivities}
             nearbyFriends={nearbyFriends}
@@ -2296,7 +2296,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto w-full pt-2">
             {viewMode === 'list' && (
               <div className="px-3 sm:px-6 mb-3 sm:mb-4">
-                <AktivaPulseHero 
+                <ActivaPulseHero 
                   cityName={isLocationLoading ? null : resolvedCityName}
                   openRoomsCount={openRoomsCount}
                   uniqueParticipantsCount={uniqueParticipantsCount}

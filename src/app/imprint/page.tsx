@@ -3,8 +3,8 @@ import { FileText, Info } from 'lucide-react';
 import { LegalLayout } from '@/components/legal/LegalLayout';
 
 export const metadata: Metadata = {
-  title: 'Impressum - Aktiva',
-  description: 'Impressum und Anbieterkennzeichnung für die Aktiva App gemäß § 5 TMG.',
+  title: 'Impressum - Activa',
+  description: 'Impressum und Anbieterkennzeichnung für die Activa App gemäß § 5 TMG.',
 };
 
 export default function ImprintPage() {

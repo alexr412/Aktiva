@@ -8,7 +8,7 @@ function fetchPage(path) {
       path: path,
       method: 'GET',
       headers: {
-        'Host': 'aktiva-jod0jzalv-alexr412s-projects.vercel.app'
+        'Host': 'localhost'
       }
     };
     const req = http.request(options, (res) => {

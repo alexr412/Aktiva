@@ -3,8 +3,8 @@ import { Eye } from 'lucide-react';
 import { LegalLayout } from '@/components/legal/LegalLayout';
 
 export const metadata: Metadata = {
-  title: 'Barrierefreiheit - Aktiva',
-  description: 'Erklärung zur Barrierefreiheit der Aktiva App gemäß BFSG / WCAG 2.1.',
+  title: 'Barrierefreiheit - Activa',
+  description: 'Erklärung zur Barrierefreiheit der Activa App gemäß BFSG / WCAG 2.1.',
 };
 
 export default function AccessibilityPage() {

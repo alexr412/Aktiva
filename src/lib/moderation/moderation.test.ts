@@ -124,6 +124,7 @@ function testReservedUsernameIntegration() {
   // Reserved names should be blocked by validateUsername
   assert.strictEqual(validateUsername('alex'), false);
   assert.strictEqual(validateUsername('aktiva'), false);
+  assert.strictEqual(validateUsername('activa'), false);
   assert.strictEqual(validateUsername('admin1'), false);
   assert.strictEqual(validateUsername('support24'), false);
   assert.strictEqual(validateUsername('hamburg'), false);

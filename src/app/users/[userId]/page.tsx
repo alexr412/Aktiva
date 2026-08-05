@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ActivityListItem } from '@/components/aktiva/activity-list-item';
+import { ActivityListItem } from '@/components/activa/activity-list-item';
 import {
   ArrowLeft,
   Compass,
@@ -374,7 +374,7 @@ export default function UserProfilePage() {
 
     const photoUrlToDisplay = userData.photoURL || '';
     const usernameRaw = userData.username || null;
-    const displayName = usernameRaw ? `@${usernameRaw.trim().replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
+    const displayName = usernameRaw ? `@${usernameRaw.trim().replace(/^@/, '')}` : (language === 'de' ? 'Activa-Nutzer' : 'Activa user');
     
     const isHostBlocked = (hostId: string) => {
         return userProfile?.blacklist?.hard?.includes(hostId) || userProfile?.blacklist?.soft?.includes(hostId);

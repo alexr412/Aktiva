@@ -17,7 +17,7 @@ export function getFeedCacheKey(params: CacheKeyParams): string {
   const roundedLat = params.lat.toFixed(3);
   const roundedLng = params.lng.toFixed(3);
   const sortedCategories = [...params.activeCategory].sort().join(',');
-  return `aktiva_feed_cache_${roundedLat}_${roundedLng}_${sortedCategories}_${params.activeTabId}_${params.debouncedSearchQuery}`;
+  return `activa_feed_cache_${roundedLat}_${roundedLng}_${sortedCategories}_${params.activeTabId}_${params.debouncedSearchQuery}`;
 }
 
 export function getFeedCache(key: string, ttlMs: number = DEFAULT_TTL_MS): FeedCacheEntry | null {

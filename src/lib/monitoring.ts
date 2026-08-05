@@ -1,5 +1,7 @@
+import { getMigratedItem } from '@/lib/storage-migration';
+
 export const monitoring = {
-  enabled: process.env.NODE_ENV === 'development' || (typeof window !== 'undefined' && localStorage.getItem('aktiva_debug') === 'true'),
+  enabled: process.env.NODE_ENV === 'development' || (typeof window !== 'undefined' && getMigratedItem('activa_debug', 'aktiva_debug') === 'true'),
   
   metrics: {
     totalRequests: 0,

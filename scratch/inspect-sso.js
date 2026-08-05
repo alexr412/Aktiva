@@ -2,7 +2,7 @@ const https = require('https');
 
 function inspectProd() {
   const options = {
-    hostname: 'aktiva-six.vercel.app',
+    hostname: 'activa.app',
     port: 443,
     path: '/activities/xBwEk2JS9WuqC1dmCG5d/invite',
     method: 'GET',

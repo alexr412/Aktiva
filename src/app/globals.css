@@ -310,6 +310,10 @@
 }
 
 /* MapLibre Custom Map Popups Styling (Friends, Places, Activities) */
+.activa-map-popup .maplibregl-popup-content,
+.activa-friend-popup .maplibregl-popup-content,
+.activa-place-popup .maplibregl-popup-content,
+.activa-activity-popup .maplibregl-popup-content,
 .aktiva-map-popup .maplibregl-popup-content,
 .aktiva-friend-popup .maplibregl-popup-content,
 .aktiva-place-popup .maplibregl-popup-content,
@@ -319,12 +323,20 @@
   box-shadow: none !important;
   border-radius: 22px !important;
 }
+.activa-map-popup .maplibregl-popup-tip,
+.activa-friend-popup .maplibregl-popup-tip,
+.activa-place-popup .maplibregl-popup-tip,
+.activa-activity-popup .maplibregl-popup-tip,
 .aktiva-map-popup .maplibregl-popup-tip,
 .aktiva-friend-popup .maplibregl-popup-tip,
 .aktiva-place-popup .maplibregl-popup-tip,
 .aktiva-activity-popup .maplibregl-popup-tip {
   border-top-color: rgba(248, 250, 252, 0.95) !important;
 }
+.dark .activa-map-popup .maplibregl-popup-tip,
+.dark .activa-friend-popup .maplibregl-popup-tip,
+.dark .activa-place-popup .maplibregl-popup-tip,
+.dark .activa-activity-popup .maplibregl-popup-tip,
 .dark .aktiva-map-popup .maplibregl-popup-tip,
 .dark .aktiva-friend-popup .maplibregl-popup-tip,
 .dark .aktiva-place-popup .maplibregl-popup-tip,

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useState, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { createContext, useState, useEffect, useMemo, useRef, useCallback, type ReactNode } from 'react';
 import type { User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase/client';
 import { onAuthStateChanged, deleteUser, sendEmailVerification, signOut as firebaseSignOut, getRedirectResult, getAdditionalUserInfo } from 'firebase/auth';
@@ -8,13 +8,14 @@ import { handleSuccessfulSocialLogin } from '@/lib/firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Loader2, Ban } from 'lucide-react';
-import { doc, onSnapshot, updateDoc, deleteField, setDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, updateDoc, deleteField, setDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 import { updateUserProfile } from '@/lib/firebase/firestore';
 import { requestAndGetFCMToken, onForegroundMessage } from '@/lib/firebase/messaging';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { LegalConsentDialog } from '@/components/auth/LegalConsentDialog';
+import { getMigratedItem, setMigratedItem, removeMigratedItem } from '@/lib/storage-migration';
 
 import { isAccountActive, parseTimestampMillis } from '@/lib/types';
 
@@ -25,6 +26,10 @@ export interface AuthContextType {
   actualRole: 'superadmin' | 'admin' | 'moderator' | 'supporter' | 'user' | null;
   simulatedRole: 'superadmin' | 'admin' | 'moderator' | 'supporter' | 'user' | null;
   setSimulatedRole: (role: 'superadmin' | 'admin' | 'moderator' | 'supporter' | 'user') => void;
+  isRefreshingProfile: boolean;
+  error: any | null;
+  logout: () => Promise<void>;
+  refreshUserProfile: () => Promise<void>;
   socialLegalConsentPending: boolean;
   setSocialLegalConsentPending: (pending: boolean) => void;
 }
@@ -36,6 +41,10 @@ export const AuthContext = createContext<AuthContextType>({
   actualRole: null,
   simulatedRole: null,
   setSimulatedRole: () => {},
+  isRefreshingProfile: false,
+  error: null,
+  logout: async () => {},
+  refreshUserProfile: async () => {},
   socialLegalConsentPending: false,
   setSocialLegalConsentPending: () => {},
 });
@@ -110,17 +119,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [simulatedRole, setSimulatedRoleState] = useState<'superadmin' | 'admin' | 'moderator' | 'supporter' | 'user' | null>(null);
   const [loading, setLoading] = useState(true);
   const [authInitializing, setAuthInitializing] = useState(true);
+  const [isRefreshingProfile, setIsRefreshingProfile] = useState(false);
+  const [error, setError] = useState<any | null>(null);
   const initialAuthResolutionRef = useRef(false);
   const language = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
 
+  const logout = useCallback(async () => {
+    if (auth) {
+      await firebaseSignOut(auth);
+    }
+  }, []);
+
+  const refreshUserProfile = useCallback(async () => {
+    if (!user || !db) return;
+    setIsRefreshingProfile(true);
+    try {
+      const docRef = doc(db, 'users', user.uid);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        setDbProfile(snap.data() as UserProfile);
+      }
+    } catch (e) {
+      setError(e);
+    } finally {
+      setIsRefreshingProfile(false);
+    }
+  }, [user]);
+
   const [socialLegalConsentPending, setSocialLegalConsentPendingState] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const val = sessionStorage.getItem('aktiva:socialLegalConsentPending') === 'true';
+      const val = getMigratedItem('activa:socialLegalConsentPending', 'aktiva:socialLegalConsentPending', 'session') === 'true';
       setSocialLegalConsentPendingState(val);
     }
   }, []);
@@ -129,9 +162,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSocialLegalConsentPendingState(pending);
     if (typeof window !== 'undefined') {
       if (pending) {
-        sessionStorage.setItem("aktiva:socialLegalConsentPending", "true");
+        setMigratedItem("activa:socialLegalConsentPending", "aktiva:socialLegalConsentPending", "true", "session");
       } else {
-        sessionStorage.removeItem("aktiva:socialLegalConsentPending");
+        removeMigratedItem("activa:socialLegalConsentPending", "aktiva:socialLegalConsentPending", "session");
       }
     }
   };
@@ -164,7 +197,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       (window as any).__LEGAL_DEBUG__ = {
         getState: () => ({
           socialLegalConsentPending,
-          sessionStoragePending: sessionStorage.getItem("aktiva:socialLegalConsentPending"),
+          sessionStoragePending: getMigratedItem("activa:socialLegalConsentPending", "aktiva:socialLegalConsentPending", "session"),
           uid: auth?.currentUser?.uid ?? null,
           email: auth?.currentUser?.email ?? null,
           emailVerified: auth?.currentUser?.emailVerified ?? null,
@@ -556,8 +589,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         variant: 'destructive',
         title: language === 'de' ? 'Verifizierung erforderlich' : 'Verification Required',
         description: language === 'de'
-          ? 'Bitte verifiziere deine E-Mail-Adresse, um Aktiva zu nutzen.'
-          : 'Please verify your email address to use Aktiva.',
+          ? 'Bitte verifiziere deine E-Mail-Adresse, um Activa zu nutzen.'
+          : 'Please verify your email address to use Activa.',
       });
       router.replace('/login?verification=required');
       import('@/lib/firebase/auth').then(({ signOut: authSignOut }) => {
@@ -627,9 +660,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     actualRole, 
     simulatedRole: simulatedRole || (dbProfile?.role || 'user'), 
     setSimulatedRole,
+    isRefreshingProfile,
+    error,
+    logout,
+    refreshUserProfile,
     socialLegalConsentPending,
     setSocialLegalConsentPending
-  }), [user, userProfile, loading, actualRole, simulatedRole, dbProfile?.role, socialLegalConsentPending]);
+  }), [user, userProfile, loading, actualRole, simulatedRole, dbProfile?.role, isRefreshingProfile, error, logout, refreshUserProfile, socialLegalConsentPending]);
 
   if (!auth && !loading) {
     return <NotConfigured />;

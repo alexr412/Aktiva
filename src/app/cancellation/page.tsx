@@ -3,8 +3,8 @@ import { RotateCcw } from 'lucide-react';
 import { LegalLayout } from '@/components/legal/LegalLayout';
 
 export const metadata: Metadata = {
-  title: 'Widerrufsbelehrung - Aktiva',
-  description: 'Widerrufsrecht und Widerrufsbelehrung für digitale Inhalte der Aktiva App.',
+  title: 'Widerrufsbelehrung - Activa',
+  description: 'Widerrufsrecht und Widerrufsbelehrung für digitale Inhalte der Activa App.',
 };
 
 export default function CancellationPage() {

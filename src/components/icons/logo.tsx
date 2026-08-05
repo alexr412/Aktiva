@@ -19,7 +19,7 @@ export const Logo = ({ className }: { className?: string }) => (
       fontWeight="bold"
       className="fill-current text-foreground"
     >
-      Aktiva
+      Activa
     </text>
   </svg>
 );

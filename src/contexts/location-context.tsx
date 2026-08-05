@@ -60,6 +60,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
+        localStorage.removeItem('activa_last_location');
         localStorage.removeItem('aktiva_last_location');
       } catch (e) {}
     }

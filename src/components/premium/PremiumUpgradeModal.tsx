@@ -38,7 +38,7 @@ export function PremiumUpgradeModal({ isOpen, onClose }: PremiumUpgradeModalProp
     { 
       icon: ShieldBan, 
       text: language === 'de' ? '100% Werbefreies Erlebnis' : '100% Ad-Free Experience',
-      desc: language === 'de' ? 'Genieße Aktiva ohne jegliche Unterbrechungen.' : 'Enjoy Aktiva without any interruptions.'
+      desc: language === 'de' ? 'Genieße Activa ohne jegliche Unterbrechungen.' : 'Enjoy Activa without any interruptions.'
     },
   ];
 
@@ -59,7 +59,7 @@ export function PremiumUpgradeModal({ isOpen, onClose }: PremiumUpgradeModalProp
           </div>
           <div className="space-y-1">
             <DialogTitle className="text-3xl font-black tracking-tight text-slate-900 dark:text-neutral-100 font-heading">
-              Aktiva <span className="bg-gradient-to-r from-amber-500 via-orange-400 to-yellow-500 bg-clip-text text-transparent">Premium</span>
+              Activa <span className="bg-gradient-to-r from-amber-500 via-orange-400 to-yellow-500 bg-clip-text text-transparent">Premium</span>
             </DialogTitle>
             <DialogDescription className="text-xs font-bold text-amber-600/80 dark:text-amber-500/80 uppercase tracking-widest">
               {language === 'de' ? 'Hol das meiste aus deiner Zeit heraus' : 'Get the most out of your time'}

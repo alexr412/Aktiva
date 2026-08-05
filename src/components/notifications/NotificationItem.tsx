@@ -135,7 +135,7 @@ export function NotificationItem({ notification, onAction }: NotificationItemPro
                                     ? `@${usernameRaw.replace(/^@/, '')}` 
                                     : (sender?.displayName && sender.displayName.startsWith('@')
                                         ? sender.displayName
-                                        : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')
+                                        : (language === 'de' ? 'Activa-Nutzer' : 'Activa user')
                                       );
                                 })()}</span> {language === 'de' ? 'hat dir eine Freundschaftsanfrage gesendet.' : 'sent you a friend request.'}
                             </>
@@ -148,7 +148,7 @@ export function NotificationItem({ notification, onAction }: NotificationItemPro
                                     ? `@${usernameRaw.replace(/^@/, '')}` 
                                     : (sender?.displayName && sender.displayName.startsWith('@')
                                         ? sender.displayName
-                                        : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')
+                                        : (language === 'de' ? 'Activa-Nutzer' : 'Activa user')
                                       );
                                 })()}</span> {language === 'de' ? 'möchte deiner Aktivität beitreten.' : 'wants to join your activity.'}
                             </>

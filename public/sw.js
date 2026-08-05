@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════
-// AKTIVA SERVICE WORKER v1.0
+// ACTIVA SERVICE WORKER v1.0
 // Caching-Strategie: Network-First (HTML) / Cache-First (Assets)
 // ═══════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'aktiva-v1';
+const CACHE_VERSION = 'activa-v1';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 
@@ -38,7 +38,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name.startsWith('aktiva-') && name !== STATIC_CACHE && name !== DYNAMIC_CACHE)
+          .filter((name) => (name.startsWith('aktiva-') || name.startsWith('activa-')) && name !== STATIC_CACHE && name !== DYNAMIC_CACHE)
           .map((name) => {
             console.log('[SW] Deleting old cache:', name);
             return caches.delete(name);
@@ -112,7 +112,7 @@ self.addEventListener('fetch', (event) => {
 
           // 3. Letzter Rettungsanker: minimalistisches HTML
           return new Response(
-            '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Offline - Aktiva</title></head><body style="background:#020617;color:#f8fafc;font-family:sans-serif;text-align:center;padding:50px 20px;"><h1>Offline</h1><p>Bitte überprüfe deine Internetverbindung.</p></body></html>',
+            '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Offline - Activa</title></head><body style="background:#020617;color:#f8fafc;font-family:sans-serif;text-align:center;padding:50px 20px;"><h1>Offline</h1><p>Bitte überprüfe deine Internetverbindung.</p></body></html>',
             {
               headers: { 'Content-Type': 'text/html; charset=utf-8' }
             }

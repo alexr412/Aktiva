@@ -117,7 +117,20 @@ export const adminListUsers = onCall(async (request) => {
   const { search, role, isOrganizer, premium, accountStatus, limit = 50, startAfterDocId } = request.data || {};
   const queryLimit = Math.min(Math.max(1, Number(limit) || 50), 100);
 
-  console.log('[ADMIN USERS LIST]', {
+  // 1. Diagnostic Environment Logging
+  console.log('[ADMIN USERS ENV]', {
+    projectId: process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT,
+    firebaseProjectId: admin.app().options.projectId,
+  });
+
+  // 2. Unfiltered Raw Collection Check
+  const rawUsersSnapshot = await db.collection('users').limit(5).get();
+  console.log('[ADMIN USERS RAW COLLECTION]', {
+    count: rawUsersSnapshot.size,
+    ids: rawUsersSnapshot.docs.map(d => d.id),
+  });
+
+  console.log('[ADMIN USERS LIST REQUEST]', {
     callerUid,
     search,
     role,
@@ -128,18 +141,18 @@ export const adminListUsers = onCall(async (request) => {
     startAfterDocId,
   });
 
-  // Helper for response normalization & automatic background migration
-  const normalizeAndBackfillUser = (doc: admin.firestore.DocumentSnapshot) => {
+  // Pure Read-Only Response Normalizer (No Firestore Writes during list)
+  const normalizeUserDoc = (doc: admin.firestore.DocumentSnapshot) => {
     const raw = doc.data() || {};
     const roleVal = raw.role || (raw.isAdmin ? 'admin' : (raw.isSupporter ? 'supporter' : 'user'));
     const statusVal = raw.accountStatus || (raw.isBanned ? 'banned' : 'active');
     const isOrgVal = raw.isOrganizer === true;
     const isPremVal = raw.isPremium === true;
-    const displayNameVal = raw.displayName || raw.username || 'Aktiva-Nutzer';
+    const displayNameVal = raw.displayName || raw.username || 'Activa-Nutzer';
     const emailVal = raw.email || null;
     const createdAtVal = raw.createdAt || raw.creationTime || null;
 
-    const normalized = {
+    return {
       uid: doc.id,
       ...raw,
       role: roleVal,
@@ -150,30 +163,13 @@ export const adminListUsers = onCall(async (request) => {
       email: emailVal,
       createdAt: createdAtVal,
     };
-
-    // Fire-and-forget background backfill if critical normalization fields are missing
-    const needsBackfill = !raw.role || !raw.accountStatus || !raw.displayNameLower || (raw.email && !raw.emailLower);
-    if (needsBackfill) {
-      const updates: any = {
-        role: roleVal,
-        accountStatus: statusVal,
-        ...(displayNameVal ? { displayNameLower: displayNameVal.trim().toLowerCase() } : {}),
-        ...(emailVal ? { emailLower: emailVal.trim().toLowerCase() } : {}),
-        ...(raw.username ? { usernameLowercase: raw.username.trim().toLowerCase().replace(/^@/, '') } : {}),
-      };
-      db.collection('users').doc(doc.id).set(updates, { merge: true }).catch(err =>
-        console.warn(`Background backfill error for user ${doc.id}:`, err)
-      );
-    }
-
-    return normalized;
   };
 
   // Exact Lookup: UID
   if (search && typeof search === 'string' && search.trim().length >= 20 && !search.includes(' ') && !search.includes('@')) {
     const docSnap = await db.collection('users').doc(search.trim()).get();
     if (docSnap.exists) {
-      const users = [normalizeAndBackfillUser(docSnap)];
+      const users = [normalizeUserDoc(docSnap)];
       console.log('[ADMIN USERS RESULT - UID MATCH]', { count: 1, uid: docSnap.id });
       return { users, hasMore: false };
     }
@@ -187,7 +183,7 @@ export const adminListUsers = onCall(async (request) => {
       emailSnap = await db.collection('users').where('email', '==', search.trim()).limit(10).get();
     }
     if (!emailSnap.empty) {
-      const users = emailSnap.docs.map(normalizeAndBackfillUser);
+      const users = emailSnap.docs.map(normalizeUserDoc);
       console.log('[ADMIN USERS RESULT - EMAIL MATCH]', { count: users.length });
       return { users, hasMore: false };
     }
@@ -201,40 +197,34 @@ export const adminListUsers = onCall(async (request) => {
       unameSnap = await db.collection('users').where('username', '==', search.trim()).limit(10).get();
     }
     if (!unameSnap.empty) {
-      const users = unameSnap.docs.map(normalizeAndBackfillUser);
+      const users = unameSnap.docs.map(normalizeUserDoc);
       console.log('[ADMIN USERS RESULT - USERNAME MATCH]', { count: users.length });
       return { users, hasMore: false };
     }
   }
 
   let query: admin.firestore.Query = db.collection('users');
-  let hasFilteredField = false;
 
-  // Filter: Role
+  // Filter: Role (ignore 'all' or empty)
   if (role && role !== 'all' && ['user', 'moderator', 'admin', 'superadmin'].includes(role)) {
     query = query.where('role', '==', role);
-    hasFilteredField = true;
   }
 
   // Filter: Organizer
   if (typeof isOrganizer === 'boolean') {
     query = query.where('isOrganizer', '==', isOrganizer);
-    hasFilteredField = true;
   }
 
-  // Filter: Account Status
+  // Filter: Account Status (ignore 'all' or empty)
   if (accountStatus && accountStatus !== 'all' && ['active', 'suspended', 'banned'].includes(accountStatus)) {
     query = query.where('accountStatus', '==', accountStatus);
-    hasFilteredField = true;
   }
 
-  // Filter: Premium
+  // Filter: Premium (ignore 'all' or empty)
   if (premium === 'active') {
     query = query.where('isPremium', '==', true);
-    hasFilteredField = true;
   } else if (premium === 'inactive') {
     query = query.where('isPremium', '==', false);
-    hasFilteredField = true;
   }
 
   // Prefix Search on Name if provided
@@ -242,11 +232,6 @@ export const adminListUsers = onCall(async (request) => {
     const term = search.trim().toLowerCase().replace(/^@/, '');
     query = query.where('displayNameLower', '>=', term).where('displayNameLower', '<=', term + '\uf8ff');
     query = query.orderBy('displayNameLower', 'asc');
-    hasFilteredField = true;
-  } else {
-    // IMPORTANT: Sort by Document ID (FieldPath.documentId()) so that ALL legacy documents
-    // (even those missing createdAt) are included, and cursor pagination works 100%.
-    query = query.orderBy(admin.firestore.FieldPath.documentId(), 'desc');
   }
 
   // Cursor Pagination (Page 2+)
@@ -264,7 +249,7 @@ export const adminListUsers = onCall(async (request) => {
   const hasMore = docs.length > queryLimit;
   const resultDocs = hasMore ? docs.slice(0, queryLimit) : docs;
 
-  const users = resultDocs.map(normalizeAndBackfillUser);
+  const users = resultDocs.map(normalizeUserDoc);
   const lastDocId = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1].id : undefined;
 
   console.log('[ADMIN USERS RESULT]', {

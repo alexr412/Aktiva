@@ -460,6 +460,7 @@ test('8. Storage limits and expiry parsing checks', () => {
     }
   };
 
+  mockLocalStorage.setItem('activa_radar_notifications_userA', JSON.stringify(corrupted));
   mockLocalStorage.setItem('aktiva_radar_notifications_userA', JSON.stringify(corrupted));
 
   const storage = readNotificationStorage('userA');
@@ -683,7 +684,7 @@ class PollingDispatcherTester {
   public locationWriteError?: Error | null = null;
 
   public isCrossTabLocked(uid: string): boolean {
-    const lock = mockLocalStorage.getItem('aktiva_radar_fetch_lock');
+    const lock = mockLocalStorage.getItem('activa_radar_fetch_lock') || mockLocalStorage.getItem('aktiva_radar_fetch_lock');
     if (lock) {
       try {
         const { uid: lockUid, timestamp } = JSON.parse(lock);
@@ -696,7 +697,7 @@ class PollingDispatcherTester {
   }
 
   public acquireCrossTabLock(uid: string): void {
-    mockLocalStorage.setItem('aktiva_radar_fetch_lock', JSON.stringify({ uid, timestamp: Date.now() }));
+    mockLocalStorage.setItem('activa_radar_fetch_lock', JSON.stringify({ uid, timestamp: Date.now() }));
   }
 
   public async requestNearbyFriends(trigger: 'initial' | 'interval' | 'visibility' | 'movement' | 'manual', mockError?: any): Promise<boolean> {
@@ -800,6 +801,7 @@ class PollingDispatcherTester {
     this.onLocationWrite = undefined;
     this.onGetFriends = undefined;
     this.locationWriteError = null;
+    mockLocalStorage.removeItem('activa_radar_fetch_lock');
     mockLocalStorage.removeItem('aktiva_radar_fetch_lock');
   }
 }
@@ -867,6 +869,7 @@ test('20. No repeated request within 5 minutes', async () => {
   assert.strictEqual(tester.requestCount, 1);
 
   // Second request 2 minutes later
+  mockLocalStorage.removeItem('activa_radar_fetch_lock');
   mockLocalStorage.removeItem('aktiva_radar_fetch_lock'); // clear lock for same tab
   const sent2 = await tester.requestNearbyFriends('interval');
   assert.strictEqual(sent2, false, 'Interval request within 5 min must be blocked');
@@ -885,6 +888,7 @@ test('21. Movement under 200m triggers no request', async () => {
 
   // Simulate 5 minutes passing + 50m movement
   tester.lastAttemptFetchMs = Date.now() - (6 * 60 * 1000);
+  mockLocalStorage.removeItem('activa_radar_fetch_lock');
   mockLocalStorage.removeItem('aktiva_radar_fetch_lock');
   tester.effectiveLocation = { lat: 52.02605, lng: 8.52205 }; // ~50m move
 
@@ -903,6 +907,7 @@ test('22. Movement over 200m respects 5-minute interval', async () => {
   assert.strictEqual(tester.requestCount, 1);
 
   // Case A: 500m movement but ONLY 1 minute elapsed -> MUST BE BLOCKED
+  mockLocalStorage.removeItem('activa_radar_fetch_lock');
   mockLocalStorage.removeItem('aktiva_radar_fetch_lock');
   tester.effectiveLocation = { lat: 52.0300, lng: 8.5300 }; // ~500m move
   const sentBlocked = await tester.requestNearbyFriends('movement');
@@ -963,6 +968,7 @@ test('25. Normal error 60s cooldown prevents visibility request loop', async () 
   // Cooldown should be 60 seconds
   assert.strictEqual(tester.nextAllowedFetchMs >= Date.now() + 50000, true);
 
+  mockLocalStorage.removeItem('activa_radar_fetch_lock');
   mockLocalStorage.removeItem('aktiva_radar_fetch_lock');
   // Visibility change immediately after error
   const sentLoop = await tester.requestNearbyFriends('visibility');
@@ -983,6 +989,7 @@ test('26. Account switch / logout resets state and refs', async () => {
   assert.strictEqual(tester.userUid, null);
   assert.strictEqual(tester.requestCount, 0);
   assert.strictEqual(tester.lastAttemptFetchMs, 0);
+  assert.strictEqual(mockLocalStorage.getItem('activa_radar_fetch_lock'), null);
   assert.strictEqual(mockLocalStorage.getItem('aktiva_radar_fetch_lock'), null);
 });
 

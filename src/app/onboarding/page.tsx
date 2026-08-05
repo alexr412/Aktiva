@@ -87,7 +87,7 @@ const profileSchema = z.object({
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 const onboardingSteps = [
-  { id: 1, title: { de: "Aktiva benötigt deinen Standort", en: "Aktiva needs your location" }, fields: [] },
+  { id: 1, title: { de: "Activa benötigt deinen Standort", en: "Activa needs your location" }, fields: [] },
   { id: 2, title: { de: "Über dich", en: "About you" }, fields: ['username', 'bio', 'referralCode'] },
   { id: 3, title: { de: "Deine Interessen", en: "Your interests" }, fields: ['interests'] },
   { id: 4, title: { de: "Deine Hobbys", en: "Your Hobbies" }, fields: ['tinderInterests'] },
@@ -344,8 +344,8 @@ function OnboardingContent() {
           variant: "destructive",
           title: language === 'de' ? "Standort erforderlich" : "Location Required",
           description: language === 'de' 
-            ? "Ein gültiger GPS-Standort ist erforderlich, um Aktiva zu nutzen." 
-            : "A valid GPS location is required to use Aktiva."
+            ? "Ein gültiger GPS-Standort ist erforderlich, um Activa zu nutzen." 
+            : "A valid GPS location is required to use Activa."
         });
         return;
       }
@@ -493,7 +493,7 @@ function OnboardingContent() {
     if (randomAvatarLimitReached || uploadingImage || isSubmitting) return;
 
     // Production note: For commercial/high-traffic usage, consider self-hosting DiceBear or proxying avatar generation.
-    const randomSeed = "Aktiva-" + Math.random().toString(36).slice(2, 10) + "-" + Date.now().toString(36);
+    const randomSeed = "Activa-" + Math.random().toString(36).slice(2, 10) + "-" + Date.now().toString(36);
     const url = `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(randomSeed)}`;
     
     form.setValue('photoURL', url, {
@@ -1193,8 +1193,8 @@ function OnboardingContent() {
                         {randomAvatarLimitReached && (
                           <p className="mt-1 max-w-xs text-center text-[11px] font-medium text-slate-500 leading-relaxed">
                             {language === 'de'
-                              ? "Du kannst einen Avatar auswählen oder dein Profil später mit Aktiva Supporter weiter anpassen."
-                              : "You can choose an avatar or customize your profile further later with Aktiva Supporter."}
+                              ? "Du kannst einen Avatar auswählen oder dein Profil später mit Activa Supporter weiter anpassen."
+                              : "You can choose an avatar or customize your profile further later with Activa Supporter."}
                           </p>
                         )}
                       </div>
@@ -1229,7 +1229,7 @@ function OnboardingContent() {
                           <div className="flex-1 min-w-0 space-y-0.5">
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-                                {language === 'de' ? "Mehr Individualisierung mit Aktiva Supporter" : "More customization with Aktiva Supporter"}
+                                {language === 'de' ? "Mehr Individualisierung mit Activa Supporter" : "More customization with Activa Supporter"}
                               </span>
                               <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[7px] font-bold bg-emerald-500/20 text-emerald-800 uppercase tracking-widest">
                                 {language === 'de' ? "Bald verfügbar" : "Coming soon"}

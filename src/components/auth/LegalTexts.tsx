@@ -51,19 +51,19 @@ export function AGBText({ language }: TextProps) {
   return language === 'de' ? (
     <>
       <LegalSection title="1. Geltungsbereich">
-        <p>Diese Allgemeinen Geschäftsbedingungen (AGB) regeln die Nutzung der Aktiva-App und aller damit verbundenen Dienste. Mit der Registrierung akzeptiert der Nutzer diese Bedingungen.</p>
+        <p>Diese Allgemeinen Geschäftsbedingungen (AGB) regeln die Nutzung der Activa-App und aller damit verbundenen Dienste. Mit der Registrierung akzeptiert der Nutzer diese Bedingungen.</p>
       </LegalSection>
       <LegalSection title="2. Anbieter / Vertragspartner">
         <p>Der Dienst wird bereitgestellt von: [Betreiber einfügen], [Adresse einfügen], E-Mail: [E-Mail einfügen].</p>
       </LegalSection>
-      <LegalSection title="3. Leistungsbeschreibung von Aktiva">
-        <p>Aktiva ist eine Plattform zur Organisation von Freizeitaktivitäten, Entdeckung von Veranstaltungsorten, Erstellung von Profilen sowie zum Austausch innerhalb der Community.</p>
+      <LegalSection title="3. Leistungsbeschreibung von Activa">
+        <p>Activa ist eine Plattform zur Organisation von Freizeitaktivitäten, Entdeckung von Veranstaltungsorten, Erstellung von Profilen sowie zum Austausch innerhalb der Community.</p>
       </LegalSection>
       <LegalSection title="4. Registrierung und Nutzerkonto">
         <p>Die Erstellung eines Nutzerkontos erfordert wahrheitsgemäße Angaben. Die Nutzung ist ab einem Mindestalter von 12 Jahren gestattet. Jeder Nutzer darf nur ein einziges aktives Profil führen.</p>
       </LegalSection>
       <LegalSection title="5. Verifizierung und Sicherheit">
-        <p>Aktiva bietet Verifizierungsprozesse an, um die Sicherheit zu erhöhen. Die Weitergabe von Zugangsdaten an Dritte ist untersagt. Der Nutzer haftet für Aktivitäten über sein Konto.</p>
+        <p>Activa bietet Verifizierungsprozesse an, um die Sicherheit zu erhöhen. Die Weitergabe von Zugangsdaten an Dritte ist untersagt. Der Nutzer haftet für Aktivitäten über sein Konto.</p>
       </LegalSection>
       <LegalSection title="6. Nutzerpflichten">
         <p>Nutzer verpflichten sich zur respektvollen Interaktion. Belästigungen, Spam, automatisierte Datenabfragen (Scraping) sowie missbräuchliche Nutzung sind streng untersagt.</p>
@@ -72,19 +72,19 @@ export function AGBText({ language }: TextProps) {
         <p>Nutzer tragen die alleinige Verantwortung für hochgeladene Inhalte. Das Veröffentlichen von illegalen, pornografischen oder Rechte Dritter verletzenden Inhalten ist untersagt und wird moderiert.</p>
       </LegalSection>
       <LegalSection title="8. Verfügbarkeit und technische Änderungen">
-        <p>Aktiva übernimmt keine Garantie für eine dauerhafte, unterbrechungsfreie Verfügbarkeit des Dienstes. Technische Anpassungen und Wartungen können jederzeit durchgeführt werden.</p>
+        <p>Activa übernimmt keine Garantie für eine dauerhafte, unterbrechungsfreie Verfügbarkeit des Dienstes. Technische Anpassungen und Wartungen können jederzeit durchgeführt werden.</p>
       </LegalSection>
       <LegalSection title="9. Kostenpflichtige Funktionen">
         <p>Die Grundnutzung der App ist kostenlos. Sollten zukünftig kostenpflichtige Funktionen oder Premium-Mitgliedschaften eingeführt werden, werden diese gesondert gekennzeichnet.</p>
       </LegalSection>
       <LegalSection title="10. Haftung">
-        <p>Aktiva haftet nur für eigene Systemfehler im Rahmen der gesetzlichen Bestimmungen, nicht jedoch für Vorfälle, Verletzungen oder Schäden, die bei physischen Treffen oder Freizeitaktivitäten der Nutzer entstehen. Die Teilnahme erfolgt auf eigene Gefahr.</p>
+        <p>Activa haftet nur für eigene Systemfehler im Rahmen der gesetzlichen Bestimmungen, nicht jedoch für Vorfälle, Verletzungen oder Schäden, die bei physischen Treffen oder Freizeitaktivitäten der Nutzer entstehen. Die Teilnahme erfolgt auf eigene Gefahr.</p>
       </LegalSection>
       <LegalSection title="11. Sperrung und Kündigung">
-        <p>Bei Verstößen gegen diese AGB behält sich Aktiva das Recht vor, Konten temporär zu sperren oder dauerhaft zu löschen. Die Kündigung des Kontos durch den Nutzer ist jederzeit in den Einstellungen möglich.</p>
+        <p>Bei Verstößen gegen diese AGB behält sich Activa das Recht vor, Konten temporär zu sperren oder dauerhaft zu löschen. Die Kündigung des Kontos durch den Nutzer ist jederzeit in den Einstellungen möglich.</p>
       </LegalSection>
       <LegalSection title="12. Änderungen der AGB">
-        <p>Aktiva behält sich vor, diese AGB mit angemessener Ankündigungsfrist zu ändern. Die geänderten Bedingungen werden dem Nutzer in der App zur Zustimmung vorgelegt.</p>
+        <p>Activa behält sich vor, diese AGB mit angemessener Ankündigungsfrist zu ändern. Die geänderten Bedingungen werden dem Nutzer in der App zur Zustimmung vorgelegt.</p>
       </LegalSection>
       <LegalSection title="13. Schlussbestimmungen">
         <p>Es gilt das Recht der Bundesrepublik Deutschland. Sollten einzelne Bestimmungen unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.</p>
@@ -99,19 +99,19 @@ export function AGBText({ language }: TextProps) {
   ) : (
     <>
       <LegalSection title="1. Scope">
-        <p>These Terms of Service (ToS) govern the use of the Aktiva app and all associated services. By registering, the user accepts these terms.</p>
+        <p>These Terms of Service (ToS) govern the use of the Activa app and all associated services. By registering, the user accepts these terms.</p>
       </LegalSection>
       <LegalSection title="2. Provider / Contracting Party">
         <p>The service is provided by: [Insert Operator], [Insert Address], Email: [Insert Email].</p>
       </LegalSection>
-      <LegalSection title="3. Description of Aktiva">
-        <p>Aktiva is a platform for organizing leisure activities, discovering event venues, creating user profiles, and communicating within the community.</p>
+      <LegalSection title="3. Description of Activa">
+        <p>Activa is a platform for organizing leisure activities, discovering event venues, creating user profiles, and communicating within the community.</p>
       </LegalSection>
       <LegalSection title="4. Registration and User Account">
         <p>Registering an account requires accurate information. The service is permitted for users aged 12 and above. Each user may hold only one active profile.</p>
       </LegalSection>
       <LegalSection title="5. Verification and Security">
-        <p>Aktiva provides verification features to enhance community safety. Sharing account credentials with third parties is prohibited. The user is responsible for activities on their account.</p>
+        <p>Activa provides verification features to enhance community safety. Sharing account credentials with third parties is prohibited. The user is responsible for activities on their account.</p>
       </LegalSection>
       <LegalSection title="6. User Obligations">
         <p>Users agree to interact respectfully. Harassment, spam, automated data extraction (scraping), and misuse of the platform are strictly prohibited.</p>
@@ -120,19 +120,19 @@ export function AGBText({ language }: TextProps) {
         <p>Users are solely responsible for their uploaded content. Illegal, pornographic, or copyright-infringing material is prohibited and will be moderated.</p>
       </LegalSection>
       <LegalSection title="8. Availability and Technical Changes">
-        <p>Aktiva does not guarantee permanent, uninterrupted availability of the service. Technical maintenance and updates may occur at any time.</p>
+        <p>Activa does not guarantee permanent, uninterrupted availability of the service. Technical maintenance and updates may occur at any time.</p>
       </LegalSection>
       <LegalSection title="9. Paid Features">
         <p>The basic use of the app is free of charge. If paid features or premium plans are introduced in the future, they will be explicitly labeled.</p>
       </LegalSection>
       <LegalSection title="10. Liability">
-        <p>Aktiva is liable only for its own system failures as required by law, not for any incidents, injuries, or damages arising during physical meetings or activities organized via the platform. Participation is at your own risk.</p>
+        <p>Activa is liable only for its own system failures as required by law, not for any incidents, injuries, or damages arising during physical meetings or activities organized via the platform. Participation is at your own risk.</p>
       </LegalSection>
       <LegalSection title="11. Suspension and Termination">
-        <p>In case of violations of these ToS, Aktiva reserves the right to temporarily suspend or permanently delete user accounts. Users may delete their account at any time in the settings.</p>
+        <p>In case of violations of these ToS, Activa reserves the right to temporarily suspend or permanently delete user accounts. Users may delete their account at any time in the settings.</p>
       </LegalSection>
       <LegalSection title="12. Changes to these Terms">
-        <p>Aktiva reserves the right to modify these ToS. Users will be prompted to accept updated terms inside the app.</p>
+        <p>Activa reserves the right to modify these ToS. Users will be prompted to accept updated terms inside the app.</p>
       </LegalSection>
       <LegalSection title="13. Final Provisions">
         <p>These terms are governed by the laws of the Federal Republic of Germany. If any provision is found invalid, the remaining provisions shall remain in full force.</p>
@@ -160,7 +160,7 @@ export function TermsOfUseText({ language }: TextProps) {
         <p>Untersagt sind Spamming, Belästigungen aller Art, Diskriminierung, Betrug, das Erstellen gefälschter Profile, das Ausspionieren von Nutzerdaten (Scraping), automatisierte oder Roboter-Nutzung sowie jede gewerbliche Nutzung ohne vorherige schriftliche Zustimmung.</p>
       </LegalSection>
       <LegalSection title="4. Community-Regeln">
-        <p>Respekt, Höflichkeit und Toleranz sind die Grundpfeiler von Aktiva. Wir tolerieren keinerlei Gewaltverherrlichung, Hassrede, Belästigung oder Mobbing.</p>
+        <p>Respekt, Höflichkeit und Toleranz sind die Grundpfeiler von Activa. Wir tolerieren keinerlei Gewaltverherrlichung, Hassrede, Belästigung oder Mobbing.</p>
       </LegalSection>
       <LegalSection title="5. Profilangaben und Echtheit">
         <p>Nutzer sind angehalten, echte Namen und zutreffende persönliche Angaben zu machen. Die Nutzung von Pseudonymen ist gestattet, darf aber nicht zur Täuschung oder Täuschungsabsicht dienen.</p>
@@ -173,20 +173,20 @@ export function TermsOfUseText({ language }: TextProps) {
       </LegalSection>
       <LegalSection title="8. Umgang mit anderen Nutzern">
         <LegalAlert>
-          Treffen im realen Leben sollten stets an öffentlichen Orten stattfinden. Aktiva empfiehlt, bei ersten Begegnungen Vorsicht walten zu lassen.
+          Treffen im realen Leben sollten stets an öffentlichen Orten stattfinden. Activa empfiehlt, bei ersten Begegnungen Vorsicht walten zu lassen.
         </LegalAlert>
       </LegalSection>
       <LegalSection title="9. Sicherheit, Missbrauch und Meldefunktionen">
-        <p>Nutzer können Verstöße, verdächtige Konten oder unangemessene Inhalte jederzeit über die In-App-Meldefunktion melden. Aktiva prüft Meldungen zügig und ergreift entsprechende Maßnahmen.</p>
+        <p>Nutzer können Verstöße, verdächtige Konten oder unangemessene Inhalte jederzeit über die In-App-Meldefunktion melden. Activa prüft Meldungen zügig und ergreift entsprechende Maßnahmen.</p>
       </LegalSection>
       <LegalSection title="10. Konsequenzen bei Verstößen">
         <p>Bei Missachtung der Regeln können Inhalte entfernt, Warnungen ausgesprochen oder temporäre und permanente Kontosperrungen verhängt werden.</p>
       </LegalSection>
       <LegalSection title="11. Keine Beratung">
-        <p>Informationen zu Orten, Wegbeschreibungen, Aktivitäten oder gesundheitlichen Empfehlungen auf Aktiva stellen keine medizinische, rechtliche oder sicherheitsbezogene Beratung dar. Ortsangaben können fehlerhaft oder veraltet sein und müssen eigenverantwortlich geprüft werden. Aktiva übernimmt keine Garantie für die Qualität, Sicherheit oder Verfügbarkeit eines Ortes.</p>
+        <p>Informationen zu Orten, Wegbeschreibungen, Aktivitäten oder gesundheitlichen Empfehlungen auf Activa stellen keine medizinische, rechtliche oder sicherheitsbezogene Beratung dar. Ortsangaben können fehlerhaft oder veraltet sein und müssen eigenverantwortlich geprüft werden. Activa übernimmt keine Garantie für die Qualität, Sicherheit oder Verfügbarkeit eines Ortes.</p>
       </LegalSection>
       <LegalSection title="12. Änderungen der Nutzungsregeln">
-        <p>Aktiva behält sich vor, diese Bedingungen anzupassen. Die Nutzer werden über Änderungen in Kenntnis gesetzt.</p>
+        <p>Activa behält sich vor, diese Bedingungen anzupassen. Die Nutzer werden über Änderungen in Kenntnis gesetzt.</p>
       </LegalSection>
       <LegalSection title="13. Kontakt">
         <p>Bei Fragen oder Missbrauchsmeldungen kontaktieren Sie uns unter [E-Mail einfügen].</p>
@@ -207,7 +207,7 @@ export function TermsOfUseText({ language }: TextProps) {
         <p>Spamming, any form of harassment, discrimination, fraud, creating fake profiles, data mining/scraping, automated/bot usage, and unauthorized commercial use are strictly prohibited.</p>
       </LegalSection>
       <LegalSection title="4. Community Rules">
-        <p>Respect, politeness, and tolerance are the core values of Aktiva. We do not tolerate any form of hate speech, violence, harassment, or bullying.</p>
+        <p>Respect, politeness, and tolerance are the core values of Activa. We do not tolerate any form of hate speech, violence, harassment, or bullying.</p>
       </LegalSection>
       <LegalSection title="5. Profile Details and Authenticity">
         <p>Users are encouraged to provide accurate names and details. Pseudonyms are permitted but must not be used to deceive others.</p>
@@ -220,20 +220,20 @@ export function TermsOfUseText({ language }: TextProps) {
       </LegalSection>
       <LegalSection title="8. Interaction with Other Users">
         <LegalAlert>
-          Real-life meetups should always take place in public areas. Aktiva recommends exercising caution during initial meetings.
+          Real-life meetups should always take place in public areas. Activa recommends exercising caution during initial meetings.
         </LegalAlert>
       </LegalSection>
       <LegalSection title="9. Safety, Abuse, and Reporting">
-        <p>Users can report violations, suspicious accounts, or inappropriate content at any time using the in-app report tools. Aktiva reviews reports promptly.</p>
+        <p>Users can report violations, suspicious accounts, or inappropriate content at any time using the in-app report tools. Activa reviews reports promptly.</p>
       </LegalSection>
       <LegalSection title="10. Consequences of Violations">
         <p>Violations may result in content removal, warnings, or temporary/permanent account suspension.</p>
       </LegalSection>
       <LegalSection title="11. No Advice">
-        <p>Information about locations, routes, or activities does not constitute medical, legal, or safety advice. Location data might be incorrect or outdated and must be verified independently. Aktiva does not guarantee safety, quality, or availability of any venue.</p>
+        <p>Information about locations, routes, or activities does not constitute medical, legal, or safety advice. Location data might be incorrect or outdated and must be verified independently. Activa does not guarantee safety, quality, or availability of any venue.</p>
       </LegalSection>
       <LegalSection title="12. Changes to these Rules">
-        <p>Aktiva reserves the right to modify these guidelines. Users will be informed of updates.</p>
+        <p>Activa reserves the right to modify these guidelines. Users will be informed of updates.</p>
       </LegalSection>
       <LegalSection title="13. Contact">
         <p>For questions or abuse reports, please contact: [Insert Email].</p>
@@ -318,7 +318,7 @@ export function PrivacyPolicyText({ language }: TextProps) {
         <p>Der Dienst ist für Personen ab 12 Jahren freigegeben. Wir erheben nicht wissentlich Daten von jüngeren Kindern.</p>
       </LegalSection>
       <LegalSection title="20. Cookies und ähnliche Technologien">
-        <p>Aktiva behält sich vor, diese Erklärung anzupassen. Der aktuelle Stand wird stets in der App angezeigt.</p>
+        <p>Activa behält sich vor, diese Erklärung anzupassen. Der aktuelle Stand wird stets in der App angezeigt.</p>
       </LegalSection>
       <LegalSection title="21. Kontakt">
         <p>Bei datenschutzrechtlichen Fragen wenden Sie sich bitte an: [Datenschutzkontakt einfügen].</p>
@@ -417,14 +417,14 @@ export function CookiePolicyText({ language }: TextProps) {
       <LegalSection title="1. Was sind Cookies und ähnliche Technologien?">
         <p>Cookies sind kleine Textdateien, die auf Ihrem Endgerät gespeichert werden. Wir nutzen auch LocalStorage und SessionStorage für eine optimale App-Performance.</p>
       </LegalSection>
-      <LegalSection title="2. Welche Technologien Aktiva verwenden kann">
+      <LegalSection title="2. Welche Technologien Activa verwenden kann">
         <ul className="list-disc space-y-1 pl-5">
           <li><strong>Technisch notwendige Cookies:</strong> Zur Authentifizierung (Firebase Auth Session) und Systemsicherheit.</li>
           <li><strong>Lokale Speicherung (LocalStorage):</strong> Speichern Ihrer Sprachauswahl (Language Preference) und Cache-Daten für schnellere Ladezeiten.</li>
           <li><strong>Session Storage:</strong> Speichern von Sitzungsparametern zur Gewährleistung der Navigation.</li>
           <li><strong>Authentifizierungs- und Sicherheitsmechanismen:</strong> Tokens zur sicheren Identifizierung von Benutzern.</li>
           <li><strong>Präferenzspeicherung:</strong> Speicherung benutzerspezifischer Einstellungen.</li>
-          <li><strong>Analyse- oder Performance-Technologien:</strong> Aktiva kann künftig Analyse- oder Performance-Technologien einsetzen, sofern dies rechtlich erforderlich nur mit Einwilligung geschieht. Derzeit nicht aktiv.</li>
+          <li><strong>Analyse- oder Performance-Technologien:</strong> Activa kann künftig Analyse- oder Performance-Technologien einsetzen, sofern dies rechtlich erforderlich nur mit Einwilligung geschieht. Derzeit nicht aktiv.</li>
         </ul>
       </LegalSection>
       <LegalSection title="3. Zwecke der Verwendung">
@@ -437,7 +437,7 @@ export function CookiePolicyText({ language }: TextProps) {
         <p>Diese notwendigen Technologien für Login, Sicherheit und Session-Verwaltung können nicht deaktiviert werden, da die App sonst nicht nutzbar wäre.</p>
       </LegalSection>
       <LegalSection title="6. Optionale Technologien">
-        <p>Derzeit verwendet Aktiva keine optionalen Tracking- oder Werbe-Cookies von Drittanbietern. Sollten solche künftig integriert werden, geschieht dies nur nach aktiver Einwilligung.</p>
+        <p>Derzeit verwendet Activa keine optionalen Tracking- oder Werbe-Cookies von Drittanbietern. Sollten solche künftig integriert werden, geschieht dies nur nach aktiver Einwilligung.</p>
       </LegalSection>
       <LegalSection title="7. Einwilligung und Widerruf">
         <p>Da nur notwendige Cookies verwendet werden, ist kein vorgeschalteter Cookie-Banner nötig. Sie können Cookies in den Einstellungen Ihres Webbrowsers blockieren, was jedoch die Funktionalität beeinträchtigen kann.</p>
@@ -463,14 +463,14 @@ export function CookiePolicyText({ language }: TextProps) {
       <LegalSection title="1. What are Cookies and Similar Technologies?">
         <p>Cookies are small text files stored on your device. We also utilize LocalStorage and SessionStorage to optimize app performance.</p>
       </LegalSection>
-      <LegalSection title="2. Technologies Aktiva May Use">
+      <LegalSection title="2. Technologies Activa May Use">
         <ul className="list-disc space-y-1 pl-5">
           <li><strong>Strictly Necessary Cookies:</strong> Used for user authentication (Firebase Auth session) and security.</li>
           <li><strong>Local Storage (LocalStorage):</strong> Used to store language preferences and cache details for faster loading.</li>
           <li><strong>Session Storage:</strong> Storing session parameters to ensure correct navigation flow.</li>
           <li><strong>Authentication and Security:</strong> Token storage for safe user identification.</li>
           <li><strong>Preference Storage:</strong> Saving user-specific app layout preferences.</li>
-          <li><strong>Analysis or Performance Technologies:</strong> Aktiva may use analytical technologies in the future, subject to consent. Currently inactive.</li>
+          <li><strong>Analysis or Performance Technologies:</strong> Activa may use analytical technologies in the future, subject to consent. Currently inactive.</li>
         </ul>
       </LegalSection>
       <LegalSection title="3. Purposes of Use">
@@ -483,7 +483,7 @@ export function CookiePolicyText({ language }: TextProps) {
         <p>These essential technologies for login, security, and session management are mandatory and cannot be disabled without breaking the app.</p>
       </LegalSection>
       <LegalSection title="6. Optionale Technologies">
-        <p>Currently, Aktiva does not use any marketing or tracking cookies from third-party advertising networks. If any are added in the future, they will only be activated with your prior consent.</p>
+        <p>Currently, Activa does not use any marketing or tracking cookies from third-party advertising networks. If any are added in the future, they will only be activated with your prior consent.</p>
       </LegalSection>
       <LegalSection title="7. Consent and Control">
         <p>Since only necessary cookies are used, no cookie consent banner is legally required. You can manage or disable cookies via your browser settings, though some features may fail.</p>

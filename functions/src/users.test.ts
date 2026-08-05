@@ -386,7 +386,7 @@ async function testLaunchCampaign2026() {
   resetMockDb();
   const validUser = {
     uid: "camp_user_1",
-    email: "camp1@aktiva.app",
+    email: "camp1@activa.app",
     metadata: {
       creationTime: "2026-08-15T12:00:00.000Z"
     }
@@ -407,7 +407,7 @@ async function testLaunchCampaign2026() {
   resetMockDb();
   const earlyUser = {
     uid: "early_user",
-    email: "early@aktiva.app",
+    email: "early@activa.app",
     metadata: {
       creationTime: "2026-06-01T12:00:00.000Z"
     }
@@ -419,7 +419,7 @@ async function testLaunchCampaign2026() {
   resetMockDb();
   const noMetaUser = {
     uid: "no_meta_user",
-    email: "nometa@aktiva.app",
+    email: "nometa@activa.app",
     metadata: {}
   };
   await onUserCreated(noMetaUser);

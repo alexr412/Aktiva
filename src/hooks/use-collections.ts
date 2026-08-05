@@ -7,6 +7,8 @@ import { collection, getDocs } from 'firebase/firestore';
 import { SavedCollection, hasPremiumFeature } from '@/lib/types';
 import { useToast } from './use-toast';
 
+import { getMigratedItem, setMigratedItem } from '@/lib/storage-migration';
+
 export function useCollections() {
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
@@ -18,8 +20,8 @@ export function useCollections() {
   const maxItems = isPremium ? Infinity : 25;
 
   useEffect(() => {
-    // Primary local storage lookup
-    const local = localStorage.getItem('aktiva_collections');
+    // Primary local storage lookup with backward-compatible migration
+    const local = getMigratedItem('activa_collections', 'aktiva_collections');
     let localData: SavedCollection[] = [];
     if (local) {
       try {
@@ -43,7 +45,7 @@ export function useCollections() {
         const fbData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as SavedCollection));
         
         if (fbData.length > 0) {
-          localStorage.setItem('aktiva_collections', JSON.stringify(fbData));
+          setMigratedItem('activa_collections', 'aktiva_collections', JSON.stringify(fbData));
           setCollections(fbData);
         }
       } catch (err) {
@@ -57,7 +59,7 @@ export function useCollections() {
   }, [user]);
 
   const saveToLocal = (newCollections: SavedCollection[]) => {
-    localStorage.setItem('aktiva_collections', JSON.stringify(newCollections));
+    setMigratedItem('activa_collections', 'aktiva_collections', JSON.stringify(newCollections));
     setCollections(newCollections);
   };
 

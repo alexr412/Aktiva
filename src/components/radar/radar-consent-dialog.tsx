@@ -52,8 +52,8 @@ export function RadarConsentDialog({
             <Navigation className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
             <p className="text-xs leading-relaxed">
               {isDe
-                ? 'Wenn du den Freunde-Radar aktivierst, wird dein Standort während der aktiven Nutzung von Aktiva regelmäßig aktualisiert.'
-                : 'When you enable the Friends Radar, your location will be updated regularly while using Aktiva.'}
+                ? 'Wenn du den Freunde-Radar aktivierst, wird dein Standort während der aktiven Nutzung von Activa regelmäßig aktualisiert.'
+                : 'When you enable the Friends Radar, your location will be updated regularly while using Activa.'}
             </p>
           </div>
 
@@ -70,8 +70,8 @@ export function RadarConsentDialog({
             <EyeOff className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
             <p className="text-xs leading-relaxed">
               {isDe
-                ? 'Dein genauer Standort wird nicht angezeigt. Es wird kein Standortverlauf gespeichert. Aktiva aktualisiert deinen Standort nicht dauerhaft im Hintergrund.'
-                : 'Your exact location is never shown. No location history is saved. Aktiva does not update your location constantly in the background.'}
+                ? 'Dein genauer Standort wird nicht angezeigt. Es wird kein Standortverlauf gespeichert. Activa aktualisiert deinen Standort nicht dauerhaft im Hintergrund.'
+                : 'Your exact location is never shown. No location history is saved. Activa does not update your location constantly in the background.'}
             </p>
           </div>
         </div>

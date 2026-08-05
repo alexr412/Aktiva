@@ -21,13 +21,13 @@ import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChatInfoSheet } from '@/components/aktiva/chat-info-sheet';
-import { PlaceDetails } from '@/components/aktiva/place-details';
+import { ChatInfoSheet } from '@/components/activa/chat-info-sheet';
+import { PlaceDetails } from '@/components/activa/place-details';
 import { RoomInfoSheet } from '@/components/chat/room-info-sheet';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ArrowLeft, Send, MoreVertical, Loader2, Users, Info, Reply, Edit3, Pin, Copy, CornerUpLeft, X, PinOff, Check, Share2 } from 'lucide-react';
-import { CompletionBanner } from '@/components/aktiva/CompletionBanner';
-import { MultiPeerReviewDialog } from '@/components/aktiva/multi-peer-review-dialog';
+import { CompletionBanner } from '@/components/activa/CompletionBanner';
+import { MultiPeerReviewDialog } from '@/components/activa/multi-peer-review-dialog';
 import { UserBadge } from '@/components/common/UserBadge';
 import { cn, formatFirstName, resolvePublicUsername } from '@/lib/utils';
 import {

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { translateAppString } from '@/lib/tag-config';
 
-interface AktivaPulseHeroProps {
+export interface ActivaPulseHeroProps {
   cityName: string | null;
   openRoomsCount: number | null;
   uniqueParticipantsCount: number | null;
@@ -14,6 +14,7 @@ interface AktivaPulseHeroProps {
   onExplore: () => void;
   loading?: boolean;
 }
+
 
 /**
  * Helper to normalize city names.
@@ -25,14 +26,14 @@ function normalizeCityName(city: string | null | undefined): string | null {
   return trimmed || null;
 }
 
-export function AktivaPulseHero({
+export function ActivaPulseHero({
   cityName,
   openRoomsCount,
   uniqueParticipantsCount,
   language,
   onExplore,
   loading = false
-}: AktivaPulseHeroProps) {
+}: ActivaPulseHeroProps) {
   // Unconditional Hook declarations first
   const [activeMetric, setActiveMetric] = useState<'rooms' | 'participants'>('rooms');
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -270,3 +271,4 @@ export function AktivaPulseHero({
     </div>
   );
 }
+

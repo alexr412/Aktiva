@@ -15,7 +15,7 @@ type Props = {
  */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { activityId } = await params;
-  if (!db || !activityId) return { title: 'Aktivität Details | Aktiva' };
+  if (!db || !activityId) return { title: 'Aktivität Details | Activa' };
 
   try {
     const activityRef = doc(db, 'activities', activityId);
@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const activitySnap = await fetchWithTimeout as any;
 
     if (!activitySnap || !activitySnap.exists()) {
-      return { title: 'Aktivität nicht gefunden | Aktiva' };
+      return { title: 'Aktivität nicht gefunden | Activa' };
     }
 
     const activity = activitySnap.data();
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // Check for global blacklisted status
     if (activity.status === 'blacklisted') {
       return {
-        title: 'Aktivität nicht verfügbar | Aktiva',
+        title: 'Aktivität nicht verfügbar | Activa',
         description: 'Diese Aktivität ist nicht mehr verfügbar.',
       };
     }
@@ -81,7 +81,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       titlePrefix = '[Beendet] ';
     }
 
-    const title = `${titlePrefix}${activity.placeName || 'Treffen'} | Aktiva`;
+    const title = `${titlePrefix}${activity.placeName || 'Treffen'} | Activa`;
     const description = isCancelled
       ? `Die Aktivität bei ${activity.placeName || 'uns'} am ${dateStr} wurde abgesagt.`
       : isCompleted
@@ -92,13 +92,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       openGraph: {
-        title: `Einladung: Treffen bei ${activity.placeName || 'Aktiva'}`,
-        description: `Join uns auf Aktiva für ein Event in der Kategorie ${activity.category || 'Sonstiges'}.`,
-        url: `https://aktiva.app/activities/${activityId}`,
-        siteName: 'Aktiva',
+        title: `Einladung: Treffen bei ${activity.placeName || 'Activa'}`,
+        description: `Join uns auf Activa für ein Event in der Kategorie ${activity.category || 'Sonstiges'}.`,
+        url: `https://activa-444220.web.app/activities/${activityId}`,
+        siteName: 'Activa',
         images: [
           {
-            url: activity.hostPhotoURL || 'https://picsum.photos/seed/aktiva/1200/630',
+            url: activity.hostPhotoURL || 'https://picsum.photos/seed/activa/1200/630',
             width: 1200,
             height: 630,
           },
@@ -107,7 +107,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     };
   } catch (err) {
-    return { title: 'Aktivität Details | Aktiva' };
+    return { title: 'Aktivität Details | Activa' };
   }
 }
 

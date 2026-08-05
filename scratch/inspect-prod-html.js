@@ -2,7 +2,7 @@ const https = require('https');
 
 function inspectProd() {
   const options = {
-    hostname: 'aktiva.app',
+    hostname: 'activa.app',
     port: 443,
     path: '/activities/FROS2L5HyZmAm640Pc1I/invite',
     method: 'GET',

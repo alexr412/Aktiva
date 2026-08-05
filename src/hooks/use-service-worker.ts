@@ -26,7 +26,7 @@ export function useServiceWorker() {
       if (typeof caches !== 'undefined') {
         caches.keys().then((keys) => {
           for (const key of keys) {
-            if (key.startsWith('aktiva-')) {
+            if (key.startsWith('aktiva-') || key.startsWith('activa-')) {
               caches.delete(key).then(() => {
                 console.log('[SW] Deleted dev cache storage:', key);
               });

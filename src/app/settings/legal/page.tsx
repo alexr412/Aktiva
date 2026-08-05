@@ -26,7 +26,7 @@ export default function LegalSettingsPage() {
             title: language === 'de' ? 'AGB / Nutzungsbedingungen' : 'Terms of Service',
             icon: Gavel,
             href: '/terms',
-            description: language === 'de' ? 'Die rechtliche Basis für die Nutzung von Aktiva.' : 'The legal basis for using Aktiva.'
+            description: language === 'de' ? 'Die rechtliche Basis für die Nutzung von Activa.' : 'The legal basis for using Activa.'
         },
         {
             title: language === 'de' ? 'Widerrufsbelehrung' : 'Cancellation Policy',
@@ -84,7 +84,7 @@ export default function LegalSettingsPage() {
 
                 <div className="pt-8 text-center">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                        Aktiva Version 1.0.0 • 2026
+                        Activa Version 1.0.0 • 2026
                     </p>
                 </div>
             </div>

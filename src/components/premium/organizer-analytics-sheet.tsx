@@ -89,8 +89,8 @@ export function OrganizerAnalyticsSheet({ placeId, placeName, open, onOpenChange
                 </h3>
                 <p className="text-xs font-semibold text-slate-400 leading-relaxed">
                   {language === 'de' 
-                    ? 'Hol dir Aktiva Premium, um Klicks, Aufrufe, geteilte Links und Routenanfragen für deine Spots zu analysieren.' 
-                    : 'Unlock Aktiva Premium to analyze opens, favorites, shares, and navigation clicks for your spots.'}
+                    ? 'Hol dir Activa Premium, um Klicks, Aufrufe, geteilte Links und Routenanfragen für deine Spots zu analysieren.' 
+                    : 'Unlock Activa Premium to analyze opens, favorites, shares, and navigation clicks for your spots.'}
                 </p>
               </div>
               <button
@@ -102,7 +102,7 @@ export function OrganizerAnalyticsSheet({ placeId, placeName, open, onOpenChange
                     <Sparkles className="h-4 w-4 fill-white/10" />
                   </div>
                   <div>
-                    <p className="font-black text-xs uppercase tracking-tight">Aktiva Premium aktivieren</p>
+                    <p className="font-black text-xs uppercase tracking-tight">Activa Premium aktivieren</p>
                     <p className="text-[10px] text-white/80 font-bold">Jetzt freischalten und sofort wachsen</p>
                   </div>
                 </div>

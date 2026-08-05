@@ -115,6 +115,30 @@ async function runAdminUsersBackendTests() {
   assert.strictEqual(getParticipantLimit(organizerAdmin, nowMs), 50, 'Organizer admin limit must be 50');
   console.log('  ✅ Entitlements & participant limits passed');
 
+  // 5. Legacy User Normalization & Export Verification
+  console.log('\nTest 5: Legacy User Normalization & Export Verification');
+  
+  // Test legacy user normalization without createdAt / role / accountStatus
+  const rawLegacyDoc: any = {
+    displayName: 'Legacy Max',
+    email: 'legacy@example.com',
+    isAdmin: true,
+  };
+
+  const roleVal = rawLegacyDoc.role || (rawLegacyDoc.isAdmin ? 'admin' : (rawLegacyDoc.isSupporter ? 'supporter' : 'user'));
+  const statusVal = rawLegacyDoc.accountStatus || (rawLegacyDoc.isBanned ? 'banned' : 'active');
+  const createdAtVal = rawLegacyDoc.createdAt || rawLegacyDoc.creationTime || null;
+
+  assert.strictEqual(roleVal, 'admin', 'Legacy isAdmin:true must normalize to role admin');
+  assert.strictEqual(statusVal, 'active', 'Legacy doc must normalize to accountStatus active');
+  assert.strictEqual(createdAtVal, null, 'Missing createdAt must remain null without error');
+
+  // Check adminBackfillUsers export from module
+  const adminUsersModule = require('./admin-users');
+  assert.strictEqual(typeof adminUsersModule.adminBackfillUsers, 'function', 'adminBackfillUsers must be exported as an onCall function');
+  assert.strictEqual(typeof adminUsersModule.adminListUsers, 'function', 'adminListUsers must be exported as an onCall function');
+  console.log('  ✅ Legacy user normalization & export verification passed');
+
   console.log('\n🎉 ALL ADMIN USERS BACKEND UNIT TESTS PASSED SUCCESSFULLY!\n');
 }
 

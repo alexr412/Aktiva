@@ -40,7 +40,7 @@ import { MapResultSheet } from './map-result-sheet';
 import { AlertTriangle, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-interface AktivaMapProps {
+export interface ActivaMapProps {
   places: Place[];
   communityActivities: Activity[];
   nearbyFriends?: NearbyFriend[];
@@ -55,9 +55,10 @@ interface AktivaMapProps {
   onJoinActivity?: (activity: Activity) => Promise<any>;
 }
 
+
 export { neutralizedRoadShieldLayers, neutralizeBrokenRoadShieldLayers };
 
-export function AktivaMap({
+export function ActivaMap({
   places,
   communityActivities,
   nearbyFriends = [],
@@ -70,7 +71,7 @@ export function AktivaMap({
   onSelectEntity,
   onCreateActivity,
   onJoinActivity,
-}: AktivaMapProps) {
+}: ActivaMapProps) {
   const router = useRouter();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
@@ -882,11 +883,11 @@ export function AktivaMap({
       });
 
       map.on('error', (e) => {
-        console.error('[AktivaMap] Map error:', e);
+        console.error('[ActivaMap] Map error:', e);
         setMapError(language === 'de' ? 'Kartendaten konnten nicht geladen werden.' : 'Failed to load map data.');
       });
     } catch (err: any) {
-      console.error('[AktivaMap] Initialization exception:', err);
+      console.error('[ActivaMap] Initialization exception:', err);
       setMapError(err?.message || 'Error initializing MapLibre GL');
     }
 
@@ -1235,3 +1236,4 @@ export function AktivaMap({
     </div>
   );
 }
+

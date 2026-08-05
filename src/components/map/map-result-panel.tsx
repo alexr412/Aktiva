@@ -3,8 +3,8 @@
 import React from 'react';
 import { X, MapPin, Calendar, Users, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PlaceDetails } from '@/components/aktiva/place-details';
-import { ActivityListItem } from '@/components/aktiva/activity-list-item';
+import { PlaceDetails } from '@/components/activa/place-details';
+import { ActivityListItem } from '@/components/activa/activity-list-item';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import type { Place, Activity } from '@/lib/types';
 import type { SelectedMapEntity } from './map-types';

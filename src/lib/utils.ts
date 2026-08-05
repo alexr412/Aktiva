@@ -38,7 +38,7 @@ import type { ParticipantDetailEntry } from '@/lib/types';
 
 export function formatPublicUsername(
   username?: string | null,
-  fallback = "Aktiva-Nutzer"
+  fallback = "Activa-Nutzer"
 ): string {
   if (username) {
     const clean = username.trim().replace(/^@/, '');
@@ -60,7 +60,7 @@ export function resolvePublicUsername({
   otherUser?: any;
   language?: 'de' | 'en';
 }): string {
-  const neutralFallback = language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user';
+  const neutralFallback = language === 'de' ? 'Activa-Nutzer' : 'Activa user';
   
   if (currentUserProfile && uid === currentUserProfile.uid) {
     if (currentUserProfile.username) {

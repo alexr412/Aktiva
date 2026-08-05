@@ -198,7 +198,7 @@ export function RoomInfoSheet({
     if (!activity) return;
     const refCode = userProfile?.referralCode || '';
     const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/activities/${activity.id}/invite${refCode ? `?ref=${refCode}` : ''}` : '';
-    const shareTitle = activity.title || chat.placeName || 'Aktiva';
+    const shareTitle = activity.title || chat.placeName || 'Activa';
     const dateStr = activity.activityDate && typeof activity.activityDate.toDate === 'function'
       ? activity.activityDate.toDate().toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })
       : '';
@@ -469,7 +469,7 @@ export function RoomInfoSheet({
                           />
                           <div className="flex flex-col">
                             <span className="text-xs font-bold text-slate-900 dark:text-neutral-100">
-                              {p.username ? `@${p.username.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')}
+                              {p.username ? `@${p.username.replace(/^@/, '')}` : (language === 'de' ? 'Activa-Nutzer' : 'Activa user')}
                               {isCurrentUser && (
                                 <span className="text-[10px] text-slate-400 dark:text-neutral-500 font-bold ml-1">
                                   {language === 'de' ? '(Du)' : '(You)'}
