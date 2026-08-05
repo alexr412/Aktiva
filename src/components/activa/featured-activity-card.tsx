@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { trackActivityView } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
+import { formatDistance } from '@/lib/geo-utils';
 import { getPrimaryIconData, translateAppString } from '@/lib/tag-config';
 import { CategoryCardDecoration } from './category-card-decoration';
 import { tryAcquireActivityActionLock, releaseActivityActionLock, setActivityActionStatus } from '@/lib/activity-action-state';
@@ -218,10 +219,10 @@ export function FeaturedActivityCard({ activity, user, onJoin, hasRequested }: F
                                         {format(activityDate, language === 'de' ? 'eee, d. MMM HH:mm' : 'eee, MMM d HH:mm', { locale: language === 'de' ? de : enUS })}
                                     </span>
                                 )}
-                                {activity.distance !== undefined && activity.distance !== null && (
+                                {activity.distance !== undefined && activity.distance !== null && formatDistance(activity.distance) && (
                                     <>
                                         <span>•</span>
-                                        <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" /> {activity.distance < 1 ? '< 1 km' : `${activity.distance.toFixed(1)} km`}</span>
+                                        <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" /> {formatDistance(activity.distance)}</span>
                                     </>
                                 )}
                             </div>

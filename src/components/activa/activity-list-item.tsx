@@ -18,6 +18,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { getPrimaryIconData, translateTag, translateAppString } from '@/lib/tag-config';
 import { formatTags } from '@/lib/tag-parser';
 import { useToast } from '@/hooks/use-toast';
+import { formatDistance } from '@/lib/geo-utils';
 import { tryAcquireActivityActionLock, releaseActivityActionLock, setActivityActionStatus } from '@/lib/activity-action-state';
 import Link from 'next/link';
 
@@ -242,10 +243,10 @@ export function ActivityListItem({ activity, user, onJoin, hasRequested }: Activ
                                 {format(activityDate, language === 'de' ? 'eee, d. MMM HH:mm' : 'eee, MMM d HH:mm', { locale: language === 'de' ? de : enUS })}
                             </span>
                         )}
-                        {activity.distance !== undefined && activity.distance !== null && (
+                        {activity.distance !== undefined && activity.distance !== null && formatDistance(activity.distance) && (
                             <>
                                 <span>•</span>
-                                <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" /> {activity.distance < 1 ? '< 1 km' : `${activity.distance.toFixed(1)} km`}</span>
+                                <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" /> {formatDistance(activity.distance)}</span>
                             </>
                         )}
                     </div>

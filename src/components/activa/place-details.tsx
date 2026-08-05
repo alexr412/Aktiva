@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
+import { useLocation } from '@/contexts/location-context';
+import { calculateDistanceKm, extractCoordinates, formatDistance } from '@/lib/geo-utils';
 import { joinActivity, votePlace, normalizeActivityDocument } from '@/lib/firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
@@ -66,8 +68,39 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     const PrimaryIcon = primaryStyle.icon;
     
     const { user, userProfile } = useAuth();
+    const { position } = useLocation();
     const router = useRouter();
     const { toast } = useToast();
+
+    // Dynamische Distanzberechnung aus dem aktuellen Standort (LocationProvider)
+    const targetCoords = useMemo(() => extractCoordinates(place), [place]);
+
+    const effectiveDistanceInKm = useMemo(() => {
+        // 1. Live-Standort aus dem LocationProvider + Zielkoordinaten haben Priorität
+        if (position && targetCoords) {
+            return calculateDistanceKm(
+                position.latitude,
+                position.longitude,
+                targetCoords.lat,
+                targetCoords.lng
+            );
+        }
+        // 2. Fallback: Keine Live-Position vorhanden, aber im place-Objekt existiert bereits ein gültiger distance-Wert (wird in Kilometern erwartet)
+        if (
+            place.distance !== undefined &&
+            place.distance !== null &&
+            typeof place.distance === 'number' &&
+            !isNaN(place.distance) &&
+            isFinite(place.distance) &&
+            place.distance >= 0
+        ) {
+            return place.distance;
+        }
+        // 3. Kein gültiger Standort/Distanzwert -> null (führt im Formatter zum Fallback '---')
+        return null;
+    }, [position, targetCoords, place.distance]);
+
+    const formattedDistance = formatDistance(effectiveDistanceInKm);
 
     const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -565,7 +598,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         </div>
                         <div className="bg-[#f0f9ff] dark:bg-blue-950/20 p-3 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-center border border-blue-100/50 dark:border-blue-900/30">
                              <span className="text-sm font-black text-[#0369a1] dark:text-blue-400">
-                                {place.distance ? (place.distance < 1000 ? `${Math.round(place.distance)}m` : `${(place.distance/1000).toFixed(1)}km`) : '---'}
+                                {formattedDistance || '---'}
                             </span>
                             <span className="text-[10px] font-bold text-blue-900/80 dark:text-blue-400/80">{language === 'de' ? 'Entfernung' : 'Distance'}</span>
                         </div>

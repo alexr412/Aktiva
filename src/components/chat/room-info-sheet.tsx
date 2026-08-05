@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
+import { formatDistance } from '@/lib/geo-utils';
 import { leaveActivity } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { format, isToday } from 'date-fns';
@@ -347,11 +348,9 @@ export function RoomInfoSheet({
                 </div>
                 <div className="text-xs text-slate-500 dark:text-neutral-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                   <span>{activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.placeAddress || '') : (place?.address || activity?.placeAddress || '')}</span>
-                  {place?.distance !== undefined && (
+                  {place?.distance !== undefined && place?.distance !== null && formatDistance(place.distance) && (
                     <span className="bg-slate-200 dark:bg-neutral-750 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                      {place.distance < 1
-                        ? `${Math.round(place.distance * 1000)} m`
-                        : `${place.distance.toFixed(1)} km`}
+                      {formatDistance(place.distance)}
                     </span>
                   )}
                 </div>

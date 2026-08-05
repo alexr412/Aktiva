@@ -18,12 +18,7 @@ import { Button } from '@/components/ui/button';
 import { isEntityBoosted } from '@/lib/ranking';
 import { CategoryCardDecoration } from './category-card-decoration';
 import { useLanguage } from '@/hooks/use-language';
-
-const formatDistance = (distanceInKm?: number) => {
-    if (distanceInKm === undefined) return null;
-    if (distanceInKm < 1) return `${Math.round(distanceInKm * 1000)}m`;
-    return `${distanceInKm.toFixed(1)}km`;
-};
+import { formatDistance } from '@/lib/geo-utils';
 
 type PlaceCardProps = {
     place: Place;
