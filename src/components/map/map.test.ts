@@ -135,6 +135,62 @@ async function runMapTestSuite() {
   assert.strictEqual(parseViewMode('invalid_val'), 'list');
   console.log('  ✅ URL state search param parsing passed');
 
+  // Test 8: Single Source of Truth Final Feed Spots Alignment (Feed Place IDs === Map Place IDs)
+  console.log('\nTest 8: Single Source of Truth Final Feed Spots Alignment (Feed Place IDs === Map Place IDs)');
+  const samplePlaces: Place[] = [
+    { id: 'p_cafe_a', name: 'Café A', address: 'Address 1', categories: ['catering.cafe'], lat: 53.54, lon: 8.58 },
+    { id: 'p_bowling_b', name: 'Bowlingcenter B', address: 'Address 2', categories: ['entertainment.bowling_alley'], lat: 53.55, lon: 8.59 },
+    { id: 'p_park_c', name: 'Park C', address: 'Address 3', categories: ['leisure.park'], lat: 53.56, lon: 8.60 },
+    { id: 'p_museum_d', name: 'Museum D', address: 'Address 4', categories: ['entertainment.museum'], lat: 53.57, lon: 8.61 },
+    { id: 'p_restaurant_e', name: 'Restaurant E', address: 'Address 5', categories: ['catering.restaurant'], lat: 53.58, lon: 8.62 },
+  ];
+
+  const deriveFinalFeedPlaces = (isFavoritesCategory: boolean, favorites: Place[], visiblePlaces: Place[], visibleCount: number) => {
+    if (isFavoritesCategory) return favorites;
+    return visiblePlaces.slice(0, visibleCount);
+  };
+
+  // 8a: Standard Feed - Map place IDs equal feed place IDs from single source of truth
+  const finalFeedPlacesA = deriveFinalFeedPlaces(false, [], samplePlaces, 10);
+  const feedPlaceIdsA = finalFeedPlacesA.map(p => p.id);
+  const mapPlacesA = parsePlaceMarkers(finalFeedPlacesA);
+  const mapPlaceIdsA = mapPlacesA.map(m => m.id);
+  assert.deepStrictEqual(mapPlaceIdsA, feedPlaceIdsA, 'Map Place IDs must exactly match Feed Place IDs');
+  assert.strictEqual(mapPlaceIdsA.length, 5);
+  assert.deepStrictEqual(mapPlaceIdsA, ['p_cafe_a', 'p_bowling_b', 'p_park_c', 'p_museum_d', 'p_restaurant_e']);
+
+  // 8b: Sliced/Paginated Feed
+  const finalFeedPlacesB = deriveFinalFeedPlaces(false, [], samplePlaces, 3);
+  const feedPlaceIdsB = finalFeedPlacesB.map(p => p.id);
+  const mapPlacesB = parsePlaceMarkers(finalFeedPlacesB);
+  const mapPlaceIdsB = mapPlacesB.map(m => m.id);
+  assert.deepStrictEqual(mapPlaceIdsB, feedPlaceIdsB, 'Map Place IDs must match sliced Feed Place IDs exactly');
+  assert.strictEqual(mapPlaceIdsB.length, 3);
+  assert.deepStrictEqual(mapPlaceIdsB, ['p_cafe_a', 'p_bowling_b', 'p_park_c']);
+
+  // 8c: Excluded spots (e.g. search filter mismatch or hidden items excluded from visiblePlaces)
+  const filteredVisiblePlaces = samplePlaces.filter(p => p.name.includes('Café'));
+  const finalFeedPlacesC = deriveFinalFeedPlaces(false, [], filteredVisiblePlaces, 10);
+  const feedPlaceIdsC = finalFeedPlacesC.map(p => p.id);
+  const mapPlacesC = parsePlaceMarkers(finalFeedPlacesC);
+  const mapPlaceIdsC = mapPlacesC.map(m => m.id);
+  assert.deepStrictEqual(mapPlaceIdsC, feedPlaceIdsC, 'Filtered map place IDs must match filtered feed place IDs');
+  assert.strictEqual(mapPlaceIdsC.includes('p_bowling_b'), false, 'Excluded spot Bowlingcenter B must NOT appear on map');
+
+  // 8d: Favorites View
+  const sampleFavorites: Place[] = [
+    { id: 'fav_1', name: 'Fav Spot 1', address: 'Fav Addr 1', categories: ['park'], lat: 53.54, lon: 8.58 },
+    { id: 'fav_2', name: 'Fav Spot 2', address: 'Fav Addr 2', categories: ['cafe'], lat: 53.55, lon: 8.59 },
+  ];
+  const finalFeedPlacesD = deriveFinalFeedPlaces(true, sampleFavorites, samplePlaces, 10);
+  const feedPlaceIdsD = finalFeedPlacesD.map(p => p.id);
+  const mapPlacesD = parsePlaceMarkers(finalFeedPlacesD);
+  const mapPlaceIdsD = mapPlacesD.map(m => m.id);
+  assert.deepStrictEqual(mapPlaceIdsD, feedPlaceIdsD, 'Favorites map place IDs must match favorites feed place IDs');
+  assert.deepStrictEqual(mapPlaceIdsD, ['fav_1', 'fav_2']);
+
+  console.log('  ✅ Final feed spots alignment & excluded spots verification passed');
+
   console.log('\n🎉 ALL MAP ARCHITECTURE PHASE 1 TESTS PASSED SUCCESSFULLY!\n');
 }
 

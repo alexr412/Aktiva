@@ -1006,6 +1006,13 @@ export default function Home() {
     });
   }, [places, userProfile, debouncedSearchQuery, shouldFilterByName, isHighlightsCategory, isAktivCategory, maxDistance, sortBy]);
 
+  const finalFeedPlaces = useMemo<Place[]>(() => {
+    if (isFavoritesCategory) {
+      return favorites;
+    }
+    return visiblePlaces.slice(0, visibleCount);
+  }, [isFavoritesCategory, favorites, visiblePlaces, visibleCount]);
+
   // Derive explicit active-mode values
   const activeFeedError = isFavoritesCategory
     ? null
@@ -1888,14 +1895,14 @@ export default function Home() {
     if (viewMode === 'list') {
       const renderList = () => {
         if (isFavoritesCategory) {
-          if (favorites.length === 0) {
+          if (finalFeedPlaces.length === 0) {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
           }
           return (
             <div className="p-4 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-              {favorites.map(place => {
+              {finalFeedPlaces.map(place => {
                 const live = placesMetaMap[place.id];
-                const placeObj = place as any as Place;
+                const placeObj = place;
                 return (
                   <div key={place.id} className="min-h-[280px] w-full">
                     <PlaceCard 
@@ -1955,9 +1962,8 @@ export default function Home() {
           );
         }
         
-        const visibleSlice = visiblePlaces.slice(0, visibleCount);
-        const featuredPlace = visibleSlice[0] ?? null;
-        const standardPlaces = visibleSlice.slice(1);
+        const featuredPlace = finalFeedPlaces[0] ?? null;
+        const standardPlaces = finalFeedPlaces.slice(1);
         
         return (
           <div className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-6">
@@ -2049,7 +2055,7 @@ export default function Home() {
       return (
         <div className="h-[calc(100vh-80px)] w-full relative">
           <ActivaMap
-            places={places}
+            places={finalFeedPlaces}
             communityActivities={communityActivities}
             nearbyFriends={nearbyFriends}
             userLocation={userLocation}
