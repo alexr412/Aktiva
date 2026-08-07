@@ -376,6 +376,21 @@ async function runMapTestSuite() {
   assert.notStrictEqual(technicalMeta.label, 'access');
   assert.notStrictEqual(technicalMeta.label, 'service');
 
+  // Cinema Kamera with imageUrl check
+  const kameraPlace = {
+    id: 'place-kamera',
+    name: 'Kamera',
+    lat: 52.02,
+    lon: 8.53,
+    categories: ['entertainment.cinema'],
+    imageUrl: 'https://images.unsplash.com/photo-cinema-stock.jpg',
+  } as Place;
+
+  const kameraMeta = getPrimaryIconData(kameraPlace, 'de');
+  assert.strictEqual(kameraMeta.label, 'Kino', 'Cinema Kamera must map to label "Kino"');
+  assert.ok(kameraMeta.icon, 'Cinema Kamera must have a defined category icon');
+  assert.strictEqual(kameraMeta.gradientClass.includes('purple') || kameraMeta.gradientClass.includes('rose') || kameraMeta.gradientClass.includes('violet'), true, 'Cinema must use a cinema gradient');
+
   console.log('  ✅ Place Category Visual Mapping System & Technical Tag Exclusion passed');
 
   console.log('\n🎉 ALL MAP ARCHITECTURE PHASE 1 TESTS PASSED SUCCESSFULLY!\n');

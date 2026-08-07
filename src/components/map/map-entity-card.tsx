@@ -67,7 +67,6 @@ export function MapEntityCard({
         : isOpen === false
         ? (isDe ? 'Geschlossen' : 'Closed')
         : '';
-    const imageUrl = place.imageUrl || placeMeta.imageUrl;
 
     return (
       <div
@@ -112,12 +111,8 @@ export function MapEntityCard({
             <X className="w-4 h-4 stroke-[2.5]" />
           </button>
 
-          {/* Center Cover Image or Category Icon */}
-          {imageUrl ? (
-            <img src={imageUrl} className="w-full h-full object-cover" alt={name} />
-          ) : (
-            <MetaIcon className="w-10 h-10 text-white/95 drop-shadow-md" />
-          )}
+          {/* Center Category Icon */}
+          <MetaIcon className="w-10 h-10 text-white/95 drop-shadow-md" />
 
           {/* Category Pill */}
           <div className="absolute bottom-2.5 left-3 bg-white/95 dark:bg-neutral-900/90 text-slate-900 dark:text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full backdrop-blur-sm border border-white/20 shadow-sm">
