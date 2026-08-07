@@ -9,7 +9,8 @@ import {
   applySoftPastelBasemapStyle,
 } from './map-marker-data';
 import type { Place, Activity } from '@/lib/types';
-import type { MapLayerVisibility, SelectedMapEntity } from './map-types';
+import type { SelectedMapEntity, MapLayerVisibility } from './map-types';
+import { getPrimaryIconData } from '../../lib/tag-config';
 
 async function runMapTestSuite() {
   console.log('🧪 Starting Activa Map Architecture Phase 1 Test Suite...\n');
@@ -277,6 +278,105 @@ async function runMapTestSuite() {
   assert.strictEqual(currentSelection, null, 'Close action must reset selectedMapEntity to null');
 
   console.log('  ✅ Unified SelectedMapEntity selection state & close architecture passed');
+
+  // Test 11: Place Category Visual Mapping System & Technical Tag Exclusion
+  console.log('\nTest 11: Place Category Visual Mapping System & Technical Tag Exclusion');
+
+  // Positive Case 1: Arbitrary swimming pool name with technical tag "access" as first element
+  const poolPlace1 = {
+    id: 'place-pool-1',
+    name: 'Beliebiges Freizeitbad',
+    address: 'Hauptstraße 1',
+    lat: 52.02,
+    lon: 8.53,
+    categories: ['access', 'leisure.sports_centre.swimming_pool', 'building'],
+  } as Place;
+
+  const poolMeta1 = getPrimaryIconData(poolPlace1, 'de');
+  assert.strictEqual(poolMeta1.label, 'Schwimmbad', 'Arbitrary pool name with access tag must be mapped to "Schwimmbad"');
+  assert.notStrictEqual(poolMeta1.label, 'access', 'Technical tag "access" must never be displayed as label');
+  assert.notStrictEqual(poolMeta1.label, 'building', 'Technical tag "building" must never be displayed as label');
+  assert.strictEqual(poolMeta1.gradientClass.includes('sky') || poolMeta1.gradientClass.includes('cyan') || poolMeta1.gradientClass.includes('blue'), true, 'Swimming pool must use a water/sky gradient');
+  assert.ok(poolMeta1.icon, 'Icon must be defined in meta');
+
+  // Positive Case 2: Other pool name ("Stadtbad Beispielstadt") with same categories -> same visual meta
+  const poolPlace2 = {
+    id: 'place-pool-2',
+    name: 'Stadtbad Beispielstadt',
+    lat: 52.05,
+    lon: 8.55,
+    categories: ['leisure.sports_centre.swimming_pool'],
+  } as Place;
+
+  const poolMeta2 = getPrimaryIconData(poolPlace2, 'de');
+  assert.strictEqual(poolMeta2.label, poolMeta1.label, 'Stadtbad must receive identical category label');
+  assert.strictEqual(poolMeta2.gradientClass, poolMeta1.gradientClass, 'Stadtbad must receive identical accent gradient');
+
+  // Positive Case 3: "Freibad Wiesenbad" with leisure.swimming_pool -> mapped to Schwimmbad
+  const poolPlace3 = {
+    id: 'place-pool-3',
+    name: 'Freibad Wiesenbad',
+    lat: 52.06,
+    lon: 8.56,
+    categories: ['leisure.swimming_pool'],
+  } as Place;
+
+  const poolMeta3 = getPrimaryIconData(poolPlace3, 'de');
+  assert.strictEqual(poolMeta3.label, 'Schwimmbad', 'Freibad Wiesenbad must be mapped to "Schwimmbad"');
+
+  // Regression Fall A: "Museum Bad Oeynhausen" must be classified as Museum, NOT Schwimmbad
+  const museumBadPlace = {
+    id: 'place-museum-bad',
+    name: 'Museum Bad Oeynhausen',
+    lat: 52.20,
+    lon: 8.80,
+    categories: ['tourism.museum'],
+  } as Place;
+
+  const museumMeta = getPrimaryIconData(museumBadPlace, 'de');
+  assert.strictEqual(museumMeta.label, 'Museum', 'Museum Bad Oeynhausen MUST be classified as Museum');
+  assert.notStrictEqual(museumMeta.label, 'Schwimmbad', 'Museum Bad Oeynhausen MUST NOT be classified as Schwimmbad');
+
+  // Regression Fall B: "Restaurant Bad Salzuflen" must be classified as Restaurant/Gastronomy, NOT Schwimmbad
+  const restaurantBadPlace = {
+    id: 'place-gastro-bad',
+    name: 'Restaurant Bad Salzuflen',
+    lat: 52.08,
+    lon: 8.75,
+    categories: ['catering.restaurant'],
+  } as Place;
+
+  const restaurantMeta = getPrimaryIconData(restaurantBadPlace, 'de');
+  assert.strictEqual(restaurantMeta.label, 'Essen & Trinken', 'Restaurant Bad Salzuflen MUST be classified as Gastronomy');
+  assert.notStrictEqual(restaurantMeta.label, 'Schwimmbad', 'Restaurant Bad Salzuflen MUST NOT be classified as Schwimmbad');
+
+  // Regression Fall C: "Billiard Pool Center" must NOT be classified as Schwimmbad
+  const billiardsPlace = {
+    id: 'place-billiards',
+    name: 'Billiard Pool Center',
+    lat: 52.10,
+    lon: 8.60,
+    categories: ['entertainment.activity_park.billiards'],
+  } as Place;
+
+  const billiardsMeta = getPrimaryIconData(billiardsPlace, 'de');
+  assert.notStrictEqual(billiardsMeta.label, 'Schwimmbad', 'Billiard Pool Center MUST NOT be classified as Schwimmbad');
+
+  // Technical tags only fallback check
+  const technicalOnlyPlace = {
+    id: 'place-tech',
+    name: 'Unbekannter Ort',
+    lat: 52.01,
+    lon: 8.52,
+    categories: ['access', 'service', 'building', 'amenity'],
+  } as Place;
+
+  const technicalMeta = getPrimaryIconData(technicalOnlyPlace, 'de');
+  assert.strictEqual(technicalMeta.label.toUpperCase(), 'INTERESSANTER ORT', 'Technical-only tags must fall back to human-readable label');
+  assert.notStrictEqual(technicalMeta.label, 'access');
+  assert.notStrictEqual(technicalMeta.label, 'service');
+
+  console.log('  ✅ Place Category Visual Mapping System & Technical Tag Exclusion passed');
 
   console.log('\n🎉 ALL MAP ARCHITECTURE PHASE 1 TESTS PASSED SUCCESSFULLY!\n');
 }

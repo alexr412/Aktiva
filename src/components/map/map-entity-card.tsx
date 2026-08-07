@@ -7,6 +7,7 @@ import type { Place, Activity } from '@/lib/types';
 import type { NearbyFriend } from '@/hooks/use-friend-radar';
 import type { SelectedMapEntity } from './map-types';
 import { formatPlaceDistance, getPlaceCategoryIconSVG, getActivityJoinState, formatActivityDateTime } from './map-marker-data';
+import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatDistanceBucketText, normalizePrecisionMeters } from '@/lib/radar-types';
 import { cn } from '@/lib/utils';
 
@@ -53,7 +54,9 @@ export function MapEntityCard({
 
   if (entity.type === 'place') {
     const place = entity.data as Place;
-    const category = place.categories?.[0] || place.category || (isDe ? 'Ort' : 'Place');
+    const placeMeta = getPrimaryIconData(place, language);
+    const MetaIcon = placeMeta.icon;
+    const category = placeMeta.label;
     const name = place.name || (isDe ? 'Unbenannter Ort' : 'Unnamed place');
     const ratingText = typeof place.rating === 'number' && place.rating > 0 ? place.rating.toFixed(1) : null;
     const distText = formatPlaceDistance(place.lat, place.lon ?? (place as any).lng, userLocation, language);
@@ -64,7 +67,7 @@ export function MapEntityCard({
         : isOpen === false
         ? (isDe ? 'Geschlossen' : 'Closed')
         : '';
-    const categoryIconSVG = getPlaceCategoryIconSVG(place.categories, place.category);
+    const imageUrl = place.imageUrl || placeMeta.imageUrl;
 
     return (
       <div
@@ -74,7 +77,7 @@ export function MapEntityCard({
         )}
       >
         {/* Header Bar */}
-        <div className="relative w-full h-28 bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-500 overflow-hidden flex items-center justify-center shrink-0">
+        <div className={cn('relative w-full h-28 overflow-hidden flex items-center justify-center shrink-0', placeMeta.gradientClass)}>
           {/* Favorite Button (Left) */}
           <button
             type="button"
@@ -103,21 +106,21 @@ export function MapEntityCard({
               e.stopPropagation();
               onClose();
             }}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-white/50"
             aria-label={isDe ? 'Schließen' : 'Close'}
           >
             <X className="w-4 h-4 stroke-[2.5]" />
           </button>
 
           {/* Center Cover Image or Category Icon */}
-          {place.imageUrl ? (
-            <img src={place.imageUrl} className="w-full h-full object-cover" alt={name} />
+          {imageUrl ? (
+            <img src={imageUrl} className="w-full h-full object-cover" alt={name} />
           ) : (
-            <div dangerouslySetInnerHTML={{ __html: categoryIconSVG }} />
+            <MetaIcon className="w-10 h-10 text-white/95 drop-shadow-md" />
           )}
 
           {/* Category Pill */}
-          <div className="absolute bottom-2.5 left-3 bg-white/95 dark:bg-neutral-900/90 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full backdrop-blur-sm border border-emerald-500/20 shadow-sm">
+          <div className="absolute bottom-2.5 left-3 bg-white/95 dark:bg-neutral-900/90 text-slate-900 dark:text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full backdrop-blur-sm border border-white/20 shadow-sm">
             {category}
           </div>
         </div>

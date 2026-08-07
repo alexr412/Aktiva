@@ -155,6 +155,8 @@ export interface TagStyle {
   imageUrl?: string;
 }
 
+export type PlaceVisualMeta = TagStyle;
+
 /**
  * getPrimaryIconData - Hierarchisches Icon-Zuweisungssystem (Weighting Index).
  * Löst visuelle Prioritäten deterministisch nach einer definierten Kaskade auf.
@@ -236,58 +238,91 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
   }
 
   // --- PRIORITÄT 0: Spezifische Entertainment-Kategorien ---
-  if (tags.includes('entertainment.museum') || name.includes('museum')) {
+  if (tags.some((t: string) => t.includes('museum')) || name.includes('museum')) {
     return { icon: Landmark, color: '#4f46e5', label: language === 'de' ? 'Museum' : 'Museum', bgClass: 'bg-indigo-50', gradientClass: 'bg-gradient-to-br from-indigo-600 to-blue-700', imageUrl: 'https://images.unsplash.com/photo-1544333323-c242144ebd53?q=80&w=800&auto=format&fit=crop' };
   }
-  if (tags.includes('entertainment.cinema') || name.includes('kino')) {
+  if (tags.some((t: string) => t.includes('cinema')) || name.includes('kino')) {
     return { icon: Film, color: '#4c1d95', label: language === 'de' ? 'Kino' : 'Cinema', bgClass: 'bg-purple-50', gradientClass: 'bg-gradient-to-br from-rose-500 to-orange-500', imageUrl: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800&auto=format&fit=crop' };
   }
-  if (tags.includes('entertainment.escape_game') || name.includes('quest') || name.includes('escape') || name.includes('rätsel')) {
+  if (tags.some((t: string) => t.includes('escape')) || name.includes('quest') || name.includes('escape') || name.includes('rätsel')) {
     return { icon: EscapeRoomIcon as any, color: '#7c3aed', label: language === 'de' ? 'Escape Room' : 'Escape Room', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-slate-900 to-violet-800' };
   }
-  if (tags.includes('entertainment.activity_park.trampoline') || name.includes('trampolin') || name.includes('sprung')) {
+  if (tags.some((t: string) => t.includes('trampoline')) || name.includes('trampolin') || name.includes('sprung')) {
     return { icon: TrampolineIcon as any, color: '#6366f1', label: language === 'de' ? 'Trampolinhalle' : 'Trampoline Park', bgClass: 'bg-indigo-50', gradientClass: 'bg-gradient-to-br from-fuchsia-500 to-purple-600' };
   }
   if (tags.some((t: string) => t.startsWith('entertainment.activity_park')) || name.includes('aktivitätspark') || name.includes('activity park')) {
     return { icon: ActivityParkIcon as any, color: '#10b981', label: language === 'de' ? 'Aktivitätspark' : 'Activity Park', bgClass: 'bg-emerald-50', gradientClass: 'bg-gradient-to-br from-emerald-400 to-teal-500' };
   }
-  if (tags.includes('entertainment.miniature_golf') || name.includes('minigolf') || name.includes('adventure golf')) {
+  if (tags.some((t: string) => t.includes('miniature_golf') || t.includes('minigolf')) || name.includes('minigolf') || name.includes('adventure golf')) {
     return { icon: MinigolfIcon as any, color: '#10b981', label: language === 'de' ? 'Minigolf' : 'Minigolf', bgClass: 'bg-emerald-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-teal-400' };
   }
-  if (tags.includes('entertainment.bowling_alley') || name.includes('bowling') || name.includes('kegeln')) {
+  if (tags.some((t: string) => t.includes('bowling')) || name.includes('bowling') || name.includes('kegeln')) {
     return { icon: BowlingIcon as any, color: '#f43f5e', label: language === 'de' ? 'Bowling' : 'Bowling', bgClass: 'bg-rose-50', gradientClass: 'bg-gradient-to-br from-rose-500 to-pink-600' };
   }
-  if (tags.includes('entertainment.amusement_arcade') || name.includes('arcade') || name.includes('spielhalle')) {
+  if (tags.some((t: string) => t.includes('arcade')) || name.includes('arcade') || name.includes('spielhalle')) {
     return { icon: ArcadeIcon as any, color: '#ec4899', label: language === 'de' ? 'Spielhalle' : 'Arcade', bgClass: 'bg-pink-50', gradientClass: 'bg-gradient-to-br from-pink-500 to-rose-600' };
   }
 
+  // --- GASTRONOMIE ---
+  if (tags.some((t: string) => t.startsWith('catering') || t.includes('restaurant') || t.includes('cafe') || t.includes('bar') || t.includes('pub')) || name.includes('restaurant') || name.includes('café') || name.includes('cafe') || name.includes('bar') || name.includes('pub')) {
+    if (tags.some((t: string) => t.includes('cafe')) || name.includes('café') || name.includes('cafe')) {
+      return { icon: Coffee, color: '#d97706', label: language === 'de' ? 'Café & Bar' : 'Café & Bar', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-orange-400 to-red-600' };
+    }
+    return { icon: Utensils, color: '#dc2626', label: language === 'de' ? 'Essen & Trinken' : 'Gastronomy', bgClass: 'bg-red-50', gradientClass: 'bg-gradient-to-br from-red-600 to-orange-600' };
+  }
+
   // --- SAKRALBAUTEN ---
-  if (tags.includes('tourism.sights.place_of_worship.synagogue') || tags.includes('religion.place_of_worship.judaism') || n.includes('synagoge')) {
+  if (tags.some((t: string) => t.includes('synagogue') || t.includes('judaism')) || n.includes('synagoge')) {
     return { icon: Star, color: '#3b82f6', label: language === 'de' ? 'Synagoge' : 'Synagogue', bgClass: 'bg-blue-50', gradientClass: 'bg-gradient-to-br from-blue-500 to-indigo-600' };
   }
-  if (tags.includes('tourism.sights.place_of_worship.mosque') || tags.includes('religion.place_of_worship.islam') || n.includes('moschee')) {
+  if (tags.some((t: string) => t.includes('mosque') || t.includes('islam')) || n.includes('moschee')) {
     return { icon: MoonStar, color: '#10b981', label: language === 'de' ? 'Moschee' : 'Mosque', bgClass: 'bg-emerald-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-teal-400' };
   }
-  if (tags.includes('tourism.sights.place_of_worship.church') || tags.includes('tourism.sights.place_of_worship.cathedral') || tags.includes('tourism.sights.place_of_worship.chapel') || tags.includes('religion.place_of_worship.christianity') || n.includes('kirche') || n.includes('dom') || n.includes('kapelle')) {
+  if (tags.some((t: string) => t.includes('church') || t.includes('cathedral') || t.includes('chapel') || t.includes('christianity')) || n.includes('kirche') || n.includes('dom') || n.includes('kapelle')) {
     return { icon: Church, color: '#8b5cf6', label: language === 'de' ? 'Religiöser Ort' : 'Religious Site', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-violet-500 to-fuchsia-500' };
   }
 
   // --- MARITIM & ZOO ---
-  if (tags.includes('entertainment.zoo') || name.includes('zoo') || name.includes('tierpark')) {
+  if (tags.some((t: string) => t.includes('zoo')) || name.includes('zoo') || name.includes('tierpark')) {
     return { icon: ZooIcon as any, color: '#7c2d12', label: language === 'de' ? 'Zoo & Tierpark' : 'Zoo', bgClass: 'bg-orange-50', gradientClass: 'bg-gradient-to-br from-amber-500 to-orange-600', imageUrl: 'https://images.unsplash.com/photo-1541315570220-449e7591244d?q=80&w=800&auto=format&fit=crop' };
   }
-  if (tags.includes('tourism.attraction.ship') || name.includes('schiff') || name.includes('boot')) {
+  if (tags.some((t: string) => t.includes('ship')) || name.includes('schiff') || name.includes('boot')) {
     return { icon: Ship, color: '#3b82f6', label: language === 'de' ? 'Maritim' : 'Maritime', bgClass: 'bg-blue-50', gradientClass: 'bg-gradient-to-br from-blue-500 to-cyan-400', imageUrl: 'https://images.unsplash.com/photo-1540946484610-45cd54ff3ad2?q=80&w=800&auto=format&fit=crop' };
   }
 
   // --- WASSER & WELLNESS ---
-  if (tags.includes('leisure.water_park') || tags.includes('entertainment.water_park') || name.includes('wasserpark')) {
+  if (tags.some((t: string) => t.includes('water_park') || t.includes('waterpark')) || name.includes('wasserpark')) {
     return { icon: WaterparkIcon as any, color: '#0284c7', label: language === 'de' ? 'Schwimmbad' : 'Water Park', bgClass: 'bg-sky-50', gradientClass: 'bg-gradient-to-br from-sky-400 to-blue-600', imageUrl: 'https://images.unsplash.com/photo-1562095241-8c6714fd4178?q=80&w=800&auto=format&fit=crop' };
   }
-  if (tags.includes('leisure.swimming_pool') || name.includes('bad') || name.includes('schwimm')) {
-    return { icon: Droplets, color: '#0ea5e9', label: language === 'de' ? 'Freibad' : 'Pool', bgClass: 'bg-sky-50', gradientClass: 'bg-gradient-to-br from-cyan-400 to-blue-500' };
+  if (
+    tags.some((t: string) =>
+      t.includes('swimming_pool') ||
+      t.includes('swimming') ||
+      t.includes('water_park') ||
+      t.includes('waterpark') ||
+      t.includes('aquatic') ||
+      t.includes('freizeitbad') ||
+      t.includes('hallenbad') ||
+      t.includes('freibad') ||
+      t.includes('thermalbad') ||
+      t.includes('badeanstalt')
+    ) ||
+    name.includes('schwimmbad') ||
+    name.includes('freibad') ||
+    name.includes('hallenbad') ||
+    name.includes('freizeitbad') ||
+    name.includes('thermalbad') ||
+    name.includes('erlebnisbad') ||
+    name.includes('badeanstalt')
+  ) {
+    return { icon: Droplets, color: '#0ea5e9', label: language === 'de' ? 'Schwimmbad' : 'Pool', bgClass: 'bg-sky-50', gradientClass: 'bg-gradient-to-br from-cyan-400 to-blue-500' };
   }
-  if (tags.includes('leisure.spa') || name.includes('wellness') || name.includes('sauna') || name.includes('therme')) {
+  if (
+    tags.some((t: string) => t.includes('spa') || t.includes('wellness') || t.includes('sauna') || t.includes('therme')) ||
+    name.includes('wellness') ||
+    name.includes('sauna') ||
+    name.includes('therme')
+  ) {
     return { icon: Flower2, color: '#0891b2', label: language === 'de' ? 'Wellness & Spa' : 'Wellness & Spa', bgClass: 'bg-cyan-50', gradientClass: 'bg-gradient-to-br from-teal-400 to-cyan-500' };
   }
 
