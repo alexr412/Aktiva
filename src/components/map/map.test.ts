@@ -6,6 +6,7 @@ import {
   parseActivityMarkers,
   createMapGeoJSON,
   createRadiusCircleGeoJSON,
+  applySoftPastelBasemapStyle,
 } from './map-marker-data';
 import type { Place, Activity } from '@/lib/types';
 import type { MapLayerVisibility } from './map-types';
@@ -190,6 +191,54 @@ async function runMapTestSuite() {
   assert.deepStrictEqual(mapPlaceIdsD, ['fav_1', 'fav_2']);
 
   console.log('  ✅ Final feed spots alignment & excluded spots verification passed');
+
+  // Test 9: Soft Pastel Basemap Layer Theme Application & Loop Safety
+  console.log('\nTest 9: Soft Pastel Basemap Layer Theme Application & Loop Safety');
+  const mockPaints: Record<string, Record<string, any>> = {};
+  const mockLayouts: Record<string, Record<string, any>> = {};
+  let mutationCount = 0;
+
+  const mockMap = {
+    getStyle: () => ({
+      layers: [
+        { id: 'background', type: 'background' },
+        { id: 'water', type: 'fill' },
+        { id: 'landuse_park', type: 'fill' },
+        { id: 'highway_minor', type: 'line' },
+        { id: 'places-clusters', type: 'circle' },
+        { id: 'activities-unclustered', type: 'circle' },
+        { id: 'friends-area', type: 'fill' },
+      ],
+    }),
+    getPaintProperty: (layerId: string, propName: string) => mockPaints[layerId]?.[propName],
+    getLayoutProperty: (layerId: string, propName: string) => mockLayouts[layerId]?.[propName],
+    setPaintProperty: (layerId: string, propName: string, value: any) => {
+      mutationCount++;
+      if (!mockPaints[layerId]) mockPaints[layerId] = {};
+      mockPaints[layerId][propName] = value;
+    },
+    setLayoutProperty: (layerId: string, propName: string, value: any) => {
+      mutationCount++;
+      if (!mockLayouts[layerId]) mockLayouts[layerId] = {};
+      mockLayouts[layerId][propName] = value;
+    },
+  };
+
+  applySoftPastelBasemapStyle(mockMap);
+  assert.strictEqual(mockPaints['background']?.['background-color'], '#f8f6f0');
+  assert.strictEqual(mockPaints['water']?.['fill-color'], '#c5e3ed');
+  assert.strictEqual(mockPaints['landuse_park']?.['fill-color'], '#d4ead8');
+  assert.strictEqual(mockPaints['highway_minor']?.['line-color'], '#e8e4dc');
+  assert.strictEqual(mockPaints['places-clusters'], undefined, 'Activa places layer must not be modified by basemap style');
+  assert.strictEqual(mockPaints['activities-unclustered'], undefined, 'Activa activities layer must not be modified by basemap style');
+  assert.strictEqual(mockPaints['friends-area'], undefined, 'Activa friends layer must not be modified by basemap style');
+
+  // Verify styledata event loop safety: a second pass must generate 0 new style mutations!
+  const initialMutations = mutationCount;
+  applySoftPastelBasemapStyle(mockMap);
+  assert.strictEqual(mutationCount, initialMutations, 'Second pass must perform 0 mutations (styledata loop prevented)');
+
+  console.log('  ✅ Soft Pastel basemap theme application & loop safety passed');
 
   console.log('\n🎉 ALL MAP ARCHITECTURE PHASE 1 TESTS PASSED SUCCESSFULLY!\n');
 }

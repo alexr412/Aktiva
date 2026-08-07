@@ -27,6 +27,7 @@ import {
   getActivityJoinState,
   neutralizeBrokenRoadShieldLayers,
   neutralizedRoadShieldLayers,
+  applySoftPastelBasemapStyle,
 } from './map-marker-data';
 import { getFirstName, normalizePrecisionMeters, formatDistanceBucketText } from '@/lib/radar-types';
 import {
@@ -223,20 +224,8 @@ export function ActivaMap({
 
     if (!mapContainerRef.current) return;
 
-    // Resolve Style URL from Environment Variable or Dev Fallback
-    const envStyleUrl = process.env.NEXT_PUBLIC_MAP_STYLE_URL;
-    const isProd = process.env.NODE_ENV === 'production';
-
-    if (!envStyleUrl && isProd) {
-      setMapError(
-        language === 'de'
-          ? 'Kartenfehler in Production: Die Umgebungsvariable NEXT_PUBLIC_MAP_STYLE_URL ist nicht definiert.'
-          : 'Production Map Error: The environment variable NEXT_PUBLIC_MAP_STYLE_URL is not defined.'
-      );
-      return;
-    }
-
-    const styleUrl = envStyleUrl || 'https://demotiles.maplibre.org/style.json';
+    // Resolve Style URL: use NEXT_PUBLIC_MAP_STYLE_URL if configured, otherwise fallback to OpenFreeMap Positron
+    const styleUrl = process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'https://tiles.openfreemap.org/styles/positron';
 
     try {
       const map = new maplibregl.Map({
@@ -252,6 +241,7 @@ export function ActivaMap({
 
 
       const handleStyleData = () => {
+        applySoftPastelBasemapStyle(map);
         neutralizeBrokenRoadShieldLayers(map);
       };
       styleDataHandlerRef.current = handleStyleData;
@@ -259,6 +249,7 @@ export function ActivaMap({
       map.on('styledata', handleStyleData);
 
       map.on('load', () => {
+        applySoftPastelBasemapStyle(map);
         neutralizeBrokenRoadShieldLayers(map);
         setIsMapLoaded(true);
 

@@ -780,3 +780,176 @@ export function neutralizeBrokenRoadShieldLayers(map: any): void {
     }
   }
 }
+
+function safeSetPaint(map: any, layerId: string, prop: string, targetValue: any): void {
+  try {
+    const current = map.getPaintProperty(layerId, prop);
+    if (current === targetValue || JSON.stringify(current) === JSON.stringify(targetValue)) {
+      return;
+    }
+    map.setPaintProperty(layerId, prop, targetValue);
+  } catch (e) {}
+}
+
+function safeSetLayout(map: any, layerId: string, prop: string, targetValue: any): void {
+  try {
+    const current = map.getLayoutProperty(layerId, prop);
+    if (current === targetValue || JSON.stringify(current) === JSON.stringify(targetValue)) {
+      return;
+    }
+    map.setLayoutProperty(layerId, prop, targetValue);
+  } catch (e) {}
+}
+
+/**
+ * Applies a Soft Pastel visual theme to vector basemap style layers without affecting Activa layers.
+ * Uses safeSetPaint and safeSetLayout guards to ensure idempotency and prevent styledata update loops.
+ */
+export function applySoftPastelBasemapStyle(map: any): void {
+  if (!map || typeof map.getStyle !== 'function') return;
+  const layers = map.getStyle()?.layers ?? [];
+
+  for (const layer of layers) {
+    if (!layer || !layer.id) continue;
+    const id = layer.id.toLowerCase();
+    const type = layer.type;
+
+    // Preserve all Activa-specific application layers completely untouched
+    if (
+      id.startsWith('places-') ||
+      id.startsWith('activities-') ||
+      id.startsWith('friends-') ||
+      id.startsWith('radius-')
+    ) {
+      continue;
+    }
+
+    // 1. Background
+    if (type === 'background') {
+      safeSetPaint(map, layer.id, 'background-color', '#f8f6f0');
+      continue;
+    }
+
+    // 2. Water / Coastline / Lakes / Rivers
+    if (
+      id.includes('water') ||
+      id.includes('ocean') ||
+      id.includes('river') ||
+      id.includes('lake') ||
+      id.includes('stream') ||
+      id.includes('canal')
+    ) {
+      if (type === 'fill') {
+        safeSetPaint(map, layer.id, 'fill-color', '#c5e3ed');
+      } else if (type === 'line') {
+        safeSetPaint(map, layer.id, 'line-color', '#b4dadf');
+      }
+      continue;
+    }
+
+    // 3. Forests & Greenery / Parks
+    if (id.includes('forest') || id.includes('wood')) {
+      if (type === 'fill') {
+        safeSetPaint(map, layer.id, 'fill-color', '#c4dfcc');
+      }
+      continue;
+    }
+
+    if (
+      id.includes('park') ||
+      id.includes('grass') ||
+      id.includes('green') ||
+      id.includes('garden') ||
+      id.includes('cemetery') ||
+      id.includes('pitch') ||
+      id.includes('leisure') ||
+      id.includes('meadow')
+    ) {
+      if (type === 'fill') {
+        safeSetPaint(map, layer.id, 'fill-color', '#d4ead8');
+      }
+      continue;
+    }
+
+    // 4. Buildings
+    if (id.includes('building') || id.includes('structure') || id.includes('house')) {
+      if (type === 'fill' || type === 'fill-extrusion') {
+        safeSetPaint(map, layer.id, 'fill-color', '#eeebe4');
+        safeSetPaint(map, layer.id, 'fill-opacity', 0.7);
+      } else if (type === 'line') {
+        safeSetPaint(map, layer.id, 'line-color', '#e2ded6');
+      }
+      continue;
+    }
+
+    // 5. Motorways, Highways & Major Roads
+    if (id.includes('motorway') || id.includes('freeway')) {
+      if (type === 'line') {
+        safeSetPaint(map, layer.id, 'line-color', '#e6cbab');
+      }
+      continue;
+    }
+
+    if (
+      id.includes('primary') ||
+      id.includes('secondary') ||
+      id.includes('trunk') ||
+      id.includes('main') ||
+      id.includes('arterial')
+    ) {
+      if (type === 'line') {
+        safeSetPaint(map, layer.id, 'line-color', '#eadab8');
+      }
+      continue;
+    }
+
+    if (id.includes('rail') || id.includes('train') || id.includes('transit') || id.includes('subway')) {
+      if (type === 'line') {
+        safeSetPaint(map, layer.id, 'line-color', '#d3cfcf');
+      }
+      continue;
+    }
+
+    if (
+      id.includes('road') ||
+      id.includes('street') ||
+      id.includes('highway') ||
+      id.includes('path') ||
+      id.includes('pedestrian') ||
+      id.includes('service') ||
+      id.includes('track') ||
+      id.includes('tunnel') ||
+      id.includes('bridge')
+    ) {
+      if (type === 'line') {
+        safeSetPaint(map, layer.id, 'line-color', '#e8e4dc');
+      }
+      continue;
+    }
+
+    // 6. Text Labels & POI Reductions
+    if (type === 'symbol') {
+      safeSetPaint(map, layer.id, 'text-color', '#4a4a4a');
+      safeSetPaint(map, layer.id, 'text-halo-color', '#faf8f5');
+
+      // Keep stations, city/district names, street names visible, but hide unneeded foreign POI icon clutter
+      const isStationOrTownLabel =
+        id.includes('station') ||
+        id.includes('transit') ||
+        id.includes('rail') ||
+        id.includes('city') ||
+        id.includes('town') ||
+        id.includes('village') ||
+        id.includes('place') ||
+        id.includes('country') ||
+        id.includes('state') ||
+        id.includes('street') ||
+        id.includes('road');
+
+      if (!isStationOrTownLabel && (id.includes('poi') || id.includes('shop') || id.includes('amenity'))) {
+        safeSetLayout(map, layer.id, 'visibility', 'none');
+      }
+    }
+  }
+}
+
