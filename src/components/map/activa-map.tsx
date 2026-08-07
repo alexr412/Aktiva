@@ -28,6 +28,7 @@ import {
   neutralizeBrokenRoadShieldLayers,
   neutralizedRoadShieldLayers,
   applySoftPastelBasemapStyle,
+  ensurePopupInViewport,
 } from './map-marker-data';
 import { getFirstName, normalizePrecisionMeters, formatDistanceBucketText } from '@/lib/radar-types';
 import {
@@ -527,6 +528,7 @@ export function ActivaMap({
                   .addTo(map);
 
                 activePopupRef.current = popup;
+                ensurePopupInViewport(map, popup);
 
                 // Query elements from rendered Popup DOM or content container
                 const popupElement = popup.getElement();
@@ -741,6 +743,7 @@ export function ActivaMap({
                   .addTo(map);
 
                 activePopupRef.current = popup;
+                ensurePopupInViewport(map, popup);
 
                 const popupElement = popup.getElement();
                 const closeBtn = popupElement?.querySelector<HTMLElement>('.friend-popup-close') || popupObj.closeBtn;
@@ -1039,6 +1042,7 @@ export function ActivaMap({
               .addTo(map);
 
             activePopupRef.current = popup;
+            ensurePopupInViewport(map, popup);
 
             const popupElement = popup.getElement();
             const closeBtn = popupElement?.querySelector<HTMLElement>('.friend-popup-close') || popupObj.closeBtn;

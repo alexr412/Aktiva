@@ -953,3 +953,99 @@ export function applySoftPastelBasemapStyle(map: any): void {
   }
 }
 
+/**
+ * Calculates the required X and Y pan offset to keep a popup completely within the safe map viewport.
+ */
+export function calculatePopupPanOffset(
+  popupRect: { left: number; top: number; right: number; bottom: number; width: number; height: number },
+  mapRect: { left: number; top: number; right: number; bottom: number; width: number; height: number },
+  bottomNavHeight: number = 0,
+  safetyMargin: number = 16
+): { dx: number; dy: number } {
+  const safeTop = mapRect.top + safetyMargin;
+  const safeLeft = mapRect.left + safetyMargin;
+  const safeRight = mapRect.right - safetyMargin;
+  const safeBottom = mapRect.bottom - bottomNavHeight - safetyMargin;
+
+  let dx = 0;
+  let dy = 0;
+
+  // 1. Horizontal check
+  if (popupRect.right > safeRight) {
+    dx = popupRect.right - safeRight;
+  } else if (popupRect.left < safeLeft) {
+    dx = popupRect.left - safeLeft;
+  }
+
+  // 2. Vertical check
+  if (popupRect.bottom > safeBottom) {
+    dy = popupRect.bottom - safeBottom;
+  } else if (popupRect.top < safeTop) {
+    dy = popupRect.top - safeTop;
+  }
+
+  return { dx, dy };
+}
+
+/**
+ * Measures the rendered popup DOM bounding box and pans the map if it overflows the safe map viewport.
+ */
+export function ensurePopupInViewport(
+  map: any,
+  popup: any,
+  options: { safetyMargin?: number; threshold?: number } = {}
+): void {
+  if (!map || !popup) return;
+
+  const safetyMargin = options.safetyMargin ?? 16;
+  const threshold = options.threshold ?? 3;
+
+  const runCheck = () => {
+    const popupElement = typeof popup.getElement === 'function' ? popup.getElement() : null;
+    const mapContainer = typeof map.getContainer === 'function' ? map.getContainer() : null;
+
+    if (!popupElement || !mapContainer) return;
+
+    const popupRect = popupElement.getBoundingClientRect();
+    const mapRect = mapContainer.getBoundingClientRect();
+
+    if (popupRect.width === 0 || popupRect.height === 0) return;
+
+    let bottomNavHeight = 0;
+    const win = typeof window !== 'undefined' ? window : (globalThis as any).window;
+    const doc = typeof document !== 'undefined' ? document : win?.document;
+
+    if (win) {
+      if (doc && typeof doc.querySelector === 'function') {
+        const bottomNavEl = doc.querySelector('[data-activa-bottom-nav]');
+
+        if (bottomNavEl) {
+          const navRect = bottomNavEl.getBoundingClientRect();
+          if (navRect.height > 0 && navRect.top < (win.innerHeight || 800)) {
+            bottomNavHeight = (win.innerHeight || 800) - navRect.top;
+          }
+        }
+      }
+
+      if (bottomNavHeight === 0 && (win.innerWidth || 400) < 1024) {
+        bottomNavHeight = 76;
+      }
+    }
+
+    const { dx, dy } = calculatePopupPanOffset(popupRect, mapRect, bottomNavHeight, safetyMargin);
+
+    if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+      if (typeof map.panBy === 'function') {
+        map.panBy([dx, dy], { duration: 300, easeLinearity: 0.25 });
+      }
+    }
+  };
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(runCheck);
+  } else {
+    runCheck();
+  }
+}
+
+

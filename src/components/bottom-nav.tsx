@@ -35,7 +35,7 @@ export function BottomNav() {
 
   return (
     <div className="fixed bottom-0 left-0 w-full z-nav bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-t border-slate-200/30 dark:border-neutral-800/20 pb-safe shadow-premium">
-      <nav className="flex h-[66px] items-center justify-around px-2">
+      <nav data-activa-bottom-nav className="flex h-[66px] items-center justify-around px-2">
         {navItems.map((item) => {
           const isActive = getIsActive(item.href);
           return (
