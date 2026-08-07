@@ -593,7 +593,7 @@ export function ActivaMap({
 
                     const isNowFav = checkIsFavoriteRef.current(place.id);
                     if (favBtn) {
-                      favBtn.className = `place-popup-fav-btn absolute top-2 left-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-full ${
+                      favBtn.className = `place-popup-fav-btn absolute top-3 left-3 w-8 h-8 min-w-[32px] min-h-[32px] rounded-full ${
                         isNowFav ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 active:bg-black/80 text-white'
                       } flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400`;
                       favBtn.setAttribute('aria-label', isNowFav
@@ -613,7 +613,7 @@ export function ActivaMap({
                     }
                     const isStillFav = checkIsFavoriteRef.current(place.id);
                     if (favBtn) {
-                      favBtn.className = `place-popup-fav-btn absolute top-2 left-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-full ${
+                      favBtn.className = `place-popup-fav-btn absolute top-3 left-3 w-8 h-8 min-w-[32px] min-h-[32px] rounded-full ${
                         isStillFav ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 active:bg-black/80 text-white'
                       } flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400`;
                       favBtn.innerHTML = `<svg class="w-4 h-4 ${isStillFav ? 'fill-white' : 'fill-none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`;

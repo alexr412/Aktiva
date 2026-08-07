@@ -519,11 +519,11 @@ export function createPlacePopupHTML(
 
   const htmlContent = `
     <div class="relative w-full h-24 bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-500 overflow-hidden flex items-center justify-center place-popup-header">
-      <button type="button" class="friend-popup-close absolute top-2 right-2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 active:bg-black/70 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
+      <button type="button" class="friend-popup-close absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 active:bg-black/80 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
 
-      <button type="button" class="place-popup-fav-btn absolute top-2 left-2 w-10 h-10 min-w-[40px] min-h-[40px] rounded-full ${isFavorite ? 'bg-rose-500 text-white' : 'bg-black/30 hover:bg-black/50 active:bg-black/70 text-white'} flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400" aria-label="${isFavorite ? (lang === 'de' ? 'Favorit entfernen' : 'Remove favorite') : (lang === 'de' ? 'Als Favorit speichern' : 'Save as favorite')}" ${isFavoriteLoading ? 'disabled' : ''}>
+      <button type="button" class="place-popup-fav-btn absolute top-3 left-3 w-8 h-8 min-w-[32px] min-h-[32px] rounded-full ${isFavorite ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 active:bg-black/80 text-white'} flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400" aria-label="${isFavorite ? (lang === 'de' ? 'Favorit entfernen' : 'Remove favorite') : (lang === 'de' ? 'Als Favorit speichern' : 'Save as favorite')}" ${isFavoriteLoading ? 'disabled' : ''}>
         ${
           isFavoriteLoading
             ? `<svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`
@@ -615,7 +615,7 @@ export function createActivityPopupHTML(
 
   const htmlContent = `
     <div class="relative w-full h-24 bg-gradient-to-br from-violet-600 to-purple-700 overflow-hidden flex items-center justify-center">
-      <button type="button" class="friend-popup-close absolute top-2 right-2 w-7 h-7 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
+      <button type="button" class="friend-popup-close absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 active:bg-black/80 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-purple-400" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
 
@@ -689,7 +689,7 @@ export function createFriendPopupHTML(
   const precMeters = normalizePrecisionMeters(friend);
 
   const htmlContent = `
-    <button type="button" class="friend-popup-close absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-slate-200/60 hover:bg-slate-200 dark:bg-neutral-800/80 dark:hover:bg-neutral-700 text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-all z-20 shadow-sm cursor-pointer" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
+    <button type="button" class="friend-popup-close absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-200/80 hover:bg-slate-300 dark:bg-neutral-800/80 dark:hover:bg-neutral-700 text-slate-600 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-all z-20 shadow-sm cursor-pointer" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path>
       </svg>
@@ -959,13 +959,14 @@ export function applySoftPastelBasemapStyle(map: any): void {
 export function calculatePopupPanOffset(
   popupRect: { left: number; top: number; right: number; bottom: number; width: number; height: number },
   mapRect: { left: number; top: number; right: number; bottom: number; width: number; height: number },
-  bottomNavHeight: number = 0,
-  safetyMargin: number = 16
+  bottomInset: number = 0,
+  safetyMargin: number = 16,
+  rightInset: number = 0
 ): { dx: number; dy: number } {
   const safeTop = mapRect.top + safetyMargin;
   const safeLeft = mapRect.left + safetyMargin;
-  const safeRight = mapRect.right - safetyMargin;
-  const safeBottom = mapRect.bottom - bottomNavHeight - safetyMargin;
+  const safeRight = mapRect.right - rightInset - safetyMargin;
+  const safeBottom = mapRect.bottom - bottomInset - safetyMargin;
 
   let dx = 0;
   let dy = 0;
@@ -997,7 +998,6 @@ export function ensurePopupInViewport(
 ): void {
   if (!map || !popup) return;
 
-  const safetyMargin = options.safetyMargin ?? 16;
   const threshold = options.threshold ?? 3;
 
   const runCheck = () => {
@@ -1011,28 +1011,47 @@ export function ensurePopupInViewport(
 
     if (popupRect.width === 0 || popupRect.height === 0) return;
 
-    let bottomNavHeight = 0;
     const win = typeof window !== 'undefined' ? window : (globalThis as any).window;
     const doc = typeof document !== 'undefined' ? document : win?.document;
 
-    if (win) {
-      if (doc && typeof doc.querySelector === 'function') {
-        const bottomNavEl = doc.querySelector('[data-activa-bottom-nav]');
+    const isDesktop = win ? (win.innerWidth || 400) >= 1024 : false;
+    const safetyMargin = options.safetyMargin ?? (isDesktop ? 28 : 16);
 
-        if (bottomNavEl) {
-          const navRect = bottomNavEl.getBoundingClientRect();
-          if (navRect.height > 0 && navRect.top < (win.innerHeight || 800)) {
-            bottomNavHeight = (win.innerHeight || 800) - navRect.top;
-          }
+    let bottomInset = 0;
+    let rightInset = 0;
+
+    if (win && doc && typeof doc.querySelector === 'function') {
+      // 1. Detect Mobile Bottom Navigation
+      const bottomNavEl = doc.querySelector('[data-activa-bottom-nav]');
+      if (bottomNavEl) {
+        const navRect = bottomNavEl.getBoundingClientRect();
+        if (navRect.height > 0 && navRect.top < (win.innerHeight || 800)) {
+          bottomInset = (win.innerHeight || 800) - navRect.top;
         }
       }
 
-      if (bottomNavHeight === 0 && (win.innerWidth || 400) < 1024) {
-        bottomNavHeight = 76;
+      // Fallbacks if bottomNavEl is not in DOM
+      if (bottomInset === 0) {
+        if (!isDesktop) {
+          bottomInset = 76;
+        } else {
+          bottomInset = 28; // Desktop bottom margin for floating controls & container edge
+        }
+      }
+
+      // 2. Detect Desktop Side Panel
+      if (isDesktop) {
+        const sidePanelEl = doc.querySelector('[data-activa-side-panel]') || doc.querySelector('.map-result-panel');
+        if (sidePanelEl) {
+          const sideRect = sidePanelEl.getBoundingClientRect();
+          if (sideRect.width > 0 && sideRect.left < mapRect.right) {
+            rightInset = mapRect.right - sideRect.left;
+          }
+        }
       }
     }
 
-    const { dx, dy } = calculatePopupPanOffset(popupRect, mapRect, bottomNavHeight, safetyMargin);
+    const { dx, dy } = calculatePopupPanOffset(popupRect, mapRect, bottomInset, safetyMargin, rightInset);
 
     if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
       if (typeof map.panBy === 'function') {

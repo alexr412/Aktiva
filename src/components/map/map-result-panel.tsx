@@ -37,6 +37,7 @@ export function MapResultPanel({
 
   return (
     <div
+      data-activa-side-panel
       className={cn(
         'w-96 max-w-[calc(100vw-2rem)] h-full bg-white dark:bg-neutral-900 border-l border-slate-200 dark:border-neutral-800 shadow-2xl z-30 flex flex-col overflow-hidden animate-in slide-in-from-right duration-300',
         className

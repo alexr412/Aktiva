@@ -330,6 +330,48 @@ async function runMapTestSuite() {
   assert.notStrictEqual(panByArgs, null);
   assert.strictEqual((panByArgs as any)[1], 42, 'Pan Y must equal 42px using mobile 76px fallback when nav element is absent');
 
+  // Case 10: Desktop Auto-Pan with Desktop Bottom Inset (e.g. innerWidth=1200, bottomInset=28, safetyMargin=28)
+  const desktopMapContainer = { top: 0, left: 0, right: 1200, bottom: 900, width: 1200, height: 900 };
+  (globalThis as any).window = {
+    innerWidth: 1200,
+    innerHeight: 900,
+    document: { querySelector: () => null },
+  };
+  let desktopPanArgs: [number, number] | null = null;
+  const mockDesktopMap = {
+    getElement: () => ({ getBoundingClientRect: () => ({ left: 100, top: 750, right: 370, bottom: 880, width: 270, height: 130 }) }),
+    getContainer: () => ({ getBoundingClientRect: () => desktopMapContainer }),
+    panBy: (delta: [number, number]) => { desktopPanArgs = delta; },
+  };
+  ensurePopupInViewport(mockDesktopMap, mockDesktopMap);
+  await new Promise((res) => setTimeout(res, 50));
+  // Desktop safeBottom = 900 - 28 - 28 = 844. popupRect.bottom = 880 -> dy = 880 - 844 = 36.
+  assert.notStrictEqual(desktopPanArgs, null);
+  assert.strictEqual((desktopPanArgs as any)[1], 36, 'Desktop pan Y must equal 36px to clear desktop bottom margin');
+
+  // Case 11: Desktop Side Panel Avoidance (e.g. side panel on right width=380, left=820)
+  (globalThis as any).window = {
+    innerWidth: 1200,
+    innerHeight: 900,
+    document: {
+      querySelector: (sel: string) =>
+        sel === '[data-activa-side-panel]' || sel === '.map-result-panel'
+          ? { getBoundingClientRect: () => ({ left: 820, right: 1200, width: 380, height: 900 }) }
+          : null,
+    },
+  };
+  let sidePanelPanArgs: [number, number] | null = null;
+  const mockSidePanelMap = {
+    getElement: () => ({ getBoundingClientRect: () => ({ left: 600, top: 100, right: 850, bottom: 350, width: 250, height: 250 }) }),
+    getContainer: () => ({ getBoundingClientRect: () => desktopMapContainer }),
+    panBy: (delta: [number, number]) => { sidePanelPanArgs = delta; },
+  };
+  ensurePopupInViewport(mockSidePanelMap, mockSidePanelMap);
+  await new Promise((res) => setTimeout(res, 50));
+  // safeRight = 1200 - (1200 - 820) - 28 = 792. popupRect.right = 850 -> dx = 850 - 792 = 58.
+  assert.notStrictEqual(sidePanelPanArgs, null);
+  assert.strictEqual((sidePanelPanArgs as any)[0], 58, 'Desktop pan X must equal 58px to clear side panel');
+
   console.log('  ✅ Map popup auto-pan viewport calculations passed');
 
   console.log('\n🎉 ALL MAP ARCHITECTURE PHASE 1 TESTS PASSED SUCCESSFULLY!\n');
