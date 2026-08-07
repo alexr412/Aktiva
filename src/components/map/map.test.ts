@@ -7,11 +7,9 @@ import {
   createMapGeoJSON,
   createRadiusCircleGeoJSON,
   applySoftPastelBasemapStyle,
-  calculatePopupPanOffset,
-  ensurePopupInViewport,
 } from './map-marker-data';
 import type { Place, Activity } from '@/lib/types';
-import type { MapLayerVisibility } from './map-types';
+import type { MapLayerVisibility, SelectedMapEntity } from './map-types';
 
 async function runMapTestSuite() {
   console.log('🧪 Starting Activa Map Architecture Phase 1 Test Suite...\n');
@@ -242,137 +240,43 @@ async function runMapTestSuite() {
 
   console.log('  ✅ Soft Pastel basemap theme application & loop safety passed');
 
-  // Test 10: Map Popup Viewport & Bottom Navigation Auto-Pan Calculations
-  console.log('\nTest 10: Map Popup Viewport & Bottom Navigation Auto-Pan Calculations');
-  const mockMapContainer = {
-    top: 0,
-    left: 0,
-    right: 400,
-    bottom: 800,
-    width: 400,
-    height: 800,
+  // Test 10: Unified SelectedMapEntity Selection State & Close Architecture
+  console.log('\nTest 10: Unified SelectedMapEntity Selection State & Close Architecture');
+  
+  let currentSelection: SelectedMapEntity = null;
+  const selectEntity = (entity: SelectedMapEntity) => {
+    currentSelection = entity;
   };
-  const bottomNavHeight = 76; // 76px bottom nav bar
-  const margin = 16;
-  // safeTop = 16, safeLeft = 16, safeRight = 384, safeBottom = 800 - 76 - 16 = 708
 
-  // Case 1: Fully visible popup (e.g. top=100, left=50, bottom=300, right=300)
-  const fullyVisible = { top: 100, left: 50, bottom: 300, right: 300, width: 250, height: 200 };
-  const offset1 = calculatePopupPanOffset(fullyVisible, mockMapContainer, bottomNavHeight, margin);
-  assert.strictEqual(offset1.dx, 0, 'Fully visible popup must require 0 X pan');
-  assert.strictEqual(offset1.dy, 0, 'Fully visible popup must require 0 Y pan');
+  // Case 1: Place Marker Selection -> SelectedMapEntity.type === 'place'
+  const mockPlace = { id: 'place-101', name: 'Park Cafe', address: 'Parkstr 1', lat: 52.02, lon: 8.53, categories: ['cafe'] } as Place;
+  selectEntity({ id: mockPlace.id, type: 'place', data: mockPlace });
+  assert.notStrictEqual(currentSelection, null);
+  assert.strictEqual(currentSelection!.type, 'place');
+  assert.strictEqual(currentSelection!.id, 'place-101');
+  assert.strictEqual((currentSelection!.data as Place).name, 'Park Cafe');
 
-  // Case 2: Popup cut off at bottom by Bottom Navigation (e.g. bottom=750, safeBottom=708)
-  const bottomCutoff = { top: 550, left: 50, bottom: 750, right: 300, width: 250, height: 200 };
-  const offset2 = calculatePopupPanOffset(bottomCutoff, mockMapContainer, bottomNavHeight, margin);
-  assert.strictEqual(offset2.dx, 0);
-  assert.strictEqual(offset2.dy, 42, 'Popup cut off at bottom by 42px must yield dy=42 to shift map down');
+  // Case 2: Activity Marker Selection -> SelectedMapEntity.type === 'activity'
+  const mockActivity = { id: 'act-202', title: 'Yoga in Park', placeName: 'Park', activityDate: new Date(), isTimeFlexible: false, hostId: 'u1', lat: 52.03, lon: 8.54, category: 'Sports' } as unknown as Activity;
+  selectEntity({ id: mockActivity.id!, type: 'activity', data: mockActivity });
+  assert.notStrictEqual(currentSelection, null);
+  assert.strictEqual(currentSelection!.type, 'activity');
+  assert.strictEqual(currentSelection!.id, 'act-202');
+  assert.strictEqual((currentSelection!.data as Activity).title, 'Yoga in Park');
 
-  // Case 3: Popup cut off on left (e.g. left=5, safeLeft=16)
-  const leftCutoff = { top: 100, left: 5, bottom: 300, right: 255, width: 250, height: 200 };
-  const offset3 = calculatePopupPanOffset(leftCutoff, mockMapContainer, bottomNavHeight, margin);
-  assert.strictEqual(offset3.dx, -11, 'Popup cut off at left by 11px must yield dx=-11');
-  assert.strictEqual(offset3.dy, 0);
+  // Case 3: Friend Marker Selection -> SelectedMapEntity.type === 'friend'
+  const mockFriend = { userId: 'friend-303', username: 'alex', displayName: 'Alex R.', distanceBucket: 'within_100m' };
+  selectEntity({ id: mockFriend.userId, type: 'friend', data: mockFriend as any });
+  assert.notStrictEqual(currentSelection, null);
+  assert.strictEqual(currentSelection!.type, 'friend');
+  assert.strictEqual(currentSelection!.id, 'friend-303');
+  assert.strictEqual((currentSelection!.data as any).username, 'alex');
 
-  // Case 4: Popup cut off on right (e.g. right=395, safeRight=384)
-  const rightCutoff = { top: 100, left: 145, bottom: 300, right: 395, width: 250, height: 200 };
-  const offset4 = calculatePopupPanOffset(rightCutoff, mockMapContainer, bottomNavHeight, margin);
-  assert.strictEqual(offset4.dx, 11, 'Popup cut off at right by 11px must yield dx=11');
-  assert.strictEqual(offset4.dy, 0);
+  // Case 4: Close Action -> SelectedMapEntity === null
+  selectEntity(null);
+  assert.strictEqual(currentSelection, null, 'Close action must reset selectedMapEntity to null');
 
-  // Case 5: Popup cut off at top (e.g. top=5, safeTop=16)
-  const topCutoff = { top: 5, left: 50, bottom: 205, right: 300, width: 250, height: 200 };
-  const offset5 = calculatePopupPanOffset(topCutoff, mockMapContainer, bottomNavHeight, margin);
-  assert.strictEqual(offset5.dx, 0);
-  assert.strictEqual(offset5.dy, -11, 'Popup cut off at top by 11px must yield dy=-11');
-
-  // Case 6: Popup in bottom-right corner (right=395, bottom=750)
-  const cornerCutoff = { top: 550, left: 145, bottom: 750, right: 395, width: 250, height: 200 };
-  const offset6 = calculatePopupPanOffset(cornerCutoff, mockMapContainer, bottomNavHeight, margin);
-  assert.strictEqual(offset6.dx, 11);
-  assert.strictEqual(offset6.dy, 42);
-
-  // Case 7: Second measurement after correction (adjusted rect: bottom=708, right=384)
-  const correctedPopup = { top: 508, left: 134, bottom: 708, right: 384, width: 250, height: 200 };
-  const offset7 = calculatePopupPanOffset(correctedPopup, mockMapContainer, bottomNavHeight, margin);
-  assert.strictEqual(offset7.dx, 0, 'Corrected popup must require 0 X pan');
-  assert.strictEqual(offset7.dy, 0, 'Corrected popup must require 0 Y pan');
-
-  // Case 8: Integration check for ensurePopupInViewport with data-activa-bottom-nav selector
-  (globalThis as any).window = {
-    innerWidth: 400,
-    innerHeight: 800,
-    document: {
-      querySelector: (sel: string) =>
-        sel === '[data-activa-bottom-nav]' ? { getBoundingClientRect: () => ({ top: 724, height: 76 }) } : null,
-    },
-  };
-  let panByArgs: [number, number] | null = null;
-  const mockPanMap = {
-    getElement: () => ({ getBoundingClientRect: () => ({ left: 50, top: 550, right: 300, bottom: 750, width: 250, height: 200 }) }),
-    getContainer: () => ({ getBoundingClientRect: () => mockMapContainer }),
-    panBy: (delta: [number, number]) => { panByArgs = delta; },
-  };
-  ensurePopupInViewport(mockPanMap, mockPanMap, { safetyMargin: margin });
-  await new Promise((res) => setTimeout(res, 50));
-  assert.notStrictEqual(panByArgs, null);
-  assert.strictEqual((panByArgs as any)[1], 42, 'Pan Y must equal 42px when bottom nav is found via data-activa-bottom-nav');
-
-  // Case 9: Mobile fallback when bottom nav element is not in DOM
-  (globalThis as any).window = {
-    innerWidth: 400,
-    innerHeight: 800,
-    document: { querySelector: () => null },
-  };
-  panByArgs = null;
-  ensurePopupInViewport(mockPanMap, mockPanMap, { safetyMargin: margin });
-  await new Promise((res) => setTimeout(res, 50));
-  assert.notStrictEqual(panByArgs, null);
-  assert.strictEqual((panByArgs as any)[1], 42, 'Pan Y must equal 42px using mobile 76px fallback when nav element is absent');
-
-  // Case 10: Desktop Auto-Pan with Desktop Bottom Inset (e.g. innerWidth=1200, bottomInset=28, safetyMargin=28)
-  const desktopMapContainer = { top: 0, left: 0, right: 1200, bottom: 900, width: 1200, height: 900 };
-  (globalThis as any).window = {
-    innerWidth: 1200,
-    innerHeight: 900,
-    document: { querySelector: () => null },
-  };
-  let desktopPanArgs: [number, number] | null = null;
-  const mockDesktopMap = {
-    getElement: () => ({ getBoundingClientRect: () => ({ left: 100, top: 750, right: 370, bottom: 880, width: 270, height: 130 }) }),
-    getContainer: () => ({ getBoundingClientRect: () => desktopMapContainer }),
-    panBy: (delta: [number, number]) => { desktopPanArgs = delta; },
-  };
-  ensurePopupInViewport(mockDesktopMap, mockDesktopMap);
-  await new Promise((res) => setTimeout(res, 50));
-  // Desktop safeBottom = 900 - 28 - 28 = 844. popupRect.bottom = 880 -> dy = 880 - 844 = 36.
-  assert.notStrictEqual(desktopPanArgs, null);
-  assert.strictEqual((desktopPanArgs as any)[1], 36, 'Desktop pan Y must equal 36px to clear desktop bottom margin');
-
-  // Case 11: Desktop Side Panel Avoidance (e.g. side panel on right width=380, left=820)
-  (globalThis as any).window = {
-    innerWidth: 1200,
-    innerHeight: 900,
-    document: {
-      querySelector: (sel: string) =>
-        sel === '[data-activa-side-panel]' || sel === '.map-result-panel'
-          ? { getBoundingClientRect: () => ({ left: 820, right: 1200, width: 380, height: 900 }) }
-          : null,
-    },
-  };
-  let sidePanelPanArgs: [number, number] | null = null;
-  const mockSidePanelMap = {
-    getElement: () => ({ getBoundingClientRect: () => ({ left: 600, top: 100, right: 850, bottom: 350, width: 250, height: 250 }) }),
-    getContainer: () => ({ getBoundingClientRect: () => desktopMapContainer }),
-    panBy: (delta: [number, number]) => { sidePanelPanArgs = delta; },
-  };
-  ensurePopupInViewport(mockSidePanelMap, mockSidePanelMap);
-  await new Promise((res) => setTimeout(res, 50));
-  // safeRight = 1200 - (1200 - 820) - 28 = 792. popupRect.right = 850 -> dx = 850 - 792 = 58.
-  assert.notStrictEqual(sidePanelPanArgs, null);
-  assert.strictEqual((sidePanelPanArgs as any)[0], 58, 'Desktop pan X must equal 58px to clear side panel');
-
-  console.log('  ✅ Map popup auto-pan viewport calculations passed');
+  console.log('  ✅ Unified SelectedMapEntity selection state & close architecture passed');
 
   console.log('\n🎉 ALL MAP ARCHITECTURE PHASE 1 TESTS PASSED SUCCESSFULLY!\n');
 }

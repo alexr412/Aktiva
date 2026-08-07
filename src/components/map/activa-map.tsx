@@ -28,7 +28,6 @@ import {
   neutralizeBrokenRoadShieldLayers,
   neutralizedRoadShieldLayers,
   applySoftPastelBasemapStyle,
-  ensurePopupInViewport,
 } from './map-marker-data';
 import { getFirstName, normalizePrecisionMeters, formatDistanceBucketText } from '@/lib/radar-types';
 import {
@@ -55,6 +54,9 @@ export interface ActivaMapProps {
   onSelectEntity: (entity: SelectedMapEntity) => void;
   onCreateActivity?: (place: Place) => void;
   onJoinActivity?: (activity: Activity) => Promise<any>;
+  onPlaceSelect?: (place: Place) => void;
+  checkIsFavoriteProp?: (placeId: string) => boolean;
+  onToggleFavorite?: (place: Place) => void;
 }
 
 
@@ -73,6 +75,9 @@ export function ActivaMap({
   onSelectEntity,
   onCreateActivity,
   onJoinActivity,
+  onPlaceSelect,
+  checkIsFavoriteProp,
+  onToggleFavorite,
 }: ActivaMapProps) {
   const router = useRouter();
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -82,6 +87,11 @@ export function ActivaMap({
   const activePopupRef = useRef<maplibregl.Popup | null>(null);
   const nearbyFriendsRef = useRef<NearbyFriend[]>([]);
   const styleDataHandlerRef = useRef<(() => void) | null>(null);
+  const isMobileRef = useRef(isMobile);
+
+  useEffect(() => {
+    isMobileRef.current = isMobile;
+  }, [isMobile]);
 
   useEffect(() => {
     nearbyFriendsRef.current = nearbyFriends;
@@ -104,25 +114,20 @@ export function ActivaMap({
   const { enabled: radarEnabled } = useFriendRadar();
   const { toast } = useToast();
 
-  let checkIsFavorite = (_id: string) => false;
-  let toggleFavorite = (_place: Place) => {};
+  let checkIsFavorite = checkIsFavoriteProp || ((_id: string) => false);
+  let toggleFavorite = onToggleFavorite || ((_place: Place) => {});
   try {
     const favs = useFavorites();
-    checkIsFavorite = favs.checkIsFavorite;
-    toggleFavorite = (p: Place) => {
-      if (favs.checkIsFavorite(p.id)) {
-        favs.removeFavorite(p.id);
-      } else {
-        favs.addFavorite({
-          id: p.id,
-          name: p.name,
-          address: p.address,
-          categories: p.categories || [],
-          lat: p.lat,
-          lon: p.lon,
-        });
-      }
-    };
+    if (!checkIsFavoriteProp) checkIsFavorite = favs.checkIsFavorite;
+    if (!onToggleFavorite) {
+      toggleFavorite = (p: Place) => {
+        if (favs.checkIsFavorite(p.id)) {
+          favs.removeFavorite(p.id);
+        } else {
+          favs.addFavorite(p);
+        }
+      };
+    }
   } catch (e) {
     // Fallback if rendered outside FavoritesProvider
   }
@@ -501,219 +506,32 @@ export function ActivaMap({
           }
         });
 
-        // Single Place marker click handler -> opens Place Popup
+        // Single Place marker click handler -> opens Place Selection & camera easeTo
         map.on('click', 'places-unclustered', (e) => {
           const feature = e.features?.[0];
           if (feature?.properties?.id) {
             const place = placesRef.current.find((p) => p.id === feature.properties.id);
             if (place) {
-              if (activePopupRef.current) {
-                activePopupRef.current.remove();
-                activePopupRef.current = null;
+              if (onSelectEntityRef.current) {
+                onSelectEntityRef.current({ id: place.id, type: 'place', data: place });
               }
 
               const lon = place.lon ?? (place as any).lng ?? (place as any).longitude;
               const lat = place.lat ?? (place as any).latitude;
               if (isValidCoordinate(lat, lon)) {
-                const isFav = checkIsFavoriteRef.current(place.id);
-                const popupObj = createPlacePopupHTML(place, userLocationRef.current, languageRef.current, isFav);
-
-                const popup = new maplibregl.Popup({
-                  className: 'aktiva-place-popup',
-                  offset: 20,
-                  closeButton: false,
-                })
-                  .setLngLat([lon, lat])
-                  .setDOMContent(popupObj.container)
-                  .addTo(map);
-
-                activePopupRef.current = popup;
-                ensurePopupInViewport(map, popup);
-
-                // Query elements from rendered Popup DOM or content container
-                const popupElement = popup.getElement();
-                const detailsBtn = popupElement?.querySelector<HTMLButtonElement>('.place-popup-details-btn') || popupObj.detailsBtn;
-                const routeBtn = popupElement?.querySelector<HTMLButtonElement>('.place-popup-route-btn') || popupObj.routeBtn;
-                const favBtn = (popupElement?.querySelector<HTMLButtonElement>('.place-popup-fav-btn') || popupObj.favBtn) as HTMLButtonElement | null;
-                const shareBtn = popupElement?.querySelector<HTMLButtonElement>('.place-popup-share-btn') || popupObj.shareBtn;
-                const closeBtn = popupElement?.querySelector<HTMLElement>('.friend-popup-close') || popupObj.closeBtn;
-
-                if (process.env.NODE_ENV !== 'production' || (typeof window !== 'undefined' && (window as any).NEXT_PUBLIC_MAP_DEBUG === 'true')) {
-                  console.log('[PLACE POPUP BINDINGS]', {
-                    details: Boolean(detailsBtn),
-                    route: Boolean(routeBtn),
-                    favorite: Boolean(favBtn),
-                    share: Boolean(shareBtn),
-                    placeId: place.id
-                  });
-                }
-
-                const handleClose = (event: MouseEvent) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (activePopupRef.current) {
-                    activePopupRef.current.remove();
-                    activePopupRef.current = null;
-                  }
-                };
-
-                const handleDetails = (event: MouseEvent) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (event.stopImmediatePropagation) {
-                    event.stopImmediatePropagation();
-                  }
-                  if (activePopupRef.current) {
-                    activePopupRef.current.remove();
-                    activePopupRef.current = null;
-                  }
-                  if (onSelectEntityRef.current) {
-                    onSelectEntityRef.current({ id: place.id, type: 'place', data: place });
-                  } else if (process.env.NODE_ENV !== 'production') {
-                    console.warn('[PLACE POPUP] onSelectEntity callback is missing');
-                  }
-                };
-
-                const handleFavorite = async (event: MouseEvent) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-
-                  if (placeFavoriteLocksRef.current.has(place.id)) {
-                    return;
-                  }
-                  placeFavoriteLocksRef.current.add(place.id);
-
-                  if (favBtn) {
-                    favBtn.disabled = true;
-                    favBtn.innerHTML = `<svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
-                  }
-
-                  try {
-                    await toggleFavoriteRef.current(place);
-
-                    const isNowFav = checkIsFavoriteRef.current(place.id);
-                    if (favBtn) {
-                      favBtn.className = `place-popup-fav-btn absolute top-3 left-3 w-8 h-8 min-w-[32px] min-h-[32px] rounded-full ${
-                        isNowFav ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 active:bg-black/80 text-white'
-                      } flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400`;
-                      favBtn.setAttribute('aria-label', isNowFav
-                        ? (languageRef.current === 'de' ? 'Favorit entfernen' : 'Remove favorite')
-                        : (languageRef.current === 'de' ? 'Als Favorit speichern' : 'Save as favorite'));
-                      favBtn.innerHTML = `<svg class="w-4 h-4 ${isNowFav ? 'fill-white' : 'fill-none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`;
-                    }
-                  } catch (err) {
-                    if (toastRef.current) {
-                      toastRef.current({
-                        variant: 'destructive',
-                        title: languageRef.current === 'de' ? 'Fehler' : 'Error',
-                        description: languageRef.current === 'de'
-                          ? 'Favorit konnte nicht aktualisiert werden.'
-                          : 'Could not update favorite.',
-                      });
-                    }
-                    const isStillFav = checkIsFavoriteRef.current(place.id);
-                    if (favBtn) {
-                      favBtn.className = `place-popup-fav-btn absolute top-3 left-3 w-8 h-8 min-w-[32px] min-h-[32px] rounded-full ${
-                        isStillFav ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 active:bg-black/80 text-white'
-                      } flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400`;
-                      favBtn.innerHTML = `<svg class="w-4 h-4 ${isStillFav ? 'fill-white' : 'fill-none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>`;
-                    }
-                  } finally {
-                    placeFavoriteLocksRef.current.delete(place.id);
-                    if (favBtn) {
-                      favBtn.disabled = false;
-                    }
-                  }
-                };
-
-                const handleRoute = (event: MouseEvent) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-
-                  if (!Number.isFinite(lat) || !Number.isFinite(lon) || !isValidCoordinate(lat, lon)) {
-                    if (toastRef.current) {
-                      toastRef.current({
-                        variant: 'destructive',
-                        title: languageRef.current === 'de' ? 'Fehler' : 'Error',
-                        description: languageRef.current === 'de'
-                          ? 'Für diesen Ort sind keine Routendaten verfügbar.'
-                          : 'No valid route data available for this location.',
-                      });
-                    }
-                    return;
-                  }
-
-                  const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${lat},${lon}`)}`;
-                  window.open(url, '_blank', 'noopener,noreferrer');
-
-                  if (activePopupRef.current) {
-                    activePopupRef.current.remove();
-                    activePopupRef.current = null;
-                  }
-                };
-
-                const handleShare = async (event: MouseEvent) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  const shareUrl = `${window.location.origin}/?placeId=${place.id}`;
-                  const shareData = {
-                    title: place.name,
-                    text: languageRef.current === 'de' ? `Schau dir ${place.name} auf Aktiva an!` : `Check out ${place.name} on Aktiva!`,
-                    url: shareUrl,
-                  };
-                  if (typeof navigator !== 'undefined' && navigator.share) {
-                    try {
-                      await navigator.share(shareData);
-                    } catch {
-                      // User cancelled share
-                    }
-                  } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                    try {
-                      await navigator.clipboard.writeText(shareUrl);
-                      if (toastRef.current) {
-                        toastRef.current({
-                          title: languageRef.current === 'de' ? 'Link kopiert!' : 'Link copied!',
-                          description: languageRef.current === 'de' ? 'Link in Zwischenablage kopiert.' : 'Link copied to clipboard.'
-                        });
-                      }
-                    } catch (err) {
-                      console.error('Clipboard copy failed:', err);
-                    }
-                  }
-                };
-
-                const handleCardClick = (event: MouseEvent) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (activePopupRef.current) {
-                    activePopupRef.current.remove();
-                    activePopupRef.current = null;
-                  }
-                };
-
-                closeBtn?.addEventListener('click', handleClose);
-                detailsBtn?.addEventListener('click', handleDetails);
-                favBtn?.addEventListener('click', handleFavorite);
-                routeBtn?.addEventListener('click', handleRoute);
-                shareBtn?.addEventListener('click', handleShare);
-                popupObj.container.addEventListener('click', handleCardClick);
-
-                const cleanupPopupListeners = () => {
-                  closeBtn?.removeEventListener('click', handleClose);
-                  detailsBtn?.removeEventListener('click', handleDetails);
-                  favBtn?.removeEventListener('click', handleFavorite);
-                  routeBtn?.removeEventListener('click', handleRoute);
-                  shareBtn?.removeEventListener('click', handleShare);
-                  popupObj.container.removeEventListener('click', handleCardClick);
-                };
-
-                popup.on('close', cleanupPopupListeners);
+                map.easeTo({
+                  center: [lon, lat],
+                  padding: isMobileRef.current
+                    ? { top: 60, bottom: 340, left: 20, right: 20 }
+                    : { top: 40, bottom: 40, left: 40, right: 420 },
+                  duration: 300,
+                });
               }
             }
           }
         });
 
-        // Single Activity marker click handler -> opens Activity Popup
+        // Single Activity marker click handler -> opens Activity Selection & camera easeTo
         map.on('click', 'activities-unclustered', (e) => {
           const feature = e.features?.[0];
           if (feature?.properties?.id) {
@@ -723,138 +541,16 @@ export function ActivaMap({
                 onSelectEntityRef.current({ id: act.id, type: 'activity', data: act });
               }
 
-              if (activePopupRef.current) {
-                activePopupRef.current.remove();
-                activePopupRef.current = null;
-              }
-
               const lon = act.lon ?? (act as any).lng ?? (act as any).longitude;
               const lat = act.lat ?? (act as any).latitude;
               if (isValidCoordinate(lat, lon)) {
-                const popupObj = createActivityPopupHTML(act, userLocationRef.current, userRef.current?.uid, languageRef.current);
-
-                const popup = new maplibregl.Popup({
-                  className: 'aktiva-activity-popup',
-                  offset: 20,
-                  closeButton: false,
-                })
-                  .setLngLat([lon, lat])
-                  .setDOMContent(popupObj.container)
-                  .addTo(map);
-
-                activePopupRef.current = popup;
-                ensurePopupInViewport(map, popup);
-
-                const popupElement = popup.getElement();
-                const closeBtn = popupElement?.querySelector<HTMLElement>('.friend-popup-close') || popupObj.closeBtn;
-                const detailsBtn = popupElement?.querySelector<HTMLElement>('.activity-popup-details-btn') || popupObj.detailsBtn;
-                const joinBtn = popupElement?.querySelector<HTMLElement>('.activity-popup-join-btn') || popupObj.joinBtn;
-
-                const handleClose = (closeEv: MouseEvent) => {
-                  closeEv.stopPropagation();
-                  closeEv.preventDefault();
-                  if (activePopupRef.current) {
-                    activePopupRef.current.remove();
-                    activePopupRef.current = null;
-                  }
-                };
-
-                const handleDetails = (detailsEv: MouseEvent) => {
-                  detailsEv.stopPropagation();
-                  detailsEv.preventDefault();
-                  if (activePopupRef.current) {
-                    activePopupRef.current.remove();
-                    activePopupRef.current = null;
-                  }
-                  if (onSelectEntityRef.current) {
-                    onSelectEntityRef.current({ id: act.id!, type: 'activity', data: act });
-                  }
-                  routerRef.current.push(`/activities/${act.id}`);
-                };
-
-                const handleJoin = async (joinEv: MouseEvent) => {
-                  joinEv.stopPropagation();
-                  joinEv.preventDefault();
-
-                  if (!userRef.current) {
-                    routerRef.current.push('/login');
-                    return;
-                  }
-
-                  if (popupObj.joinState.disabled || !onJoinActivityRef.current) return;
-
-                  // Synchronous in-flight lock check
-                  if (!tryAcquireActivityActionLock(act.id!)) {
-                    return;
-                  }
-
-                  const isDirect = act.joinMode === 'direct';
-                  setActivityActionStatus(act.id!, 'submitting');
-
-                  if (joinBtn) {
-                    joinBtn.setAttribute('disabled', 'true');
-                    joinBtn.classList.add('opacity-80', 'cursor-wait');
-                    joinBtn.innerHTML = `<span>${
-                      isDirect
-                        ? (languageRef.current === 'de' ? 'Wird beigetreten …' : 'Joining …')
-                        : (languageRef.current === 'de' ? 'Wird gesendet …' : 'Submitting …')
-                    }</span>`;
-                  }
-
-                  try {
-                    const resStatus = await onJoinActivityRef.current(act);
-                    const isJoinedRes = resStatus === 'joined' || isDirect;
-                    const newStatus = isJoinedRes ? 'joined' : 'requested';
-                    setActivityActionStatus(act.id!, newStatus);
-
-                    if (joinBtn) {
-                      joinBtn.setAttribute('disabled', 'true');
-                      joinBtn.className = `activity-popup-join-btn flex-1 min-h-[44px] py-2 px-3 ${
-                        isJoinedRes ? 'bg-emerald-600/90' : 'bg-amber-600/90'
-                      } text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-default`;
-                      joinBtn.innerHTML = `<span>${
-                        isJoinedRes
-                          ? (languageRef.current === 'de' ? 'Beigetreten' : 'Joined')
-                          : (languageRef.current === 'de' ? 'Anfrage gesendet' : 'Request sent')
-                      }</span>`;
-                    }
-                  } catch (err: any) {
-                    setActivityActionStatus(act.id!, 'failed');
-                    if (joinBtn) {
-                      joinBtn.removeAttribute('disabled');
-                      const fallbackState = getActivityJoinState(act, userRef.current?.uid, languageRef.current);
-                      joinBtn.className = `activity-popup-join-btn flex-1 min-h-[44px] py-2 px-3 ${fallbackState.btnClass} font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all focus-visible:ring-2 focus-visible:ring-purple-400`;
-                      joinBtn.innerHTML = `<span>${fallbackState.label}</span>`;
-                    }
-                  }
-                };
-
-                const handleCardClick = (cardEv: MouseEvent) => {
-                  cardEv.stopPropagation();
-                  cardEv.preventDefault();
-                  if (activePopupRef.current) {
-                    activePopupRef.current.remove();
-                    activePopupRef.current = null;
-                  }
-                  if (onSelectEntityRef.current) {
-                    onSelectEntityRef.current({ id: act.id!, type: 'activity', data: act });
-                  }
-                  routerRef.current.push(`/activities/${act.id}`);
-                };
-
-                closeBtn?.addEventListener('click', handleClose);
-                detailsBtn?.addEventListener('click', handleDetails);
-                joinBtn?.addEventListener('click', handleJoin);
-                popupObj.container.addEventListener('click', handleCardClick);
-
-                const cleanupPopupListeners = () => {
-                  closeBtn?.removeEventListener('click', handleClose);
-                  detailsBtn?.removeEventListener('click', handleDetails);
-                  joinBtn?.removeEventListener('click', handleJoin);
-                  popupObj.container.removeEventListener('click', handleCardClick);
-                };
-
-                popup.on('close', cleanupPopupListeners);
+                map.easeTo({
+                  center: [lon, lat],
+                  padding: isMobileRef.current
+                    ? { top: 60, bottom: 340, left: 20, right: 20 }
+                    : { top: 40, bottom: 40, left: 40, right: 420 },
+                  duration: 300,
+                });
               }
             }
           }
@@ -1025,75 +721,15 @@ export function ActivaMap({
               onSelectEntityRef.current({ id: friend.userId, type: 'friend', data: friend });
             }
 
-            if (activePopupRef.current) {
-              activePopupRef.current.remove();
-              activePopupRef.current = null;
+            if (isValidCoordinate(renderLat, renderLng)) {
+              map.easeTo({
+                center: [renderLng, renderLat],
+                padding: isMobileRef.current
+                  ? { top: 60, bottom: 340, left: 20, right: 20 }
+                  : { top: 40, bottom: 40, left: 40, right: 420 },
+                duration: 300,
+              });
             }
-
-            const popupObj = createFriendPopupHTML(friend, languageRef.current);
-
-            const popup = new maplibregl.Popup({
-              className: 'aktiva-friend-popup',
-              offset: 20,
-              closeButton: false,
-            })
-              .setLngLat([renderLng, renderLat])
-              .setDOMContent(popupObj.container)
-              .addTo(map);
-
-            activePopupRef.current = popup;
-            ensurePopupInViewport(map, popup);
-
-            const popupElement = popup.getElement();
-            const closeBtn = popupElement?.querySelector<HTMLElement>('.friend-popup-close') || popupObj.closeBtn;
-            const profileBtn = popupElement?.querySelector<HTMLElement>('.friend-popup-profile-btn') || popupObj.profileBtn;
-
-            const handleClose = (closeEv: MouseEvent) => {
-              closeEv.stopPropagation();
-              closeEv.preventDefault();
-              if (activePopupRef.current) {
-                activePopupRef.current.remove();
-                activePopupRef.current = null;
-              }
-            };
-
-            const handleProfile = (profileEv: MouseEvent) => {
-              profileEv.stopPropagation();
-              profileEv.preventDefault();
-              if (activePopupRef.current) {
-                activePopupRef.current.remove();
-                activePopupRef.current = null;
-              }
-              if (onSelectEntityRef.current) {
-                onSelectEntityRef.current({ id: friend.userId, type: 'friend', data: friend });
-              }
-              routerRef.current.push(`/profile/${friend.userId}`);
-            };
-
-            const handleCardClick = (cardEv: MouseEvent) => {
-              cardEv.stopPropagation();
-              cardEv.preventDefault();
-              if (activePopupRef.current) {
-                activePopupRef.current.remove();
-                activePopupRef.current = null;
-              }
-              if (onSelectEntityRef.current) {
-                onSelectEntityRef.current({ id: friend.userId, type: 'friend', data: friend });
-              }
-              routerRef.current.push(`/profile/${friend.userId}`);
-            };
-
-            closeBtn?.addEventListener('click', handleClose);
-            profileBtn?.addEventListener('click', handleProfile);
-            popupObj.container.addEventListener('click', handleCardClick);
-
-            const cleanupPopupListeners = () => {
-              closeBtn?.removeEventListener('click', handleClose);
-              profileBtn?.removeEventListener('click', handleProfile);
-              popupObj.container.removeEventListener('click', handleCardClick);
-            };
-
-            popup.on('close', cleanupPopupListeners);
           });
 
           const marker = new maplibregl.Marker({ element: el })
@@ -1206,6 +842,14 @@ export function ActivaMap({
           onClose={() => onSelectEntity(null)}
           onCreateActivity={onCreateActivity}
           onJoinActivity={onJoinActivity}
+          onViewDetails={(ent) => {
+            if (ent && ent.type === 'place') {
+              onPlaceSelect?.(ent.data as Place);
+            }
+          }}
+          isFavorite={selectedEntity.type === 'place' ? checkIsFavorite(selectedEntity.id) : false}
+          onToggleFavorite={onToggleFavorite}
+          userLocation={userLocation}
           language={language}
           className="absolute top-0 right-0 bottom-0"
           isLocationCurrent={selectedEntity.type === 'friend' ? ((selectedEntity.data as any)?.isLocationCurrent !== false && nearbyFriends.some(f => f.userId === selectedEntity.id)) : true}
@@ -1224,6 +868,14 @@ export function ActivaMap({
           onCloseDetails={() => onSelectEntity(null)}
           onCreateActivity={onCreateActivity}
           onJoinActivity={onJoinActivity}
+          onViewDetails={(ent) => {
+            if (ent && ent.type === 'place') {
+              onPlaceSelect?.(ent.data as Place);
+            }
+          }}
+          isFavorite={selectedEntity && selectedEntity.type === 'place' ? checkIsFavorite(selectedEntity.id) : false}
+          onToggleFavorite={onToggleFavorite}
+          userLocation={userLocation}
           language={language}
           isLocationCurrent={selectedEntity && selectedEntity.type === 'friend' ? ((selectedEntity.data as any)?.isLocationCurrent !== false && nearbyFriends.some(f => f.userId === selectedEntity.id)) : true}
         />

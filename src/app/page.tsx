@@ -1431,9 +1431,7 @@ export default function Home() {
 
   const handleSelectMapEntity = (entity: SelectedMapEntity) => {
     setSelectedMapEntity(entity);
-    if (entity?.type === 'place' && entity.data) {
-      setSelectedPlace(entity.data as Place);
-    } else if (!entity) {
+    if (!entity) {
       setSelectedPlace(null);
     }
   };
@@ -2067,6 +2065,9 @@ export default function Home() {
             onSelectEntity={handleSelectMapEntity}
             onCreateActivity={(place) => setActivityModalPlace(place)}
             onJoinActivity={handleJoin}
+            onPlaceSelect={handlePlaceSelect}
+            checkIsFavoriteProp={checkIsFavorite}
+            onToggleFavorite={handleBookmarkTogglePlace}
           />
         </div>
       );
