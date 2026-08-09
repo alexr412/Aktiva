@@ -319,6 +319,7 @@ export default function Home() {
   const { planningState, exitPlanningMode } = usePlanningMode();
   const { favorites, addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
   const [isMobile, setIsMobile] = useState(false);
+  const [gridColumns, setGridColumns] = useState<2 | 3 | 4 | 5 | null>(null);
 
   // Deselect selected friend if they walk out of range, get blocked/unfriended, or radar is disabled
   useEffect(() => {
@@ -355,10 +356,22 @@ export default function Home() {
 
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 640);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    const checkViewport = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 640);
+      if (width >= 1536) {
+        setGridColumns(5);
+      } else if (width >= 1280) {
+        setGridColumns(4);
+      } else if (width >= 1024) {
+        setGridColumns(3);
+      } else {
+        setGridColumns(2);
+      }
+    };
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
+    return () => window.removeEventListener('resize', checkViewport);
   }, []);
 
   // Background scroll lock
@@ -1625,7 +1638,7 @@ export default function Home() {
               </div>
             )}
             {standardActivities.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
                 {standardActivities.map((item) => (
                   <div key={item.id} className="min-h-[210px] w-full">
                     <ActivityListItem 
@@ -1664,7 +1677,7 @@ export default function Home() {
 
       return (
         <div 
-          className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col"
+          className="max-w-7xl 2xl:max-w-[1536px] mx-auto w-full min-h-[100vh] flex flex-col"
           aria-busy="false"
         >
           {renderList()}
@@ -1812,7 +1825,7 @@ export default function Home() {
             aria-label={translateAppString('loading.results', language)}
           >
             <FeaturedActivityCardSkeleton />
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
               <ActivityCardSkeleton />
               <ActivityCardSkeleton />
               <ActivityCardSkeleton />
@@ -1828,7 +1841,7 @@ export default function Home() {
             aria-label={translateAppString('loading.results', language)}
           >
             <FeaturedPlaceCardSkeleton />
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
@@ -1899,7 +1912,7 @@ export default function Home() {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
           }
           return (
-            <div className="p-4 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            <div className="p-4 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
               {finalFeedPlaces.map(place => {
                 const live = placesMetaMap[place.id];
                 const placeObj = place;
@@ -1945,7 +1958,7 @@ export default function Home() {
                 </div>
               )}
               {standardActivities.length > 0 && (
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
                   {standardActivities.map((item) => (
                     <div key={item.id} className="min-h-[210px] w-full">
                       <ActivityListItem 
@@ -1968,6 +1981,7 @@ export default function Home() {
         const displayFeedItems = deriveFeedDisplayItems({
           places: standardPlaces,
           isMobile,
+          gridColumns,
           activeTabId,
           activeCategory,
           searchQuery: debouncedSearchQuery,
@@ -2002,7 +2016,7 @@ export default function Home() {
               </div>
             )}
             {displayFeedItems.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
                 {displayFeedItems.map((item) => {
                   if (item.type === 'ad') {
                     return (
@@ -2046,7 +2060,7 @@ export default function Home() {
 
       return (
         <div 
-          className="max-w-7xl mx-auto w-full min-h-[100vh] flex flex-col"
+          className="max-w-7xl 2xl:max-w-[1536px] mx-auto w-full min-h-[100vh] flex flex-col"
           aria-busy={isResultsRegionBusy ? "true" : "false"}
         >
           <div className="sr-only" role="status" aria-live="polite">
@@ -2058,7 +2072,7 @@ export default function Home() {
           </div>
           {renderList()}
           {isFetchingNextPage && !isReachingEnd && (
-            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
               {isCommunityCategory ? <ActivityCardSkeleton /> : <PlaceCardSkeleton />}
             </div>
           )}
@@ -2100,7 +2114,7 @@ export default function Home() {
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
         <header className="global-viewport-header compact pb-2.5 md:pb-3">
-          <div className="flex flex-col gap-4 md:gap-4 max-w-7xl mx-auto w-full">
+          <div className="flex flex-col gap-4 md:gap-4 max-w-7xl 2xl:max-w-[1536px] mx-auto w-full">
             {/* Mobile Header Layout */}
             <div className="md:hidden flex flex-col gap-4">
               <div className="global-header-container">
@@ -2320,7 +2334,7 @@ export default function Home() {
           </div>
         </header>
         <main className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden scroll-smooth'}`}>
-          <div className="max-w-7xl mx-auto w-full pt-2">
+          <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto w-full pt-2">
             {viewMode === 'list' && (
               <div className="px-3 sm:px-6 mb-3 sm:mb-4">
                 <ActivaPulseHero 

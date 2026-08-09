@@ -1,4 +1,4 @@
-import { deriveFeedDisplayItems, shouldShowAdsInFeed } from './feed-ads';
+import { deriveFeedDisplayItems, getAdTargetIndex, shouldShowAdsInFeed } from './feed-ads';
 import type { Place } from './types';
 
 function createMockPlace(id: string): Place {
@@ -12,83 +12,84 @@ function createMockPlace(id: string): Place {
   };
 }
 
-// 25 sample places to accommodate at least 4 ads
-const samplePlaces: Place[] = Array.from({ length: 25 }, (_, i) =>
+// 40 sample places to accommodate 4+ ads across 2, 3, 4, and 5 column grids
+const samplePlaces: Place[] = Array.from({ length: 40 }, (_, i) =>
   createMockPlace(`place-${i + 1}`)
 );
 
-console.log('--- Running Extended Feed Ads Logic Tests ---');
+console.log('--- Running Complete Responsive Feed Ads Logic Tests (2, 3, 4 & 5 Columns) ---');
 
-// Test 1: Disabled on desktop
-const desktopItems = deriveFeedDisplayItems({
+// Test 0: SSR / unmeasured gridColumns: null should render NO ads
+const ssrItems = deriveFeedDisplayItems({
   places: samplePlaces,
-  isMobile: false,
+  gridColumns: null,
 });
-console.assert(desktopItems.length === 25, 'Desktop should have 25 items without ads');
-console.assert(desktopItems.every(i => i.type === 'place'), 'Desktop should only have places');
+console.assert(ssrItems.length === 40, 'Unmeasured gridColumns (null) must render 0 ads');
+console.assert(ssrItems.every(i => i.type === 'place'), 'Unmeasured gridColumns should only return original places');
 
-// Test 2: Disabled on category search or tab filter
-const categoryItems = deriveFeedDisplayItems({
+// Test 1: Active search/filters/category/tab disable ads across all grid modes
+const filterTest1 = deriveFeedDisplayItems({
   places: samplePlaces,
-  isMobile: true,
-  activeCategory: ['sights'],
-});
-console.assert(categoryItems.length === 25, 'Active category should disable ads');
-
-const searchItems = deriveFeedDisplayItems({
-  places: samplePlaces,
-  isMobile: true,
+  gridColumns: 3,
   searchQuery: 'Coffee',
 });
-console.assert(searchItems.length === 25, 'Active search query should disable ads');
+console.assert(filterTest1.length === 40, 'Search query should disable ads in 3-column mode');
 
-const tabItems = deriveFeedDisplayItems({
+const filterTest2 = deriveFeedDisplayItems({
   places: samplePlaces,
-  isMobile: true,
+  gridColumns: 4,
+  activeCategory: ['sights'],
+});
+console.assert(filterTest2.length === 40, 'Active category should disable ads in 4-column mode');
+
+const filterTest3 = deriveFeedDisplayItems({
+  places: samplePlaces,
+  gridColumns: 5,
   activeTabId: 'Favorites',
 });
-console.assert(tabItems.length === 25, 'Active tab filter should disable ads');
+console.assert(filterTest3.length === 40, 'Active tab filter should disable ads in 5-column mode');
 
-// Test 3: Mobile unfiltered feed positioning and grid column check
-const mobileItems = deriveFeedDisplayItems({
-  places: samplePlaces,
-  isMobile: true,
-  activeTabId: '',
-  activeCategory: [],
-  searchQuery: '',
-});
+// Helper to extract first 4 ads and log details
+function verifyGridMode(cols: 2 | 3 | 4 | 5, expectedIndices: number[]) {
+  const items = deriveFeedDisplayItems({
+    places: samplePlaces,
+    gridColumns: cols,
+    activeTabId: '',
+    activeCategory: [],
+    searchQuery: '',
+  });
 
-// Find indices of all Ad items
-const adEntries = mobileItems
-  .map((item, index) => ({ item, index }))
-  .filter((entry) => entry.item.type === 'ad');
+  const adEntries = items
+    .map((item, index) => ({ item, index }))
+    .filter((entry) => entry.item.type === 'ad');
 
-console.assert(adEntries.length >= 4, `Expected at least 4 ads, found ${adEntries.length}`);
+  console.assert(adEntries.length >= 4, `Expected at least 4 ads for ${cols}-column grid, found ${adEntries.length}`);
 
-const ad1 = adEntries[0];
-const ad2 = adEntries[1];
-const ad3 = adEntries[2];
-const ad4 = adEntries[3];
+  console.log(`\n=== GRID MODE: ${cols} SPALTEN ===`);
+  expectedIndices.forEach((expectedIdx, adIdx) => {
+    const actual = adEntries[adIdx];
+    console.assert(actual.index === expectedIdx, `${cols}-col Grid Ad #${adIdx + 1} expected at index ${expectedIdx}, got ${actual.index}`);
+    
+    const row = Math.floor(actual.index / cols) + 1;
+    const col = (actual.index % cols) + 1;
+    console.log(`Ad #${adIdx + 1}: Index = ${actual.index} (Zeile ${row}, Spalte ${col} von ${cols})`);
+  });
+}
 
-console.log(`Ad #1: Display Index = ${ad1.index}, Column = ${ad1.index % 2 === 1 ? 'RIGHT (Col 2)' : 'LEFT (Col 1)'}`);
-console.log(`Ad #2: Display Index = ${ad2.index}, Column = ${ad2.index % 2 === 1 ? 'RIGHT (Col 2)' : 'LEFT (Col 1)'}`);
-console.log(`Ad #3: Display Index = ${ad3.index}, Column = ${ad3.index % 2 === 1 ? 'RIGHT (Col 2)' : 'LEFT (Col 1)'}`);
-console.log(`Ad #4: Display Index = ${ad4.index}, Column = ${ad4.index % 2 === 1 ? 'RIGHT (Col 2)' : 'LEFT (Col 1)'}`);
+// Test 2: 2-Column Grid (Mobile / sm / md) -> 5, 10, 17, 22
+verifyGridMode(2, [5, 10, 17, 22]);
 
-// Assert explicit display indices
-console.assert(ad1.index === 5, `Ad #1 expected at index 5, got ${ad1.index}`);
-console.assert(ad2.index === 10, `Ad #2 expected at index 10, got ${ad2.index}`);
-console.assert(ad3.index === 17, `Ad #3 expected at index 17, got ${ad3.index}`);
-console.assert(ad4.index === 22, `Ad #4 expected at index 22, got ${ad4.index}`);
+// Test 3: 3-Column Grid (lg) -> 2, 7, 12, 20
+verifyGridMode(3, [2, 7, 12, 20]);
 
-// Assert grid column alignment (2-column mobile grid: odd index = Col 2/Right, even index = Col 1/Left)
-console.assert(ad1.index % 2 === 1, 'Ad #1 must be in RIGHT column (odd display index)');
-console.assert(ad2.index % 2 === 0, 'Ad #2 must be in LEFT column (even display index)');
-console.assert(ad3.index % 2 === 1, 'Ad #3 must be in RIGHT column (odd display index)');
-console.assert(ad4.index % 2 === 0, 'Ad #4 must be in LEFT column (even display index)');
+// Test 4: 4-Column Grid (xl) -> 3, 10, 17, 24
+verifyGridMode(4, [3, 10, 17, 24]);
 
-// Test 4: Original places array non-mutation
-console.assert(samplePlaces.length === 25, 'Sample places array length preserved');
+// Test 5: 5-Column Grid (2xl) -> 4, 12, 20, 29
+verifyGridMode(5, [4, 12, 20, 29]);
+
+// Test 6: Original places array non-mutation
+console.assert(samplePlaces.length === 40, 'Sample places array length preserved');
 console.assert(samplePlaces[0].id === 'place-1', 'First place in original array unchanged');
 
-console.log('✓ All Extended Feed Ads tests passed successfully!');
+console.log('\n✓ All Complete Responsive Feed Ads (2, 3, 4 & 5 Columns) tests passed successfully!');

@@ -241,7 +241,7 @@
   }
 
   .global-header-container {
-    @apply px-6 flex items-center justify-between max-w-7xl mx-auto w-full;
+    @apply px-6 flex items-center justify-between max-w-7xl 2xl:max-w-[1536px] mx-auto w-full;
   }
 }
 

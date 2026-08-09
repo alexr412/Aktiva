@@ -6,7 +6,8 @@ export type FeedItem =
 
 export interface FeedAdsOptions {
   places: Place[];
-  isMobile: boolean;
+  isMobile?: boolean;
+  gridColumns?: 2 | 3 | 4 | 5 | null;
   activeTabId?: string;
   activeCategory?: string[];
   searchQuery?: string;
@@ -15,17 +16,14 @@ export interface FeedAdsOptions {
 }
 
 /**
-  Checks if ads should be rendered in the main feed based on current filter states.
+  Checks if ads should be rendered in the main feed based on current filter states and measured grid columns.
   Ads are ONLY shown:
-  - on Mobile view (isMobile === true)
-  - in the main discover feed (activeTabId === '' or undefined)
-  - when no category filter is active (activeCategory is empty)
-  - when no search query is active
-  - when no premium filters or open room modes are active
+  - after client-side viewport measurement has established active grid columns (gridColumns is 2, 3, 4, or 5)
+  - in the main discover feed when no search, categories, favorites, premium filters or open room modes are active
  */
 export function shouldShowAdsInFeed(options: FeedAdsOptions): boolean {
   const {
-    isMobile,
+    gridColumns,
     activeTabId,
     activeCategory,
     searchQuery,
@@ -33,7 +31,9 @@ export function shouldShowAdsInFeed(options: FeedAdsOptions): boolean {
     isOpenRoomsMode = false,
   } = options;
 
-  if (!isMobile) return false;
+  // Do NOT render ads during SSR or before initial client-side viewport measurement
+  if (gridColumns === null || typeof gridColumns === 'undefined') return false;
+
   if (activeTabId && activeTabId.trim() !== '') return false;
   if (activeCategory && activeCategory.length > 0) return false;
   if (searchQuery && searchQuery.trim().length > 0) return false;
@@ -44,19 +44,68 @@ export function shouldShowAdsInFeed(options: FeedAdsOptions): boolean {
 }
 
 /**
-  Derives display items for the mobile 2-column list feed.
-  Places ads to guarantee strict alternating grid column placement:
-  - Ad 1 (1st ad): Index 5  (Row 3, Col 2 -> RIGHT)
-  - Ad 2 (2nd ad): Index 10 (Row 6, Col 1 -> LEFT)
-  - Ad 3 (3rd ad): Index 17 (Row 9, Col 2 -> RIGHT)
-  - Ad 4 (4th ad): Index 22 (Row 12, Col 1 -> LEFT)
+  Calculates the target display index for the k-th ad (1-indexed)
+  based on active grid column count (2, 3, 4, or 5 columns).
+ */
+export function getAdTargetIndex(k: number, columns: 2 | 3 | 4 | 5 = 2): number {
+  if (columns === 2) {
+    // 2-column mobile layout: Rechts -> Links
+    // k = 1 (odd)  -> index 5  (Row 3, Col 2 -> RECHTS)
+    // k = 2 (even) -> index 10 (Row 6, Col 1 -> LINKS)
+    // k = 3 (odd)  -> index 17 (Row 9, Col 2 -> RECHTS)
+    // k = 4 (even) -> index 22 (Row 12, Col 1 -> LINKS)
+    return k % 2 === 1
+      ? 6 * (k - 1) + 5
+      : 6 * (k - 2) + 10;
+  }
+
+  if (columns === 3) {
+    // 3-column lg layout: Rechts -> Mitte -> Links
+    // k = 1 -> index 2  (Row 1, Col 3 -> RECHTS)
+    // k = 2 -> index 7  (Row 3, Col 2 -> MITTE)
+    // k = 3 -> index 12 (Row 5, Col 1 -> LINKS)
+    // k = 4 -> index 20 (Row 7, Col 3 -> RECHTS)
+    const block = Math.floor((k - 1) / 3);
+    const rem = (k - 1) % 3;
+    const offsets = [2, 7, 12];
+    return 18 * block + offsets[rem];
+  }
+
+  if (columns === 4) {
+    // 4-column xl layout: Rechts -> Mitte-Rechts -> Mitte-Links -> Links
+    // k = 1 -> index 3  (Row 1, Col 4 -> RECHTS)
+    // k = 2 -> index 10 (Row 3, Col 3 -> MITTE-RECHTS)
+    // k = 3 -> index 17 (Row 5, Col 2 -> MITTE-LINKS)
+    // k = 4 -> index 24 (Row 7, Col 1 -> LINKS)
+    const block = Math.floor((k - 1) / 4);
+    const rem = (k - 1) % 4;
+    const offsets = [3, 10, 17, 24];
+    return 32 * block + offsets[rem];
+  }
+
+  // 5-column 2xl desktop layout: Rechts -> Mitte -> Links
+  // k = 1 -> index 4  (Row 1, Col 5 -> RECHTS)
+  // k = 2 -> index 12 (Row 3, Col 3 -> MITTE)
+  // k = 3 -> index 20 (Row 5, Col 1 -> LINKS)
+  // k = 4 -> index 29 (Row 6, Col 5 -> RECHTS)
+  const block = Math.floor((k - 1) / 3);
+  const rem = (k - 1) % 3;
+  const offsets = [4, 12, 20];
+  return 25 * block + offsets[rem];
+}
+
+/**
+  Derives display items for the list feed across all responsive layouts (2, 3, 4, 5 columns).
+  Places ads to guarantee strict rotating grid column placement.
  */
 export function deriveFeedDisplayItems(options: FeedAdsOptions): FeedItem[] {
-  const { places } = options;
+  const { places, gridColumns } = options;
 
-  if (!shouldShowAdsInFeed(options)) {
+  if (!shouldShowAdsInFeed(options) || !gridColumns) {
     return places.map((place) => ({ type: 'place', place }));
   }
+
+  const cols = gridColumns;
 
   const items: FeedItem[] = [];
   let placeIdx = 0;
@@ -64,12 +113,7 @@ export function deriveFeedDisplayItems(options: FeedAdsOptions): FeedItem[] {
 
   while (placeIdx < places.length) {
     const nextAdNumber = adCount + 1;
-    // For 2-column mobile grid:
-    // Odd ad numbers (1, 3, 5...) land on index 6k - 1 (odd -> Col 2 / RIGHT)
-    // Even ad numbers (2, 4, 6...) land on index 6k - 2 (even -> Col 1 / LEFT)
-    const adTargetIndex = nextAdNumber % 2 === 1
-      ? 6 * (nextAdNumber - 1) + 5
-      : 6 * (nextAdNumber - 2) + 10;
+    const adTargetIndex = getAdTargetIndex(nextAdNumber, cols);
 
     while (items.length < adTargetIndex && placeIdx < places.length) {
       items.push({ type: 'place', place: places[placeIdx++] });
