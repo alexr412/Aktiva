@@ -92,15 +92,16 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
       >
 
         <DialogHeader className="text-left space-y-0">
-          <div className="flex items-center gap-3 pr-10 sm:pr-8">
+          <div className="grid grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-3">
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
               <UserPlus className="w-5 h-5 stroke-[2.5]" />
             </div>
-            <DialogTitle className="text-lg sm:text-xl font-black text-slate-900 dark:text-neutral-100 tracking-tight leading-tight">
+            <DialogTitle className="min-w-0 text-lg sm:text-xl font-black text-slate-900 dark:text-neutral-100 tracking-tight leading-tight">
               Freund hinzufügen
             </DialogTitle>
+            <div className="w-10 h-10 shrink-0" />
           </div>
-          <DialogDescription className="text-xs sm:text-sm text-slate-500 dark:text-neutral-400 font-medium leading-relaxed mt-2.5 sm:mt-3">
+          <DialogDescription className="text-sm text-slate-500 dark:text-neutral-400 font-medium leading-relaxed mt-3.5 sm:mt-4">
             Gib den Username eines Freundes ein, um ihm eine Anfrage zu senden.
           </DialogDescription>
         </DialogHeader>
