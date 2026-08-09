@@ -13,6 +13,7 @@ import { formatFirstName } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
 import { db } from "@/lib/firebase/client";
 import { doc, updateDoc, arrayRemove } from "firebase/firestore";
+import { AddFriendDialog } from "@/components/friends/AddFriendDialog";
 
 interface FriendListProps {
   friendIds: string[];
@@ -23,6 +24,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
   const language = useLanguage();
   const [friends, setFriends] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAddFriendDialog, setShowAddFriendDialog] = useState(false);
 
   useEffect(() => {
     const loadFriends = async () => {
@@ -118,62 +120,76 @@ export default function FriendList({ friendIds }: FriendListProps) {
   );
 
   return (
-    <div className="flex flex-col gap-5 mb-1 w-full">
-      <div className="flex items-center justify-between px-4">
-        <h3 className="text-base font-black text-slate-900 dark:text-neutral-100 flex items-center gap-2">
-          {language === 'de' ? 'Freunde' : 'Friends'} 
-          <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-black tracking-tight">
-            {uniqueFriends.length}
-          </span>
-        </h3>
-        <Link href="/community" className="text-primary font-black text-sm hover:opacity-70 transition-opacity">
-          {language === 'de' ? 'Alle sehen' : 'See all'}
-        </Link>
-      </div>
+    <>
+      <div className="flex flex-col gap-5 mb-1 w-full">
+        <div className="flex items-center justify-between px-4">
+          <h3 className="text-base font-black text-slate-900 dark:text-neutral-100 flex items-center gap-2 shrink-0">
+            {language === 'de' ? 'Freunde' : 'Friends'} 
+            <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-black tracking-tight">
+              {uniqueFriends.length}
+            </span>
+          </h3>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowAddFriendDialog(true)}
+              aria-label={language === 'de' ? 'Freund hinzufügen' : 'Add friend'}
+              className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary transition-all active:scale-95 shrink-0"
+            >
+              <UserPlus className="h-4 w-4" />
+            </Button>
+            <Link href="/community" className="text-primary font-black text-sm hover:opacity-70 transition-opacity whitespace-nowrap">
+              {language === 'de' ? 'Alle sehen' : 'See all'}
+            </Link>
+          </div>
+        </div>
 
-      <div className="flex overflow-x-auto pb-4 gap-4 px-4 no-scrollbar scroll-smooth">
-        {uniqueFriends.length > 0 ? (
-          uniqueFriends.map((friend, index) => {
-            const friendKey = friend.uid || (friend as any).id || `fallback-${index}`;
-            
-            return (
-              <Link href={`/users/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[35%] max-w-[140px]">
-                <div className="flex flex-col items-center gap-2 p-4 rounded-[1.5rem] bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 transition-all cursor-pointer relative overflow-hidden group hover:bg-slate-50 dark:hover:bg-neutral-800/50">
-                  <div className="relative">
-                      <ProfileAvatar 
-                        className="h-14 w-14 border-0 shadow-none transition-transform group-hover:scale-105"
-                        photoURL={friend.photoURL}
-                        displayName={friend.displayName}
-                        isPremium={friend.isPremium}
-                        isCreator={friend.isCreator}
-                        isSupporter={friend.isSupporter}
-                      />
-                  </div>
-                  <div className="flex flex-col items-center text-center overflow-hidden w-full mt-1">
-                    <span className="font-bold text-slate-900 dark:text-neutral-100 truncate w-full leading-tight text-[13px]">
-                      {formatFirstName(friend.displayName, language === 'de' ? 'Nutzer' : 'User')}
-                    </span>
-                    <div className="flex flex-col items-center gap-0.5 mt-1 w-full">
-                      <div className="flex items-center gap-1 text-slate-400 overflow-hidden w-full justify-center">
-                        <MapPin className="h-2.5 w-2.5 shrink-0 opacity-40" />
-                        <span className="text-[10px] font-bold opacity-70 truncate max-w-[80px]">
-                          {friend.location?.split(',')[0] || "Activa"}
-                        </span>
+        <div className="flex overflow-x-auto pb-4 gap-4 px-4 no-scrollbar scroll-smooth">
+          {uniqueFriends.length > 0 ? (
+            uniqueFriends.map((friend, index) => {
+              const friendKey = friend.uid || (friend as any).id || `fallback-${index}`;
+              
+              return (
+                <Link href={`/users/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[35%] max-w-[140px]">
+                  <div className="flex flex-col items-center gap-2 p-4 rounded-[1.5rem] bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 transition-all cursor-pointer relative overflow-hidden group hover:bg-slate-50 dark:hover:bg-neutral-800/50">
+                    <div className="relative">
+                        <ProfileAvatar 
+                          className="h-14 w-14 border-0 shadow-none transition-transform group-hover:scale-105"
+                          photoURL={friend.photoURL}
+                          displayName={friend.displayName}
+                          isPremium={friend.isPremium}
+                          isCreator={friend.isCreator}
+                          isSupporter={friend.isSupporter}
+                        />
+                    </div>
+                    <div className="flex flex-col items-center text-center overflow-hidden w-full mt-1">
+                      <span className="font-bold text-slate-900 dark:text-neutral-100 truncate w-full leading-tight text-[13px]">
+                        {formatFirstName(friend.displayName, language === 'de' ? 'Nutzer' : 'User')}
+                      </span>
+                      <div className="flex flex-col items-center gap-0.5 mt-1 w-full">
+                        <div className="flex items-center gap-1 text-slate-400 overflow-hidden w-full justify-center">
+                          <MapPin className="h-2.5 w-2.5 shrink-0 opacity-40" />
+                          <span className="text-[10px] font-bold opacity-70 truncate max-w-[80px]">
+                            {friend.location?.split(',')[0] || "Activa"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            );
-          })
-        ) : (
-          <div className="px-4 w-full">
-             <div className="text-neutral-400 font-medium py-8 text-center bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
-                {language === 'de' ? 'Profil konnte nicht geladen werden' : 'Profile could not be loaded'}
-             </div>
-          </div>
-        )}
+                </Link>
+              );
+            })
+          ) : (
+            <div className="px-4 w-full">
+               <div className="text-neutral-400 font-medium py-8 text-center bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+                  {language === 'de' ? 'Profil konnte nicht geladen werden' : 'Profile could not be loaded'}
+               </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+      <AddFriendDialog open={showAddFriendDialog} onOpenChange={setShowAddFriendDialog} />
+    </>
   );
 }

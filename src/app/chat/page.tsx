@@ -268,6 +268,7 @@ export default function ChatPage() {
                         variant="ghost" 
                         size="icon" 
                         className="secondary-header-button" 
+                        aria-label={language === 'de' ? 'Benachrichtigungen' : 'Notifications'}
                     >
                         <Bell className="h-5 w-5" />
                     </Button>
@@ -279,9 +280,10 @@ export default function ChatPage() {
                   variant="ghost" 
                   size="icon" 
                   className="secondary-header-button" 
+                  aria-label={language === 'de' ? 'Freund hinzufügen' : 'Add friend'}
                   onClick={() => setShowAddFriendDialog(true)}
                 >
-                    <Users className="h-5 w-5" />
+                    <UserPlus className="h-5 w-5" />
                 </Button>
               </div>
             </div>
