@@ -338,16 +338,16 @@ export default function SettingsPage() {
                             <Radar className="h-5 w-5 text-primary" />
                             <span>{language === 'de' ? 'Freunde-Radar' : 'Friends Radar'}</span>
                         </h2>
-                        <div className="space-y-4 rounded-lg border bg-card p-4">
+                        <div className="space-y-4 rounded-2xl border border-slate-200/80 dark:border-neutral-800 bg-card p-5 shadow-sm">
                             {!hasAccess ? (
                               <div className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-slate-800 dark:text-neutral-200">
+                                  <span className="text-sm font-semibold text-slate-800 dark:text-neutral-200">
                                     {language === 'de' ? 'Freunde-Radar' : 'Friends Radar'}
                                   </span>
-                                  <Badge className="bg-amber-500 text-white font-black">PREMIUM</Badge>
+                                  <Badge className="bg-amber-500 text-white font-black text-[10px] px-2 py-0.5 rounded-full">PREMIUM</Badge>
                                 </div>
-                                <p className="text-xs text-muted-foreground leading-normal">
+                                <p className="text-xs text-muted-foreground leading-relaxed">
                                   {language === 'de' 
                                     ? 'Sieh, welche bestätigten Freunde kürzlich in deiner Nähe waren. Dein genauer Standort wird anderen Nutzern nicht angezeigt. Hol dir Premium oder werde Organizer, um dieses Feature freizuschalten.' 
                                     : 'See which confirmed friends were recently near you. Your exact location is never shown. Upgrade to Premium or become an Organizer to unlock this feature.'}
@@ -355,12 +355,12 @@ export default function SettingsPage() {
                               </div>
                             ) : (
                               <>
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <Label htmlFor="radar-enabled" className="font-medium">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex-1 min-w-0 pr-2">
+                                        <Label htmlFor="radar-enabled" className="text-sm font-semibold cursor-pointer">
                                           {language === 'de' ? 'Radar aktivieren' : 'Enable Radar'}
                                         </Label>
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                                           {language === 'de' 
                                             ? 'Zeigt Freunde in deiner Nähe an, wenn sie die App nutzen.' 
                                             : 'Show nearby friends when they use the app.'}
@@ -370,12 +370,13 @@ export default function SettingsPage() {
                                         id="radar-enabled"
                                         checked={radarEnabled}
                                         onCheckedChange={handleProximityToggle}
+                                        className="shrink-0"
                                     />
                                 </div>
 
                                 {radarPartialFailure && (
                                   <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200/50 rounded-2xl space-y-2">
-                                    <p className="text-xs text-red-600 dark:text-red-400 font-medium">
+                                    <p className="text-xs text-red-600 dark:text-red-400 font-medium leading-normal">
                                       {language === 'de'
                                         ? 'Einstellung aktiviert, aber Standort konnte nicht aktualisiert werden.'
                                         : 'Radar enabled, but location update failed.'}
@@ -394,7 +395,7 @@ export default function SettingsPage() {
                                 {radarEnabled && (
                                   <>
                                     <Separator />
-                                    <div className="space-y-4 pt-2">
+                                    <div className="space-y-4 pt-1">
                                       <div className="flex items-center justify-between">
                                         <Label className="text-sm font-medium">{language === 'de' ? 'Radar-Radius' : 'Radar Radius'}</Label>
                                         <span className="text-primary font-bold text-sm">{localRadius} km</span>
@@ -408,35 +409,35 @@ export default function SettingsPage() {
                                         onValueCommit={(val) => setRadius(val[0])}
                                       />
                                       
-                                      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-neutral-800 text-[11px] text-slate-500 dark:text-neutral-400">
-                                        <div className="flex justify-between">
+                                      <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-neutral-800/80 text-[11px] text-slate-500 dark:text-neutral-400">
+                                        <div className="flex justify-between items-center">
                                           <span>{language === 'de' ? 'Berechtigungsstatus:' : 'Permission status:'}</span>
-                                          <span className="font-bold uppercase tracking-tight">{radarPermissionState}</span>
+                                          <span className="font-bold uppercase tracking-tight text-slate-700 dark:text-neutral-300">{radarPermissionState}</span>
                                         </div>
-                                        <div className="flex justify-between">
+                                        <div className="flex justify-between items-center">
                                           <span>{language === 'de' ? 'Letzte Aktualisierung:' : 'Last update:'}</span>
-                                          <span className="font-semibold">{lastLocationUpdatedAt ? lastLocationUpdatedAt.toLocaleTimeString() : '-'}</span>
+                                          <span className="font-semibold text-slate-700 dark:text-neutral-300">{lastLocationUpdatedAt ? lastLocationUpdatedAt.toLocaleTimeString() : '-'}</span>
                                         </div>
                                         {nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime() && (
-                                          <div className="flex justify-between text-amber-500">
+                                          <div className="flex justify-between items-center text-amber-600 dark:text-amber-500">
                                             <span>{language === 'de' ? 'Nächstes Update in:' : 'Next update allowed in:'}</span>
-                                            <span className="font-bold">{Math.ceil((nextAllowedLocationUpdateAt.getTime() - Date.now()) / 1000)}s</span>
+                                            <span className="font-bold font-mono">{Math.ceil((nextAllowedLocationUpdateAt.getTime() - Date.now()) / 1000)}s</span>
                                           </div>
                                         )}
                                       </div>
 
-                                      <div className="flex gap-2 pt-2">
+                                      <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
                                         <Button
                                           onClick={() => updateLocation()}
                                           disabled={isUpdatingLocation || (nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime()) ? true : false}
-                                          className="flex-1 h-9 rounded-full text-xs font-black text-white"
+                                          className="w-full sm:flex-1 h-10 rounded-full text-xs font-bold text-white shadow-sm"
                                         >
                                           {isUpdatingLocation ? (language === 'de' ? 'Aktualisiere...' : 'Updating...') : (language === 'de' ? 'Standort jetzt aktualisieren' : 'Update location now')}
                                         </Button>
                                         <Button
                                           variant="outline"
                                           onClick={deactivateRadar}
-                                          className="h-9 rounded-full text-xs font-black border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300"
+                                          className="w-full sm:w-auto h-10 rounded-full text-xs font-bold border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800"
                                         >
                                           {language === 'de' ? 'Standortdaten löschen' : 'Delete location data'}
                                         </Button>
