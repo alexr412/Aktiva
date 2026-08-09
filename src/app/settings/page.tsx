@@ -48,6 +48,24 @@ const REQUIRED_ACTIVITIES_COUNT = 20;
 const REQUIRED_AVERAGE_RATING = 4.4;
 const REQUIRED_RATINGS_COUNT = 10;
 
+const formatPermissionState = (state: string, isDe: boolean) => {
+  const s = (state || '').toLowerCase();
+  if (s === 'granted') return isDe ? 'Erteilt' : 'Granted';
+  if (s === 'denied') return isDe ? 'Verweigert' : 'Denied';
+  if (s === 'prompt') return isDe ? 'Nicht entschieden' : 'Prompt';
+  if (s === 'checking') return isDe ? 'Wird geprüft' : 'Checking';
+  if (s === 'unavailable') return isDe ? 'Nicht verfügbar' : 'Unavailable';
+  if (s === 'unknown') return isDe ? 'Unbekannt' : 'Unknown';
+  return state;
+};
+
+const formatCountdown = (totalSeconds: number) => {
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
 export default function SettingsPage() {
     const router = useRouter();
     const { user, userProfile, loading: authLoading } = useAuth();
@@ -410,18 +428,24 @@ export default function SettingsPage() {
                                       />
                                       
                                       <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-neutral-800/80 text-[11px] text-slate-500 dark:text-neutral-400">
-                                        <div className="flex justify-between items-center">
-                                          <span>{language === 'de' ? 'Berechtigungsstatus:' : 'Permission status:'}</span>
-                                          <span className="font-bold uppercase tracking-tight text-slate-700 dark:text-neutral-300">{radarPermissionState}</span>
+                                        <div className="flex justify-between items-center gap-2 min-w-0">
+                                          <span className="truncate">{language === 'de' ? 'Berechtigungsstatus:' : 'Permission status:'}</span>
+                                          <span className="font-semibold text-slate-700 dark:text-neutral-300 shrink-0 text-right">
+                                            {formatPermissionState(radarPermissionState, language === 'de')}
+                                          </span>
                                         </div>
-                                        <div className="flex justify-between items-center">
-                                          <span>{language === 'de' ? 'Letzte Aktualisierung:' : 'Last update:'}</span>
-                                          <span className="font-semibold text-slate-700 dark:text-neutral-300">{lastLocationUpdatedAt ? lastLocationUpdatedAt.toLocaleTimeString() : '-'}</span>
+                                        <div className="flex justify-between items-center gap-2 min-w-0">
+                                          <span className="truncate">{language === 'de' ? 'Letzte Aktualisierung:' : 'Last update:'}</span>
+                                          <span className="font-semibold text-slate-700 dark:text-neutral-300 shrink-0 text-right">
+                                            {lastLocationUpdatedAt ? lastLocationUpdatedAt.toLocaleTimeString() : '-'}
+                                          </span>
                                         </div>
                                         {nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime() && (
-                                          <div className="flex justify-between items-center text-amber-600 dark:text-amber-500">
-                                            <span>{language === 'de' ? 'Nächstes Update in:' : 'Next update allowed in:'}</span>
-                                            <span className="font-bold font-mono">{Math.ceil((nextAllowedLocationUpdateAt.getTime() - Date.now()) / 1000)}s</span>
+                                          <div className="flex justify-between items-center gap-2 min-w-0 text-amber-600 dark:text-amber-500">
+                                            <span className="truncate">{language === 'de' ? 'Nächstes Update in:' : 'Next update allowed in:'}</span>
+                                            <span className="font-bold font-mono shrink-0 text-right">
+                                              {formatCountdown(Math.ceil((nextAllowedLocationUpdateAt.getTime() - Date.now()) / 1000))}
+                                            </span>
                                           </div>
                                         )}
                                       </div>
@@ -430,7 +454,7 @@ export default function SettingsPage() {
                                         <Button
                                           onClick={() => updateLocation()}
                                           disabled={isUpdatingLocation || (nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime()) ? true : false}
-                                          className="w-full sm:flex-1 h-10 rounded-full text-xs font-bold text-white shadow-sm"
+                                          className="w-full sm:flex-1 h-10 rounded-full text-xs font-bold text-white shadow-sm disabled:bg-emerald-500/15 dark:disabled:bg-emerald-500/20 disabled:text-emerald-700 dark:disabled:text-emerald-400 disabled:opacity-100 disabled:shadow-none"
                                         >
                                           {isUpdatingLocation ? (language === 'de' ? 'Aktualisiere...' : 'Updating...') : (language === 'de' ? 'Standort jetzt aktualisieren' : 'Update location now')}
                                         </Button>
