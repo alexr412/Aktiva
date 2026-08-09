@@ -91,19 +91,19 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
         className="w-full border-slate-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5.5 sm:p-7 shadow-2xl overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] sm:max-w-md max-sm:fixed max-sm:left-1/2 max-sm:right-auto max-sm:top-[45%] max-sm:bottom-auto max-sm:w-[calc(100%-2rem)] max-sm:max-w-none max-sm:-translate-x-1/2 max-sm:-translate-y-1/2"
       >
 
-        <div className="flex items-start gap-4 pr-6">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
-            <UserPlus className="w-5 h-5 stroke-[2.5]" />
-          </div>
-          <DialogHeader className="text-left space-y-1">
-            <DialogTitle className="text-xl sm:text-2xl font-black text-slate-900 dark:text-neutral-100 tracking-tight">
+        <DialogHeader className="text-left space-y-0">
+          <div className="flex items-center gap-3 pr-10 sm:pr-8">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
+              <UserPlus className="w-5 h-5 stroke-[2.5]" />
+            </div>
+            <DialogTitle className="text-lg sm:text-xl font-black text-slate-900 dark:text-neutral-100 tracking-tight leading-tight">
               Freund hinzufügen
             </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm text-slate-500 dark:text-neutral-400 font-medium leading-relaxed">
-              Gib den Username eines Freundes ein, um ihm eine Anfrage zu senden.
-            </DialogDescription>
-          </DialogHeader>
-        </div>
+          </div>
+          <DialogDescription className="text-xs sm:text-sm text-slate-500 dark:text-neutral-400 font-medium leading-relaxed mt-2.5 sm:mt-3">
+            Gib den Username eines Freundes ein, um ihm eine Anfrage zu senden.
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="mt-5 space-y-4">
           <form onSubmit={handleSearch} className="flex gap-2 items-center">
