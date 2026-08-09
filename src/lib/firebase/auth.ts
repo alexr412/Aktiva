@@ -23,7 +23,7 @@ import { deleteFCMToken } from './messaging';
 
 export { auth };
 
-export async function signUp(name: string, email: string, password: string, username?: string, birthday?: string): Promise<User> {
+export async function signUp(name: string, email: string, password: string, username?: string, birthday?: string, marketingConsent: boolean = false): Promise<User> {
   if (!auth) throw new Error('Firebase has not been initialized.');
 
   const domain = email.split('@')[1]?.toLowerCase();
@@ -50,7 +50,7 @@ export async function signUp(name: string, email: string, password: string, user
   await sendEmailVerification(userCredential.user);
   
   // Create a corresponding user document in Firestore
-  await createUserProfileDocument(userCredential.user, { username, birthday });
+  await createUserProfileDocument(userCredential.user, { username, birthday }, marketingConsent);
   
   return userCredential.user;
 }

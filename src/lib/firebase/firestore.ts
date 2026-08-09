@@ -27,7 +27,7 @@ import {
 import { calculateDistance, buildApproximateLocationData } from '../geo-utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
-import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory } from '@/lib/types';
+import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory, CommunicationPreferences } from '@/lib/types';
 import { getParticipantLimit, isPremiumActive } from '@/lib/types';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
 import { formatFirstName } from '@/lib/utils';
@@ -74,7 +74,7 @@ export function removeUndefinedFields<T extends object>(obj: T): T {
   return newObj;
 }
 
-export async function createUserProfileDocument(user: User, additionalData?: Partial<UserProfile>) {
+export async function createUserProfileDocument(user: User, additionalData?: Partial<UserProfile>, marketingConsent: boolean = false) {
   if (!db) throw new Error('Firestore is not initialized.');
   const userDocRef = doc(db, 'users', user.uid);
   
@@ -130,10 +130,43 @@ export async function createUserProfileDocument(user: User, additionalData?: Par
       activityInvites: true,
       chatMessages: true
     },
+    communicationPreferences: {
+      emailRecommendations: marketingConsent,
+      emailProductNews: marketingConsent,
+      emailMarketing: marketingConsent,
+      activityEmails: true,
+      marketingConsentAt: marketingConsent ? serverTimestamp() : null,
+      marketingConsentVersion: marketingConsent ? '1.0' : null,
+      marketingUnsubscribedAt: null,
+    },
     role: 'user',
     isBanned: false
   };
   await setDoc(userDocRef, removeUndefinedFields(userProfile), { merge: true });
+}
+
+export async function updateCommunicationPreferences(userId: string, prefs: Partial<CommunicationPreferences>) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const userDocRef = doc(db, 'users', userId);
+
+  const isMarketingActive = prefs.emailRecommendations || prefs.emailProductNews || prefs.emailMarketing;
+  const isMarketingExplicitOff = prefs.emailRecommendations === false && prefs.emailProductNews === false && prefs.emailMarketing === false;
+
+  const updatePayload: Record<string, any> = {};
+  for (const [k, v] of Object.entries(prefs)) {
+    if (['emailRecommendations', 'emailProductNews', 'emailMarketing', 'activityEmails'].includes(k)) {
+      updatePayload[`communicationPreferences.${k}`] = v;
+    }
+  }
+
+  if (isMarketingActive) {
+    updatePayload['communicationPreferences.marketingConsentAt'] = serverTimestamp();
+    updatePayload['communicationPreferences.marketingConsentVersion'] = '1.0';
+  } else if (isMarketingExplicitOff) {
+    updatePayload['communicationPreferences.marketingUnsubscribedAt'] = serverTimestamp();
+  }
+
+  await updateDoc(userDocRef, updatePayload);
 }
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
@@ -206,6 +239,10 @@ export const PROTECTED_USER_FIELDS = new Set([
   'subscriptionStatus',
   'organizerStatus',
   'createdAt',
+  'communicationPreferences',
+  'marketingConsentAt',
+  'marketingConsentVersion',
+  'marketingUnsubscribedAt',
 ]);
 
 export async function updateUserProfile(userId: string, data: Partial<UserProfile>) {

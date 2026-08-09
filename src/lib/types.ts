@@ -1,6 +1,20 @@
 'use client';
 
-import type { Timestamp } from 'firebase/firestore';
+import type { Timestamp, FieldValue } from 'firebase/firestore';
+
+export interface CommunicationPreferences {
+  /** Optionale Empfehlungen per E-Mail */
+  emailRecommendations: boolean;
+  /** Optionale Produkt-Neuigkeiten per E-Mail */
+  emailProductNews: boolean;
+  /** Optionale Marketing-Angebote per E-Mail */
+  emailMarketing: boolean;
+  /** Optionale E-Mail-Erinnerungen für geplante Aktivitäten. Zwingende Service- und Sicherheitsmeldungen (Absagen, wesentliche Änderungen) werden unabhängig von dieser Einstellung gesendet. */
+  activityEmails: boolean;
+  marketingConsentAt: Timestamp | FieldValue | null;
+  marketingConsentVersion: string | null;
+  marketingUnsubscribedAt: Timestamp | FieldValue | null;
+}
 
 export type ActivityCategory = 'Sport' | 'Tech' | 'Party' | 'Kultur' | 'Outdoor' | 'Gaming' | 'Networking' | 'Sonstiges' | 'Other';
 
@@ -368,6 +382,20 @@ export interface UserProfile {
   premiumExpiresAt?: Timestamp | null;
   premiumSource?: string;
   premiumCampaignId?: string;
+  communicationPreferences?: CommunicationPreferences;
+}
+
+export function getEffectiveCommunicationPreferences(profile: UserProfile | null): CommunicationPreferences {
+  const prefs = profile?.communicationPreferences;
+  return {
+    emailRecommendations: prefs?.emailRecommendations ?? false,
+    emailProductNews: prefs?.emailProductNews ?? false,
+    emailMarketing: prefs?.emailMarketing ?? false,
+    activityEmails: prefs?.activityEmails ?? true,
+    marketingConsentAt: prefs?.marketingConsentAt ?? null,
+    marketingConsentVersion: prefs?.marketingConsentVersion ?? null,
+    marketingUnsubscribedAt: prefs?.marketingUnsubscribedAt ?? null,
+  };
 }
 
 /**

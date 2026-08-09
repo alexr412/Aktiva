@@ -137,6 +137,7 @@ function SignupPageContent() {
     useTermsAccepted: z.boolean().refine(val => val === true, { message: language === 'de' ? 'Bitte akzeptiere die Nutzungsbedingungen.' : 'Please accept the Terms of Use.' }),
     privacyAccepted: z.boolean().refine(val => val === true, { message: language === 'de' ? 'Bitte akzeptiere die Datenschutzerklärung.' : 'Please accept the Privacy Policy.' }),
     cookiesAccepted: z.boolean().refine(val => val === true, { message: language === 'de' ? 'Bitte akzeptiere die Cookie-Richtlinie.' : 'Please accept the Cookie Policy.' }),
+    marketingConsent: z.boolean().optional().default(false),
   }).refine((data) => data.password === data.confirmPassword, {
     message: language === 'de' ? "Passwörter stimmen nicht überein." : "Passwords do not match.",
     path: ["confirmPassword"],
@@ -154,6 +155,7 @@ function SignupPageContent() {
       useTermsAccepted: false,
       privacyAccepted: false,
       cookiesAccepted: false,
+      marketingConsent: false,
     },
   });
 
@@ -401,7 +403,8 @@ function SignupPageContent() {
         values.email, 
         values.password,
         undefined,
-        values.birthday
+        values.birthday,
+        values.marketingConsent
       );
 
       // Save legal timestamps to user profile in Firestore
@@ -637,6 +640,29 @@ function SignupPageContent() {
                              >
                                {language === 'de' ? 'Cookie-Richtlinie' : 'Cookie Policy'}
                              </button>
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="marketingConsent"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-3 space-y-0 pt-2 border-t border-slate-100 dark:border-neutral-900">
+                          <FormControl>
+                            <input 
+                              type="checkbox" 
+                              id="signup-marketing-consent"
+                              checked={!!field.value} 
+                              onChange={field.onChange} 
+                              className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-primary cursor-pointer" 
+                            />
+                          </FormControl>
+                          <FormLabel htmlFor="signup-marketing-consent" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer leading-tight">
+                            {language === 'de' 
+                              ? 'Ich möchte Tipps, Empfehlungen, Neuigkeiten und Angebote von Activa per E-Mail erhalten.'
+                              : 'I would like to receive tips, recommendations, news, and offers from Activa via email.'}
                           </FormLabel>
                         </FormItem>
                       )}

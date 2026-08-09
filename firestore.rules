@@ -479,9 +479,7 @@ service cloud.firestore {
           (!('enabled' in request.resource.data.proximitySettings) || request.resource.data.proximitySettings.enabled is bool) &&
           (!('radiusKm' in request.resource.data.proximitySettings) || (request.resource.data.proximitySettings.radiusKm is int && request.resource.data.proximitySettings.radiusKm >= 1 && request.resource.data.proximitySettings.radiusKm <= 50))
         )) &&
-        (!('language' in request.resource.data) || request.resource.data.language in ['de', 'en'])
-      );
-    }
+
 
     // Verhindert das Ändern von Systemfeldern durch den Client
     function hasNoSystemFieldChanges() {
