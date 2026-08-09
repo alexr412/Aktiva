@@ -88,7 +88,7 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent 
-        className="w-full border-slate-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5.5 sm:p-7 shadow-2xl overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] sm:max-w-md max-sm:fixed max-sm:left-1/2 max-sm:right-auto max-sm:top-[45%] max-sm:bottom-auto max-sm:w-[calc(100%-2rem)] max-sm:max-w-none max-sm:-translate-x-1/2 max-sm:-translate-y-1/2"
+        className="w-full border-slate-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-6 sm:p-7 shadow-2xl overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] sm:max-w-md max-sm:fixed max-sm:left-1/2 max-sm:right-auto max-sm:top-[45%] max-sm:bottom-auto max-sm:w-[calc(100%-2rem)] max-sm:max-w-none max-sm:-translate-x-1/2 max-sm:-translate-y-1/2"
       >
 
         <DialogHeader className="text-left space-y-0">
@@ -107,8 +107,8 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
         </DialogHeader>
 
         <div className="mt-5 space-y-4">
-          <form onSubmit={handleSearch} className="flex gap-2 items-center">
-            <div className="relative flex-1">
+          <form onSubmit={handleSearch} className="flex gap-2.5 items-center w-full">
+            <div className="relative flex-1 min-w-0">
               <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-neutral-500 pointer-events-none flex items-center justify-center">
                 <AtSign className="w-4 h-4" />
               </div>
