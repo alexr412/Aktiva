@@ -88,7 +88,7 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent 
-        className="w-full sm:max-w-md border-slate-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-6 sm:p-7 shadow-2xl overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] max-sm:fixed max-sm:top-[45%] max-sm:-translate-y-1/2 max-sm:bottom-auto max-sm:left-4 max-sm:right-4 max-sm:w-[calc(100%-2rem)] max-sm:mx-auto max-sm:p-5.5"
+        className="w-full border-slate-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5.5 sm:p-7 shadow-2xl overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] sm:max-w-md max-sm:fixed max-sm:left-1/2 max-sm:right-auto max-sm:top-[45%] max-sm:bottom-auto max-sm:w-[calc(100%-2rem)] max-sm:max-w-none max-sm:-translate-x-1/2 max-sm:-translate-y-1/2"
       >
 
         <div className="flex items-start gap-4 pr-6">
