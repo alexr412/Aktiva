@@ -88,10 +88,8 @@ export function AddFriendDialog({ open, onOpenChange }: AddFriendDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent 
-        className="w-full sm:max-w-md border-slate-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-6 sm:p-7 shadow-2xl overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] max-sm:fixed max-sm:bottom-4 max-sm:top-auto max-sm:left-4 max-sm:right-4 max-sm:w-[calc(100%-2rem)] max-sm:translate-x-0 max-sm:translate-y-0 max-sm:mx-auto max-sm:p-5 max-sm:pb-6"
+        className="w-full sm:max-w-md border-slate-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-6 sm:p-7 shadow-2xl overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] max-sm:fixed max-sm:top-[45%] max-sm:-translate-y-1/2 max-sm:bottom-auto max-sm:left-4 max-sm:right-4 max-sm:w-[calc(100%-2rem)] max-sm:mx-auto max-sm:p-5.5"
       >
-        {/* Mobile Sheet Handle Visual Indicator */}
-        <div className="sm:hidden w-10 h-1 bg-slate-200 dark:bg-neutral-800 rounded-full mx-auto -mt-1 mb-4 opacity-70" />
 
         <div className="flex items-start gap-4 pr-6">
           <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/30 shadow-sm">
