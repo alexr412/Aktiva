@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/hooks/use-language';
-import { auth, signIn, signOut, sendPasswordReset, signInWithApple, handleSuccessfulSocialLogin } from '@/lib/firebase/auth';
+import { auth, signIn, signOut, sendPasswordReset, signInWithApple, handleSuccessfulSocialLogin, navigatePostLogin } from '@/lib/firebase/auth';
 import { signInWithPopup, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
 import { sendEmailVerification, type User } from 'firebase/auth';
 import { debugLog } from '@/lib/debug';
@@ -51,20 +51,7 @@ function LoginPageContent() {
   const { toast } = useToast();
   const { user, userProfile, loading: authLoading, setSocialLegalConsentPending } = useAuth();
 
-  const getSanitizedRedirect = (clearSession = true): string | null => {
-    if (typeof window === 'undefined') return null;
-    const params = new URLSearchParams(window.location.search);
-    const paramRedirect = params.get('redirect');
-    const sessionRedirect = window.sessionStorage ? sessionStorage.getItem('postLoginRedirect') : null;
-    const target = paramRedirect || sessionRedirect;
-    if (target && (/^\/[^/]+/.test(target) || target === '/')) {
-      if (clearSession && window.sessionStorage) {
-        sessionStorage.removeItem('postLoginRedirect');
-      }
-      return target;
-    }
-    return null;
-  };
+
 
   const [resetEmail, setResetEmail] = useState('');
   const [isResetting, setIsResetting] = useState(false);
@@ -109,24 +96,10 @@ function LoginPageContent() {
   useEffect(() => {
     if (user && userProfile && !authLoading && userProfile.legalAcceptedAt) {
       if (user.emailVerified) {
-        if (userProfile.onboardingCompleted) {
-          const redirectTarget = getSanitizedRedirect(true);
-          router.replace(redirectTarget || '/');
-        } else {
-          router.replace('/onboarding');
-        }
+        navigatePostLogin(router, !!userProfile.onboardingCompleted);
       }
     }
   }, [user, userProfile, authLoading, router]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-      const redirectParam = searchParams.get('redirect');
-      if (redirectParam && (/^\/[^/]+/.test(redirectParam) || redirectParam === '/')) {
-        sessionStorage.setItem('postLoginRedirect', redirectParam);
-      }
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     const registration = searchParams.get('registration');
@@ -263,12 +236,7 @@ function LoginPageContent() {
         description: language === 'de' ? "Willkommen zurück!" : "Welcome back!",
       });
       
-      if (onboardingCompleted) {
-        const redirectTarget = getSanitizedRedirect(true);
-        router.push(redirectTarget || '/');
-      } else {
-        router.push('/onboarding');
-      }
+      navigatePostLogin(router, onboardingCompleted);
     } catch (error: any) {
       if (process.env.NODE_ENV === "development") console.error(error);
       let errorMessage = language === 'de' ? 'Prüfe E-Mail und Passwort.' : 'Check email and password.';
@@ -329,16 +297,6 @@ function LoginPageContent() {
       prompt: "select_account",
     });
 
-    const redirectParam = searchParams.get("redirect");
-    let sanitizedRedirect = '/';
-    if (redirectParam && (/^\/[^/]+/.test(redirectParam) || redirectParam === '/')) {
-      sanitizedRedirect = redirectParam;
-    }
-
-    if (typeof window !== 'undefined' && window.sessionStorage && redirectParam) {
-      sessionStorage.setItem("postLoginRedirect", sanitizedRedirect);
-    }
-
     try {
       console.warn("[LEGAL DEBUG] Google popup login initiated", { timestamp: Date.now() });
       const result = await signInWithPopup(auth!, googleProvider);
@@ -350,7 +308,6 @@ function LoginPageContent() {
         toast,
         setSocialLegalConsentPending,
         setIsLoading,
-        redirectTarget: sanitizedRedirect,
       });
     } catch (error: any) {
       console.error("[LEGAL DEBUG] Google login failed", error);
@@ -467,12 +424,7 @@ function LoginPageContent() {
         onboardingCompleted,
         timestamp: Date.now()
       });
-      if (onboardingCompleted) {
-        const redirectTarget = getSanitizedRedirect(true);
-        router.push(redirectTarget || '/');
-      } else {
-        router.push('/onboarding');
-      }
+      navigatePostLogin(router, onboardingCompleted);
     } catch (error: any) {
       console.error("[LEGAL DEBUG] Apple login failed", {
         error: error.message || error,

@@ -115,7 +115,7 @@ export default function SettingsPage() {
     useEffect(() => {
         if (authLoading) return;
         if (!user) {
-            router.replace('/login?redirect=/settings');
+            router.replace('/login');
             return;
         }
         if (userProfile && userProfile.onboardingCompleted === false) {

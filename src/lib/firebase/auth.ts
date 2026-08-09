@@ -244,54 +244,27 @@ export async function handleSuccessfulSocialLogin(options: {
     description: language === 'de' ? "Willkommen zurück!" : "Welcome back!",
   });
 
-  let resolvedTarget = '/';
-  if (onboardingCompleted) {
-    let target = null;
-    
-    // a) explicit redirect argument
-    if (redirectTarget && (/^\/[^/]+/.test(redirectTarget) || redirectTarget === '/')) {
-      target = redirectTarget;
-    }
-    
-    // b) URL search param
-    if (!target && typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const paramRedirect = params.get('redirect');
-      if (paramRedirect && (/^\/[^/]+/.test(paramRedirect) || paramRedirect === '/')) {
-        target = paramRedirect;
-      }
-    }
-    
-    // c) sessionStorage
-    if (!target && typeof window !== 'undefined' && window.sessionStorage) {
-      const sessionRedirect = sessionStorage.getItem('postLoginRedirect');
-      if (sessionRedirect && (/^\/[^/]+/.test(sessionRedirect) || sessionRedirect === '/')) {
-        target = sessionRedirect;
-      }
-    }
-
-    resolvedTarget = target || '/';
-    
-    // Remove sessionStorage item only after successful navigation decision
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-      sessionStorage.removeItem('postLoginRedirect');
-    }
-  }
-
   if (process.env.NODE_ENV !== 'production') {
     console.warn("[LEGAL DEBUG] Redirect/signout/delete triggered", {
       source: "handleSuccessfulSocialLogin - flow completed",
-      target: onboardingCompleted ? resolvedTarget : "/onboarding",
+      target: onboardingCompleted ? "/" : "/onboarding",
       uid: user.uid,
       onboardingCompleted,
       timestamp: Date.now()
     });
   }
   
+  navigatePostLogin(router, onboardingCompleted);
+}
+
+export function navigatePostLogin(
+  router: { replace: (url: string) => void },
+  onboardingCompleted: boolean
+) {
   if (onboardingCompleted) {
-    router.push(resolvedTarget);
+    router.replace('/');
   } else {
-    router.push('/onboarding');
+    router.replace('/onboarding');
   }
 }
 

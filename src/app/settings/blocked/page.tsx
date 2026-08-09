@@ -15,7 +15,7 @@ export default function BlockedUsersPage() {
     useEffect(() => {
         if (authLoading) return;
         if (!user) {
-            router.replace('/login?redirect=/settings/blocked');
+            router.replace('/login');
             return;
         }
         if (userProfile && userProfile.onboardingCompleted === false) {

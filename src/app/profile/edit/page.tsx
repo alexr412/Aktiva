@@ -82,7 +82,7 @@ export default function EditProfilePage() {
     if (authLoading) return;
 
     if (!user?.uid) {
-      router.replace('/login?redirect=/profile/edit');
+      router.replace('/login');
       return;
     }
 

@@ -612,11 +612,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (isTestingBypass) {
         return;
       }
-      const fullPath = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : pathname;
-      if (typeof window !== 'undefined' && window.sessionStorage && fullPath && (/^\/[^/]+/.test(fullPath) || fullPath === '/')) {
-        sessionStorage.setItem('postLoginRedirect', fullPath);
-      }
-      router.replace(`/login?redirect=${encodeURIComponent(fullPath)}`);
+      router.replace('/login');
     }
   }, [user, userProfile?.onboardingCompleted, dbProfile?.emailVerificationRequired, loading, isMounted, pathname, isPublicRoute, router, socialLegalConsentPending]);
 
