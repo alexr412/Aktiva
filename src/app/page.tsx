@@ -9,6 +9,8 @@ import { ActivaPulseHero } from '@/components/activa/activa-pulse-hero';
 import { translateAppString, ACTIVITY_EXPIRY_THRESHOLD_MS, isActivityRoomOpen } from '@/lib/tag-config';
 import { PlaceDetails } from '@/components/activa/place-details';
 import { PlaceCard } from '@/components/activa/place-card';
+import { AdCard } from '@/components/activa/ad-card';
+import { deriveFeedDisplayItems } from '@/lib/feed-ads';
 
 type DiscoverFeedState =
   | 'initial_loading'
@@ -1963,6 +1965,16 @@ export default function Home() {
         const featuredPlace = finalFeedPlaces[0] ?? null;
         const standardPlaces = finalFeedPlaces.slice(1);
         
+        const displayFeedItems = deriveFeedDisplayItems({
+          places: standardPlaces,
+          isMobile,
+          activeTabId,
+          activeCategory,
+          searchQuery: debouncedSearchQuery,
+          activePremiumFilters,
+          isOpenRoomsMode,
+        });
+
         return (
           <div className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-6">
             {featuredPlace && (
@@ -1989,9 +2001,17 @@ export default function Home() {
                 })()}
               </div>
             )}
-            {standardPlaces.length > 0 && (
+            {displayFeedItems.length > 0 && (
               <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-                {standardPlaces.map((place) => {
+                {displayFeedItems.map((item) => {
+                  if (item.type === 'ad') {
+                    return (
+                      <div key={item.id} className="min-h-[210px] w-full">
+                        <AdCard adIndex={item.adIndex} />
+                      </div>
+                    );
+                  }
+                  const place = item.place;
                   const live = placesMetaMap[place.id];
                   return (
                     <div key={place.id} className="min-h-[210px] w-full">
