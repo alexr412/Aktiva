@@ -118,7 +118,7 @@ function AuthActionContent() {
                     ? (language === 'de' ? 'E-Mail verifiziert' : 'Email Verified')
                     : (language === 'de' ? 'E-Mail wiederhergestellt' : 'Email Recovered')}
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-neutral-400 font-medium leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-neutral-400 font-medium leading-relaxed break-words max-w-full">
                   {mode === 'verifyEmail'
                     ? (language === 'de' ? 'Deine E-Mail-Adresse wurde erfolgreich verifiziert.' : 'Your email address has been successfully verified.')
                     : (language === 'de' 

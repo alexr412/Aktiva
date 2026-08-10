@@ -506,69 +506,74 @@ export default function SettingsPage() {
                             <span>{language === 'de' ? 'Benachrichtigungen' : 'Notifications'}</span>
                         </h2>
                         <div className="space-y-2 rounded-lg border bg-card p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex-1 min-w-0 pr-2">
                                     <Label htmlFor="local-highlights" className="font-medium flex items-center gap-2">
-                                      <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                                      {language === 'de' ? 'Lokale Highlights' : 'Local Highlights'}
+                                      <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                      <span className="truncate">{language === 'de' ? 'Lokale Highlights' : 'Local Highlights'}</span>
                                     </Label>
-                                    <p className="text-sm text-muted-foreground">{language === 'de' ? 'Infos zu Top-Aktivitäten im 2km Umkreis.' : 'Info about top activities in a 2km radius.'}</p>
+                                    <p className="text-sm text-muted-foreground break-words">{language === 'de' ? 'Infos zu Top-Aktivitäten im 2km Umkreis.' : 'Info about top activities in a 2km radius.'}</p>
                                 </div>
                                 <Switch
                                     id="local-highlights"
                                     checked={notifications.localHighlights}
                                     onCheckedChange={(checked) => handleNotificationChange('localHighlights', checked)}
+                                    className="shrink-0"
                                 />
                             </div>
                             <Separator className="my-4"/>
-                            <div className="flex items-center justify-between">
-                                <div>
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex-1 min-w-0 pr-2">
                                     <Label htmlFor="nearby-friend-activities" className="font-medium flex items-center gap-2">
-                                      <Users className="h-3.5 w-3.5 text-primary" />
-                                      {language === 'de' ? 'Aktivitäten von Freunden in der Nähe' : 'Nearby Friend Activities'}
+                                      <Users className="h-3.5 w-3.5 text-primary shrink-0" />
+                                      <span className="truncate">{language === 'de' ? 'Aktivitäten von Freunden in der Nähe' : 'Nearby Friend Activities'}</span>
                                     </Label>
-                                    <p className="text-sm text-muted-foreground">{language === 'de' ? 'Benachrichtigung, wenn Freunde eine Aktivität im Umkreis erstellen.' : 'Notify when friends create an activity nearby.'}</p>
+                                    <p className="text-sm text-muted-foreground break-words">{language === 'de' ? 'Benachrichtigung, wenn Freunde eine Aktivität im Umkreis erstellen.' : 'Notify when friends create an activity nearby.'}</p>
                                 </div>
                                 <Switch
                                     id="nearby-friend-activities"
                                     checked={notifications.nearbyFriendActivityNotifications}
                                     onCheckedChange={(checked) => handleNotificationChange('nearbyFriendActivityNotifications', checked)}
+                                    className="shrink-0"
                                 />
                             </div>
                             <Separator className="my-4"/>
-                            <div className="flex items-center justify-between">
-                                <div>
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex-1 min-w-0 pr-2">
                                     <Label htmlFor="friend-requests" className="font-medium">{language === 'de' ? 'Freundesanfragen' : 'Friend Requests'}</Label>
-                                    <p className="text-sm text-muted-foreground">{language === 'de' ? 'Bei neuen Anfragen informieren.' : 'Notify on new friend requests.'}</p>
+                                    <p className="text-sm text-muted-foreground break-words">{language === 'de' ? 'Bei neuen Anfragen informieren.' : 'Notify on new friend requests.'}</p>
                                 </div>
                                 <Switch
                                     id="friend-requests"
                                     checked={notifications.friendRequests}
                                     onCheckedChange={(checked) => handleNotificationChange('friendRequests', checked)}
+                                    className="shrink-0"
                                 />
                             </div>
                             <Separator className="my-4"/>
-                            <div className="flex items-center justify-between">
-                                <div>
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex-1 min-w-0 pr-2">
                                     <Label htmlFor="activity-invites" className="font-medium">{language === 'de' ? 'Einladungen' : 'Invites'}</Label>
-                                    <p className="text-sm text-muted-foreground">{language === 'de' ? 'Bei Einladungen zu Aktivitäten informieren.' : 'Notify on activity invites.'}</p>
+                                    <p className="text-sm text-muted-foreground break-words">{language === 'de' ? 'Bei Einladungen zu Aktivitäten informieren.' : 'Notify on activity invites.'}</p>
                                 </div>
                                 <Switch
                                     id="activity-invites"
                                     checked={notifications.activityInvites}
                                     onCheckedChange={(checked) => handleNotificationChange('activityInvites', checked)}
+                                    className="shrink-0"
                                 />
                             </div>
                              <Separator className="my-4"/>
-                             <div className="flex items-center justify-between">
-                                <div>
+                             <div className="flex items-center justify-between gap-4">
+                                <div className="flex-1 min-w-0 pr-2">
                                     <Label htmlFor="chat-messages" className="font-medium">{language === 'de' ? 'Chat-Nachrichten' : 'Chat Messages'}</Label>
-                                    <p className="text-sm text-muted-foreground">{language === 'de' ? 'Bei neuen Nachrichten benachrichtigen.' : 'Notify on new chat messages.'}</p>
+                                    <p className="text-sm text-muted-foreground break-words">{language === 'de' ? 'Bei neuen Nachrichten benachrichtigen.' : 'Notify on new chat messages.'}</p>
                                 </div>
                                 <Switch
                                     id="chat-messages"
                                     checked={notifications.chatMessages}
                                     onCheckedChange={(checked) => handleNotificationChange('chatMessages', checked)}
+                                    className="shrink-0"
                                 />
                             </div>
                         </div>

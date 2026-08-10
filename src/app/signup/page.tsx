@@ -521,12 +521,13 @@ function SignupPageContent() {
                             <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-primary transition-colors z-10" />
                             <Input 
                               placeholder="your@email.com" 
+                              autoComplete="email"
                               {...field} 
-                              className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm tracking-wider shadow-none" 
+                              className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-base lg:text-sm tracking-wider shadow-none" 
                             />
                           </div>
                         </FormControl>
-                        <FormMessage className="text-[10px] font-bold text-rose-500 px-1" />
+                        <FormMessage className="text-[10px] font-bold text-rose-500 px-1 break-words max-w-full" />
                       </FormItem>
                     )}
                   />
@@ -544,10 +545,10 @@ function SignupPageContent() {
                               id="signup-terms"
                               checked={field.value} 
                               onChange={field.onChange} 
-                              className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-primary cursor-pointer" 
+                              className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-primary cursor-pointer shrink-0" 
                             />
                           </FormControl>
-                          <FormLabel htmlFor="signup-terms" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer">
+                          <FormLabel htmlFor="signup-terms" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer flex-1 min-w-0">
                              {language === 'de' ? 'Ich akzeptiere die' : 'I agree to the'}{' '}
                              <button 
                                type="button"
@@ -572,10 +573,10 @@ function SignupPageContent() {
                               id="signup-useterms"
                               checked={field.value} 
                               onChange={field.onChange} 
-                              className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-primary cursor-pointer" 
+                              className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-primary cursor-pointer shrink-0" 
                             />
                           </FormControl>
-                          <FormLabel htmlFor="signup-useterms" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer">
+                          <FormLabel htmlFor="signup-useterms" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer flex-1 min-w-0">
                              {language === 'de' ? 'Ich akzeptiere die' : 'I agree to the'}{' '}
                              <button 
                                type="button"
@@ -600,10 +601,10 @@ function SignupPageContent() {
                               id="signup-privacy"
                               checked={field.value} 
                               onChange={field.onChange} 
-                              className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-primary cursor-pointer" 
+                              className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-primary cursor-pointer shrink-0" 
                             />
                           </FormControl>
-                          <FormLabel htmlFor="signup-privacy" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer">
+                          <FormLabel htmlFor="signup-privacy" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer flex-1 min-w-0">
                              {language === 'de' ? 'Ich akzeptiere die' : 'I agree to the'}{' '}
                              <button 
                                type="button"
@@ -628,10 +629,10 @@ function SignupPageContent() {
                               id="signup-cookies"
                               checked={field.value} 
                               onChange={field.onChange} 
-                              className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-primary cursor-pointer" 
+                              className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-primary cursor-pointer shrink-0" 
                             />
                           </FormControl>
-                          <FormLabel htmlFor="signup-cookies" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer">
+                          <FormLabel htmlFor="signup-cookies" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer flex-1 min-w-0">
                              {language === 'de' ? 'Ich akzeptiere die' : 'I agree to the'}{' '}
                              <button 
                                type="button"
@@ -656,10 +657,10 @@ function SignupPageContent() {
                               id="signup-marketing-consent"
                               checked={!!field.value} 
                               onChange={field.onChange} 
-                              className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-primary cursor-pointer" 
+                              className="w-5 h-5 rounded border-none bg-zinc-200 checked:bg-primary cursor-pointer shrink-0" 
                             />
                           </FormControl>
-                          <FormLabel htmlFor="signup-marketing-consent" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer leading-tight">
+                          <FormLabel htmlFor="signup-marketing-consent" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer leading-tight flex-1 min-w-0">
                             {language === 'de' 
                               ? 'Ich möchte Tipps, Empfehlungen, Neuigkeiten und Angebote von Activa per E-Mail erhalten.'
                               : 'I would like to receive tips, recommendations, news, and offers from Activa via email.'}
@@ -731,8 +732,8 @@ function SignupPageContent() {
                         <FormControl>
                           <div className="relative group">
                             <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-primary z-10" />
-                            <Input type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder="••••••••" {...field} className="h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors" aria-label={showPassword ? (language === 'de' ? 'Passwort ausblenden' : 'Hide password') : (language === 'de' ? 'Passwort anzeigen' : 'Show password')}>
+                            <Input type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder="••••••••" {...field} className="h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-base lg:text-sm shadow-none" />
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors shrink-0 z-10" aria-label={showPassword ? (language === 'de' ? 'Passwort ausblenden' : 'Hide password') : (language === 'de' ? 'Passwort anzeigen' : 'Show password')}>
                               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                           </div>
@@ -757,8 +758,8 @@ function SignupPageContent() {
                         <FormControl>
                           <div className="relative group">
                             <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-primary z-10" />
-                            <Input type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" placeholder="••••••••" {...field} className="h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" />
-                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors" aria-label={showConfirmPassword ? (language === 'de' ? 'Passwort ausblenden' : 'Hide password') : (language === 'de' ? 'Passwort anzeigen' : 'Show password')}>
+                            <Input type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" placeholder="••••••••" {...field} className="h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-base lg:text-sm shadow-none" />
+                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors shrink-0 z-10" aria-label={showConfirmPassword ? (language === 'de' ? 'Passwort ausblenden' : 'Hide password') : (language === 'de' ? 'Passwort anzeigen' : 'Show password')}>
                               {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                           </div>
@@ -785,7 +786,7 @@ function SignupPageContent() {
                         <FormControl>
                           <div className="relative group">
                             <User className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-primary z-10" />
-                            <Input placeholder={language === 'de' ? 'Max Mustermann' : 'John Doe'} {...field} className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" />
+                            <Input placeholder={language === 'de' ? 'Max Mustermann' : 'John Doe'} autoComplete="name" {...field} className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-base lg:text-sm shadow-none" />
                           </div>
                         </FormControl>
                       </FormItem>
@@ -802,9 +803,10 @@ function SignupPageContent() {
                             <Calendar className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-primary z-10" />
                             <Input 
                               placeholder="DD/MM/YYYY" 
+                              autoComplete="bday"
                               {...field} 
                               maxLength={10}
-                              className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" 
+                              className="h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-base lg:text-sm shadow-none" 
                               onChange={(e) => {
                                 let v = e.target.value.replace(/\D/g, '');
                                 if (v.length > 2) v = v.substring(0, 2) + '/' + v.substring(2);
@@ -922,7 +924,7 @@ function LegalDialog({
 }: LegalDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[80vh] w-[calc(100vw-2rem)] max-w-2xl flex-col overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white p-0 shadow-2xl dark:border-white/10 dark:bg-neutral-900">
+      <DialogContent className="flex max-h-[85dvh] w-[calc(100vw-2rem)] max-w-2xl flex-col overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white p-0 shadow-2xl dark:border-white/10 dark:bg-neutral-900">
         <div className="shrink-0 border-b border-slate-200 px-6 py-5 dark:border-white/10">
           <DialogHeader className="text-left">
             <div className="flex items-center gap-3 mb-1">

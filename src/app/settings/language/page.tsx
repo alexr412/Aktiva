@@ -75,30 +75,30 @@ export default function LanguageSettingsPage() {
                             disabled={isSaving}
                             onClick={() => handleSelectLanguage('de')} 
                             className={cn(
-                                "flex w-full items-center justify-between rounded-xl border p-4 text-left transition-all",
+                                "flex w-full items-center justify-between gap-4 rounded-xl border p-4 text-left transition-all",
                                 currentLanguage === 'de' ? "border-primary bg-primary/5 shadow-sm" : "bg-card hover:bg-muted"
                             )}
                         >
-                            <div className="flex flex-col">
-                                <span className={cn("font-bold text-lg", currentLanguage === 'de' && "text-primary")}>Deutsch</span>
-                                <span className="text-sm text-muted-foreground">{currentLanguage === 'de' ? 'App UI und Labels auf Deutsch' : 'App tags and text in German'}</span>
+                            <div className="flex flex-col flex-1 min-w-0">
+                                <span className={cn("font-bold text-lg truncate", currentLanguage === 'de' && "text-primary")}>Deutsch</span>
+                                <span className="text-sm text-muted-foreground break-words">{currentLanguage === 'de' ? 'App UI und Labels auf Deutsch' : 'App tags and text in German'}</span>
                             </div>
-                            {currentLanguage === 'de' && <Check className="h-6 w-6 text-primary" />}
+                            {currentLanguage === 'de' && <Check className="h-6 w-6 text-primary shrink-0" />}
                         </button>
 
                         <button 
                             disabled={isSaving}
                             onClick={() => handleSelectLanguage('en')} 
                             className={cn(
-                                "flex w-full items-center justify-between rounded-xl border p-4 text-left transition-all",
+                                "flex w-full items-center justify-between gap-4 rounded-xl border p-4 text-left transition-all",
                                 currentLanguage === 'en' ? "border-primary bg-primary/5 shadow-sm" : "bg-card hover:bg-muted"
                             )}
                         >
-                            <div className="flex flex-col">
-                                <span className={cn("font-bold text-lg", currentLanguage === 'en' && "text-primary")}>English</span>
-                                <span className="text-sm text-muted-foreground">{currentLanguage === 'de' ? 'App UI und Labels auf Englisch' : 'App tags and text in English'}</span>
+                            <div className="flex flex-col flex-1 min-w-0">
+                                <span className={cn("font-bold text-lg truncate", currentLanguage === 'en' && "text-primary")}>English</span>
+                                <span className="text-sm text-muted-foreground break-words">{currentLanguage === 'de' ? 'App UI und Labels auf Englisch' : 'App tags and text in English'}</span>
                             </div>
-                            {currentLanguage === 'en' && <Check className="h-6 w-6 text-primary" />}
+                            {currentLanguage === 'en' && <Check className="h-6 w-6 text-primary shrink-0" />}
                         </button>
                     </div>
                     

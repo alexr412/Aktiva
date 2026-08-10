@@ -267,12 +267,12 @@ export function PasswordResetUI({ oobCode, mode = 'resetPassword' }: PasswordRes
                     autoComplete="new-password"
                     disabled={isSubmitting}
                     required
-                    className="h-14 sm:h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" 
+                    className="h-14 sm:h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-base lg:text-sm shadow-none" 
                   />
                   <button 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors shrink-0 z-10"
                     aria-label={showPassword ? (language === 'de' ? 'Passwort ausblenden' : 'Hide password') : (language === 'de' ? 'Passwort anzeigen' : 'Show password')}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -295,12 +295,12 @@ export function PasswordResetUI({ oobCode, mode = 'resetPassword' }: PasswordRes
                     autoComplete="new-password"
                     disabled={isSubmitting}
                     required
-                    className="h-14 sm:h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" 
+                    className="h-14 sm:h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-base lg:text-sm shadow-none" 
                   />
                   <button 
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                    className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors shrink-0 z-10"
                     aria-label={showConfirmPassword ? (language === 'de' ? 'Passwort ausblenden' : 'Hide password') : (language === 'de' ? 'Passwort anzeigen' : 'Show password')}
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -313,7 +313,7 @@ export function PasswordResetUI({ oobCode, mode = 'resetPassword' }: PasswordRes
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="p-4 rounded-3xl bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100/50 dark:border-rose-950/50 flex items-start gap-3 text-xs font-bold"
+                  className="p-4 rounded-3xl bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100/50 dark:border-rose-950/50 flex items-start gap-3 text-xs font-bold break-words max-w-full"
                 >
                   <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                   <div className="flex-1 leading-relaxed">

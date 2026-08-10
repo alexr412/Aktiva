@@ -66,18 +66,18 @@ export default function LegalSettingsPage() {
                         <button 
                             key={link.href}
                             onClick={() => router.push(link.href)}
-                            className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted"
+                            className="flex w-full items-center justify-between gap-4 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted"
                         >
-                            <div className="flex items-start gap-4">
-                                <div className="mt-1 bg-primary/10 p-2 rounded-xl">
+                            <div className="flex items-start gap-4 flex-1 min-w-0">
+                                <div className="mt-1 bg-primary/10 p-2 rounded-xl shrink-0">
                                     <link.icon className="h-5 w-5 text-primary" />
                                 </div>
-                                <div>
-                                    <p className="font-bold text-slate-900 dark:text-white">{link.title}</p>
-                                    <p className="text-xs text-muted-foreground">{link.description}</p>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-slate-900 dark:text-white truncate">{link.title}</p>
+                                    <p className="text-xs text-muted-foreground break-words">{link.description}</p>
                                 </div>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                         </button>
                     ))}
                 </div>

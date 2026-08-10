@@ -361,6 +361,7 @@ export default function EditProfilePage() {
                     <Input 
                         id="displayName" 
                         name="displayName" 
+                        autoComplete="name"
                         value={formData.displayName || ''} 
                         onChange={handleChange} 
                         className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg px-6 focus-visible:ring-primary/50"
@@ -372,6 +373,7 @@ export default function EditProfilePage() {
                         <Input 
                             id="username" 
                             name="username" 
+                            autoComplete="username"
                             value={formData.username || ''} 
                             readOnly={!hasAcknowledgedWarning && !isUsernameCooldownActive}
                             disabled={isUsernameCooldownActive}

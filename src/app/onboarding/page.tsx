@@ -817,6 +817,7 @@ function OnboardingContent() {
                                     <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black pointer-events-none">@</span>
                                     <Input
                                       placeholder={language === 'de' ? "benutzername" : "username"}
+                                      autoComplete="username"
                                       {...field}
                                       onChange={(e) => {
                                         const val = e.target.value.toLowerCase().replace(/\s+/g, '');

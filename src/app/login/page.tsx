@@ -504,11 +504,11 @@ function LoginPageContent() {
                         placeholder={language === 'de' ? 'E-Mail-Adresse' : 'Email address'} 
                         autoComplete="username"
                         {...field} 
-                        className="h-14 sm:h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm tracking-wider shadow-none" 
+                        className="h-14 sm:h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-base lg:text-sm tracking-wider shadow-none" 
                       />
                     </div>
                   </FormControl>
-                  <FormMessage className="text-[10px] font-bold text-rose-500 px-1" />
+                  <FormMessage className="text-[10px] font-bold text-rose-500 px-1 break-words max-w-full" />
                 </FormItem>
               )}
             />
@@ -539,19 +539,19 @@ function LoginPageContent() {
                         placeholder="••••••••" 
                         autoComplete="current-password"
                         {...field} 
-                        className="h-14 sm:h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-sm shadow-none" 
+                        className="h-14 sm:h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-base lg:text-sm shadow-none" 
                       />
                       <button 
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                        className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors shrink-0 z-10"
                         aria-label={showPassword ? (language === 'de' ? 'Passwort ausblenden' : 'Hide password') : (language === 'de' ? 'Passwort anzeigen' : 'Show password')}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </FormControl>
-                  <FormMessage className="text-[10px] font-bold text-rose-500 px-1" />
+                  <FormMessage className="text-[10px] font-bold text-rose-500 px-1 break-words max-w-full" />
                 </FormItem>
               )}
             />
@@ -706,9 +706,10 @@ function LoginPageContent() {
                 <Input 
                   type="email" 
                   placeholder="name@example.com" 
+                  autoComplete="email"
                   value={resetEmail} 
                   onChange={(e) => setResetEmail(e.target.value)} 
-                  className="h-14 pl-14 pr-4 rounded-full bg-slate-100 dark:bg-neutral-900 border-none font-bold text-sm focus-visible:ring-primary/20"
+                  className="h-14 pl-14 pr-4 rounded-full bg-slate-100 dark:bg-neutral-900 border-none font-bold text-base lg:text-sm focus-visible:ring-primary/20"
                 />
               </div>
             </div>
