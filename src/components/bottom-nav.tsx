@@ -34,7 +34,7 @@ export function BottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 w-full z-nav bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-t border-slate-200/30 dark:border-neutral-800/20 pb-safe shadow-premium">
+    <div className="fixed bottom-0 left-0 w-full z-nav bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-t border-slate-200/30 dark:border-neutral-800/20 pb-safe shadow-premium lg:hidden">
       <nav data-activa-bottom-nav className="flex h-[var(--bottom-nav-height,66px)] items-center justify-around px-1 sm:px-4 max-w-lg mx-auto">
         {navItems.map((item) => {
           const isActive = getIsActive(item.href);

@@ -79,7 +79,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
 
   if (friendIds.length === 0) {
     return (
-      <div className="px-6 mb-6">
+      <div className="px-6 lg:px-0 mb-6">
         <div className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-[#E5E7EB] dark:border-neutral-800 rounded-2xl py-8 px-6 flex flex-col items-center text-center shadow-none">
           <div className="relative mb-6">
             <div className="relative flex items-center justify-center">
@@ -122,7 +122,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
   return (
     <>
       <div className="flex flex-col gap-5 mb-1 w-full">
-        <div className="flex items-center justify-between px-4">
+        <div className="flex items-center justify-between px-4 lg:px-0">
           <h3 className="text-base font-black text-slate-900 dark:text-neutral-100 flex items-center gap-2 shrink-0">
             {language === 'de' ? 'Freunde' : 'Friends'} 
             <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-black tracking-tight">
@@ -145,7 +145,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
           </div>
         </div>
 
-        <div className="flex overflow-x-auto pb-4 gap-4 px-4 no-scrollbar scroll-smooth">
+        <div className="flex overflow-x-auto pb-4 gap-4 px-4 lg:px-0 no-scrollbar scroll-smooth">
           {uniqueFriends.length > 0 ? (
             uniqueFriends.map((friend, index) => {
               const friendKey = friend.uid || (friend as any).id || `fallback-${index}`;

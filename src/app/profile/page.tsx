@@ -682,7 +682,7 @@ export default function ProfilePage() {
 
     return (
         <>
-            <div className="relative flex flex-col h-full w-full bg-[#F8FAFC] dark:bg-neutral-950 overflow-y-auto pb-bottom-nav-safe">
+            <div className="relative flex flex-col h-full w-full bg-[#F8FAFC] dark:bg-neutral-950 overflow-y-auto pb-bottom-nav-safe lg:pb-12">
                 {/* Zonen-Isolierung: Header Color Blocking */}
                 <div className="absolute top-0 left-0 right-0 h-[35vh] bg-gradient-to-b from-emerald-50/50 to-transparent dark:from-emerald-950/10 z-0" />
 
@@ -703,382 +703,392 @@ export default function ProfilePage() {
                     </div>
                 </header>
 
-                {/* Main Content Area - Flat Model */}
-                <div className="relative px-4 sm:px-6 w-full max-w-4xl mx-auto z-10 pt-4 flex flex-col items-center">
+                {/* Main Shared Desktop Content Container */}
+                <div className="relative w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 z-10 pt-4 lg:pt-8 flex flex-col gap-8 lg:gap-10">
 
-                    {/* Avatar Section */}
-                    <div className="flex flex-col items-center mb-10">
-                        <div className="relative group cursor-pointer" onClick={handleOpenAvatarDialog}>
-                            <ProfileAvatar 
-                                className="h-32 w-32 relative z-10 transition-transform group-hover:scale-105 active:scale-95"
-                                photoURL={photoUrlToDisplay}
-                                displayName={displayName}
-                                isPremium={userData?.isPremium}
-                                isCreator={userData?.isCreator}
-                                isSupporter={userData?.isSupporter}
-                            />
-                            {/* Hover overlay */}
-                            <div className="absolute inset-0 z-20 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-black uppercase tracking-widest text-center px-2">
-                                {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
-                            </div>
+                    {/* Hero Composition: Mobile vertical column / Desktop 12-column grid */}
+                    <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 lg:items-start">
+
+                        {/* Left Hero Column (Identity, Stats & Edit Profile) - 5 Cols on Desktop */}
+                        <div className="lg:col-span-5 flex flex-col items-center lg:items-start text-center lg:text-left gap-6 w-full">
                             
-                            <button
-                                type="button"
-                                className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-none hover:scale-110 active:scale-90 transition-all z-30"
+                            {/* Avatar & Basic Info Container */}
+                            <div className="flex flex-col items-center lg:items-start w-full">
+                                {/* Avatar */}
+                                <div className="relative group cursor-pointer mb-4" onClick={handleOpenAvatarDialog}>
+                                    <ProfileAvatar 
+                                        className="h-28 w-28 sm:h-32 sm:w-32 relative z-10 transition-transform group-hover:scale-105 active:scale-95"
+                                        photoURL={photoUrlToDisplay}
+                                        displayName={displayName}
+                                        isPremium={userData?.isPremium}
+                                        isCreator={userData?.isCreator}
+                                        isSupporter={userData?.isSupporter}
+                                    />
+                                    {/* Hover overlay */}
+                                    <div className="absolute inset-0 z-20 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-black uppercase tracking-widest text-center px-2">
+                                        {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
+                                    </div>
+                                    
+                                    <button
+                                        type="button"
+                                        className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-none hover:scale-110 active:scale-90 transition-all z-30"
+                                    >
+                                        <Camera className="h-4 w-4" />
+                                    </button>
+                                </div>
+                                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/jpeg,image/png,image/webp" />
+                                
+                                <button
+                                    type="button"
+                                    onClick={handleOpenAvatarDialog}
+                                    className="mb-4 text-xs font-bold text-primary hover:underline uppercase tracking-widest"
+                                >
+                                    {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
+                                </button>
+
+                                {/* Name & Badges */}
+                                <div className="flex flex-col items-center lg:items-start gap-1 w-full">
+                                    <div className="flex items-center gap-2 flex-wrap justify-center lg:justify-start">
+                                        <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                                            {displayName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
+                                            {displayAge && <span className="text-slate-400 font-bold text-xl">, {displayAge}</span>}
+                                        </h1>
+                                        <UserBadge isPremium={userData?.isPremium} isSupporter={userData?.isSupporter} isCreator={userData?.isCreator} />
+                                    </div>
+                                    {userData?.username && (
+                                        <span
+                                            onClick={handleCopyUsername}
+                                            className="text-slate-400 font-black text-[11px] uppercase tracking-[0.2em] cursor-pointer hover:text-emerald-500 transition-colors"
+                                        >
+                                            @{userData.username}
+                                        </span>
+                                    )}
+                                    {userData?.bio && (
+                                        <p className="mt-2 text-sm font-medium text-slate-600 dark:text-neutral-400 leading-relaxed max-w-md">
+                                            {userData.bio}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Rating */}
+                                {(userData?.ratingCount && userData.ratingCount > 0) ? (
+                                    <button
+                                        onClick={loadReviews}
+                                        className="flex items-center gap-2 mt-4 group active:opacity-70 transition-opacity"
+                                    >
+                                        <div className="flex gap-0.5">
+                                            {[1, 2, 3, 4, 5].map(i => (
+                                                <Star key={i} className={cn("h-4 w-4", i <= (userData.averageRating || 0) ? "text-[#f59e0b] fill-[#f59e0b]" : "text-slate-200 fill-slate-100")} />
+                                            ))}
+                                        </div>
+                                        <span className="text-lg font-black text-slate-900 dark:text-neutral-100">{userData.averageRating?.toFixed(1) || '0.0'}</span>
+                                        <span className="text-sm font-bold text-slate-400">({userData.ratingCount})</span>
+                                    </button>
+                                ) : <div className="h-2" />}
+                            </div>
+
+                            {/* Stats - Asymmetric Pastel Tints */}
+                            <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full">
+                                {[
+                                    { label: language === 'de' ? 'Active' : 'Active', val: currentActivities.length, bg: 'bg-emerald-500/15' },
+                                    { label: language === 'de' ? 'Friends' : 'Friends', val: userData?.friends?.length || 0, bg: 'bg-cyan-500/15' },
+                                    { label: language === 'de' ? 'Reviews' : 'Reviews', val: userData?.ratingCount || 0, bg: 'bg-amber-500/15' }
+                                ].map((stat, idx) => (
+                                    <div key={stat.label} className={cn("flex flex-col items-center py-4 sm:py-5 px-2 sm:px-4 rounded-[1.75rem] border-none shadow-none", stat.bg)}>
+                                        <span className={cn("text-2xl sm:text-3xl font-black leading-none mb-1",
+                                            idx === 0 ? "text-[#10b981]" :
+                                                idx === 1 ? "text-cyan-600" :
+                                                    "text-amber-600"
+                                        )}>{stat.val}</span>
+                                        <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Compact Action Button */}
+                            <Button
+                                className="w-full sm:w-auto h-11 rounded-full font-black text-[12px] uppercase tracking-widest px-10 transition-all active:scale-95 shadow-lg shadow-primary/10 border-none"
+                                onClick={() => router.push('/profile/edit')}
                             >
-                                <Camera className="h-4 w-4" />
-                            </button>
+                                {language === 'de' ? 'Profil bearbeiten' : 'Edit Profile'}
+                            </Button>
+
                         </div>
-                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/jpeg,image/png,image/webp" />
-                        
-                        <button
-                            type="button"
-                            onClick={handleOpenAvatarDialog}
-                            className="mt-3 text-xs font-bold text-primary hover:underline uppercase tracking-widest"
-                        >
-                            {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
-                        </button>
+
+                        {/* Right Hero Column (Gamification / Level & XP & Referral) - 7 Cols on Desktop */}
+                        <div className="lg:col-span-7 w-full flex flex-col gap-6">
+                            {userData && (
+                                <div className="w-full bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-850 rounded-[2.5rem] p-6 sm:p-8 shadow-sm flex flex-col gap-6">
+                                    {/* Level info */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-1 text-left">
+                                            <div className="flex items-center gap-2">
+                                                <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-3 py-1 rounded-full text-xs tracking-wider border-none">
+                                                    {language === 'de' ? `LEVEL ${userData.level || 1}` : `LEVEL ${userData.level || 1}`}
+                                                </Badge>
+                                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                                    {userData.level && userData.level >= 100 
+                                                        ? (language === 'de' ? 'Maximales Level erreicht' : 'Max Level Reached') 
+                                                        : (language === 'de' ? `${(LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]) - (userData.pointsLifetime || 0)} XP bis Level ${(userData.level || 1) + 1}` : `${(LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]) - (userData.pointsLifetime || 0)} XP to Level ${(userData.level || 1) + 1}`)}
+                                                </span>
+                                            </div>
+                                            <h3 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2 mt-1">
+                                                {userData.pointsLifetime || 0} <span className="text-sm font-black uppercase text-slate-400 font-heading">{language === 'de' ? 'XP Gesamt' : 'Total XP'}</span>
+                                            </h3>
+                                        </div>
+                                        <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-500 font-black text-lg shrink-0">
+                                            🏆
+                                        </div>
+                                    </div>
+
+                                    {/* Progress bar */}
+                                    {userData.level && userData.level < 100 && (
+                                        <div className="w-full space-y-2">
+                                            <div className="w-full bg-slate-100 dark:bg-neutral-800 h-3.5 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                                    style={{ 
+                                                        width: `${Math.max(0, Math.min(100, 
+                                                            (((userData.pointsLifetime || 0) - LEVEL_THRESHOLDS[(userData.level || 1) - 1]) / 
+                                                            ((LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]) - LEVEL_THRESHOLDS[(userData.level || 1) - 1])) * 100
+                                                        ))}%` 
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                                                <span>{LEVEL_THRESHOLDS[(userData.level || 1) - 1]} XP</span>
+                                                <span>{LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]} XP</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Referral Section */}
+                                    {userData.referralCode && (
+                                        <div className="border-t border-slate-100 dark:border-neutral-800 pt-5 flex flex-col gap-3 text-left">
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-black text-slate-800 dark:text-neutral-100">
+                                                    {language === 'de' ? 'Freunde einladen' : 'Invite Friends'}
+                                                </p>
+                                                <p className="text-xs font-medium text-slate-500 dark:text-neutral-400">
+                                                    {language === 'de' ? 'Lade Freunde zu Activa ein.' : 'Invite friends to Activa.'}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                                                <Button
+                                                    onClick={async () => {
+                                                        const res = await shareOrCopyReferralLink({
+                                                            referralCode: userData.referralCode!,
+                                                            language
+                                                        });
+                                                        if (res.action === 'copy') {
+                                                            if (res.success) {
+                                                                toast({
+                                                                    title: language === 'de' ? "Einladungslink kopiert" : "Invite link copied",
+                                                                });
+                                                            } else {
+                                                                toast({
+                                                                    variant: 'destructive',
+                                                                    title: language === 'de' ? "Kopieren fehlgeschlagen" : "Copy failed",
+                                                                });
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl px-5 py-2.5 shadow-sm transition-all"
+                                                >
+                                                    <Share2 className="h-4 w-4" />
+                                                    <span>{language === 'de' ? 'Freunde einladen' : 'Invite Friends'}</span>
+                                                </Button>
+                                                <span className="text-[11px] font-medium text-slate-400 dark:text-neutral-500">
+                                                    {language === 'de' ? `Dein Einladungscode: ${userData.referralCode}` : `Your invite code: ${userData.referralCode}`}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
                     </div>
 
-                    {/* Name & Title */}
-                    <div className="flex flex-col items-center text-center">
-                        <div className="flex flex-col items-center gap-1 mb-2">
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                                    {displayName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
-                                    {displayAge && <span className="text-slate-400 font-bold text-xl">, {displayAge}</span>}
-                                </h1>
-                                <UserBadge isPremium={userData?.isPremium} isSupporter={userData?.isSupporter} isCreator={userData?.isCreator} />
-                            </div>
-                            {userData?.username && (
-                                <span
-                                    onClick={handleCopyUsername}
-                                    className="text-slate-400 font-black text-[11px] uppercase tracking-[0.2em] cursor-pointer hover:text-emerald-500 transition-colors"
-                                >
-                                    @{userData.username}
+                    {/* Freundschaftsanfragen */}
+                    {visibleRequestProfiles.length > 0 && (
+                        <div className="w-full">
+                            <div className="flex items-center gap-2 mb-3">
+                                <h3 className="text-slate-800 dark:text-neutral-200 font-bold text-sm uppercase tracking-wider">
+                                    {language === 'de' ? 'Freundschaftsanfragen' : 'Friend Requests'}
+                                </h3>
+                                <span className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-[10px] font-black">
+                                    {visibleRequestProfiles.length}
                                 </span>
-                            )}
-                            {userData?.bio && (
-                                <p className="mt-3 px-8 text-sm font-medium text-slate-600 dark:text-neutral-400 leading-relaxed max-w-md">
-                                    {userData.bio}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Rating */}
-                        {(userData?.ratingCount && userData.ratingCount > 0) ? (
-                            <button
-                                onClick={loadReviews}
-                                className="flex items-center gap-2 mb-8 group active:opacity-70 transition-opacity"
-                            >
-                                <div className="flex gap-0.5">
-                                    {[1, 2, 3, 4, 5].map(i => (
-                                        <Star key={i} className={cn("h-4 w-4", i <= (userData.averageRating || 0) ? "text-[#f59e0b] fill-[#f59e0b]" : "text-slate-200 fill-slate-100")} />
-                                    ))}
-                                </div>
-                                <span className="text-lg font-black text-slate-900 dark:text-neutral-100">{userData.averageRating?.toFixed(1) || '0.0'}</span>
-                                <span className="text-sm font-bold text-slate-400">({userData.ratingCount})</span>
-                            </button>
-                        ) : <div className="h-4" />}
-
-                        {/* Gamification / Level & XP Card */}
-                        {userData && (
-                            <div className="w-full max-w-2xl bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-850 rounded-[2.5rem] p-6 mb-6 shadow-sm flex flex-col gap-6">
-                                {/* Level info */}
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-1 text-left">
-                                        <div className="flex items-center gap-2">
-                                            <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-3 py-1 rounded-full text-xs tracking-wider border-none">
-                                                {language === 'de' ? `LEVEL ${userData.level || 1}` : `LEVEL ${userData.level || 1}`}
-                                            </Badge>
-                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                                {userData.level && userData.level >= 100 
-                                                    ? (language === 'de' ? 'Maximales Level erreicht' : 'Max Level Reached') 
-                                                    : (language === 'de' ? `${(LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]) - (userData.pointsLifetime || 0)} XP bis Level ${(userData.level || 1) + 1}` : `${(LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]) - (userData.pointsLifetime || 0)} XP to Level ${(userData.level || 1) + 1}`)}
-                                            </span>
-                                        </div>
-                                        <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2 mt-1">
-                                            {userData.pointsLifetime || 0} <span className="text-sm font-black uppercase text-slate-400 font-heading">{language === 'de' ? 'XP Gesamt' : 'Total XP'}</span>
-                                        </h3>
-                                    </div>
-                                    <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-500 font-black text-lg">
-                                        🏆
-                                    </div>
-                                </div>
-
-                                {/* Progress bar */}
-                                {userData.level && userData.level < 100 && (
-                                    <div className="w-full space-y-2">
-                                        <div className="w-full bg-slate-100 dark:bg-neutral-800 h-3 rounded-full overflow-hidden">
-                                            <div 
-                                                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                                                style={{ 
-                                                    width: `${Math.max(0, Math.min(100, 
-                                                        (((userData.pointsLifetime || 0) - LEVEL_THRESHOLDS[(userData.level || 1) - 1]) / 
-                                                        ((LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]) - LEVEL_THRESHOLDS[(userData.level || 1) - 1])) * 100
-                                                    ))}%` 
-                                                }}
+                            </div>
+                            <div className="space-y-3">
+                                {visibleRequestProfiles.map((reqUser) => (
+                                    <div key={reqUser.uid} className="flex items-center justify-between p-4 bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-850 rounded-[2rem] shadow-sm">
+                                        <Link href={`/users/${reqUser.uid}`} className="flex items-center gap-3 hover:opacity-85 transition-opacity">
+                                            <ProfileAvatar 
+                                                className="h-10 w-10"
+                                                photoURL={reqUser.photoURL}
+                                                displayName={reqUser.displayName}
+                                                isPremium={reqUser.isPremium}
+                                                isSupporter={reqUser.isSupporter}
+                                                isCreator={reqUser.isCreator}
                                             />
-                                        </div>
-                                        <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-                                            <span>{LEVEL_THRESHOLDS[(userData.level || 1) - 1]} XP</span>
-                                            <span>{LEVEL_THRESHOLDS[userData.level || 1] || LEVEL_THRESHOLDS[99]} XP</span>
+                                            <div className="flex flex-col text-left">
+                                                <span className="font-bold text-slate-900 dark:text-white text-sm leading-tight">
+                                                    {formatFirstName(reqUser.displayName, 'User')}
+                                                </span>
+                                                {reqUser.username && (
+                                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                                        @{reqUser.username}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </Link>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                onClick={() => handleAcceptRequest(reqUser.uid)}
+                                                className="h-8 rounded-full font-black text-[10px] uppercase tracking-wider px-4 bg-emerald-500 hover:bg-emerald-600 text-white border-none"
+                                            >
+                                                {language === 'de' ? 'Annehmen' : 'Accept'}
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => handleDeclineRequest(reqUser.uid)}
+                                                className="h-8 rounded-full font-black text-[10px] uppercase tracking-wider px-4 text-slate-400 hover:bg-slate-100 dark:hover:bg-neutral-850"
+                                            >
+                                                {language === 'de' ? 'Ablehnen' : 'Decline'}
+                                            </Button>
                                         </div>
                                     </div>
-                                )}
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
-                                {/* Referral Section */}
-                                {userData.referralCode && (
-                                    <div className="border-t border-slate-100 dark:border-neutral-800 pt-4 flex flex-col gap-3 text-left">
-                                        <div className="space-y-1">
-                                            <p className="text-xs font-black text-slate-800 dark:text-neutral-100">
-                                                {language === 'de' ? 'Freunde einladen' : 'Invite Friends'}
-                                            </p>
-                                            <p className="text-xs font-medium text-slate-500 dark:text-neutral-400">
-                                                {language === 'de' ? 'Lade Freunde zu Activa ein.' : 'Invite friends to Activa.'}
-                                            </p>
-                                        </div>
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                                            <Button
-                                                onClick={async () => {
-                                                    const res = await shareOrCopyReferralLink({
-                                                        referralCode: userData.referralCode!,
-                                                        language
-                                                    });
-                                                    if (res.action === 'copy') {
-                                                        if (res.success) {
-                                                            toast({
-                                                                title: language === 'de' ? "Einladungslink kopiert" : "Invite link copied",
-                                                            });
-                                                        } else {
-                                                            toast({
-                                                                variant: 'destructive',
-                                                                title: language === 'de' ? "Kopieren fehlgeschlagen" : "Copy failed",
-                                                            });
-                                                        }
-                                                    }
-                                                }}
-                                                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl px-5 py-2.5 shadow-sm transition-all"
+                    {/* Section: Freunde */}
+                    <div className="w-full">
+                        <FriendList friendIds={userData?.friends || []} />
+                    </div>
+
+                    {/* Main Tabs Navigation */}
+                    <div className="w-full border-b border-slate-200/60 dark:border-neutral-800">
+                        <nav className="flex justify-around lg:justify-start items-center gap-2 sm:gap-6 lg:gap-8">
+                            <TabButton tabName="activities" label={language === 'de' ? 'Aktivitäten' : 'Activities'} />
+                            <TabButton tabName="favorites" label={language === 'de' ? 'Favoriten' : 'Favorites'} />
+                            <TabButton tabName="reviews" label={language === 'de' ? 'Bewertungen' : 'Reviews'} />
+                        </nav>
+                    </div>
+
+                    {/* Tab Content Area */}
+                    <div className="w-full min-w-0">
+                        {activeTab === 'activities' && (
+                            <div className="space-y-4">
+                                {loadingActivities ? (
+                                    <div className="space-y-4"><ActivityListItemSkeleton /><ActivityListItemSkeleton /></div>
+                                ) : visibleActivities.length > 0 ? (
+                                    <Tabs defaultValue="active" className="w-full">
+                                        <TabsList className="flex gap-3 bg-transparent p-0 justify-center lg:justify-start mb-6">
+                                            <TabsTrigger
+                                                value="active"
+                                                className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-accent data-[state=active]:text-primary data-[state=active]:shadow-none border-none transition-all"
                                             >
-                                                <Share2 className="h-4 w-4" />
-                                                <span>{language === 'de' ? 'Freunde einladen' : 'Invite Friends'}</span>
-                                            </Button>
-                                            <span className="text-[11px] font-medium text-slate-400 dark:text-neutral-500">
-                                                {language === 'de' ? `Dein Einladungscode: ${userData.referralCode}` : `Your invite code: ${userData.referralCode}`}
-                                            </span>
+                                                {language === 'de' ? 'Aktiv' : 'Active'} ({currentActivities.length})
+                                            </TabsTrigger>
+                                            <TabsTrigger
+                                                value="past"
+                                                className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-accent data-[state=active]:text-primary data-[state=active]:shadow-none border-none transition-all"
+                                            >
+                                                {language === 'de' ? 'Vergangen' : 'Past'} ({pastActivities.length})
+                                            </TabsTrigger>
+                                        </TabsList>
+                                        <TabsContent value="active" className="space-y-1 mt-0">
+                                            {currentActivities.length > 0 ? currentActivities.map(activity => (
+                                                <ProfileActivityCard key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
+                                            )) : (
+                                                <div className="text-center p-6 bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-[#E5E7EB]/50 dark:border-neutral-800 shadow-sm max-w-xl mx-auto lg:mx-0">
+                                                    <p className="text-slate-400 font-bold leading-relaxed">{language === 'de' ? 'Uncharted territory. Start exploring nearby treasures.' : 'Uncharted territory. Start exploring nearby treasures.'}</p>
+                                                </div>
+                                            )}
+                                        </TabsContent>
+                                        <TabsContent value="past" className="space-y-1 mt-0">
+                                            {pastActivities.length > 0 ? pastActivities.map(activity => (
+                                                <div key={activity.id} className="opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
+                                                    <ProfileActivityCard activity={activity} user={user} onJoin={handleJoin} />
+                                                </div>
+                                            )) : (
+                                                <div className="text-center p-6 bg-white dark:bg-neutral-900 rounded-[3rem] border border-slate-100 dark:border-neutral-800 shadow-sm max-w-xl mx-auto lg:mx-0">
+                                                    <p className="text-slate-400 font-bold">{language === 'de' ? 'Keine vergangenen Aktivitäten.' : 'No past activities.'}</p>
+                                                </div>
+                                            )}
+                                        </TabsContent>
+                                    </Tabs>
+                                ) : (
+                                    <div className="text-center p-8 flex flex-col items-center justify-center gap-6 bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-[#E5E7EB]/50 dark:border-neutral-800 shadow-sm max-w-xl mx-auto">
+                                        <div className="bg-primary/10 p-3 rounded-2xl">
+                                            <Search className="h-6 w-6 text-primary" strokeWidth={2.5} />
                                         </div>
+                                        <div className="space-y-1">
+                                            <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">{language === 'de' ? 'Start Exploring' : 'Start Exploring'}</h3>
+                                            <p className="text-[11px] text-slate-500 dark:text-neutral-400 font-medium leading-relaxed max-w-[200px] mx-auto">{language === 'de' ? 'Uncharted territory. Start exploring nearby treasures.' : 'Uncharted territory. Start exploring nearby treasures.'}</p>
+                                        </div>
+                                        <Link href="/" className="w-full max-w-[200px]">
+                                            <Button className="w-full h-10 rounded-full font-black tracking-tight text-[13px] shadow-none border-none">
+                                                {language === 'de' ? 'Discover Places' : 'Discover Places'}
+                                            </Button>
+                                        </Link>
                                     </div>
                                 )}
                             </div>
                         )}
-
-                        {/* Stats - Asymmetric Pastel Tints */}
-                        <div className="grid grid-cols-3 gap-4 w-full max-w-2xl mb-8">
-                            {[
-                                { label: language === 'de' ? 'Active' : 'Active', val: currentActivities.length, bg: 'bg-emerald-500/15' },
-                                { label: language === 'de' ? 'Friends' : 'Friends', val: userData?.friends?.length || 0, bg: 'bg-cyan-500/15' },
-                                { label: language === 'de' ? 'Reviews' : 'Reviews', val: userData?.ratingCount || 0, bg: 'bg-amber-500/15' }
-                            ].map((stat, idx) => (
-                                <div key={stat.label} className={cn("flex flex-col items-center py-6 px-10 rounded-[2rem] border-none shadow-none", stat.bg)}>
-                                    <span className={cn("text-3xl font-black leading-none mb-1",
-                                        idx === 0 ? "text-[#10b981]" :
-                                            idx === 1 ? "text-cyan-600" :
-                                                "text-amber-600"
-                                    )}>{stat.val}</span>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Compact Action Button */}
-                        <Button
-                            className="h-11 rounded-full font-black text-[12px] uppercase tracking-widest px-12 transition-all active:scale-95 shadow-lg shadow-primary/10 border-none"
-                            onClick={() => router.push('/profile/edit')}
-                        >
-                            {language === 'de' ? 'Profil bearbeiten' : 'Edit Profile'}
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Freundschaftsanfragen */}
-                {visibleRequestProfiles.length > 0 && (
-                    <div className="w-full max-w-2xl mx-auto px-6 mb-6">
-                        <div className="flex items-center gap-2 mb-3">
-                            <h3 className="text-slate-800 dark:text-neutral-200 font-bold text-sm uppercase tracking-wider">
-                                {language === 'de' ? 'Freundschaftsanfragen' : 'Friend Requests'}
-                            </h3>
-                            <span className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-[10px] font-black">
-                                {visibleRequestProfiles.length}
-                            </span>
-                        </div>
-                        <div className="space-y-3">
-                            {visibleRequestProfiles.map((reqUser) => (
-                                <div key={reqUser.uid} className="flex items-center justify-between p-4 bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-850 rounded-[2rem] shadow-sm">
-                                    <Link href={`/users/${reqUser.uid}`} className="flex items-center gap-3 hover:opacity-85 transition-opacity">
-                                        <ProfileAvatar 
-                                            className="h-10 w-10"
-                                            photoURL={reqUser.photoURL}
-                                            displayName={reqUser.displayName}
-                                            isPremium={reqUser.isPremium}
-                                            isSupporter={reqUser.isSupporter}
-                                            isCreator={reqUser.isCreator}
-                                        />
-                                        <div className="flex flex-col text-left">
-                                            <span className="font-bold text-slate-900 dark:text-white text-sm leading-tight">
-                                                {formatFirstName(reqUser.displayName, 'User')}
-                                            </span>
-                                            {reqUser.username && (
-                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                                    @{reqUser.username}
-                                                </span>
-                                            )}
+                        {activeTab === 'favorites' && (
+                            <div>
+                                {favorites.length === 0 ? (
+                                    <div className="text-center p-8 flex flex-col items-center justify-center gap-6 bg-white dark:bg-neutral-900 rounded-[2rem] border border-[#E5E7EB]/50 dark:border-neutral-800 shadow-sm max-w-xl mx-auto">
+                                        <div className="bg-primary/10 p-4 rounded-3xl"><Bookmark className="h-8 w-8 text-primary" strokeWidth={2.5} /></div>
+                                        <div className="space-y-1 mb-1">
+                                            <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">{language === 'de' ? 'Expand Your Network' : 'Expand Your Network'}</h3>
                                         </div>
-                                    </Link>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            size="sm"
-                                            onClick={() => handleAcceptRequest(reqUser.uid)}
-                                            className="h-8 rounded-full font-black text-[10px] uppercase tracking-wider px-4 bg-emerald-500 hover:bg-emerald-600 text-white border-none"
-                                        >
-                                            {language === 'de' ? 'Annehmen' : 'Accept'}
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => handleDeclineRequest(reqUser.uid)}
-                                            className="h-8 rounded-full font-black text-[10px] uppercase tracking-wider px-4 text-slate-400 hover:bg-slate-100 dark:hover:bg-neutral-850"
-                                        >
-                                            {language === 'de' ? 'Ablehnen' : 'Decline'}
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Section: Freunde */}
-                <div className="mt-6">
-                    <FriendList friendIds={userData?.friends || []} />
-                </div>
-
-                <div className="w-full mt-1 mb-1">
-                    <nav className="flex justify-around items-center px-4">
-                        <TabButton tabName="activities" label={language === 'de' ? 'Aktivitäten' : 'Activities'} />
-                        <TabButton tabName="favorites" label={language === 'de' ? 'Favoriten' : 'Favorites'} />
-                        <TabButton tabName="reviews" label={language === 'de' ? 'Bewertungen' : 'Reviews'} />
-
-
-                    </nav>
-                </div>
-
-                <div className="flex-1 pb-0 px-2">
-                    {activeTab === 'activities' && (
-                        <div className="space-y-4">
-                            {loadingActivities ? (
-                                <div className="space-y-4"><ActivityListItemSkeleton /><ActivityListItemSkeleton /></div>
-                            ) : visibleActivities.length > 0 ? (
-                                <Tabs defaultValue="active" className="w-full">
-                                    <TabsList className="flex gap-3 bg-transparent p-0 justify-center mb-6">
-                                        <TabsTrigger
-                                            value="active"
-                                            className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-accent data-[state=active]:text-primary data-[state=active]:shadow-none border-none transition-all"
-                                        >
-                                            {language === 'de' ? 'Aktiv' : 'Active'} ({currentActivities.length})
-                                        </TabsTrigger>
-                                        <TabsTrigger
-                                            value="past"
-                                            className="rounded-full px-8 py-3 font-black text-xs uppercase tracking-widest bg-slate-100/50 data-[state=active]:bg-accent data-[state=active]:text-primary data-[state=active]:shadow-none border-none transition-all"
-                                        >
-                                            {language === 'de' ? 'Vergangen' : 'Past'} ({pastActivities.length})
-                                        </TabsTrigger>
-                                    </TabsList>
-                                    <TabsContent value="active" className="space-y-1 mt-0">
-                                        {currentActivities.length > 0 ? currentActivities.map(activity => (
-                                            <ProfileActivityCard key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
-                                        )) : (
-                                            <div className="text-center p-4 bg-white rounded-[2.5rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
-                                                <p className="text-slate-400 font-bold leading-relaxed">{language === 'de' ? 'Uncharted territory. Start exploring nearby treasures.' : 'Uncharted territory. Start exploring nearby treasures.'}</p>
-                                            </div>
-                                        )}
-                                    </TabsContent>
-                                    <TabsContent value="past" className="space-y-1 mt-0">
-                                        {pastActivities.length > 0 ? pastActivities.map(activity => (
-                                            <div key={activity.id} className="opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
-                                                <ProfileActivityCard activity={activity} user={user} onJoin={handleJoin} />
-                                            </div>
-                                        )) : (
-                                            <div className="text-center p-4 bg-white rounded-[3rem] border border-slate-100 shadow-sm">
-                                                <p className="text-slate-400 font-bold">{language === 'de' ? 'Keine vergangenen Aktivitäten.' : 'No past activities.'}</p>
-                                            </div>
-                                        )}
-                                    </TabsContent>
-                                </Tabs>
-                            ) : (
-                                <div className="text-center p-4 flex flex-col items-center justify-center gap-6 bg-white rounded-[2.5rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
-                                    <div className="bg-primary/10 p-3 rounded-2xl">
-                                        <Search className="h-6 w-6 text-primary" strokeWidth={2.5} />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <h3 className="text-lg font-black text-slate-900 tracking-tight">{language === 'de' ? 'Start Exploring' : 'Start Exploring'}</h3>
-                                        <p className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-[200px] mx-auto">{language === 'de' ? 'Uncharted territory. Start exploring nearby treasures.' : 'Uncharted territory. Start exploring nearby treasures.'}</p>
-                                    </div>
-                                    <Link href="/" className="w-full max-w-[200px]">
-                                        <Button className="w-full h-10 rounded-full font-black tracking-tight text-[13px] shadow-none border-none">
+                                        <Button onClick={() => router.push('/')} className="rounded-full h-11 px-8 font-black shadow-none border-none uppercase tracking-widest text-[10px]">
                                             {language === 'de' ? 'Discover Places' : 'Discover Places'}
                                         </Button>
-                                    </Link>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {activeTab === 'favorites' && (
-                        <div className="px-2">
-                            {favorites.length === 0 ? (
-                                <div className="text-center p-8 flex flex-col items-center justify-center gap-6 bg-white rounded-[2rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
-                                    <div className="bg-primary/10 p-4 rounded-3xl"><Bookmark className="h-8 w-8 text-primary" strokeWidth={2.5} /></div>
-                                    <div className="space-y-1 mb-1">
-                                        <h3 className="text-lg font-black text-slate-900 tracking-tight">{language === 'de' ? 'Expand Your Network' : 'Expand Your Network'}</h3>
                                     </div>
-                                    <Button onClick={() => router.push('/')} className="rounded-full h-11 px-8 font-black shadow-none border-none uppercase tracking-widest text-[10px]">
-                                        {language === 'de' ? 'Discover Places' : 'Discover Places'}
-                                    </Button>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {favorites.map(fav => {
+                                            const live = placesMetaMap[fav.id];
+                                            const favPlace = fav as Place;
+                                            return (
+                                                <PlaceCard 
+                                                    key={fav.id} 
+                                                    place={favPlace} 
+                                                    onClick={() => handlePlaceSelect(favPlace)} 
+                                                    onAddActivity={() => handleOpenActivityModal(favPlace)} 
+                                                    upvotes={live ? live.upvotes : (favPlace.upvotes || 0)}
+                                                    downvotes={live ? live.downvotes : (favPlace.downvotes || 0)}
+                                                    userVote={live ? (user ? (live.userVotes?.[user.uid] || 'none') : 'none') : (user ? (favPlace.userVotes?.[user.uid] || 'none') : 'none')}
+                                                    activityCount={live ? live.activityCount : ((favPlace as any).activityCount || 0)}
+                                                    isFavorite={checkIsFavorite(fav.id)}
+                                                    onVote={(type) => handleVotePlace(fav.id, type, favPlace)}
+                                                    onBookmarkToggle={() => handleBookmarkTogglePlace(favPlace)}
+                                                    role={userProfile?.role}
+                                                    weightedUpvotes={live ? live.weightedUpvotes : (favPlace.upvotes || 0)}
+                                                    weightedDownvotes={live ? live.weightedDownvotes : (favPlace.downvotes || 0)}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {activeTab === 'reviews' && (
+                            <div className="text-center p-12 bg-white dark:bg-neutral-900 rounded-[2rem] border border-[#E5E7EB]/50 dark:border-neutral-800 shadow-sm max-w-xl mx-auto">
+                                <p className="text-slate-400 font-bold text-sm tracking-tight">{language === 'de' ? 'Reviews Coming Soon' : 'Reviews Coming Soon'}</p>
+                            </div>
+                        )}
+                    </div>
 
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {favorites.map(fav => {
-                                        const live = placesMetaMap[fav.id];
-                                        const favPlace = fav as Place;
-                                        return (
-                                            <PlaceCard 
-                                                key={fav.id} 
-                                                place={favPlace} 
-                                                onClick={() => handlePlaceSelect(favPlace)} 
-                                                onAddActivity={() => handleOpenActivityModal(favPlace)} 
-                                                upvotes={live ? live.upvotes : (favPlace.upvotes || 0)}
-                                                downvotes={live ? live.downvotes : (favPlace.downvotes || 0)}
-                                                userVote={live ? (user ? (live.userVotes?.[user.uid] || 'none') : 'none') : (user ? (favPlace.userVotes?.[user.uid] || 'none') : 'none')}
-                                                activityCount={live ? live.activityCount : ((favPlace as any).activityCount || 0)}
-                                                isFavorite={checkIsFavorite(fav.id)}
-                                                onVote={(type) => handleVotePlace(fav.id, type, favPlace)}
-                                                onBookmarkToggle={() => handleBookmarkTogglePlace(favPlace)}
-                                                role={userProfile?.role}
-                                                weightedUpvotes={live ? live.weightedUpvotes : (favPlace.upvotes || 0)}
-                                                weightedDownvotes={live ? live.weightedDownvotes : (favPlace.downvotes || 0)}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {activeTab === 'reviews' && (
-                        <div className="text-center p-12 bg-white rounded-[2rem] border border-[#E5E7EB]/50 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)]">
-                            <p className="text-slate-400 font-bold text-sm tracking-tight">{language === 'de' ? 'Reviews Coming Soon' : 'Reviews Coming Soon'}</p>
-
-                        </div>
-                    )}
                 </div>
             </div>
 
