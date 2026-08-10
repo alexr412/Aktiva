@@ -1,4 +1,27 @@
-'use client';
+<div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500">
+  <Button
+    variant="ghost"
+    size="icon"
+    className="
+      h-14 w-14 rounded-full
+      bg-primary
+      text-white
+      border border-white/70
+      ring-4 ring-white/75
+      shadow-[0_10px_25px_rgba(16,185,129,0.28),0_4px_12px_rgba(15,23,42,0.14)]
+      hover:bg-primary
+      hover:text-white
+      hover:-translate-y-0.5
+      hover:shadow-[0_13px_30px_rgba(16,185,129,0.32),0_6px_14px_rgba(15,23,42,0.16)]
+      active:translate-y-0
+      active:scale-95
+      transition-all duration-200
+    "
+    onClick={handleOpenCustomActivityModal}
+  >
+    <Plus className="h-7 w-7 text-white" strokeWidth={2.5} />
+  </Button>
+</div>'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -2359,23 +2382,36 @@ export default function Home() {
     variant="ghost"
     size="icon"
     className="
-      h-14 w-14 rounded-full
+      relative h-14 w-14 overflow-hidden rounded-full
       bg-primary
-      text-white
-      border border-white/70
-      ring-4 ring-white/75
-      shadow-[0_10px_25px_rgba(16,185,129,0.28),0_4px_12px_rgba(15,23,42,0.14)]
-      hover:bg-primary
-      hover:text-white
-      hover:-translate-y-0.5
-      hover:shadow-[0_13px_30px_rgba(16,185,129,0.32),0_6px_14px_rgba(15,23,42,0.16)]
-      active:translate-y-0
-      active:scale-95
-      transition-all duration-200
+      border border-white/55
+      text-white hover:text-white hover:bg-primary
+      transition-all duration-150
+      hover:-translate-y-[1px]
+      active:translate-y-[3px]
+
+      before:absolute
+      before:inset-[2px]
+      before:rounded-full
+      before:bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.40),transparent_42%)]
+      before:pointer-events-none
+
+      after:absolute
+      after:inset-0
+      after:rounded-full
+      after:shadow-[inset_-3px_-4px_6px_rgba(0,70,50,0.20)]
+      after:pointer-events-none
     "
+    style={{
+      boxShadow:
+        "inset 0 2px 2px rgba(255,255,255,0.35), inset 0 -3px 4px rgba(0,0,0,0.16), 0 5px 0 #08785f, 0 8px 10px rgba(0,0,0,0.18), 0 13px 22px rgba(0,0,0,0.16)"
+    }}
     onClick={handleOpenCustomActivityModal}
   >
-    <Plus className="h-7 w-7 text-white" strokeWidth={2.5} />
+    <Plus
+      className="relative z-10 h-7 w-7 text-white drop-shadow-[0_2px_1px_rgba(0,0,0,0.22)]"
+      strokeWidth={2.5}
+    />
   </Button>
 </div>
 
