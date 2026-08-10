@@ -2358,10 +2358,42 @@ export default function Home() {
   <Button
     variant="ghost"
     size="icon"
-    className="h-14 w-14 rounded-full bg-primary/95 backdrop-blur-md border border-white/50 ring-2 ring-white/20 text-white hover:text-white hover:bg-primary shadow-[0_14px_32px_rgba(0,0,0,0.26),0_6px_14px_rgba(16,185,129,0.24)] transition-all duration-200 hover:scale-105 active:scale-95"
+    className="
+      relative h-14 w-14 rounded-full overflow-hidden
+      bg-primary
+      border border-white/40
+      text-white
+      shadow-[
+        inset_0_2px_2px_rgba(255,255,255,0.35),
+        inset_0_-4px_6px_rgba(0,0,0,0.18),
+        0_3px_0_rgba(0,110,75,0.35),
+        0_9px_16px_rgba(0,0,0,0.24)
+      ]
+      hover:text-white hover:bg-primary
+      hover:translate-y-[-1px]
+      hover:shadow-[
+        inset_0_2px_2px_rgba(255,255,255,0.4),
+        inset_0_-4px_6px_rgba(0,0,0,0.2),
+        0_4px_0_rgba(0,110,75,0.35),
+        0_12px_20px_rgba(0,0,0,0.28)
+      ]
+      active:translate-y-[2px]
+      active:shadow-[
+        inset_0_2px_4px_rgba(0,0,0,0.12),
+        0_1px_0_rgba(0,110,75,0.35),
+        0_4px_8px_rgba(0,0,0,0.20)
+      ]
+      transition-all duration-150
+      before:absolute before:inset-[3px] before:rounded-full
+      before:bg-gradient-to-b before:from-white/20 before:via-transparent before:to-transparent
+      before:pointer-events-none
+    "
     onClick={handleOpenCustomActivityModal}
   >
-    <Plus className="h-7 w-7 text-white" strokeWidth={2.5} />
+    <Plus
+      className="relative z-10 h-7 w-7 text-white drop-shadow-sm"
+      strokeWidth={2.5}
+    />
   </Button>
 </div>
 
