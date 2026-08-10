@@ -36,17 +36,21 @@ function resetStorage() {
 async function runTests() {
   console.log('=== Running Activa Referral System Tests ===\n');
 
-  // Test 1: getReferralLink generates correct personal link
-  console.log('Test 1: getReferralLink() produces central domain link with ref parameter');
+  // Test 1: getReferralLink generates correct personal invite link (/invite/CODE)
+  console.log('Test 1: getReferralLink() produces central domain invite link (/invite/CODE)');
   resetStorage();
   const link1 = getReferralLink('ABC123');
-  assert.strictEqual(link1, `${ACTIVA_APP_URL}/?ref=ABC123`);
+  assert.strictEqual(link1, `${ACTIVA_APP_URL}/invite/ABC123`);
   console.log('  ✅ Passed');
 
-  // Test 2: extractReferralCode extracts ?ref= correctly
-  console.log('Test 2: extractReferralCode() parses ?ref= parameter correctly');
-  const extracted1 = extractReferralCode('https://aktiva-six.vercel.app/?ref=XYZ789');
-  assert.strictEqual(extracted1, 'XYZ789');
+  // Test 2: extractReferralCode extracts legacy ?ref= and new /invite/CODE correctly
+  console.log('Test 2: extractReferralCode() parses legacy ?ref= and new /invite/CODE parameters');
+  const extractedLegacy = extractReferralCode('https://aktiva-six.vercel.app/?ref=XYZ789');
+  assert.strictEqual(extractedLegacy, 'XYZ789');
+  const extractedNewPath = extractReferralCode('https://aktiva-six.vercel.app/invite/7ZEACNG8');
+  assert.strictEqual(extractedNewPath, '7ZEACNG8');
+  const extractedPathOnly = extractReferralCode('/invite/INVITE_CODE_1');
+  assert.strictEqual(extractedPathOnly, 'INVITE_CODE_1');
   const params2 = new URLSearchParams('ref=TESTCODE1');
   assert.strictEqual(extractReferralCode(params2), 'TESTCODE1');
   console.log('  ✅ Passed');
@@ -55,6 +59,7 @@ async function runTests() {
   console.log('Test 3: Normalization (uppercase, trim) and invalid value filtering');
   assert.strictEqual(extractReferralCode('  abc123  '), 'ABC123');
   assert.strictEqual(extractReferralCode('?ref=  lower123 '), 'LOWER123');
+  assert.strictEqual(extractReferralCode('/invite/lower456'), 'LOWER456');
   assert.strictEqual(extractReferralCode('?ref='), null);
   assert.strictEqual(extractReferralCode('?ref=a'), null); // too short (<3)
   assert.strictEqual(extractReferralCode('?ref=<script>'), null); // invalid chars
@@ -102,8 +107,8 @@ async function runTests() {
   assert.strictEqual(isPermanentReferralError(selfRefErr), true);
   console.log('  ✅ Passed');
 
-  // Test 9: Clipboard fallback copies full referral link
-  console.log('Test 9: Clipboard fallback receives exact full referral link');
+  // Test 9: Clipboard fallback copies full referral invite link
+  console.log('Test 9: Clipboard fallback receives exact full referral invite link');
   let lastCopiedText = '';
   (globalThis as any).navigator = {
     clipboard: {
@@ -115,11 +120,11 @@ async function runTests() {
   const copyRes = await shareOrCopyReferralLink({ referralCode: 'MYCODE123', language: 'de' });
   assert.strictEqual(copyRes.action, 'copy');
   assert.strictEqual(copyRes.success, true);
-  assert.strictEqual(lastCopiedText, `${ACTIVA_APP_URL}/?ref=MYCODE123`);
+  assert.strictEqual(lastCopiedText, `${ACTIVA_APP_URL}/invite/MYCODE123`);
   console.log('  ✅ Passed');
 
   // Test 10: navigator.share options
-  console.log('Test 10: navigator.share receives title, text, and full url');
+  console.log('Test 10: navigator.share receives title, text, and full invite url');
   let sharedPayload: any = null;
   (globalThis as any).navigator = {
     share: async (data: any) => {
@@ -130,8 +135,8 @@ async function runTests() {
   assert.strictEqual(shareRes.action, 'share');
   assert.strictEqual(shareRes.success, true);
   assert.strictEqual(sharedPayload.title, 'Activa');
-  assert.strictEqual(sharedPayload.text, 'Komm zu Activa und entdecke Aktivitäten und neue Leute in deiner Nähe.');
-  assert.strictEqual(sharedPayload.url, `${ACTIVA_APP_URL}/?ref=SHARECODE`);
+  assert.strictEqual(sharedPayload.text, 'Komm zu Activa und entdecke Aktivitäten, Orte und neue Leute in deiner Nähe.');
+  assert.strictEqual(sharedPayload.url, `${ACTIVA_APP_URL}/invite/SHARECODE`);
   console.log('  ✅ Passed');
 
   // Test 11: AbortError during share does NOT trigger clipboard fallback
@@ -172,7 +177,7 @@ async function runTests() {
   const fallbackRes = await shareOrCopyReferralLink({ referralCode: 'FALLBACK1', language: 'de' });
   assert.strictEqual(fallbackRes.action, 'copy');
   assert.strictEqual(fallbackRes.success, true);
-  assert.strictEqual(lastCopiedText, `${ACTIVA_APP_URL}/?ref=FALLBACK1`);
+  assert.strictEqual(lastCopiedText, `${ACTIVA_APP_URL}/invite/FALLBACK1`);
   console.log('  ✅ Passed');
 
   // Test 13: Temporary network error keeps pending code
@@ -194,13 +199,13 @@ async function runTests() {
   // Test 15: Central URL configuration verification
   console.log('Test 15: Single central URL configuration controls generated link format');
   assert.ok(ACTIVA_APP_URL.length > 0);
-  assert.ok(getReferralLink('CENTRAL_TEST').startsWith(ACTIVA_APP_URL));
+  assert.ok(getReferralLink('CENTRAL_TEST').startsWith(`${ACTIVA_APP_URL}/invite/`));
   console.log('  ✅ Passed');
 
   console.log('\n🎉 All 15 Activa Referral Tests Passed Successfully!');
 }
 
 runTests().catch((err) => {
-  console.error('❌ Test failed:', err);
+  console.error('❌ Test failed with error:', err);
   process.exit(1);
 });

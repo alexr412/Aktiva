@@ -7,16 +7,18 @@ const STORAGE_NEW_KEY = 'activa:pending_referral_code';
 const STORAGE_OLD_KEY = 'aktiva:pending_referral_code';
 
 /**
- * Generates the personal referral link for a user.
+ * Generates the personal referral invite link for a user.
+ * Output format: https://aktiva-six.vercel.app/invite/CODE
  */
 export function getReferralLink(referralCode: string): string {
   const code = (referralCode || '').trim();
   if (!code) return ACTIVA_APP_URL;
-  return `${ACTIVA_APP_URL}/?ref=${encodeURIComponent(code)}`;
+  return `${ACTIVA_APP_URL}/invite/${encodeURIComponent(code.toUpperCase())}`;
 }
 
 /**
- * Extracts and normalizes a referral code from URLSearchParams, string, or URL.
+ * Extracts and normalizes a referral code from URLSearchParams, string, URL, or route path.
+ * Supports both /invite/CODE and legacy ?ref=CODE formats.
  * Returns normalized uppercase code or null if missing/invalid.
  */
 export function extractReferralCode(
@@ -27,21 +29,31 @@ export function extractReferralCode(
   let codeParam: string | null = null;
 
   if (typeof input === 'string') {
+    const trimmedInput = input.trim();
     try {
-      if (input.includes('?')) {
-        const url = new URL(input, ACTIVA_APP_URL);
+      // 1. Check for /invite/CODE route path or URL
+      const inviteMatch = trimmedInput.match(/\/invite\/([A-Za-z0-9_-]{3,32})/i);
+      if (inviteMatch) {
+        codeParam = inviteMatch[1];
+      } else if (trimmedInput.includes('?')) {
+        const url = new URL(trimmedInput, ACTIVA_APP_URL);
         codeParam = url.searchParams.get('ref');
-      } else if (input.startsWith('ref=')) {
-        const params = new URLSearchParams(input);
+      } else if (trimmedInput.startsWith('ref=')) {
+        const params = new URLSearchParams(trimmedInput);
         codeParam = params.get('ref');
       } else {
-        codeParam = input;
+        codeParam = trimmedInput;
       }
     } catch {
-      codeParam = input;
+      codeParam = trimmedInput;
     }
   } else if (input instanceof URL) {
-    codeParam = input.searchParams.get('ref');
+    const inviteMatch = input.pathname.match(/\/invite\/([A-Za-z0-9_-]{3,32})/i);
+    if (inviteMatch) {
+      codeParam = inviteMatch[1];
+    } else {
+      codeParam = input.searchParams.get('ref');
+    }
   } else if (typeof input === 'object' && 'get' in input && typeof input.get === 'function') {
     codeParam = input.get('ref');
   }
@@ -112,8 +124,8 @@ export async function shareOrCopyReferralLink(
 
   const title = "Activa";
   const text = language === 'de'
-    ? "Komm zu Activa und entdecke Aktivitäten und neue Leute in deiner Nähe."
-    : "Join Activa and discover activities and new people near you.";
+    ? "Komm zu Activa und entdecke Aktivitäten, Orte und neue Leute in deiner Nähe."
+    : "Join Activa and discover activities, places and new people near you.";
 
   // 1. Try Native Share API if supported
   if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
