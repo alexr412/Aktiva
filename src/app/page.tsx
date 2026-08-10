@@ -2358,7 +2358,7 @@ export default function Home() {
   <Button
     variant="ghost"
     size="icon"
-    className="h-14 w-14 rounded-full bg-primary/85 backdrop-blur-md border border-white/40 text-white hover:text-white hover:bg-primary/95 shadow-xl shadow-emerald-950/20 transition-all duration-200 hover:scale-105 active:scale-95"
+    className="h-14 w-14 rounded-full bg-primary/90 backdrop-blur-md border border-white/45 ring-1 ring-black/5 text-white hover:text-white hover:bg-primary shadow-[0_10px_24px_rgba(0,0,0,0.22),0_2px_8px_rgba(16,185,129,0.22)] transition-all duration-200 hover:scale-105 hover:shadow-[0_14px_30px_rgba(0,0,0,0.28),0_4px_12px_rgba(16,185,129,0.28)] active:scale-95"
     onClick={handleOpenCustomActivityModal}
   >
     <Plus className="h-7 w-7 text-white" strokeWidth={2.5} />
