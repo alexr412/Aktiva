@@ -2358,40 +2358,15 @@ export default function Home() {
   <Button
     variant="ghost"
     size="icon"
-    className="
-      relative h-14 w-14 rounded-full overflow-hidden
-      bg-primary
-      border border-white/40
-      text-white
-      shadow-[
-        inset_0_2px_2px_rgba(255,255,255,0.35),
-        inset_0_-4px_6px_rgba(0,0,0,0.18),
-        0_3px_0_rgba(0,110,75,0.35),
-        0_9px_16px_rgba(0,0,0,0.24)
-      ]
-      hover:text-white hover:bg-primary
-      hover:translate-y-[-1px]
-      hover:shadow-[
-        inset_0_2px_2px_rgba(255,255,255,0.4),
-        inset_0_-4px_6px_rgba(0,0,0,0.2),
-        0_4px_0_rgba(0,110,75,0.35),
-        0_12px_20px_rgba(0,0,0,0.28)
-      ]
-      active:translate-y-[2px]
-      active:shadow-[
-        inset_0_2px_4px_rgba(0,0,0,0.12),
-        0_1px_0_rgba(0,110,75,0.35),
-        0_4px_8px_rgba(0,0,0,0.20)
-      ]
-      transition-all duration-150
-      before:absolute before:inset-[3px] before:rounded-full
-      before:bg-gradient-to-b before:from-white/20 before:via-transparent before:to-transparent
-      before:pointer-events-none
-    "
+    className="h-14 w-14 rounded-full border border-white/50 bg-gradient-to-b from-emerald-400 to-primary text-white hover:text-white hover:from-emerald-400 hover:to-primary transition-all duration-150 hover:-translate-y-[1px] active:translate-y-[3px]"
+    style={{
+      boxShadow:
+        "inset 0 2px 2px rgba(255,255,255,0.35), inset 0 -2px 3px rgba(0,0,0,0.12), 0 5px 0 #078263, 0 9px 14px rgba(0,0,0,0.28)"
+    }}
     onClick={handleOpenCustomActivityModal}
   >
     <Plus
-      className="relative z-10 h-7 w-7 text-white drop-shadow-sm"
+      className="h-7 w-7 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
       strokeWidth={2.5}
     />
   </Button>
