@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import {
   ACTIVA_APP_URL,
+  INVITE_OG_VERSION,
   getReferralLink,
   extractReferralCode,
   storePendingReferralCode,
@@ -202,7 +203,15 @@ async function runTests() {
   assert.ok(getReferralLink('CENTRAL_TEST').startsWith(`${ACTIVA_APP_URL}/invite/`));
   console.log('  ✅ Passed');
 
-  console.log('\n🎉 All 15 Activa Referral Tests Passed Successfully!');
+  // Test 16: Central INVITE_OG_VERSION versioning for cache buster
+  console.log('Test 16: Central INVITE_OG_VERSION defines OG image versioning');
+  assert.strictEqual(INVITE_OG_VERSION, '2');
+  const ogUrl = `${ACTIVA_APP_URL}/api/og/invite?v=${INVITE_OG_VERSION}`;
+  assert.strictEqual(ogUrl, `${ACTIVA_APP_URL}/api/og/invite?v=2`);
+  assert.strictEqual(ogUrl.includes('icon-512.png'), false);
+  console.log('  ✅ Passed');
+
+  console.log('\n🎉 All 16 Activa Referral Tests Passed Successfully!');
 }
 
 runTests().catch((err) => {

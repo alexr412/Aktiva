@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ACTIVA_APP_URL, extractReferralCode } from '@/lib/referral';
+import { ACTIVA_APP_URL, INVITE_OG_VERSION, extractReferralCode } from '@/lib/referral';
 import InviteLandingClient from './InviteLandingClient';
 
 type Props = {
@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = 'Du wurdest zu Activa eingeladen';
   const description = 'Entdecke Aktivitäten, Orte und neue Leute in deiner Nähe – mit Activa.';
   const url = `${ACTIVA_APP_URL}/invite/${encodeURIComponent(code)}`;
-  const ogImageUrl = `${ACTIVA_APP_URL}/api/og/invite`;
+  const ogImageUrl = `${ACTIVA_APP_URL}/api/og/invite?v=${INVITE_OG_VERSION}`;
 
   return {
     title,

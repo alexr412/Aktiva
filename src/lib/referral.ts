@@ -3,6 +3,8 @@ import { getMigratedItem, setMigratedItem, removeMigratedItem } from './storage-
 export const ACTIVA_APP_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://aktiva-six.vercel.app";
 
+export const INVITE_OG_VERSION = '2';
+
 const STORAGE_NEW_KEY = 'activa:pending_referral_code';
 const STORAGE_OLD_KEY = 'aktiva:pending_referral_code';
 
