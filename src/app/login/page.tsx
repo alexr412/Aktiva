@@ -104,7 +104,27 @@ function LoginPageContent() {
   useEffect(() => {
     const registration = searchParams.get('registration');
     const verification = searchParams.get('verification');
-    if (registration === 'success') {
+    const reset = searchParams.get('reset');
+
+    if (reset === 'forgot' || reset === 'true') {
+      setIsResetDialogOpen(true);
+    } else if (reset === 'success') {
+      setLoginError({
+        title: language === 'de' ? 'Passwort geändert' : 'Password changed',
+        description: language === 'de'
+          ? "Dein Passwort wurde erfolgreich geändert. Du kannst dich jetzt mit deinem neuen Passwort einloggen."
+          : "Your password has been changed successfully. You can now log in with your new password.",
+        variant: 'info'
+      });
+    } else if (verification === 'success') {
+      setLoginError({
+        title: language === 'de' ? 'E-Mail verifiziert' : 'Email verified',
+        description: language === 'de'
+          ? "Deine E-Mail-Adresse wurde erfolgreich verifiziert. Du kannst dich jetzt einloggen."
+          : "Your email address has been verified successfully. You can now log in.",
+        variant: 'info'
+      });
+    } else if (registration === 'success') {
       setLoginError({
         title: language === 'de' ? 'Registrierung erfolgreich' : 'Registration successful',
         description: language === 'de'

@@ -7,6 +7,12 @@ import {
   updateProfile,
   sendPasswordResetEmail,
   sendEmailVerification,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
+  applyActionCode,
+  checkActionCode,
+  type ActionCodeSettings,
+  type ActionCodeInfo,
   deleteUser,
   GoogleAuthProvider,
   OAuthProvider,
@@ -100,9 +106,83 @@ export async function signOut(): Promise<void> {
   await firebaseSignOut(auth);
 }
 
-export async function sendPasswordReset(email: string): Promise<void> {
+export async function sendPasswordReset(email: string, continueUrl?: string): Promise<void> {
   if (!auth) throw new Error('Firebase has not been initialized.');
-  await sendPasswordResetEmail(auth, email);
+
+  let redirectUrl = continueUrl;
+  if (!redirectUrl && typeof window !== 'undefined') {
+    redirectUrl = `${window.location.origin}/login`;
+  } else if (!redirectUrl) {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://activa-444220.web.app';
+    redirectUrl = `${baseUrl}/login`;
+  }
+
+  const actionCodeSettings: ActionCodeSettings = {
+    url: redirectUrl,
+    handleCodeInApp: false,
+  };
+
+  await sendPasswordResetEmail(auth, email, actionCodeSettings);
+}
+
+export async function verifyResetCode(code: string): Promise<string> {
+  if (!auth) throw new Error('Firebase has not been initialized.');
+  return await verifyPasswordResetCode(auth, code);
+}
+
+export async function confirmResetPassword(code: string, newPassword: string): Promise<void> {
+  if (!auth) throw new Error('Firebase has not been initialized.');
+  await confirmPasswordReset(auth, code, newPassword);
+}
+
+export async function verifyEmailCode(code: string): Promise<void> {
+  if (!auth) throw new Error('Firebase has not been initialized.');
+  const info: ActionCodeInfo = await checkActionCode(auth, code);
+  if (info.operation !== 'VERIFY_EMAIL' && info.operation !== 'VERIFY_AND_CHANGE_EMAIL') {
+    throw new Error('auth/invalid-action-code');
+  }
+  await applyActionCode(auth, code);
+}
+
+export async function checkEmailActionCode(code: string): Promise<ActionCodeInfo> {
+  if (!auth) throw new Error('Firebase has not been initialized.');
+  return await checkActionCode(auth, code);
+}
+
+export async function recoverEmailCode(code: string): Promise<{ email: string }> {
+  if (!auth) throw new Error('Firebase has not been initialized.');
+  const info: ActionCodeInfo = await checkActionCode(auth, code);
+  
+  if (info.operation !== 'RECOVER_EMAIL') {
+    throw new Error('auth/invalid-action-code');
+  }
+
+  const restoredEmail = info.data.email;
+  if (!restoredEmail) {
+    throw new Error('auth/invalid-action-code');
+  }
+
+  await applyActionCode(auth, code);
+  return { email: restoredEmail };
+}
+
+export interface PasswordValidationResult {
+  hasLength: boolean;
+  hasUpper: boolean;
+  hasLower: boolean;
+  hasNumber: boolean;
+  hasSpecial: boolean;
+  isValid: boolean;
+}
+
+export function evaluatePassword(pass: string): PasswordValidationResult {
+  const hasLength = pass.length >= 8 && pass.length <= 32;
+  const hasUpper = /[A-Z]/.test(pass);
+  const hasLower = /[a-z]/.test(pass);
+  const hasNumber = /[0-9]/.test(pass);
+  const hasSpecial = /[^A-Za-z0-9]/.test(pass);
+  const isValid = hasLength && hasUpper && hasLower && hasNumber && hasSpecial;
+  return { hasLength, hasUpper, hasLower, hasNumber, hasSpecial, isValid };
 }
 
 export async function deleteAccount(password?: string): Promise<void> {
