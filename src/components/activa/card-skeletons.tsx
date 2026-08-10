@@ -5,14 +5,14 @@ import { cn } from "@/lib/utils";
 
 export function PlaceCardSkeleton() {
   return (
-    <div className="w-full overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-col h-full pointer-events-none select-none" aria-hidden="true">
+    <div className="w-full min-w-0 overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-col h-full pointer-events-none select-none" aria-hidden="true">
       {/* Top decoration area placeholder */}
       <div className="h-20 w-full bg-slate-100/50 dark:bg-neutral-800/40 flex items-center justify-center relative">
         <Skeleton className="h-8 w-8 rounded-full motion-reduce:animate-none" />
       </div>
       {/* Content area placeholder */}
-      <div className="p-3 pb-4 flex flex-col flex-1 gap-2">
-        <div className="space-y-1.5">
+      <div className="p-3 pb-4 flex flex-col flex-1 gap-2 min-w-0">
+        <div className="space-y-1.5 min-w-0">
           <Skeleton className="h-4.5 w-11/12 rounded-lg motion-reduce:animate-none" />
           <Skeleton className="h-3.5 w-2/3 rounded-md motion-reduce:animate-none" />
         </div>
@@ -33,14 +33,14 @@ export function PlaceCardSkeleton() {
 
 export function FeaturedPlaceCardSkeleton() {
   return (
-    <div className="w-full overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-row min-h-[145px] max-h-[165px] md:max-h-none md:min-h-[160px] pointer-events-none select-none" aria-hidden="true">
+    <div className="w-full min-w-0 overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-row min-h-[145px] max-h-[165px] md:max-h-none md:min-h-[160px] pointer-events-none select-none" aria-hidden="true">
       {/* Left decoration area placeholder */}
       <div className="w-24 md:w-52 h-full bg-slate-100/50 dark:bg-neutral-800/40 flex items-center justify-center shrink-0">
         <Skeleton className="h-8 w-8 md:h-9 md:w-9 rounded-full motion-reduce:animate-none" />
       </div>
       {/* Right content area placeholder */}
       <div className="p-3 md:p-5 flex flex-col flex-1 min-w-0 justify-between gap-1.5 md:gap-3">
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 min-w-0">
           <Skeleton className="h-4 w-3/4 rounded-lg motion-reduce:animate-none" />
           <Skeleton className="h-3 w-1/3 rounded-md motion-reduce:animate-none" />
           <div className="hidden md:flex flex-wrap gap-1 pt-1">
@@ -64,7 +64,7 @@ export function FeaturedPlaceCardSkeleton() {
 
 export function ActivityCardSkeleton() {
   return (
-    <div className="w-full overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-col h-full pointer-events-none select-none" aria-hidden="true">
+    <div className="w-full min-w-0 overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-col h-full pointer-events-none select-none" aria-hidden="true">
       {/* Top decoration area placeholder */}
       <div className="h-20 w-full bg-slate-100/50 dark:bg-neutral-800/40 flex items-center justify-center relative">
         <Skeleton className="h-8 w-8 rounded-full motion-reduce:animate-none" />
@@ -98,7 +98,7 @@ export function ActivityCardSkeleton() {
 
 export function FeaturedActivityCardSkeleton() {
   return (
-    <div className="w-full overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-row min-h-[145px] max-h-[165px] md:max-h-none md:min-h-[160px] pointer-events-none select-none" aria-hidden="true">
+    <div className="w-full min-w-0 overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-row min-h-[145px] max-h-[165px] md:max-h-none md:min-h-[160px] pointer-events-none select-none" aria-hidden="true">
       {/* Left decoration area placeholder */}
       <div className="w-24 md:w-52 h-full bg-slate-100/50 dark:bg-neutral-800/40 flex items-center justify-center shrink-0">
         <Skeleton className="h-8 w-8 md:h-9 md:w-9 rounded-full motion-reduce:animate-none" />

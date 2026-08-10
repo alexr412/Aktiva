@@ -33,22 +33,22 @@ interface ProfileActivityCardProps {
   const activityDate = activity.activityDate?.toDate();
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-5 mb-4 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)] border border-slate-50 dark:border-neutral-800 transition-all hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] group cursor-pointer overflow-hidden relative">
-      <div className="flex items-center gap-4">
+    <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-4 sm:p-5 mb-4 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)] border border-slate-50 dark:border-neutral-800 transition-all hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] group cursor-pointer overflow-hidden relative w-full min-w-0">
+      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
         {/* Category Icon */}
         <div className={cn(
-            "h-16 w-16 rounded-[1.5rem] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
+            "h-14 w-14 sm:h-16 sm:w-16 rounded-[1.25rem] sm:rounded-[1.5rem] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
             iconData.gradientClass
         )}>
-            <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm border border-white/30">
-                <Icon className="w-8 h-8 text-white" />
+            <div className="bg-white/20 p-2.5 sm:p-3 rounded-2xl backdrop-blur-sm border border-white/30">
+                <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
             </div>
         </div>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="">{activity.title || activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}</h4>
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <h4 className="font-bold text-base text-slate-900 dark:text-neutral-100 truncate flex-1 min-w-0">{activity.title || activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}</h4>
             {(activity as any).isNew && (
                 <div className="bg-[#fff7ed] text-[#ea580c] px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0">
                     <Star className="w-2.5 h-2.5 fill-current" /> {language === 'de' ? 'NEU' : 'NEW'}

@@ -17,7 +17,7 @@ export function AdCard({ adIndex, className }: AdCardProps) {
     <article
       aria-label={isDe ? "Werbeanzeige" : "Advertisement"}
       className={cn(
-        "group relative flex flex-col justify-between overflow-hidden rounded-[22px] bg-gradient-to-br from-slate-50 via-white to-amber-50/40 dark:from-neutral-900 dark:via-neutral-900 dark:to-amber-950/20 border border-slate-200/60 dark:border-neutral-800/80 shadow-premium transition-all duration-200 p-3 sm:p-4 min-h-[210px] w-full h-full select-none",
+        "group relative flex flex-col justify-between overflow-hidden rounded-[22px] bg-gradient-to-br from-slate-50 via-white to-amber-50/40 dark:from-neutral-900 dark:via-neutral-900 dark:to-amber-950/20 border border-slate-200/60 dark:border-neutral-800/80 shadow-premium transition-all duration-200 p-3 sm:p-4 min-h-[210px] w-full h-full min-w-0 select-none",
         className
       )}
     >

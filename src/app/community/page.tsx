@@ -99,7 +99,7 @@ export default function CommunityPage() {
                     <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Community</h1>
                 </div>
             </header>
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <main className="flex-1 min-h-0 w-full overflow-y-auto p-4 sm:p-6 pb-bottom-nav-safe">
                 <Card className="w-full max-w-md mx-auto">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -124,39 +124,40 @@ export default function CommunityPage() {
 
                         {foundUser && (
                             <div className="mt-6 rounded-lg border bg-secondary/30 p-4 border-border">
-                                <div className="flex items-center justify-between gap-4">
-                                    <Link href={`/users/${foundUser.uid}`} className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity">
+                                <div className="flex items-center justify-between gap-3 min-w-0">
+                                    <Link href={`/users/${foundUser.uid}`} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
                                         <ProfileAvatar
                                             photoURL={foundUser.photoURL}
                                             displayName={foundUser.displayName}
                                             isPremium={foundUser.isPremium}
                                             isCreator={foundUser.isCreator}
                                             isSupporter={foundUser.isSupporter}
+                                            className="shrink-0"
                                         />
-                                        <div className="font-bold truncate">{foundUser.username ? `@${foundUser.username.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')}</div>
+                                        <div className="font-bold truncate text-slate-900 dark:text-neutral-100 min-w-0 flex-1">{foundUser.username ? `@${foundUser.username.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user')}</div>
                                     </Link>
                                     
                                     {isSelf ? (
-                                        <div className="px-4 py-2 bg-red-500/10 text-red-500 font-bold text-sm rounded-lg flex items-center gap-2">
+                                        <div className="px-3 sm:px-4 py-2 bg-red-500/10 text-red-500 font-bold text-sm rounded-lg flex items-center gap-2 shrink-0">
                                             <span>❤️</span>
                                             <span>{language === 'de' ? 'Du' : 'You'}</span>
                                         </div>
                                     ) : isAlreadyFriend ? (
-                                        <div className="px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg flex items-center gap-2">
-                                            <Check className="w-4 h-4" />
-                                            {language === 'de' ? 'Freunde' : 'Friends'}
+                                        <div className="px-3 sm:px-4 py-2 bg-secondary text-muted-foreground font-bold text-sm rounded-lg flex items-center gap-2 shrink-0">
+                                            <Check className="w-4 h-4 shrink-0" />
+                                            <span>{language === 'de' ? 'Freunde' : 'Friends'}</span>
                                         </div>
                                     ) : (
-                                        <Button onClick={handleAddFriend} disabled={requestSent} className="w-32 flex-shrink-0">
+                                        <Button onClick={handleAddFriend} disabled={requestSent} className="w-28 sm:w-32 shrink-0">
                                             {requestSent ? (
                                                 <>
-                                                    <Check className="mr-2 h-4 w-4" />
-                                                    {language === 'de' ? 'Gesendet' : 'Sent'}
+                                                    <Check className="mr-1.5 h-4 w-4 shrink-0" />
+                                                    <span>{language === 'de' ? 'Gesendet' : 'Sent'}</span>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <UserPlus className="mr-2 h-4 w-4" />
-                                                    {language === 'de' ? 'Hinzufügen' : 'Add'}
+                                                    <UserPlus className="mr-1.5 h-4 w-4 shrink-0" />
+                                                    <span>{language === 'de' ? 'Hinzufügen' : 'Add'}</span>
                                                 </>
                                             )}
                                         </Button>

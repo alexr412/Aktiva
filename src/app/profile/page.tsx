@@ -682,17 +682,17 @@ export default function ProfilePage() {
 
     return (
         <>
-            <div className="relative flex flex-col h-full bg-[#F8FAFC] dark:bg-neutral-950 overflow-y-auto pb-20">
+            <div className="relative flex flex-col h-full w-full bg-[#F8FAFC] dark:bg-neutral-950 overflow-y-auto pb-bottom-nav-safe">
                 {/* Zonen-Isolierung: Header Color Blocking */}
                 <div className="absolute top-0 left-0 right-0 h-[35vh] bg-gradient-to-b from-emerald-50/50 to-transparent dark:from-emerald-950/10 z-0" />
 
                 <header className="global-viewport-header">
                     <div className="global-header-container">
-                        <div className="flex items-center gap-2">
-                            <h1 className="">{language === 'de' ? 'Profil' : 'Profile'}</h1>
-                            <User className="h-6 w-6 text-primary fill-current" />
+                        <div className="flex items-center gap-2 min-w-0">
+                            <h1 className="truncate">{language === 'de' ? 'Profil' : 'Profile'}</h1>
+                            <User className="h-6 w-6 text-primary fill-current shrink-0" />
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 shrink-0">
                             <NotificationBell />
                             <Link href="/settings">
                                 <Button variant="ghost" size="icon" className="secondary-header-button">
@@ -704,7 +704,7 @@ export default function ProfilePage() {
                 </header>
 
                 {/* Main Content Area - Flat Model */}
-                <div className="relative px-6 w-full max-w-4xl mx-auto z-10 pt-4 flex flex-col items-center">
+                <div className="relative px-4 sm:px-6 w-full max-w-4xl mx-auto z-10 pt-4 flex flex-col items-center">
 
                     {/* Avatar Section */}
                     <div className="flex flex-col items-center mb-10">

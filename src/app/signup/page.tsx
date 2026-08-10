@@ -476,9 +476,9 @@ function SignupPageContent() {
   }
 
   return (
-    <main className="min-h-screen w-full bg-white dark:bg-neutral-950 flex flex-col items-center justify-center p-6 antialiased">
+    <main className="flex-1 min-h-0 w-full bg-white dark:bg-neutral-950 flex flex-col items-center justify-start sm:justify-center px-4 py-8 sm:py-12 antialiased overflow-y-auto">
       
-      <div className="w-full max-w-[400px] flex flex-col items-center relative z-10">
+      <div className="w-full max-w-[400px] flex flex-col items-center relative z-10 my-auto">
         
         {/* Logo Section */}
         <motion.div 

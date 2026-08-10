@@ -95,9 +95,9 @@ export default function RootLayout({
                   <FriendRadarProvider>
                     <FavoritesProvider>
                       <ChatSyncProvider>
-                        <div className="relative flex h-[100dvh] w-full flex-col bg-background overflow-hidden">
+                        <div className="relative flex h-dvh w-full flex-col bg-background overflow-hidden">
                           <PlanningModeBanner />
-                          <main className="flex-1 relative flex flex-col overflow-hidden">
+                          <main className="flex-1 min-h-0 w-full relative flex flex-col overflow-hidden">
                             {children}
                           </main>
                           <BottomNav />

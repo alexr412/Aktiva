@@ -300,21 +300,21 @@ export default function ExplorePage() {
     const [dragX, setDragX] = useState(0);
 
     return (
-        <div className="flex h-full pb-bottom-nav-safe lg:pb-0 flex-col lg:flex-row bg-[#fdfdfd] dark:bg-neutral-950 overflow-hidden font-jakarta">
+        <div className="flex h-full w-full pb-bottom-nav-safe lg:pb-0 flex-col lg:flex-row bg-[#fdfdfd] dark:bg-neutral-950 overflow-hidden font-jakarta">
             {/* Desktop Sidebar */}
             <aside className="hidden lg:flex w-[320px] shrink-0 border-r border-slate-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 flex-col overflow-y-auto">
                 <div className="p-8 space-y-12">
                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-2xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                        <div className="h-10 w-10 rounded-2xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20 shrink-0">
                             <Compass className="h-6 w-6 text-white" />
                         </div>
-                        <h1 className="">{language === 'de' ? 'Erkunden' : 'Explore'}</h1>
+                        <h1 className="truncate">{language === 'de' ? 'Erkunden' : 'Explore'}</h1>
                     </div>
 
                     <div className="space-y-6">
                         <div className="flex items-center justify-between px-2">
-                            <h3 className="">Activa Radar</h3>
-                            <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                            <h3 className="truncate">Activa Radar</h3>
+                            <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
                         </div>
                         <div className="bg-slate-50/50 dark:bg-neutral-800/30 rounded-[2.25rem] p-5 border border-slate-50 dark:border-neutral-800/50">
                             <ProximityRadarView />
@@ -322,7 +322,7 @@ export default function ExplorePage() {
                     </div>
 
                     <div className="space-y-6">
-                        <h3 className="">{language === 'de' ? 'Präferenzen' : 'Preferences'}</h3>
+                        <h3 className="truncate">{language === 'de' ? 'Präferenzen' : 'Preferences'}</h3>
                         <div className="flex flex-col gap-6">
                             <CategoryFilters 
                                 activeCategory={activeCategory} 
@@ -338,15 +338,15 @@ export default function ExplorePage() {
                 </div>
             </aside>
             
-            <main className="flex-1 flex flex-col min-h-0 relative">
+            <main className="flex-1 flex flex-col min-h-0 relative w-full overflow-hidden">
                 {/* Header */}
                 <header className="global-viewport-header">
                     <div className="global-header-container">
-                        <div className="flex items-center gap-2">
-                            <h1 className="">{language === 'de' ? 'Aktivitäten' : 'Activities'}</h1>
-                            <Compass className="h-6 w-6 text-orange-500" />
+                        <div className="flex items-center gap-2 min-w-0">
+                            <h1 className="truncate">{language === 'de' ? 'Aktivitäten' : 'Activities'}</h1>
+                            <Compass className="h-6 w-6 text-orange-500 shrink-0" />
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 shrink-0">
                             <NotificationBell />
                         </div>
                     </div>

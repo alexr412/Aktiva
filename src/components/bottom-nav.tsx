@@ -35,7 +35,7 @@ export function BottomNav() {
 
   return (
     <div className="fixed bottom-0 left-0 w-full z-nav bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-t border-slate-200/30 dark:border-neutral-800/20 pb-safe shadow-premium">
-      <nav data-activa-bottom-nav className="flex h-[66px] items-center justify-around px-2">
+      <nav data-activa-bottom-nav className="flex h-[66px] items-center justify-around px-1 sm:px-4 max-w-lg mx-auto">
         {navItems.map((item) => {
           const isActive = getIsActive(item.href);
           return (
@@ -43,12 +43,12 @@ export function BottomNav() {
               key={item.label}
               href={item.href}
               className={cn(
-                  "flex h-full flex-col items-center justify-center gap-1 transition-[color,opacity] duration-200 relative px-4 flex-1",
+                  "flex h-full flex-col items-center justify-center gap-1 transition-[color,opacity] duration-200 relative px-1 sm:px-3 flex-1 min-w-0",
                   isActive ? "text-primary scale-100" : "text-slate-500 dark:text-neutral-400 opacity-60 hover:opacity-100"
               )}
             >
               <div className={cn(
-                  "p-2 rounded-[10px] transition-[color,background-color] duration-200 relative",
+                  "p-2 rounded-[10px] transition-[color,background-color] duration-200 relative shrink-0",
                   isActive ? "bg-primary/10 text-primary" : "text-current"
               )}>
                 <item.icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 2} />
@@ -67,7 +67,7 @@ export function BottomNav() {
                 )}
               </div>
               <span className={cn(
-                  "text-[9px] uppercase font-black tracking-widest transition-[opacity,transform] duration-200",
+                  "text-[9px] uppercase font-black tracking-wider sm:tracking-widest whitespace-nowrap truncate max-w-full transition-[opacity,transform] duration-200",
                   isActive ? "opacity-100 scale-100" : "opacity-0 scale-95"
               )}>
                 {item.label}

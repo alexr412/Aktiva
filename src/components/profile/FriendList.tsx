@@ -151,7 +151,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
               const friendKey = friend.uid || (friend as any).id || `fallback-${index}`;
               
               return (
-                <Link href={`/users/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[35%] max-w-[140px]">
+                <Link href={`/users/${friend.uid || (friend as any).id}`} key={friendKey} className="block shrink-0 w-[110px] sm:w-[140px]">
                   <div className="flex flex-col items-center gap-2 p-4 rounded-[1.5rem] bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 transition-all cursor-pointer relative overflow-hidden group hover:bg-slate-50 dark:hover:bg-neutral-800/50">
                     <div className="relative">
                         <ProfileAvatar 

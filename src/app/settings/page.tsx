@@ -316,14 +316,14 @@ export default function SettingsPage() {
 
     if (authLoading || !user || (userProfile && userProfile.onboardingCompleted === false)) {
         return (
-            <div className="flex h-screen w-screen items-center justify-center bg-background">
+            <div className="flex flex-1 min-h-0 w-full items-center justify-center bg-background">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-full w-full bg-secondary overflow-y-auto pb-32">
+        <div className="flex flex-col h-full w-full bg-secondary overflow-y-auto pb-bottom-nav-safe">
             <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background px-4 shrink-0">
                 <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()} aria-label={language === 'de' ? 'Zurück' : 'Back'}>
                     <ArrowLeft />
@@ -340,12 +340,12 @@ export default function SettingsPage() {
 
                         </h2>
                         <div className="space-y-2">
-                            <button onClick={() => window.open('https://paypal.me/aktiva', '_blank')} className="flex w-full items-center justify-between rounded-lg border-2 border-red-500/20 bg-red-500/5 p-4 text-left transition-colors hover:bg-red-500/10">
-                                <div>
-                                    <p className="font-bold text-red-600">{language === 'de' ? 'Unterstütze Activa' : 'Support Activa'}</p>
-                                    <p className="text-sm text-red-600/70">{language === 'de' ? 'Spende einen kleinen Betrag & erhalte das Supporter-Badge.' : 'Donate a small amount & get the supporter badge.'}</p>
+                            <button onClick={() => window.open('https://paypal.me/aktiva', '_blank')} className="flex w-full items-center justify-between rounded-lg border-2 border-red-500/20 bg-red-500/5 p-4 text-left transition-colors hover:bg-red-500/10 gap-3">
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-red-600 truncate">{language === 'de' ? 'Unterstütze Activa' : 'Support Activa'}</p>
+                                    <p className="text-sm text-red-600/70 leading-normal">{language === 'de' ? 'Spende einen kleinen Betrag & erhalte das Supporter-Badge.' : 'Donate a small amount & get the supporter badge.'}</p>
                                 </div>
-                                <ChevronRight className="h-5 w-5 text-red-500" />
+                                <ChevronRight className="h-5 w-5 text-red-500 shrink-0" />
                             </button>
                         </div>
                     </div>

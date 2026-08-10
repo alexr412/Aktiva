@@ -241,7 +241,7 @@
   }
 
   .global-header-container {
-    @apply px-6 flex items-center justify-between max-w-7xl 2xl:max-w-[1536px] mx-auto w-full;
+    @apply px-4 sm:px-6 flex items-center justify-between max-w-[1536px] mx-auto w-full min-w-0;
   }
 }
 
@@ -305,7 +305,7 @@
     margin-top: env(safe-area-inset-top, 0px);
   }
   .pb-bottom-nav-safe {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
   }
 }
 

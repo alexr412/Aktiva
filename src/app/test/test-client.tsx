@@ -130,7 +130,7 @@ export default function TestClient() {
   }, [userProfile, authLoading, router]);
 
   if (authLoading) {
-    return <div className="flex h-dvh items-center justify-center"><Loader2 className="animate-spin" /></div>;
+    return <div className="flex flex-1 min-h-0 w-full items-center justify-center"><Loader2 className="animate-spin" /></div>;
   }
 
   if (userProfile?.role !== 'admin') {
@@ -255,7 +255,7 @@ export default function TestClient() {
   };
 
   return (
-    <div className="flex flex-col h-dvh bg-background">
+    <div className="flex flex-col flex-1 min-h-0 w-full bg-background">
       <header className="p-6 border-b shrink-0 bg-card">
         <h1 className="text-2xl font-bold flex items-center gap-2 text-primary">
           <Lock className="h-6 w-6" />

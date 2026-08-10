@@ -18,7 +18,7 @@ export default function InviteLandingClient({ code }: InviteLandingClientProps) 
   }, [code]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden selection:bg-emerald-500 selection:text-white">
+    <div className="flex-1 min-h-0 w-full bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-y-auto selection:bg-emerald-500 selection:text-white">
       {/* Dynamic Background Glow Effect */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/20 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-teal-500/20 rounded-full blur-[120px] pointer-events-none" />

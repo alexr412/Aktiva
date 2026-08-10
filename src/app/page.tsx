@@ -1677,7 +1677,7 @@ export default function Home() {
 
       return (
         <div 
-          className="max-w-7xl 2xl:max-w-[1536px] mx-auto w-full min-h-[100vh] flex flex-col"
+          className="max-w-[1536px] mx-auto w-full flex flex-col"
           aria-busy="false"
         >
           {renderList()}
@@ -2060,7 +2060,7 @@ export default function Home() {
 
       return (
         <div 
-          className="max-w-7xl 2xl:max-w-[1536px] mx-auto w-full min-h-[100vh] flex flex-col"
+          className="max-w-[1536px] mx-auto w-full flex flex-col"
           aria-busy={isResultsRegionBusy ? "true" : "false"}
         >
           <div className="sr-only" role="status" aria-live="polite">
@@ -2085,7 +2085,7 @@ export default function Home() {
 
     if (viewMode === 'map') {
       return (
-        <div className="h-[calc(100vh-80px)] w-full relative">
+        <div className="h-full w-full relative">
           <ActivaMap
             places={finalFeedPlaces}
             communityActivities={communityActivities}
@@ -2113,13 +2113,13 @@ export default function Home() {
       <div className="flex flex-col h-full bg-transparent relative">
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
-        <header className="global-viewport-header compact pb-2.5 md:pb-3">
-          <div className="flex flex-col gap-4 md:gap-4 max-w-7xl 2xl:max-w-[1536px] mx-auto w-full">
-            {/* Mobile Header Layout */}
-            <div className="md:hidden flex flex-col gap-4">
+        <header className="global-viewport-header compact pb-2.5 lg:pb-3">
+          <div className="flex flex-col gap-4 lg:gap-4 max-w-[1536px] mx-auto w-full">
+            {/* Mobile Header Layout (<1024px) */}
+            <div className="lg:hidden flex flex-col gap-4">
               <div className="global-header-container">
-                <div className="flex items-center gap-2.5">
-                  <Link href="/profile">
+                <div className="flex items-center gap-2.5 min-w-0 shrink">
+                  <Link href="/profile" className="shrink-0">
                     <ProfileAvatar
                       className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
                       photoURL={userProfile?.photoURL}
@@ -2129,9 +2129,9 @@ export default function Home() {
                       isSupporter={userProfile?.isSupporter}
                     />
                   </Link>
-                  <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-neutral-100">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
+                  <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-neutral-100 truncate">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                   <NotificationBell />
                   <Button 
                     variant={viewMode === 'map' ? 'secondary' : 'ghost'} 
@@ -2149,10 +2149,10 @@ export default function Home() {
               </div>
 
               {/* Mobile Location Row */}
-              <div className="px-6 flex items-center justify-start">
-                <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none" />
-                  <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest">{cityName}</span>
+              <div className="px-4 sm:px-6 flex items-center justify-start">
+                <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800 max-w-full min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
+                  <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest truncate">{cityName}</span>
                   {planningState.isPlanning && (
                     <span
                       role="button"
@@ -2163,21 +2163,21 @@ export default function Home() {
                         e.stopPropagation();
                         requestLocation();
                       }}
-                      className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[11px] leading-none"
+                      className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[11px] leading-none shrink-0"
                     >
                       ×
                     </span>
                   )}
-                  <ChevronDown className="h-3 w-3 text-neutral-400" />
+                  <ChevronDown className="h-3 w-3 text-neutral-400 shrink-0" />
                 </button>
               </div>
             </div>
 
-            {/* Desktop Unified Header Row */}
-            <div className="hidden md:flex items-center justify-between gap-6 px-6 w-full">
+            {/* Desktop Unified Header Row (>=1024px) */}
+            <div className="hidden lg:flex items-center justify-between gap-6 px-4 sm:px-6 w-full">
               {/* Left: Avatar, Name & Location Dropdown Inline */}
-              <div className="flex items-center gap-3 shrink-0">
-                <Link href="/profile">
+              <div className="flex items-center gap-3 shrink-0 min-w-0">
+                <Link href="/profile" className="shrink-0">
                   <ProfileAvatar
                     className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
                     photoURL={userProfile?.photoURL}
@@ -2187,11 +2187,11 @@ export default function Home() {
                     isSupporter={userProfile?.isSupporter}
                   />
                 </Link>
-                <div className="flex flex-col">
-                  <h1 className="text-xl font-black leading-tight">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
-                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 mt-0.5 self-start hover:opacity-80 transition-opacity">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none" />
-                    <span className="text-[9px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest">{cityName}</span>
+                <div className="flex flex-col min-w-0">
+                  <h1 className="text-xl font-black leading-tight truncate">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
+                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 mt-0.5 self-start hover:opacity-80 transition-opacity max-w-full">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
+                    <span className="text-[9px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest truncate">{cityName}</span>
                     {planningState.isPlanning && (
                       <span
                         role="button"
@@ -2202,18 +2202,18 @@ export default function Home() {
                           e.stopPropagation();
                           requestLocation();
                         }}
-                        className="ml-1 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[10px] leading-none"
+                        className="ml-1 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[10px] leading-none shrink-0"
                       >
                         ×
                       </span>
                     )}
-                    <ChevronDown className="h-2.5 w-2.5 text-neutral-400" />
+                    <ChevronDown className="h-2.5 w-2.5 text-neutral-400 shrink-0" />
                   </button>
                 </div>
               </div>
 
               {/* Center: Search input & Radius selector */}
-              <div className="flex items-center gap-3 flex-1 max-w-md">
+              <div className="flex items-center gap-3 flex-1 max-w-md min-w-0">
                 <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
                   {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
                   <Input 
@@ -2227,7 +2227,7 @@ export default function Home() {
                     className="w-full pl-9 h-11 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400" 
                   />
                 </form>
-                <div className="relative group">
+                <div className="relative group shrink-0">
                   <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" className="h-11 px-3 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
@@ -2261,7 +2261,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="px-6">
+            <div className="px-4 sm:px-6">
               <CategoryFilters 
                 activeCategory={activeCategory} 
                 activeTabId={activeTabId} 
@@ -2271,11 +2271,11 @@ export default function Home() {
               />
             </div>
 
-            {/* Search and Radius Row (Mobile only) */}
-            <div className="px-6 md:hidden">
-              <div className="flex items-center gap-3 w-full">
+            {/* Mobile Search Row (<1024px) */}
+            <div className="lg:hidden px-4 sm:px-6">
+              <div className="flex items-center gap-2">
                 <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
-                  {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
+                  {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
                   <Input 
                     type="search" 
                     id="search-input-mobile"
@@ -2287,7 +2287,7 @@ export default function Home() {
                     className="w-full pl-10 h-11 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400" 
                   />
                 </form>
-                <div className="relative group">
+                <div className="relative group shrink-0">
                   <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="secondary" className="h-11 px-2.5 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
@@ -2305,8 +2305,8 @@ export default function Home() {
             </div>
 
             {/* Premium Advanced Filters Row */}
-            <div className="px-6 -mt-2 pb-0">
-              <div className="flex flex-nowrap overflow-x-auto md:flex-wrap md:overflow-x-visible gap-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-center w-full">
+            <div className="px-4 sm:px-6 -mt-2 pb-0">
+              <div className="flex flex-nowrap overflow-x-auto lg:flex-wrap lg:overflow-x-visible gap-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-center w-full">
                 {PREMIUM_FILTERS.map((f) => {
                   const isUserPremium = hasPremiumFeature(userProfile, 'advanced_filters');
                   const isActive = activePremiumFilters.includes(f.id) && isUserPremium;
@@ -2333,8 +2333,8 @@ export default function Home() {
             </div>
           </div>
         </header>
-        <main className={`flex-1 w-full pb-24 ${viewMode === 'list' ? 'overflow-y-auto' : 'overflow-hidden scroll-smooth'}`}>
-          <div className="max-w-7xl 2xl:max-w-[1536px] mx-auto w-full pt-2">
+        <main className={`flex-1 min-h-0 w-full ${viewMode === 'list' ? 'overflow-y-auto pb-bottom-nav-safe' : 'overflow-hidden scroll-smooth'}`}>
+          <div className="max-w-[1536px] mx-auto w-full pt-2">
             {viewMode === 'list' && (
               <div className="px-3 sm:px-6 mb-3 sm:mb-4">
                 <ActivaPulseHero 

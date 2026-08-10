@@ -143,7 +143,7 @@ export function PasswordResetUI({ oobCode, mode = 'resetPassword' }: PasswordRes
   };
 
   return (
-    <main className="min-h-dvh w-full bg-white dark:bg-neutral-950 flex flex-col items-center justify-start sm:justify-center px-4 py-8 sm:py-12 antialiased overflow-y-auto">
+    <main className="flex-1 min-h-0 w-full bg-white dark:bg-neutral-950 flex flex-col items-center justify-start sm:justify-center px-4 py-8 sm:py-12 antialiased overflow-y-auto">
       <div className="w-full max-w-[400px] flex flex-col items-center relative z-10 my-auto">
         
         {/* Logo Section */}

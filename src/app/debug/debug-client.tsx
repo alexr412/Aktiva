@@ -18,14 +18,14 @@ export default function DebugClient() {
 
   // Unautorisierter Zugriff blockieren
   if (authLoading) return (
-    <div className="flex h-screen items-center justify-center bg-neutral-950">
+    <div className="flex flex-1 min-h-0 w-full items-center justify-center bg-neutral-950">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
   );
 
   if (!user || userProfile?.role !== 'admin') {
     return (
-      <div className="flex h-screen flex-col items-center justify-center bg-neutral-950 p-6 text-center">
+      <div className="flex flex-1 min-h-0 w-full flex-col items-center justify-center bg-neutral-950 p-6 text-center">
         <XCircle className="h-16 w-16 text-red-500 mb-4" />
         <h1 className="">Zugriff Verweigert</h1>
         <p className="text-neutral-400 max-w-md">Diese Seite ist ausschließlich für Administratoren zur Veto-Diagnose reserviert.</p>
@@ -77,7 +77,7 @@ export default function DebugClient() {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto pb-32 pt-12 px-4 selection:bg-primary/30 relative bg-background/50">
+    <div className="flex-1 min-h-0 w-full overflow-y-auto pb-32 pt-12 px-4 selection:bg-primary/30 relative bg-background/50">
       <div className="max-w-5xl mx-auto">
         <header className="mb-12">
           <div className="flex items-center gap-3 mb-2">

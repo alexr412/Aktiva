@@ -142,7 +142,7 @@ export default function CheckoutPage() {
     // 4. Loading State Rendering
     if (loading || authLoading) {
         return (
-            <div className="flex h-screen items-center justify-center bg-slate-50">
+            <div className="flex flex-1 min-h-0 w-full items-center justify-center bg-slate-50">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
@@ -151,7 +151,7 @@ export default function CheckoutPage() {
     // 5. Activity Existence Guard
     if (!activity) {
         return (
-            <div className="p-10 text-center flex flex-col items-center justify-center min-h-screen bg-slate-50">
+            <div className="p-6 text-center flex flex-col items-center justify-center flex-1 min-h-0 w-full bg-slate-50 overflow-y-auto">
                 <Card className="w-full max-w-md border-none shadow-xl rounded-[2rem] p-8 bg-white text-center">
                     <h1 className="text-xl font-bold mb-2 text-slate-800">
                         {language === 'de' ? 'Aktivität nicht gefunden' : 'Activity Not Found'}
@@ -197,7 +197,7 @@ export default function CheckoutPage() {
     // Host booking prevention
     if (isHost) {
         return (
-            <div className="p-10 text-center flex flex-col items-center justify-center min-h-screen bg-slate-50">
+            <div className="p-6 text-center flex flex-col items-center justify-center flex-1 min-h-0 w-full bg-slate-50 overflow-y-auto">
                 <Card className="w-full max-w-md border-none shadow-xl rounded-[2rem] p-8 bg-white text-center">
                     <h1 className="text-xl font-bold mb-2 text-slate-800">
                         {language === 'de' ? 'Kauf nicht möglich' : 'Purchase Not Possible'}
@@ -216,7 +216,7 @@ export default function CheckoutPage() {
     // Double attendance prevention
     if (isParticipant) {
         return (
-            <div className="p-10 text-center flex flex-col items-center justify-center min-h-screen bg-slate-50">
+            <div className="p-6 text-center flex flex-col items-center justify-center flex-1 min-h-0 w-full bg-slate-50 overflow-y-auto">
                 <Card className="w-full max-w-md border-none shadow-xl rounded-[2rem] p-8 bg-white text-center">
                     <h1 className="text-xl font-bold mb-2 text-slate-800">
                         {language === 'de' ? 'Bereits beigetreten' : 'Already Joined'}
@@ -235,7 +235,7 @@ export default function CheckoutPage() {
     // Free event guard (Free events shouldn't use checkout)
     if (isFree) {
         return (
-            <div className="p-10 text-center flex flex-col items-center justify-center min-h-screen bg-slate-50">
+            <div className="p-6 text-center flex flex-col items-center justify-center flex-1 min-h-0 w-full bg-slate-50 overflow-y-auto">
                 <Card className="w-full max-w-md border-none shadow-xl rounded-[2rem] p-8 bg-white text-center">
                     <h1 className="text-xl font-bold mb-2 text-slate-800">
                         {language === 'de' ? 'Kostenlose Aktivität' : 'Free Activity'}
@@ -271,7 +271,7 @@ export default function CheckoutPage() {
         }
 
         return (
-            <div className="p-10 text-center flex flex-col items-center justify-center min-h-screen bg-slate-50">
+            <div className="p-6 text-center flex flex-col items-center justify-center flex-1 min-h-0 w-full bg-slate-50 overflow-y-auto">
                 <Card className="w-full max-w-md border-none shadow-xl rounded-[2rem] p-8 bg-white text-center">
                     <h1 className="text-xl font-bold mb-2 text-slate-800">{errorTitle}</h1>
                     <p className="text-sm text-slate-500 mb-6">{errorDesc}</p>
@@ -286,7 +286,7 @@ export default function CheckoutPage() {
     // Success Screen
     if (isSuccess) {
         return (
-            <div className="flex h-screen w-full items-center justify-center p-4 bg-emerald-50">
+            <div className="flex flex-1 min-h-0 w-full items-center justify-center p-4 bg-emerald-50 overflow-y-auto">
                 <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] text-center p-8 bg-white">
                     <div className="mx-auto bg-emerald-100 p-4 rounded-full w-fit mb-6 animate-in zoom-in-95 duration-500">
                         <CheckCircle2 className="h-12 w-12 text-emerald-600" />
@@ -311,7 +311,7 @@ export default function CheckoutPage() {
 
     // 7. Normal Checkout UI
     return (
-        <div className="flex h-screen w-full flex-col bg-slate-50 overflow-y-auto">
+        <div className="flex h-full w-full flex-col bg-slate-50 overflow-y-auto">
             <header className="flex h-16 shrink-0 items-center px-4 bg-white border-b border-slate-100 sticky top-0 z-10">
                 <Button 
                     variant="ghost" 

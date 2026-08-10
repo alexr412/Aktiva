@@ -435,8 +435,8 @@ export default function FavoritesPage() {
                     </div>
                 </header>
 
-                <main className="flex-1 overflow-y-auto pb-20">
-                    <div className="max-w-7xl mx-auto w-full p-4 sm:p-6">
+                <main className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
+                    <div className="max-w-[1536px] mx-auto w-full p-4 sm:p-6">
                         {/* 1. FAVORITES TAB */}
                         {activeTab === 'favorites' && !selectedCollectionId && (
                             favorites.length === 0 ? (

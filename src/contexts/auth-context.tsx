@@ -50,7 +50,7 @@ export const AuthContext = createContext<AuthContextType>({
 });
 
 const NotConfigured = () => (
-    <div className="flex h-screen w-full items-center justify-center p-6 bg-secondary">
+    <div className="flex h-dvh w-full items-center justify-center p-6 bg-secondary">
         <Card className="max-w-md">
             <CardHeader className='text-center items-center'>
                 <AlertTriangle className="h-10 w-10 text-destructive mb-2" />
@@ -82,7 +82,7 @@ const AccountStatusScreen = ({ profile }: { profile: UserProfile | null }) => {
   }
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center p-6 bg-slate-900 text-white text-center">
+    <div className="flex h-dvh w-full flex-col items-center justify-center p-6 bg-slate-900 text-white text-center">
       <div className="bg-red-500 p-6 rounded-full mb-8 shadow-2xl shadow-red-500/20 animate-pulse">
         <Ban className="h-16 w-16" />
       </div>
@@ -679,7 +679,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider value={contextValue}>
       {authInitializing ? (
-        <div className="flex items-center justify-center min-h-screen bg-white dark:bg-neutral-950">
+        <div className="flex h-dvh w-full items-center justify-center bg-white dark:bg-neutral-950">
           <Loader2 className="w-8 h-8 animate-spin text-[#10b981]" />
         </div>
       ) : (

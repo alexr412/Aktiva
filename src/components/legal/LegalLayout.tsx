@@ -16,7 +16,7 @@ export function LegalLayout({
   children
 }: LegalLayoutProps) {
   return (
-    <div className="flex flex-col h-full w-full bg-slate-50 dark:bg-neutral-950 overflow-y-auto pb-32">
+    <div className="flex flex-col h-full w-full bg-slate-50 dark:bg-neutral-950 overflow-y-auto pb-bottom-nav-safe">
       <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background/80 backdrop-blur-md px-4 shrink-0 shadow-sm">
         <Link 
           href="/" 

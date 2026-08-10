@@ -96,7 +96,7 @@ export function PlaceCard({
             onPointerCancel={() => setIsPressed(false)}
             onPointerLeave={() => setIsPressed(false)}
             className={cn(
-                "cursor-pointer group overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-[transform,box-shadow,border-color] duration-200 flex flex-col relative p-0 h-full",
+                "cursor-pointer group overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-[transform,box-shadow,border-color] duration-200 flex flex-col relative p-0 h-full w-full min-w-0",
                 isPressed ? "scale-[0.985] duration-75" : ""
             )}
         >
@@ -142,12 +142,12 @@ export function PlaceCard({
             </CategoryCardDecoration>
 
             {/* Content Bereich */}
-            <div className="p-3 pb-4 flex flex-col flex-1">
-                <div className="mb-2">
-                    <h3 className="text-base sm:text-lg font-black tracking-tight line-clamp-2 min-h-[2.5rem] leading-snug flex items-center gap-1.5 flex-wrap">
+            <div className="p-3 pb-4 flex flex-col flex-1 min-w-0">
+                <div className="mb-2 min-w-0">
+                    <h3 className="text-base sm:text-lg font-black tracking-tight line-clamp-2 min-h-[2.5rem] leading-snug flex items-center gap-1.5 flex-wrap min-w-0">
                         <button
                             onClick={(e) => { e.stopPropagation(); onClick(); }}
-                            className="font-black text-base text-left text-[#0f172a] dark:text-neutral-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+                            className="font-black text-base text-left text-[#0f172a] dark:text-neutral-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded truncate max-w-full"
                         >
                             {place.name || (role === 'admin' ? `POI POI Ref: ${place.id.slice(-6)}` : (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'))}
                         </button>
@@ -155,7 +155,7 @@ export function PlaceCard({
                             <Sparkles className="h-4 w-4 text-amber-500 fill-amber-500/20 shrink-0 animate-pulse" />
                         )}
                     </h3>
-                    <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px]">
+                    <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px] min-w-0">
                         {place.openingHours ? (
                             <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
                         ) : (
@@ -164,12 +164,12 @@ export function PlaceCard({
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1 mb-1">
+                <div className="flex flex-wrap gap-1 mb-1 max-w-full">
                     {processedTags.filter(item => item.isMain).map((item, index) => (
                         <Badge
                             key={index}
                             variant="secondary"
-                            className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-primary/5 text-primary"
+                            className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-primary/5 text-primary max-w-full truncate"
                         >
                             {translateTag(item.tag, language)}
                         </Badge>
@@ -178,7 +178,7 @@ export function PlaceCard({
                         (place.categories || []).map((tag: string, idx: number) => (
                             <span
                                 key={`${tag}-${idx}`}
-                                className="px-2 py-0.5 text-[8px] font-mono bg-neutral-50 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 rounded-[10px] border border-neutral-100 dark:border-neutral-800 whitespace-nowrap"
+                                className="px-2 py-0.5 text-[8px] font-mono bg-neutral-50 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 rounded-[10px] border border-neutral-100 dark:border-neutral-800 whitespace-nowrap max-w-full truncate"
                             >
                                 {tag}
                             </span>
@@ -187,14 +187,14 @@ export function PlaceCard({
                 </div>
 
                 {/* Footer Actions - Einheitliche Zeile */}
-                <div className="flex items-center gap-2 mt-auto">
-                    <div className="flex items-center bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-0.5 gap-0.5 border border-neutral-100 dark:border-neutral-800">
+                <div className="flex items-center justify-between gap-1.5 sm:gap-2 mt-auto pt-2 max-w-full">
+                    <div className="flex items-center bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-0.5 gap-0.5 border border-neutral-100 dark:border-neutral-800 shrink-0">
                         <button
                             onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
                             aria-pressed={userVote === 'up'}
                             className={cn(
                                 "h-7 rounded-xl flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-                                (role === 'admin' || role === 'supporter') ? "px-2" : "w-7",
+                                (role === 'admin' || role === 'supporter') ? "px-1.5 sm:px-2" : "w-7",
                                 userVote === 'up'
                                     ? "bg-emerald-600 text-white border border-emerald-500 shadow-md shadow-emerald-500/25 scale-[1.04] active:scale-95"
                                     : "bg-transparent text-emerald-600/50 dark:text-emerald-400/50 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent active:scale-95"
@@ -213,7 +213,7 @@ export function PlaceCard({
                             aria-pressed={userVote === 'down'}
                             className={cn(
                                 "h-7 rounded-xl flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
-                                (role === 'admin' || role === 'supporter') ? "px-2" : "w-7",
+                                (role === 'admin' || role === 'supporter') ? "px-1.5 sm:px-2" : "w-7",
                                 userVote === 'down'
                                     ? "bg-rose-600 text-white border border-rose-500 shadow-md shadow-rose-500/25 scale-[1.04] active:scale-95"
                                     : "bg-transparent text-rose-600/50 dark:text-rose-400/50 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 border border-transparent active:scale-95"
@@ -228,25 +228,27 @@ export function PlaceCard({
                         </button>
                     </div>
 
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleBookmarkToggle}
-                        className={cn(
-                            "h-8 w-8 rounded-xl transition-colors duration-200 ml-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                            isFavorite ? "text-primary bg-primary/10" : "text-neutral-300 hover:text-primary hover:bg-primary/5"
-                        )}
-                    >
-                        <Bookmark className={cn("h-4 w-4 transition-colors duration-200", isFavorite && "fill-primary")} />
-                    </Button>
+                    <div className="flex items-center gap-1 shrink-0 ml-auto">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleBookmarkToggle}
+                            className={cn(
+                                "h-7 w-7 sm:h-8 sm:w-8 rounded-xl transition-colors duration-200 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                                isFavorite ? "text-primary bg-primary/10" : "text-neutral-300 hover:text-primary hover:bg-primary/5"
+                            )}
+                        >
+                            <Bookmark className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4 transition-colors duration-200", isFavorite && "fill-primary")} />
+                        </Button>
 
-                    <Button
-                        size="icon"
-                        onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
-                        className="h-8 w-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-[color,background-color,transform,box-shadow] duration-200 active:scale-95 flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                    >
-                        <Plus className="h-4 w-4" strokeWidth={3} />
-                    </Button>
+                        <Button
+                            size="icon"
+                            onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
+                            className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-[color,background-color,transform,box-shadow] duration-200 active:scale-95 flex items-center justify-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                        >
+                            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={3} />
+                        </Button>
+                    </div>
                 </div>
             </div>
         </article>

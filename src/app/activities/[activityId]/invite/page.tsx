@@ -243,7 +243,7 @@ export default async function ActivityInvitePage({ params, searchParams }: Props
   const joinUrl = `/activities/${activityId}${referralCode ? `?ref=${referralCode}` : ''}`;
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden select-none">
+    <div className="flex-1 min-h-0 w-full bg-[#0f172a] text-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-y-auto select-none">
       {/* Background blobs for rich aesthetics */}
       <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-violet-600/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-emerald-600/10 blur-[120px] pointer-events-none" />

@@ -26,7 +26,7 @@ export default function BlockedUsersPage() {
 
     if (authLoading || !user || (userProfile && userProfile.onboardingCompleted === false)) {
         return (
-            <div className="flex h-screen w-screen items-center justify-center bg-background">
+            <div className="flex flex-1 min-h-0 w-full items-center justify-center bg-background">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
@@ -35,7 +35,7 @@ export default function BlockedUsersPage() {
     const blockedCount = (userProfile?.blacklist?.hard?.length || 0) + (userProfile?.blacklist?.soft?.length || 0);
 
     return (
-        <div className="flex flex-col h-full w-full bg-secondary overflow-y-auto pb-32">
+        <div className="flex flex-col h-full w-full bg-secondary overflow-y-auto pb-bottom-nav-safe">
             <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-background px-4 shrink-0">
                 <Button variant="ghost" size="icon" className="mr-2" onClick={() => router.back()} aria-label={language === 'de' ? 'Zurück' : 'Back'}>
                     <ArrowLeft />

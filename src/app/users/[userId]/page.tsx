@@ -291,7 +291,7 @@ export default function UserProfilePage() {
     
     if (isBlockedOrUnavailable) {
         return (
-            <div className="flex h-screen flex-col items-center justify-center p-6 text-center">
+            <div className="flex flex-1 min-h-0 w-full flex-col items-center justify-center p-6 text-center overflow-y-auto">
                 <h1 className="text-xl font-bold mb-2">
                     {language === 'de' ? 'Profil nicht verfügbar' : 'Profile Not Available'}
                 </h1>
@@ -307,7 +307,7 @@ export default function UserProfilePage() {
 
     if (!userData) {
          return (
-            <div className="flex h-screen flex-col items-center justify-center p-6 text-center">
+            <div className="flex flex-1 min-h-0 w-full flex-col items-center justify-center p-6 text-center overflow-y-auto">
                 <h1 className="text-xl font-bold mb-2">
                     {language === 'de' ? 'Nutzer nicht gefunden' : 'User Not Found'}
                 </h1>
@@ -393,7 +393,7 @@ export default function UserProfilePage() {
     const currentActivities = visibleActivities.filter(a => a.status !== 'completed');
 
     return (
-        <div className="flex flex-col h-full bg-background overflow-y-auto pb-20">
+        <div className="flex flex-col h-full w-full bg-background overflow-y-auto pb-bottom-nav-safe">
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background/80 px-4 backdrop-blur-sm">
                 <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()} aria-label={language === 'de' ? 'Zurück' : 'Back'}>
                     <ArrowLeft />

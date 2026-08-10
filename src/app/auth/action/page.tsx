@@ -12,7 +12,7 @@ import { motion } from 'framer-motion';
 export default function AuthActionPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-dvh w-full flex items-center justify-center bg-white dark:bg-neutral-950">
+      <div className="flex-1 min-h-0 w-full flex items-center justify-center bg-white dark:bg-neutral-950">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
       </div>
     }>
@@ -79,7 +79,7 @@ function AuthActionContent() {
   // 2. Modus: verifyEmail oder recoverEmail
   if (mode === 'verifyEmail' || mode === 'recoverEmail') {
     return (
-      <main className="min-h-dvh w-full bg-white dark:bg-neutral-950 flex flex-col items-center justify-center px-4 py-8 sm:py-12 antialiased">
+      <main className="flex-1 min-h-0 w-full bg-white dark:bg-neutral-950 flex flex-col items-center justify-start sm:justify-center px-4 py-8 sm:py-12 antialiased overflow-y-auto">
         <div className="w-full max-w-[400px] flex flex-col items-center my-auto">
           {/* Logo Section */}
           <motion.div 
@@ -175,7 +175,7 @@ function AuthActionContent() {
 
   // 3. Unbekannter oder fehlender mode
   return (
-    <main className="min-h-dvh w-full bg-white dark:bg-neutral-950 flex flex-col items-center justify-center px-4 py-8 sm:py-12 antialiased">
+    <main className="flex-1 min-h-0 w-full bg-white dark:bg-neutral-950 flex flex-col items-center justify-start sm:justify-center px-4 py-8 sm:py-12 antialiased overflow-y-auto">
       <div className="w-full max-w-[400px] flex flex-col items-center my-auto">
         <motion.div 
           initial={{ opacity: 0, y: -10 }}

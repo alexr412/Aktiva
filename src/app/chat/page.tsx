@@ -199,8 +199,8 @@ export default function ChatPage() {
 
               {/* Text Content */}
               <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start mb-1">
-                  <h3 className="text-base font-black text-[#0f172a] dark:text-neutral-100 truncate pr-2 font-heading tracking-tight leading-none pt-0.5">
+                <div className="flex justify-between items-start mb-1 gap-2 min-w-0">
+                  <h3 className="text-base font-black text-[#0f172a] dark:text-neutral-100 truncate pr-2 font-heading tracking-tight leading-none pt-0.5 flex-1 min-w-0">
                     {chatName}
                   </h3>
                   {chat.lastMessage?.sentAt && (
@@ -232,15 +232,15 @@ export default function ChatPage() {
                   ) : (language === 'de' ? 'Erste Nachricht senden' : 'Send first message')}
                 </p>
 
-                <div className="flex items-center justify-between">
-                   <div className="text-[9px] font-bold px-2.5 py-1 rounded-full"
+                <div className="flex items-center justify-between gap-2">
+                   <div className="text-[9px] font-bold px-2.5 py-1 rounded-full truncate max-w-full"
                    style={{ color: displayColor, backgroundColor: displayColor + '15' }}
                    >
                      {isDM ? formatLabel(language === 'de' ? 'Person' : 'Person') : formatLabel(primaryStyle?.label || (language === 'de' ? 'Interessanter Ort' : 'Place of Interest'))}
                    </div>
 
                     {hasUnread && (
-                        <div className="bg-emerald-500 text-white text-[10px] font-black min-w-[20px] h-5 rounded-full flex items-center justify-center px-1 shadow-lg shadow-emerald-500/20">
+                        <div className="bg-emerald-500 text-white text-[10px] font-black min-w-[20px] h-5 rounded-full flex items-center justify-center px-1 shadow-lg shadow-emerald-500/20 shrink-0">
                             {unreadCount}
                         </div>
                     )}
@@ -255,14 +255,14 @@ export default function ChatPage() {
 
   return (
     <>
-      <div className="flex h-full flex-col bg-[#fcfcfb] dark:bg-neutral-950">
+      <div className="flex h-full w-full flex-col bg-[#fcfcfb] dark:bg-neutral-950 overflow-hidden">
           <header className="global-viewport-header compact pb-3">
             <div className="global-header-container mb-3.5">
-              <div className="flex items-center gap-2">
-                <h1 className="text-[22px] font-black tracking-tight text-slate-900 dark:text-neutral-100">Chats</h1>
-                <MessageCircle className="h-5 w-5 text-violet-400 fill-current opacity-30" />
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="text-[22px] font-black tracking-tight text-slate-900 dark:text-neutral-100 truncate">Chats</h1>
+                <MessageCircle className="h-5 w-5 text-violet-400 fill-current opacity-30 shrink-0" />
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
                 <div className="relative">
                     <Button 
                         variant="ghost" 
@@ -288,7 +288,7 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <div className="px-6 space-y-3">
+            <div className="px-4 sm:px-6 space-y-3">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
                     <Input 
@@ -323,7 +323,7 @@ export default function ChatPage() {
             </div>
           </header>
           
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
               {renderContent()}
           </div>
       </div>

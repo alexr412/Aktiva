@@ -162,7 +162,7 @@ export default function OnboardingPage() {
   }, []);
 
   if (!mounted) {
-    return <div className="min-h-screen bg-white" />;
+    return <div className="h-full w-full bg-white" />;
   }
 
   return <OnboardingContent />;
@@ -674,7 +674,7 @@ function OnboardingContent() {
   return (
     <div
       data-onboarding-scroll-root
-      className="fixed inset-0 z-50 h-dvh w-screen overflow-y-scroll overflow-x-hidden bg-white overscroll-contain antialiased"
+      className="fixed inset-0 z-50 h-dvh w-full overflow-y-scroll overflow-x-hidden bg-white overscroll-contain antialiased"
     >
       <div className="mx-auto flex min-h-full w-full max-w-md flex-col px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] md:max-w-lg">
         {/* Progressbar */}
