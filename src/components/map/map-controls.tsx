@@ -38,7 +38,7 @@ export function MapControls({
       </div>
 
       {/* Right Controls: Zoom & Location Recenter */}
-      <div className="flex flex-col items-end gap-2 pointer-events-auto self-end mt-auto mb-16 md:mb-4">
+      <div className="flex flex-col items-end gap-2 pointer-events-auto self-end mt-auto mb-bottom-nav-safe lg:mb-4">
         {/* Recenter button */}
         <Button
           type="button"

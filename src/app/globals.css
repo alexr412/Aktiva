@@ -30,6 +30,9 @@
     --primary: 160 84% 39%;
     --primary-foreground: 0 0% 100%;
     --ring: 160 84% 39%;
+
+    /* Bottom Navigation Single Source of Truth */
+    --bottom-nav-height: 66px;
   }
 
   .dark {
@@ -305,7 +308,10 @@
     margin-top: env(safe-area-inset-top, 0px);
   }
   .pb-bottom-nav-safe {
-    padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  }
+  .mb-bottom-nav-safe {
+    margin-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
   }
 }
 

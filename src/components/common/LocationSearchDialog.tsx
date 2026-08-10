@@ -131,7 +131,7 @@ export function LocationSearchDialog({
             'bg-white dark:bg-neutral-950 flex flex-col outline-none shadow-2xl overflow-hidden',
             'rounded-[24px]',
             'border border-slate-200/80 dark:border-neutral-800/80',
-            'p-6 sm:p-7 max-h-[85vh]',
+            'p-6 sm:p-7 max-h-[85dvh]',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             'data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95',

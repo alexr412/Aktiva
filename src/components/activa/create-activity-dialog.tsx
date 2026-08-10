@@ -368,7 +368,7 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-[2.5rem] p-0 sm:max-w-md mx-auto h-[92vh] flex flex-col bg-background border-none shadow-2xl overflow-hidden">
+      <SheetContent side="bottom" className="rounded-t-[2.5rem] p-0 sm:max-w-md mx-auto h-[92dvh] max-h-[92dvh] flex flex-col bg-background border-none shadow-2xl overflow-hidden">
         <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-muted/50" />
         
         <SheetHeader className="pt-10 px-6 pb-2 text-center items-center shrink-0">

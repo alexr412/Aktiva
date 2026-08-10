@@ -62,8 +62,8 @@ export function MapResultSheet({
   return (
     <div
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-30 transition-all duration-300 pointer-events-none pb-safe mb-16 md:mb-0',
-        selectedEntity ? 'h-auto max-h-[80vh]' : snapState === 'collapsed' ? 'h-16' : snapState === 'half' ? 'h-[45vh]' : 'h-[85vh]',
+        'fixed bottom-0 left-0 right-0 z-30 transition-all duration-300 pointer-events-none mb-bottom-nav-safe lg:mb-0',
+        selectedEntity ? 'h-auto max-h-[80dvh]' : snapState === 'collapsed' ? 'h-16' : snapState === 'half' ? 'h-[45dvh]' : 'h-[85dvh]',
         className
       )}
     >

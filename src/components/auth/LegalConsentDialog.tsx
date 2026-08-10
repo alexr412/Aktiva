@@ -134,7 +134,7 @@ export function LegalConsentDialog({
         }}
       >
         <DialogContent 
-          className="sm:max-w-md rounded-[2.5rem] border-none shadow-2xl p-8 bg-white dark:bg-neutral-950 z-[999]"
+          className="sm:max-w-md w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden rounded-[2.5rem] border-none shadow-2xl p-6 sm:p-8 bg-white dark:bg-neutral-950 z-[999]"
           hideCloseButton={true}
           onPointerDownOutside={(e) => {
             
@@ -149,7 +149,7 @@ export function LegalConsentDialog({
             e.preventDefault();
           }}
         >
-          <DialogHeader className="space-y-4">
+          <DialogHeader className="space-y-4 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
                 <Shield className="w-6 h-6 text-primary" />
@@ -167,7 +167,7 @@ export function LegalConsentDialog({
             </div>
           </DialogHeader>
 
-          <div className="space-y-4 my-6">
+          <div className="space-y-4 my-4 flex-1 min-h-0 overflow-y-auto pr-1">
             <div className="flex items-center space-x-3 space-y-0">
               <input 
                 type="checkbox" 
@@ -261,7 +261,7 @@ export function LegalConsentDialog({
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 mt-6">
+          <div className="flex flex-col gap-2 sm:gap-3 mt-auto shrink-0 pt-3 border-t border-slate-100 dark:border-neutral-800">
             <Button
               type="button"
               onClick={() => {
@@ -269,7 +269,7 @@ export function LegalConsentDialog({
                 onAccept();
               }}
               disabled={!allAccepted}
-              className="w-full h-14 rounded-full font-black uppercase tracking-widest transition-all"
+              className="w-full h-12 sm:h-14 rounded-full font-black uppercase tracking-widest transition-all"
             >
               {language === 'de' ? 'Zustimmen und Weiter' : 'Agree and Continue'}
             </Button>
@@ -280,7 +280,7 @@ export function LegalConsentDialog({
                 
                 onDecline();
               }}
-              className="w-full h-14 rounded-full text-slate-500 font-black uppercase tracking-widest hover:bg-slate-100 transition-all"
+              className="w-full h-10 sm:h-12 rounded-full text-slate-500 font-black uppercase tracking-widest hover:bg-slate-100 transition-all text-xs"
             >
               {language === 'de' ? 'Ablehnen' : 'Decline'}
             </Button>
