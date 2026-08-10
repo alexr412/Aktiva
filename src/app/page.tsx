@@ -2353,16 +2353,19 @@ export default function Home() {
           </div>
         </main>
       </div>
+
 <div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500">
   <Button
     variant="ghost"
     size="icon"
-    className="h-14 w-14 rounded-full bg-primary/70 backdrop-blur-md border border-white/30 text-white hover:text-white hover:bg-primary/80 hover:border-white/40 shadow-lg shadow-emerald-950/20 transition-all duration-200 hover:scale-105 active:scale-95"
+    className="h-14 w-14 rounded-full bg-primary/85 backdrop-blur-md border border-white/40 text-white hover:text-white hover:bg-primary/95 shadow-xl shadow-emerald-950/20 transition-all duration-200 hover:scale-105 active:scale-95"
     onClick={handleOpenCustomActivityModal}
   >
     <Plus className="h-7 w-7 text-white" strokeWidth={2.5} />
   </Button>
-</div>      {isMobile ? (
+</div>
+
+      {isMobile ? (
         <Sheet open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}><SheetContent side="bottom" className="p-0 h-[92vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none" hideCloseButton><SheetHeader className="sr-only"><SheetTitle>{selectedPlace?.name}</SheetTitle></SheetHeader><div className="h-full w-full">{selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} onCreateActivity={() => setActivityModalPlace(selectedPlace)} />}</div></SheetContent></Sheet>
       ) : (
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}><DialogContent className="p-0 w-full max-w-4xl h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] sm:h-[88vh] sm:max-h-[88vh] flex flex-col min-h-0 gap-0 overflow-hidden border-none outline-none rounded-none sm:rounded-[2.5rem] dark:bg-neutral-900" hideCloseButton><DialogTitle className="sr-only">{selectedPlace?.name || (language === 'de' ? 'Ort Details' : 'Place Details')}</DialogTitle><DialogDescription className="sr-only">{language === 'de' ? 'Details zum ausgewählten Ort' : 'Details about the selected place'}</DialogDescription>{selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} onCreateActivity={() => setActivityModalPlace(selectedPlace)} />}</DialogContent></Dialog>
