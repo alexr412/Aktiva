@@ -571,8 +571,12 @@ export const respondToJoinRequest = onCall(async (request) => {
         throw new HttpsError('failed-precondition', 'User is banned.');
       }
 
-      // 4. Verify if already participant
+      // 4. Verify if already participant or kicked
       const participantIds = activity.participantIds || [];
+      const kickedUserIds = activity.kickedUserIds || [];
+      if (kickedUserIds.includes(userIdToJoin)) {
+        throw new HttpsError('permission-denied', 'User was removed from this activity and cannot rejoin.');
+      }
       if (participantIds.includes(userIdToJoin)) {
         // If already joined, we should resolve/delete the request to maintain idempotency
         transaction.delete(notifRef);
@@ -749,6 +753,10 @@ export const secureRequestJoinActivity = onCall(async (request) => {
       }
 
       const participantIds = activity.participantIds || [];
+      const kickedUserIds = activity.kickedUserIds || [];
+      if (kickedUserIds.includes(requesterId)) {
+        throw new HttpsError('permission-denied', 'You have been removed from this activity and cannot rejoin.');
+      }
       if (participantIds.includes(requesterId)) {
         throw new HttpsError('already-exists', 'You are already a participant of this activity.');
       }
@@ -837,5 +845,103 @@ export const secureRequestJoinActivity = onCall(async (request) => {
       throw error;
     }
     throw new HttpsError('internal', error.message || 'Internal error requesting to join activity.');
+  }
+});
+
+/**
+ * HTTPS Callable: Entfernt einen Teilnehmer aus einer Aktivität (durch den Host/Admin).
+ */
+export const kickParticipant = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  }
+
+  const callerId = request.auth.uid;
+  const { activityId, targetUserId } = request.data;
+
+  if (typeof activityId !== 'string' || !activityId || typeof targetUserId !== 'string' || !targetUserId) {
+    throw new HttpsError('invalid-argument', 'Missing or invalid required arguments.');
+  }
+
+  const db = admin.firestore();
+
+  try {
+    const result = await db.runTransaction(async (transaction) => {
+      // 1. Get activity doc
+      const activityRef = db.collection('activities').doc(activityId);
+      const activitySnap = await transaction.get(activityRef);
+      if (!activitySnap.exists) {
+        throw new HttpsError('not-found', 'Activity not found.');
+      }
+      const activity = activitySnap.data()!;
+
+      // 2. Check host authorization
+      const isHost = activity.hostId === callerId;
+      if (!isHost) {
+        throw new HttpsError('permission-denied', 'Only the activity host can remove participants.');
+      }
+
+      // 3. Prevent removing host
+      if (targetUserId === activity.hostId) {
+        throw new HttpsError('failed-precondition', 'The activity host cannot be removed.');
+      }
+
+      // 4. Verify target is a participant
+      const participantIds: string[] = activity.participantIds || [];
+      if (!participantIds.includes(targetUserId)) {
+        throw new HttpsError('failed-precondition', 'Target user is not a participant of this activity.');
+      }
+
+      // 5. Update activity document
+      const updatedParticipantIds = participantIds.filter(id => id !== targetUserId);
+      const currentPreview = activity.participantsPreview || [];
+      const updatedPreview = currentPreview.filter((p: any) => p.uid !== targetUserId);
+
+      transaction.update(activityRef, {
+        participantIds: updatedParticipantIds,
+        participantsPreview: updatedPreview,
+        [`participantDetails.${targetUserId}`]: FieldValue.delete(),
+        kickedUserIds: FieldValue.arrayUnion(targetUserId),
+        lastInteractionAt: FieldValue.serverTimestamp()
+      });
+
+      // 6. Update chat document if present
+      const chatRef = db.collection('chats').doc(activityId);
+      const chatSnap = await transaction.get(chatRef);
+      if (chatSnap.exists) {
+        transaction.update(chatRef, {
+          participantIds: FieldValue.arrayRemove(targetUserId),
+          [`participantDetails.${targetUserId}`]: FieldValue.delete(),
+          [`unreadCount.${targetUserId}`]: FieldValue.delete()
+        });
+      }
+
+      // 7. Delete subcollection document activities/{activityId}/participants/{targetUserId}
+      const pSubRef = activityRef.collection('participants').doc(targetUserId);
+      transaction.delete(pSubRef);
+
+      // 8. Create notification for kicked user
+      const notifRef = db.collection('notifications').doc();
+      transaction.set(notifRef, {
+        recipientId: targetUserId,
+        senderId: 'system',
+        type: 'participant_kicked',
+        title: 'Aus Aktivität entfernt',
+        message: `Du wurdest aus der Aktivität "${activity.placeName || activity.title || 'Aktivität'}" entfernt.`,
+        isRead: false,
+        createdAt: FieldValue.serverTimestamp(),
+        activityId: activityId
+      });
+
+      return { success: true };
+    });
+
+    return result;
+  } catch (error: any) {
+    console.error('Error in kickParticipant:', error);
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    throw new HttpsError('internal', error.message || 'Internal error removing participant.');
   }
 });

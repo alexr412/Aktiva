@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.secureRequestJoinActivity = exports.respondToJoinRequest = exports.notifyNearbyUsers = exports.onActivityUpdated = exports.onActivityCreated = void 0;
+exports.kickParticipant = exports.secureRequestJoinActivity = exports.respondToJoinRequest = exports.notifyNearbyUsers = exports.onActivityUpdated = exports.onActivityCreated = void 0;
 const firestore_1 = require("firebase-functions/v2/firestore");
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
@@ -502,8 +502,12 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
             if (userProfile.isBanned) {
                 throw new https_1.HttpsError('failed-precondition', 'User is banned.');
             }
-            // 4. Verify if already participant
+            // 4. Verify if already participant or kicked
             const participantIds = activity.participantIds || [];
+            const kickedUserIds = activity.kickedUserIds || [];
+            if (kickedUserIds.includes(userIdToJoin)) {
+                throw new https_1.HttpsError('permission-denied', 'User was removed from this activity and cannot rejoin.');
+            }
             if (participantIds.includes(userIdToJoin)) {
                 // If already joined, we should resolve/delete the request to maintain idempotency
                 transaction.delete(notifRef);
@@ -658,6 +662,10 @@ exports.secureRequestJoinActivity = (0, https_1.onCall)(async (request) => {
                 throw new https_1.HttpsError('failed-precondition', 'You cannot request to join your own activity.');
             }
             const participantIds = activity.participantIds || [];
+            const kickedUserIds = activity.kickedUserIds || [];
+            if (kickedUserIds.includes(requesterId)) {
+                throw new https_1.HttpsError('permission-denied', 'You have been removed from this activity and cannot rejoin.');
+            }
             if (participantIds.includes(requesterId)) {
                 throw new https_1.HttpsError('already-exists', 'You are already a participant of this activity.');
             }
@@ -734,6 +742,90 @@ exports.secureRequestJoinActivity = (0, https_1.onCall)(async (request) => {
             throw error;
         }
         throw new https_1.HttpsError('internal', error.message || 'Internal error requesting to join activity.');
+    }
+});
+/**
+ * HTTPS Callable: Entfernt einen Teilnehmer aus einer Aktivität (durch den Host/Admin).
+ */
+exports.kickParticipant = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'User must be authenticated.');
+    }
+    const callerId = request.auth.uid;
+    const { activityId, targetUserId } = request.data;
+    if (typeof activityId !== 'string' || !activityId || typeof targetUserId !== 'string' || !targetUserId) {
+        throw new https_1.HttpsError('invalid-argument', 'Missing or invalid required arguments.');
+    }
+    const db = admin.firestore();
+    try {
+        const result = await db.runTransaction(async (transaction) => {
+            // 1. Get activity doc
+            const activityRef = db.collection('activities').doc(activityId);
+            const activitySnap = await transaction.get(activityRef);
+            if (!activitySnap.exists) {
+                throw new https_1.HttpsError('not-found', 'Activity not found.');
+            }
+            const activity = activitySnap.data();
+            // 2. Check host authorization
+            const isHost = activity.hostId === callerId;
+            if (!isHost) {
+                throw new https_1.HttpsError('permission-denied', 'Only the activity host can remove participants.');
+            }
+            // 3. Prevent removing host
+            if (targetUserId === activity.hostId) {
+                throw new https_1.HttpsError('failed-precondition', 'The activity host cannot be removed.');
+            }
+            // 4. Verify target is a participant
+            const participantIds = activity.participantIds || [];
+            if (!participantIds.includes(targetUserId)) {
+                throw new https_1.HttpsError('failed-precondition', 'Target user is not a participant of this activity.');
+            }
+            // 5. Update activity document
+            const updatedParticipantIds = participantIds.filter(id => id !== targetUserId);
+            const currentPreview = activity.participantsPreview || [];
+            const updatedPreview = currentPreview.filter((p) => p.uid !== targetUserId);
+            transaction.update(activityRef, {
+                participantIds: updatedParticipantIds,
+                participantsPreview: updatedPreview,
+                [`participantDetails.${targetUserId}`]: firestore_2.FieldValue.delete(),
+                kickedUserIds: firestore_2.FieldValue.arrayUnion(targetUserId),
+                lastInteractionAt: firestore_2.FieldValue.serverTimestamp()
+            });
+            // 6. Update chat document if present
+            const chatRef = db.collection('chats').doc(activityId);
+            const chatSnap = await transaction.get(chatRef);
+            if (chatSnap.exists) {
+                transaction.update(chatRef, {
+                    participantIds: firestore_2.FieldValue.arrayRemove(targetUserId),
+                    [`participantDetails.${targetUserId}`]: firestore_2.FieldValue.delete(),
+                    [`unreadCount.${targetUserId}`]: firestore_2.FieldValue.delete()
+                });
+            }
+            // 7. Delete subcollection document activities/{activityId}/participants/{targetUserId}
+            const pSubRef = activityRef.collection('participants').doc(targetUserId);
+            transaction.delete(pSubRef);
+            // 8. Create notification for kicked user
+            const notifRef = db.collection('notifications').doc();
+            transaction.set(notifRef, {
+                recipientId: targetUserId,
+                senderId: 'system',
+                type: 'participant_kicked',
+                title: 'Aus Aktivität entfernt',
+                message: `Du wurdest aus der Aktivität "${activity.placeName || activity.title || 'Aktivität'}" entfernt.`,
+                isRead: false,
+                createdAt: firestore_2.FieldValue.serverTimestamp(),
+                activityId: activityId
+            });
+            return { success: true };
+        });
+        return result;
+    }
+    catch (error) {
+        console.error('Error in kickParticipant:', error);
+        if (error instanceof https_1.HttpsError) {
+            throw error;
+        }
+        throw new https_1.HttpsError('internal', error.message || 'Internal error removing participant.');
     }
 });
 //# sourceMappingURL=activities.js.map

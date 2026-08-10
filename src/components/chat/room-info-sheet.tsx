@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 import { formatDistance } from '@/lib/geo-utils';
-import { leaveActivity } from '@/lib/firebase/firestore';
+import { leaveActivity, removeParticipant } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { format, isToday } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
@@ -35,7 +35,7 @@ import {
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Copy, Check, ExternalLink, Share2, LogOut, Trash2, Users, Calendar, Info, X } from 'lucide-react';
+import { Copy, Check, ExternalLink, Share2, LogOut, Trash2, Users, Calendar, Info, X, UserMinus } from 'lucide-react';
 import type { Chat, Activity, Place } from '@/lib/types';
 
 interface RoomInfoSheetProps {
@@ -66,7 +66,10 @@ export function RoomInfoSheet({
   const [copied, setCopied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isActing, setIsActing] = useState(false);
+  const [isKicking, setIsKicking] = useState(false);
+  const [participantToKick, setParticipantToKick] = useState<{ uid: string; displayName: string } | null>(null);
 
+  const { userProfile } = useAuth();
   const language = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
@@ -192,7 +195,6 @@ export function RoomInfoSheet({
   };
 
   // Raum teilen
-  const { userProfile } = useAuth();
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -282,6 +284,30 @@ export function RoomInfoSheet({
         setIsActing(false);
       }
     }, 500);
+  };
+
+  const handleKickParticipant = async (targetUid: string) => {
+    const actId = activity?.id || chat?.activityId || chat?.id;
+    if (!actId || !targetUid) return;
+    if (isKicking) return;
+    setIsKicking(true);
+    try {
+      await removeParticipant(actId, targetUid);
+      toast({
+        title: language === 'de' ? 'Teilnehmer entfernt' : 'Participant removed',
+        description: language === 'de' ? 'Der Teilnehmer wurde erfolgreich aus der Aktivität und dem Chat entfernt.' : 'Participant was successfully removed from activity and chat.',
+      });
+    } catch (error: any) {
+      console.error('Kick participant failed:', error);
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? 'Fehler' : 'Error',
+        description: error.message || (language === 'de' ? 'Entfernen fehlgeschlagen.' : 'Removal failed.'),
+      });
+    } finally {
+      setIsKicking(false);
+      setParticipantToKick(null);
+    }
   };
 
   // Teilnehmer-Liste vorbereiten
@@ -484,6 +510,18 @@ export function RoomInfoSheet({
                               Host
                             </span>
                           )}
+                          {((activity?.hostId === currentUserId || chat?.hostId === currentUserId) && !isUserHost && !isCurrentUser) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={isKicking}
+                              onClick={() => setParticipantToKick({ uid, displayName: p.displayName || 'Nutzer' })}
+                              className="h-7 px-2 rounded-lg text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                            >
+                              <UserMinus className="h-3 w-3 mr-1" />
+                              {language === 'de' ? 'Entfernen' : 'Remove'}
+                            </Button>
+                          )}
                           <MemberFriendActionButton
                             targetUserId={uid}
                             currentUserId={currentUserId || ''}
@@ -597,6 +635,32 @@ export function RoomInfoSheet({
           </div>
         </ScrollArea>
       </SheetContent>
+
+      <AlertDialog open={!!participantToKick} onOpenChange={(open) => !open && setParticipantToKick(null)}>
+        <AlertDialogContent className="rounded-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === 'de' ? 'Teilnehmer entfernen?' : 'Remove participant?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === 'de'
+                ? `Möchtest du ${participantToKick?.displayName || 'diesen Teilnehmer'} wirklich aus der Aktivität und dem zugehörigen Gruppenchat entfernen? Der Nutzer kann danach nicht mehr beitreten.`
+                : `Are you sure you want to remove ${participantToKick?.displayName || 'this participant'} from the activity and associated chat? The user will not be able to rejoin.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">
+              {language === 'de' ? 'Abbrechen' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => participantToKick && handleKickParticipant(participantToKick.uid)}
+              className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl"
+            >
+              {language === 'de' ? 'Teilnehmer entfernen' : 'Remove participant'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }

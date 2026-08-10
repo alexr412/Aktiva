@@ -5,11 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { joinActivity, cancelActivity, leaveActivity, getPublicProfileClient } from '@/lib/firebase/firestore';
+import { joinActivity, cancelActivity, leaveActivity, removeParticipant, getPublicProfileClient } from '@/lib/firebase/firestore';
 import type { Activity, Place } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star, MessageSquare, CreditCard, Camera, Ban, AlertTriangle, Clock, Flame, Heart, ShieldCheck, UserCircle, HelpCircle, CheckCircle, ChevronDown, ChevronUp, UserPlus } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Calendar, MapPin, Share2, Crown, Star, MessageSquare, CreditCard, Camera, Ban, AlertTriangle, Clock, Flame, Heart, ShieldCheck, UserCircle, HelpCircle, CheckCircle, ChevronDown, ChevronUp, UserPlus, UserMinus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -66,6 +66,8 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const [isJoining, setIsJoining] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isKicking, setIsKicking] = useState(false);
+  const [participantToKick, setParticipantToKick] = useState<{ uid: string; displayName: string } | null>(null);
   const [hasRequested, setHasRequested] = useState(false);
   const [isTicketExpanded, setIsTicketExpanded] = useState(false);
 
@@ -232,6 +234,36 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
       toast({ variant: 'destructive', title: language === 'de' ? "Fehler" : "Error", description: error.message });
     } finally {
       setIsLeaving(false);
+    }
+  };
+
+  const handleKickParticipant = async (targetUid: string) => {
+    if (!activity?.id || !targetUid) return;
+    if (isKicking) return;
+    setIsKicking(true);
+    try {
+      await removeParticipant(activity.id, targetUid);
+      toast({
+        title: language === 'de' ? 'Teilnehmer entfernt' : 'Participant removed',
+        description: language === 'de' ? 'Der Teilnehmer wurde aus der Aktivität und dem Chat entfernt.' : 'Participant was removed from activity and chat.'
+      });
+      setActivity((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          participantIds: prev.participantIds.filter((id) => id !== targetUid),
+        };
+      });
+    } catch (error: any) {
+      console.error('Kick participant failed:', error);
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? 'Fehler' : 'Error',
+        description: error.message || (language === 'de' ? 'Entfernen fehlgeschlagen.' : 'Removal failed.')
+      });
+    } finally {
+      setIsKicking(false);
+      setParticipantToKick(null);
     }
   };
 
@@ -500,44 +532,60 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                 const photoURL = details?.photoURL || (uid === activity.hostId ? activity.hostPhotoURL : null);
                 const isHostUser = uid === activity.hostId;
                 
-                return (
-                  <li key={uid} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-none">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar 
-                        className="h-8 w-8 border border-slate-100"
-                        isPremium={details?.isPremium}
-                        isCreator={details?.isCreator}
-                        isSupporter={details?.isSupporter}
-                      >
-                        <AvatarImage src={photoURL || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">
-                          {displayName.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
+                    const canKick = activity.hostId === user?.uid && uid !== activity.hostId && user?.uid !== uid;
+
+                    return (
+                      <li key={uid} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-none">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar 
+                            className="h-8 w-8 border border-slate-100"
+                            isPremium={details?.isPremium}
+                            isCreator={details?.isCreator}
+                            isSupporter={details?.isSupporter}
+                          >
+                            <AvatarImage src={photoURL || undefined} />
+                            <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">
+                              {displayName.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs font-bold text-slate-850 dark:text-neutral-200">
+                                {formatFirstName(displayName, 'User')}
+                              </span>
+                              <UserBadge isPremium={details?.isPremium} size="sm" />
+                              {isHostUser && (
+                                <Badge variant="secondary" className="px-1.5 py-0 text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-none leading-none">
+                                  Host
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs font-bold text-slate-850 dark:text-neutral-200">
-                            {formatFirstName(displayName, 'User')}
-                          </span>
-                          <UserBadge isPremium={details?.isPremium} size="sm" />
-                          {isHostUser && (
-                            <Badge variant="secondary" className="px-1.5 py-0 text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-none leading-none">
-                              Host
-                            </Badge>
+                          {user?.uid !== uid && (
+                            <Button asChild variant="ghost" size="sm" className="h-7 rounded-lg text-[10px] font-bold text-slate-500 hover:text-slate-900">
+                              <Link href={`/users/${uid}`}>
+                                {language === 'de' ? 'Profil' : 'Profile'}
+                              </Link>
+                            </Button>
+                          )}
+                          {canKick && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={isKicking}
+                              onClick={() => setParticipantToKick({ uid, displayName })}
+                              className="h-7 rounded-lg text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                            >
+                              <UserMinus className="h-3 w-3 mr-1" />
+                              {language === 'de' ? 'Entfernen' : 'Remove'}
+                            </Button>
                           )}
                         </div>
-                      </div>
-                    </div>
-                    {user?.uid !== uid && (
-                      <Button asChild variant="ghost" size="sm" className="h-7 rounded-lg text-[10px] font-bold text-slate-500 hover:text-slate-900">
-                        <Link href={`/users/${uid}`}>
-                          {language === 'de' ? 'Profil' : 'Profile'}
-                        </Link>
-                      </Button>
-                    )}
-                  </li>
-                );
-              })}
+                      </li>
+                    );
+                  })}
               
               {/* Visual placeholders for open participant spots */}
               {(() => {
@@ -933,6 +981,33 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
           </div>
         )}
       </main>
+
+      {/* Confirmation Dialog for Kicking a Participant */}
+      <AlertDialog open={!!participantToKick} onOpenChange={(open) => !open && setParticipantToKick(null)}>
+        <AlertDialogContent className="rounded-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === 'de' ? 'Teilnehmer entfernen?' : 'Remove participant?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === 'de'
+                ? `Möchtest du ${participantToKick?.displayName || 'diesen Teilnehmer'} wirklich aus der Aktivität und dem zugehörigen Gruppenchat entfernen? Der Nutzer kann danach nicht mehr beitreten.`
+                : `Are you sure you want to remove ${participantToKick?.displayName || 'this participant'} from the activity and associated chat? The user will not be able to rejoin.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">
+              {language === 'de' ? 'Abbrechen' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => participantToKick && handleKickParticipant(participantToKick.uid)}
+              className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl"
+            >
+              {language === 'de' ? 'Teilnehmer entfernen' : 'Remove participant'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

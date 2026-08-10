@@ -297,6 +297,10 @@ export const secureJoinPaidActivity = onCall(async (request) => {
         throw new Error("validation:activity_inactive");
       }
 
+      if (activityData.kickedUserIds && Array.isArray(activityData.kickedUserIds) && activityData.kickedUserIds.includes(uid)) {
+        throw new Error("validation:user_kicked");
+      }
+
       if (!activityData.isPaid) {
         throw new Error("validation:activity_free");
       }

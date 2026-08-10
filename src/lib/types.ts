@@ -162,6 +162,7 @@ export interface Activity {
       [uid: string]: ParticipantDetailEntry;
   };
   participantsPreview?: ParticipantPreviewEntry[];
+  kickedUserIds?: string[];
   isBoosted?: boolean;
   boostedAt?: Timestamp | null;
   isPaid?: boolean;

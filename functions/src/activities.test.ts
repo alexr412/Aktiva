@@ -180,7 +180,7 @@ mockModule("firebase-functions/v2/firestore", mockFunctionsFirestore);
 
 // ─── IMPORTS UNDER TEST ──────────────────────────────────────────────────────
 
-const { respondToJoinRequest, secureRequestJoinActivity } = require("./activities");
+const { respondToJoinRequest, secureRequestJoinActivity, kickParticipant } = require("./activities");
 
 // ─── TEST CASES ──────────────────────────────────────────────────────────────
 
@@ -384,10 +384,83 @@ async function testSecureRequestJoinActivity() {
   console.log("✅ testSecureRequestJoinActivity passed successfully!");
 }
 
+async function testKickParticipant() {
+  console.log("Running testKickParticipant...");
+
+  const seedFixtures = () => {
+    resetMockDb();
+    mockDbState["activities"] = {
+      act1: {
+        hostId: "host1",
+        status: "active",
+        participantIds: ["host1", "user2"],
+        participantsPreview: [{ uid: "host1" }, { uid: "user2" }],
+        participantDetails: { host1: { displayName: "Host" }, user2: { displayName: "User2" } },
+        kickedUserIds: []
+      }
+    };
+    mockDbState["chats"] = {
+      act1: {
+        activityId: "act1",
+        hostId: "host1",
+        participantIds: ["host1", "user2"],
+        participantDetails: { host1: {}, user2: {} }
+      }
+    };
+    mockDbState["users"] = {
+      host1: { displayName: "Host", role: "user" },
+      user2: { displayName: "User2", role: "user" },
+      user3: { displayName: "User3", role: "user" },
+      sysadmin: { displayName: "SysAdmin", role: "admin" }
+    };
+  };
+
+  // 1. Host can remove participant
+  seedFixtures();
+  const kickRes = await kickParticipant({ activityId: "act1", targetUserId: "user2" }, { uid: "host1" });
+  assert.deepStrictEqual(kickRes, { success: true });
+  assert.strictEqual(mockDbState["activities"]["act1"].participantIds.includes("user2"), false);
+  assert.strictEqual(mockDbState["activities"]["act1"].kickedUserIds.includes("user2"), true);
+  assert.strictEqual(mockDbState["chats"]["act1"].participantIds.includes("user2"), false);
+
+  // 2. Regular participant cannot remove anyone
+  seedFixtures();
+  await assert.rejects(
+    kickParticipant({ activityId: "act1", targetUserId: "user2" }, { uid: "user3" }),
+    (err: any) => err.name === "HttpsError" && err.code === "permission-denied"
+  );
+
+  // 3. Global system admin cannot remove participants of someone else's activity
+  seedFixtures();
+  await assert.rejects(
+    kickParticipant({ activityId: "act1", targetUserId: "user2" }, { uid: "sysadmin" }),
+    (err: any) => err.name === "HttpsError" && err.code === "permission-denied"
+  );
+
+  // 4. Host cannot be removed
+  seedFixtures();
+  await assert.rejects(
+    kickParticipant({ activityId: "act1", targetUserId: "host1" }, { uid: "host1" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  // 5. Kicked user cannot re-join directly
+  seedFixtures();
+  mockDbState["activities"]["act1"].participantIds = ["host1"];
+  mockDbState["activities"]["act1"].kickedUserIds = ["user2"];
+  await assert.rejects(
+    secureRequestJoinActivity({ activityId: "act1", message: "Rejoin request" }, { uid: "user2" }),
+    (err: any) => err.name === "HttpsError" && err.code === "permission-denied"
+  );
+
+  console.log("✅ testKickParticipant passed successfully!");
+}
+
 async function runAllTests() {
   try {
     await testRespondToJoinRequest();
     await testSecureRequestJoinActivity();
+    await testKickParticipant();
     console.log("🎉 ALL ACTIVITIES MODULE TESTS PASSED SUCCESSFULLY! 🎉");
   } catch (error) {
     console.error("❌ TEST RUNNER FAILED:", error);

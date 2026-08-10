@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { leaveActivity, voteToCompleteActivity, completeActivity } from '@/lib/firebase/firestore';
+import { leaveActivity, voteToCompleteActivity, completeActivity, removeParticipant } from '@/lib/firebase/firestore';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
@@ -35,7 +35,7 @@ import {
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Trash2, Users, Calendar, CheckCircle, MapPin, ChevronRight, CheckCircle2, BarChart3, HelpCircle, Star, UserCircle, ShieldCheck } from 'lucide-react';
+import { Loader2, Trash2, Users, Calendar, CheckCircle, MapPin, ChevronRight, CheckCircle2, BarChart3, HelpCircle, Star, UserCircle, ShieldCheck, UserMinus } from 'lucide-react';
 import type { Chat, Activity } from '@/lib/types';
 
 interface ChatInfoSheetProps {
@@ -50,7 +50,9 @@ interface ChatInfoSheetProps {
 export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeave, onLeaveError }: ChatInfoSheetProps) {
   const [isActing, setIsActing] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
-  const { user } = useAuth();
+  const [isKicking, setIsKicking] = useState(false);
+  const [participantToKick, setParticipantToKick] = useState<{ uid: string; displayName: string } | null>(null);
+  const { user, userProfile } = useAuth();
   const language = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
@@ -152,6 +154,30 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
       toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message });
     } finally {
       setIsActing(false);
+    }
+  };
+
+  const handleKickParticipant = async (targetUid: string) => {
+    const actId = activity?.id || chat?.activityId || chat?.id;
+    if (!actId || !targetUid) return;
+    if (isKicking) return;
+    setIsKicking(true);
+    try {
+      await removeParticipant(actId, targetUid);
+      toast({
+        title: language === 'de' ? 'Teilnehmer entfernt' : 'Participant removed',
+        description: language === 'de' ? 'Der Teilnehmer wurde erfolgreich aus der Aktivität und dem Chat entfernt.' : 'Participant was successfully removed from activity and chat.',
+      });
+    } catch (error: any) {
+      console.error('Kick participant failed:', error);
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? 'Fehler' : 'Error',
+        description: error.message || (language === 'de' ? 'Entfernen fehlgeschlagen.' : 'Removal failed.'),
+      });
+    } finally {
+      setIsKicking(false);
+      setParticipantToKick(null);
     }
   };
 
@@ -353,7 +379,19 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
                                {uid === user?.uid && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{language === 'de' ? 'Du' : 'You'}</span>}
                            </div>
                        </Link>
-                       <div className="flex items-center gap-2 pr-2">
+                        <div className="flex items-center gap-2 pr-2">
+                            {((activity?.hostId === user.uid || chat.hostId === user.uid) && uid !== activity?.hostId && uid !== chat.hostId && uid !== user.uid) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={isKicking}
+                                onClick={() => setParticipantToKick({ uid, displayName: p.displayName || 'Nutzer' })}
+                                className="h-7 px-2 rounded-lg text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                              >
+                                <UserMinus className="h-3 w-3 mr-1" />
+                                {language === 'de' ? 'Entfernen' : 'Remove'}
+                              </Button>
+                            )}
                            <MemberFriendActionButton
                                targetUserId={uid}
                                currentUserId={user?.uid || ''}
@@ -427,6 +465,32 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
             </AlertDialog>
         </SheetFooter>
       </SheetContent>
+
+      <AlertDialog open={!!participantToKick} onOpenChange={(open) => !open && setParticipantToKick(null)}>
+        <AlertDialogContent className="rounded-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {language === 'de' ? 'Teilnehmer entfernen?' : 'Remove participant?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {language === 'de'
+                ? `Möchtest du ${participantToKick?.displayName || 'diesen Teilnehmer'} wirklich aus der Aktivität und dem zugehörigen Gruppenchat entfernen? Der Nutzer kann danach nicht mehr beitreten.`
+                : `Are you sure you want to remove ${participantToKick?.displayName || 'this participant'} from the activity and associated chat? The user will not be able to rejoin.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">
+              {language === 'de' ? 'Abbrechen' : 'Cancel'}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => participantToKick && handleKickParticipant(participantToKick.uid)}
+              className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl"
+            >
+              {language === 'de' ? 'Teilnehmer entfernen' : 'Remove participant'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }

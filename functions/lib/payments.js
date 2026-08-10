@@ -241,6 +241,9 @@ exports.secureJoinPaidActivity = (0, https_1.onCall)(async (request) => {
             if (activityData.status === "cancelled" || activityData.status === "completed" || activityData.status === "blacklisted") {
                 throw new Error("validation:activity_inactive");
             }
+            if (activityData.kickedUserIds && Array.isArray(activityData.kickedUserIds) && activityData.kickedUserIds.includes(uid)) {
+                throw new Error("validation:user_kicked");
+            }
             if (!activityData.isPaid) {
                 throw new Error("validation:activity_free");
             }

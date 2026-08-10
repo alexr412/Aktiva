@@ -235,6 +235,7 @@ exports.onActivityUpdated = activities.onActivityUpdated;
 exports.notifyNearbyUsers = activities.notifyNearbyUsers;
 exports.respondToJoinRequest = activities.respondToJoinRequest;
 exports.secureRequestJoinActivity = activities.secureRequestJoinActivity;
+exports.kickParticipant = activities.kickParticipant;
 
 // Telemetry Aggregation & Data Retention
 const aggregation = require('./lib/aggregation');

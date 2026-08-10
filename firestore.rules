@@ -270,6 +270,7 @@ service cloud.firestore {
         'joinMode' in resource.data && resource.data.joinMode == 'direct' &&
         resource.data.status == 'active' &&
         resource.data.isPaid == false &&
+        (!('kickedUserIds' in resource.data) || !(request.auth.uid in resource.data.kickedUserIds)) &&
         
         (!('maxParticipants' in resource.data) || resource.data.get('participantIds', []).size() < resource.data.maxParticipants) &&
         

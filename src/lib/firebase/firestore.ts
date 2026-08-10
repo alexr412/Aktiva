@@ -962,6 +962,10 @@ export async function joinActivity(
 
       const activityData = activityDoc.data() as Activity;
       
+      if (activityData.kickedUserIds?.includes(user.uid)) {
+        throw "Du wurdest aus dieser Aktivität entfernt und kannst ihr nicht mehr beitreten.";
+      }
+
       if (activityData.isPaid && activityData.hostId !== user.uid) {
         throw "Sicherheits-Gate: Beitritt zu bezahltem Event nur nach Zahlungsnachweis möglich.";
       }
@@ -1329,6 +1333,23 @@ export async function leaveActivity(activityId: string, userId: string): Promise
   } catch (error: any) {
     console.error('Error leaving activity:', error);
     const message = error?.message || 'Could not leave activity.';
+    throw new Error(message);
+  }
+}
+
+export async function removeParticipant(activityId: string, targetUserId: string): Promise<void> {
+  try {
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions(app || undefined, 'us-central1');
+    const secureKick = httpsCallable<
+      { activityId: string; targetUserId: string },
+      { success: boolean }
+    >(functions, 'kickParticipant');
+
+    await secureKick({ activityId, targetUserId });
+  } catch (error: any) {
+    console.error('Error removing participant:', error);
+    const message = error?.message || 'Nutzer konnte nicht aus der Aktivität entfernt werden.';
     throw new Error(message);
   }
 }
