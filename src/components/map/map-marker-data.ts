@@ -523,7 +523,7 @@ export function createPlacePopupHTML(
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
 
-      <button type="button" class="place-popup-fav-btn absolute top-3 left-3 w-8 h-8 min-w-[32px] min-h-[32px] rounded-full ${isFavorite ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 active:bg-black/80 text-white'} flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400" aria-label="${isFavorite ? (lang === 'de' ? 'Favorit entfernen' : 'Remove favorite') : (lang === 'de' ? 'Als Favorit speichern' : 'Save as favorite')}" ${isFavoriteLoading ? 'disabled' : ''}>
+      <button type="button" class="place-popup-fav-btn absolute top-2 left-2 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full ${isFavorite ? 'bg-rose-500 text-white' : 'bg-black/40 hover:bg-black/60 active:bg-black/80 text-white'} flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-400" aria-label="${isFavorite ? (lang === 'de' ? 'Favorit entfernen' : 'Remove favorite') : (lang === 'de' ? 'Als Favorit speichern' : 'Save as favorite')}" ${isFavoriteLoading ? 'disabled' : ''}>
         ${
           isFavoriteLoading
             ? `<svg class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`

@@ -1,6 +1,23 @@
 import assert from 'node:assert';
-import { test } from 'node:test';
-import { CURRENT_RADAR_CONSENT_VERSION, calculateHaversineDistanceKm } from '../../functions/src/radar-types';
+import { test, after } from 'node:test';
+import { terminate } from 'firebase/firestore';
+import { deleteApp, getApps } from 'firebase/app';
+import { db } from '../lib/firebase/client';
+
+after(async () => {
+  if (db) {
+    try {
+      await terminate(db);
+    } catch (e) {}
+  }
+  const apps = getApps();
+  for (const app of apps) {
+    try {
+      await deleteApp(app);
+    } catch (e) {}
+  }
+});
+import { CURRENT_RADAR_CONSENT_VERSION, calculateHaversineDistanceKm } from '../lib/radar-types';
 import {
   createFriendsGeoJSON,
   applyGridOffset,
@@ -1557,7 +1574,19 @@ test('87. Orts-Popup exportiert alle canonical Button-Selektoren', () => {
 test('88. Orts-Popup Favoriten-Button besitzt touch target >= 44px & aria-label', () => {
   const popup = createPlacePopupHTML({ id: 'p1', name: 'Ort 1', lat: 50, lon: 8 } as any, null, 'de', false);
   const favEl = popup.favBtn as any;
-  assert.ok(favEl.className.includes('min-h-[40px]') || favEl.className.includes('min-w-[40px]'));
+
+  const has44Width = favEl.className.includes('min-w-[44px]') || favEl.className.includes('w-11');
+  const has44Height = favEl.className.includes('min-h-[44px]') || favEl.className.includes('h-11');
+
+  assert.ok(has44Width, 'Favorite button touch target width must be >= 44px');
+  assert.ok(has44Height, 'Favorite button touch target height must be >= 44px');
+
+  const ariaLabelMatch = favEl.innerHTML ? favEl.innerHTML.match(/aria-label="([^"]+)"/) : null;
+  const ariaLabel = typeof favEl.getAttribute === 'function'
+    ? favEl.getAttribute('aria-label')
+    : (ariaLabelMatch ? ariaLabelMatch[1] : null);
+
+  assert.ok(ariaLabel && ariaLabel.trim().length > 0, 'Favorite button must have a non-empty aria-label');
 });
 
 test('89. Oben-rechts Favoriten-Button hat aktiven/inaktiven Zustand', () => {

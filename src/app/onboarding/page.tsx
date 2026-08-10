@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
+import { getPendingReferralCode, clearPendingReferralCode, isPermanentReferralError } from '@/lib/referral';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useForm } from 'react-hook-form';
@@ -262,6 +263,14 @@ function OnboardingContent() {
       const interestsState = form.getFieldState('interests');
       if (!interestsState.isDirty && form.getValues('interests').length === 0 && userProfile.interests?.length) {
         form.setValue('interests', userProfile.interests);
+      }
+
+      const referralState = form.getFieldState('referralCode');
+      if (!referralState.isDirty && !form.getValues('referralCode')) {
+        const pendingCode = getPendingReferralCode();
+        if (pendingCode) {
+          form.setValue('referralCode', pendingCode);
+        }
       }
 
       const affinitiesState = form.getFieldState('affinities');
@@ -608,16 +617,22 @@ function OnboardingContent() {
 
       await updateUserProfile(user.uid, updateData);
 
-      if (data.referralCode && data.referralCode.trim()) {
+      const codeToApply = (data.referralCode && data.referralCode.trim()) || getPendingReferralCode();
+
+      if (codeToApply) {
         try {
           const { functions: clientFunctions } = await import('@/lib/firebase/client');
           if (clientFunctions) {
             const { httpsCallable } = await import('firebase/functions');
             const applyReferralCodeFn = httpsCallable<{ code: string }, { success: boolean }>(clientFunctions, 'applyReferralCode');
-            await applyReferralCodeFn({ code: data.referralCode.trim() });
+            await applyReferralCodeFn({ code: codeToApply });
+            clearPendingReferralCode();
           }
         } catch (refErr: any) {
           console.error('Failed to apply referral code during onboarding:', refErr);
+          if (isPermanentReferralError(refErr)) {
+            clearPendingReferralCode();
+          }
           toast({
             variant: 'destructive',
             title: language === 'de' ? 'Referral-Code Fehler' : 'Referral Code Error',

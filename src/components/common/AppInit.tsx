@@ -1,6 +1,8 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useServiceWorker } from '@/hooks/use-service-worker';
+import { ReferralTrackerContent } from '@/components/referral/ReferralTracker';
 
 /**
  * App-weite Initialisierungen die einen Client-Kontext brauchen.
@@ -8,5 +10,9 @@ import { useServiceWorker } from '@/hooks/use-service-worker';
  */
 export function AppInit() {
   useServiceWorker();
-  return null;
+  return (
+    <Suspense fallback={null}>
+      <ReferralTrackerContent />
+    </Suspense>
+  );
 }

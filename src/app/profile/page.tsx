@@ -20,7 +20,8 @@ import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/activa/activity-list-item';
-import { LogOut, User, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell, Camera, Search } from 'lucide-react';
+import { shareOrCopyReferralLink } from '@/lib/referral';
+import { LogOut, User, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell, Camera, Search, Share2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { validateAvatarFile } from '@/lib/avatar-utils';
@@ -828,26 +829,43 @@ export default function ProfilePage() {
 
                                 {/* Referral Section */}
                                 {userData.referralCode && (
-                                    <div className="border-t border-slate-100 dark:border-neutral-800 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
+                                    <div className="border-t border-slate-100 dark:border-neutral-800 pt-4 flex flex-col gap-3 text-left">
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            <p className="text-xs font-black text-slate-800 dark:text-neutral-100">
                                                 {language === 'de' ? 'Freunde einladen' : 'Invite Friends'}
                                             </p>
-                                            <p className="text-xs font-bold text-slate-600 dark:text-neutral-400">
-                                                {language === 'de' ? 'Teile deinen Code für +25 Punkte pro erfolgreicher Einladung.' : 'Share your code to get +25 points per invite.'}
+                                            <p className="text-xs font-medium text-slate-500 dark:text-neutral-400">
+                                                {language === 'de' ? 'Lade Freunde zu Activa ein.' : 'Invite friends to Activa.'}
                                             </p>
                                         </div>
-                                        <div 
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(userData.referralCode!);
-                                                toast({ title: language === 'de' ? "Einladungscode kopiert!" : "Invite code copied!" });
-                                            }}
-                                            className="self-start sm:self-center flex items-center gap-2 bg-slate-50 hover:bg-slate-100 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 px-4 py-2.5 rounded-2xl cursor-pointer border border-slate-100 dark:border-neutral-800 transition-colors"
-                                        >
-                                            <span className="font-mono font-black text-sm tracking-widest text-primary">
-                                                {userData.referralCode}
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                                            <Button
+                                                onClick={async () => {
+                                                    const res = await shareOrCopyReferralLink({
+                                                        referralCode: userData.referralCode!,
+                                                        language
+                                                    });
+                                                    if (res.action === 'copy') {
+                                                        if (res.success) {
+                                                            toast({
+                                                                title: language === 'de' ? "Einladungslink kopiert" : "Invite link copied",
+                                                            });
+                                                        } else {
+                                                            toast({
+                                                                variant: 'destructive',
+                                                                title: language === 'de' ? "Kopieren fehlgeschlagen" : "Copy failed",
+                                                            });
+                                                        }
+                                                    }
+                                                }}
+                                                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl px-5 py-2.5 shadow-sm transition-all"
+                                            >
+                                                <Share2 className="h-4 w-4" />
+                                                <span>{language === 'de' ? 'Freunde einladen' : 'Invite Friends'}</span>
+                                            </Button>
+                                            <span className="text-[11px] font-medium text-slate-400 dark:text-neutral-500">
+                                                {language === 'de' ? `Dein Einladungscode: ${userData.referralCode}` : `Your invite code: ${userData.referralCode}`}
                                             </span>
-                                            <Copy className="h-4 w-4 text-slate-400 hover:text-primary transition-colors" />
                                         </div>
                                     </div>
                                 )}
