@@ -2358,15 +2358,35 @@ export default function Home() {
   <Button
     variant="ghost"
     size="icon"
-    className="h-14 w-14 rounded-full border border-white/50 bg-gradient-to-b from-emerald-400 to-primary text-white hover:text-white hover:from-emerald-400 hover:to-primary transition-all duration-150 hover:-translate-y-[1px] active:translate-y-[3px]"
+    className="
+      relative h-14 w-14 overflow-hidden rounded-full
+      bg-primary
+      border border-white/55
+      text-white hover:text-white hover:bg-primary
+      transition-all duration-150
+      hover:-translate-y-[1px]
+      active:translate-y-[3px]
+
+      before:absolute
+      before:inset-[2px]
+      before:rounded-full
+      before:bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.40),transparent_42%)]
+      before:pointer-events-none
+
+      after:absolute
+      after:inset-0
+      after:rounded-full
+      after:shadow-[inset_-3px_-4px_6px_rgba(0,70,50,0.20)]
+      after:pointer-events-none
+    "
     style={{
       boxShadow:
-        "inset 0 2px 2px rgba(255,255,255,0.35), inset 0 -2px 3px rgba(0,0,0,0.12), 0 5px 0 #078263, 0 9px 14px rgba(0,0,0,0.28)"
+        "inset 0 2px 2px rgba(255,255,255,0.35), inset 0 -3px 4px rgba(0,0,0,0.16), 0 5px 0 #08785f, 0 8px 10px rgba(0,0,0,0.18), 0 13px 22px rgba(0,0,0,0.16)"
     }}
     onClick={handleOpenCustomActivityModal}
   >
     <Plus
-      className="h-7 w-7 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
+      className="relative z-10 h-7 w-7 text-white drop-shadow-[0_2px_1px_rgba(0,0,0,0.22)]"
       strokeWidth={2.5}
     />
   </Button>
