@@ -2353,7 +2353,7 @@ export default function Home() {
           </div>
         </main>
       </div>
-      <div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500"><Button variant="default" size="icon" className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 transition-transform hover:scale-105 active:scale-95" onClick={handleOpenCustomActivityModal}><Plus className="h-7 w-7" strokeWidth={3} /></Button></div>
+      <div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500"><Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border border-primary/30 dark:border-primary/40 text-primary hover:text-primary hover:bg-white/95 dark:hover:bg-neutral-900/95 hover:border-primary/50 shadow-lg shadow-emerald-950/10 dark:shadow-black/40 transition-all duration-200 hover:scale-105 active:scale-95" onClick={handleOpenCustomActivityModal}><Plus className="h-7 w-7 text-primary" strokeWidth={2.5} /></Button></div>
       {isMobile ? (
         <Sheet open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}><SheetContent side="bottom" className="p-0 h-[92vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none" hideCloseButton><SheetHeader className="sr-only"><SheetTitle>{selectedPlace?.name}</SheetTitle></SheetHeader><div className="h-full w-full">{selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} onCreateActivity={() => setActivityModalPlace(selectedPlace)} />}</div></SheetContent></Sheet>
       ) : (
