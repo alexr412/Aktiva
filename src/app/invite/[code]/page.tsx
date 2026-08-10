@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = 'Du wurdest zu Activa eingeladen';
   const description = 'Entdecke Aktivitäten, Orte und neue Leute in deiner Nähe – mit Activa.';
   const url = `${ACTIVA_APP_URL}/invite/${encodeURIComponent(code)}`;
-  const ogImageUrl = `${ACTIVA_APP_URL}/invite/${encodeURIComponent(code)}/opengraph-image`;
+  const ogImageUrl = `${ACTIVA_APP_URL}/api/og/invite`;
 
   return {
     title,
@@ -35,6 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           url: ogImageUrl,
           width: 1200,
           height: 630,
+          type: 'image/png',
           alt: 'Du wurdest zu Activa eingeladen',
         },
       ],
@@ -43,7 +44,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: 'summary_large_image',
       title,
       description,
-      images: [ogImageUrl],
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: 'Du wurdest zu Activa eingeladen',
+        },
+      ],
     },
   };
 }
