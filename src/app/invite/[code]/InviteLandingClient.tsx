@@ -83,7 +83,7 @@ export default function InviteLandingClient({ code }: InviteLandingClientProps) 
 
           {/* Action CTAs */}
           <div className="space-y-3 pt-2">
-            <Link href="/onboarding" className="block w-full">
+            <Link href="/signup" className="block w-full">
               <Button className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-slate-950 font-bold text-sm rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer">
                 <span>Jetzt registrieren</span>
                 <ArrowRight className="w-4 h-4" />
