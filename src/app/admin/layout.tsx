@@ -82,8 +82,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
       </header>
       
-      <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 pb-24 text-foreground">
-        <div className="max-w-6xl mx-auto">
+      <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 pb-24 text-foreground min-w-0">
+        <div className="max-w-7xl mx-auto min-w-0 w-full">
           {children}
         </div>
       </main>

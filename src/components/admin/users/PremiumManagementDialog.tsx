@@ -186,6 +186,7 @@ export function PremiumManagementDialog({
                   value={customDateIso}
                   onChange={(e) => setCustomDateIso(e.target.value)}
                   disabled={loading}
+                  className="w-full min-w-0 max-w-full"
                 />
               </div>
             </div>

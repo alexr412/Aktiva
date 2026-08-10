@@ -341,43 +341,45 @@ export default function AdminDashboardPage() {
         </div>
         <Card className="border-none shadow-md rounded-[2rem] overflow-hidden bg-white dark:bg-neutral-900">
           <CardContent className="p-0">
-            <Table>
-              <TableHeader className="bg-slate-50 dark:bg-neutral-800/50">
-                <TableRow className="border-slate-100 dark:border-neutral-800">
-                  <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500 p-6">Refund-ID</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500">Activity-ID</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500">User-ID</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500">Amount</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500 text-right pr-6">Aktion</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {refunds.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center text-slate-400 dark:text-neutral-500 font-bold italic">Keine ausstehenden Rückzahlungen.</TableCell>
+            <div className="w-full min-w-0 overflow-x-auto">
+              <Table className="min-w-[650px]">
+                <TableHeader className="bg-slate-50 dark:bg-neutral-800/50">
+                  <TableRow className="border-slate-100 dark:border-neutral-800">
+                    <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500 p-6">Refund-ID</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500">Activity-ID</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500">User-ID</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500">Amount</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase text-slate-400 dark:text-neutral-500 text-right pr-6">Aktion</TableHead>
                   </TableRow>
-                ) : (
-                  refunds.map((refund) => (
-                    <TableRow key={refund.id} className="border-slate-50 dark:border-neutral-800">
-                      <TableCell className="font-mono text-[10px] text-slate-500 dark:text-neutral-400 p-6">{refund.id}</TableCell>
-                      <TableCell className="font-mono text-[10px] text-slate-500 dark:text-neutral-400">{refund.activityId}</TableCell>
-                      <TableCell className="font-mono text-[10px] text-slate-500 dark:text-neutral-400">{refund.userId}</TableCell>
-                      <TableCell className="font-black text-slate-900 dark:text-neutral-100">€{refund.amount.toFixed(2)}</TableCell>
-                      <TableCell className="text-right pr-6">
-                        <Button 
-                          onClick={() => handleProcessRefund(refund.id)}
-                          disabled={actionLoading === refund.id}
-                          size="sm"
-                          className="rounded-xl font-black text-[10px] uppercase tracking-widest bg-slate-900 dark:bg-neutral-800 text-white"
-                        >
-                          {actionLoading === refund.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Verarbeiten"}
-                        </Button>
-                      </TableCell>
+                </TableHeader>
+                <TableBody>
+                  {refunds.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-32 text-center text-slate-400 dark:text-neutral-500 font-bold italic">Keine ausstehenden Rückzahlungen.</TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    refunds.map((refund) => (
+                      <TableRow key={refund.id} className="border-slate-50 dark:border-neutral-800">
+                        <TableCell className="font-mono text-[10px] text-slate-500 dark:text-neutral-400 p-6">{refund.id}</TableCell>
+                        <TableCell className="font-mono text-[10px] text-slate-500 dark:text-neutral-400">{refund.activityId}</TableCell>
+                        <TableCell className="font-mono text-[10px] text-slate-500 dark:text-neutral-400">{refund.userId}</TableCell>
+                        <TableCell className="font-black text-slate-900 dark:text-neutral-100">€{refund.amount.toFixed(2)}</TableCell>
+                        <TableCell className="text-right pr-6">
+                          <Button 
+                            onClick={() => handleProcessRefund(refund.id)}
+                            disabled={actionLoading === refund.id}
+                            size="sm"
+                            className="rounded-xl font-black text-[10px] uppercase tracking-widest bg-slate-900 dark:bg-neutral-800 text-white"
+                          >
+                            {actionLoading === refund.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Verarbeiten"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </section>

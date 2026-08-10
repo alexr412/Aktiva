@@ -253,7 +253,7 @@ export default function AdminUsersPage() {
           </div>
 
           {/* Combinable Filter Selectors */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-1">
             {/* System Role */}
             <div className="space-y-1">
               <label className="text-xs font-semibold text-muted-foreground">Systemrolle</label>
@@ -338,7 +338,7 @@ export default function AdminUsersPage() {
       {/* User Data Table */}
       <Card className="bg-white dark:bg-neutral-900 border dark:border-neutral-800 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-sm min-w-[900px]">
             <thead className="bg-slate-50 dark:bg-neutral-950 border-b dark:border-neutral-800 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               <tr>
                 <th className="p-4 w-10 text-center">
@@ -494,7 +494,7 @@ export default function AdminUsersPage() {
                       <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                            <Button variant="ghost" size="icon" className="h-9 w-9 p-0">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -536,7 +536,7 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Pagination Bar */}
-        <div className="flex items-center justify-between p-4 border-t dark:border-neutral-800 bg-slate-50/50 dark:bg-neutral-950/50">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-t dark:border-neutral-800 bg-slate-50/50 dark:bg-neutral-950/50">
           <div className="text-xs text-muted-foreground">
             Zeige max. <strong>{pageSize}</strong> Nutzer pro Seite
           </div>
