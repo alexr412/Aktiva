@@ -368,28 +368,29 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-[2.5rem] p-0 sm:max-w-md mx-auto h-[92dvh] max-h-[92dvh] flex flex-col bg-background border-none shadow-2xl overflow-hidden">
+      <SheetContent side="bottom" className="rounded-t-[2.5rem] p-0 sm:max-w-md lg:!max-w-[1400px] mx-auto h-[92dvh] max-h-[92dvh] flex flex-col bg-background border-none shadow-2xl overflow-hidden">
         <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-muted/50" />
         
-        <SheetHeader className="pt-10 px-6 pb-2 text-center items-center shrink-0">
-          <div className="bg-primary/10 p-3 rounded-2xl mb-3">
+        <SheetHeader className="pt-10 lg:pt-5 px-6 lg:px-12 pb-2 lg:pb-1 text-center items-center shrink-0 lg:max-w-[1200px] lg:mx-auto lg:w-full">
+          <div className="bg-primary/10 p-3 lg:p-2.5 rounded-2xl lg:rounded-xl mb-3 lg:mb-1.5">
             {isSpecificPlaceMode ? (
-              <Clock className="h-6 w-6 text-primary" />
+              <Clock className="h-6 w-6 lg:h-5 lg:w-5 text-primary" />
             ) : (
-              <Navigation className="h-6 w-6 text-primary" />
+              <Navigation className="h-6 w-6 lg:h-5 lg:w-5 text-primary" />
             )}
           </div>
-          <SheetTitle className="text-2xl font-black tracking-tight">
+          <SheetTitle className="text-2xl lg:text-xl font-black tracking-tight">
             {isSpecificPlaceMode ? (language === 'de' ? 'Aktivität planen' : 'Plan activity') : (language === 'de' ? 'Community Aktivität' : 'Community Activity')}
           </SheetTitle>
-          <SheetDescription className="text-sm font-medium text-muted-foreground px-4">
+          <SheetDescription className="text-sm font-medium text-muted-foreground px-4 lg:px-0">
             {isSpecificPlaceMode 
               ? (language === 'de' ? `Plane ein Treffen bei ${initialPlace?.name}` : `Plan a meetup at ${initialPlace?.name}`) 
               : (language === 'de' ? 'Erstelle ein Event an einem Ort deiner Wahl.' : 'Create an event at a place of your choice.')}
           </SheetDescription>
         </SheetHeader>
         
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-8">
+        <div className="flex-1 overflow-y-auto px-6 lg:px-12 py-4 lg:py-6 space-y-8 lg:space-y-6">
+          <div className="lg:max-w-[1200px] lg:mx-auto space-y-8 lg:space-y-6">
           {/* Sektion 1: Name & Ort */}
           <div className="space-y-4">
             {!isSpecificPlaceMode && (
@@ -551,48 +552,93 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
               <Switch id="date-flexible" checked={isDateFlexible} onCheckedChange={setIsDateFlexible} />
             </div>
 
-            <div className="rounded-2xl border border-border p-4 bg-card/50 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <Button variant="ghost" size="icon" aria-label={language === 'de' ? 'Vorheriger Monat' : 'Previous month'} onClick={() => setCurrentMonthDate(subMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h3 className="text-sm font-black uppercase tracking-widest">{format(currentMonthDate, language === 'de' ? 'MMMM yyyy' : 'MMMM yyyy', { locale: language === 'de' ? de : enUS })}</h3>
-                <Button variant="ghost" size="icon" aria-label={language === 'de' ? 'Nächster Monat' : 'Next month'} onClick={() => setCurrentMonthDate(addMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+            <div className="rounded-2xl border border-border p-4 lg:p-6 bg-card/50 shadow-sm">
+              <div className="lg:max-w-[950px] lg:mx-auto space-y-4">
+                <div className="flex items-center justify-between mb-4 lg:mb-3 lg:max-w-md lg:mx-auto">
+                  <Button variant="ghost" size="icon" aria-label={language === 'de' ? 'Vorheriger Monat' : 'Previous month'} onClick={() => setCurrentMonthDate(subMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <h3 className="text-sm font-black uppercase tracking-widest">{format(currentMonthDate, language === 'de' ? 'MMMM yyyy' : 'MMMM yyyy', { locale: language === 'de' ? de : enUS })}</h3>
+                  <Button variant="ghost" size="icon" aria-label={language === 'de' ? 'Nächster Monat' : 'Next month'} onClick={() => setCurrentMonthDate(addMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
 
-              <div className="grid grid-cols-7 gap-1">
-                {days.map((day) => {
-                  const isSelected = !isDateFlexible && isSameDay(day, selectedDate);
-                  const isInRange = isDateFlexible && selectedRange.from && selectedRange.to && isWithinInterval(day, { start: selectedRange.from, end: selectedRange.to });
-                  const isStart = isDateFlexible && selectedRange.from && isSameDay(day, selectedRange.from);
-                  const isEnd = isDateFlexible && selectedRange.to && isSameDay(day, selectedRange.to);
+                <div className="grid grid-cols-7 gap-1 lg:gap-x-0 mb-1 text-center text-xs font-black uppercase tracking-wider text-muted-foreground/70">
+                  {(language === 'de' ? ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']).map((d) => (
+                    <div key={d} className="py-1">{d}</div>
+                  ))}
+                </div>
 
-                  return (
-                    <button
-                      key={day.toString()}
-                      type="button"
-                      onClick={() => {
-                        if (isDateFlexible) {
-                          if (!selectedRange.from || selectedRange.to) setSelectedRange({ from: day, to: undefined });
-                          else if (isAfter(day, selectedRange.from)) setSelectedRange({ ...selectedRange, to: day });
-                          else setSelectedRange({ from: day, to: selectedRange.from });
-                        } else setSelectedDate(day);
-                      }}
-                      className={cn(
-                        'flex items-center justify-center h-10 w-10 rounded-xl text-sm font-bold transition-all mx-auto',
-                        !isSameMonth(day, currentMonthDate) && 'text-muted-foreground/20',
-                        isToday(day) && 'text-primary',
-                        isSelected && 'bg-primary text-white shadow-lg',
-                        (isStart || isEnd) && 'bg-primary text-white',
-                        isInRange && 'bg-primary/20 text-primary rounded-none'
-                      )}
-                    >
-                      {getDate(day)}
-                    </button>
-                  )
-                })}
+                <div className="grid grid-cols-7 gap-1 lg:gap-x-0 lg:gap-y-1">
+                  {days.map((day, idx) => {
+                    const isSelected = !isDateFlexible && isSameDay(day, selectedDate);
+                    const hasRange = isDateFlexible && !!(selectedRange.from && selectedRange.to);
+                    const isInRange = isDateFlexible && selectedRange.from && selectedRange.to && isWithinInterval(day, { start: selectedRange.from, end: selectedRange.to });
+                    const isStart = isDateFlexible && selectedRange.from && isSameDay(day, selectedRange.from);
+                    const isEnd = isDateFlexible && selectedRange.to && isSameDay(day, selectedRange.to);
+
+                    const isRowStart = idx % 7 === 0;
+                    const isRowEnd = idx % 7 === 6;
+
+                    return (
+                      <button
+                        key={day.toString()}
+                        type="button"
+                        onClick={() => {
+                          if (isDateFlexible) {
+                            if (!selectedRange.from || selectedRange.to) setSelectedRange({ from: day, to: undefined });
+                            else if (isAfter(day, selectedRange.from)) setSelectedRange({ ...selectedRange, to: day });
+                            else setSelectedRange({ from: day, to: selectedRange.from });
+                          } else setSelectedDate(day);
+                        }}
+                        className={cn(
+                          'flex items-center justify-center h-10 w-10 rounded-xl text-sm font-bold transition-all mx-auto relative',
+                          !isSameMonth(day, currentMonthDate) && 'text-muted-foreground/20',
+                          isToday(day) && 'text-primary',
+                          isSelected && 'bg-primary text-white shadow-lg',
+                          (isStart || isEnd) && 'bg-primary text-white',
+                          isInRange && 'bg-primary/20 text-primary rounded-none',
+                          'lg:h-11 lg:w-full lg:mx-0 lg:rounded-none lg:bg-transparent lg:shadow-none lg:text-foreground'
+                        )}
+                      >
+                        {/* Desktop Continuous Range Background Surface */}
+                        {isDateFlexible && hasRange && (isInRange || isStart || isEnd) && (
+                          <span
+                            className={cn(
+                              "hidden lg:block absolute inset-y-0.5 z-0 bg-primary/15 dark:bg-primary/25 transition-all",
+                              (isStart || isRowStart || (isStart && isEnd)) ? "left-0 rounded-l-xl" : "left-0",
+                              (isEnd || isRowEnd || (isStart && isEnd)) ? "right-0 rounded-r-xl" : "right-0",
+                            )}
+                          />
+                        )}
+
+                        {/* Desktop Hover Background */}
+                        <span
+                          className={cn(
+                            "hidden lg:block absolute inset-0.5 z-0 rounded-xl transition-all",
+                            !isSelected && !isStart && !isEnd && !isInRange && "hover:bg-secondary/80",
+                          )}
+                        />
+
+                        {/* Content / Day Number Pill */}
+                        <span
+                          className={cn(
+                            "z-10 flex items-center justify-center transition-all",
+                            "lg:w-9 lg:h-9 lg:rounded-xl",
+                            (isSelected || isStart || isEnd) && "lg:bg-primary lg:text-white lg:shadow-md",
+                            isInRange && !isStart && !isEnd && "lg:text-primary lg:font-extrabold",
+                            !isSelected && !isStart && !isEnd && !isInRange && isToday(day) && "lg:text-primary lg:font-black lg:bg-primary/10",
+                            !isSelected && !isStart && !isEnd && !isInRange && !isToday(day) && !isSameMonth(day, currentMonthDate) && "lg:text-muted-foreground/30",
+                            !isSelected && !isStart && !isEnd && !isInRange && !isToday(day) && isSameMonth(day, currentMonthDate) && "lg:text-foreground"
+                          )}
+                        >
+                          {getDate(day)}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
 
@@ -804,32 +850,35 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
               </Button>
             )}
           </div>
+          </div>
         </div>
 
-        <SheetFooter className="sticky bottom-0 bg-background pt-4 pb-8 px-6 border-t border-border/50 shrink-0">
-          {isUnauthenticated && (
-            <p className="text-xs text-destructive font-bold text-center mb-3">
-              {language === 'de' ? 'Bitte melde dich an, um eine Aktivität zu erstellen.' : 'Please log in to create an activity.'}
-            </p>
-          )}
-          {isOnboardingIncomplete && (
-            <p className="text-xs text-destructive font-bold text-center mb-3">
-              {language === 'de' ? 'Bitte schließe zuerst dein Onboarding ab.' : 'Please complete your onboarding first.'}
-            </p>
-          )}
-          {isBanned && (
-            <p className="text-xs text-destructive font-bold text-center mb-3">
-              {language === 'de' ? 'Dein Account ist gesperrt. Du kannst keine Aktivitäten erstellen.' : 'Your account is banned. You cannot create activities.'}
-            </p>
-          )}
-          <Button 
-            onClick={handleCreate} 
-            disabled={isCreateDisabled}
-            className="w-full h-14 text-base font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95"
-          >
-            {isCreating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
-            {language === 'de' ? 'Aktivität jetzt erstellen' : 'Create activity now'}
-          </Button>
+        <SheetFooter className="sticky bottom-0 bg-background pt-4 pb-8 lg:pb-6 px-6 lg:px-12 border-t border-border/50 shrink-0">
+          <div className="w-full lg:max-w-[1200px] lg:mx-auto">
+            {isUnauthenticated && (
+              <p className="text-xs text-destructive font-bold text-center mb-3">
+                {language === 'de' ? 'Bitte melde dich an, um eine Aktivität zu erstellen.' : 'Please log in to create an activity.'}
+              </p>
+            )}
+            {isOnboardingIncomplete && (
+              <p className="text-xs text-destructive font-bold text-center mb-3">
+                {language === 'de' ? 'Bitte schließe zuerst dein Onboarding ab.' : 'Please complete your onboarding first.'}
+              </p>
+            )}
+            {isBanned && (
+              <p className="text-xs text-destructive font-bold text-center mb-3">
+                {language === 'de' ? 'Dein Account ist gesperrt. Du kannst keine Aktivitäten erstellen.' : 'Your account is banned. You cannot create activities.'}
+              </p>
+            )}
+            <Button 
+              onClick={handleCreate} 
+              disabled={isCreateDisabled}
+              className="w-full h-14 text-base font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95"
+            >
+              {isCreating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
+              {language === 'de' ? 'Aktivität jetzt erstellen' : 'Create activity now'}
+            </Button>
+          </div>
         </SheetFooter>
       </SheetContent>
     </Sheet>
