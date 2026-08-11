@@ -564,13 +564,13 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-7 gap-1 lg:gap-x-0 mb-1 text-center text-xs font-black uppercase tracking-wider text-muted-foreground/70">
+                <div className="grid grid-cols-7 gap-y-1 gap-x-0 lg:gap-x-0 mb-1 text-center text-xs font-black uppercase tracking-wider text-muted-foreground/70">
                   {(language === 'de' ? ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']).map((d) => (
                     <div key={d} className="py-1">{d}</div>
                   ))}
                 </div>
 
-                <div className="grid grid-cols-7 gap-1 lg:gap-x-0 lg:gap-y-1">
+                <div className="grid grid-cols-7 gap-y-1 gap-x-0 lg:gap-x-0 lg:gap-y-1">
                   {days.map((day, idx) => {
                     const isSelected = !isDateFlexible && isSameDay(day, selectedDate);
                     const hasRange = isDateFlexible && !!(selectedRange.from && selectedRange.to);
@@ -593,15 +593,23 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                           } else setSelectedDate(day);
                         }}
                         className={cn(
-                          'flex items-center justify-center h-10 w-10 rounded-xl text-sm font-bold transition-all mx-auto relative',
+                          'flex items-center justify-center h-10 w-full rounded-none text-sm font-bold transition-all relative',
                           !isSameMonth(day, currentMonthDate) && 'text-muted-foreground/20',
                           isToday(day) && 'text-primary',
-                          isSelected && 'bg-primary text-white shadow-lg',
-                          (isStart || isEnd) && 'bg-primary text-white',
-                          isInRange && 'bg-primary/20 text-primary rounded-none',
                           'lg:h-11 lg:w-full lg:mx-0 lg:rounded-none lg:bg-transparent lg:shadow-none lg:text-foreground'
                         )}
                       >
+                        {/* Mobile Continuous Range Background Surface */}
+                        {isDateFlexible && hasRange && (isInRange || isStart || isEnd) && (
+                          <span
+                            className={cn(
+                              "block lg:hidden absolute inset-y-0 z-0 bg-primary/20 transition-all",
+                              (isStart || isRowStart || (isStart && isEnd)) ? "left-0 rounded-l-xl" : "left-0",
+                              (isEnd || isRowEnd || (isStart && isEnd)) ? "right-0 rounded-r-xl" : "right-0",
+                            )}
+                          />
+                        )}
+
                         {/* Desktop Continuous Range Background Surface */}
                         {isDateFlexible && hasRange && (isInRange || isStart || isEnd) && (
                           <span
@@ -624,7 +632,12 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                         {/* Content / Day Number Pill */}
                         <span
                           className={cn(
-                            "z-10 flex items-center justify-center transition-all",
+                            "z-10 flex items-center justify-center transition-all w-10 h-10 rounded-xl",
+                            // Mobile pill styling
+                            isSelected && "bg-primary text-white shadow-lg",
+                            (isStart || isEnd) && "bg-primary text-white shadow-md",
+                            isInRange && !isStart && !isEnd && "text-primary font-extrabold",
+                            // Desktop pill styling overrides
                             "lg:w-9 lg:h-9 lg:rounded-xl",
                             (isSelected || isStart || isEnd) && "lg:bg-primary lg:text-white lg:shadow-md",
                             isInRange && !isStart && !isEnd && "lg:text-primary lg:font-extrabold",
