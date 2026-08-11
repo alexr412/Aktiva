@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Users, UserPlus, Search, Bell, MessageCircle, MoreHorizontal, User, Building } from 'lucide-react';
 import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { DesktopNav } from '@/components/desktop-nav';
 import { Input } from '@/components/ui/input';
 import { cn, formatLabel, formatFirstName } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
@@ -262,6 +263,7 @@ export default function ChatPage() {
                 <h1 className="text-[22px] font-black tracking-tight text-slate-900 dark:text-neutral-100 truncate">Chats</h1>
                 <MessageCircle className="h-5 w-5 text-violet-400 fill-current opacity-30 shrink-0" />
               </div>
+              <DesktopNav />
               <div className="flex items-center gap-3 shrink-0">
                 <div className="relative">
                     <Button 

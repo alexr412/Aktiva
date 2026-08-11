@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { validateAvatarFile } from '@/lib/avatar-utils';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { DesktopNav } from '@/components/desktop-nav';
 import { PlaceCard } from '@/components/activa/place-card';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { PlaceDetails } from '@/components/activa/place-details';
@@ -692,6 +693,7 @@ export default function ProfilePage() {
                             <h1 className="truncate">{language === 'de' ? 'Profil' : 'Profile'}</h1>
                             <User className="h-6 w-6 text-primary fill-current shrink-0" />
                         </div>
+                        <DesktopNav />
                         <div className="flex items-center gap-3 shrink-0">
                             <NotificationBell />
                             <Link href="/settings">

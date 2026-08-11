@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Compass, MessageCircle, User } from 'lucide-react';
 import { useLanguage } from '@/hooks/use-language';
 import { useChatSync } from '@/contexts/chat-sync-context';
+import { MAIN_NAV_ITEMS, getIsActiveNav } from '@/lib/navigation-config';
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -18,29 +18,16 @@ export function BottomNav() {
   if (!shouldShowBottomNav) {
     return null;
   }
-  
-  const getIsActive = (itemHref: string) => {
-    if (itemHref === '/') {
-      return pathname === '/';
-    }
-    return pathname.startsWith(itemHref);
-  };
-
-  const navItems = [
-    { href: '/', label: language === 'de' ? 'Entdecken' : 'Discover', icon: Home },
-    { href: '/explore', label: language === 'de' ? 'Erkunden' : 'Explore', icon: Compass },
-    { href: '/chat', label: 'Chat', icon: MessageCircle },
-    { href: '/profile', label: language === 'de' ? 'Profil' : 'Profile', icon: User },
-  ];
 
   return (
     <div className="fixed bottom-0 left-0 w-full z-nav bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-t border-slate-200/30 dark:border-neutral-800/20 pb-safe shadow-premium lg:hidden">
       <nav data-activa-bottom-nav className="flex h-[var(--bottom-nav-height,66px)] items-center justify-around px-1 sm:px-4 max-w-lg mx-auto">
-        {navItems.map((item) => {
-          const isActive = getIsActive(item.href);
+        {MAIN_NAV_ITEMS.map((item) => {
+          const isActive = getIsActiveNav(item.href, pathname);
+          const label = language === 'de' ? item.labelDe : item.labelEn;
           return (
             <Link
-              key={item.label}
+              key={item.href}
               href={item.href}
               className={cn(
                   "flex h-full flex-col items-center justify-center gap-1 transition-[color,opacity] duration-200 relative px-1 sm:px-3 flex-1 min-w-0",
@@ -70,7 +57,7 @@ export function BottomNav() {
                   "text-[9px] uppercase font-black tracking-wider sm:tracking-widest whitespace-nowrap truncate max-w-full transition-[opacity,transform] duration-200",
                   isActive ? "opacity-100 scale-100" : "opacity-0 scale-95"
               )}>
-                {item.label}
+                {label}
               </span>
             </Link>
           );

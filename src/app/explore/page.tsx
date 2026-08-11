@@ -31,6 +31,8 @@ import { usePlanningMode } from '@/contexts/planning-mode-context';
 import { useLocation } from '@/contexts/location-context';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 
+import { DesktopNav } from '@/components/desktop-nav';
+
 const QUARANTINE_THRESHOLD = 3;
 
 export default function ExplorePage() {
@@ -346,6 +348,7 @@ export default function ExplorePage() {
                             <h1 className="truncate">{language === 'de' ? 'Aktivitäten' : 'Activities'}</h1>
                             <Compass className="h-6 w-6 text-orange-500 shrink-0" />
                         </div>
+                        <DesktopNav />
                         <div className="flex items-center gap-3 shrink-0">
                             <NotificationBell />
                         </div>

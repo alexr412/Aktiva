@@ -1,27 +1,6 @@
-<div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500">
-  <Button
-    variant="ghost"
-    size="icon"
-    className="
-      h-14 w-14 rounded-full
-      bg-primary
-      text-white
-      border border-white/70
-      ring-4 ring-white/75
-      shadow-[0_10px_25px_rgba(16,185,129,0.28),0_4px_12px_rgba(15,23,42,0.14)]
-      hover:bg-primary
-      hover:text-white
-      hover:-translate-y-0.5
-      hover:shadow-[0_13px_30px_rgba(16,185,129,0.32),0_6px_14px_rgba(15,23,42,0.16)]
-      active:translate-y-0
-      active:scale-95
-      transition-all duration-200
-    "
-    onClick={handleOpenCustomActivityModal}
-  >
-    <Plus className="h-7 w-7 text-white" strokeWidth={2.5} />
-  </Button>
-</div>'use client';
+'use client';
+
+import { DesktopNav } from '@/components/desktop-nav';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -2197,46 +2176,68 @@ export default function Home() {
             </div>
 
             {/* Desktop Unified Header Row (>=1024px) */}
-            <div className="hidden lg:flex items-center justify-between gap-6 px-4 sm:px-6 w-full">
-              {/* Left: Avatar, Name & Location Dropdown Inline */}
-              <div className="flex items-center gap-3 shrink-0 min-w-0">
-                <Link href="/profile" className="shrink-0">
-                  <ProfileAvatar
-                    className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
-                    photoURL={userProfile?.photoURL}
-                    displayName={userProfile?.displayName}
-                    isPremium={isPremiumActive(userProfile)}
-                    isCreator={userProfile?.isCreator}
-                    isSupporter={userProfile?.isSupporter}
-                  />
-                </Link>
-                <div className="flex flex-col min-w-0">
-                  <h1 className="text-xl font-black leading-tight truncate">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
-                  <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 mt-0.5 self-start hover:opacity-80 transition-opacity max-w-full">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
-                    <span className="text-[9px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest truncate">{cityName}</span>
-                    {planningState.isPlanning && (
-                      <span
-                        role="button"
-                        aria-label="Manuellen Standort zurücksetzen"
-                        title="Standort zurücksetzen"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          requestLocation();
-                        }}
-                        className="ml-1 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[10px] leading-none shrink-0"
-                      >
-                        ×
-                      </span>
-                    )}
-                    <ChevronDown className="h-2.5 w-2.5 text-neutral-400 shrink-0" />
-                  </button>
+            <div className="hidden lg:flex flex-col gap-3 px-4 sm:px-6 w-full">
+              <div className="flex items-center justify-between gap-4 w-full">
+                {/* Left: Avatar, Name & Location Dropdown Inline */}
+                <div className="flex items-center gap-3 shrink-0 min-w-0">
+                  <Link href="/profile" className="shrink-0">
+                    <ProfileAvatar
+                      className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
+                      photoURL={userProfile?.photoURL}
+                      displayName={userProfile?.displayName}
+                      isPremium={isPremiumActive(userProfile)}
+                      isCreator={userProfile?.isCreator}
+                      isSupporter={userProfile?.isSupporter}
+                    />
+                  </Link>
+                  <div className="flex flex-col min-w-0">
+                    <h1 className="text-xl font-black leading-tight truncate">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
+                    <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 mt-0.5 self-start hover:opacity-80 transition-opacity max-w-full">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
+                      <span className="text-[9px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest truncate">{cityName}</span>
+                      {planningState.isPlanning && (
+                        <span
+                          role="button"
+                          aria-label="Manuellen Standort zurücksetzen"
+                          title="Standort zurücksetzen"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            requestLocation();
+                          }}
+                          className="ml-1 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[10px] leading-none shrink-0"
+                        >
+                          ×
+                        </span>
+                      )}
+                      <ChevronDown className="h-2.5 w-2.5 text-neutral-400 shrink-0" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Center: Desktop Navigation */}
+                <DesktopNav />
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-3 shrink-0">
+                  <NotificationBell />
+                  <Button 
+                    variant={viewMode === 'map' ? 'secondary' : 'ghost'} 
+                    size="icon" 
+                    className={cn(
+                      "secondary-header-button transition-all",
+                      viewMode === 'map' && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm"
+                    )} 
+                    onClick={handleMapToggle}
+                    aria-label={viewMode === 'list' ? (language === 'de' ? 'Karte öffnen' : 'Open map') : (language === 'de' ? 'Feed öffnen' : 'Open feed')}
+                  >
+                    {viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}
+                  </Button>
                 </div>
               </div>
 
-              {/* Center: Search input & Radius selector */}
-              <div className="flex items-center gap-3 flex-1 max-w-md min-w-0">
+              {/* Search & Radius row */}
+              <div className="flex items-center gap-3 w-full max-w-2xl mx-auto">
                 <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
                   {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
                   <Input 
@@ -2264,23 +2265,6 @@ export default function Home() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </div>
-
-              {/* Right: Actions */}
-              <div className="flex items-center gap-3 shrink-0">
-                <NotificationBell />
-                <Button 
-                  variant={viewMode === 'map' ? 'secondary' : 'ghost'} 
-                  size="icon" 
-                  className={cn(
-                    "secondary-header-button transition-all",
-                    viewMode === 'map' && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm"
-                  )} 
-                  onClick={handleMapToggle}
-                  aria-label={viewMode === 'list' ? (language === 'de' ? 'Karte öffnen' : 'Open map') : (language === 'de' ? 'Feed öffnen' : 'Open feed')}
-                >
-                  {viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}
-                </Button>
               </div>
             </div>
 
