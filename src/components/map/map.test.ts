@@ -447,17 +447,44 @@ async function runMapTestSuite() {
   assert.strictEqual(mockRoadMap.hasImage('custom_user_avatar_missing'), false, 'Unhandled image must NOT be registered');
   console.log('  ✅ Road shield neutralization & missing image pattern matching passed');
 
-  // Test 13: Navigation Architecture & /map Active State Verification
-  console.log('\nTest 13: Navigation Architecture & /map Active State Verification');
-  const mapNavItem = MAIN_NAV_ITEMS.find((item) => item.href === '/map');
-  assert.ok(mapNavItem, '/map must be present in MAIN_NAV_ITEMS');
-  assert.strictEqual(mapNavItem?.labelDe, 'Karte', 'German label for /map must be "Karte"');
-  assert.strictEqual(mapNavItem?.labelEn, 'Map', 'English label for /map must be "Map"');
+  // Test 13: 5-Item Navigation Architecture & /explore /map Active State Verification
+  console.log('\nTest 13: 5-Item Navigation Architecture & /explore /map Active State Verification');
+  assert.strictEqual(MAIN_NAV_ITEMS.length, 5, 'MAIN_NAV_ITEMS must contain exactly 5 main navigation items');
+  
+  const expectedHrefs = ['/', '/explore', '/map', '/chat', '/profile'];
+  const actualHrefs = MAIN_NAV_ITEMS.map((item) => item.href);
+  assert.deepStrictEqual(actualHrefs, expectedHrefs, 'MAIN_NAV_ITEMS order must be: /, /explore, /map, /chat, /profile');
 
-  assert.strictEqual(getIsActiveNav('/map', '/map'), true, '/map route must be active when pathname is /map');
-  assert.strictEqual(getIsActiveNav('/map', '/map/details'), true, '/map child routes must be active for /map nav');
-  assert.strictEqual(getIsActiveNav('/', '/map'), false, '/ home nav must NOT be active when pathname is /map');
-  console.log('  ✅ Navigation architecture & /map active state verification passed');
+  const expectedLabelsDe = ['Entdecken', 'Erkunden', 'Karte', 'Chats', 'Profil'];
+  const actualLabelsDe = MAIN_NAV_ITEMS.map((item) => item.labelDe);
+  assert.deepStrictEqual(actualLabelsDe, expectedLabelsDe, 'German labels must match exact 5-item canonical specification');
+
+  // Verify /explore and /map items
+  const exploreItem = MAIN_NAV_ITEMS.find((item) => item.href === '/explore');
+  assert.ok(exploreItem, '/explore route item must exist in MAIN_NAV_ITEMS');
+  assert.strictEqual(exploreItem?.labelDe, 'Erkunden');
+
+  const mapItem = MAIN_NAV_ITEMS.find((item) => item.href === '/map');
+  assert.ok(mapItem, '/map route item must exist in MAIN_NAV_ITEMS');
+  assert.strictEqual(mapItem?.labelDe, 'Karte');
+
+  // Active state isolation tests
+  assert.strictEqual(getIsActiveNav('/', '/'), true, 'Root / route must activate Entdecken');
+  assert.strictEqual(getIsActiveNav('/explore', '/'), false, '/ must NOT activate Erkunden');
+  assert.strictEqual(getIsActiveNav('/map', '/'), false, '/ must NOT activate Karte');
+
+  assert.strictEqual(getIsActiveNav('/explore', '/explore'), true, '/explore route must activate Erkunden');
+  assert.strictEqual(getIsActiveNav('/', '/explore'), false, '/explore must NOT activate Entdecken');
+  assert.strictEqual(getIsActiveNav('/map', '/explore'), false, '/explore must NOT activate Karte');
+
+  assert.strictEqual(getIsActiveNav('/map', '/map'), true, '/map route must activate Karte');
+  assert.strictEqual(getIsActiveNav('/', '/map'), false, '/map must NOT activate Entdecken');
+  assert.strictEqual(getIsActiveNav('/explore', '/map'), false, '/map must NOT activate Erkunden');
+
+  assert.strictEqual(getIsActiveNav('/chat', '/chat/123'), true, 'Child chat route must activate Chats');
+  assert.strictEqual(getIsActiveNav('/profile', '/profile/edit'), true, 'Child profile route must activate Profil');
+
+  console.log('  ✅ 5-item navigation architecture & active state isolation passed');
 
   // Test 14: Map Lifecycle Status Cycle & Non-Fatal Runtime Event Handling
   console.log('\nTest 14: Map Lifecycle Status Cycle & Non-Fatal Runtime Event Handling');
