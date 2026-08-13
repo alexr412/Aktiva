@@ -124,16 +124,109 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     const [isSaveToCollectionOpen, setIsSaveToCollectionOpen] = useState(false);
     const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
 
-    const handleCopyAddress = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        e.preventDefault();
+    const handleCopyAddress = (e?: React.MouseEvent) => {
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
         navigator.clipboard.writeText(place.address || "");
         setCopied(true);
         toast({
-            title: language === 'de' ? 'Kopiert!' : 'Copied!',
+            title: language === 'de' ? 'Adresse kopiert' : 'Address copied',
             description: language === 'de' ? 'Adresse in Zwischenablage kopiert.' : 'Address copied to clipboard.'
         });
         setTimeout(() => setCopied(false), 2000);
+    };
+
+    // Long-Press & Touch interaction refs
+    const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const failsafeTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const startPosRef = useRef<{ x: number; y: number } | null>(null);
+    const preventClickRef = useRef(false);
+    const isTouchActiveRef = useRef(false);
+
+    const clearLongPressTimer = () => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+        startPosRef.current = null;
+        isTouchActiveRef.current = false;
+    };
+
+    const clearFailsafeTimer = () => {
+        if (failsafeTimerRef.current) {
+            clearTimeout(failsafeTimerRef.current);
+            failsafeTimerRef.current = null;
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            clearLongPressTimer();
+            clearFailsafeTimer();
+        };
+    }, []);
+
+    const handleAddressPointerDown = (e: React.PointerEvent) => {
+        if (e.pointerType !== 'touch') return;
+
+        clearLongPressTimer();
+        clearFailsafeTimer();
+        preventClickRef.current = false;
+        isTouchActiveRef.current = true;
+        startPosRef.current = { x: e.clientX, y: e.clientY };
+
+        longPressTimerRef.current = setTimeout(() => {
+            preventClickRef.current = true;
+            handleCopyAddress();
+            clearLongPressTimer();
+
+            clearFailsafeTimer();
+            failsafeTimerRef.current = setTimeout(() => {
+                preventClickRef.current = false;
+                failsafeTimerRef.current = null;
+            }, 1000);
+        }, 500);
+    };
+
+    const handleAddressPointerMove = (e: React.PointerEvent) => {
+        if (e.pointerType !== 'touch' || !startPosRef.current || !longPressTimerRef.current) return;
+
+        const dx = e.clientX - startPosRef.current.x;
+        const dy = e.clientY - startPosRef.current.y;
+        const distance = Math.hypot(dx, dy);
+
+        if (distance > 10) {
+            clearLongPressTimer();
+        }
+    };
+
+    const handleAddressPointerUp = (e: React.PointerEvent) => {
+        if (e.pointerType !== 'touch') return;
+        clearLongPressTimer();
+    };
+
+    const handleAddressPointerCancel = (e: React.PointerEvent) => {
+        if (e.pointerType !== 'touch') return;
+        clearLongPressTimer();
+    };
+
+    const handleAddressContextMenu = (e: React.SyntheticEvent) => {
+        if (isTouchActiveRef.current || preventClickRef.current) {
+            e.preventDefault();
+        }
+    };
+
+    const handleAddressClick = (e: React.MouseEvent) => {
+        if (preventClickRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            preventClickRef.current = false;
+            clearFailsafeTimer();
+            return;
+        }
+        trackInteraction(place.id, place.categories, 'directions', user?.uid);
     };
     
     const [placeMeta, setPlaceMeta] = useState({ 
@@ -361,11 +454,17 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    onClick={() => trackInteraction(place.id, place.categories, 'directions', user?.uid)}
-                                    className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 hover:underline cursor-pointer group"
+                                    onPointerDown={handleAddressPointerDown}
+                                    onPointerMove={handleAddressPointerMove}
+                                    onPointerUp={handleAddressPointerUp}
+                                    onPointerCancel={handleAddressPointerCancel}
+                                    onContextMenu={handleAddressContextMenu}
+                                    onClick={handleAddressClick}
+                                    className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 cursor-pointer group select-none"
+                                    style={{ WebkitTouchCallout: 'none' }}
                                 >
                                     <MapPin className="h-3.5 w-3.5 fill-current group-hover:scale-110 transition-transform shrink-0" />
-                                    <h4 className="text-[12px] md:text-sm font-bold leading-tight">{place.address}</h4>
+                                    <h4 className="text-[12px] md:text-sm font-bold leading-tight underline decoration-rose-500/40 underline-offset-2">{place.address}</h4>
                                 </a>
                                 <Button
                                     onClick={handleCopyAddress}
