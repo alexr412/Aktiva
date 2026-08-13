@@ -2311,33 +2311,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Premium Advanced Filters Row */}
-            <div className="px-4 sm:px-6 -mt-2 pb-0">
-              <div className="flex flex-nowrap overflow-x-auto lg:flex-wrap lg:overflow-x-visible gap-2 pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-center w-full">
-                {PREMIUM_FILTERS.map((f) => {
-                  const isUserPremium = hasPremiumFeature(userProfile, 'advanced_filters');
-                  const isActive = activePremiumFilters.includes(f.id) && isUserPremium;
-                  return (
-                    <Button
-                      key={f.id}
-                      onClick={() => handlePremiumFilterClick(f.id)}
-                      variant={isActive ? "default" : "outline"}
-                      aria-pressed={isActive}
-                      className={cn(
-                        "flex-shrink-0 flex items-center justify-center rounded-full h-9 px-4 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-105 active:scale-95 duration-200",
-                        isActive
-                          ? "bg-amber-500 hover:bg-amber-600 text-white border-none shadow-lg shadow-amber-500/20"
-                          : "bg-white/80 dark:bg-neutral-800/80 border-slate-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300"
-                      )}
-                    >
-                      {!isUserPremium && <Lock className="h-3 w-3 mr-1 text-amber-500 fill-amber-500/10 shrink-0" />}
-                      {f.icon && <f.icon className={cn("h-3.5 w-3.5 mr-1 shrink-0", isActive ? "text-white" : "text-amber-500")} />}
-                      <span className="whitespace-nowrap">{language === 'de' ? f.label : f.labelEn}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Second filter row removed per desktop feed cleanup spec */}
           </div>
         </header>
         <main className={`flex-1 min-h-0 w-full ${viewMode === 'list' ? 'overflow-y-auto pb-bottom-nav-safe' : 'overflow-hidden scroll-smooth'}`}>

@@ -88,22 +88,20 @@ export function ActivaPulseHero({
   if (loading) {
     return (
       <div 
-        className="w-full flex flex-col justify-between py-3.5 px-[18px] md:p-6 rounded-[22px] bg-gradient-to-br from-emerald-600 to-teal-800 dark:from-emerald-800 dark:to-teal-950 text-white shadow-premium relative overflow-hidden transition-all duration-300 gap-1.5 md:gap-4 pointer-events-none select-none"
+        className="w-full flex flex-col lg:flex-row lg:items-center lg:justify-between py-3.5 px-[18px] md:p-5 lg:py-[18px] lg:px-6 rounded-[22px] bg-gradient-to-br from-emerald-600 to-teal-800 dark:from-emerald-800 dark:to-teal-950 text-white shadow-premium relative overflow-hidden transition-all duration-300 gap-2 md:gap-3 lg:gap-4 pointer-events-none select-none min-h-[120px] lg:min-h-[135px]"
         aria-hidden="true"
       >
         <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-teal-400/10 rounded-full blur-2xl" />
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5 flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-emerald-400/60" />
             <div className="h-3 w-16 bg-white/20 rounded animate-pulse motion-reduce:animate-none" />
           </div>
-          <div className="h-5 w-2/3 bg-white/20 rounded mt-1 animate-pulse motion-reduce:animate-none" />
+          <div className="h-5 w-2/3 max-w-sm bg-white/20 rounded mt-1 animate-pulse motion-reduce:animate-none" />
+          <div className="h-4 w-1/2 max-w-xs bg-white/10 rounded animate-pulse motion-reduce:animate-none" />
         </div>
-        <div className="min-h-[2.5rem] flex items-center">
-          <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse motion-reduce:animate-none" />
-        </div>
-        <div>
-          <div className="h-11 w-32 bg-white/30 rounded-xl mt-1 animate-pulse motion-reduce:animate-none" />
+        <div className="shrink-0 flex justify-end lg:justify-center items-center">
+          <div className="h-10 lg:h-11 w-32 lg:w-40 bg-white/30 rounded-xl animate-pulse motion-reduce:animate-none" />
         </div>
       </div>
     );
@@ -111,7 +109,7 @@ export function ActivaPulseHero({
 
   return (
     <div 
-      className="w-full flex flex-col justify-between py-3.5 px-[18px] md:p-6 rounded-[22px] bg-gradient-to-br from-emerald-600 to-teal-800 dark:from-emerald-800 dark:to-teal-950 text-white shadow-premium relative overflow-hidden transition-all duration-300 gap-1.5 md:gap-3"
+      className="w-full flex flex-col lg:flex-row lg:items-center lg:justify-between py-3.5 px-[18px] md:p-5 lg:py-[18px] lg:px-6 rounded-[22px] bg-gradient-to-br from-emerald-600 to-teal-800 dark:from-emerald-800 dark:to-teal-950 text-white shadow-premium relative overflow-hidden transition-all duration-300 gap-1.5 md:gap-2 lg:gap-4 min-h-[120px] lg:min-h-[135px]"
       aria-labelledby="pulse-heading"
     >
       {/* Decorative background blurs */}
@@ -124,68 +122,68 @@ export function ActivaPulseHero({
         aria-hidden="true" 
       />
 
-      {/* Row 1 on mobile: Eyebrow left, indicators right. On desktop: Eyebrow + breathing dot */}
-      <div className="flex items-center justify-between w-full md:block">
-        <div className="flex items-center gap-1.5">
-          {/* Status breathing pulse dot */}
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
-          </span>
-          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-emerald-200">
-            {translateAppString('pulse.eyebrow', language)}
-          </span>
+      {/* Main content wrapper */}
+      <div className="flex-1 flex flex-col justify-between lg:justify-center min-w-0 gap-1 lg:gap-1">
+        {/* Eyebrow & Mobile Indicators */}
+        <div className="flex items-center justify-between w-full lg:justify-start">
+          <div className="flex items-center gap-1.5">
+            {/* Status breathing pulse dot */}
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+            </span>
+            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-emerald-200">
+              {translateAppString('pulse.eyebrow', language)}
+            </span>
+          </div>
+
+          {/* Indicators on Mobile (<lg) */}
+          {metricsAvailable && !prefersReducedMotion && (
+            <div 
+              className="flex items-center lg:hidden -mr-2.5" 
+              aria-label={language === 'de' ? 'Statistik-Auswahl' : 'Metric selection'}
+            >
+              <button
+                aria-pressed={activeMetric === 'rooms'}
+                aria-label={language === 'de' ? 'Offene Räume anzeigen' : 'Show open rooms'}
+                onClick={() => handleManualSwitch('rooms')}
+                className="h-7 w-7 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                <span 
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full transition-colors duration-200",
+                    activeMetric === 'rooms' ? "bg-white" : "bg-white/40"
+                  )} 
+                />
+              </button>
+              <button
+                aria-pressed={activeMetric === 'participants'}
+                aria-label={language === 'de' ? 'Teilnehmer anzeigen' : 'Show participants'}
+                onClick={() => handleManualSwitch('participants')}
+                className="h-7 w-7 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                <span 
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full transition-colors duration-200",
+                    activeMetric === 'participants' ? "bg-white" : "bg-white/40"
+                  )} 
+                />
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Indicators on the right (Mobile only) */}
-        {metricsAvailable && !prefersReducedMotion && (
-          <div 
-            className="flex items-center md:hidden -mr-2.5" 
-            aria-label={language === 'de' ? 'Statistik-Auswahl' : 'Metric selection'}
-          >
-            <button
-              aria-pressed={activeMetric === 'rooms'}
-              aria-label={language === 'de' ? 'Offene Räume anzeigen' : 'Show open rooms'}
-              onClick={() => handleManualSwitch('rooms')}
-              className="h-10 w-10 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              <span 
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full transition-colors duration-200",
-                  activeMetric === 'rooms' ? "bg-white" : "bg-white/40"
-                )} 
-              />
-            </button>
-            <button
-              aria-pressed={activeMetric === 'participants'}
-              aria-label={language === 'de' ? 'Teilnehmer anzeigen' : 'Show participants'}
-              onClick={() => handleManualSwitch('participants')}
-              className="h-10 w-10 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              <span 
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full transition-colors duration-200",
-                  activeMetric === 'participants' ? "bg-white" : "bg-white/40"
-                )} 
-              />
-            </button>
-          </div>
-        )}
-      </div>
+        {/* Heading */}
+        <h2 
+          id="pulse-heading" 
+          className="text-[17px] md:text-xl lg:text-lg xl:text-xl font-black tracking-tight leading-tight text-white m-0 truncate"
+        >
+          {headingText}
+        </h2>
 
-      {/* Row 2: Heading */}
-      <h2 
-        id="pulse-heading" 
-        className="text-[17px] md:text-xl font-black tracking-tight leading-tight text-white m-0"
-      >
-        {headingText}
-      </h2>
-
-      {/* Row 3 on mobile: stats on left, CTA on right. On desktop: stats on top, CTA at the bottom */}
-      <div className="flex items-center justify-between gap-3 w-full md:flex-col md:items-stretch md:gap-3">
-        {/* Stats area */}
-        <div className="flex-1 md:flex md:items-center md:justify-between w-full">
-          <div className="grid grid-cols-1 grid-rows-1 min-h-[1.5rem] md:min-h-[2.5rem] items-center w-full">
+        {/* Stats & Desktop Indicators */}
+        <div className="flex items-center gap-3">
+          <div className="grid grid-cols-1 grid-rows-1 min-h-[1.5rem] lg:min-h-[1.25rem] items-center">
             {!metricsAvailable ? (
               <span className="col-start-1 row-start-1 text-xs md:text-sm text-emerald-100 font-medium leading-tight animate-in fade-in duration-300">
                 {translateAppString('pulse.location_fallback', language)}
@@ -221,14 +219,14 @@ export function ActivaPulseHero({
           {/* Desktop-only indicator dots */}
           {metricsAvailable && !prefersReducedMotion && (
             <div 
-              className="hidden md:flex items-center gap-0.5 shrink-0" 
+              className="hidden lg:flex items-center gap-0.5 shrink-0" 
               aria-label={language === 'de' ? 'Statistik-Auswahl' : 'Metric selection'}
             >
               <button
                 aria-pressed={activeMetric === 'rooms'}
                 aria-label={language === 'de' ? 'Offene Räume anzeigen' : 'Show open rooms'}
                 onClick={() => handleManualSwitch('rooms')}
-                className="h-10 w-10 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="h-6 w-6 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 <span 
                   className={cn(
@@ -241,7 +239,7 @@ export function ActivaPulseHero({
                 aria-pressed={activeMetric === 'participants'}
                 aria-label={language === 'de' ? 'Teilnehmer anzeigen' : 'Show participants'}
                 onClick={() => handleManualSwitch('participants')}
-                className="h-10 w-10 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="h-6 w-6 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 <span 
                   className={cn(
@@ -253,20 +251,20 @@ export function ActivaPulseHero({
             </div>
           )}
         </div>
+      </div>
 
-        {/* CTA Button */}
-        <div className="shrink-0 flex justify-end md:justify-start">
-          <Button
-            onClick={onExplore}
-            disabled={openRoomsCount === null}
-            className="h-11 px-4 md:px-5 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 font-black text-xs transition-all uppercase tracking-wider active:scale-[0.985] border-none shadow-sm flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label={openRoomsCount === 0 ? translateAppString('pulse.cta.create', language) : translateAppString('pulse.cta.open_rooms', language)}
-            aria-disabled={openRoomsCount === null}
-          >
-            {openRoomsCount === 0 ? <Plus className="h-4 w-4" /> : <Compass className="h-4 w-4" />}
-            {openRoomsCount === 0 ? translateAppString('pulse.cta.create', language) : translateAppString('pulse.cta.open_rooms', language)}
-          </Button>
-        </div>
+      {/* CTA Button Column */}
+      <div className="shrink-0 flex justify-end lg:justify-center items-center">
+        <Button
+          onClick={onExplore}
+          disabled={openRoomsCount === null}
+          className="h-10 lg:h-11 px-4 lg:px-5 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 font-black text-xs transition-all uppercase tracking-wider active:scale-[0.985] border-none shadow-sm flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          aria-label={openRoomsCount === 0 ? translateAppString('pulse.cta.create', language) : translateAppString('pulse.cta.open_rooms', language)}
+          aria-disabled={openRoomsCount === null}
+        >
+          {openRoomsCount === 0 ? <Plus className="h-4 w-4" /> : <Compass className="h-4 w-4" />}
+          {openRoomsCount === 0 ? translateAppString('pulse.cta.create', language) : translateAppString('pulse.cta.open_rooms', language)}
+        </Button>
       </div>
     </div>
   );
