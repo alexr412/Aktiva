@@ -2287,6 +2287,8 @@ test('154. Road-Shield-Layer erhalten icon-opacity = 0', () => {
       if (prop === 'icon-text-fit') return 'both';
       return null;
     },
+    setLayoutProperty() {},
+    getPaintProperty() { return undefined; },
     setPaintProperty(id: string, prop: string, val: any) {
       setPaintProps[id] = { prop, val };
     }
@@ -2316,6 +2318,8 @@ test('155. Normale Road-Label-Layer bleiben sichtbar', () => {
       if (prop === 'text-field') return '{name}';
       return null;
     },
+    setLayoutProperty() {},
+    getPaintProperty() { return undefined; },
     setPaintProperty(id: string, prop: string, val: any) {
       setPaintProps[id] = { prop, val };
     }
@@ -2339,6 +2343,8 @@ test('156. Derselbe Layer wird nicht mehrfach verändert', () => {
       };
     },
     getLayoutProperty() { return null; },
+    setLayoutProperty() {},
+    getPaintProperty() { return undefined; },
     setPaintProperty() { calls++; }
   };
 

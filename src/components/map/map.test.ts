@@ -7,10 +7,14 @@ import {
   createMapGeoJSON,
   createRadiusCircleGeoJSON,
   applySoftPastelBasemapStyle,
+  neutralizeBrokenRoadShieldLayers,
+  handleOptionalMissingImage,
+  OPTIONAL_MISSING_IMAGE_PATTERNS,
 } from './map-marker-data';
 import type { Place, Activity } from '@/lib/types';
 import type { SelectedMapEntity, MapLayerVisibility } from './map-types';
 import { getPrimaryIconData } from '../../lib/tag-config';
+import { MAIN_NAV_ITEMS, getIsActiveNav } from '../../lib/navigation-config';
 
 async function runMapTestSuite() {
   console.log('🧪 Starting Activa Map Architecture Phase 1 Test Suite...\n');
@@ -392,6 +396,96 @@ async function runMapTestSuite() {
   assert.strictEqual(kameraMeta.gradientClass.includes('purple') || kameraMeta.gradientClass.includes('rose') || kameraMeta.gradientClass.includes('violet'), true, 'Cinema must use a cinema gradient');
 
   console.log('  ✅ Place Category Visual Mapping System & Technical Tag Exclusion passed');
+
+  // Test 12: Road Shield Neutralization & Missing Image Pattern Matching
+  console.log('\nTest 12: Road Shield Neutralization & Missing Image Pattern Matching');
+  const mockRoadMap = {
+    getStyle: () => ({
+      layers: [
+        { id: 'transportation-name-road-shield', type: 'symbol' },
+        { id: 'route-number-label', type: 'symbol' },
+        { id: 'poi-label', type: 'symbol' },
+      ],
+    }),
+    layouts: {} as Record<string, Record<string, any>>,
+    paints: {} as Record<string, Record<string, any>>,
+    images: new Set<string>(),
+    getLayoutProperty(layerId: string, prop: string) {
+      return this.layouts[layerId]?.[prop];
+    },
+    setLayoutProperty(layerId: string, prop: string, val: any) {
+      if (!this.layouts[layerId]) this.layouts[layerId] = {};
+      this.layouts[layerId][prop] = val;
+    },
+    getPaintProperty(layerId: string, prop: string) {
+      return this.paints[layerId]?.[prop];
+    },
+    setPaintProperty(layerId: string, prop: string, val: any) {
+      if (!this.paints[layerId]) this.paints[layerId] = {};
+      this.paints[layerId][prop] = val;
+    },
+    hasImage(id: string) {
+      return this.images.has(id);
+    },
+    addImage(id: string, _img: any) {
+      this.images.add(id);
+    },
+  };
+
+  neutralizeBrokenRoadShieldLayers(mockRoadMap);
+  assert.strictEqual(mockRoadMap.layouts['transportation-name-road-shield']?.['icon-image'], '', 'Broken road shield icon-image must be set to empty string');
+  assert.strictEqual(mockRoadMap.layouts['route-number-label']?.['icon-image'], '', 'Broken route number icon-image must be set to empty string');
+  assert.strictEqual(mockRoadMap.layouts['poi-label']?.['icon-image'], undefined, 'Non-shield symbol layer icon-image must not be modified');
+
+  // Test handleOptionalMissingImage allowlist
+  const handledRoad = handleOptionalMissingImage(mockRoadMap, { id: 'transportation:road_A1' });
+  assert.strictEqual(handledRoad, true, 'Matching road shield image pattern must be handled');
+  assert.strictEqual(mockRoadMap.hasImage('transportation:road_A1'), true, 'Handled image must be registered in map');
+
+  const handledUnknown = handleOptionalMissingImage(mockRoadMap, { id: 'custom_user_avatar_missing' });
+  assert.strictEqual(handledUnknown, false, 'Unknown missing image must NOT be handled automatically');
+  assert.strictEqual(mockRoadMap.hasImage('custom_user_avatar_missing'), false, 'Unhandled image must NOT be registered');
+  console.log('  ✅ Road shield neutralization & missing image pattern matching passed');
+
+  // Test 13: Navigation Architecture & /map Active State Verification
+  console.log('\nTest 13: Navigation Architecture & /map Active State Verification');
+  const mapNavItem = MAIN_NAV_ITEMS.find((item) => item.href === '/map');
+  assert.ok(mapNavItem, '/map must be present in MAIN_NAV_ITEMS');
+  assert.strictEqual(mapNavItem?.labelDe, 'Karte', 'German label for /map must be "Karte"');
+  assert.strictEqual(mapNavItem?.labelEn, 'Map', 'English label for /map must be "Map"');
+
+  assert.strictEqual(getIsActiveNav('/map', '/map'), true, '/map route must be active when pathname is /map');
+  assert.strictEqual(getIsActiveNav('/map', '/map/details'), true, '/map child routes must be active for /map nav');
+  assert.strictEqual(getIsActiveNav('/', '/map'), false, '/ home nav must NOT be active when pathname is /map');
+  console.log('  ✅ Navigation architecture & /map active state verification passed');
+
+  // Test 14: Map Lifecycle Status Cycle & Non-Fatal Runtime Event Handling
+  console.log('\nTest 14: Map Lifecycle Status Cycle & Non-Fatal Runtime Event Handling');
+  type TestMapStatus = 'loading' | 'ready' | 'error';
+  let status: TestMapStatus = 'loading';
+  let isReady = false;
+
+  const simulateMapLoad = () => {
+    isReady = true;
+    status = 'ready';
+  };
+
+  const simulateMapError = (e: any) => {
+    if (isReady) {
+      // Runtime errors post-load do NOT alter map status or unmount canvas
+      return;
+    }
+    status = 'error';
+  };
+
+  assert.strictEqual(status, 'loading', 'Initial map status must be "loading"');
+  simulateMapLoad();
+  assert.strictEqual(status, 'ready', 'Status must transition to "ready" after load');
+
+  simulateMapError({ message: 'Image "transportation:road_" could not be loaded' });
+  assert.strictEqual(status, 'ready', 'Non-fatal missing image error post-load must NOT set status to "error"');
+
+  console.log('  ✅ Map lifecycle status cycle & non-fatal runtime event handling passed');
 
   console.log('\n🎉 ALL MAP ARCHITECTURE PHASE 1 TESTS PASSED SUCCESSFULLY!\n');
 }

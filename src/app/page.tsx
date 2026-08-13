@@ -73,16 +73,6 @@ import { trackInteraction } from '@/lib/telemetry';
 import { isDuplicate } from '@/lib/duplicate-detector';
 import { monitoring } from '@/lib/monitoring';
 
-// Dynamic import for ActivaMap (MapLibre GL JS) to avoid SSR issues
-const ActivaMap = dynamic(() => import('@/components/map/activa-map').then(mod => mod.ActivaMap), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-slate-50 dark:bg-neutral-900">
-      <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-    </div>
-  )
-});
-
 const CardSkeleton = () => (
   <div className="w-full overflow-hidden rounded-3xl bg-white shadow-sm flex flex-row p-0 border border-slate-100/50 min-h-[130px]">
     <Skeleton className="w-28 sm:w-32 h-32 rounded-none" />
@@ -186,7 +176,6 @@ export default function Home() {
   const [presetCategory, setPresetCategory] = useState<string | undefined>(undefined);
   const [activeCategory, setActiveCategory] = useState<string[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>("");
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [requestedActivityIds, setRequestedActivityIds] = useState<Record<string, boolean>>({});
@@ -1610,10 +1599,6 @@ export default function Home() {
     trackInteraction(placeObj.id, placeObj.categories, 'favorite', user?.uid);
   };
 
-  const handleMapToggle = () => {
-    setViewMode((prev) => (prev === 'list' ? 'map' : 'list'));
-  };
-
   const increaseRadiusToNextOption = () => {
     if (maxDistance === 5) setMaxDistance(10);
     else if (maxDistance === 10) setMaxDistance(25);
@@ -1907,8 +1892,7 @@ export default function Home() {
       return <EmptySearchState />;
     }
 
-    if (viewMode === 'list') {
-      const renderList = () => {
+    const renderList = () => {
         if (isFavoritesCategory) {
           if (finalFeedPlaces.length === 0) {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
@@ -2083,31 +2067,6 @@ export default function Home() {
           )}
         </div>
       );
-    }
-
-    if (viewMode === 'map') {
-      return (
-        <div className="h-full w-full relative">
-          <ActivaMap
-            places={finalFeedPlaces}
-            communityActivities={communityActivities}
-            nearbyFriends={nearbyFriends}
-            userLocation={userLocation}
-            maxDistance={maxDistance}
-            planningDestination={planningState.isPlanning ? planningState.destination : null}
-            language={language}
-            isMobile={isMobile}
-            selectedEntity={selectedMapEntity}
-            onSelectEntity={handleSelectMapEntity}
-            onCreateActivity={(place) => setActivityModalPlace(place)}
-            onJoinActivity={handleJoin}
-            onPlaceSelect={handlePlaceSelect}
-            checkIsFavoriteProp={checkIsFavorite}
-            onToggleFavorite={handleBookmarkTogglePlace}
-          />
-        </div>
-      );
-    }
   };
 
   return (
@@ -2135,18 +2094,6 @@ export default function Home() {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <NotificationBell />
-                  <Button 
-                    variant={viewMode === 'map' ? 'secondary' : 'ghost'} 
-                    size="icon" 
-                    className={cn(
-                      "secondary-header-button transition-all",
-                      viewMode === 'map' && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm"
-                    )} 
-                    onClick={handleMapToggle}
-                    aria-label={viewMode === 'list' ? (language === 'de' ? 'Karte öffnen' : 'Open map') : (language === 'de' ? 'Feed öffnen' : 'Open feed')}
-                  >
-                    {viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}
-                  </Button>
                 </div>
               </div>
 
@@ -2221,18 +2168,6 @@ export default function Home() {
                 {/* Right: Actions */}
                 <div className="flex items-center gap-3 shrink-0">
                   <NotificationBell />
-                  <Button 
-                    variant={viewMode === 'map' ? 'secondary' : 'ghost'} 
-                    size="icon" 
-                    className={cn(
-                      "secondary-header-button transition-all",
-                      viewMode === 'map' && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm"
-                    )} 
-                    onClick={handleMapToggle}
-                    aria-label={viewMode === 'list' ? (language === 'de' ? 'Karte öffnen' : 'Open map') : (language === 'de' ? 'Feed öffnen' : 'Open feed')}
-                  >
-                    {viewMode === 'list' ? <Globe className="h-5 w-5" /> : <List className="h-5 w-5" />}
-                  </Button>
                 </div>
               </div>
 
@@ -2314,10 +2249,9 @@ export default function Home() {
             {/* Second filter row removed per desktop feed cleanup spec */}
           </div>
         </header>
-        <main className={`flex-1 min-h-0 w-full ${viewMode === 'list' ? 'overflow-y-auto pb-bottom-nav-safe' : 'overflow-hidden scroll-smooth'}`}>
+        <main className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
           <div className="max-w-[1536px] mx-auto w-full pt-2">
-            {viewMode === 'list' && (
-              <div className="px-3 sm:px-6 mb-3 sm:mb-4">
+            <div className="px-3 sm:px-6 mb-3 sm:mb-4">
                 <ActivaPulseHero 
                   cityName={isLocationLoading ? null : resolvedCityName}
                   openRoomsCount={openRoomsCount}
@@ -2327,7 +2261,6 @@ export default function Home() {
                   loading={isInitialFeedLoading && !hasUsableFeedData}
                 />
               </div>
-            )}
             <div ref={discoverFeedRef} id="discover-feed" className="scroll-mt-24">
               {renderContent()}
             </div>

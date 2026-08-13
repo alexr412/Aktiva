@@ -1,4 +1,4 @@
-import { Home, Compass, MessageCircle, User } from 'lucide-react';
+import { Home, MapPinned, MessageCircle, User } from 'lucide-react';
 import type { ComponentType } from 'react';
 
 export interface NavItem {
@@ -10,8 +10,8 @@ export interface NavItem {
 
 export const MAIN_NAV_ITEMS: NavItem[] = [
   { href: '/', labelDe: 'Entdecken', labelEn: 'Discover', icon: Home },
-  { href: '/explore', labelDe: 'Erkunden', labelEn: 'Explore', icon: Compass },
-  { href: '/chat', labelDe: 'Chat', labelEn: 'Chat', icon: MessageCircle },
+  { href: '/map', labelDe: 'Karte', labelEn: 'Map', icon: MapPinned },
+  { href: '/chat', labelDe: 'Chats', labelEn: 'Chats', icon: MessageCircle },
   { href: '/profile', labelDe: 'Profil', labelEn: 'Profile', icon: User },
 ];
 

@@ -13,7 +13,7 @@ export function BottomNav() {
   const language = useLanguage();
   const { unreadTotal } = useChatSync();
 
-  const bottomNavVisiblePaths = ['/', '/explore', '/chat', '/profile'];
+  const bottomNavVisiblePaths = ['/', '/map', '/explore', '/chat', '/profile'];
   const shouldShowBottomNav = bottomNavVisiblePaths.includes(pathname);
   if (!shouldShowBottomNav) {
     return null;

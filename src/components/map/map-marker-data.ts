@@ -742,7 +742,44 @@ export function createFriendPopupHTML(
 
 export const neutralizedRoadShieldLayers = new Set<string>();
 
+export const OPTIONAL_MISSING_IMAGE_PATTERNS = [
+  /^transportation:road_/,
+  /^road[-_:]?shield/i,
+  /^shield[-_:]?/i,
+  /^route[-_:]?number/i,
+  /^road[-_:]?number/i,
+  /^road[-_:]?ref/i,
+];
+
+export function handleOptionalMissingImage(map: any, event: { id: string }): boolean {
+  if (!map || !event || !event.id) return false;
+  const id = event.id;
+
+  const matches = OPTIONAL_MISSING_IMAGE_PATTERNS.some((pattern) => pattern.test(id));
+  if (matches) {
+    if (typeof map.hasImage === 'function' && map.hasImage(id)) return true;
+    if (typeof map.addImage === 'function') {
+      try {
+        map.addImage(id, {
+          width: 1,
+          height: 1,
+          data: new Uint8Array([0, 0, 0, 0]),
+        }, { pixelRatio: 1, sdf: false });
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+  } else {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[ActivaMap] Unhandled missing style image:', id);
+    }
+  }
+  return false;
+}
+
 export function neutralizeBrokenRoadShieldLayers(map: any): void {
+  if (!map || typeof map.getStyle !== 'function') return;
   const layers = map.getStyle()?.layers ?? [];
 
   for (const layer of layers) {
@@ -750,8 +787,8 @@ export function neutralizeBrokenRoadShieldLayers(map: any): void {
     if (neutralizedRoadShieldLayers.has(layer.id)) continue;
 
     const layerId = layer.id.toLowerCase();
-    const iconImage = map.getLayoutProperty(layer.id, 'icon-image');
-    const iconTextFit = map.getLayoutProperty(layer.id, 'icon-text-fit');
+    const iconImage = map.getLayoutProperty ? map.getLayoutProperty(layer.id, 'icon-image') : undefined;
+    const iconTextFit = map.getLayoutProperty ? map.getLayoutProperty(layer.id, 'icon-text-fit') : undefined;
 
     const serializedIconImage = JSON.stringify(iconImage ?? '').toLowerCase();
 
@@ -759,15 +796,16 @@ export function neutralizeBrokenRoadShieldLayers(map: any): void {
       layerId.includes('shield') ||
       layerId.includes('road-number') ||
       layerId.includes('road_number') ||
+      layerId.includes('route-number') ||
       layerId.includes('road-ref') ||
       layerId.includes('road_ref') ||
       (Boolean(iconTextFit) && serializedIconImage.includes('road_'));
 
     if (!isBrokenRoadShieldLayer) continue;
 
-    // Nur das fehlerhafte Schildbild ausblenden.
-    // Text und normale Straßenbeschriftungen bleiben erhalten.
-    map.setPaintProperty(layer.id, 'icon-opacity', 0);
+    // Remove the icon-image layout property completely so MapLibre won't query missing shield sprites
+    safeSetLayout(map, layer.id, 'icon-image', '');
+    safeSetPaint(map, layer.id, 'icon-opacity', 0);
 
     neutralizedRoadShieldLayers.add(layer.id);
 

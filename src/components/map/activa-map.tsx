@@ -28,6 +28,7 @@ import {
   neutralizeBrokenRoadShieldLayers,
   neutralizedRoadShieldLayers,
   applySoftPastelBasemapStyle,
+  handleOptionalMissingImage,
 } from './map-marker-data';
 import { getFirstName, normalizePrecisionMeters, formatDistanceBucketText } from '@/lib/radar-types';
 import {
@@ -38,8 +39,10 @@ import {
 import { MapControls } from './map-controls';
 import { MapResultPanel } from './map-result-panel';
 import { MapResultSheet } from './map-result-sheet';
-import { AlertTriangle, MapPin } from 'lucide-react';
+import { AlertTriangle, MapPin, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+export type MapStatus = 'loading' | 'ready' | 'error';
 
 export interface ActivaMapProps {
   places: Place[];
@@ -98,8 +101,10 @@ export function ActivaMap({
   }, [nearbyFriends]);
 
   const [webGlSupported, setWebGlSupported] = useState<boolean>(true);
+  const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
   const [mapError, setMapError] = useState<string | null>(null);
-  const [isMapLoaded, setIsMapLoaded] = useState<boolean>(false);
+
+  const isMapLoaded = mapStatus === 'ready';
 
   // Layer visibility state
   const [layers, setLayers] = useState<MapLayerVisibility>({
@@ -225,17 +230,41 @@ export function ActivaMap({
     const isSupported = typeof (maplibregl as any).supported === 'function' ? (maplibregl as any).supported() : true;
     if (!isSupported) {
       setWebGlSupported(false);
+      setMapStatus('error');
+      setMapError(language === 'de' ? 'WebGL wird auf deinem Gerät nicht unterstützt.' : 'WebGL is not supported on your browser.');
       return;
     }
 
     if (!mapContainerRef.current) return;
+    const container = mapContainerRef.current;
 
     // Resolve Style URL: use NEXT_PUBLIC_MAP_STYLE_URL if configured, otherwise fallback to OpenFreeMap Positron
     const styleUrl = process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'https://tiles.openfreemap.org/styles/positron';
 
+    let map: maplibregl.Map | null = null;
+    let resizeFrame: number | null = null;
+    let isReady = false;
+
+    // ResizeObserver for responsive container resizing with requestAnimationFrame debouncing
+    const observer = new ResizeObserver(() => {
+      if (resizeFrame !== null) {
+        cancelAnimationFrame(resizeFrame);
+      }
+      resizeFrame = requestAnimationFrame(() => {
+        if (mapInstanceRef.current && container.clientWidth > 0 && container.clientHeight > 0) {
+          try {
+            mapInstanceRef.current.resize();
+          } catch {}
+        }
+        resizeFrame = null;
+      });
+    });
+
     try {
-      const map = new maplibregl.Map({
-        container: mapContainerRef.current,
+      observer.observe(container);
+
+      map = new maplibregl.Map({
+        container: container,
         style: styleUrl,
         center: effectiveCenter,
         zoom: 13,
@@ -244,26 +273,35 @@ export function ActivaMap({
 
       mapInstanceRef.current = map;
 
-
-
       const handleStyleData = () => {
+        if (!map) return;
         applySoftPastelBasemapStyle(map);
         neutralizeBrokenRoadShieldLayers(map);
       };
       styleDataHandlerRef.current = handleStyleData;
 
+      const handleMissingImage = (e: { id: string }) => {
+        if (!map) return;
+        handleOptionalMissingImage(map, e);
+      };
+
       map.on('styledata', handleStyleData);
+      map.on('styleimagemissing', handleMissingImage);
 
       map.on('load', () => {
-        applySoftPastelBasemapStyle(map);
-        neutralizeBrokenRoadShieldLayers(map);
-        setIsMapLoaded(true);
+        const activeMap = map;
+        if (!activeMap) return;
+        applySoftPastelBasemapStyle(activeMap);
+        neutralizeBrokenRoadShieldLayers(activeMap);
+        isReady = true;
+        setMapStatus('ready');
+        setMapError(null);
 
         // Add Attribution Control
-        map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+        activeMap.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
         // Add Native Sources
-        map.addSource('places-source', {
+        activeMap.addSource('places-source', {
           type: 'geojson',
           data: createMapGeoJSON([]),
           cluster: true,
@@ -271,7 +309,7 @@ export function ActivaMap({
           clusterRadius: 50,
         });
 
-        map.addSource('activities-source', {
+        activeMap.addSource('activities-source', {
           type: 'geojson',
           data: createMapGeoJSON([]),
           cluster: true,
@@ -279,19 +317,19 @@ export function ActivaMap({
           clusterRadius: 50,
         });
 
-        map.addSource('radius-source', {
+        activeMap.addSource('radius-source', {
           type: 'geojson',
           data: createRadiusCircleGeoJSON(effectiveCenter[1], effectiveCenter[0], maxDistance || 10),
         });
 
         // Friends Native Source
-        map.addSource('friends-source', {
+        activeMap.addSource('friends-source', {
           type: 'geojson',
           data: createFriendsGeoJSON([]),
         });
 
         // Friends Area Layer (Polygons for 2.0 km uncertainty grid cells)
-        map.addLayer({
+        activeMap.addLayer({
           id: 'friends-area',
           type: 'fill',
           source: 'friends-source',
@@ -302,7 +340,7 @@ export function ActivaMap({
           },
         });
 
-        map.addLayer({
+        activeMap.addLayer({
           id: 'friends-area-stroke',
           type: 'line',
           source: 'friends-source',
@@ -315,7 +353,7 @@ export function ActivaMap({
         });
 
         // Friends Point Layer (Circle representing center of cells - transparent to avoid duplicate visual marker)
-        map.addLayer({
+        activeMap.addLayer({
           id: 'friends-point',
           type: 'circle',
           source: 'friends-source',
@@ -330,7 +368,7 @@ export function ActivaMap({
         });
 
         // Friends Point Label Symbol Layer (Disabled/Empty text to prevent duplicate rendering with HTML Avatar markers)
-        map.addLayer({
+        activeMap.addLayer({
           id: 'friends-point-label',
           type: 'symbol',
           source: 'friends-source',
@@ -345,7 +383,7 @@ export function ActivaMap({
         });
 
         // Click handler for friends
-        map.on('click', 'friends-point', (e) => {
+        activeMap.on('click', 'friends-point', (e) => {
           const feature = e.features?.[0];
           if (feature?.properties?.userId) {
             const friend = nearbyFriendsRef.current.find((f) => f.userId === feature.properties.userId);
@@ -354,33 +392,33 @@ export function ActivaMap({
             }
           }
         });
-
-        map.on('mouseenter', 'friends-point', () => (map.getCanvas().style.cursor = 'pointer'));
-        map.on('mouseleave', 'friends-point', () => (map.getCanvas().style.cursor = ''));
+        activeMap.on('mouseenter', 'friends-point', () => (activeMap.getCanvas().style.cursor = 'pointer'));
+        activeMap.on('mouseleave', 'friends-point', () => (activeMap.getCanvas().style.cursor = ''));
 
         // ------------------ PLACES LAYERS ------------------
         // Places Clusters
-        map.addLayer({
+        activeMap.addLayer({
           id: 'places-clusters',
           type: 'circle',
           source: 'places-source',
           filter: ['has', 'point_count'],
           paint: {
-            'circle-color': '#10b981', // Emerald
-            'circle-radius': ['step', ['get', 'point_count'], 18, 10, 24, 30, 30],
+            'circle-color': '#10b981', // Emerald-500
+            'circle-radius': ['step', ['get', 'point_count'], 16, 5, 20, 15, 26],
             'circle-stroke-width': 2,
             'circle-stroke-color': '#ffffff',
+            'circle-opacity': 0.9,
           },
         });
 
-        map.addLayer({
+        activeMap.addLayer({
           id: 'places-cluster-count',
           type: 'symbol',
           source: 'places-source',
           filter: ['has', 'point_count'],
           layout: {
             'text-field': '{point_count_abbreviated}',
-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+            'text-font': ['Noto Sans Regular', 'Open Sans Regular', 'Arial Unicode MS Regular'],
             'text-size': 12,
           },
           paint: {
@@ -388,14 +426,14 @@ export function ActivaMap({
           },
         });
 
-        // Individual Place Points
-        map.addLayer({
+        // Single Unclustered Place Marker Layer
+        activeMap.addLayer({
           id: 'places-unclustered',
           type: 'circle',
           source: 'places-source',
           filter: ['!', ['has', 'point_count']],
           paint: {
-            'circle-color': '#10b981',
+            'circle-color': '#10b981', // Emerald primary
             'circle-radius': 8,
             'circle-stroke-width': 2,
             'circle-stroke-color': '#ffffff',
@@ -404,27 +442,28 @@ export function ActivaMap({
 
         // ------------------ ACTIVITIES LAYERS ------------------
         // Activities Clusters
-        map.addLayer({
+        activeMap.addLayer({
           id: 'activities-clusters',
           type: 'circle',
           source: 'activities-source',
           filter: ['has', 'point_count'],
           paint: {
-            'circle-color': '#7c3aed', // Violet
-            'circle-radius': ['step', ['get', 'point_count'], 18, 10, 24, 30, 30],
+            'circle-color': '#8b5cf6', // Violet-500
+            'circle-radius': ['step', ['get', 'point_count'], 16, 5, 20, 15, 26],
             'circle-stroke-width': 2,
             'circle-stroke-color': '#ffffff',
+            'circle-opacity': 0.9,
           },
         });
 
-        map.addLayer({
+        activeMap.addLayer({
           id: 'activities-cluster-count',
           type: 'symbol',
           source: 'activities-source',
           filter: ['has', 'point_count'],
           layout: {
             'text-field': '{point_count_abbreviated}',
-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+            'text-font': ['Noto Sans Regular', 'Open Sans Regular', 'Arial Unicode MS Regular'],
             'text-size': 12,
           },
           paint: {
@@ -432,58 +471,29 @@ export function ActivaMap({
           },
         });
 
-        // Individual Activity Points
-        map.addLayer({
+        // Single Unclustered Activity Marker Layer
+        activeMap.addLayer({
           id: 'activities-unclustered',
           type: 'circle',
           source: 'activities-source',
           filter: ['!', ['has', 'point_count']],
           paint: {
-            'circle-color': [
-              'case',
-              ['==', ['get', 'capacityStatus'], 'full'],
-              '#ef4444', // Red for full
-              ['==', ['get', 'capacityStatus'], 'almost_full'],
-              ['case', ['==', ['get', 'isBoosted'], 1], '#f59e0b', '#f97316'], // Amber/Orange for almost full
-              '#8b5cf6', // Violet default
-            ],
-            'circle-radius': ['case', ['==', ['get', 'isBoosted'], 1], 11, 8],
+            'circle-color': '#8b5cf6', // Violet primary
+            'circle-radius': 9,
             'circle-stroke-width': 2,
-            'circle-stroke-color': ['case', ['==', ['get', 'isBoosted'], 1], '#fbbf24', '#ffffff'],
-          },
-        });
-
-        // Radius Fill & Line Layer
-        map.addLayer({
-          id: 'radius-fill',
-          type: 'fill',
-          source: 'radius-source',
-          paint: {
-            'fill-color': '#10b981',
-            'fill-opacity': 0.08,
-          },
-        });
-
-        map.addLayer({
-          id: 'radius-line',
-          type: 'line',
-          source: 'radius-source',
-          paint: {
-            'line-color': '#10b981',
-            'line-width': 1.5,
-            'line-dasharray': [2, 2],
+            'circle-stroke-color': '#ffffff',
           },
         });
 
         // ------------------ CLUSTER & LAYER CLICK HANDLERS ------------------
         // Cluster click handler for places (zooms into cluster, no popup)
-        map.on('click', 'places-clusters', (e) => {
-          const features = map.queryRenderedFeatures(e.point, { layers: ['places-clusters'] });
+        activeMap.on('click', 'places-clusters', (e) => {
+          const features = activeMap.queryRenderedFeatures(e.point, { layers: ['places-clusters'] });
           const clusterId = features[0]?.properties?.cluster_id;
-          const source = map.getSource('places-source') as maplibregl.GeoJSONSource;
+          const source = activeMap.getSource('places-source') as maplibregl.GeoJSONSource;
           if (source && clusterId !== undefined) {
             source.getClusterExpansionZoom(clusterId).then((zoom) => {
-              map.easeTo({
+              activeMap.easeTo({
                 center: (features[0].geometry as any).coordinates,
                 zoom: zoom,
               });
@@ -492,13 +502,13 @@ export function ActivaMap({
         });
 
         // Cluster click handler for activities (zooms into cluster, no popup)
-        map.on('click', 'activities-clusters', (e) => {
-          const features = map.queryRenderedFeatures(e.point, { layers: ['activities-clusters'] });
+        activeMap.on('click', 'activities-clusters', (e) => {
+          const features = activeMap.queryRenderedFeatures(e.point, { layers: ['activities-clusters'] });
           const clusterId = features[0]?.properties?.cluster_id;
-          const source = map.getSource('activities-source') as maplibregl.GeoJSONSource;
+          const source = activeMap.getSource('activities-source') as maplibregl.GeoJSONSource;
           if (source && clusterId !== undefined) {
             source.getClusterExpansionZoom(clusterId).then((zoom) => {
-              map.easeTo({
+              activeMap.easeTo({
                 center: (features[0].geometry as any).coordinates,
                 zoom: zoom,
               });
@@ -507,7 +517,7 @@ export function ActivaMap({
         });
 
         // Single Place marker click handler -> opens Place Selection & camera easeTo
-        map.on('click', 'places-unclustered', (e) => {
+        activeMap.on('click', 'places-unclustered', (e) => {
           const feature = e.features?.[0];
           if (feature?.properties?.id) {
             const place = placesRef.current.find((p) => p.id === feature.properties.id);
@@ -519,7 +529,7 @@ export function ActivaMap({
               const lon = place.lon ?? (place as any).lng ?? (place as any).longitude;
               const lat = place.lat ?? (place as any).latitude;
               if (isValidCoordinate(lat, lon)) {
-                map.easeTo({
+                activeMap.easeTo({
                   center: [lon, lat],
                   padding: isMobileRef.current
                     ? { top: 60, bottom: 340, left: 20, right: 20 }
@@ -532,7 +542,7 @@ export function ActivaMap({
         });
 
         // Single Activity marker click handler -> opens Activity Selection & camera easeTo
-        map.on('click', 'activities-unclustered', (e) => {
+        activeMap.on('click', 'activities-unclustered', (e) => {
           const feature = e.features?.[0];
           if (feature?.properties?.id) {
             const act = communityActivitiesRef.current.find((a) => a.id === feature.properties.id);
@@ -544,7 +554,7 @@ export function ActivaMap({
               const lon = act.lon ?? (act as any).lng ?? (act as any).longitude;
               const lat = act.lat ?? (act as any).latitude;
               if (isValidCoordinate(lat, lon)) {
-                map.easeTo({
+                activeMap.easeTo({
                   center: [lon, lat],
                   padding: isMobileRef.current
                     ? { top: 60, bottom: 340, left: 20, right: 20 }
@@ -557,31 +567,45 @@ export function ActivaMap({
         });
 
         // Cursor pointer on hover
-        map.on('mouseenter', 'places-clusters', () => (map.getCanvas().style.cursor = 'pointer'));
-        map.on('mouseleave', 'places-clusters', () => (map.getCanvas().style.cursor = ''));
-        map.on('mouseenter', 'activities-clusters', () => (map.getCanvas().style.cursor = 'pointer'));
-        map.on('mouseleave', 'activities-clusters', () => (map.getCanvas().style.cursor = ''));
-        map.on('mouseenter', 'places-unclustered', () => (map.getCanvas().style.cursor = 'pointer'));
-        map.on('mouseleave', 'places-unclustered', () => (map.getCanvas().style.cursor = ''));
-        map.on('mouseenter', 'activities-unclustered', () => (map.getCanvas().style.cursor = 'pointer'));
-        map.on('mouseleave', 'activities-unclustered', () => (map.getCanvas().style.cursor = ''));
+        activeMap.on('mouseenter', 'places-clusters', () => (activeMap.getCanvas().style.cursor = 'pointer'));
+        activeMap.on('mouseleave', 'places-clusters', () => (activeMap.getCanvas().style.cursor = ''));
+        activeMap.on('mouseenter', 'activities-clusters', () => (activeMap.getCanvas().style.cursor = 'pointer'));
+        activeMap.on('mouseleave', 'activities-clusters', () => (activeMap.getCanvas().style.cursor = ''));
+        activeMap.on('mouseenter', 'places-unclustered', () => (activeMap.getCanvas().style.cursor = 'pointer'));
+        activeMap.on('mouseleave', 'places-unclustered', () => (activeMap.getCanvas().style.cursor = ''));
+        activeMap.on('mouseenter', 'activities-unclustered', () => (activeMap.getCanvas().style.cursor = 'pointer'));
+        activeMap.on('mouseleave', 'activities-unclustered', () => (activeMap.getCanvas().style.cursor = ''));
 
-        if (map.getLayer('friends-area')) map.moveLayer('friends-area');
-        if (map.getLayer('friends-area-stroke')) map.moveLayer('friends-area-stroke');
-        if (map.getLayer('friends-point')) map.moveLayer('friends-point');
-        if (map.getLayer('friends-point-label')) map.moveLayer('friends-point-label');
+        if (activeMap.getLayer('friends-area')) activeMap.moveLayer('friends-area');
+        if (activeMap.getLayer('friends-area-stroke')) activeMap.moveLayer('friends-area-stroke');
+        if (activeMap.getLayer('friends-point')) activeMap.moveLayer('friends-point');
+        if (activeMap.getLayer('friends-point-label')) activeMap.moveLayer('friends-point-label');
+
+        if (container.clientWidth > 0 && container.clientHeight > 0) {
+          activeMap.resize();
+        }
       });
 
       map.on('error', (e) => {
-        console.error('[ActivaMap] Map error:', e);
-        setMapError(language === 'de' ? 'Kartendaten konnten nicht geladen werden.' : 'Failed to load map data.');
+        if (isReady) {
+          // Non-fatal runtime errors post-load (e.g. tile 404, missing optional image) are logged as warnings and DO NOT unmount map
+          console.warn('[ActivaMap] Non-fatal runtime map event:', e);
+          return;
+        }
+        console.error('[ActivaMap] Map load error:', e);
       });
     } catch (err: any) {
       console.error('[ActivaMap] Initialization exception:', err);
-      setMapError(err?.message || 'Error initializing MapLibre GL');
+      setMapStatus('error');
+      setMapError(err?.message || (language === 'de' ? 'Fehler beim Initialisieren der Karte' : 'Error initializing MapLibre GL'));
     }
 
     return () => {
+      observer.disconnect();
+      if (resizeFrame !== null) {
+        cancelAnimationFrame(resizeFrame);
+      }
+
       if (selectedMarkerRef.current) {
         selectedMarkerRef.current.remove();
       }
@@ -787,30 +811,16 @@ export function ActivaMap({
     mapInstanceRef.current?.flyTo({ center: effectiveCenter, zoom: 14 });
   };
 
-  if (!webGlSupported) {
-    return (
-      <div className="h-full w-full flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-neutral-900">
-        <AlertTriangle className="h-10 w-10 text-amber-500 mb-3" />
-        <h3 className="text-base font-black text-slate-800 dark:text-neutral-200">
-          {language === 'de' ? 'WebGL wird nicht unterstützt' : 'WebGL not supported'}
-        </h3>
-        <p className="text-xs text-slate-500 dark:text-neutral-400 mt-1 max-w-sm">
-          {language === 'de'
-            ? 'Dein Browser unterstützt keine Hardwarebeschleunigung für WebGL-Karten.'
-            : 'Your browser does not support WebGL hardware acceleration for maps.'}
-        </p>
-      </div>
-    );
-  }
-
-  if (mapError) {
+  if (!webGlSupported || (mapStatus === 'error' && !isMapLoaded)) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-neutral-900">
         <AlertTriangle className="h-10 w-10 text-rose-500 mb-3" />
         <h3 className="text-base font-black text-slate-800 dark:text-neutral-200">
           {language === 'de' ? 'Kartenfehler' : 'Map Error'}
         </h3>
-        <p className="text-xs text-slate-500 dark:text-neutral-400 mt-1 max-w-sm">{mapError}</p>
+        <p className="text-xs text-slate-500 dark:text-neutral-400 mt-1 max-w-sm">
+          {mapError || (language === 'de' ? 'Kartendaten konnten nicht geladen werden.' : 'Failed to load map data.')}
+        </p>
         <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="mt-4">
           {language === 'de' ? 'Erneut versuchen' : 'Try again'}
         </Button>
@@ -820,6 +830,16 @@ export function ActivaMap({
 
   return (
     <div className="relative h-full w-full overflow-hidden">
+      {/* Loading Overlay */}
+      {mapStatus === 'loading' && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-50/90 dark:bg-neutral-900/90 backdrop-blur-sm transition-opacity duration-300">
+          <Loader2 className="h-8 w-8 text-emerald-500 animate-spin mb-2" />
+          <span className="text-xs font-bold text-slate-600 dark:text-neutral-400">
+            {language === 'de' ? 'Karte wird geladen...' : 'Loading map...'}
+          </span>
+        </div>
+      )}
+
       {/* Map Container */}
       <div ref={mapContainerRef} className="h-full w-full z-0" />
 
