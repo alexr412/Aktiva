@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { cn, formatLabel, formatFirstName } from '@/lib/utils';
+import { cn, formatLabel, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay } from '@/lib/utils';
 import Link from 'next/link';
 
 interface ActivityDetailClientProps {
@@ -456,14 +456,14 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                 <Calendar className="h-4 w-4 text-primary shrink-0" />
                 <div>
                   <p className="text-[8px] font-bold uppercase text-slate-400 leading-none mb-0.5">{language === 'de' ? 'Datum' : 'Date'}</p>
-                  <p className="text-xs font-black text-slate-800 leading-none">{format(activity.activityDate.toDate(), 'eee, d. MMM', { locale: language === 'de' ? de : enUS })}</p>
+                  <p className="text-xs font-black text-slate-800 leading-none">{formatActivityDateRange(activity.activityDate, activity.activityEndDate, language)}</p>
                 </div>
               </div>
               <div className="bg-slate-50 rounded-xl p-2.5 flex-1 flex items-center gap-2 border border-slate-100">
                 <Clock className="h-4 w-4 text-primary shrink-0" />
                 <div>
                   <p className="text-[8px] font-bold uppercase text-slate-400 leading-none mb-0.5">{language === 'de' ? 'Zeit' : 'Time'}</p>
-                  <p className="text-xs font-black text-slate-800 leading-none">{activity.isTimeFlexible ? (language === 'de' ? 'Flexibel' : 'Flexible') : format(activity.activityDate.toDate(), 'HH:mm')}</p>
+                  <p className="text-xs font-black text-slate-800 leading-none">{formatActivityTimeDisplay(activity.activityDate, activity.isTimeFlexible, language)}</p>
                 </div>
               </div>
             </div>
