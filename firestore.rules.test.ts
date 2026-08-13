@@ -3391,6 +3391,91 @@ async function runTests() {
     console.log('✅ Onboarding Complete Flow Regression Test PASSED!');
   }
 
+  // ==========================================
+  // J. Direct Message (DM) & 1:1 Chat Security Rules
+  // ==========================================
+  {
+    console.log('Running Suite J: Direct Message (DM) & 1:1 Chat Security Rules tests...');
+    await testEnv.clearFirestore();
+
+    // Seed User profiles
+    await seedDoc('users/alice', { uid: 'alice', displayName: 'Alice User', username: 'alice', onboardingCompleted: true, isBanned: false, role: 'user' });
+    await seedDoc('users/bob', { uid: 'bob', displayName: 'Bob User', username: 'bob', onboardingCompleted: true, isBanned: false, role: 'user' });
+    await seedDoc('users/charlie', { uid: 'charlie', displayName: 'Charlie Stranger', username: 'charlie', onboardingCompleted: true, isBanned: false, role: 'user' });
+
+    const aliceDb = testEnv.authenticatedContext('alice').firestore();
+    const bobDb = testEnv.authenticatedContext('bob').firestore();
+    const charlieDb = testEnv.authenticatedContext('charlie').firestore();
+
+    const chatId = ['alice', 'bob'].sort().join('_');
+
+    // 1. Fetching DM before existence succeeds (returns snapshot with exists == false)
+    console.log('Testing J.1: Checking non-existent DM chat...');
+    const preSnap = await getDoc(doc(aliceDb, `chats/${chatId}`));
+    assert.strictEqual(preSnap.exists(), false);
+
+    // 2. Allowed DM Creation
+    console.log('Testing J.2: Allowed DM creation between Alice and Bob...');
+    const validDmPayload = {
+      type: 'direct',
+      participantIds: ['alice', 'bob'],
+      createdAt: serverTimestamp(),
+      lastActivityAt: serverTimestamp(),
+      participantDetails: {
+        alice: { displayName: 'Alice User', photoURL: null, isPremium: false, isSupporter: false, username: 'alice' },
+        bob: { displayName: 'Bob User', photoURL: null, isPremium: false, isSupporter: false, username: 'bob' }
+      }
+    };
+    await assertSucceeds(setDoc(doc(aliceDb, `chats/${chatId}`), validDmPayload));
+
+    // 3. Fetching DM between two participants after creation
+    console.log('Testing J.3: Participant reads existing DM chat...');
+    await assertSucceeds(getDoc(doc(aliceDb, `chats/${chatId}`)));
+    await assertSucceeds(getDoc(doc(bobDb, `chats/${chatId}`)));
+
+    // 4. Non-participant (Charlie) is rejected from reading and updating DM chat
+    console.log('Testing J.4: Uninvolved user (Charlie) is rejected...');
+    await assertFails(getDoc(doc(charlieDb, `chats/${chatId}`)));
+    await assertFails(updateDoc(doc(charlieDb, `chats/${chatId}`), { lastMessage: 'Hacked' }));
+
+    // 5. Self-DM is rejected
+    console.log('Testing J.5: Self-DM is rejected...');
+    const selfDmId = 'alice_alice';
+    const selfDmPayload = {
+      type: 'direct',
+      participantIds: ['alice', 'alice'],
+      createdAt: serverTimestamp(),
+      lastActivityAt: serverTimestamp(),
+      participantDetails: {
+        alice: { displayName: 'Alice User', photoURL: null, isPremium: false, isSupporter: false, username: 'alice' }
+      }
+    };
+    await assertFails(setDoc(doc(aliceDb, `chats/${selfDmId}`), selfDmPayload));
+
+    // 6. Existing Activity Chat type still works
+    console.log('Testing J.6: Existing Activity Chat creation still works...');
+    await seedDoc('activities/actGroup1', {
+      id: 'actGroup1',
+      hostId: 'alice',
+      isPaid: false,
+      participantIds: ['alice'],
+      status: 'active'
+    });
+
+    await assertSucceeds(setDoc(doc(aliceDb, 'chats/actGroup1'), {
+      activityId: 'actGroup1',
+      hostId: 'alice',
+      createdAt: serverTimestamp(),
+      lastActivityAt: serverTimestamp(),
+      participantIds: ['alice'],
+      participantDetails: {
+        alice: { displayName: 'Alice User', photoURL: null, isPremium: false, isSupporter: false }
+      }
+    }));
+
+    console.log('✅ Suite J: Direct Message (DM) Security Rules Tests PASSED!');
+  }
+
   console.log('🎉 ALL SECURITY RULES TESTS PASSED SUCCESSFULLY! 🎉');
   
   // Cleanup

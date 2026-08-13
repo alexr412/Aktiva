@@ -1761,6 +1761,9 @@ export async function markAllNotificationsAsRead(userId: string): Promise<void> 
 
 export async function getOrCreateDirectChat(user1Id: string, user2Id: string): Promise<string> {
   if (!db) throw new Error('Firestore is not initialized.');
+  if (user1Id === user2Id) {
+    throw new Error('Cannot create a direct chat with yourself.');
+  }
   const chatId = [user1Id, user2Id].sort().join('_');
   const chatRef = doc(db, 'chats', chatId);
 
@@ -1798,13 +1801,15 @@ export async function getOrCreateDirectChat(user1Id: string, user2Id: string): P
           displayName: user1Profile.displayName || "Nutzer 1",
           photoURL: user1Profile.photoURL || null,
           isPremium: user1Profile.isPremium || false,
-          isSupporter: user1Profile.isSupporter || false
+          isSupporter: user1Profile.isSupporter || false,
+          ...(user1Profile.username ? { username: user1Profile.username } : {})
         },
         [user2Id]: {
           displayName: user2Profile.displayName || "Nutzer 2",
           photoURL: user2Profile.photoURL || null,
           isPremium: user2Profile.isPremium || false,
-          isSupporter: user2Profile.isSupporter || false
+          isSupporter: user2Profile.isSupporter || false,
+          ...(user2Profile.username ? { username: user2Profile.username } : {})
         }
       }
     });

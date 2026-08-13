@@ -480,6 +480,9 @@ service cloud.firestore {
           (!('enabled' in request.resource.data.proximitySettings) || request.resource.data.proximitySettings.enabled is bool) &&
           (!('radiusKm' in request.resource.data.proximitySettings) || (request.resource.data.proximitySettings.radiusKm is int && request.resource.data.proximitySettings.radiusKm >= 1 && request.resource.data.proximitySettings.radiusKm <= 50))
         )) &&
+        (!('language' in request.resource.data) || request.resource.data.language in ['de', 'en'])
+      );
+    }
 
 
     // Verhindert das Ändern von Systemfeldern durch den Client
@@ -555,8 +558,8 @@ service cloud.firestore {
              participantDetails.keys().hasOnly(participantIds) &&
              participantDetails.get(uid, {}).keys().hasOnly(['displayName', 'photoURL', 'isPremium', 'isSupporter', 'username']) &&
              participantDetails.get(otherUid, {}).keys().hasOnly(['displayName', 'photoURL', 'isPremium', 'isSupporter', 'username']) &&
-             participantDetails.get(uid, {}).get('username', null) == myUsername &&
-             participantDetails.get(otherUid, {}).get('username', null) == otherUsername;
+             (!('username' in participantDetails.get(uid, {})) || participantDetails.get(uid, {}).username == myUsername) &&
+             (!('username' in participantDetails.get(otherUid, {})) || participantDetails.get(otherUid, {}).username == otherUsername);
     }
 
     // --- COLLECTION RULES ---
@@ -706,7 +709,7 @@ service cloud.firestore {
 
     match /chats/{chatId} {
       allow read: if isSignedIn() && (
-        resource.data.participantIds.hasAny([request.auth.uid]) || isAdmin()
+        resource == null || resource.data.participantIds.hasAny([request.auth.uid]) || isAdmin()
       );
       allow create: if isSignedIn() && (
         // Case 1: Activity-based chat
@@ -726,6 +729,7 @@ service cloud.firestore {
           !('lastMessage' in request.resource.data) &&
           !('unreadCount' in request.resource.data) &&
           request.resource.data.participantIds.size() == 2 &&
+          request.resource.data.participantIds[0] != request.resource.data.participantIds[1] &&
           request.auth.uid in request.resource.data.participantIds &&
           request.resource.data.keys().hasOnly(['type', 'participantIds', 'createdAt', 'lastActivityAt', 'participantDetails']) &&
           request.resource.data.createdAt == request.time &&
