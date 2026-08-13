@@ -467,12 +467,30 @@ service cloud.firestore {
         (!('fcmToken' in request.resource.data) || request.resource.data.fcmToken == null || (request.resource.data.fcmToken is string && request.resource.data.fcmToken.size() > 0 && request.resource.data.fcmToken.size() < 500)) &&
         (!('notificationSettings' in request.resource.data) || (
           request.resource.data.notificationSettings is map &&
-          request.resource.data.notificationSettings.keys().hasOnly(['localHighlights', 'nearbyFriendActivityNotifications', 'friendRequests', 'activityInvites', 'chatMessages']) &&
+          request.resource.data.notificationSettings.keys().hasOnly([
+            'pushEnabled', 'soundEnabled',
+            'friendRequests', 'friendAccepted',
+            'chatMessages', 'activityRequests',
+            'activityParticipants', 'activityUpdates', 'activityReminders',
+            'nearbySpots', 'nearbyActivities', 'recommendations', 'engagementReminders',
+            'localHighlights', 'nearbyFriendActivityNotifications', 'activityInvites'
+          ]) &&
+          (!('pushEnabled' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.pushEnabled is bool) &&
+          (!('soundEnabled' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.soundEnabled is bool) &&
+          (!('friendRequests' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.friendRequests is bool) &&
+          (!('friendAccepted' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.friendAccepted is bool) &&
+          (!('chatMessages' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.chatMessages is bool) &&
+          (!('activityRequests' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.activityRequests is bool) &&
+          (!('activityParticipants' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.activityParticipants is bool) &&
+          (!('activityUpdates' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.activityUpdates is bool) &&
+          (!('activityReminders' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.activityReminders is bool) &&
+          (!('nearbyActivities' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.nearbyActivities is bool) &&
+          (!('nearbySpots' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.nearbySpots is bool) &&
+          (!('recommendations' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.recommendations is bool) &&
+          (!('engagementReminders' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.engagementReminders is bool) &&
           (!('localHighlights' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.localHighlights is bool) &&
           (!('nearbyFriendActivityNotifications' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.nearbyFriendActivityNotifications is bool) &&
-          (!('friendRequests' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.friendRequests is bool) &&
-          (!('activityInvites' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.activityInvites is bool) &&
-          (!('chatMessages' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.chatMessages is bool)
+          (!('activityInvites' in request.resource.data.notificationSettings) || request.resource.data.notificationSettings.activityInvites is bool)
         )) &&
         (!('proximitySettings' in request.resource.data) || (
           request.resource.data.proximitySettings is map &&
@@ -606,6 +624,10 @@ service cloud.firestore {
                        isAdmin();
       allow delete: if isAdmin();
 
+      match /push_tokens/{tokenId} {
+        allow read, write: if isSignedIn() && (isOwner(userId) || isAdmin());
+      }
+
       match /pointsLedger/{entryId} {
         allow read: if isOwner(userId) || isAdmin();
         allow write: if false;
@@ -623,6 +645,22 @@ service cloud.firestore {
 
       match /private/radarSettings {
         allow read: if isOwner(userId);
+        allow write: if false;
+      }
+
+      match /push_tokens/{tokenId} {
+        allow get: if isOwner(userId) || isAdmin();
+        allow list: if false;
+        allow create, update: if (isOwner(userId) || isAdmin()) && (
+          request.resource.data.keys().hasOnly(['token', 'platform', 'createdAt', 'updatedAt', 'lastSeenAt', 'userAgent']) &&
+          request.resource.data.token is string &&
+          request.resource.data.platform in ['ios', 'android', 'desktop', 'unknown']
+        );
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /notification_meta/{docId} {
+        allow read: if isOwner(userId) || isAdmin();
         allow write: if false;
       }
     }
@@ -786,32 +824,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.recipientId == request.auth.uid || isAdmin()
       );
-
-      allow create: if false;
-
-      allow update: if isSignedIn() && (
-        (
-          resource.data.recipientId == request.auth.uid &&
-          request.resource.data.get('recipientId', '') == resource.data.get('recipientId', '') &&
-          request.resource.data.get('senderId', '') == resource.data.get('senderId', '') &&
-          request.resource.data.get('type', '') == resource.data.get('type', '') &&
-          request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null) &&
-          request.resource.data.get('senderProfile', {}).get('displayName', '') == resource.data.get('senderProfile', {}).get('displayName', '') &&
-          request.resource.data.get('senderProfile', {}).get('photoURL', null) == resource.data.get('senderProfile', {}).get('photoURL', null) &&
-          request.resource.data.get('link', null) == resource.data.get('link', null) &&
-          request.resource.data.get('activityId', '') == resource.data.get('activityId', '') &&
-          request.resource.data.get('title', '') == resource.data.get('title', '') &&
-          request.resource.data.get('message', '') == resource.data.get('message', '') &&
-          
-          request.resource.data.isRead == true &&
-          (!('readAt' in request.resource.data) || request.resource.data.readAt == request.time)
-        ) ||
-        isAdmin()
-      );
-
-      allow delete: if isSignedIn() && (
-        resource.data.recipientId == request.auth.uid || isAdmin()
-      );
+      allow write: if false;
     }
 
     match /reports/{reportId} {

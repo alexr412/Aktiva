@@ -270,3 +270,11 @@ exports.updateRadarLocation = radar.updateRadarLocation;
 exports.disableRadar = radar.disableRadar;
 exports.getNearbyFriends = radar.getNearbyFriends;
 
+// Secure Notifications (Server-Side)
+const notifications = require('./lib/notifications');
+exports.markNotificationRead = notifications.markNotificationRead;
+exports.markAllNotificationsRead = notifications.markAllNotificationsRead;
+exports.sendScheduledEngagementReminders = notifications.sendScheduledEngagementReminders;
+exports.sendTestNotification = notifications.sendTestNotification;
+
+

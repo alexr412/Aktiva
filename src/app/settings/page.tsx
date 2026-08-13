@@ -15,8 +15,8 @@ import { useActivePremium } from '@/hooks/use-active-premium';
 import { useFriendRadar } from '@/hooks/use-friend-radar';
 import { RadarConsentDialog } from '@/components/radar/radar-consent-dialog';
 import { sendPasswordReset, deleteAccount, signOut } from '@/lib/firebase/auth';
-import { deleteUserDocument, updateUserProfile, submitCreatorApplication } from '@/lib/firebase/firestore';
-import { requestAndGetFCMToken } from '@/lib/firebase/messaging';
+import { deleteUserDocument, updateUserProfile, updateNotificationPreferences, submitCreatorApplication } from '@/lib/firebase/firestore';
+import { type PushCapabilityState, requestAndGetFCMToken } from '@/lib/firebase/messaging';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, getDocs, onSnapshot, arrayUnion, arrayRemove } from 'firebase/firestore';
 import {
@@ -133,6 +133,48 @@ export default function SettingsPage() {
     const [activitiesCount, setActivitiesCount] = useState(0);
     const [isApplying, setIsApplying] = useState(false);
     const [hasApplication, setHasApplication] = useState(false);
+    const [pushCapability, setPushCapability] = useState<PushCapabilityState>('unsupported');
+    const [isEnablingPush, setIsEnablingPush] = useState(false);
+
+    useEffect(() => {
+      import('@/lib/firebase/messaging').then(({ getPushCapabilityState }) => {
+        getPushCapabilityState().then(setPushCapability);
+      });
+    }, []);
+
+    const handleEnablePush = async () => {
+      if (!user?.uid || isEnablingPush) return;
+      setIsEnablingPush(true);
+      try {
+        const { requestPushPermission, registerDevicePush } = await import('@/lib/firebase/messaging');
+        const permission = await requestPushPermission();
+        if (permission === 'granted') {
+          const res = await registerDevicePush(user.uid);
+          if (res.success) {
+            setPushCapability('granted');
+            await updateNotificationPreferences(user.uid, { pushEnabled: true });
+            toast({
+              title: language === 'de' ? 'Push-Benachrichtigungen aktiv' : 'Push notifications active',
+              description: language === 'de' ? 'Du erhältst jetzt wichtige Benachrichtigungen auf diesem Gerät.' : 'You will now receive push notifications on this device.'
+            });
+          } else {
+            setPushCapability('registration-error');
+            toast({
+              variant: 'destructive',
+              title: language === 'de' ? 'Fehler' : 'Error',
+              description: language === 'de' ? 'Token-Registrierung fehlgeschlagen.' : 'Token registration failed.'
+            });
+          }
+        } else if (permission === 'denied') {
+          setPushCapability('denied');
+        }
+      } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Error', description: err.message });
+      } finally {
+        setIsEnablingPush(false);
+      }
+    };
+
     const [notifications, setNotifications] = useState<NotificationSettings>({
         friendRequests: userProfile?.notificationSettings?.friendRequests ?? true,
         activityInvites: userProfile?.notificationSettings?.activityInvites ?? true,
@@ -185,10 +227,7 @@ export default function SettingsPage() {
                 fcmToken = (await requestAndGetFCMToken()) || undefined;
             }
 
-            await updateUserProfile(user.uid, {
-                notificationSettings: newSettings,
-                ...(fcmToken && { fcmToken })
-            });
+            await updateNotificationPreferences(user.uid, newSettings);
             
             if (key === 'localHighlights' && value === true) {
                 toast({ 
@@ -505,7 +544,40 @@ export default function SettingsPage() {
                             <Bell className="h-5 w-5 text-primary" />
                             <span>{language === 'de' ? 'Benachrichtigungen' : 'Notifications'}</span>
                         </h2>
-                        <div className="space-y-2 rounded-lg border bg-card p-4">
+
+                        {/* Master Push Status Card */}
+                        <div className="p-4 rounded-2xl border bg-card space-y-3">
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="space-y-1">
+                                    <h4 className="font-bold text-sm">
+                                        {language === 'de' ? 'System-Push-Benachrichtigungen' : 'System Push Notifications'}
+                                    </h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        {pushCapability === 'granted' && (language === 'de' ? 'Push-Benachrichtigungen sind für dieses Gerät aktiv.' : 'Push notifications are active on this device.')}
+                                        {pushCapability === 'default' && (language === 'de' ? 'Erhalte Infos zu Chats & Events auch wenn Activa geschlossen ist.' : 'Get notifications even when Activa is closed.')}
+                                        {pushCapability === 'denied' && (language === 'de' ? 'Benachrichtigungen wurden im Browser blockiert. Bitte in den Systemeinstellungen des Browsers freigeben.' : 'Notifications were blocked in your browser. Please enable them in browser settings.')}
+                                        {pushCapability === 'installed-pwa-required' && (language === 'de' ? 'Füge Activa zum Home-Bildschirm hinzu, um Push auf iOS zu aktivieren.' : 'Add Activa to Home Screen to enable iOS push.')}
+                                        {pushCapability === 'unsupported' && (language === 'de' ? 'Push wird auf diesem Browser/Gerät nicht unterstützt.' : 'Push is not supported on this device/browser.')}
+                                        {pushCapability === 'registration-error' && (language === 'de' ? 'Fehler bei der Registrierung. Bitte erneut versuchen.' : 'Registration error. Please retry.')}
+                                    </p>
+                                </div>
+
+                                {pushCapability === 'default' && (
+                                    <Button size="sm" onClick={handleEnablePush} disabled={isEnablingPush} className="shrink-0 text-xs font-bold rounded-full">
+                                        {isEnablingPush && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                                        {language === 'de' ? 'Aktivieren' : 'Enable'}
+                                    </Button>
+                                )}
+
+                                {pushCapability === 'granted' && (
+                                    <span className="shrink-0 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                                        {language === 'de' ? 'Aktiv' : 'Active'}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                <div className="space-y-2 rounded-lg border bg-card p-4">
                             <div className="flex items-center justify-between gap-4">
                                 <div className="flex-1 min-w-0 pr-2">
                                     <Label htmlFor="local-highlights" className="font-medium flex items-center gap-2">

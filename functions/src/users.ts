@@ -4,6 +4,7 @@ import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { isReservedUsername, isValidUsername } from './reserved-usernames';
+import { createNotificationAndDispatch } from './notifications';
 
 /**
  * MODUL 23: Production-Grade Fan-Out System.
@@ -1577,21 +1578,26 @@ export const secureSendFriendRequest = onCall(async (request) => {
 
       const senderUsername = fromUserProfile.username || null;
       const usernameFormatted = senderUsername ? `@${senderUsername.replace(/^@/, '')}` : 'Activa-Nutzer';
-
-      // Write notification document with exact schema
-      transaction.set(notificationRef, {
-        recipientId: toUserId,
-        senderId: fromUserId,
-        senderProfile: {
-          displayName: usernameFormatted,
-          username: senderUsername,
-          photoURL: fromUserProfile.photoURL || null
-        },
-        type: 'friend_request',
-        isRead: false,
-        createdAt: FieldValue.serverTimestamp()
-      });
     });
+
+    const senderUsername = (await fromUserRef.get()).data()?.username || null;
+    const usernameFormatted = senderUsername ? `@${senderUsername.replace(/^@/, '')}` : 'Activa-Nutzer';
+
+    await createNotificationAndDispatch({
+      recipientId: toUserId,
+      actorId: fromUserId,
+      type: 'friend_request',
+      title: 'Neue Freundschaftsanfrage',
+      body: `${usernameFormatted} hat dir eine Freundschaftsanfrage gesendet.`,
+      targetUrl: '/profile',
+      entityId: fromUserId,
+      eventId: `friend_req_${fromUserId}_${toUserId}`,
+      senderProfile: {
+        displayName: usernameFormatted,
+        username: senderUsername,
+        photoURL: (await fromUserRef.get()).data()?.photoURL || null
+      }
+    }).catch(err => console.error('[secureSendFriendRequest] Notification dispatch error:', err));
 
     return { success: true };
   } catch (error: any) {
@@ -1684,6 +1690,21 @@ export const secureAcceptFriendRequest = onCall(async (request) => {
         friends: FieldValue.arrayUnion(currentUserId)
       });
     });
+
+    const currentDocSnap = await currentUserRef.get();
+    const currentUsername = currentDocSnap.data()?.username || null;
+    const currentUsernameFormatted = currentUsername ? `@${currentUsername.replace(/^@/, '')}` : 'Activa-Nutzer';
+
+    await createNotificationAndDispatch({
+      recipientId: fromUserId,
+      actorId: currentUserId,
+      type: 'friend_accepted',
+      title: 'Freundschaftsanfrage angenommen',
+      body: `${currentUsernameFormatted} hat deine Freundschaftsanfrage angenommen.`,
+      targetUrl: `/profile/${currentUserId}`,
+      entityId: currentUserId,
+      eventId: `friend_acc_${fromUserId}_${currentUserId}`
+    }).catch(err => console.error('[secureAcceptFriendRequest] Notification dispatch error:', err));
 
     return { success: true };
   } catch (error: any) {

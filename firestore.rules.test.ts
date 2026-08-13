@@ -1605,12 +1605,33 @@ async function runTests() {
     // 19. Notification Settings: Owner kann valide Settings setzen
     await assertSucceeds(updateDoc(doc(aliceDb, 'users/alice'), {
       notificationSettings: {
+        pushEnabled: true,
+        soundEnabled: true,
         localHighlights: true,
         nearbyFriendActivityNotifications: false,
         friendRequests: true,
+        friendAccepted: true,
         activityInvites: true,
-        chatMessages: true
+        chatMessages: true,
+        activityRequests: true,
+        activityParticipants: true,
+        activityUpdates: true,
+        activityReminders: true,
+        nearbySpots: true,
+        recommendations: true,
+        engagementReminders: true
       }
+    }));
+    // 19b. Push Tokens: Owner kann eigene Push Tokens verwalten, Fremde nicht
+    await assertSucceeds(setDoc(doc(aliceDb, 'users/alice/push_tokens/token1'), {
+      token: 'fcm_token_123',
+      platform: 'android',
+      createdAt: serverTimestamp()
+    }));
+    await assertFails(setDoc(doc(bobDb, 'users/alice/push_tokens/token1'), {
+      token: 'fcm_token_hack',
+      platform: 'android',
+      createdAt: serverTimestamp()
     }));
     // 20. Notification Settings: Zusatzfelder blockiert
     await assertFails(updateDoc(doc(aliceDb, 'users/alice'), {

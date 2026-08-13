@@ -2,6 +2,8 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 
+import { createNotificationAndDispatch } from './notifications';
+
 interface SendChatMessageRequest {
   chatId: string;
   text: string;
@@ -134,6 +136,32 @@ export const sendChatMessage = onCall(async (request) => {
 
       return { success: true, duplicated: false, messageId: clientMessageId };
     });
+
+    if (result.success && !result.duplicated) {
+      const chatSnap = await db.collection('chats').doc(chatId).get();
+      const chatData = chatSnap.data() || {};
+      const participantIds: string[] = chatData.participantIds || [];
+      const senderName = chatData.lastMessage?.senderName || 'Activa-Nutzer';
+      const previewText = text.trim().length > 80 ? text.trim().slice(0, 77) + '...' : text.trim();
+
+      const dispatchPromises = participantIds
+        .filter((pid) => pid !== uid)
+        .map((recipientId) =>
+          createNotificationAndDispatch({
+            recipientId,
+            actorId: uid,
+            type: 'chat_message',
+            title: `Neue Nachricht von ${senderName}`,
+            body: previewText,
+            targetUrl: `/chat/${chatId}`,
+            entityId: chatId,
+            eventId: clientMessageId,
+            customId: `chat_message_${clientMessageId}_${recipientId}`,
+          }).catch((err) => console.error(`[sendChatMessage] Dispatch failed for ${recipientId}:`, err))
+        );
+
+      await Promise.all(dispatchPromises);
+    }
 
     return result;
   } catch (error: any) {

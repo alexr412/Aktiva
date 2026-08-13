@@ -52,6 +52,25 @@ export interface ParticipantPreviewEntry {
   username?: string | null;
 }
 
+export type NotificationType =
+  | 'friend_request'
+  | 'friend_accepted'
+  | 'chat_message'
+  | 'chat_request'
+  | 'activity_invite'
+  | 'activity_join_request'
+  | 'activity_join_response'
+  | 'join_request'
+  | 'join_response'
+  | 'activity_update'
+  | 'activity_reminder'
+  | 'nearby_activity'
+  | 'nearby_spot'
+  | 'recommendation'
+  | 'engagement_reminder'
+  | 'system'
+  | 'friend_nearby_activity';
+
 export interface NotificationSenderProfile {
   displayName?: string;
   photoURL?: string;
@@ -61,18 +80,33 @@ export interface NotificationSenderProfile {
 export interface Notification {
   id: string;
   recipientId: string;
-  senderId: string;
+  senderId?: string;
   senderName?: string;
   senderProfile?: NotificationSenderProfile;
-  type: 'friend_request' | 'activity_invite' | 'system' | 'join_request' | 'join_response' | 'friend_nearby_activity';
+  type: NotificationType;
   title: string;
   message: string;
+  body?: string;
   isRead: boolean;
   createdAt: Timestamp;
   link?: string;
+  targetUrl?: string;
   activityId?: string;
+  spotId?: string;
+  actorId?: string;
+  entityId?: string;
+  eventId?: string;
   customMessage?: string;
   responseStatus?: 'accepted' | 'declined';
+  readAt?: Timestamp;
+}
+
+export interface PushTokenDoc {
+  token: string;
+  platform: 'ios' | 'android' | 'desktop' | 'unknown';
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  lastSeenAt: Timestamp;
 }
 
 export type KYCStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
@@ -282,6 +316,157 @@ export interface UserPreferences {
   dislikedTags: string[];
 }
 
+export interface NotificationPreferences {
+  pushEnabled: boolean;
+  soundEnabled: boolean;
+
+  friendRequests: boolean;
+  friendAccepted: boolean;
+
+  chatMessages: boolean;
+  activityRequests: boolean;
+
+  activityParticipants: boolean;
+  activityUpdates: boolean;
+  activityReminders: boolean;
+
+  nearbyActivities: boolean;
+  nearbySpots?: boolean;
+  recommendations: boolean;
+  engagementReminders: boolean;
+
+  // Legacy / backwards compatibility fields
+  localHighlights?: boolean;
+  nearbyFriendActivityNotifications?: boolean;
+  activityInvites?: boolean;
+}
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  pushEnabled: false,
+  soundEnabled: true,
+
+  friendRequests: true,
+  friendAccepted: true,
+
+  chatMessages: true,
+  activityRequests: true,
+
+  activityParticipants: true,
+  activityUpdates: true,
+  activityReminders: true,
+
+  nearbyActivities: true,
+  nearbySpots: true,
+  recommendations: true,
+  engagementReminders: true,
+
+  localHighlights: false,
+  nearbyFriendActivityNotifications: true,
+  activityInvites: true,
+};
+
+export const NEARBY_SPOT_PUSH_DAILY_LIMIT = 3;
+
+export function getEffectiveNotificationPreferences(userProfile?: UserProfile | null): NotificationPreferences {
+  const settings = (userProfile?.notificationSettings as Partial<NotificationPreferences>) || {};
+  return {
+    pushEnabled: settings.pushEnabled ?? DEFAULT_NOTIFICATION_PREFERENCES.pushEnabled,
+    soundEnabled: settings.soundEnabled ?? DEFAULT_NOTIFICATION_PREFERENCES.soundEnabled,
+    friendRequests: settings.friendRequests ?? DEFAULT_NOTIFICATION_PREFERENCES.friendRequests,
+    friendAccepted: settings.friendAccepted ?? DEFAULT_NOTIFICATION_PREFERENCES.friendAccepted,
+    chatMessages: settings.chatMessages ?? DEFAULT_NOTIFICATION_PREFERENCES.chatMessages,
+    activityRequests: settings.activityRequests ?? DEFAULT_NOTIFICATION_PREFERENCES.activityRequests,
+    activityParticipants: settings.activityParticipants ?? DEFAULT_NOTIFICATION_PREFERENCES.activityParticipants,
+    activityUpdates: settings.activityUpdates ?? DEFAULT_NOTIFICATION_PREFERENCES.activityUpdates,
+    activityReminders: settings.activityReminders ?? DEFAULT_NOTIFICATION_PREFERENCES.activityReminders,
+    nearbyActivities: settings.nearbyActivities ?? settings.nearbySpots ?? DEFAULT_NOTIFICATION_PREFERENCES.nearbyActivities,
+    nearbySpots: settings.nearbySpots ?? settings.nearbyActivities ?? DEFAULT_NOTIFICATION_PREFERENCES.nearbySpots,
+    recommendations: settings.recommendations ?? DEFAULT_NOTIFICATION_PREFERENCES.recommendations,
+    engagementReminders: settings.engagementReminders ?? DEFAULT_NOTIFICATION_PREFERENCES.engagementReminders,
+    localHighlights: settings.localHighlights ?? DEFAULT_NOTIFICATION_PREFERENCES.localHighlights,
+    nearbyFriendActivityNotifications: settings.nearbyFriendActivityNotifications ?? DEFAULT_NOTIFICATION_PREFERENCES.nearbyFriendActivityNotifications,
+    activityInvites: settings.activityInvites ?? DEFAULT_NOTIFICATION_PREFERENCES.activityInvites,
+  };
+}
+
+export function getNotificationTargetUrl(notification: Partial<Notification>): string {
+  if (notification.targetUrl) return notification.targetUrl;
+  if (notification.link) return notification.link;
+
+  switch (notification.type) {
+    case 'friend_request':
+    case 'friend_accepted':
+      return '/profile';
+    case 'chat_message':
+    case 'chat_request':
+      return notification.entityId ? `/chat/${notification.entityId}` : '/chat';
+    case 'activity_invite':
+    case 'activity_join_request':
+    case 'activity_join_response':
+    case 'join_request':
+    case 'join_response':
+    case 'activity_update':
+    case 'activity_reminder':
+    case 'friend_nearby_activity':
+      return notification.activityId ? `/activities/${notification.activityId}` : (notification.entityId ? `/activities/${notification.entityId}` : '/');
+    case 'nearby_spot':
+      return notification.spotId ? `/map?spot=${notification.spotId}` : (notification.entityId ? `/map?spot=${notification.entityId}` : '/explore');
+    case 'recommendation':
+    case 'engagement_reminder':
+      return '/explore';
+    case 'system':
+    default:
+      return '/';
+  }
+}
+
+export function normalizeNotification(rawDoc: any): Notification {
+  const id = rawDoc.id || '';
+  const recipientId = rawDoc.recipientId || '';
+  const actorId = rawDoc.actorId || rawDoc.senderId || undefined;
+  const entityId = rawDoc.entityId || rawDoc.activityId || rawDoc.spotId || undefined;
+  const eventId = rawDoc.eventId || id;
+  const type: NotificationType = rawDoc.type || 'system';
+  const title = rawDoc.title || (type === 'friend_request' ? 'Freundschaftsanfrage' : 'Benachrichtigung');
+  const body = rawDoc.body || rawDoc.message || '';
+  const isRead = Boolean(rawDoc.isRead);
+  const createdAt = rawDoc.createdAt || { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0, toDate: () => new Date() };
+  const readAt = rawDoc.readAt || undefined;
+
+  const targetUrl = getNotificationTargetUrl({
+    targetUrl: rawDoc.targetUrl,
+    link: rawDoc.link,
+    type,
+    entityId,
+    activityId: rawDoc.activityId,
+    spotId: rawDoc.spotId
+  });
+
+  return {
+    ...rawDoc,
+    id,
+    recipientId,
+    actorId,
+    entityId,
+    eventId,
+    type,
+    title,
+    body,
+    message: body,
+    targetUrl,
+    link: targetUrl,
+    isRead,
+    createdAt,
+    readAt
+  };
+}
+
+export function formatUnreadBadge(count: number): string {
+  if (count <= 0) return '';
+  if (count >= 100) return '99+';
+  return String(count);
+}
+
 export interface UserProfile {
   uid: string;
   displayName: string | null;
@@ -301,13 +486,7 @@ export interface UserProfile {
   gender?: string;
   pronouns?: string;
   socialBattery?: string;
-  notificationSettings?: {
-    friendRequests: boolean;
-    activityInvites: boolean;
-    chatMessages: boolean;
-    localHighlights: boolean;
-    nearbyFriendActivityNotifications?: boolean;
-  };
+  notificationSettings?: Partial<NotificationPreferences>;
   proximitySettings?: {
     enabled: boolean;
     radiusKm: number;

@@ -27,7 +27,7 @@ import {
 import { calculateDistance, buildApproximateLocationData } from '../geo-utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
-import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory, CommunicationPreferences } from '@/lib/types';
+import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory, CommunicationPreferences, NotificationPreferences } from '@/lib/types';
 import { getParticipantLimit, isPremiumActive } from '@/lib/types';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
 import { formatFirstName } from '@/lib/utils';
@@ -239,6 +239,7 @@ export const PROTECTED_USER_FIELDS = new Set([
   'subscriptionStatus',
   'organizerStatus',
   'createdAt',
+  'notificationSettings',
   'communicationPreferences',
   'marketingConsentAt',
   'marketingConsentVersion',
@@ -1739,27 +1740,85 @@ export async function claimUsernameServer(username: string): Promise<{ success: 
 }
 
 export async function markNotificationAsRead(notificationId: string) {
-    if (!db) throw new Error('Firestore is not initialized.');
-    const notificationRef = doc(db, 'notifications', notificationId);
-    await updateDoc(notificationRef, { isRead: true, readAt: serverTimestamp() });
+    if (!notificationId || !functions) return;
+    try {
+        const { httpsCallable } = await import('firebase/functions');
+        const markFn = httpsCallable<{ notificationId: string }, { success: boolean; updated: boolean }>(functions, 'markNotificationRead');
+        await markFn({ notificationId });
+    } catch (e) {
+        console.error('[NotificationService] markNotificationAsRead error:', e);
+    }
 }
 
-export async function markAllNotificationsAsRead(userId: string): Promise<void> {
-    if (!db) throw new Error('Firestore is not initialized.');
-    const q = query(
-        collection(db, 'notifications'),
-        where('recipientId', '==', userId),
-        where('isRead', '==', false),
-        limit(100)
-    );
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) return;
+export async function markAllNotificationsAsRead(userId: string): Promise<number> {
+    if (!userId || !functions) return 0;
+    try {
+        const { httpsCallable } = await import('firebase/functions');
+        const markAllFn = httpsCallable<void, { success: boolean; totalUpdated: number }>(functions, 'markAllNotificationsRead');
+        const res = await markAllFn();
+        return res.data.totalUpdated || 0;
+    } catch (e) {
+        console.error('[NotificationService] markAllNotificationsAsRead error:', e);
+        return 0;
+    }
+}
 
-    const batch = writeBatch(db);
-    snapshot.docs.forEach((docSnap) => {
-        batch.update(docSnap.ref, { isRead: true, readAt: serverTimestamp() });
-    });
-    await batch.commit();
+function getPushTokenDocId(token: string): string {
+  try {
+    if (typeof btoa === 'function') {
+      return btoa(token).replace(/[^a-zA-Z0-9]/g, '_').slice(0, 100);
+    }
+  } catch (e) {}
+  return token.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 100);
+}
+
+export async function saveUserPushToken(
+  userId: string,
+  token: string,
+  platform: 'ios' | 'android' | 'desktop' | 'unknown' = 'unknown'
+): Promise<void> {
+  if (!db || !userId || !token) return;
+  const tokenId = getPushTokenDocId(token);
+  const tokenRef = doc(db, 'users', userId, 'push_tokens', tokenId);
+  const now = serverTimestamp();
+
+  await setDoc(
+    tokenRef,
+    {
+      token,
+      platform,
+      createdAt: now,
+      updatedAt: now,
+      lastSeenAt: now,
+    },
+    { merge: true }
+  );
+
+  // Maintain users/{uid}.fcmToken for legacy backend trigger compatibility
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, { fcmToken: token });
+}
+
+export async function removeUserPushToken(userId: string, token: string): Promise<void> {
+  if (!db || !userId || !token) return;
+  const tokenId = getPushTokenDocId(token);
+  const tokenRef = doc(db, 'users', userId, 'push_tokens', tokenId);
+  await deleteDoc(tokenRef);
+}
+
+export async function updateNotificationPreferences(
+  userId: string,
+  preferences: Partial<NotificationPreferences>
+): Promise<void> {
+  if (!db || !userId) return;
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+  const currentSettings = userSnap.data()?.notificationSettings || {};
+  const newSettings = { ...currentSettings, ...preferences };
+
+  await updateDoc(userRef, {
+    notificationSettings: newSettings,
+  });
 }
 
 export async function getOrCreateDirectChat(user1Id: string, user2Id: string): Promise<string> {

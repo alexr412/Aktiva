@@ -5,6 +5,7 @@ const firestore_1 = require("firebase-functions/v2/firestore");
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const firestore_2 = require("firebase-admin/firestore");
+const notifications_1 = require("./notifications");
 const users_1 = require("./users");
 /**
  * Triggers when an activity is created. Awards +10 points to the host (daily cap of 2).
@@ -573,48 +574,35 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                     joinedAt: firestore_2.FieldValue.serverTimestamp(),
                     hasReviewed: false
                 });
-                // Create exactly one join_response notification
-                const responseNotifRef = db.collection('notifications').doc();
-                transaction.set(responseNotifRef, {
-                    recipientId: userIdToJoin,
-                    senderId: 'system',
-                    type: 'join_response',
-                    title: 'Anfrage akzeptiert!',
-                    message: `Deine Anfrage für "${activity.placeName || 'Aktivität'}" wurde angenommen. Du bist jetzt dabei!`,
-                    isRead: false,
-                    createdAt: firestore_2.FieldValue.serverTimestamp(),
-                    activityId: activityId,
-                    responseStatus: 'accepted',
-                    link: `/chat/${activityId}`
-                });
                 // Delete original join request
                 transaction.delete(notifRef);
             }
             else {
                 // action === 'decline'
-                // Create exactly one join_response notification
-                const responseNotifRef = db.collection('notifications').doc();
-                transaction.set(responseNotifRef, {
-                    recipientId: userIdToJoin,
-                    senderId: 'system',
-                    type: 'join_response',
-                    title: 'Anfrage abgelehnt',
-                    message: `Deine Anfrage für "${activity.placeName || 'Aktivität'}" wurde leider abgelehnt.`,
-                    customMessage: customMessage || null,
-                    isRead: false,
-                    createdAt: firestore_2.FieldValue.serverTimestamp(),
-                    activityId: activityId,
-                    responseStatus: 'declined'
-                });
                 // Delete original join request
                 transaction.delete(notifRef);
             }
-            return { success: true };
+            return { success: true, activityTitle: activity.placeName || activity.title || 'Aktivität' };
         });
+        const isAccept = action === 'accept';
+        await (0, notifications_1.createNotificationAndDispatch)({
+            recipientId: userIdToJoin,
+            actorId: hostId,
+            type: 'join_response',
+            title: isAccept ? 'Anfrage akzeptiert!' : 'Anfrage abgelehnt',
+            body: isAccept
+                ? `Deine Anfrage für "${result.activityTitle}" wurde angenommen. Du bist jetzt dabei!`
+                : (customMessage || `Deine Anfrage für "${result.activityTitle}" wurde leider abgelehnt.`),
+            targetUrl: isAccept ? `/chat/${activityId}` : `/activities/${activityId}`,
+            entityId: activityId,
+            eventId: `join_response_${activityId}_${userIdToJoin}_${action}`,
+            responseStatus: isAccept ? 'accepted' : 'declined',
+            customMessage: customMessage || undefined
+        }).catch(err => console.error('[respondToJoinRequest] Dispatch failed:', err));
         if (action === 'accept') {
             await (0, users_1.maybeActivateReferral)(userIdToJoin, 'first_activity_joined');
         }
-        return result;
+        return { success: true };
     }
     catch (error) {
         console.error("Error in respondToJoinRequest transaction:", error);
@@ -715,26 +703,22 @@ exports.secureRequestJoinActivity = (0, https_1.onCall)(async (request) => {
             const requesterUsername = requesterData.username || null;
             const usernameFormatted = requesterUsername ? `@${requesterUsername.replace(/^@/, '')}` : 'Activa-Nutzer';
             const photoURLToUse = requesterData.photoURL || null;
-            transaction.set(notificationRef, {
-                recipientId: hostId,
-                senderId: requesterId,
-                senderName: usernameFormatted,
-                senderProfile: {
-                    displayName: usernameFormatted,
-                    username: requesterUsername,
-                    photoURL: photoURLToUse
-                },
+            return { success: true, status: 'requested', hostId, requesterId, activityTitle: activity.placeName || activity.title || 'Treffen' };
+        });
+        if (result.status === 'requested' && result.hostId) {
+            await (0, notifications_1.createNotificationAndDispatch)({
+                recipientId: result.hostId,
+                actorId: result.requesterId,
                 type: 'join_request',
                 title: 'Neue Beitrittsanfrage',
-                message: message || `${usernameFormatted} möchte an deiner Aktivität "${activity.placeName || 'Treffen'}" teilnehmen.`,
-                isRead: false,
-                createdAt: firestore_2.FieldValue.serverTimestamp(),
-                activityId,
-                link: `/activities/${activityId}`
-            });
-            return { success: true, status: 'requested' };
-        });
-        return result;
+                body: message || `Ein Nutzer möchte an deiner Aktivität "${result.activityTitle}" teilnehmen.`,
+                targetUrl: `/activities/${activityId}`,
+                entityId: activityId,
+                eventId: `join_request_${activityId}_${result.requesterId}`,
+                customId: `join_request_${activityId}_${result.requesterId}`
+            }).catch(err => console.error('[secureRequestJoinActivity] Dispatch failed:', err));
+        }
+        return { success: true, status: result.status };
     }
     catch (error) {
         console.error("Error in secureRequestJoinActivity transaction:", error);

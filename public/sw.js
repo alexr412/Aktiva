@@ -176,3 +176,70 @@ async function trimCache(cacheName, maxItems) {
     console.error('[SW] Cache trim error:', e);
   }
 }
+
+// ─── PUSH & NOTIFICATION CLICK ─────────────────────────────────
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  try {
+    const rawData = event.data.json();
+    const payload = rawData.data || rawData.notification || rawData;
+
+    const notificationId = payload.notificationId || payload.eventId || 'activa_push_' + Date.now();
+    const title = payload.title || 'Activa';
+    const body = payload.body || payload.message || '';
+    const rawTargetUrl = payload.targetUrl || payload.link || '/';
+    
+    // Deep Link Security Validation
+    let targetUrl = '/';
+    if (typeof rawTargetUrl === 'string' && rawTargetUrl.startsWith('/') && !rawTargetUrl.startsWith('//') && !rawTargetUrl.startsWith('javascript:')) {
+      targetUrl = rawTargetUrl;
+    }
+
+    const options = {
+      body: body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: notificationId,
+      data: {
+        notificationId: notificationId,
+        targetUrl: targetUrl
+      }
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (err) {
+    console.error('[SW] Error parsing push notification:', err);
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  let targetUrl = '/';
+  if (event.notification.data && event.notification.data.targetUrl) {
+    targetUrl = event.notification.data.targetUrl;
+  }
+
+  // Deep Link Security Check: relative URLs starting with / only
+  if (!targetUrl.startsWith('/') || targetUrl.startsWith('//') || targetUrl.startsWith('javascript:') || targetUrl.startsWith('data:')) {
+    targetUrl = '/';
+  }
+
+  const fullUrl = new URL(targetUrl, self.location.origin).href;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+          client.navigate(fullUrl);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(fullUrl);
+      }
+    })
+  );
+});

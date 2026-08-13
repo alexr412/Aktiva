@@ -371,15 +371,15 @@ async function testSecureRequestJoinActivity() {
   const notif = mockDbState["notifications"][`join_request_act1_joiner1`];
   assert.ok(notif);
   assert.strictEqual(notif.recipientId, "host1");
-  assert.strictEqual(notif.senderId, "joiner1");
+  assert.strictEqual(notif.actorId, "joiner1");
   assert.strictEqual(notif.type, "join_request");
-  assert.strictEqual(notif.message, "Hi");
+  assert.strictEqual(notif.body, "Hi");
 
   // 9. Repeated Request (Idempotency)
   const res2 = await secureRequestJoinActivity({ activityId: "act1", message: "Hi second time" }, { uid: "joiner1" });
   assert.deepStrictEqual(res2, { success: true, status: "already_requested" });
-  // Verify no new notification was created and message not updated
-  assert.strictEqual(mockDbState["notifications"][`join_request_act1_joiner1`].message, "Hi");
+  // Verify no new notification was created and body not updated
+  assert.strictEqual(mockDbState["notifications"][`join_request_act1_joiner1`].body, "Hi");
 
   console.log("✅ testSecureRequestJoinActivity passed successfully!");
 }

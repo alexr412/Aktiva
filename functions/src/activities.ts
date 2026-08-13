@@ -2,6 +2,7 @@ import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/fire
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { createNotificationAndDispatch } from './notifications';
 import { calculateLevel, maybeActivateReferral } from './users';
 
 /**
@@ -649,53 +650,39 @@ export const respondToJoinRequest = onCall(async (request) => {
           hasReviewed: false
         });
 
-        // Create exactly one join_response notification
-        const responseNotifRef = db.collection('notifications').doc();
-        transaction.set(responseNotifRef, {
-          recipientId: userIdToJoin,
-          senderId: 'system',
-          type: 'join_response',
-          title: 'Anfrage akzeptiert!',
-          message: `Deine Anfrage für "${activity.placeName || 'Aktivität'}" wurde angenommen. Du bist jetzt dabei!`,
-          isRead: false,
-          createdAt: FieldValue.serverTimestamp(),
-          activityId: activityId,
-          responseStatus: 'accepted',
-          link: `/chat/${activityId}`
-        });
-
         // Delete original join request
         transaction.delete(notifRef);
 
       } else {
         // action === 'decline'
-        // Create exactly one join_response notification
-        const responseNotifRef = db.collection('notifications').doc();
-        transaction.set(responseNotifRef, {
-          recipientId: userIdToJoin,
-          senderId: 'system',
-          type: 'join_response',
-          title: 'Anfrage abgelehnt',
-          message: `Deine Anfrage für "${activity.placeName || 'Aktivität'}" wurde leider abgelehnt.`,
-          customMessage: customMessage || null,
-          isRead: false,
-          createdAt: FieldValue.serverTimestamp(),
-          activityId: activityId,
-          responseStatus: 'declined'
-        });
-
         // Delete original join request
         transaction.delete(notifRef);
       }
 
-      return { success: true };
+      return { success: true, activityTitle: activity.placeName || activity.title || 'Aktivität' };
     });
+
+    const isAccept = action === 'accept';
+    await createNotificationAndDispatch({
+      recipientId: userIdToJoin,
+      actorId: hostId,
+      type: 'join_response',
+      title: isAccept ? 'Anfrage akzeptiert!' : 'Anfrage abgelehnt',
+      body: isAccept
+        ? `Deine Anfrage für "${result.activityTitle}" wurde angenommen. Du bist jetzt dabei!`
+        : (customMessage || `Deine Anfrage für "${result.activityTitle}" wurde leider abgelehnt.`),
+      targetUrl: isAccept ? `/chat/${activityId}` : `/activities/${activityId}`,
+      entityId: activityId,
+      eventId: `join_response_${activityId}_${userIdToJoin}_${action}`,
+      responseStatus: isAccept ? 'accepted' : 'declined',
+      customMessage: customMessage || undefined
+    }).catch(err => console.error('[respondToJoinRequest] Dispatch failed:', err));
 
     if (action === 'accept') {
       await maybeActivateReferral(userIdToJoin, 'first_activity_joined');
     }
 
-    return result;
+    return { success: true };
   } catch (error: any) {
     console.error("Error in respondToJoinRequest transaction:", error);
     if (error instanceof HttpsError) {
@@ -817,28 +804,24 @@ export const secureRequestJoinActivity = onCall(async (request) => {
       const usernameFormatted = requesterUsername ? `@${requesterUsername.replace(/^@/, '')}` : 'Activa-Nutzer';
       const photoURLToUse = requesterData.photoURL || null;
 
-      transaction.set(notificationRef, {
-        recipientId: hostId,
-        senderId: requesterId,
-        senderName: usernameFormatted,
-        senderProfile: {
-          displayName: usernameFormatted,
-          username: requesterUsername,
-          photoURL: photoURLToUse
-        },
-        type: 'join_request',
-        title: 'Neue Beitrittsanfrage',
-        message: message || `${usernameFormatted} möchte an deiner Aktivität "${activity.placeName || 'Treffen'}" teilnehmen.`,
-        isRead: false,
-        createdAt: FieldValue.serverTimestamp(),
-        activityId,
-        link: `/activities/${activityId}`
-      });
-
-      return { success: true, status: 'requested' };
+      return { success: true, status: 'requested', hostId, requesterId, activityTitle: activity.placeName || activity.title || 'Treffen' };
     });
 
-    return result;
+    if (result.status === 'requested' && result.hostId) {
+      await createNotificationAndDispatch({
+        recipientId: result.hostId,
+        actorId: result.requesterId,
+        type: 'join_request',
+        title: 'Neue Beitrittsanfrage',
+        body: message || `Ein Nutzer möchte an deiner Aktivität "${result.activityTitle}" teilnehmen.`,
+        targetUrl: `/activities/${activityId}`,
+        entityId: activityId,
+        eventId: `join_request_${activityId}_${result.requesterId}`,
+        customId: `join_request_${activityId}_${result.requesterId}`
+      }).catch(err => console.error('[secureRequestJoinActivity] Dispatch failed:', err));
+    }
+
+    return { success: true, status: result.status };
   } catch (error: any) {
     console.error("Error in secureRequestJoinActivity transaction:", error);
     if (error instanceof HttpsError) {

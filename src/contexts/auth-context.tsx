@@ -128,10 +128,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isMounted, setIsMounted] = useState(false);
 
   const logout = useCallback(async () => {
+    if (user) {
+      try {
+        const { unregisterDevicePush } = await import('@/lib/firebase/messaging');
+        await unregisterDevicePush(user.uid).catch(() => {});
+      } catch (e) {}
+    }
     if (auth) {
       await firebaseSignOut(auth);
     }
-  }, []);
+  }, [user]);
 
   const refreshUserProfile = useCallback(async () => {
     if (!user || !db) return;
@@ -616,38 +622,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user, userProfile?.onboardingCompleted, dbProfile?.emailVerificationRequired, loading, isMounted, pathname, isPublicRoute, router, socialLegalConsentPending]);
 
-  // FCM Integration
+  // FCM Token Auto-Refresh
   useEffect(() => {
-    if (!user || !userProfile?.notificationSettings?.localHighlights) return;
-
-    let isSubscribed = true;
-
-    const setupFCM = async () => {
-      try {
-        const token = await requestAndGetFCMToken();
-        if (isSubscribed && token && token !== userProfile.fcmToken) {
-          await updateUserProfile(user.uid, { fcmToken: token });
-        }
-      } catch (err) {
-        console.error("FCM Setup failed:", err);
-      }
-    };
-
-    setupFCM();
-
-    const unsubscribeFCM = onForegroundMessage((payload) => {
-      if (!isSubscribed) return;
-      toast({
-        title: payload.notification?.title || "Benachrichtigung",
-        description: payload.notification?.body,
+    if (!user) return;
+    import('@/lib/firebase/messaging').then(({ refreshDevicePushRegistration }) => {
+      refreshDevicePushRegistration(user.uid).catch((err) => {
+        console.warn('Auto refresh push token failed:', err);
       });
     });
-
-    return () => {
-      isSubscribed = false;
-      if (unsubscribeFCM) unsubscribeFCM();
-    };
-  }, [user?.uid, userProfile?.notificationSettings?.localHighlights, userProfile?.fcmToken]);
+  }, [user?.uid]);
 
   const contextValue = useMemo(() => ({ 
     user, 
