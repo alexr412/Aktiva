@@ -25,6 +25,8 @@ export type RequestLocationOptions = {
 export type LocationContextValue = {
   gateState: LocationGateState;
   isLocating: boolean;
+  isCheckingLocation: boolean;
+  needsLocationGate: boolean;
   position: LocationPosition | null;
   cityName: string | null;
   isResolvingCity: boolean;
@@ -46,6 +48,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [cityName, setCityName] = useState<string | null>(null);
   const [isResolvingCity, setIsResolvingCity] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasGrantedHintState, setHasGrantedHintState] = useState(false);
 
   const requestInFlightRef = useRef(false);
   const activeRequestIdRef = useRef<number | null>(null);
@@ -55,6 +58,57 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const setGateState = useCallback((newState: LocationGateState) => {
     console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} gateState=${newState}`);
     setGateStateState(newState);
+  }, []);
+
+  const hasGrantedHint = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem('activa_location_permission_granted') === 'true';
+    } catch (e) {
+      return false;
+    }
+  }, []);
+
+  const needsLocationGate = React.useMemo(() => {
+    if (gateState === 'prompt' || gateState === 'denied') {
+      return true;
+    }
+    if (gateState === 'requesting') {
+      return true;
+    }
+    if (gateState === 'error') {
+      const isGranted = hasGrantedHintState || hasGrantedHint();
+      return !isGranted && !position;
+    }
+    return false;
+  }, [gateState, position, hasGrantedHintState, hasGrantedHint]);
+
+  const isCheckingLocation = gateState === 'checking' || isLocating;
+
+  // Hydrate setup state & last known position on client mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const isGranted = localStorage.getItem('activa_location_permission_granted') === 'true';
+      if (isGranted) {
+        setHasGrantedHintState(true);
+        setGateStateState('granted');
+
+        const rawPos = localStorage.getItem('activa_last_known_position');
+        if (rawPos) {
+          const parsed = JSON.parse(rawPos);
+          if (
+            parsed &&
+            typeof parsed.latitude === 'number' &&
+            typeof parsed.longitude === 'number' &&
+            Number.isFinite(parsed.latitude) &&
+            Number.isFinite(parsed.longitude)
+          ) {
+            setPosition(parsed);
+          }
+        }
+      }
+    } catch (e) {}
   }, []);
 
   useEffect(() => {
@@ -96,7 +150,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const requestLocation = useCallback((options?: RequestLocationOptions): void => {
-    const isInteractive = options?.interactive !== false;
+    const isInteractive = options?.interactive === true;
     const gpsOptions: PositionOptions = options?.positionOptions || {
       enableHighAccuracy: true,
       timeout: isInteractive ? 15000 : 10000,
@@ -162,16 +216,20 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        setPosition({
+        const newPos: LocationPosition = {
           latitude,
           longitude,
           accuracy,
           updatedAt: Date.now(),
-        });
+        };
 
+        setPosition(newPos);
         setGateState('granted');
+        setHasGrantedHintState(true);
+
         try {
           localStorage.setItem('activa_location_permission_granted', 'true');
+          localStorage.setItem('activa_last_known_position', JSON.stringify(newPos));
         } catch (e) {}
 
         void resolveCityName(latitude, longitude);
@@ -187,11 +245,17 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         setIsLocating(false);
         console.log(`[GPS TRACE] requestId=${requestId} error code=${error.code}`);
 
+        const isPreviouslyGranted =
+          hasGrantedHintState ||
+          (typeof window !== 'undefined' && localStorage.getItem('activa_location_permission_granted') === 'true');
+
         switch (error.code) {
           case 1:
             setGateState('denied');
+            setHasGrantedHintState(false);
             try {
               localStorage.removeItem('activa_location_permission_granted');
+              localStorage.removeItem('activa_last_known_position');
             } catch (e) {}
             setErrorMessage(
               'Der Standortzugriff ist deaktiviert. Aktiviere ihn in den Browser- oder Geräteeinstellungen.'
@@ -199,29 +263,41 @@ export function LocationProvider({ children }: { children: ReactNode }) {
             break;
 
           case 2:
-            setGateState('error');
-            setErrorMessage(
-              'Dein Standort ist momentan nicht verfügbar. Prüfe, ob die Ortungsdienste deines Geräts aktiviert sind.'
-            );
+            if (!isPreviouslyGranted) {
+              setGateState('error');
+              setErrorMessage(
+                'Dein Standort ist momentan nicht verfügbar. Prüfe, ob die Ortungsdienste deines Geräts aktiviert sind.'
+              );
+            } else {
+              console.warn('[LOCATION TRACE] Background GPS position unavailable; maintaining granted state.');
+            }
             break;
 
           case 3:
-            setGateState('error');
-            setErrorMessage(
-              'Die Standortermittlung hat zu lange gedauert. Versuche es erneut.'
-            );
+            if (!isPreviouslyGranted) {
+              setGateState('error');
+              setErrorMessage(
+                'Die Standortermittlung hat zu lange gedauert. Versuche es erneut.'
+              );
+            } else {
+              console.warn('[LOCATION TRACE] Background GPS timeout; maintaining granted state.');
+            }
             break;
 
           default:
-            setGateState('error');
-            setErrorMessage(
-              'Dein Standort konnte nicht ermittelt werden.'
-            );
+            if (!isPreviouslyGranted) {
+              setGateState('error');
+              setErrorMessage(
+                'Dein Standort konnte nicht ermittelt werden.'
+              );
+            } else {
+              console.warn('[LOCATION TRACE] Background GPS unknown error; maintaining granted state.');
+            }
         }
       },
       gpsOptions
     );
-  }, [setGateState, resolveCityName]);
+  }, [setGateState, resolveCityName, hasGrantedHintState]);
 
   // Startup permission check and automatic background GPS fetch if granted
   useEffect(() => {
@@ -234,6 +310,13 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         try {
           localStorage.removeItem('activa_last_location');
           localStorage.removeItem('aktiva_last_location');
+        } catch (e) {}
+      }
+
+      let isGrantedHint = false;
+      if (typeof window !== 'undefined') {
+        try {
+          isGrantedHint = localStorage.getItem('activa_location_permission_granted') === 'true';
         } catch (e) {}
       }
 
@@ -253,13 +336,24 @@ export function LocationProvider({ children }: { children: ReactNode }) {
               try {
                 localStorage.setItem('activa_location_permission_granted', 'true');
               } catch (e) {}
+              setHasGrantedHintState(true);
+              setGateState('granted');
               requestLocation({ interactive: false });
             } else if (newStatusState === 'denied') {
               setGateState('denied');
+              setHasGrantedHintState(false);
               try {
                 localStorage.removeItem('activa_location_permission_granted');
+                localStorage.removeItem('activa_last_known_position');
               } catch (e) {}
             } else {
+              if (isGrantedHint) {
+                try {
+                  localStorage.removeItem('activa_location_permission_granted');
+                  localStorage.removeItem('activa_last_known_position');
+                } catch (e) {}
+                setHasGrantedHintState(false);
+              }
               setGateState('prompt');
             }
           };
@@ -284,15 +378,10 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
       // Fallback for Safari / unsupported Permissions API
       if (!isMounted) return;
-      let hasGrantedHint = false;
-      if (typeof window !== 'undefined') {
-        try {
-          hasGrantedHint = localStorage.getItem('activa_location_permission_granted') === 'true';
-        } catch (e) {}
-      }
 
-      if (hasGrantedHint) {
-        // Remain in 'checking' while verifying via getCurrentPosition
+      if (isGrantedHint) {
+        setHasGrantedHintState(true);
+        setGateState('granted');
         requestLocation({ interactive: false });
       } else {
         setGateState('prompt');
@@ -312,6 +401,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       value={{
         gateState,
         isLocating,
+        isCheckingLocation,
+        needsLocationGate,
         position,
         cityName,
         isResolvingCity,

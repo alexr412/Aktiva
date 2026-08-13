@@ -17,7 +17,7 @@ export function LocationGate({ children }: { children?: ReactNode }) {
   renderCountRef.current++;
 
   const pathname = usePathname();
-  const { gateState, errorMessage, requestLocation } = useLocation();
+  const { gateState, needsLocationGate, errorMessage, requestLocation } = useLocation();
 
   console.log(
     `[LOCATION TRACE] gate=${instanceIdRef.current} render=${renderCountRef.current} state=${gateState} path=${pathname}`
@@ -64,7 +64,7 @@ export function LocationGate({ children }: { children?: ReactNode }) {
     }
   };
 
-  const shouldShowGate = !isPublicRoute && gateState !== 'granted' && gateState !== 'checking';
+  const shouldShowGate = !isPublicRoute && needsLocationGate;
 
   return (
     <>

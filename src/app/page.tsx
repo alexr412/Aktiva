@@ -1279,7 +1279,7 @@ export default function Home() {
 
   useEffect(() => {
     if (user) {
-      requestLocation();
+      requestLocation({ interactive: false });
     }
   }, [requestLocation, user]);
 
@@ -1290,7 +1290,7 @@ export default function Home() {
     const isPremium = isPremiumActive(userProfile);
     if (!isPremium && planningState.isPlanning) {
       console.warn("[LOCATION DEBUG] Non-premium user has active planning mode. Resetting location.");
-      requestLocation();
+      requestLocation({ interactive: false });
       toast({
         title: language === 'de' ? 'Premium erforderlich' : 'Premium Required',
         description: language === 'de'
@@ -2110,7 +2110,7 @@ export default function Home() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        requestLocation();
+                        requestLocation({ interactive: false });
                       }}
                       className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[11px] leading-none shrink-0"
                     >
@@ -2150,7 +2150,7 @@ export default function Home() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            requestLocation();
+                            requestLocation({ interactive: false });
                           }}
                           className="ml-1 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[10px] leading-none shrink-0"
                         >
