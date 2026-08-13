@@ -203,7 +203,7 @@ export interface Message {
   senderName: string | null;
   senderUsername?: string | null;
   senderPhotoURL: string | null;
-  sentAt: Timestamp;
+  sentAt: Timestamp | any;
   isPremium?: boolean;
   isSupporter?: boolean;
   isCreator?: boolean;
@@ -215,6 +215,7 @@ export interface Message {
   editedAt?: Timestamp;
   isSystem?: boolean;
   systemType?: string;
+  status?: 'sending' | 'sent' | 'failed';
 }
 
 export interface PinnedMessage {

@@ -10,7 +10,7 @@ import {
   obfuscateMetricGridLocation,
 } from './radar-types';
 
-const db = admin.firestore();
+const getDb = () => admin.firestore();
 
 /**
  * In-memory / Firestore rate limit helper.
@@ -21,6 +21,7 @@ async function enforceRateLimit(
   maxAttempts: number,
   windowSeconds: number
 ): Promise<void> {
+  const db = getDb();
   const now = Date.now();
   const rateLimitRef = db.collection('rate_limits').doc(`${userId}_${action}`);
   const snap = await rateLimitRef.get();
@@ -53,6 +54,7 @@ async function enforceRateLimit(
  * Enables or disables radar settings.
  */
 export const setRadarSettings = onCall(async (request) => {
+  const db = getDb();
   const data = request.data;
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Authentifizierung erforderlich.');
@@ -166,6 +168,7 @@ export const setRadarSettings = onCall(async (request) => {
  * Updates current temporary location with 5-minute transaction-safe rate limit.
  */
 export const updateRadarLocation = onCall(async (request) => {
+  const db = getDb();
   const data = request.data;
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Authentifizierung erforderlich.');
@@ -280,6 +283,7 @@ export const updateRadarLocation = onCall(async (request) => {
  * Explicit idempotent function to disable radar.
  */
 export const disableRadar = onCall(async (request) => {
+  const db = getDb();
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Authentifizierung erforderlich.');
   }
@@ -309,6 +313,7 @@ export const disableRadar = onCall(async (request) => {
  * Returns privacy-safe obfuscated locations for confirmed nearby friends.
  */
 export const getNearbyFriends = onCall(async (request) => {
+  const db = getDb();
   const data = request.data;
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Authentifizierung erforderlich.');

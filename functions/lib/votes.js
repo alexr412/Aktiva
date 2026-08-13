@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.secureVoteActivity = exports.secureVotePlace = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
-const db = admin.firestore();
+const getDb = () => admin.firestore();
 const SMOOTHING_FACTOR = 5;
 // Whitelisted fields for place metadata snapshot — no vote/score/admin fields allowed
 const PLACE_DATA_WHITELIST = ['name', 'address', 'categories', 'lat', 'lon', 'openingHours'];
@@ -30,6 +30,7 @@ function sanitizePlaceData(raw) {
  * - `superboost` is removed — only 'up', 'down', 'none' are valid
  */
 exports.secureVotePlace = (0, https_1.onCall)(async (request) => {
+    const db = getDb();
     // 1. Auth check
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "User must be authenticated.");
@@ -186,6 +187,7 @@ exports.secureVotePlace = (0, https_1.onCall)(async (request) => {
  * - Only 'up', 'down', 'none' allowed (superboost removed)
  */
 exports.secureVoteActivity = (0, https_1.onCall)(async (request) => {
+    const db = getDb();
     // 1. Auth check
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "User must be authenticated.");

@@ -25,7 +25,7 @@ import { ChatInfoSheet } from '@/components/activa/chat-info-sheet';
 import { PlaceDetails } from '@/components/activa/place-details';
 import { RoomInfoSheet } from '@/components/chat/room-info-sheet';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { ArrowLeft, Send, MoreVertical, Loader2, Users, Info, Reply, Edit3, Pin, Copy, CornerUpLeft, X, PinOff, Check, Share2 } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Loader2, Users, Info, Reply, Edit3, Pin, Copy, CornerUpLeft, X, PinOff, Check, Share2, Clock, AlertCircle, RefreshCw } from 'lucide-react';
 import { CompletionBanner } from '@/components/activa/CompletionBanner';
 import { MultiPeerReviewDialog } from '@/components/activa/multi-peer-review-dialog';
 import { UserBadge } from '@/components/common/UserBadge';
@@ -89,6 +89,7 @@ const MessageBubble = ({
   onEdit,
   onPin,
   onCopy,
+  onRetry,
 }: {
   message: Message;
   isOwnMessage: boolean;
@@ -103,6 +104,7 @@ const MessageBubble = ({
   onEdit: (message: Message) => void;
   onPin: (message: Message) => void;
   onCopy: (message: Message) => void;
+  onRetry?: (message: Message) => void;
 }) => {
   const isSystemJoin = message.senderPhotoURL === "system:join";
   const isSystemLeave = message.senderPhotoURL === "system:leave";
@@ -224,8 +226,36 @@ const MessageBubble = ({
                 "text-[9px] font-bold uppercase",
                 isOwnMessage ? "text-primary-foreground/60" : "text-muted-foreground"
               )}>
-                {message.sentAt ? format(message.sentAt.toDate(), 'p') : '...'}
+                {(() => {
+                  if (!message.sentAt) return '...';
+                  const d = typeof (message.sentAt as any).toDate === 'function' 
+                    ? (message.sentAt as any).toDate() 
+                    : (message.sentAt instanceof Date ? message.sentAt : new Date(message.sentAt));
+                  return format(d, 'p');
+                })()}
               </span>
+              {isOwnMessage && (
+                <span className="inline-flex items-center ml-0.5" aria-label={message.status || 'sent'}>
+                  {message.status === 'sending' && (
+                    <Clock className="h-2.5 w-2.5 animate-pulse text-primary-foreground/70" />
+                  )}
+                  {message.status === 'failed' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onRetry) onRetry(message);
+                      }}
+                      className="inline-flex items-center gap-0.5 text-red-300 hover:text-red-100 transition-colors"
+                      title={language === 'de' ? 'Erneut versuchen' : 'Retry'}
+                    >
+                      <AlertCircle className="h-3 w-3 text-red-300" />
+                    </button>
+                  )}
+                  {(!message.status || message.status === 'sent') && (
+                    <Check className="h-3 w-3 text-primary-foreground/70" />
+                  )}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -643,10 +673,18 @@ export default function ChatRoomPage() {
             }
           }
 
+          const getMessageMs = (m: Message): number => {
+            if (!m.sentAt) return Date.now();
+            if (typeof (m.sentAt as any).toMillis === 'function') return (m.sentAt as any).toMillis();
+            if (m.sentAt instanceof Date) return m.sentAt.getTime();
+            if (typeof m.sentAt === 'number') return m.sentAt;
+            return Date.now();
+          };
+
           const mergedList = Array.from(mergedMap.values());
           mergedList.sort((a, b) => {
-            const aTime = a.sentAt?.toMillis() || 0;
-            const bTime = b.sentAt?.toMillis() || 0;
+            const aTime = getMessageMs(a);
+            const bTime = getMessageMs(b);
             if (aTime !== bTime) {
               return aTime - bTime;
             }
@@ -921,8 +959,8 @@ export default function ChatRoomPage() {
     const currentMessage = newMessage;
     setNewMessage('');
 
-    setIsSending(true);
     if (editingMessage) {
+      setIsSending(true);
       const msgId = editingMessage.id;
       setEditingMessage(null);
       try {
@@ -944,21 +982,71 @@ export default function ChatRoomPage() {
         senderName: replyingToMessage.senderName || "Anonymer Nutzer"
       } : null;
       setReplyingToMessage(null);
-      try {
-        await sendMessage(chatId, currentMessage, user, userProfile, replyPayload);
-        setSentMessageTimestamps([...recentTimestamps, now]);
-      } catch (error: any) {
-        console.error(error);
-        setNewMessage(currentMessage);
-        toast({ 
-          title: language === 'de' ? "Fehler" : "Error", 
-          description: error.message || (language === 'de' ? "Nachricht konnte nicht gesendet werden." : "Message could not be sent."), 
+
+      // Generate clientMessageId for deterministic local echo & Firestore doc ID matching
+      const clientMessageId = doc(collection(db!, 'chats', chatId, 'messages')).id;
+
+      const optimisticMsg: Message = {
+        id: clientMessageId,
+        text: currentMessage,
+        senderId: user.uid,
+        senderName: userProfile?.username ? `@${userProfile.username.replace(/^@/, '')}` : (userProfile?.displayName || user.displayName || "Du"),
+        senderUsername: userProfile?.username || null,
+        senderPhotoURL: user.photoURL || userProfile?.photoURL || null,
+        sentAt: new Date() as any,
+        isPremium: Boolean(userProfile?.isPremium),
+        isSupporter: Boolean(userProfile?.isSupporter),
+        isCreator: Boolean(userProfile?.isCreator),
+        replyToId: replyPayload?.id,
+        replyToText: replyPayload?.text,
+        replyToSenderName: replyPayload?.senderName,
+        status: 'sending',
+      };
+
+      // 1. Instant local render & input clear (WhatsApp-style 0ms UX)
+      setMessages((prev) => [...prev.filter(m => m.id !== clientMessageId), optimisticMsg]);
+      setSentMessageTimestamps([...recentTimestamps, now]);
+
+      // 2. Parallel non-blocking backend call
+      sendMessage(chatId, currentMessage, user, userProfile, replyPayload, clientMessageId)
+        .then(() => {
+          setMessages((prev) => prev.map(m => m.id === clientMessageId ? { ...m, status: 'sent' } : m));
+        })
+        .catch((error: any) => {
+          console.error("Optimistic send error:", error);
+          setMessages((prev) => prev.map(m => m.id === clientMessageId ? { ...m, status: 'failed' } : m));
+          toast({ 
+            title: language === 'de' ? "Fehler" : "Error", 
+            description: error.message || (language === 'de' ? "Nachricht konnte nicht gesendet werden." : "Message could not be sent."), 
+            variant: 'destructive'
+          });
+        });
+    }
+  };
+
+  const handleRetryMessage = (msg: Message) => {
+    if (!user || !chatId) return;
+    setMessages((prev) => prev.map(m => m.id === msg.id ? { ...m, status: 'sending' } : m));
+
+    const replyPayload = msg.replyToId ? {
+      id: msg.replyToId,
+      text: msg.replyToText || '',
+      senderName: msg.replyToSenderName || 'User'
+    } : null;
+
+    sendMessage(chatId, msg.text, user, userProfile, replyPayload, msg.id)
+      .then(() => {
+        setMessages((prev) => prev.map(m => m.id === msg.id ? { ...m, status: 'sent' } : m));
+      })
+      .catch((error: any) => {
+        console.error("Retry send error:", error);
+        setMessages((prev) => prev.map(m => m.id === msg.id ? { ...m, status: 'failed' } : m));
+        toast({
+          title: language === 'de' ? "Fehler beim erneuten Senden" : "Retry Error",
+          description: error.message || (language === 'de' ? "Nachricht konnte nicht gesendet werden." : "Message could not be sent."),
           variant: 'destructive'
         });
-      } finally {
-        setIsSending(false);
-      }
-    }
+      });
   };
 
   /**
@@ -1215,12 +1303,22 @@ export default function ChatRoomPage() {
               const prevMessage = messages[index - 1];
               const isOwnMessage = message.senderId === user?.uid;
               
-              const showDateSeparator = !prevMessage || !prevMessage.sentAt || !message.sentAt || !isSameDay(message.sentAt.toDate(), prevMessage.sentAt.toDate());
+              const getMessageDate = (sentAt: any): Date => {
+                if (!sentAt) return new Date();
+                if (typeof sentAt.toDate === 'function') return sentAt.toDate();
+                if (sentAt instanceof Date) return sentAt;
+                if (typeof sentAt === 'number') return new Date(sentAt);
+                return new Date();
+              };
+
+              const prevDate = prevMessage?.sentAt ? getMessageDate(prevMessage.sentAt) : null;
+              const currDate = message.sentAt ? getMessageDate(message.sentAt) : null;
+              const showDateSeparator = !prevDate || !currDate || !isSameDay(currDate, prevDate);
               const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId || showDateSeparator;
               
               return (
                 <div key={message.id} id={`msg-${message.id}`} className="w-full transition-all duration-300 rounded-xl">
-                  {showDateSeparator && message.sentAt && <DateSeparator date={message.sentAt.toDate()} language={language} />}
+                  {showDateSeparator && currDate && <DateSeparator date={currDate} language={language} />}
                   <MessageBubble
                     message={message}
                     isOwnMessage={isOwnMessage}
@@ -1235,6 +1333,7 @@ export default function ChatRoomPage() {
                     onEdit={handleStartEditMessage}
                     onPin={handlePinMessage}
                     onCopy={handleCopyMessage}
+                    onRetry={handleRetryMessage}
                   />
                 </div>
               );

@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 
-const db = admin.firestore();
+const getDb = () => admin.firestore();
 const SMOOTHING_FACTOR = 5;
 
 // Whitelisted fields for place metadata snapshot — no vote/score/admin fields allowed
@@ -30,6 +30,7 @@ function sanitizePlaceData(raw: any): Record<string, any> | null {
  * - `superboost` is removed — only 'up', 'down', 'none' are valid
  */
 export const secureVotePlace = onCall(async (request) => {
+  const db = getDb();
   // 1. Auth check
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be authenticated.");
@@ -188,6 +189,7 @@ export const secureVotePlace = onCall(async (request) => {
  * - Only 'up', 'down', 'none' allowed (superboost removed)
  */
 export const secureVoteActivity = onCall(async (request) => {
+  const db = getDb();
   // 1. Auth check
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be authenticated.");

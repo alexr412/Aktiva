@@ -1227,9 +1227,10 @@ export async function sendMessage(
   text: string, 
   user: User, 
   userProfile?: UserProfile | null,
-  replyTo?: { id: string; text: string; senderName: string; replyToSenderUsername?: string | null } | null
-): Promise<void> {
-  if (!text.trim()) return;
+  replyTo?: { id: string; text: string; senderName: string; replyToSenderUsername?: string | null } | null,
+  providedClientMessageId?: string
+): Promise<string> {
+  if (!text.trim()) return '';
 
   if (!validateChatMessage(text)) {
     throw new Error('Diese Nachricht enthält nicht erlaubte Inhalte.');
@@ -1242,7 +1243,7 @@ export async function sendMessage(
 
     if (!db) throw new Error('Firestore is not initialized.');
     const messagesRef = collection(db, 'chats', chatId, 'messages');
-    const clientMessageId = doc(messagesRef).id;
+    const clientMessageId = providedClientMessageId || doc(messagesRef).id;
 
     await sendChatMessageFn({
       chatId,
@@ -1253,6 +1254,8 @@ export async function sendMessage(
       replyToSenderUsername: replyTo?.replyToSenderUsername || undefined,
       clientMessageId
     });
+
+    return clientMessageId;
   } catch (error: any) {
     console.error('Error calling sendChatMessage Cloud Function:', error);
     throw new Error(error.message || 'Could not send message.');

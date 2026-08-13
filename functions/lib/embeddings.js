@@ -5,19 +5,22 @@ const firestore_1 = require("firebase-functions/v2/firestore");
 const https_1 = require("firebase-functions/v2/https");
 const firestore_2 = require("firebase-admin/firestore");
 const admin = require("firebase-admin");
-const genkit_1 = require("genkit");
-const google_genai_1 = require("@genkit-ai/google-genai");
-if (!admin.apps.length) {
-    admin.initializeApp();
+let aiInstance = null;
+function getAi() {
+    if (!aiInstance) {
+        const { genkit } = require('genkit');
+        const { googleAI } = require('@genkit-ai/google-genai');
+        aiInstance = genkit({
+            plugins: [googleAI()],
+            model: 'googleai/gemini-2.5-flash',
+        });
+    }
+    return aiInstance;
 }
-const ai = (0, genkit_1.genkit)({
-    plugins: [(0, google_genai_1.googleAI)()],
-    model: 'googleai/gemini-2.5-flash',
-});
 const embeddingModel = 'googleai/gemini-embedding-001';
 async function generateVector(text) {
     try {
-        const embeddingResponse = await ai.embed({
+        const embeddingResponse = await getAi().embed({
             embedder: embeddingModel,
             content: text,
         });

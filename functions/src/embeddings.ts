@@ -2,17 +2,20 @@ import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/fire
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import * as admin from 'firebase-admin';
-import { genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 
-if (!admin.apps.length) {
-    admin.initializeApp();
+let aiInstance: any = null;
+
+function getAi() {
+  if (!aiInstance) {
+    const { genkit } = require('genkit');
+    const { googleAI } = require('@genkit-ai/google-genai');
+    aiInstance = genkit({
+      plugins: [googleAI()],
+      model: 'googleai/gemini-2.5-flash',
+    });
+  }
+  return aiInstance;
 }
-
-const ai = genkit({
-  plugins: [googleAI()],
-  model: 'googleai/gemini-2.5-flash',
-});
 
 const embeddingModel = 'googleai/gemini-embedding-001';
 
@@ -25,7 +28,7 @@ interface ActivityData {
 
 async function generateVector(text: string): Promise<number[]> {
   try {
-    const embeddingResponse = await ai.embed({
+    const embeddingResponse = await getAi().embed({
       embedder: embeddingModel,
       content: text,
     });

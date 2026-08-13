@@ -39,26 +39,32 @@ export const sendChatMessage = onCall(async (request) => {
 
   try {
     const result = await db.runTransaction(async (transaction) => {
-      // 1. Idempotency check: check if message already exists
-      const messageSnap = await transaction.get(messageRef);
+      const userRef = db.collection('users').doc(uid);
+      // 1. Parallelize initial document reads (message, chat, user) in parallel
+      const [messageSnap, chatSnap, userSnap] = await Promise.all([
+        transaction.get(messageRef),
+        transaction.get(chatRef),
+        transaction.get(userRef)
+      ]);
+
+      // 2. Idempotency check: check if message already exists
       if (messageSnap.exists) {
         return { success: true, duplicated: true, messageId: clientMessageId };
       }
 
-      // 2. Fetch Chat document
-      const chatSnap = await transaction.get(chatRef);
+      // 3. Fetch Chat document & verify existence
       if (!chatSnap.exists) {
         throw new HttpsError('not-found', 'Chat does not exist.');
       }
       const chatData = chatSnap.data()!;
 
-      // 3. Verify user participation
+      // 4. Verify user participation
       const participantIds = chatData.participantIds || [];
       if (!participantIds.includes(uid)) {
         throw new HttpsError('permission-denied', 'User is not a participant in this chat.');
       }
 
-      // 4. Verify chat is active
+      // 5. Verify chat is active
       const activityId = chatData.activityId;
       if (activityId) {
         const activityRef = db.collection('activities').doc(activityId);
@@ -73,9 +79,7 @@ export const sendChatMessage = onCall(async (request) => {
         }
       }
 
-      // Fetch user profile for latest badges and name
-      const userRef = db.collection('users').doc(uid);
-      const userSnap = await transaction.get(userRef);
+      // Verify user profile existence
       if (!userSnap.exists) {
         throw new HttpsError('not-found', 'User profile not found.');
       }
