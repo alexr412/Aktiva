@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
-import { cn, formatFirstName } from '@/lib/utils';
+import { cn, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import type { Activity } from '@/lib/types';
 
@@ -82,18 +82,10 @@ export function ActivityInfoSheet({
   const PrimaryIcon = primaryStyle.icon;
 
   const renderDate = () => {
-    const locale = language === 'de' ? de : enUS;
-    const date = activity.activityDate?.toDate();
-    if (!date) return '';
-
-    if (activity.activityEndDate) {
-      const endDate = activity.activityEndDate.toDate();
-      return `${format(date, 'eee, d. MMM', { locale })} - ${format(endDate, 'eee, d. MMM', { locale })}`;
-    }
-    if (activity.isTimeFlexible) {
-      return `${format(date, 'eee, d. MMM', { locale })} ${language === 'de' ? '(Flexibel)' : '(Flexible)'}`;
-    }
-    return format(date, language === 'de' ? "eee, d. MMM 'um' HH:mm" : "eee, d. MMM 'at' h:mm a", { locale });
+    const dateRange = formatActivityDateRange(activity.activityDate, activity.activityEndDate, language);
+    if (!dateRange) return '';
+    const timeDisplay = formatActivityTimeDisplay(activity.activityDate, activity.isTimeFlexible, language);
+    return `${dateRange} (${timeDisplay})`;
   };
 
   const handleAction = async () => {

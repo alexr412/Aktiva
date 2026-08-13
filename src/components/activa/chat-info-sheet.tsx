@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
-import { cn, formatFirstName } from '@/lib/utils';
+import { cn, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { MemberFriendActionButton } from '@/components/chat/member-friend-action-button';
 
@@ -59,16 +59,10 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
 
   const renderDate = () => {
       if (!activity) return null;
-
-      const locale = language === 'de' ? de : enUS;
-
-      if (activity.activityEndDate) {
-          return `${format(activity.activityDate.toDate(), "eee, d. MMM", { locale })} - ${format(activity.activityEndDate.toDate(), "eee, d. MMM", { locale })}`;
-      }
-      if (activity.isTimeFlexible) {
-          return `${format(activity.activityDate.toDate(), "eee, d. MMM", { locale })} ${language === 'de' ? '(Flexibel)' : '(Flexible)'}`;
-      }
-      return format(activity.activityDate.toDate(), language === 'de' ? "eee, d. MMM 'um' p" : "eee, d. MMM 'at' p", { locale });
+      const dateRange = formatActivityDateRange(activity.activityDate, activity.activityEndDate, language);
+      if (!dateRange) return null;
+      const timeDisplay = formatActivityTimeDisplay(activity.activityDate, activity.isTimeFlexible, language);
+      return `${dateRange} (${timeDisplay})`;
   }
 
 

@@ -10,61 +10,73 @@ function createMockTimestamp(date: Date) {
   };
 }
 
-console.log('--- RUNNING DATE FORMATTING TESTS FOR ACTIVITY DETAIL OVERVIEW ---');
+// Combined helper matching Feed Info Panel logic:
+function formatFeedInfoDateTime(activityDate?: any, activityEndDate?: any, isTimeFlexible?: boolean, language: 'de' | 'en' = 'de') {
+  const dateRange = formatActivityDateRange(activityDate, activityEndDate, language);
+  if (!dateRange) return '';
+  const timeDisplay = formatActivityTimeDisplay(activityDate, isTimeFlexible, language);
+  return `${dateRange} (${timeDisplay})`;
+}
 
-// Case A:
-// Start: 11.08.2026
-// Ende: nicht vorhanden
-// -> DATUM: „Di., 11. Aug.“
-const dateA_start = createMockTimestamp(new Date(2026, 7, 11, 14, 0)); // August 11, 2026
-const resA_datum = formatActivityDateRange(dateA_start, undefined, 'de');
-console.log('Case A (Start only):', resA_datum);
-assert.strictEqual(resA_datum, 'Di., 11. Aug.');
+console.log('--- RUNNING DATE FORMATTING TESTS FOR ACTIVITY DETAIL & FEED INFO PANEL ---');
 
-// Case B:
-// Start: 11.08.2026
-// Ende: 11.08.2026
-// -> DATUM: „Di., 11. Aug.“
-const dateB_start = createMockTimestamp(new Date(2026, 7, 11, 10, 0));
-const dateB_end = createMockTimestamp(new Date(2026, 7, 11, 18, 0));
-const resB_datum = formatActivityDateRange(dateB_start, dateB_end, 'de');
-console.log('Case B (Same Start and End):', resB_datum);
-assert.strictEqual(resB_datum, 'Di., 11. Aug.');
+// 1. Nur Startdatum
+const date_start_only = createMockTimestamp(new Date(2026, 7, 11, 14, 0)); // Tuesday, 11.08.2026 14:00
 
-// Case C:
-// Start: 20.07.2026
-// Ende: 11.08.2026
-// -> DATUM: „Mo., 20. Juli – Di., 11. Aug.“
-const dateC_start = createMockTimestamp(new Date(2026, 6, 20, 9, 0)); // July 20, 2026
-const dateC_end = createMockTimestamp(new Date(2026, 7, 11, 17, 0)); // August 11, 2026
-const resC_datum = formatActivityDateRange(dateC_start, dateC_end, 'de');
-console.log('Case C (Different Start and End):', resC_datum);
-assert.strictEqual(resC_datum, 'Mo., 20. Juli – Di., 11. Aug.');
+// 1a. Nur Startdatum, date range:
+const res_start_only_range = formatActivityDateRange(date_start_only, undefined, 'de');
+console.log('Test 1a (Nur Startdatum - Date Range):', res_start_only_range);
+assert.strictEqual(res_start_only_range, 'Di., 11. Aug.');
 
-// Case D:
-// Start + Ende unterschiedlich
-// flexible = true
-// -> vollständiger Zeitraum im DATUM-Feld („Mo., 20. Juli – Di., 11. Aug.“)
-// -> „Flexibel“ im ZEIT-Feld
-const dateD_start = createMockTimestamp(new Date(2026, 6, 20, 9, 0));
-const dateD_end = createMockTimestamp(new Date(2026, 7, 11, 17, 0));
-const resD_datum = formatActivityDateRange(dateD_start, dateD_end, 'de');
-const resD_zeit = formatActivityTimeDisplay(dateD_start, true, 'de');
-console.log('Case D (Different Start/End, flexible time):', { DATUM: resD_datum, ZEIT: resD_zeit });
-assert.strictEqual(resD_datum, 'Mo., 20. Juli – Di., 11. Aug.');
-assert.strictEqual(resD_zeit, 'Flexibel');
+// 1b. Nur Startdatum, Feed Info Panel (isTimeFlexible = true):
+const res_start_only_feed_flex = formatFeedInfoDateTime(date_start_only, undefined, true, 'de');
+console.log('Test 1b (Nur Startdatum - Feed Info flexibel):', res_start_only_feed_flex);
+assert.strictEqual(res_start_only_feed_flex, 'Di., 11. Aug. (Flexibel)');
 
-// Case E:
-// Start + Ende unterschiedlich
-// feste Uhrzeit vorhanden
-// -> vollständiger Zeitraum im DATUM-Feld („Mo., 20. Juli – Di., 11. Aug.“)
-// -> feste Uhrzeit im ZEIT-Feld (z.B. „14:00“)
-const dateE_start = createMockTimestamp(new Date(2026, 6, 20, 14, 0));
-const dateE_end = createMockTimestamp(new Date(2026, 7, 11, 17, 0));
-const resE_datum = formatActivityDateRange(dateE_start, dateE_end, 'de');
-const resE_zeit = formatActivityTimeDisplay(dateE_start, false, 'de');
-console.log('Case E (Different Start/End, fixed time 14:00):', { DATUM: resE_datum, ZEIT: resE_zeit });
-assert.strictEqual(resE_datum, 'Mo., 20. Juli – Di., 11. Aug.');
-assert.strictEqual(resE_zeit, '14:00');
+// 1c. Nur Startdatum, Feed Info Panel (isTimeFlexible = false, 14:00):
+const res_start_only_feed_fixed = formatFeedInfoDateTime(date_start_only, undefined, false, 'de');
+console.log('Test 1c (Nur Startdatum - Feed Info feste Uhrzeit):', res_start_only_feed_fixed);
+assert.strictEqual(res_start_only_feed_fixed, 'Di., 11. Aug. (14:00)');
 
-console.log('--- ALL 5 TEST CASES PASSED SUCCESSFULLY ---');
+
+// 2. Startdatum = Enddatum (am selben Tag)
+const date_same_start = createMockTimestamp(new Date(2026, 7, 11, 10, 0));
+const date_same_end = createMockTimestamp(new Date(2026, 7, 11, 18, 0));
+
+// 2a. Startdatum = Enddatum, date range:
+const res_same_range = formatActivityDateRange(date_same_start, date_same_end, 'de');
+console.log('Test 2a (Start = Ende - Date Range):', res_same_range);
+assert.strictEqual(res_same_range, 'Di., 11. Aug.');
+
+// 2b. Startdatum = Enddatum, Feed Info Panel (isTimeFlexible = true):
+const res_same_feed_flex = formatFeedInfoDateTime(date_same_start, date_same_end, true, 'de');
+console.log('Test 2b (Start = Ende - Feed Info flexibel):', res_same_feed_flex);
+assert.strictEqual(res_same_feed_flex, 'Di., 11. Aug. (Flexibel)');
+
+// 2c. Startdatum = Enddatum, Feed Info Panel (isTimeFlexible = false, 10:00):
+const res_same_feed_fixed = formatFeedInfoDateTime(date_same_start, date_same_end, false, 'de');
+console.log('Test 2c (Start = Ende - Feed Info feste Uhrzeit):', res_same_feed_fixed);
+assert.strictEqual(res_same_feed_fixed, 'Di., 11. Aug. (10:00)');
+
+
+// 3. Startdatum != Enddatum
+const date_diff_start = createMockTimestamp(new Date(2026, 7, 11, 14, 0)); // Tuesday, 11.08.2026
+const date_diff_end = createMockTimestamp(new Date(2026, 7, 15, 18, 0)); // Saturday, 15.08.2026
+
+// 3a. Startdatum != Enddatum, date range:
+const res_diff_range = formatActivityDateRange(date_diff_start, date_diff_end, 'de');
+console.log('Test 3a (Start != Ende - Date Range):', res_diff_range);
+assert.strictEqual(res_diff_range, 'Di., 11. Aug. – Sa., 15. Aug.');
+
+// 3b. Startdatum != Enddatum, Feed Info Panel (isTimeFlexible = true):
+const res_diff_feed_flex = formatFeedInfoDateTime(date_diff_start, date_diff_end, true, 'de');
+console.log('Test 3b (Start != Ende - Feed Info flexibel):', res_diff_feed_flex);
+assert.strictEqual(res_diff_feed_flex, 'Di., 11. Aug. – Sa., 15. Aug. (Flexibel)');
+
+// 3c. Startdatum != Enddatum, Feed Info Panel (isTimeFlexible = false, 14:00):
+const res_diff_feed_fixed = formatFeedInfoDateTime(date_diff_start, date_diff_end, false, 'de');
+console.log('Test 3c (Start != Ende - Feed Info feste Uhrzeit):', res_diff_feed_fixed);
+assert.strictEqual(res_diff_feed_fixed, 'Di., 11. Aug. – Sa., 15. Aug. (14:00)');
+
+
+console.log('--- ALL TEST CASES PASSED SUCCESSFULLY ---');

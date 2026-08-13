@@ -9,7 +9,7 @@ import { leaveActivity, removeParticipant } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { format, isToday } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
-import { cn, formatFirstName } from '@/lib/utils';
+import { cn, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay } from '@/lib/utils';
 import { getPrimaryIconData, getRoomVisualCategory } from '@/lib/tag-config';
 import { MemberFriendActionButton } from './member-friend-action-button';
 
@@ -145,33 +145,12 @@ export function RoomInfoSheet({
 
   const statusChip = getStatusTextAndStyle();
 
-  // Datum formatieren
   const renderDate = () => {
     if (!activity) return null;
-    const locale = language === 'de' ? de : enUS;
-
-    const dateObj = typeof activity.activityDate?.toDate === 'function'
-      ? activity.activityDate.toDate()
-      : activity.activityDate instanceof Date
-      ? activity.activityDate
-      : null;
-
-    if (!dateObj) return null;
-
-    if (activity.activityEndDate) {
-      const endDateObj = typeof activity.activityEndDate?.toDate === 'function'
-        ? activity.activityEndDate.toDate()
-        : activity.activityEndDate instanceof Date
-        ? activity.activityEndDate
-        : null;
-      if (endDateObj) {
-        return `${format(dateObj, 'eee, d. MMM', { locale })} - ${format(endDateObj, 'eee, d. MMM', { locale })}`;
-      }
-    }
-    if (activity.isTimeFlexible) {
-      return `${format(dateObj, 'eee, d. MMM', { locale })} ${language === 'de' ? '(Flexibel)' : '(Flexible)'}`;
-    }
-    return format(dateObj, language === 'de' ? "eee, d. MMM 'um' p" : "eee, d. MMM 'at' p", { locale });
+    const dateRange = formatActivityDateRange(activity.activityDate, activity.activityEndDate, language);
+    if (!dateRange) return null;
+    const timeDisplay = formatActivityTimeDisplay(activity.activityDate, activity.isTimeFlexible, language);
+    return `${dateRange} (${timeDisplay})`;
   };
 
   // Kopieren der Adresse
