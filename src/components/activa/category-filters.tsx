@@ -235,11 +235,8 @@ export function CategoryFilters({
         <DialogContent 
           overlayClassName="bg-black/50 backdrop-blur-xs"
           hideCloseButton
-          className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 translate-x-0 translate-y-0 lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:bottom-auto w-full max-w-full lg:w-[min(600px,calc(100vw-48px))] lg:max-w-[600px] max-h-[min(88dvh,680px)] lg:max-h-[min(760px,calc(100dvh-80px))] rounded-t-[28px] rounded-b-none lg:rounded-[28px] border-t border-slate-200/80 dark:border-neutral-800 lg:border bg-white dark:bg-neutral-900 p-0 gap-0 shadow-2xl overflow-hidden flex flex-col min-h-0 focus:outline-none"
+          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-24px)] max-w-[420px] lg:w-[min(600px,calc(100vw-48px))] lg:max-w-[600px] max-h-[calc(100dvh-32px)] lg:max-h-[min(760px,calc(100dvh-80px))] rounded-3xl lg:rounded-[28px] border border-slate-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-0 gap-0 shadow-2xl overflow-hidden flex flex-col min-h-0 focus:outline-none"
         >
-          {/* Mobile Visual Drag Handle */}
-          <div className="w-12 h-1 bg-slate-200 dark:bg-neutral-700 rounded-full mx-auto mt-2.5 mb-0.5 lg:hidden shrink-0" />
-
           {/* Sticky / Fixed Header */}
           <div className="flex items-center justify-between px-5 lg:px-7 py-3.5 lg:py-4 border-b border-slate-100 dark:border-neutral-800/80 shrink-0">
             <DialogTitle className="text-lg lg:text-xl font-black text-slate-900 dark:text-neutral-100 tracking-tight truncate pr-4">
