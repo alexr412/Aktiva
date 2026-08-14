@@ -13,6 +13,7 @@ import {
   Loader2,
   MessageSquare,
   Compass,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -231,49 +232,96 @@ export function CategoryFilters({
       </div>
 
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-        <DialogContent className="sm:max-w-md dark:bg-neutral-900">
-          <DialogHeader>
-            <DialogTitle className="font-black text-xl dark:text-neutral-200">{language === 'de' ? 'Kategorien anpassen' : 'Customize categories'}</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-1 gap-2 py-4 max-h-[60vh] overflow-y-auto pr-2">
-            {availableTabs.map((tab) => {
-              const isActive = draftTabs.includes(tab.id);
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => toggleDraftTab(tab.id)}
-                  className={cn(
-                    "flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left w-full",
-                    isActive 
-                      ? 'border-primary bg-primary/5 dark:bg-primary/20' 
-                      : 'bg-white border-neutral-50 dark:bg-neutral-800 dark:border-neutral-700'
-                  )}
-                  style={{ 
-                      borderColor: isActive ? tab.color : undefined,
-                      backgroundColor: isActive ? `${tab.color}10` : undefined
-                  }}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-                         style={{ backgroundColor: `${tab.color}15` }}>
-                        <tab.icon className="h-5 w-5" style={{ color: tab.color }} />
-                    </div>
-                    <span className={cn(
-                        "font-black text-sm uppercase tracking-tight",
-                        isActive ? "text-neutral-900 dark:text-white" : "text-neutral-500 dark:text-neutral-400"
-                    )}>{formatLabel(language === 'de' ? tab.label : (tab.labelEn || tab.label))}</span>
-                  </div>
-                  {isActive && <Check className="h-5 w-5" style={{ color: tab.color }} />}
-                </button>
-              );
-            })}
+        <DialogContent 
+          overlayClassName="bg-black/50 backdrop-blur-xs"
+          hideCloseButton
+          className="fixed inset-x-0 bottom-0 top-auto left-0 right-0 translate-x-0 translate-y-0 lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:bottom-auto w-full max-w-full lg:w-[min(600px,calc(100vw-48px))] lg:max-w-[600px] max-h-[min(88dvh,680px)] lg:max-h-[min(760px,calc(100dvh-80px))] rounded-t-[28px] rounded-b-none lg:rounded-[28px] border-t border-slate-200/80 dark:border-neutral-800 lg:border bg-white dark:bg-neutral-900 p-0 gap-0 shadow-2xl overflow-hidden flex flex-col min-h-0 focus:outline-none"
+        >
+          {/* Mobile Visual Drag Handle */}
+          <div className="w-12 h-1 bg-slate-200 dark:bg-neutral-700 rounded-full mx-auto mt-2.5 mb-0.5 lg:hidden shrink-0" />
+
+          {/* Sticky / Fixed Header */}
+          <div className="flex items-center justify-between px-5 lg:px-7 py-3.5 lg:py-4 border-b border-slate-100 dark:border-neutral-800/80 shrink-0">
+            <DialogTitle className="text-lg lg:text-xl font-black text-slate-900 dark:text-neutral-100 tracking-tight truncate pr-4">
+              {language === 'de' ? 'Kategorien anpassen' : 'Customize categories'}
+            </DialogTitle>
+            
+            <button
+              type="button"
+              onClick={() => setIsConfigOpen(false)}
+              className="w-11 h-11 rounded-full flex items-center justify-center bg-slate-100/90 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200/90 dark:hover:bg-neutral-700 border border-slate-200/60 dark:border-neutral-700/60 shadow-xs transition-all shrink-0 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+              aria-label={language === 'de' ? 'Schließen' : 'Close'}
+            >
+              <X className="h-4 w-4 stroke-[2.5]" />
+            </button>
           </div>
-          <DialogFooter>
-            <Button onClick={saveConfiguration} disabled={isSaving} className="w-full h-14 font-black uppercase tracking-widest text-[11px] rounded-full transition-all active:scale-[0.98]">
-              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (language === 'de' ? 'Konfiguration übernehmen' : 'Apply configuration')}
+
+          {/* Scrollable Category List */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 lg:px-6 py-3.5 lg:py-4 custom-category-scrollbar hide-scrollbar lg:[scrollbar-width:thin]">
+            <div className="flex flex-col gap-2 lg:gap-2.5">
+              {availableTabs.map((tab) => {
+                const isActive = draftTabs.includes(tab.id);
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => toggleDraftTab(tab.id)}
+                    className={cn(
+                      "group flex items-center justify-between px-4 lg:px-4.5 min-h-[60px] lg:min-h-[64px] py-2.5 rounded-2xl border transition-all text-left w-full shrink-0 cursor-pointer active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                      isActive 
+                        ? "shadow-xs" 
+                        : "bg-slate-50/70 hover:bg-slate-100/70 border-slate-200/60 dark:bg-neutral-800/40 dark:hover:bg-neutral-800/70 dark:border-neutral-800/70"
+                    )}
+                    style={{ 
+                      borderColor: isActive ? `${tab.color}45` : undefined,
+                      backgroundColor: isActive ? `${tab.color}10` : undefined
+                    }}
+                  >
+                    <div className="flex items-center gap-3 lg:gap-3.5 min-w-0 pr-2">
+                      <div 
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-[1.03]"
+                        style={{ backgroundColor: `${tab.color}15` }}
+                      >
+                        <tab.icon className="h-5 w-5 shrink-0" style={{ color: tab.color }} />
+                      </div>
+                      <span 
+                        className={cn(
+                          "font-black text-xs lg:text-[13px] uppercase tracking-wider truncate transition-colors",
+                          isActive ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-neutral-300"
+                        )}
+                      >
+                        {formatLabel(language === 'de' ? tab.label : (tab.labelEn || tab.label))}
+                      </span>
+                    </div>
+
+                    {isActive && (
+                      <div 
+                        className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                        style={{ color: tab.color }}
+                      >
+                        <Check className="h-4 w-4 stroke-[3]" style={{ color: tab.color }} />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sticky / Fixed Footer with Safe Area Support */}
+          <div className="flex-none p-4 lg:p-5 border-t border-slate-100 dark:border-neutral-800/80 bg-white dark:bg-neutral-900 pb-[max(16px,env(safe-area-inset-bottom))]">
+            <Button 
+              onClick={saveConfiguration} 
+              disabled={isSaving} 
+              className="w-full h-12 lg:h-12.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest text-[11px] lg:text-xs rounded-full transition-all active:scale-[0.985] shadow-md shadow-emerald-600/20 focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-50 cursor-pointer"
+            >
+              {isSaving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                language === 'de' ? 'Konfiguration übernehmen' : 'Apply configuration'
+              )}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </>
