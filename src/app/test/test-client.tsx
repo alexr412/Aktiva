@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, Search, Activity, MapPin, Lock, Database, CheckCircle2, FileBarChart, Send } from 'lucide-react';
-import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, BASE_HARD_VETO, BASE_SOFT_VETO, CONDITION_PREFIXES, buildGeoapifyCategoriesParam } from '@/lib/geoapify';
 import { runMigrationParticipantsPreview } from '@/lib/firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { functions, db } from '@/lib/firebase/client';
@@ -201,7 +201,8 @@ export default function TestClient() {
     try {
       const { lat, lng } = await resolveCoordinates(testCity);
 
-      const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(sanitizedCategory)}&filter=circle:${lng},${lat},5000&limit=100&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
+      const catParam = buildGeoapifyCategoriesParam(sanitizedCategory);
+      const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${lng},${lat},5000&limit=100&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
       
       const response = await fetch(url);
       if (!response.ok) throw new Error(`API error: ${response.status}`);

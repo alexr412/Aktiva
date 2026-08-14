@@ -7,6 +7,7 @@ import { useLocation } from '@/contexts/location-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useFavorites } from '@/contexts/favorites-context';
 import { subscribeCommunityActivities } from '@/lib/firebase/firestore';
+import { buildGeoapifyCategoriesParam, sanitizeUrlForLogging } from '@/lib/geoapify';
 
 const GEOAPIFY_API_KEY = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY || 'a34b22c7104d49a0a16efb4eeab1d48c';
 
@@ -17,8 +18,11 @@ const multiFetcher = async (keyObj: any) => {
     const catGroup1 = "entertainment,adult.nightclub,sport.stadium,sport.ice_rink";
     const catGroup2 = "entertainment.escape_game,leisure,sport,tourism.attraction";
 
-    const url1 = `https://api.geoapify.com/v2/places?categories=${catGroup1}&filter=circle:${lng},${lat},${radiusMeters}&bias=proximity:${lng},${lat}&limit=45&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
-    const url2 = `https://api.geoapify.com/v2/places?categories=${catGroup2}&filter=circle:${lng},${lat},${radiusMeters}&bias=proximity:${lng},${lat}&limit=45&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
+    const catParam1 = buildGeoapifyCategoriesParam(catGroup1);
+    const catParam2 = buildGeoapifyCategoriesParam(catGroup2);
+
+    const url1 = `https://api.geoapify.com/v2/places?${catParam1}&filter=circle:${lng},${lat},${radiusMeters}&bias=proximity:${lng},${lat}&limit=45&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
+    const url2 = `https://api.geoapify.com/v2/places?${catParam2}&filter=circle:${lng},${lat},${radiusMeters}&bias=proximity:${lng},${lat}&limit=45&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
 
     try {
       const [res1, res2] = await Promise.all([fetch(url1), fetch(url2)]);
@@ -34,7 +38,17 @@ const multiFetcher = async (keyObj: any) => {
 
   const res = await fetch(keyObj.url);
   if (!res.ok) {
-    throw new Error(`Geoapify API error: ${res.status}`);
+    const body = await res.text().catch(() => '');
+    const safeUrl = sanitizeUrlForLogging(keyObj.url);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[GEOAPIFY ERROR]', {
+        status: res.status,
+        statusText: res.statusText,
+        url: safeUrl,
+        body,
+      });
+    }
+    throw new Error(`Geoapify API error (${res.status}): ${body}`);
   }
   return res.json();
 };
@@ -98,7 +112,8 @@ export function useDiscoverPlaces() {
 
     const allCategories = "entertainment,leisure,sport,tourism,catering,adult.nightclub";
     const offset = 90 + (pageIndex - 1) * 50;
-    const url = `https://api.geoapify.com/v2/places?categories=${allCategories}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
+    const catParam = buildGeoapifyCategoriesParam(allCategories);
+    const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
     return { type: 'geoapify', url, pageIndex };
   };
 

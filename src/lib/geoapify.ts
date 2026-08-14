@@ -671,6 +671,128 @@ export const applyFilters = (
 
 // Die Punkte-Berechnung erfolgt nun zentral via calculateRelevanceScore aus der ranking.ts
 
+/**
+ * Redacts API keys in URLs for safe logging without leaking credentials.
+ */
+export function sanitizeUrlForLogging(url: string): string {
+  return url.replace(/([?&]apiKey=)[^&]+/gi, '$1***');
+}
+
+/**
+ * Builds circle filter parameter for Geoapify API.
+ * Format: filter=circle:lon,lat,radiusMeters
+ */
+export function buildCircleFilter(lon: number, lat: number, radiusMeters: number): string {
+  return `filter=circle:${lon},${lat},${radiusMeters}`;
+}
+
+/**
+ * Builds proximity bias parameter for Geoapify API.
+ * Format: bias=proximity:lon,lat
+ */
+export function buildProximityBias(lon: number, lat: number): string {
+  return `bias=proximity:${lon},${lat}`;
+}
+
+/**
+ * Serializes categories for Geoapify Places API URL.
+ * Geoapify /v2/places requires repeated `categories=cat1&categories=cat2` query parameters
+ * for multiple categories. Single comma-separated strings (e.g. `categories=cat1,cat2`) cause HTTP 400 Bad Request.
+ */
+export function buildGeoapifyCategoriesParam(categories: string[] | string): string {
+  const catArray = Array.isArray(categories)
+    ? categories
+    : (typeof categories === 'string' ? categories.split(',') : [])
+        .map(c => c.trim())
+        .filter(Boolean);
+
+  if (catArray.length === 0) return '';
+  return catArray.map(cat => `categories=${encodeURIComponent(cat)}`).join('&');
+}
+
+/**
+ * Helper to construct Geoapify Places API URL.
+ */
+export function buildGeoapifyPlacesUrl(options: {
+  lat: number;
+  lon: number;
+  radiusMeters: number;
+  categories?: string[] | string;
+  limit?: number;
+  offset?: number;
+  conditions?: string;
+  apiKey?: string;
+}): string {
+  const {
+    lat,
+    lon,
+    radiusMeters,
+    categories,
+    limit,
+    offset,
+    conditions,
+    apiKey = GEOAPIFY_API_KEY,
+  } = options;
+
+  const queryParts: string[] = [];
+
+  const catParam = categories ? buildGeoapifyCategoriesParam(categories) : '';
+  if (catParam) {
+    queryParts.push(catParam);
+  }
+
+  queryParts.push(buildCircleFilter(lon, lat, radiusMeters));
+  queryParts.push(buildProximityBias(lon, lat));
+
+  if (limit !== undefined) {
+    queryParts.push(`limit=${limit}`);
+  }
+  if (offset !== undefined) {
+    queryParts.push(`offset=${offset}`);
+  }
+  if (conditions) {
+    queryParts.push(`conditions=${encodeURIComponent(conditions)}`);
+  }
+  queryParts.push(`apiKey=${apiKey}`);
+
+  return `https://api.geoapify.com/v2/places?${queryParts.join('&')}`;
+}
+
+/**
+ * Safe fetch wrapper for Geoapify API requests.
+ * Extracts response text on !response.ok, logs details safely without leaking secrets,
+ * and throws descriptive error.
+ */
+export async function safeFetchGeoapify(url: string, contextInfo?: Record<string, any>): Promise<any> {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    const safeUrl = sanitizeUrlForLogging(url);
+
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[GEOAPIFY ERROR]', {
+        status: response.status,
+        statusText: response.statusText,
+        url: safeUrl,
+        body,
+        ...contextInfo,
+      });
+    } else {
+      console.error('[GEOAPIFY ERROR]', {
+        status: response.status,
+        statusText: response.statusText,
+      });
+    }
+
+    const error = new Error(`Geoapify API error (${response.status}): ${body}`);
+    (error as any).status = response.status;
+    (error as any).body = body;
+    throw error;
+  }
+
+  return response.json();
+}
 
 export async function fetchNearbyPlaces(
   lat: number,
@@ -687,12 +809,19 @@ export async function fetchNearbyPlaces(
     ? ["entertainment", "leisure", "sport", "tourism", "catering", "heritage", "adult.nightclub"]
     : categories.slice(0, 10);
   const fetchLimit = Math.max(limit, 150);
-  const fetchUrl = `https://api.geoapify.com/v2/places?categories=${targetCategories.join(',')}&filter=circle:${lon},${lat},${radiusMeters}&bias=proximity:${lon},${lat}&limit=${fetchLimit}&offset=${offset}&conditions=named&apiKey=${GEOAPIFY_API_KEY}`;
+  const fetchUrl = buildGeoapifyPlacesUrl({
+    lat,
+    lon,
+    radiusMeters,
+    categories: targetCategories,
+    limit: fetchLimit,
+    offset,
+    conditions: 'named',
+    apiKey: GEOAPIFY_API_KEY,
+  });
 
   try {
-    const response = await fetch(fetchUrl);
-    if (!response.ok) return [];
-    const data = await response.json();
+    const data = await safeFetchGeoapify(fetchUrl, { categories: targetCategories, radius: radiusMeters, offset });
     if (!data.features) return [];
     const rawFeatures = data.features || [];
     const itemsToFilter = rawFeatures.map((f: any) => ({

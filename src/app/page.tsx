@@ -60,7 +60,7 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING, applyFilters } from '@/lib/geoapify';
+import { GLOBAL_EXCLUDE_STRING, applyFilters, buildGeoapifyCategoriesParam, sanitizeUrlForLogging } from '@/lib/geoapify';
 import { calculateRelevance, rankPlacesPipeline } from '@/lib/ranking';
 import { Slider } from '@/components/ui/slider';
 import { cn, formatFirstName } from '@/lib/utils';
@@ -100,8 +100,24 @@ const ACTIVITY_CATEGORIES: (ActivityCategory | 'Alle')[] = ['Alle', 'Sport', 'Te
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) {
-    const error = new Error(`Geoapify API error: ${res.status}`);
+    const body = await res.text().catch(() => '');
+    const safeUrl = sanitizeUrlForLogging(url);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[GEOAPIFY ERROR]', {
+        status: res.status,
+        statusText: res.statusText,
+        url: safeUrl,
+        body,
+      });
+    } else {
+      console.error('[GEOAPIFY ERROR]', {
+        status: res.status,
+        statusText: res.statusText,
+      });
+    }
+    const error = new Error(`Geoapify API error (${res.status}): ${body}`);
     (error as any).status = res.status;
+    (error as any).body = body;
     throw error;
   }
   return res.json();
@@ -430,9 +446,10 @@ export default function Home() {
         ];
 
         const results = await Promise.all(
-          categoryBuckets.map(cats =>
-            fetcher(`${base}&categories=${cats}`).catch(() => ({ features: [] }))
-          )
+          categoryBuckets.map(cats => {
+            const catParam = buildGeoapifyCategoriesParam(cats);
+            return fetcher(`${base}&${catParam}`).catch(() => ({ features: [] }));
+          })
         );
 
         // Deduplicate by place_id across all buckets
@@ -607,8 +624,8 @@ export default function Home() {
     if (activeCategory.length > 0) {
       const queryLimit = pageIndex === 0 ? 50 : 25;
       const offset = pageIndex === 0 ? 0 : 50 + (pageIndex - 1) * 25;
-      const categoryString = categoriesToFetch.join(',');
-      const url = `https://api.geoapify.com/v2/places?categories=${categoryString}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
+      const catParam = buildGeoapifyCategoriesParam(categoriesToFetch);
+      const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
       return { type: 'geoapify', url, pageIndex };
     }
 
@@ -626,7 +643,8 @@ export default function Home() {
     // Subsequent pages: standard paginated stream starting at offset 90 (since first page fetches less)
     const allCategories = "entertainment,leisure,sport,tourism,catering,adult.nightclub";
     const offset = 90 + (pageIndex - 1) * 50;
-    const url = `https://api.geoapify.com/v2/places?categories=${allCategories}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
+    const catParam = buildGeoapifyCategoriesParam(allCategories);
+    const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
     return { type: 'geoapify', url, pageIndex };
   }
 
