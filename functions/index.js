@@ -164,7 +164,8 @@ exports.validateCreatorStatus = onSchedule("every 12 hours", async (event) => {
 
     if (pendingAppSnap.empty) continue;
 
-    const activitiesCount = await users.getCanonicalActivitiesCount(db, userId);
+    const usersMod = require('./lib/users');
+    const activitiesCount = await usersMod.getCanonicalActivitiesCount(db, userId);
     const averageRating = Number(userData.averageRating) || 0;
     const ratingCount = Number(userData.ratingCount) || 0;
 
@@ -186,95 +187,97 @@ exports.validateCreatorStatus = onSchedule("every 12 hours", async (event) => {
   return null;
 });
 
-// Semantic Vector Search Embeddings
-const embeddings = require('./lib/embeddings');
-exports.generateActivityEmbeddingOnCreate = embeddings.onActivityCreated;
-exports.generateActivityEmbeddingOnUpdate = embeddings.onActivityUpdated;
-exports.getSearchVector = embeddings.getSearchVector;
+// Helper for lazy module exports to ensure fast Functions Discovery (< 100ms)
+function lazyExport(exportName, modulePath, targetName) {
+  Object.defineProperty(exports, exportName, {
+    get: () => require(modulePath)[targetName || exportName],
+    enumerable: true,
+    configurable: true,
+  });
+}
 
-// User Profile Fan-Out Sync
-const users = require('./lib/users');
-exports.syncUserProfileUpdates = users.syncUserProfileUpdates;
-exports.onUserCreated = users.onUserCreated;
-exports.requireSocialEmailVerification = users.requireSocialEmailVerification;
-exports.verifyEmailStatus = users.verifyEmailStatus;
-exports.checkAndRecordVerificationEmail = users.checkAndRecordVerificationEmail;
-exports.cleanupEmptyChats = users.cleanupEmptyChats;
-exports.onUserDeleted = users.onUserDeleted;
-exports.applyReferralCode = users.applyReferralCode;
-exports.processReferralOnboardingCompletion = users.processReferralOnboardingCompletion;
-exports.getPublicProfile = users.getPublicProfile;
-exports.searchUserByUsername = users.searchUserByUsername;
-exports.checkUsernameAvailability = users.checkUsernameAvailability;
-exports.claimUsername = users.claimUsername;
-exports.earnToken = users.earnToken;
-exports.resolveLoginIdentifier = users.resolveLoginIdentifier;
-exports.secureSendFriendRequest = users.secureSendFriendRequest;
-exports.secureAcceptFriendRequest = users.secureAcceptFriendRequest;
-exports.submitCreatorApplication = users.submitCreatorApplication;
+// Semantic Vector Search Embeddings (Lazy Loaded)
+lazyExport('generateActivityEmbeddingOnCreate', './lib/embeddings', 'onActivityCreated');
+lazyExport('generateActivityEmbeddingOnUpdate', './lib/embeddings', 'onActivityUpdated');
+lazyExport('getSearchVector', './lib/embeddings', 'getSearchVector');
 
-// Secure Admin User Management
-const adminUsers = require('./lib/admin-users');
-exports.adminListUsers = adminUsers.adminListUsers;
-exports.adminGetUserDetail = adminUsers.adminGetUserDetail;
-exports.adminSetUserRole = adminUsers.adminSetUserRole;
-exports.adminSetOrganizerStatus = adminUsers.adminSetOrganizerStatus;
-exports.adminSetUserPremium = adminUsers.adminSetUserPremium;
-exports.adminSuspendUser = adminUsers.adminSuspendUser;
-exports.adminUnsuspendUser = adminUsers.adminUnsuspendUser;
-exports.adminBanUser = adminUsers.adminBanUser;
-exports.adminUnbanUser = adminUsers.adminUnbanUser;
-exports.adminDeleteUser = adminUsers.adminDeleteUser;
-exports.adminBulkUpdateUsers = adminUsers.adminBulkUpdateUsers;
-exports.adminBackfillUsers = adminUsers.adminBackfillUsers;
+// User Profile Fan-Out Sync (Lazy Loaded)
+lazyExport('syncUserProfileUpdates', './lib/users');
+lazyExport('onUserCreated', './lib/users');
+lazyExport('requireSocialEmailVerification', './lib/users');
+lazyExport('verifyEmailStatus', './lib/users');
+lazyExport('checkAndRecordVerificationEmail', './lib/users');
+lazyExport('cleanupEmptyChats', './lib/users');
+lazyExport('onUserDeleted', './lib/users');
+lazyExport('applyReferralCode', './lib/users');
+lazyExport('processReferralOnboardingCompletion', './lib/users');
+lazyExport('getPublicProfile', './lib/users');
+lazyExport('searchUserByUsername', './lib/users');
+lazyExport('checkUsernameAvailability', './lib/users');
+lazyExport('claimUsername', './lib/users');
+lazyExport('earnToken', './lib/users');
+lazyExport('resolveLoginIdentifier', './lib/users');
+lazyExport('secureSendFriendRequest', './lib/users');
+lazyExport('secureAcceptFriendRequest', './lib/users');
+lazyExport('secureDeclineFriendRequest', './lib/users');
+lazyExport('secureCancelFriendRequest', './lib/users');
+lazyExport('submitCreatorApplication', './lib/users');
 
-// Aktiva Points & Referrals Activities Triggers
-const activities = require('./lib/activities');
-exports.onActivityCreated = activities.onActivityCreated;
-exports.onActivityUpdated = activities.onActivityUpdated;
-exports.notifyNearbyUsers = activities.notifyNearbyUsers;
-exports.respondToJoinRequest = activities.respondToJoinRequest;
-exports.secureRequestJoinActivity = activities.secureRequestJoinActivity;
-exports.kickParticipant = activities.kickParticipant;
+// Secure Admin User Management (Lazy Loaded)
+lazyExport('adminListUsers', './lib/admin-users');
+lazyExport('adminGetUserDetail', './lib/admin-users');
+lazyExport('adminSetUserRole', './lib/admin-users');
+lazyExport('adminSetOrganizerStatus', './lib/admin-users');
+lazyExport('adminSetUserPremium', './lib/admin-users');
+lazyExport('adminSuspendUser', './lib/admin-users');
+lazyExport('adminUnsuspendUser', './lib/admin-users');
+lazyExport('adminBanUser', './lib/admin-users');
+lazyExport('adminUnbanUser', './lib/admin-users');
+lazyExport('adminDeleteUser', './lib/admin-users');
+lazyExport('adminBulkUpdateUsers', './lib/admin-users');
+lazyExport('adminBackfillUsers', './lib/admin-users');
 
-// Telemetry Aggregation & Data Retention
-const aggregation = require('./lib/aggregation');
-exports.telemetryAggregationWorker = aggregation.telemetryAggregationWorker;
+// Aktiva Points & Referrals Activities Triggers (Lazy Loaded)
+lazyExport('onActivityCreated', './lib/activities');
+lazyExport('onActivityUpdated', './lib/activities');
+lazyExport('notifyNearbyUsers', './lib/activities');
+lazyExport('respondToJoinRequest', './lib/activities');
+lazyExport('secureRequestJoinActivity', './lib/activities');
+lazyExport('kickParticipant', './lib/activities');
 
-// Secure Payments & Escrow
-const payments = require('./lib/payments');
-exports.secureJoinPaidActivity = payments.secureJoinPaidActivity;
-exports.secureCompleteActivity = payments.secureCompleteActivity;
-exports.secureVoteToCompleteActivity = payments.secureVoteToCompleteActivity;
-exports.secureCancelActivity = payments.secureCancelActivity;
-exports.secureRequestPayout = payments.secureRequestPayout;
-exports.secureLeaveActivity = payments.secureLeaveActivity;
-exports.onKycRequestCreated = payments.onKycRequestCreated;
-exports.onPayoutRequestUpdated = payments.onPayoutRequestUpdated;
-exports.onRefundUpdated = payments.onRefundUpdated;
+// Telemetry Aggregation & Data Retention (Lazy Loaded)
+lazyExport('telemetryAggregationWorker', './lib/aggregation');
 
-// Secure Voting (Server-Side)
-const votes = require('./lib/votes');
-exports.secureVotePlace = votes.secureVotePlace;
-exports.secureVoteActivity = votes.secureVoteActivity;
+// Secure Payments & Escrow (Lazy Loaded)
+lazyExport('secureJoinPaidActivity', './lib/payments');
+lazyExport('secureCompleteActivity', './lib/payments');
+lazyExport('secureVoteToCompleteActivity', './lib/payments');
+lazyExport('secureCancelActivity', './lib/payments');
+lazyExport('secureRequestPayout', './lib/payments');
+lazyExport('secureLeaveActivity', './lib/payments');
+lazyExport('onKycRequestCreated', './lib/payments');
+lazyExport('onPayoutRequestUpdated', './lib/payments');
+lazyExport('onRefundUpdated', './lib/payments');
 
-// Secure Chats (Server-Side)
-const chats = require('./lib/chats');
-exports.sendChatMessage = chats.sendChatMessage;
-exports.onChatUpdated = chats.onChatUpdated;
+// Secure Voting (Server-Side) (Lazy Loaded)
+lazyExport('secureVotePlace', './lib/votes');
+lazyExport('secureVoteActivity', './lib/votes');
 
-// Secure Radar (Server-Side)
-const radar = require('./lib/radar');
-exports.setRadarSettings = radar.setRadarSettings;
-exports.updateRadarLocation = radar.updateRadarLocation;
-exports.disableRadar = radar.disableRadar;
-exports.getNearbyFriends = radar.getNearbyFriends;
+// Secure Chats (Server-Side) (Lazy Loaded)
+lazyExport('sendChatMessage', './lib/chats');
+lazyExport('onChatUpdated', './lib/chats');
 
-// Secure Notifications (Server-Side)
-const notifications = require('./lib/notifications');
-exports.markNotificationRead = notifications.markNotificationRead;
-exports.markAllNotificationsRead = notifications.markAllNotificationsRead;
-exports.sendScheduledEngagementReminders = notifications.sendScheduledEngagementReminders;
-exports.sendTestNotification = notifications.sendTestNotification;
+// Secure Radar (Server-Side) (Lazy Loaded)
+lazyExport('setRadarSettings', './lib/radar');
+lazyExport('updateRadarLocation', './lib/radar');
+lazyExport('disableRadar', './lib/radar');
+lazyExport('getNearbyFriends', './lib/radar');
+
+// Secure Notifications (Server-Side) (Lazy Loaded)
+lazyExport('markNotificationRead', './lib/notifications');
+lazyExport('markAllNotificationsRead', './lib/notifications');
+lazyExport('sendScheduledEngagementReminders', './lib/notifications');
+lazyExport('sendTestNotification', './lib/notifications');
+
 
 

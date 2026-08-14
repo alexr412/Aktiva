@@ -97,8 +97,46 @@ export interface Notification {
   entityId?: string;
   eventId?: string;
   customMessage?: string;
-  responseStatus?: 'accepted' | 'declined';
+  responseStatus?: 'accepted' | 'declined' | 'cancelled';
   readAt?: Timestamp;
+}
+
+export type FriendRequestNotificationState =
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'cancelled'
+  | 'processed'
+  | 'invalid';
+
+export function deriveFriendRequestNotificationState(
+  notification: Partial<Notification>,
+  friendRequestsReceived?: string[],
+  friends?: string[]
+): FriendRequestNotificationState {
+  const actorId = notification.actorId || notification.senderId || notification.entityId;
+
+  if (!actorId || typeof actorId !== 'string') {
+    return 'invalid';
+  }
+
+  if (notification.responseStatus === 'accepted' || (friends && friends.includes(actorId))) {
+    return 'accepted';
+  }
+
+  if (notification.responseStatus === 'declined') {
+    return 'declined';
+  }
+
+  if (notification.responseStatus === 'cancelled') {
+    return 'cancelled';
+  }
+
+  if (friendRequestsReceived && friendRequestsReceived.includes(actorId)) {
+    return 'pending';
+  }
+
+  return 'processed';
 }
 
 export interface PushTokenDoc {

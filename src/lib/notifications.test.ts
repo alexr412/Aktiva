@@ -6,9 +6,63 @@ import {
   getNotificationTargetUrl,
   normalizeNotification,
   formatUnreadBadge,
+  deriveFriendRequestNotificationState,
   type Notification,
   type UserProfile
 } from './types';
+
+function testDeriveFriendRequestNotificationState() {
+  // 1. Pending: senderId in friendRequestsReceived, no responseStatus
+  const pendingNotif: Partial<Notification> = { type: 'friend_request', actorId: 'user_bob' };
+  assert.strictEqual(
+    deriveFriendRequestNotificationState(pendingNotif, ['user_bob'], []),
+    'pending'
+  );
+
+  // 2. Accepted via notification responseStatus
+  const acceptedNotif: Partial<Notification> = { type: 'friend_request', actorId: 'user_bob', responseStatus: 'accepted' };
+  assert.strictEqual(
+    deriveFriendRequestNotificationState(acceptedNotif, [], []),
+    'accepted'
+  );
+
+  // 3. Accepted outside notification (friends array contains senderId)
+  const acceptedOutsideNotif: Partial<Notification> = { type: 'friend_request', actorId: 'user_bob' };
+  assert.strictEqual(
+    deriveFriendRequestNotificationState(acceptedOutsideNotif, [], ['user_bob']),
+    'accepted'
+  );
+
+  // 4. Declined via notification responseStatus
+  const declinedNotif: Partial<Notification> = { type: 'friend_request', actorId: 'user_bob', responseStatus: 'declined' };
+  assert.strictEqual(
+    deriveFriendRequestNotificationState(declinedNotif, [], []),
+    'declined'
+  );
+
+  // 5. Cancelled via notification responseStatus
+  const cancelledNotif: Partial<Notification> = { type: 'friend_request', actorId: 'user_bob', responseStatus: 'cancelled' };
+  assert.strictEqual(
+    deriveFriendRequestNotificationState(cancelledNotif, [], []),
+    'cancelled'
+  );
+
+  // 6. Legacy / Processed: no longer pending, not friends, no explicit responseStatus
+  const processedNotif: Partial<Notification> = { type: 'friend_request', actorId: 'user_bob' };
+  assert.strictEqual(
+    deriveFriendRequestNotificationState(processedNotif, [], []),
+    'processed'
+  );
+
+  // 7. Invalid: missing actorId/senderId/entityId
+  const invalidNotif: Partial<Notification> = { type: 'friend_request' };
+  assert.strictEqual(
+    deriveFriendRequestNotificationState(invalidNotif, ['user_bob'], []),
+    'invalid'
+  );
+
+  console.log('✅ testDeriveFriendRequestNotificationState passed successfully!');
+}
 
 function testDefaultPreferences() {
   assert.strictEqual(DEFAULT_NOTIFICATION_PREFERENCES.pushEnabled, false);
@@ -163,6 +217,7 @@ function testConstants() {
 }
 
 async function runAllNotificationTests() {
+  testDeriveFriendRequestNotificationState();
   testDefaultPreferences();
   testEffectivePreferencesLegacyFallback();
   testNotificationTargetUrlResolver();

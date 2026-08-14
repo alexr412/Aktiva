@@ -1608,6 +1608,34 @@ export const secureSendFriendRequest = onCall(async (request) => {
 });
 
 /**
+ * Helper to find notification DocumentReferences for a friend request between sender and recipient.
+ */
+async function findFriendRequestNotifRefs(db: admin.firestore.Firestore, recipientId: string, senderId: string): Promise<admin.firestore.DocumentReference[]> {
+  const refs: admin.firestore.DocumentReference[] = [];
+  const deterministicId = `friend_request_friend_req_${senderId}_${recipientId}_${recipientId}`;
+  refs.push(db.collection('notifications').doc(deterministicId));
+
+  try {
+    const notifsSnap = await db.collection('notifications')
+      .where('recipientId', '==', recipientId)
+      .where('type', '==', 'friend_request')
+      .get();
+
+    for (const docSnap of notifsSnap.docs) {
+      const data = docSnap.data();
+      const act = data.actorId || data.entityId || data.senderId;
+      if (act === senderId && !refs.some(r => r.id === docSnap.id)) {
+        refs.push(docSnap.ref);
+      }
+    }
+  } catch (err) {
+    console.error('[findFriendRequestNotifRefs] Query error:', err);
+  }
+
+  return refs;
+}
+
+/**
  * Callable function to securely accept a friend request.
  * Derives the acceptor ID exclusively from the auth token.
  */
@@ -1629,11 +1657,15 @@ export const secureAcceptFriendRequest = onCall(async (request) => {
   const db = admin.firestore();
   const currentUserRef = db.collection('users').doc(currentUserId);
   const fromUserRef = db.collection('users').doc(fromUserId);
+  const notifRefs = await findFriendRequestNotifRefs(db, currentUserId, fromUserId);
+  const metaRef = db.collection('users').doc(currentUserId).collection('notification_meta').doc('state');
 
   try {
     await db.runTransaction(async (transaction) => {
       const currentUserSnap = await transaction.get(currentUserRef);
       const fromUserSnap = await transaction.get(fromUserRef);
+      const notifSnaps = await Promise.all(notifRefs.map(r => transaction.get(r)));
+      const metaSnap = await transaction.get(metaRef);
 
       if (!currentUserSnap.exists) {
         throw new HttpsError('not-found', 'Dein Nutzerprofil existiert nicht.');
@@ -1652,43 +1684,66 @@ export const secureAcceptFriendRequest = onCall(async (request) => {
         throw new HttpsError('failed-precondition', 'Der anfragende Nutzer ist gesperrt.');
       }
 
+      const friends = currentUserProfile.friends || [];
       const received = currentUserProfile.friendRequestsReceived || [];
       const sent = fromUserProfile.friendRequestsSent || [];
 
-      if (!received.includes(fromUserId)) {
-        throw new HttpsError('failed-precondition', 'Keine ausstehende Anfrage von diesem Nutzer gefunden.');
-      }
-      if (!sent.includes(currentUserId)) {
-        throw new HttpsError('failed-precondition', 'Der anfragende Nutzer hat keine ausstehende Anfrage an dich.');
+      // Idempotency: If already friends, update notification if needed and return success
+      const isAlreadyFriends = friends.includes(fromUserId);
+
+      if (!isAlreadyFriends) {
+        if (!received.includes(fromUserId) && !sent.includes(currentUserId)) {
+          throw new HttpsError('failed-precondition', 'Keine ausstehende Anfrage von diesem Nutzer gefunden.');
+        }
+
+        // Blacklist / Block check
+        const currentBlacklist = currentUserProfile.blacklist || {};
+        const fromBlacklist = fromUserProfile.blacklist || {};
+        const currentHard = currentBlacklist.hard || [];
+        const currentSoft = currentBlacklist.soft || [];
+        const fromHard = fromBlacklist.hard || [];
+        const fromSoft = fromBlacklist.soft || [];
+
+        if (currentHard.includes(fromUserId) || currentSoft.includes(fromUserId) ||
+            fromHard.includes(currentUserId) || fromSoft.includes(currentUserId)) {
+          throw new HttpsError('permission-denied', 'Die Aktion ist blockiert.');
+        }
+
+        // Update user profiles
+        transaction.update(currentUserRef, {
+          friendRequestsReceived: FieldValue.arrayRemove(fromUserId),
+          friends: FieldValue.arrayUnion(fromUserId)
+        });
+        transaction.update(fromUserRef, {
+          friendRequestsSent: FieldValue.arrayRemove(currentUserId),
+          friends: FieldValue.arrayUnion(currentUserId)
+        });
       }
 
-      const friends = currentUserProfile.friends || [];
-      if (friends.includes(fromUserId)) {
-        throw new HttpsError('already-exists', 'Ihr seid bereits befreundet.');
+      // Atomically resolve notifications & update unread count
+      let unreadToDecrement = 0;
+      for (const snap of notifSnaps) {
+        if (snap.exists) {
+          const data = snap.data() || {};
+          if (data.responseStatus !== 'accepted' || !data.isRead) {
+            if (!data.isRead) unreadToDecrement++;
+            transaction.set(snap.ref, {
+              responseStatus: 'accepted',
+              isRead: true,
+              readAt: FieldValue.serverTimestamp()
+            }, { merge: true });
+          }
+        }
       }
 
-      // Blacklist / Block check
-      const currentBlacklist = currentUserProfile.blacklist || {};
-      const fromBlacklist = fromUserProfile.blacklist || {};
-      const currentHard = currentBlacklist.hard || [];
-      const currentSoft = currentBlacklist.soft || [];
-      const fromHard = fromBlacklist.hard || [];
-      const fromSoft = fromBlacklist.soft || [];
-
-      if (currentHard.includes(fromUserId) || currentSoft.includes(fromUserId) ||
-          fromHard.includes(currentUserId) || fromSoft.includes(currentUserId)) {
-        throw new HttpsError('permission-denied', 'Die Aktion ist blockiert.');
+      if (unreadToDecrement > 0) {
+        const currentUnread = metaSnap.exists ? (metaSnap.data()?.unreadCount || 0) : 0;
+        const nextUnread = Math.max(0, currentUnread - unreadToDecrement);
+        transaction.set(metaRef, {
+          unreadCount: nextUnread,
+          updatedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
       }
-
-      // Update profiles
-      transaction.update(currentUserRef, {
-        friendRequestsReceived: FieldValue.arrayRemove(fromUserId),
-        friends: FieldValue.arrayUnion(fromUserId)
-      });
-      transaction.update(fromUserRef, {
-        friendRequestsSent: FieldValue.arrayRemove(currentUserId),
-        friends: FieldValue.arrayUnion(currentUserId)
-      });
     });
 
     const currentDocSnap = await currentUserRef.get();
@@ -1711,6 +1766,156 @@ export const secureAcceptFriendRequest = onCall(async (request) => {
     console.error(`secureAcceptFriendRequest failed for ${currentUserId} from ${fromUserId}:`, error);
     if (error instanceof HttpsError) throw error;
     throw new HttpsError('internal', error.message || 'Fehler beim Bestätigen der Freundschaftsanfrage.');
+  }
+});
+
+/**
+ * Callable function to securely decline a friend request.
+ */
+export const secureDeclineFriendRequest = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Der Nutzer muss eingeloggt sein.');
+  }
+
+  const fromUserId = request.data?.fromUserId; // The user who sent the request
+  if (!fromUserId || typeof fromUserId !== 'string' || fromUserId.trim() === '') {
+    throw new HttpsError('invalid-argument', 'fromUserId ist ein Pflichtfeld.');
+  }
+
+  const currentUserId = request.auth.uid;
+  if (currentUserId === fromUserId) {
+    throw new HttpsError('failed-precondition', 'Selbst-Operationen sind nicht erlaubt.');
+  }
+
+  const db = admin.firestore();
+  const currentUserRef = db.collection('users').doc(currentUserId);
+  const fromUserRef = db.collection('users').doc(fromUserId);
+  const notifRefs = await findFriendRequestNotifRefs(db, currentUserId, fromUserId);
+  const metaRef = db.collection('users').doc(currentUserId).collection('notification_meta').doc('state');
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      const currentUserSnap = await transaction.get(currentUserRef);
+      const fromUserSnap = await transaction.get(fromUserRef);
+      const notifSnaps = await Promise.all(notifRefs.map(r => transaction.get(r)));
+      const metaSnap = await transaction.get(metaRef);
+
+      if (currentUserSnap.exists) {
+        transaction.update(currentUserRef, {
+          friendRequestsReceived: FieldValue.arrayRemove(fromUserId)
+        });
+      }
+      if (fromUserSnap.exists) {
+        transaction.update(fromUserRef, {
+          friendRequestsSent: FieldValue.arrayRemove(currentUserId)
+        });
+      }
+
+      let unreadToDecrement = 0;
+      for (const snap of notifSnaps) {
+        if (snap.exists) {
+          const data = snap.data() || {};
+          if (data.responseStatus !== 'declined' || !data.isRead) {
+            if (!data.isRead) unreadToDecrement++;
+            transaction.set(snap.ref, {
+              responseStatus: 'declined',
+              isRead: true,
+              readAt: FieldValue.serverTimestamp()
+            }, { merge: true });
+          }
+        }
+      }
+
+      if (unreadToDecrement > 0) {
+        const currentUnread = metaSnap.exists ? (metaSnap.data()?.unreadCount || 0) : 0;
+        const nextUnread = Math.max(0, currentUnread - unreadToDecrement);
+        transaction.set(metaRef, {
+          unreadCount: nextUnread,
+          updatedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error(`secureDeclineFriendRequest failed for ${currentUserId} from ${fromUserId}:`, error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError('internal', error.message || 'Fehler beim Ablehnen der Freundschaftsanfrage.');
+  }
+});
+
+/**
+ * Callable function to securely cancel a sent friend request.
+ */
+export const secureCancelFriendRequest = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Der Nutzer muss eingeloggt sein.');
+  }
+
+  const toUserId = request.data?.toUserId; // The recipient user
+  if (!toUserId || typeof toUserId !== 'string' || toUserId.trim() === '') {
+    throw new HttpsError('invalid-argument', 'toUserId ist ein Pflichtfeld.');
+  }
+
+  const currentUserId = request.auth.uid;
+  if (currentUserId === toUserId) {
+    throw new HttpsError('failed-precondition', 'Selbst-Operationen sind nicht erlaubt.');
+  }
+
+  const db = admin.firestore();
+  const currentUserRef = db.collection('users').doc(currentUserId);
+  const toUserRef = db.collection('users').doc(toUserId);
+  const notifRefs = await findFriendRequestNotifRefs(db, toUserId, currentUserId);
+  const metaRef = db.collection('users').doc(toUserId).collection('notification_meta').doc('state');
+
+  try {
+    await db.runTransaction(async (transaction) => {
+      const currentUserSnap = await transaction.get(currentUserRef);
+      const toUserSnap = await transaction.get(toUserRef);
+      const notifSnaps = await Promise.all(notifRefs.map(r => transaction.get(r)));
+      const metaSnap = await transaction.get(metaRef);
+
+      if (currentUserSnap.exists) {
+        transaction.update(currentUserRef, {
+          friendRequestsSent: FieldValue.arrayRemove(toUserId)
+        });
+      }
+      if (toUserSnap.exists) {
+        transaction.update(toUserRef, {
+          friendRequestsReceived: FieldValue.arrayRemove(currentUserId)
+        });
+      }
+
+      let unreadToDecrement = 0;
+      for (const snap of notifSnaps) {
+        if (snap.exists) {
+          const data = snap.data() || {};
+          if (data.responseStatus !== 'cancelled' || !data.isRead) {
+            if (!data.isRead) unreadToDecrement++;
+            transaction.set(snap.ref, {
+              responseStatus: 'cancelled',
+              isRead: true,
+              readAt: FieldValue.serverTimestamp()
+            }, { merge: true });
+          }
+        }
+      }
+
+      if (unreadToDecrement > 0) {
+        const currentUnread = metaSnap.exists ? (metaSnap.data()?.unreadCount || 0) : 0;
+        const nextUnread = Math.max(0, currentUnread - unreadToDecrement);
+        transaction.set(metaRef, {
+          unreadCount: nextUnread,
+          updatedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error(`secureCancelFriendRequest failed for ${currentUserId} to ${toUserId}:`, error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError('internal', error.message || 'Fehler beim Zurückziehen der Freundschaftsanfrage.');
   }
 });
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Notification } from '@/lib/types';
-import { getNotificationTargetUrl, normalizeNotification } from '@/lib/types';
+import { getNotificationTargetUrl, normalizeNotification, deriveFriendRequestNotificationState } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
@@ -28,7 +28,7 @@ interface NotificationItemProps {
 
 export function NotificationItem({ notification: rawNotification, onAction }: NotificationItemProps) {
     const router = useRouter();
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, userProfile } = useAuth();
     const { toast } = useToast();
     const language = useLanguage();
     const { markAsRead } = useNotifications();
@@ -39,7 +39,11 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
     const [declineMsg, setDeclineMsg] = useState('');
 
     const targetUrl = getNotificationTargetUrl(notification);
-    const actorId = notification.actorId || notification.senderId;
+    const actorId = notification.actorId || notification.senderId || notification.entityId;
+
+    const friendRequestState = notification.type === 'friend_request'
+        ? deriveFriendRequestNotificationState(notification, userProfile?.friendRequestsReceived, userProfile?.friends)
+        : null;
 
     const handleClick = async (e: React.MouseEvent) => {
         // Prevent trigger if clicking on action buttons inside
@@ -63,6 +67,17 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
     const handleAccept = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!currentUser || !actorId) return;
+
+        // Defensive client check: verify request is still pending locally
+        const isPendingLocally = userProfile?.friendRequestsReceived?.includes(actorId);
+        const isAlreadyFriends = userProfile?.friends?.includes(actorId);
+
+        if (!isPendingLocally && !isAlreadyFriends) {
+            await markAsRead(notification.id);
+            if (onAction) onAction();
+            return;
+        }
+
         setIsLoading('accept');
         try {
             await acceptFriendRequest(currentUser.uid, actorId);
@@ -79,6 +94,16 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
     const handleDecline = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!currentUser || !actorId) return;
+
+        // Defensive client check: verify request is still pending locally
+        const isPendingLocally = userProfile?.friendRequestsReceived?.includes(actorId);
+
+        if (!isPendingLocally) {
+            await markAsRead(notification.id);
+            if (onAction) onAction();
+            return;
+        }
+
         setIsLoading('decline');
         try {
             await declineFriendRequest(currentUser.uid, actorId);
@@ -150,6 +175,61 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
         }
     };
 
+    const renderFriendRequestStatus = () => {
+        if (!friendRequestState) return null;
+
+        switch (friendRequestState) {
+            case 'pending':
+                return (
+                    <div className="flex gap-2 pt-1.5" onClick={(e) => e.stopPropagation()}>
+                        <Button size="sm" onClick={handleAccept} disabled={!!isLoading} className="flex-1 h-7 text-xs font-bold">
+                            {isLoading === 'accept' && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                            {language === 'de' ? 'Annehmen' : 'Accept'}
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleDecline} disabled={!!isLoading} className="flex-1 h-7 text-xs font-bold">
+                            {isLoading === 'decline' && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                            {language === 'de' ? 'Ablehnen' : 'Decline'}
+                        </Button>
+                    </div>
+                );
+            case 'accepted':
+                return (
+                    <div className="pt-1.5">
+                        <span className="text-xs font-medium text-primary">
+                            {language === 'de' ? 'Freundschaftsanfrage angenommen' : 'Friend request accepted'}
+                        </span>
+                    </div>
+                );
+            case 'declined':
+                return (
+                    <div className="pt-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">
+                            {language === 'de' ? 'Freundschaftsanfrage abgelehnt' : 'Friend request declined'}
+                        </span>
+                    </div>
+                );
+            case 'cancelled':
+                return (
+                    <div className="pt-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">
+                            {language === 'de' ? 'Freundschaftsanfrage zurückgezogen' : 'Friend request cancelled'}
+                        </span>
+                    </div>
+                );
+            case 'processed':
+                return (
+                    <div className="pt-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">
+                            {language === 'de' ? 'Freundschaftsanfrage verarbeitet' : 'Friend request processed'}
+                        </span>
+                    </div>
+                );
+            case 'invalid':
+            default:
+                return null;
+        }
+    };
+
     return (
         <div 
             onClick={handleClick}
@@ -207,18 +287,7 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
                         </p>
                     )}
 
-                    {(notification.type === 'friend_request') && (
-                        <div className="flex gap-2 pt-1.5" onClick={(e) => e.stopPropagation()}>
-                            <Button size="sm" onClick={handleAccept} disabled={!!isLoading} className="flex-1 h-7 text-xs font-bold">
-                                {isLoading === 'accept' && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                                {language === 'de' ? 'Annehmen' : 'Accept'}
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={handleDecline} disabled={!!isLoading} className="flex-1 h-7 text-xs font-bold">
-                                {isLoading === 'decline' && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                                {language === 'de' ? 'Ablehnen' : 'Decline'}
-                            </Button>
-                        </div>
-                    )}
+                    {notification.type === 'friend_request' && renderFriendRequestStatus()}
 
                     {(notification.type === 'activity_join_request' || notification.type === 'join_request') && (
                         <div className="flex flex-col gap-2 pt-1.5" onClick={(e) => e.stopPropagation()}>

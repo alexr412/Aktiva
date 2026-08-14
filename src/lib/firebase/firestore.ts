@@ -1414,14 +1414,10 @@ export async function sendFriendRequest(fromUserId: string, toUserId: string): P
 }
 
 export async function cancelFriendRequest(fromUserId: string, toUserId: string): Promise<void> {
-    if (!db) throw new Error('Firestore is not initialized.');
-    const fromUserRef = doc(db, 'users', fromUserId);
-    const toUserRef = doc(db, 'users', toUserId);
-
-    await runTransaction(db, async (transaction) => {
-        transaction.update(fromUserRef, { friendRequestsSent: arrayRemove(toUserId) });
-        transaction.update(toUserRef, { friendRequestsReceived: arrayRemove(fromUserId) });
-    });
+    const { httpsCallable } = await import('firebase/functions');
+    if (!functions) throw new Error('Firebase Functions is not initialized.');
+    const secureCancel = httpsCallable<{ toUserId: string }, { success: boolean }>(functions, 'secureCancelFriendRequest');
+    await secureCancel({ toUserId });
 }
 
 export async function acceptFriendRequest(userId: string, requestingUserId: string): Promise<void> {
@@ -1432,14 +1428,10 @@ export async function acceptFriendRequest(userId: string, requestingUserId: stri
 }
 
 export async function declineFriendRequest(userId: string, decliningUserId: string): Promise<void> {
-    if (!db) throw new Error('Firestore is not initialized.');
-    const userRef = doc(db, 'users', userId);
-    const decliningUserRef = doc(db, 'users', decliningUserId);
-    
-    await runTransaction(db, async (transaction) => {
-        transaction.update(userRef, { friendRequestsReceived: arrayRemove(decliningUserId) });
-        transaction.update(decliningUserRef, { friendRequestsSent: arrayRemove(userId) });
-    });
+    const { httpsCallable } = await import('firebase/functions');
+    if (!functions) throw new Error('Firebase Functions is not initialized.');
+    const secureDecline = httpsCallable<{ fromUserId: string }, { success: boolean }>(functions, 'secureDeclineFriendRequest');
+    await secureDecline({ fromUserId: decliningUserId });
 }
 
 export async function removeFriend(userId: string, friendId: string): Promise<void> {

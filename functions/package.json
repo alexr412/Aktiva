@@ -6,7 +6,7 @@
     "test": "npx tsx src/notifications.test.ts && npx tsx src/admin-users.test.ts && npx tsx src/payments.test.ts && npx tsx src/activities.test.ts && npx tsx src/users.test.ts && npx tsx src/chats.test.ts"
   },
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.30.1",

@@ -217,6 +217,8 @@ class MockTransaction {
   async get(ref: MockDocumentReference) {
     const data = mockDbState[ref.collectionPath]?.[ref.docId];
     return {
+      id: ref.docId,
+      ref: ref,
       exists: data !== undefined,
       data: () => data ? JSON.parse(JSON.stringify(data)) : undefined,
     };
@@ -769,6 +771,16 @@ async function testSecureAcceptFriendRequest() {
       bob: { uid: "bob", displayName: "Bob", role: "user", friends: [], friendRequestsSent: ["alice"], friendRequestsReceived: [] },
       charlie: { uid: "charlie", displayName: "Charlie", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: [] },
     };
+    mockDbState["notifications"] = {
+      "friend_request_friend_req_bob_alice_alice": {
+        id: "friend_request_friend_req_bob_alice_alice",
+        recipientId: "alice",
+        actorId: "bob",
+        type: "friend_request",
+        title: "Neue Freundschaftsanfrage",
+        isRead: false
+      }
+    };
   };
 
   // 1. Unauthenticated
@@ -799,7 +811,7 @@ async function testSecureAcceptFriendRequest() {
     (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
   );
 
-  // 5. Successful accept
+  // 5. Successful accept -> atomic user + notification update
   seedFixtures();
   const res = await secureAcceptFriendRequest({ fromUserId: "bob" }, { uid: "alice" });
   assert.deepStrictEqual(res, { success: true });
@@ -807,14 +819,85 @@ async function testSecureAcceptFriendRequest() {
   assert.deepStrictEqual(mockDbState["users"]["bob"].friends, ["alice"]);
   assert.deepStrictEqual(mockDbState["users"]["alice"].friendRequestsReceived, []);
   assert.deepStrictEqual(mockDbState["users"]["bob"].friendRequestsSent, []);
+  assert.strictEqual(mockDbState["notifications"]["friend_request_friend_req_bob_alice_alice"].responseStatus, "accepted");
+  assert.strictEqual(mockDbState["notifications"]["friend_request_friend_req_bob_alice_alice"].isRead, true);
 
-  // 6. Already friends
-  await assert.rejects(
-    secureAcceptFriendRequest({ fromUserId: "bob" }, { uid: "alice" }),
-    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
-  );
+  // 6. Idempotent accept / Race Condition (Already friends)
+  const res2 = await secureAcceptFriendRequest({ fromUserId: "bob" }, { uid: "alice" });
+  assert.deepStrictEqual(res2, { success: true });
+  assert.deepStrictEqual(mockDbState["users"]["alice"].friends, ["bob"]);
+  assert.strictEqual(mockDbState["notifications"]["friend_request_friend_req_bob_alice_alice"].responseStatus, "accepted");
 
   console.log("✅ testSecureAcceptFriendRequest passed successfully!");
+}
+
+async function testSecureDeclineFriendRequest() {
+  console.log("Running testSecureDeclineFriendRequest...");
+  const { secureDeclineFriendRequest } = require("./users");
+
+  resetMockDb();
+  mockDbState["users"] = {
+    alice: { uid: "alice", displayName: "Alice", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: ["bob"] },
+    bob: { uid: "bob", displayName: "Bob", role: "user", friends: [], friendRequestsSent: ["alice"], friendRequestsReceived: [] },
+  };
+  mockDbState["notifications"] = {
+    "friend_request_friend_req_bob_alice_alice": {
+      id: "friend_request_friend_req_bob_alice_alice",
+      recipientId: "alice",
+      actorId: "bob",
+      type: "friend_request",
+      title: "Neue Freundschaftsanfrage",
+      isRead: false
+    }
+  };
+
+  const res = await secureDeclineFriendRequest({ fromUserId: "bob" }, { uid: "alice" });
+  assert.deepStrictEqual(res, { success: true });
+  assert.deepStrictEqual(mockDbState["users"]["alice"].friendRequestsReceived, []);
+  assert.deepStrictEqual(mockDbState["users"]["bob"].friendRequestsSent, []);
+  assert.strictEqual(mockDbState["notifications"]["friend_request_friend_req_bob_alice_alice"].responseStatus, "declined");
+  assert.strictEqual(mockDbState["notifications"]["friend_request_friend_req_bob_alice_alice"].isRead, true);
+
+  // Idempotent decline
+  const res2 = await secureDeclineFriendRequest({ fromUserId: "bob" }, { uid: "alice" });
+  assert.deepStrictEqual(res2, { success: true });
+
+  console.log("✅ testSecureDeclineFriendRequest passed successfully!");
+}
+
+async function testSecureCancelFriendRequest() {
+  console.log("Running testSecureCancelFriendRequest...");
+  const { secureCancelFriendRequest } = require("./users");
+
+  resetMockDb();
+  mockDbState["users"] = {
+    alice: { uid: "alice", displayName: "Alice", role: "user", friends: [], friendRequestsSent: ["bob"], friendRequestsReceived: [] },
+    bob: { uid: "bob", displayName: "Bob", role: "user", friends: [], friendRequestsSent: [], friendRequestsReceived: ["alice"] },
+  };
+  mockDbState["notifications"] = {
+    "friend_request_friend_req_alice_bob_bob": {
+      id: "friend_request_friend_req_alice_bob_bob",
+      recipientId: "bob",
+      actorId: "alice",
+      type: "friend_request",
+      title: "Neue Freundschaftsanfrage",
+      isRead: false
+    }
+  };
+
+  const res = await secureCancelFriendRequest({ toUserId: "bob" }, { uid: "alice" });
+  assert.deepStrictEqual(res, { success: true });
+  assert.deepStrictEqual(mockDbState["users"]["alice"].friendRequestsSent, []);
+  assert.deepStrictEqual(mockDbState["users"]["bob"].friendRequestsReceived, []);
+  assert.strictEqual(mockDbState["notifications"]["friend_request_friend_req_alice_bob_bob"].responseStatus, "cancelled");
+  assert.notStrictEqual(mockDbState["notifications"]["friend_request_friend_req_alice_bob_bob"].responseStatus, "declined");
+  assert.strictEqual(mockDbState["notifications"]["friend_request_friend_req_alice_bob_bob"].isRead, true);
+
+  // Idempotent cancel
+  const res2 = await secureCancelFriendRequest({ toUserId: "bob" }, { uid: "alice" });
+  assert.deepStrictEqual(res2, { success: true });
+
+  console.log("✅ testSecureCancelFriendRequest passed successfully!");
 }
 
 async function testSubmitCreatorApplication() {
@@ -953,6 +1036,8 @@ async function runAllTests() {
     await testOnUserDeleted();
     await testSecureSendFriendRequest();
     await testSecureAcceptFriendRequest();
+    await testSecureDeclineFriendRequest();
+    await testSecureCancelFriendRequest();
     await testSubmitCreatorApplication();
     console.log("🎉 ALL USERS MODULE TESTS PASSED SUCCESSFULLY! 🎉");
   } catch (error) {
