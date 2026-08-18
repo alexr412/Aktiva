@@ -490,7 +490,11 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                 throw new https_1.HttpsError('not-found', 'Join request notification not found.');
             }
             const notif = notifSnap.data();
-            if (notif.type !== 'join_request' || notif.activityId !== activityId || notif.senderId !== userIdToJoin || notif.recipientId !== hostId) {
+            const notifActivityId = notif.activityId || notif.entityId;
+            if (notif.type !== 'join_request' ||
+                notifActivityId !== activityId ||
+                notif.senderId !== userIdToJoin ||
+                notif.recipientId !== hostId) {
                 throw new https_1.HttpsError('invalid-argument', 'Notification mismatch.');
             }
             // 3. Get and verify the user to join

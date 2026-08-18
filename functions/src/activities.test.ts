@@ -292,6 +292,27 @@ async function testRespondToJoinRequest() {
     (err: any) => err.name === "HttpsError" && err.code === "not-found"
   );
 
+  // 11. Test entityId fallback (current notifications format) - Accept
+  seedFixtures();
+  mockDbState["notifications"]["notif_entity"] = { type: "join_request", entityId: "act1", senderId: "joiner1", recipientId: "host1" };
+  const acceptEntityIdResult = await respondToJoinRequest({ notificationId: "notif_entity", activityId: "act1", userIdToJoin: "joiner1", action: "accept" }, { uid: "host1" });
+  assert.deepStrictEqual(acceptEntityIdResult, { success: true });
+  assert.ok(mockDbState["activities"]["act1"].participantIds.includes("joiner1"));
+
+  // 12. Test legacy activityId format - Decline
+  seedFixtures();
+  mockDbState["notifications"]["notif_legacy"] = { type: "join_request", activityId: "act1", senderId: "joiner1", recipientId: "host1" };
+  const declineLegacyResult = await respondToJoinRequest({ notificationId: "notif_legacy", activityId: "act1", userIdToJoin: "joiner1", action: "decline" }, { uid: "host1" });
+  assert.deepStrictEqual(declineLegacyResult, { success: true });
+
+  // 13. Test wrong activityId -> Notification mismatch
+  seedFixtures();
+  mockDbState["notifications"]["notif_wrong"] = { type: "join_request", entityId: "act_other", senderId: "joiner1", recipientId: "host1" };
+  await assert.rejects(
+    respondToJoinRequest({ notificationId: "notif_wrong", activityId: "act1", userIdToJoin: "joiner1", action: "accept" }, { uid: "host1" }),
+    (err: any) => err.name === "HttpsError" && err.code === "invalid-argument" && err.message === "Notification mismatch."
+  );
+
   console.log("✅ testRespondToJoinRequest passed successfully!");
 }
 
