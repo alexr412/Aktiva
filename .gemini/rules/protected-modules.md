@@ -13,6 +13,7 @@ src/hooks/use-friend-radar.tsx
 src/lib/duplicate-detector.ts
 src/components/map/map-marker-data.ts
 src/lib/moderation/blacklist.ts
+src/features/places/details/**
 ```
 
 ## Schutzregeln für Antigravity-Agenten

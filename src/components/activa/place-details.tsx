@@ -7,46 +7,32 @@ import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from '@/contexts/location-context';
 import { calculateDistanceKm, extractCoordinates, formatDistance } from '@/lib/geo-utils';
-import { joinActivity, votePlace, normalizeActivityDocument } from '@/lib/firebase/firestore';
-import { db } from '@/lib/firebase/client';
-import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 
 import {
     Star,
-    ChevronLeft,
     Users,
     Loader2,
-    MessageSquare,
-    Navigation,
     Bookmark,
-    Calendar,
-    ExternalLink,
-    CreditCard,
-    Share2,
     Clock,
     X,
     MapPin,
-    Sparkles,
     Plus,
     Info,
     Copy,
     Check,
     FolderPlus,
-    Folder,
     BarChart3,
+    Share2,
     ThumbsUp,
     ThumbsDown,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Place, Activity } from '@/lib/types';
-import { AiRecommendation } from './ai-recommendation';
 import { ActivityInfoSheet } from './activity-info-sheet';
 import { useFavorites } from '@/contexts/favorites-context';
 import { SaveToCollectionModal } from '@/components/premium/save-to-collection-modal';
@@ -55,6 +41,10 @@ import { cn } from '@/lib/utils';
 import { getPrimaryIconData, translateTag } from '@/lib/tag-config';
 import { formatOpeningHours } from '@/lib/tag-parser';
 import { trackInteraction } from '@/lib/telemetry';
+
+import { usePlaceActivities } from '@/features/places/details/use-place-activities';
+import { usePlaceVoting } from '@/features/places/details/use-place-voting';
+import { usePlaceJoin } from '@/features/places/details/use-place-join';
 
 type PlaceDetailsProps = {
     place: Place;
@@ -115,10 +105,11 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
         };
     }, [place.id]);
     
-    const [activities, setActivities] = useState<Activity[]>([]);
-    const [loadingActivities, setLoadingActivities] = useState(true);
-    const [joiningActivityId, setJoiningActivityId] = useState<string|null>(null);
-    const [requestedActivityIds, setRequestedActivityIds] = useState<Record<string, boolean>>({});
+    // Extrahierte Custom Hooks für Business- & Firestore-Logik
+    const { activities, loadingActivities } = usePlaceActivities(place.id);
+    const { placeMeta, userVote, handleVoteClick } = usePlaceVoting(place, user, userProfile);
+    const { joiningActivityId, requestedActivityIds, handleJoin } = usePlaceJoin(user, language);
+
     const [selectedInfoActivity, setSelectedInfoActivity] = useState<Activity | null>(null);
     const [copied, setCopied] = useState(false);
     const [isSaveToCollectionOpen, setIsSaveToCollectionOpen] = useState(false);
@@ -138,7 +129,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
         setTimeout(() => setCopied(false), 2000);
     };
 
-    // Long-Press & Touch interaction refs
+    // Long-Press & Touch interaction refs für Adress-Kopie
     const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
     const failsafeTimerRef = useRef<NodeJS.Timeout | null>(null);
     const startPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -229,18 +220,6 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
         trackInteraction(place.id, place.categories, 'directions', user?.uid);
     };
     
-    const [placeMeta, setPlaceMeta] = useState({ 
-        avgRating: 0, 
-        reviewCount: 0,
-        upvotes: 0,
-        downvotes: 0,
-        communityScore: 0,
-        userVotes: {} as Record<string, 'up' | 'down'>,
-        weightedUpvotes: 0,
-        weightedDownvotes: 0
-    });
-    const [loadingMeta, setLoadingMeta] = useState(true);
-    
     const { addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
     const isFavorite = checkIsFavorite(place.id);
 
@@ -252,44 +231,6 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
             addFavorite(place);
         }
         trackInteraction(place.id, place.categories, 'favorite', user?.uid);
-    };
-
-    const userVote = user ? (placeMeta.userVotes?.[user.uid] || 'none') : 'none';
-    const [isVoting, setIsVoting] = useState(false);
-
-    const handleVoteClick = async (e: React.MouseEvent, type: 'up' | 'down' | 'none') => {
-        e.stopPropagation();
-        if (!user || isVoting) return;
-        setIsVoting(true);
-
-        setPlaceMeta(prev => {
-            const prevVote = prev.userVotes?.[user.uid] || 'none';
-            let upDelta = 0;
-            let downDelta = 0;
-            const newUserVotes = { ...prev.userVotes };
-
-            if (prevVote === 'up') upDelta -= 1;
-            else if (prevVote === 'down') downDelta -= 1;
-
-            if (type === 'up') { upDelta += 1; newUserVotes[user.uid] = 'up'; }
-            else if (type === 'down') { downDelta += 1; newUserVotes[user.uid] = 'down'; }
-            else { delete newUserVotes[user.uid]; }
-
-            return {
-                ...prev,
-                upvotes: Math.max(0, prev.upvotes + upDelta),
-                downvotes: Math.max(0, prev.downvotes + downDelta),
-                userVotes: newUserVotes
-            };
-        });
-
-        try {
-            await votePlace(place.id, user.uid, type, userProfile?.role, place);
-        } catch (error) {
-            console.error("Voting failed:", error);
-        } finally {
-            setIsVoting(false);
-        }
     };
 
     const handleSharePlace = async (e: React.MouseEvent) => {
@@ -324,84 +265,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     };
 
     useEffect(() => {
-        if (!db || !place.id) return;
-        const unsub = onSnapshot(doc(db, 'places', place.id), (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                setPlaceMeta({
-                    avgRating: data.avgRating || 0,
-                    reviewCount: data.reviewCount || 0,
-                    upvotes: data.upvotes || 0,
-                    downvotes: data.downvotes || 0,
-                    communityScore: data.communityScore || 0,
-                    userVotes: data.userVotes || {},
-                    weightedUpvotes: data.weightedUpvotes || 0,
-                    weightedDownvotes: data.weightedDownvotes || 0
-                });
-            }
-            setLoadingMeta(false);
-        });
-        return () => unsub();
-    }, [place.id]);
-
-    useEffect(() => {
         if (place.id) {
             trackInteraction(place.id, place.categories, 'card_open', user?.uid);
         }
     }, [place.id, user?.uid, place.categories]);
-
-    useEffect(() => {
-        if (!db || !place.id) return;
-        setLoadingActivities(true);
-        
-        const activitiesQuery = query(
-            collection(db, 'activities'), 
-            where('placeId', '==', place.id)
-        );
-
-        const unsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-            const fetchedActivities = snapshot.docs.map(doc => normalizeActivityDocument(doc.data(), doc.id));
-            setActivities(fetchedActivities.sort((a,b) => b.activityDate.toMillis() - a.activityDate.toMillis()));
-            setLoadingActivities(false);
-        }, (error) => {
-            console.error("🔥 FIRESTORE QUERY ERROR (PlaceDetails):", error.message);
-            setLoadingActivities(false);
-        });
-
-        return () => unsubscribe();
-    }, [place.id]);
-
-    const handleJoin = async (activity: Activity) => {
-        if (!user) { router.push('/login'); return; }
-        if (activity.isPaid && activity.price && activity.price > 0) { router.push(`/checkout/${activity.id}`); return; }
-        if (joiningActivityId === activity.id || requestedActivityIds[activity.id!]) return;
-        
-        setJoiningActivityId(activity.id!);
-        try {
-            const status = await joinActivity(activity.id!, user, null, null, activity.joinMode);
-            if (status === 'joined') {
-                toast({ title: language === 'de' ? 'Erfolgreich beigetreten!' : 'Successfully joined!' });
-            } else if (status === 'already_requested') {
-                setRequestedActivityIds(prev => ({
-                    ...prev,
-                    [activity.id!]: true
-                }));
-                toast({
-                    title: language === 'de' ? 'Du hast bereits eine Anfrage gesendet.' : 'You already sent a request.',
-                    description: language === 'de' ? 'Der Host hat deine Anfrage bereits erhalten.' : 'The host has already received your request.'
-                });
-            } else {
-                setRequestedActivityIds(prev => ({
-                    ...prev,
-                    [activity.id!]: true
-                }));
-                toast({ title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' });
-            }
-            return status;
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: error.message || String(error) });
-        } finally { setJoiningActivityId(null); }
-    };
 
     const categories = (place.categories || []);
 
@@ -781,5 +648,3 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
         </div>
     );
 }
-
-
