@@ -5,7 +5,7 @@ import { Timestamp } from 'firebase/firestore';
 import type { Chat, Message, Activity, Place } from '@/lib/types';
 
 const DB_NAME = 'activa-client-cache';
-const DB_VERSION = 3;
+const DB_VERSION = 5;
 
 export interface SerializedChat {
   id: string;
