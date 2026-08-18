@@ -125,6 +125,7 @@ export async function createNotificationAndDispatch(params: CreateNotificationPa
     }
 
     const userSnap = await transaction.get(userRef);
+    const metaSnap = await transaction.get(metaRef);
     const userData = userSnap.exists ? userSnap.data() || {} : {};
     const notificationSettings = userData.notificationSettings || {};
 
@@ -185,7 +186,6 @@ export async function createNotificationAndDispatch(params: CreateNotificationPa
 
     transaction.set(notificationRef, newNotifData);
 
-    const metaSnap = await transaction.get(metaRef);
     const currentUnread = metaSnap.exists ? (metaSnap.data()?.unreadCount || 0) : 0;
     const nextUnread = Math.max(0, currentUnread + 1);
 
@@ -502,12 +502,13 @@ export const markNotificationRead = onCall(async (request) => {
       return;
     }
 
+    const metaSnap = await transaction.get(metaRef);
+
     transaction.update(notifRef, {
       isRead: true,
       readAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    const metaSnap = await transaction.get(metaRef);
     const currentUnread = metaSnap.exists ? (metaSnap.data()?.unreadCount || 0) : 0;
     const nextUnread = Math.max(0, currentUnread - 1);
 
