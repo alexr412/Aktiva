@@ -10,6 +10,9 @@ src/lib/geoapify.ts
 src/contexts/location-context.tsx
 src/contexts/auth-context.tsx
 src/hooks/use-friend-radar.tsx
+src/lib/duplicate-detector.ts
+src/components/map/map-marker-data.ts
+src/lib/moderation/blacklist.ts
 ```
 
 ## Schutzregeln für Antigravity-Agenten

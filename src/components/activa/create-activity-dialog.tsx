@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -12,7 +11,34 @@ import {
 } from '@/components/ui/sheet';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import type { Place, ActivityCategory } from '@/lib/types';
-import { Loader2, Clock, ChevronLeft, ChevronRight, Flame, PlayCircle, Coins, Users, CreditCard, Lock, MapPin, Search, Navigation, X, Check, AlertTriangle, Dumbbell, Zap, Landmark, Trees, Gamepad2, Coffee, Star, ShieldCheck, UserCircle, StarHalf, type LucideIcon } from 'lucide-react';
+import {
+  Loader2,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  Flame,
+  PlayCircle,
+  Coins,
+  Users,
+  CreditCard,
+  Lock,
+  MapPin,
+  Search,
+  Navigation,
+  X,
+  Check,
+  AlertTriangle,
+  Dumbbell,
+  Zap,
+  Landmark,
+  Trees,
+  Gamepad2,
+  Coffee,
+  Star,
+  ShieldCheck,
+  UserCircle,
+  StarHalf,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -20,46 +46,24 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/use-auth';
-import { useLocation } from '@/contexts/location-context';
-import { earnToken } from '@/lib/firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
-import { reverseGeocode, autocompletePlaces } from '@/lib/geoapify';
-import { buildApproximateLocationData } from '@/lib/geo-utils';
+import { useCreateActivity } from '@/features/activities/create/use-create-activity';
 import Link from 'next/link';
-import {
-  format,
-  addMonths,
-  subMonths,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  isSameMonth,
-  isToday,
-  isSameDay,
-  getDate,
-  isAfter,
-  isWithinInterval,
-} from 'date-fns';
+import { format, addMonths, subMonths, isSameMonth, isToday, isSameDay, getDate, isAfter } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
-import { useLanguage } from '@/hooks/use-language';
 
 const MAX_FREE_PARTICIPANTS = 4;
 const REQUIRED_FREE_HOSTS = 5;
-import { SavedCollection, isPremiumActive, getParticipantLimit } from '@/lib/types';
 
 interface CreateActivityDialogProps {
   place: Place | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreateActivity: (
-    startDate: Date, 
-    endDate: Date | undefined, 
-    isTimeFlexible: boolean, 
-    customLocationName?: string, 
-    maxParticipants?: number, 
+    startDate: Date,
+    endDate: Date | undefined,
+    isTimeFlexible: boolean,
+    customLocationName?: string,
+    maxParticipants?: number,
     isBoosted?: boolean,
     isPaid?: boolean,
     price?: number,
@@ -79,292 +83,92 @@ interface CreateActivityDialogProps {
   initialCategory?: string;
 }
 
-export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, onCreateActivity, initialTitle, initialCategory }: CreateActivityDialogProps) {
-  const { userProfile, user } = useAuth();
-  const language = useLanguage();
-  const { toast } = useToast();
-  
-  const [isCreating, setIsCreating] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<Place | null>(initialPlace);
-  const [activityTitle, setActivityTitle] = useState('');
-  const [description, setDescription] = useState('');
-  
-  // Search State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Place[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
-
-  // Calendar State
-  const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedRange, setSelectedRange] = useState<{ from?: Date; to?: Date }>({});
-  const [selectedTime, setSelectedTime] = useState<string>('18:00');
-  const [isTimeFlexible, setIsTimeFlexible] = useState(true);
-  const [isDateFlexible, setIsDateFlexible] = useState(false);
-  const [maxParticipants, setMaxParticipants] = useState<number>(4);
-  const [selectedCategory, setSelectedCategory] = useState<ActivityCategory>(language === 'de' ? 'Sonstiges' : 'Sonstiges');
-  
-  // Monetization: Boost
-  const [isBoosted, setIsBoosted] = useState(false);
-  const [isWatchingAd, setIsWatchingAd] = useState(false);
-
-    // Micro-Ticketing
-  const [isPaid, setIsPaid] = useState(false);
-  const [price, setPrice] = useState<number>(0);
-
-  // Requirements State
-  const [requireProfilePicture, setRequireProfilePicture] = useState(false);
-  const [requireVerification, setRequireVerification] = useState(false);
-  const [minAge, setMinAge] = useState<number | ''>('');
-  const [maxAge, setMaxAge] = useState<number | ''>('');
-  const [allowedGenders, setAllowedGenders] = useState<string[]>(['male', 'female', 'diverse']);
-  const [minimumRating, setMinimumRating] = useState<number | ''>('');
-  const [joinMode, setJoinMode] = useState<'direct' | 'request'>('request');
-
-  const isPremium = isPremiumActive(userProfile);
-  const participantLimit = getParticipantLimit(userProfile);
-  const availableTokens = userProfile?.tokens || 0;
-  const canBoost = availableTokens > 0;
-
-  // Proof of Community logic
-  const currentFreeHosts = userProfile?.successfulFreeHosts || 0;
-  const canMonetize = currentFreeHosts >= REQUIRED_FREE_HOSTS;
-
-  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const isUnauthenticated = !user;
-  const isOnboardingIncomplete = user && userProfile?.onboardingCompleted !== true;
-  const isBanned = user && userProfile?.isBanned === true;
-
-  // Kontext-Entscheidung
-  const isSpecificPlaceMode = !!initialPlace;
-
-  useEffect(() => {
-    if (open) {
-      setIsCreating(false);
-      setSelectedLocation(initialPlace);
-      setActivityTitle(initialTitle || '');
-      setDescription('');
-      setSearchQuery('');
-      setSearchResults([]);
-      const today = new Date();
-      setSelectedDate(today);
-      setSelectedRange({});
-      setCurrentMonthDate(today);
-      setSelectedTime('18:00');
-      setIsTimeFlexible(true);
-      setIsDateFlexible(false);
-      setMaxParticipants(4);
-      setIsBoosted(false);
-      setIsPaid(false);
-      setPrice(0);
-      setSelectedCategory((initialCategory as any) || (language === 'de' ? 'Sonstiges' : 'Sonstiges'));
-      setRequireProfilePicture(false);
-      setRequireVerification(false);
-      setMinAge('');
-      setMaxAge('');
-      setAllowedGenders(['male', 'female', 'diverse']);
-      setMinimumRating('');
-      setJoinMode('request');
-    }
-  }, [initialPlace, open, initialTitle, initialCategory, language]);
-
-  const handleSearch = async (val: string) => {
-    setSearchQuery(val);
-    if (val.length < 3) {
-      setSearchResults([]);
-      return;
-    }
-    setIsSearching(true);
-    const results = await autocompletePlaces(val);
-    setSearchResults(results);
-    setIsSearching(false);
-  };
-
-  const { gateState, position } = useLocation();
-
-  const handleGetCurrentLocation = async () => {
-    if (gateState !== 'granted' || !position) {
-      toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: language === 'de' ? 'Standort nicht verfügbar.' : 'Location not available.' });
-      return;
-    }
-    setIsLocating(true);
-    try {
-      const place = await reverseGeocode(position.latitude, position.longitude);
-      if (place) {
-        setSelectedLocation(place);
-        toast({ title: language === 'de' ? 'Standort verifiziert' : 'Location verified', description: place.address });
-      }
-    } catch (err) {
-      toast({ variant: 'destructive', title: language === 'de' ? 'GPS Fehler' : 'GPS Error', description: language === 'de' ? 'Standort konnte nicht ermittelt werden.' : 'Location could not be determined.' });
-    } finally {
-      setIsLocating(false);
-    }
-  };
-
-  /**
-   * Validierungs-Logik für Opening Hours
-   */
-  const openingHoursWarning = useMemo(() => {
-    if (!selectedLocation?.openingHours || isTimeFlexible) return null;
-
-    const [hours, minutes] = selectedTime.split(':').map(Number);
-    const selectedDayIdx = selectedDate.getDay(); // 0=Sun, 1=Mon...
-    const dayMap: Record<number, string> = { 0: 'Su', 1: 'Mo', 2: 'Tu', 3: 'We', 4: 'Th', 5: 'Fr', 6: 'Sa' };
-    const currentDayCode = dayMap[selectedDayIdx];
-
-    const ohStr = selectedLocation.openingHours.toLowerCase();
-    
-    // Einfache Heuristik: Prüfe ob der Wochentag im OSM String vorkommt
-    // Und prüfe grob ob die Zeit im Intervall liegt (sehr vereinfacht für MVP)
-    const segments = ohStr.split(';');
-    const relevantSegment = segments.find(s => s.includes(currentDayCode.toLowerCase()) || s.includes('mo-su') || s.includes('mo-fr') && selectedDayIdx >= 1 && selectedDayIdx <= 5);
-
-    if (relevantSegment) {
-      const timeMatch = relevantSegment.match(/(\d{2}:\d{2})-(\d{2}:\d{2})/);
-      if (timeMatch) {
-        const [startH, startM] = timeMatch[1].split(':').map(Number);
-        const [endH, endM] = timeMatch[2].split(':').map(Number);
-        
-        const currentVal = hours * 60 + minutes;
-        const startVal = startH * 60 + startM;
-        const endVal = endH * 60 + endM;
-        const locale = language === 'de' ? de : enUS;
-
-        if (currentVal < startVal || currentVal > endVal) {
-          const dayName = format(selectedDate, 'EEEE', { locale });
-          return language === 'de' 
-            ? `Der Ort hat laut Daten am ${dayName} von ${timeMatch[1]} bis ${timeMatch[2]} Uhr geöffnet. Deine Zeit liegt evtl. außerhalb.`
-            : `According to the data, the place is open on ${dayName} from ${timeMatch[1]} to ${timeMatch[2]}. Your time might be outside these hours.`;
-        }
-      }
-    } else if (ohStr.includes('closed') && ohStr.includes(currentDayCode.toLowerCase())) {
-        const dayName = format(selectedDate, 'EEEE', { locale: language === 'de' ? de : enUS });
-        return language === 'de'
-            ? `Der Ort ist am ${dayName} voraussichtlich geschlossen.`
-            : `The place is likely closed on ${dayName}.`;
-    }
-
-    return null;
-  }, [selectedLocation, selectedDate, selectedTime, isTimeFlexible]);
-
-  const handleCreate = async () => {
-    if (!selectedLocation) return;
-
-    const isRange = !!(isDateFlexible && selectedRange.from);
-    const isSingleDay = !!(!isDateFlexible && selectedDate);
-
-    if (!isRange && !isSingleDay) return;
-
-    let derivedCategory: ActivityCategory = selectedCategory;
-    
-    // Auto-override category if specific place has clear tags and it's not custom mode
-    if (isSpecificPlaceMode) {
-        const cats = selectedLocation.categories || [];
-        if (cats.some(c => c.startsWith('sport'))) derivedCategory = language === 'de' ? 'Sport' : 'Sport';
-        else if (cats.some(c => c.startsWith('catering'))) derivedCategory = language === 'de' ? 'Networking' : 'Networking';
-        else if (cats.some(c => c.startsWith('tourism'))) derivedCategory = language === 'de' ? 'Kultur' : 'Kultur';
-        else if (cats.some(c => c.startsWith('leisure'))) derivedCategory = language === 'de' ? 'Outdoor' : 'Outdoor';
-    }
-
-
-    let startDate = isRange ? selectedRange.from! : selectedDate;
-    let endDate = isRange ? selectedRange.to : undefined;
-
-    let finalDate = new Date(startDate);
-    const timeIsFlexible = !!(isTimeFlexible || isRange);
-
-    if (!timeIsFlexible) {
-      const [hours, minutes] = selectedTime.split(':').map(Number);
-      finalDate.setHours(hours, minutes, 0, 0);
-    } else {
-      finalDate.setHours(0, 0, 0, 0);
-    }
-    
-    if(endDate) {
-      endDate.setHours(23, 59, 59, 999);
-    }
-
-    // Automatische Titel-Zuweisung bei festen Orten
-    const finalTitle = isSpecificPlaceMode ? (selectedLocation?.name || (language === 'de' ? 'Aktivität' : 'Activity')) : activityTitle;
-
-    const reqs: any = {};
-    if (minAge !== '' || maxAge !== '') {
-      reqs.ageRange = {};
-      if (minAge !== '') reqs.ageRange.min = Number(minAge);
-      if (maxAge !== '') reqs.ageRange.max = Number(maxAge);
-    }
-    if (allowedGenders.length < 3) {
-      reqs.gender = allowedGenders;
-    }
-    if (requireProfilePicture) {
-      reqs.requireProfilePicture = true;
-    }
-    if (requireVerification) {
-      reqs.requireVerification = true;
-    }
-    if (minimumRating !== '') {
-      reqs.minimumRating = Number(minimumRating);
-    }
-
-    const finalRequirements = Object.keys(reqs).length > 0 ? reqs : undefined;
-
-    setIsCreating(true);
-    const success = await onCreateActivity(
-      finalDate, 
-      endDate, 
-      timeIsFlexible, 
-      finalTitle,
-      maxParticipants,
-      isBoosted,
-      isPaid,
-      price,
-      derivedCategory,
-      description,
-      finalRequirements,
-      joinMode,
-      selectedLocation
-    );
-    if (!success) {
-      setIsCreating(false);
-    }
-  };
-
-  const handleEarnToken = async () => {
-    if (!user) return;
-    setIsWatchingAd(true);
-    setTimeout(async () => {
-      try {
-        const adWatchId = `ad_${user.uid}_${Date.now()}`;
-        await earnToken(user.uid, adWatchId);
-        toast({ title: language === 'de' ? "Token erhalten!" : "Token earned!" });
-      } catch (err: any) {
-        toast({ 
-          variant: "destructive", 
-          title: language === 'de' ? "Fehler" : "Error",
-          description: err.message || (language === 'de' ? "Konnte Token nicht gutschreiben." : "Could not award token.")
-        });
-      } finally {
-        setIsWatchingAd(false);
-      }
-    }, 3000);
-  };
-
-  // Calendar Helpers
-  const firstDayOfMonth = startOfMonth(currentMonthDate);
-  const lastDayOfMonth = endOfMonth(currentMonthDate);
-  const days = eachDayOfInterval({
-    start: startOfWeek(firstDayOfMonth, { weekStartsOn: 1 }),
-    end: endOfWeek(lastDayOfMonth, { weekStartsOn: 1 }),
+export function CreateActivityDialog({
+  place: initialPlace,
+  open,
+  onOpenChange,
+  onCreateActivity,
+  initialTitle,
+  initialCategory,
+}: CreateActivityDialogProps) {
+  const {
+    isCreating,
+    selectedLocation,
+    setSelectedLocation,
+    activityTitle,
+    setActivityTitle,
+    description,
+    setDescription,
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    setSearchResults,
+    isSearching,
+    isLocating,
+    handleSearch,
+    handleGetCurrentLocation,
+    currentMonthDate,
+    setCurrentMonthDate,
+    selectedDate,
+    setSelectedDate,
+    selectedRange,
+    setSelectedRange,
+    selectedTime,
+    setSelectedTime,
+    isTimeFlexible,
+    setIsTimeFlexible,
+    isDateFlexible,
+    setIsDateFlexible,
+    maxParticipants,
+    setMaxParticipants,
+    selectedCategory,
+    setSelectedCategory,
+    isBoosted,
+    setIsBoosted,
+    isWatchingAd,
+    isPaid,
+    setIsPaid,
+    price,
+    setPrice,
+    requireProfilePicture,
+    setRequireProfilePicture,
+    requireVerification,
+    setRequireVerification,
+    minAge,
+    setMinAge,
+    maxAge,
+    setMaxAge,
+    allowedGenders,
+    setAllowedGenders,
+    minimumRating,
+    setMinimumRating,
+    joinMode,
+    setJoinMode,
+    isPremium,
+    participantLimit,
+    availableTokens,
+    canBoost,
+    currentFreeHosts,
+    canMonetize,
+    isLocal,
+    isUnauthenticated,
+    isOnboardingIncomplete,
+    isBanned,
+    isSpecificPlaceMode,
+    openingHoursWarning,
+    handleCreate,
+    handleEarnToken,
+    days,
+    isCreateDisabled,
+    language,
+    userProfile,
+  } = useCreateActivity({
+    initialPlace,
+    open,
+    onCreateActivity,
+    initialTitle,
+    initialCategory,
   });
-
-  const isCreateDisabled = isCreating || 
-    isUnauthenticated || 
-    isOnboardingIncomplete || 
-    isBanned || 
-    !selectedLocation || 
-    (!isSpecificPlaceMode && !activityTitle.trim()) || 
-    (isDateFlexible ? !selectedRange.from : !selectedDate);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -401,497 +205,563 @@ export function CreateActivityDialog({ place: initialPlace, open, onOpenChange, 
                     id="activity-title-input"
                     value={activityTitle}
                     onChange={(e) => setActivityTitle(e.target.value)}
-                    placeholder={language === 'de' ? "z.B. Street-Photography oder Yoga" : "e.g. Street Photography or Yoga"}
-                    className="h-14 text-lg rounded-2xl border-none bg-secondary/50 font-bold focus-visible:ring-primary/20"
+                    placeholder={language === 'de' ? 'z.B. Bouldern, Spikeball, Kaffee trinken...' : 'e.g. Bouldering, Spikeball, Coffee...'}
+                    className="h-12 rounded-2xl bg-muted/30 border-muted-foreground/15 text-base font-semibold focus-visible:ring-primary"
                   />
                 </div>
 
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Icon wählen' : 'Choose icon'}</Label>
-                  <div className="flex items-center gap-3 overflow-x-auto pb-2 hide-scrollbar">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Kategorie' : 'Category'}</Label>
+                  <div className="grid grid-cols-3 gap-2">
                     {[
-                      { id: 'Sport', icon: Dumbbell, label: language === 'de' ? 'Sport' : 'Sports' },
-                      { id: 'Outdoor', icon: Trees, label: language === 'de' ? 'Outdoor' : 'Outdoor' },
-                      { id: 'Party', icon: Flame, label: language === 'de' ? 'Party' : 'Party' },
-                      { id: 'Kultur', icon: Landmark, label: language === 'de' ? 'Kultur' : 'Culture' },
-                      { id: 'Gaming', icon: Gamepad2, label: language === 'de' ? 'Gaming' : 'Gaming' },
-                      { id: 'Tech', icon: Zap, label: language === 'de' ? 'Tech' : 'Tech' },
-                      { id: 'Networking', icon: Coffee, label: language === 'de' ? 'Networking' : 'Networking' },
-                      { id: 'Sonstiges', icon: Star, label: language === 'de' ? 'Andere' : 'Other' },
+                      { id: 'Sport', label: language === 'de' ? 'Sport' : 'Sport', icon: Dumbbell },
+                      { id: 'Outdoor', label: language === 'de' ? 'Outdoor' : 'Outdoor', icon: Trees },
+                      { id: 'Kultur', label: language === 'de' ? 'Kultur' : 'Culture', icon: Landmark },
+                      { id: 'Gaming', label: language === 'de' ? 'Gaming' : 'Gaming', icon: Gamepad2 },
+                      { id: 'Networking', label: language === 'de' ? 'Networking' : 'Networking', icon: Coffee },
+                      { id: 'Sonstiges', label: language === 'de' ? 'Sonstiges' : 'Other', icon: Zap },
                     ].map((cat) => {
                       const Icon = cat.icon;
                       const isSelected = selectedCategory === cat.id;
                       return (
                         <button
                           key={cat.id}
+                          type="button"
                           onClick={() => setSelectedCategory(cat.id as ActivityCategory)}
                           className={cn(
-                            "flex flex-col items-center justify-center gap-2 flex-shrink-0 w-20 h-20 rounded-2xl transition-all duration-200 border-2",
+                            "flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left",
                             isSelected 
-                              ? "bg-primary/10 border-primary shadow-lg shadow-primary/5" 
-                              : "bg-secondary/30 border-transparent hover:bg-secondary/50"
+                              ? "border-primary bg-primary/10 text-primary shadow-sm" 
+                              : "border-muted/60 bg-muted/20 text-muted-foreground hover:bg-muted/40"
                           )}
                         >
-                          <Icon className={cn("h-6 w-6", isSelected ? "text-primary" : "text-muted-foreground")} />
-                          <span className={cn("text-[10px] font-black uppercase tracking-tighter", isSelected ? "text-primary" : "text-muted-foreground")}>
-                            {cat.label}
-                          </span>
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="truncate">{cat.label}</span>
                         </button>
                       );
                     })}
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Ort der Aktivität' : 'Activity Location'}</Label>
+                  {selectedLocation ? (
+                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-primary/5 border border-primary/20">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                          <MapPin className="h-5 w-5" />
+                        </div>
+                        <div className="truncate">
+                          <p className="text-sm font-bold text-foreground truncate">{selectedLocation.name}</p>
+                          <p className="text-xs font-medium text-muted-foreground truncate">{selectedLocation.address}</p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSelectedLocation(null)}
+                        className="h-8 w-8 rounded-full hover:bg-primary/10 text-muted-foreground hover:text-primary shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={searchQuery}
+                          onChange={(e) => handleSearch(e.target.value)}
+                          placeholder={language === 'de' ? 'Ort, Park, Cafe suchen...' : 'Search place, park, cafe...'}
+                          className="h-11 pl-10 pr-10 rounded-xl bg-muted/30 border-muted-foreground/15 text-sm font-medium"
+                        />
+                        {isSearching && (
+                          <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleGetCurrentLocation}
+                        disabled={isLocating}
+                        className="w-full h-10 rounded-xl border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-2"
+                      >
+                        {isLocating ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Navigation className="h-4 w-4" />
+                        )}
+                        <span>{language === 'de' ? 'Aktuellen Standort verwenden' : 'Use current location'}</span>
+                      </Button>
+
+                      {searchResults.length > 0 && (
+                        <div className="rounded-xl border bg-card p-1 shadow-md space-y-0.5 max-h-48 overflow-y-auto">
+                          {searchResults.map((res) => (
+                            <button
+                              key={res.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedLocation(res);
+                                setSearchResults([]);
+                                setSearchQuery('');
+                              }}
+                              className="w-full p-2.5 rounded-lg hover:bg-muted text-left text-xs flex items-center gap-2 transition-colors"
+                            >
+                              <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <div className="truncate">
+                                <span className="font-bold block truncate">{res.name}</span>
+                                <span className="text-[10px] text-muted-foreground block truncate">{res.address}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="place-search-input" className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">
-                {isSpecificPlaceMode 
-                  ? (language === 'de' ? 'Wo treffen wir uns?' : 'Where do we meet?') 
-                  : (language === 'de' ? 'Wo soll die Aktivität erscheinen?' : 'Where should it appear?')}
-              </Label>
-              
-              {isSpecificPlaceMode ? (
-                <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 rounded-2xl p-4 flex items-center justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-primary/10 p-2 rounded-xl">
-                      <MapPin className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-black text-sm text-slate-900 dark:text-neutral-200 leading-tight">{selectedLocation?.name}</p>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">{selectedLocation?.address}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                !selectedLocation ? (
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input
-                        id="place-search-input"
-                        value={searchQuery}
-                        onChange={(e) => handleSearch(e.target.value)}
-                        placeholder={language === 'de' ? "Ort oder PLZ suchen..." : "Search city or postal code..."}
-                        className="h-14 pl-12 rounded-2xl border-none bg-secondary/50 font-bold"
-                      />
-                      {isSearching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
-                    </div>
-
-                    {searchResults.length > 0 && (
-                      <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden divide-y divide-slate-50">
-                        {searchResults.map((res) => (
-                          <button
-                            key={res.id}
-                            onClick={() => { setSelectedLocation(res); setSearchResults([]); }}
-                            className="w-full p-4 text-left hover:bg-slate-50 transition-colors flex items-start gap-3"
-                          >
-                            <MapPin className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                            <div>
-                              {/* Show only postcode + city in autocomplete results for privacy */}
-                              <p className="font-bold text-sm text-slate-900">{buildApproximateLocationData(res).label}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    <Button 
-                      variant="outline" 
-                      onClick={handleGetCurrentLocation}
-                      disabled={isLocating}
-                      className="w-full h-14 rounded-2xl font-black gap-2 border-dashed border-2"
-                    >
-                      {isLocating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Navigation className="h-5 w-5" />}
-                      {language === 'de' ? 'Meinen Standort nutzen' : 'Use my location'}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-center justify-between animate-in zoom-in-95 duration-300">
-                    <div className="flex items-start gap-3">
-                      <div className="bg-primary/10 p-2 rounded-xl">
-                        <MapPin className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-black text-sm text-slate-900 leading-tight">
-                          {buildApproximateLocationData(selectedLocation).label}
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => setSelectedLocation(null)} className="rounded-full text-slate-400">
-                      <X className="h-5 w-5" />
-                    </Button>
-                  </div>
-                )
-              )}
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Zusätzliche Infos (Optional)' : 'Additional Info (Optional)'}</Label>
-              <div className="relative">
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value.slice(0, 150))}
-                  placeholder={language === 'de' ? "Max. 150 Zeichen..." : "Max 150 characters..."}
-                  className="min-h-[80px] resize-none rounded-2xl border-none bg-secondary/50 font-medium text-sm focus-visible:ring-primary/20 pb-6"
-                />
-                <span className="absolute bottom-2 right-3 text-[10px] font-bold text-muted-foreground">
-                  {description.length}/150
-                </span>
-              </div>
+              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Beschreibung & Infos' : 'Description & Info'}</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={language === 'de' ? 'Details zur Aktivität, Mitzubringen, Treffpunkt-Infos...' : 'Details about activity, what to bring, meeting spot...'}
+                className="min-h-[80px] rounded-2xl bg-muted/30 border-muted-foreground/15 text-sm font-medium resize-none focus-visible:ring-primary"
+              />
             </div>
           </div>
 
-          {/* Sektion 2: Datum & Zeit */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between rounded-2xl border border-border p-4 shadow-sm bg-card/50">
-              <div className="space-y-0.5">
-                <Label htmlFor="date-flexible" className="text-base font-bold">{language === 'de' ? 'Datumsflexibel' : 'Flexible date'}</Label>
-                <p className="text-xs text-muted-foreground font-medium">{language === 'de' ? 'Genaues Datum steht noch nicht fest' : 'Fixed date not set yet'}</p>
+          {/* Sektion 2: Datum & Uhrzeit */}
+          <div className="space-y-4 border-t pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">{language === 'de' ? 'Wann gehts los?' : 'When is it?'}</Label>
+                <p className="text-xs text-muted-foreground ml-1 font-medium">{language === 'de' ? 'Wähle ein festes Datum oder einen Zeitraum.' : 'Select a date or range.'}</p>
               </div>
-              <Switch id="date-flexible" checked={isDateFlexible} onCheckedChange={setIsDateFlexible} />
+              <div className="flex items-center gap-2 bg-muted/40 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setIsDateFlexible(false)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    !isDateFlexible ? "bg-background shadow text-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  {language === 'de' ? 'Tag' : 'Day'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDateFlexible(true)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    isDateFlexible ? "bg-background shadow text-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  {language === 'de' ? 'Zeitraum' : 'Range'}
+                </button>
+              </div>
             </div>
 
-            <div className="rounded-2xl border border-border p-4 lg:p-6 bg-card/50 shadow-sm">
-              <div className="lg:max-w-[950px] lg:mx-auto space-y-4">
-                <div className="flex items-center justify-between mb-4 lg:mb-3 lg:max-w-md lg:mx-auto">
-                  <Button variant="ghost" size="icon" aria-label={language === 'de' ? 'Vorheriger Monat' : 'Previous month'} onClick={() => setCurrentMonthDate(subMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
+            {/* Kalender */}
+            <div className="rounded-2xl border bg-card p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold">
+                  {format(currentMonthDate, 'MMMM yyyy', { locale: language === 'de' ? de : enUS })}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCurrentMonthDate(subMonths(currentMonthDate, 1))}
+                    className="h-7 w-7 rounded-lg"
+                  >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <h3 className="text-sm font-black uppercase tracking-widest">{format(currentMonthDate, language === 'de' ? 'MMMM yyyy' : 'MMMM yyyy', { locale: language === 'de' ? de : enUS })}</h3>
-                  <Button variant="ghost" size="icon" aria-label={language === 'de' ? 'Nächster Monat' : 'Next month'} onClick={() => setCurrentMonthDate(addMonths(currentMonthDate, 1))} className="rounded-xl h-8 w-8">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCurrentMonthDate(addMonths(currentMonthDate, 1))}
+                    className="h-7 w-7 rounded-lg"
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-7 gap-y-1 gap-x-0 lg:gap-x-0 mb-1 text-center text-xs font-black uppercase tracking-wider text-muted-foreground/70">
-                  {(language === 'de' ? ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']).map((d) => (
-                    <div key={d} className="py-1">{d}</div>
-                  ))}
-                </div>
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((d) => (
+                  <span key={d} className="text-[10px] font-black uppercase text-muted-foreground py-1">
+                    {d}
+                  </span>
+                ))}
+                {days.map((day, idx) => {
+                  const isSelectedSingle = !isDateFlexible && isSameDay(day, selectedDate);
+                  const isRangeStart = isDateFlexible && selectedRange.from && isSameDay(day, selectedRange.from);
+                  const isRangeEnd = isDateFlexible && selectedRange.to && isSameDay(day, selectedRange.to);
+                  const isInRange = isDateFlexible && selectedRange.from && selectedRange.to && isAfter(day, selectedRange.from) && isAfter(selectedRange.to, day);
+                  const isCurrentMonth = isSameMonth(day, currentMonthDate);
 
-                <div className="grid grid-cols-7 gap-y-1 gap-x-0 lg:gap-x-0 lg:gap-y-1">
-                  {days.map((day, idx) => {
-                    const isSelected = !isDateFlexible && isSameDay(day, selectedDate);
-                    const hasRange = isDateFlexible && !!(selectedRange.from && selectedRange.to);
-                    const isInRange = isDateFlexible && selectedRange.from && selectedRange.to && isWithinInterval(day, { start: selectedRange.from, end: selectedRange.to });
-                    const isStart = isDateFlexible && selectedRange.from && isSameDay(day, selectedRange.from);
-                    const isEnd = isDateFlexible && selectedRange.to && isSameDay(day, selectedRange.to);
-
-                    const isRowStart = idx % 7 === 0;
-                    const isRowEnd = idx % 7 === 6;
-
-                    return (
-                      <button
-                        key={day.toString()}
-                        type="button"
-                        onClick={() => {
-                          if (isDateFlexible) {
-                            if (!selectedRange.from || selectedRange.to) setSelectedRange({ from: day, to: undefined });
-                            else if (isAfter(day, selectedRange.from)) setSelectedRange({ ...selectedRange, to: day });
-                            else setSelectedRange({ from: day, to: selectedRange.from });
-                          } else setSelectedDate(day);
-                        }}
-                        className={cn(
-                          'flex items-center justify-center h-10 w-full rounded-none text-sm font-bold transition-all relative',
-                          !isSameMonth(day, currentMonthDate) && 'text-muted-foreground/20',
-                          isToday(day) && 'text-primary',
-                          'lg:h-11 lg:w-full lg:mx-0 lg:rounded-none lg:bg-transparent lg:shadow-none lg:text-foreground'
-                        )}
-                      >
-                        {/* Mobile Continuous Range Background Surface */}
-                        {isDateFlexible && hasRange && (isInRange || isStart || isEnd) && (
-                          <span
-                            className={cn(
-                              "block lg:hidden absolute inset-y-0 z-0 bg-primary/20 transition-all",
-                              (isStart || isRowStart || (isStart && isEnd)) ? "left-0 rounded-l-xl" : "left-0",
-                              (isEnd || isRowEnd || (isStart && isEnd)) ? "right-0 rounded-r-xl" : "right-0",
-                            )}
-                          />
-                        )}
-
-                        {/* Desktop Continuous Range Background Surface */}
-                        {isDateFlexible && hasRange && (isInRange || isStart || isEnd) && (
-                          <span
-                            className={cn(
-                              "hidden lg:block absolute inset-y-0.5 z-0 bg-primary/15 dark:bg-primary/25 transition-all",
-                              (isStart || isRowStart || (isStart && isEnd)) ? "left-0 rounded-l-xl" : "left-0",
-                              (isEnd || isRowEnd || (isStart && isEnd)) ? "right-0 rounded-r-xl" : "right-0",
-                            )}
-                          />
-                        )}
-
-                        {/* Desktop Hover Background */}
-                        <span
-                          className={cn(
-                            "hidden lg:block absolute inset-0.5 z-0 rounded-xl transition-all",
-                            !isSelected && !isStart && !isEnd && !isInRange && "hover:bg-secondary/80",
-                          )}
-                        />
-
-                        {/* Content / Day Number Pill */}
-                        <span
-                          className={cn(
-                            "z-10 flex items-center justify-center transition-all w-10 h-10 rounded-xl",
-                            // Mobile pill styling
-                            isSelected && "bg-primary text-white shadow-lg",
-                            (isStart || isEnd) && "bg-primary text-white shadow-md",
-                            isInRange && !isStart && !isEnd && "text-primary font-extrabold",
-                            // Desktop pill styling overrides
-                            "lg:w-9 lg:h-9 lg:rounded-xl",
-                            (isSelected || isStart || isEnd) && "lg:bg-primary lg:text-white lg:shadow-md",
-                            isInRange && !isStart && !isEnd && "lg:text-primary lg:font-extrabold",
-                            !isSelected && !isStart && !isEnd && !isInRange && isToday(day) && "lg:text-primary lg:font-black lg:bg-primary/10",
-                            !isSelected && !isStart && !isEnd && !isInRange && !isToday(day) && !isSameMonth(day, currentMonthDate) && "lg:text-muted-foreground/30",
-                            !isSelected && !isStart && !isEnd && !isInRange && !isToday(day) && isSameMonth(day, currentMonthDate) && "lg:text-foreground"
-                          )}
-                        >
-                          {getDate(day)}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={!isCurrentMonth}
+                      onClick={() => {
+                        if (!isDateFlexible) {
+                          setSelectedDate(day);
+                        } else {
+                          if (!selectedRange.from || (selectedRange.from && selectedRange.to)) {
+                            setSelectedRange({ from: day, to: undefined });
+                          } else {
+                            if (isAfter(day, selectedRange.from)) {
+                              setSelectedRange({ from: selectedRange.from, to: day });
+                            } else {
+                              setSelectedRange({ from: day, to: undefined });
+                            }
+                          }
+                        }
+                      }}
+                      className={cn(
+                        "h-8 w-full rounded-lg text-xs font-bold flex items-center justify-center transition-all",
+                        !isCurrentMonth && "opacity-20 cursor-not-allowed",
+                        isCurrentMonth && "hover:bg-muted",
+                        (isSelectedSingle || isRangeStart || isRangeEnd) && "bg-primary text-primary-foreground font-black shadow-sm hover:bg-primary/90",
+                        isInRange && "bg-primary/20 text-primary rounded-none"
+                      )}
+                    >
+                      {getDate(day)}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
+            {/* Uhrzeit */}
             {!isDateFlexible && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between rounded-2xl border border-border p-4 shadow-sm bg-card/50">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="time-flexible" className="text-base font-bold">{language === 'de' ? 'Zeitlich flexibel' : 'Flexible time'}</Label>
-                    <p className="text-xs text-muted-foreground font-medium">{language === 'de' ? 'Uhrzeit wird im Chat besprochen' : 'Time will be discussed in chat'}</p>
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-muted-foreground">{language === 'de' ? 'Uhrzeit festlegen' : 'Set Time'}</Label>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="time-flex-switch" className="text-xs font-medium text-muted-foreground cursor-pointer">
+                      {language === 'de' ? 'Flexibel / Den ganzen Tag' : 'Flexible / All day'}
+                    </Label>
+                    <Switch
+                      id="time-flex-switch"
+                      checked={isTimeFlexible}
+                      onCheckedChange={setIsTimeFlexible}
+                    />
                   </div>
-                  <Switch id="time-flexible" checked={isTimeFlexible} onCheckedChange={setIsTimeFlexible} />
                 </div>
 
                 {!isTimeFlexible && (
-                  <div className="animate-in slide-in-from-top-2 duration-300">
-                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1 mb-2 block">{language === 'de' ? 'Uhrzeit wählen' : 'Select time'}</Label>
+                  <Input
+                    type="time"
+                    value={selectedTime}
+                    onChange={(e) => setSelectedTime(e.target.value)}
+                    className="h-11 rounded-xl bg-muted/30 border-muted-foreground/15 font-semibold text-center text-lg focus-visible:ring-primary"
+                  />
+                )}
+              </div>
+            )}
+
+            {openingHoursWarning && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-medium flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{openingHoursWarning}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Sektion 3: Rahmenbedingungen & Monetarisierung */}
+          <Accordion type="single" collapsible className="w-full border-t pt-4 space-y-4">
+            {/* 1. Teilnehmer & Beitritt */}
+            <AccordionItem value="participants" className="border rounded-2xl px-4 py-1 bg-card">
+              <AccordionTrigger className="hover:no-underline py-3">
+                <div className="flex items-center gap-3 text-left">
+                  <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <Users className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{language === 'de' ? 'Teilnehmer & Beitritt' : 'Participants & Join'}</p>
+                    <p className="text-xs text-muted-foreground">{maxParticipants} {language === 'de' ? 'Personen' : 'People'} • {joinMode === 'direct' ? (language === 'de' ? 'Direkt' : 'Direct') : (language === 'de' ? 'Anfrage' : 'Request')}</p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-4 space-y-4 border-t mt-2">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold">
+                    <span>{language === 'de' ? 'Max. Teilnehmeranzahl' : 'Max Participants'}</span>
+                    <span className="text-primary font-black">{maxParticipants}</span>
+                  </div>
+                  <Slider
+                    value={[maxParticipants]}
+                    min={2}
+                    max={participantLimit}
+                    step={1}
+                    onValueChange={(vals) => setMaxParticipants(vals[0])}
+                  />
+                  {!isPremium && (
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
+                      <Lock className="h-3 w-3 text-amber-500" />
+                      <span>{language === 'de' ? 'Kostenlos max. 4 Personen. ' : 'Free max. 4 people. '}</span>
+                      <Link href="/profile" className="text-primary font-bold hover:underline">
+                        {language === 'de' ? 'Mehr mit Premium' : 'More with Premium'}
+                      </Link>
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2 pt-2 border-t">
+                  <Label className="text-xs font-bold text-muted-foreground">{language === 'de' ? 'Beitritts-Modus' : 'Join Mode'}</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setJoinMode('request')}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-xs font-bold text-left transition-all",
+                        joinMode === 'request' ? "border-primary bg-primary/10 text-primary" : "border-muted text-muted-foreground"
+                      )}
+                    >
+                      <span className="block font-black">{language === 'de' ? 'Anfrage nötig' : 'Approval Required'}</span>
+                      <span className="text-[10px] font-normal block opacity-80">{language === 'de' ? 'Du bestätigst jeden Teilnehmer' : 'You approve each participant'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setJoinMode('direct')}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-xs font-bold text-left transition-all",
+                        joinMode === 'direct' ? "border-primary bg-primary/10 text-primary" : "border-muted text-muted-foreground"
+                      )}
+                    >
+                      <span className="block font-black">{language === 'de' ? 'Sofort-Beitritt' : 'Direct Join'}</span>
+                      <span className="text-[10px] font-normal block opacity-80">{language === 'de' ? 'Jeder kann sofort beitreten' : 'Anyone can join instantly'}</span>
+                    </button>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 2. Voraussetzungen & Filter */}
+            <AccordionItem value="requirements" className="border rounded-2xl px-4 py-1 bg-card">
+              <AccordionTrigger className="hover:no-underline py-3">
+                <div className="flex items-center gap-3 text-left">
+                  <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <ShieldCheck className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{language === 'de' ? 'Teilnehmer-Kriterien' : 'Participant Requirements'}</p>
+                    <p className="text-xs text-muted-foreground">{language === 'de' ? 'Alter, Geschlecht, Verifizierung' : 'Age, Gender, Verification'}</p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-4 space-y-4 border-t mt-2">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-bold">{language === 'de' ? 'Profilbild erforderlich' : 'Profile picture required'}</Label>
+                    <p className="text-[10px] text-muted-foreground">{language === 'de' ? 'Nur Nutzer mit echtem Foto' : 'Only users with real photo'}</p>
+                  </div>
+                  <Switch checked={requireProfilePicture} onCheckedChange={setRequireProfilePicture} />
+                </div>
+
+                <div className="flex items-center justify-between border-t pt-3">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-bold">{language === 'de' ? 'Verifizierter Status' : 'Verified Status'}</Label>
+                    <p className="text-[10px] text-muted-foreground">{language === 'de' ? 'Nur mit ID / Haken' : 'Only with ID / checkmark'}</p>
+                  </div>
+                  <Switch checked={requireVerification} onCheckedChange={setRequireVerification} />
+                </div>
+
+                <div className="space-y-2 border-t pt-3">
+                  <Label className="text-xs font-bold text-muted-foreground">{language === 'de' ? 'Altersbeschränkung' : 'Age Restriction'}</Label>
+                  <div className="flex items-center gap-2">
                     <Input
-                      type="time"
-                      value={selectedTime}
-                      onChange={(e) => setSelectedTime(e.target.value)}
-                      className="h-14 rounded-2xl border-none bg-secondary/50 font-black text-lg focus-visible:ring-primary/20"
+                      type="number"
+                      placeholder="Min"
+                      value={minAge}
+                      onChange={(e) => setMinAge(e.target.value ? Number(e.target.value) : '')}
+                      className="h-9 text-xs rounded-xl"
                     />
-                    
-                    {/* MODUL: Opening Hours Warning */}
-                    {openingHoursWarning && (
-                      <div className="mt-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3 animate-in fade-in zoom-in-95 duration-500">
-                        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                        <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
-                          {openingHoursWarning}
-                        </p>
+                    <span className="text-xs font-bold text-muted-foreground">-</span>
+                    <Input
+                      type="number"
+                      placeholder="Max"
+                      value={maxAge}
+                      onChange={(e) => setMaxAge(e.target.value ? Number(e.target.value) : '')}
+                      className="h-9 text-xs rounded-xl"
+                    />
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 3. Push & Visibility Boost */}
+            <AccordionItem value="boost" className="border rounded-2xl px-4 py-1 bg-card">
+              <AccordionTrigger className="hover:no-underline py-3">
+                <div className="flex items-center gap-3 text-left">
+                  <div className="h-8 w-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                    <Flame className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                      <span>{language === 'de' ? 'Event Boosten' : 'Boost Event'}</span>
+                      <Badge variant="secondary" className="text-[9px] bg-amber-500/10 text-amber-600 font-bold px-1.5 py-0">Hot</Badge>
+                    </p>
+                    <p className="text-xs text-muted-foreground">{language === 'de' ? 'Erhöhe die Reichweite im Feed' : 'Increase reach in feed'}</p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-4 space-y-4 border-t mt-2">
+                <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Coins className="h-4 w-4 text-amber-500" />
+                      <span className="text-xs font-bold">{language === 'de' ? '1 Token verbrauchen' : 'Use 1 Token'}</span>
+                    </div>
+                    <Badge variant="outline" className="text-xs font-bold">
+                      {availableTokens} {language === 'de' ? 'verfügbar' : 'available'}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {language === 'de' ? 'Deine Aktivität erscheint ganz oben im Feed aller Nutzer in deiner Nähe.' : 'Your activity appears at the top of the feed for users near you.'}
+                  </p>
+                  
+                  {canBoost ? (
+                    <Button
+                      type="button"
+                      variant={isBoosted ? "default" : "outline"}
+                      onClick={() => setIsBoosted(!isBoosted)}
+                      className={cn("w-full h-9 text-xs font-bold rounded-xl", isBoosted && "bg-amber-500 hover:bg-amber-600 text-white")}
+                    >
+                      {isBoosted ? (language === 'de' ? '✓ Boost aktiviert' : '✓ Boost active') : (language === 'de' ? 'Jetzt boosten (1 Token)' : 'Boost now (1 Token)')}
+                    </Button>
+                  ) : (
+                    <div className="space-y-2 pt-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isWatchingAd}
+                        onClick={handleEarnToken}
+                        className="w-full h-9 text-xs font-bold rounded-xl border-amber-500/40 text-amber-600 hover:bg-amber-500/10 flex items-center justify-center gap-2"
+                      >
+                        {isWatchingAd ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlayCircle className="h-3.5 w-3.5" />}
+                        <span>{language === 'de' ? 'Gratis Token durch Ad verdienen' : 'Earn free token via Ad'}</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 4. Monetarisierung / Micro-Ticketing */}
+            <AccordionItem value="monetization" className="border rounded-2xl px-4 py-1 bg-card">
+              <AccordionTrigger className="hover:no-underline py-3">
+                <div className="flex items-center gap-3 text-left">
+                  <div className="h-8 w-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                    <CreditCard className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                      <span>{language === 'de' ? 'Kostenbeitrag / Ticket' : 'Cost Share / Ticket'}</span>
+                      {!canMonetize && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{language === 'de' ? 'Nimm Geld für dein Event ein' : 'Charge for your event'}</p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-4 space-y-4 border-t mt-2">
+                {!canMonetize ? (
+                  <div className="p-3.5 rounded-xl bg-muted/40 border space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-muted-foreground">{language === 'de' ? 'Proof of Community Status' : 'Proof of Community Status'}</span>
+                      <span className="text-primary">{currentFreeHosts} / {REQUIRED_FREE_HOSTS} {language === 'de' ? 'Events' : 'Events'}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary transition-all duration-500" 
+                        style={{ width: `${Math.min(100, (currentFreeHosts / REQUIRED_FREE_HOSTS) * 100)}%` }} 
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {language === 'de' 
+                        ? `Veranstalte noch ${REQUIRED_FREE_HOSTS - currentFreeHosts} kostenlose Treffen, um gebührenpflichtige Events freizuschalten.` 
+                        : `Host ${REQUIRED_FREE_HOSTS - currentFreeHosts} more free meetups to unlock paid events.`}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-bold">{language === 'de' ? 'Kostenpflichtiges Event' : 'Paid Event'}</Label>
+                      <Switch checked={isPaid} onCheckedChange={setIsPaid} />
+                    </div>
+
+                    {isPaid && (
+                      <div className="space-y-2 pt-2">
+                        <div className="flex justify-between items-center text-xs font-bold">
+                          <span>{language === 'de' ? 'Preis pro Person' : 'Price per person'}</span>
+                          <span className="text-emerald-500 font-black text-sm">{price} €</span>
+                        </div>
+                        <Slider
+                          value={[price]}
+                          min={1}
+                          max={50}
+                          step={1}
+                          onValueChange={(vals) => setPrice(vals[0])}
+                        />
                       </div>
                     )}
                   </div>
                 )}
-              </div>
-            )}
-          </div>
-
-          {/* Sektion 3: Gating (Participants & Payment) */}
-          <div className="space-y-6 pt-4 border-t border-border/50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground">{language === 'de' ? 'Teilnehmerlimit' : 'Participant limit'}</Label>
-              </div>
-              <Badge className="bg-primary/10 text-primary text-[10px] font-black border-none uppercase">{language === 'de' ? 'Max' : 'Max'}: {participantLimit}</Badge>
-            </div>
-
-            <div className="flex items-center gap-6 bg-secondary/30 p-4 rounded-2xl">
-              <Slider value={[Math.min(maxParticipants, participantLimit)]} max={participantLimit} min={2} onValueChange={(val) => setMaxParticipants(val[0])} className="flex-1" />
-              <div className="min-w-[40px] text-center"><span className="text-2xl font-black text-primary">{maxParticipants}</span></div>
-            </div>
-
-            {/* Beitritts-Modus */}
-            <div className="space-y-3">
-              <Label className="text-sm font-black uppercase tracking-widest text-muted-foreground pl-1">{language === 'de' ? 'Beitritts-Modus' : 'Join Mode'}</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setJoinMode('request')}
-                  className={cn(
-                    "h-14 rounded-2xl font-bold flex flex-col items-center justify-center gap-0.5 border-2 transition-all",
-                    joinMode === 'request' 
-                      ? "border-primary bg-primary/5 text-primary shadow-sm" 
-                      : "border-border/50 text-muted-foreground hover:bg-secondary/50"
-                  )}
-                >
-                  <span>{language === 'de' ? 'Auf Anfrage' : 'By Request'}</span>
-                  <span className="text-[10px] opacity-70 font-medium">{language === 'de' ? 'Du entscheidest' : 'You decide'}</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setJoinMode('direct')}
-                  className={cn(
-                    "h-14 rounded-2xl font-bold flex flex-col items-center justify-center gap-0.5 border-2 transition-all",
-                    joinMode === 'direct' 
-                      ? "border-primary bg-primary/5 text-primary shadow-sm" 
-                      : "border-border/50 text-muted-foreground hover:bg-secondary/50"
-                  )}
-                >
-                  <span>{language === 'de' ? 'Direkt' : 'Direct'}</span>
-                  <span className="text-[10px] opacity-70 font-medium">{language === 'de' ? 'Jeder kann rein' : 'Anyone can join'}</span>
-                </Button>
-              </div>
-            </div>
-
-            {/* Sektion 4: Teilnahmebedingungen (Gating) */}
-            <Accordion type="single" collapsible className="w-full bg-secondary/10 rounded-2xl border border-border/50 px-4">
-              <AccordionItem value="requirements" className="border-none">
-                <AccordionTrigger className="hover:no-underline py-4">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-black uppercase tracking-widest text-slate-800">{language === 'de' ? 'Teilnahmebedingungen' : 'Requirements'}</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="space-y-4 pt-2 pb-4">
-                  
-                  {/* Profilbild */}
-                  <div className="flex items-center justify-between bg-white/50 p-4 rounded-xl border border-white">
-                    <div className="flex items-center gap-3">
-                      <UserCircle className="h-5 w-5 text-primary" />
-                      <div>
-                        <Label className="font-bold">{language === 'de' ? 'Profilbild erforderlich' : 'Profile picture required'}</Label>
-                        <p className="text-xs text-muted-foreground">{language === 'de' ? 'Nur Nutzer mit Bild' : 'Only users with photo'}</p>
-                      </div>
-                    </div>
-                    <Switch checked={requireProfilePicture} onCheckedChange={setRequireProfilePicture} />
-                  </div>
-
-                  {/* Verifizierung */}
-                  <div className="flex items-center justify-between bg-white/50 p-4 rounded-xl border border-white">
-                    <div className="flex items-center gap-3">
-                      <Check className="h-5 w-5 text-primary" />
-                      <div>
-                        <Label className="font-bold">{language === 'de' ? 'Verifizierung (KYC)' : 'Verified (KYC)'}</Label>
-                        <p className="text-xs text-muted-foreground">{language === 'de' ? 'Echte Identität geprüft' : 'Real identity verified'}</p>
-                      </div>
-                    </div>
-                    <Switch checked={requireVerification} onCheckedChange={setRequireVerification} />
-                  </div>
-
-                  {/* Alter */}
-                  <div className="bg-white/50 p-4 rounded-xl border border-white space-y-3">
-                    <Label htmlFor="min-age-input" className="font-bold text-sm">{language === 'de' ? 'Altersbegrenzung' : 'Age limit'}</Label>
-                    <div className="flex items-center gap-3">
-                      <Input id="min-age-input" type="number" placeholder="Min" aria-label="Mindestalter" value={minAge} onChange={(e) => setMinAge(e.target.value === '' ? '' : parseInt(e.target.value))} className="bg-white border-none text-center font-bold h-12" />
-                      <span className="text-muted-foreground font-black">-</span>
-                      <Input id="max-age-input" type="number" placeholder="Max" aria-label="Maximalalter" value={maxAge} onChange={(e) => setMaxAge(e.target.value === '' ? '' : parseInt(e.target.value))} className="bg-white border-none text-center font-bold h-12" />
-                    </div>
-                  </div>
-
-                  {/* Geschlecht */}
-                  <div className="bg-white/50 p-4 rounded-xl border border-white space-y-3">
-                    <Label className="font-bold text-sm">{language === 'de' ? 'Geschlecht' : 'Gender'}</Label>
-                    <div className="flex gap-2 flex-wrap">
-                      {['male', 'female', 'diverse'].map((g) => {
-                        const labels: any = { male: language === 'de' ? 'Männer' : 'Men', female: language === 'de' ? 'Frauen' : 'Women', diverse: language === 'de' ? 'Divers' : 'Diverse' };
-                        const isSelected = allowedGenders.includes(g);
-                        return (
-                          <Badge 
-                            key={g} 
-                            variant="outline" 
-                            className={cn("cursor-pointer border-none text-xs font-bold py-2 px-4 rounded-xl transition-all", isSelected ? "bg-primary text-white shadow-md shadow-primary/20" : "bg-white text-muted-foreground hover:bg-slate-50")}
-                            onClick={() => {
-                              if (isSelected && allowedGenders.length > 1) {
-                                setAllowedGenders(allowedGenders.filter(x => x !== g));
-                              } else if (!isSelected) {
-                                setAllowedGenders([...allowedGenders, g]);
-                              }
-                            }}
-                          >
-                            {labels[g]}
-                          </Badge>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Bewertung */}
-                  <div className="bg-white/50 p-4 rounded-xl border border-white space-y-3">
-                    <Label className="font-bold flex items-center gap-2 text-sm">
-                      <StarHalf className="h-4 w-4 text-amber-500" />
-                      {language === 'de' ? 'Mindestbewertung' : 'Minimum Rating'}
-                    </Label>
-                    <div className="flex items-center gap-4">
-                      <Slider value={[Number(minimumRating) || 0]} max={5} min={0} step={0.1} onValueChange={(val) => setMinimumRating(val[0] === 0 ? '' : val[0])} className="flex-1" />
-                      <span className="font-black text-lg text-primary w-8 text-right">{minimumRating ? Number(minimumRating).toFixed(1) : '0.0'}</span>
-                    </div>
-                  </div>
-
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-
-            {isLocal && (
-              <div className="space-y-3 pt-4 border-t border-border/50">
-                <div className="flex items-center justify-between rounded-2xl border border-border p-4 bg-card/50">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="is-paid-switch" className="text-base font-bold flex items-center gap-2">{language === 'de' ? 'Bezahltes Event' : 'Paid event'} {!canMonetize && <Lock className="h-3 w-3" />}</Label>
-                    <p className="text-xs text-muted-foreground">{language === 'de' ? 'Proof of Community' : 'Proof of Community'}: {currentFreeHosts}/{REQUIRED_FREE_HOSTS}</p>
-                  </div>
-                  <Switch id="is-paid-switch" checked={isPaid} onCheckedChange={setIsPaid} disabled={!canMonetize} />
-                </div>
-                {isPaid && (
-                  <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-2xl border border-dashed border-border">
-                    <span className="text-2xl font-black text-primary">€</span>
-                    <Input id="activity-price-input" type="number" value={price || ''} onChange={(e) => setPrice(Number(e.target.value))} className="text-2xl font-black w-32 h-14 bg-white border-none text-center" />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Sektion 4: Booster */}
-          <div className="bg-orange-50/50 rounded-2xl p-4 border border-orange-100">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Flame className={cn("h-5 w-5", isBoosted ? "text-orange-500" : "text-muted-foreground")} />
-                <span className="font-black text-sm uppercase">{language === 'de' ? 'Booster Aktivieren' : 'Activate Booster'}</span>
-              </div>
-              <Switch checked={isBoosted} onCheckedChange={setIsBoosted} disabled={availableTokens < 1} />
-            </div>
-            {availableTokens < 1 && (
-              <Button onClick={handleEarnToken} disabled={isWatchingAd} variant="outline" className="w-full h-12 rounded-xl font-black gap-2 mt-2 bg-white/50">
-                {isWatchingAd ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
-                {language === 'de' ? 'Token verdienen' : 'Earn token'}
-              </Button>
-            )}
-          </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
           </div>
         </div>
 
-        <SheetFooter className="sticky bottom-0 bg-background pt-4 pb-8 lg:pb-6 px-6 lg:px-12 border-t border-border/50 shrink-0">
-          <div className="w-full lg:max-w-[1200px] lg:mx-auto">
-            {isUnauthenticated && (
-              <p className="text-xs text-destructive font-bold text-center mb-3">
-                {language === 'de' ? 'Bitte melde dich an, um eine Aktivität zu erstellen.' : 'Please log in to create an activity.'}
-              </p>
-            )}
-            {isOnboardingIncomplete && (
-              <p className="text-xs text-destructive font-bold text-center mb-3">
-                {language === 'de' ? 'Bitte schließe zuerst dein Onboarding ab.' : 'Please complete your onboarding first.'}
-              </p>
-            )}
-            {isBanned && (
-              <p className="text-xs text-destructive font-bold text-center mb-3">
-                {language === 'de' ? 'Dein Account ist gesperrt. Du kannst keine Aktivitäten erstellen.' : 'Your account is banned. You cannot create activities.'}
-              </p>
-            )}
-            <Button 
-              onClick={handleCreate} 
-              disabled={isCreateDisabled}
-              className="w-full h-14 text-base font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95"
+        <SheetFooter className="p-6 lg:px-12 pt-3 pb-6 border-t bg-background shrink-0 lg:max-w-[1200px] lg:mx-auto lg:w-full">
+          {isUnauthenticated ? (
+            <Button
+              asChild
+              className="w-full h-12 rounded-2xl font-black text-sm bg-primary text-primary-foreground shadow-lg hover:bg-primary/90"
             >
-              {isCreating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Check className="mr-2 h-5 w-5" />}
-              {language === 'de' ? 'Aktivität jetzt erstellen' : 'Create activity now'}
+              <Link href="/login">{language === 'de' ? 'Anmelden um Aktivität zu erstellen' : 'Log in to create activity'}</Link>
             </Button>
-          </div>
+          ) : isOnboardingIncomplete ? (
+            <Button
+              asChild
+              className="w-full h-12 rounded-2xl font-black text-sm bg-primary text-primary-foreground shadow-lg hover:bg-primary/90"
+            >
+              <Link href="/onboarding">{language === 'de' ? 'Onboarding abschließen' : 'Complete onboarding'}</Link>
+            </Button>
+          ) : isBanned ? (
+            <Button
+              disabled
+              className="w-full h-12 rounded-2xl font-black text-sm bg-destructive text-destructive-foreground"
+            >
+              {language === 'de' ? 'Konto gesperrt' : 'Account banned'}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              disabled={isCreateDisabled}
+              onClick={handleCreate}
+              className="w-full h-12 rounded-2xl font-black text-sm bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>{language === 'de' ? 'Wird erstellt...' : 'Creating...'}</span>
+                </>
+              ) : (
+                <span>{language === 'de' ? 'Aktivität jetzt veröffentlichen' : 'Publish activity now'}</span>
+              )}
+            </Button>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>
