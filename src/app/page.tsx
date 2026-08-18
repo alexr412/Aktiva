@@ -208,7 +208,6 @@ export default function Home() {
     weightedDownvotes: number;
   }>>({});
   const [isVotingPlace, setIsVotingPlace] = useState<Record<string, boolean>>({});
-  const [isRadiusOpen, setIsRadiusOpen] = useState(false);
   const [sortBy, setSortBy] = useState("recommended");
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
@@ -2119,9 +2118,9 @@ export default function Home() {
                   />
                 </form>
                 <div className="relative group shrink-0">
-                  <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
+                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" className="h-11 px-3 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
+                      <Button variant="secondary" className="group h-11 px-3 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className="h-3.5 w-3.5 opacity-30 transition-transform group-data-[state=open]:rotate-180" /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
                       <div className="space-y-4">
@@ -2162,9 +2161,9 @@ export default function Home() {
                   />
                 </form>
                 <div className="relative group shrink-0">
-                  <DropdownMenu open={isRadiusOpen} onOpenChange={setIsRadiusOpen}>
+                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" className="h-11 px-2.5 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className={cn("h-3.5 w-3.5 opacity-30 transition-transform", isRadiusOpen && "rotate-180")} /></Button>
+                      <Button variant="secondary" className="group h-11 px-2.5 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className="h-3.5 w-3.5 opacity-30 transition-transform group-data-[state=open]:rotate-180" /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
                       <div className="space-y-4">
