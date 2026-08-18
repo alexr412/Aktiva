@@ -162,6 +162,47 @@ function testNormalizeNotification() {
   assert.strictEqual(normalized.targetUrl, '/activities/act_55');
   assert.strictEqual(normalized.isRead, false);
 
+  // Test join_request with senderProfile
+  const rawJoinReqWithSender = {
+    id: 'join_request_act1_userB',
+    recipientId: 'user_A',
+    actorId: 'user_B',
+    entityId: 'act_1',
+    type: 'join_request',
+    title: 'Neue Beitrittsanfrage',
+    body: 'Max Mustermann möchte an deiner Aktivität "Fußball" teilnehmen.',
+    isRead: false,
+    senderProfile: {
+      displayName: 'Max Mustermann',
+      username: 'maxm',
+      photoURL: 'https://example.com/avatar.jpg'
+    }
+  };
+
+  const normJoinWithSender = normalizeNotification(rawJoinReqWithSender);
+  assert.strictEqual(normJoinWithSender.actorId, 'user_B');
+  assert.strictEqual(normJoinWithSender.entityId, 'act_1');
+  assert.strictEqual(normJoinWithSender.senderProfile?.displayName, 'Max Mustermann');
+  assert.strictEqual(normJoinWithSender.senderProfile?.username, 'maxm');
+  assert.strictEqual(normJoinWithSender.senderProfile?.photoURL, 'https://example.com/avatar.jpg');
+
+  // Test join_request without senderProfile (legacy fallback)
+  const rawJoinReqLegacy = {
+    id: 'join_request_act1_userC',
+    recipientId: 'user_A',
+    actorId: 'user_C',
+    entityId: 'act_1',
+    type: 'join_request',
+    title: 'Neue Beitrittsanfrage',
+    body: 'Ein Nutzer möchte an deiner Aktivität "Fußball" teilnehmen.',
+    isRead: false
+  };
+
+  const normJoinLegacy = normalizeNotification(rawJoinReqLegacy);
+  assert.strictEqual(normJoinLegacy.actorId, 'user_C');
+  assert.strictEqual(normJoinLegacy.entityId, 'act_1');
+  assert.strictEqual(normJoinLegacy.senderProfile, undefined);
+
   console.log('✅ testNormalizeNotification passed successfully!');
 }
 

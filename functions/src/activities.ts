@@ -801,23 +801,32 @@ export const secureRequestJoinActivity = onCall(async (request) => {
       }
 
       const requesterUsername = requesterData.username || null;
-      const usernameFormatted = requesterUsername ? `@${requesterUsername.replace(/^@/, '')}` : 'Activa-Nutzer';
+      const requesterDisplayName = requesterData.displayName || null;
+      const usernameFormatted = requesterUsername ? `@${requesterUsername.replace(/^@/, '')}` : (requesterDisplayName || 'Activa-Nutzer');
       const photoURLToUse = requesterData.photoURL || null;
 
-      return { success: true, status: 'requested', hostId, requesterId, activityTitle: activity.placeName || activity.title || 'Treffen' };
+      const senderProfile = {
+        displayName: requesterDisplayName || usernameFormatted,
+        username: requesterUsername,
+        photoURL: photoURLToUse
+      };
+
+      return { success: true, status: 'requested', hostId, requesterId, activityTitle: activity.placeName || activity.title || 'Treffen', senderProfile };
     });
 
     if (result.status === 'requested' && result.hostId) {
+      const requesterName = result.senderProfile?.displayName || 'Ein Nutzer';
       await createNotificationAndDispatch({
         recipientId: result.hostId,
         actorId: result.requesterId,
         type: 'join_request',
         title: 'Neue Beitrittsanfrage',
-        body: message || `Ein Nutzer möchte an deiner Aktivität "${result.activityTitle}" teilnehmen.`,
+        body: message || `${requesterName} möchte an deiner Aktivität "${result.activityTitle}" teilnehmen.`,
         targetUrl: `/activities/${activityId}`,
         entityId: activityId,
         eventId: `join_request_${activityId}_${result.requesterId}`,
-        customId: `join_request_${activityId}_${result.requesterId}`
+        customId: `join_request_${activityId}_${result.requesterId}`,
+        senderProfile: result.senderProfile
       }).catch(err => console.error('[secureRequestJoinActivity] Dispatch failed:', err));
     }
 

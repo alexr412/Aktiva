@@ -230,6 +230,15 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
         }
     };
 
+    const handleProfileClick = (e: React.MouseEvent) => {
+        const targetUserId = notification.actorId || notification.senderId;
+        if (targetUserId && targetUserId !== notification.entityId) {
+            e.stopPropagation();
+            router.push(`/users/${targetUserId}`);
+            if (onAction) onAction();
+        }
+    };
+
     return (
         <div 
             onClick={handleClick}
@@ -250,11 +259,16 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
         >
             <div className="flex items-start gap-3">
                 {sender?.photoURL || sender?.displayName ? (
-                    <ProfileAvatar 
-                        className="mt-0.5 shrink-0"
-                        photoURL={sender?.photoURL}
-                        displayName={sender?.displayName}
-                    />
+                    <div 
+                        onClick={handleProfileClick}
+                        className="mt-0.5 shrink-0 cursor-pointer hover:opacity-85 transition-opacity"
+                        title={language === 'de' ? 'Profil anzeigen' : 'View profile'}
+                    >
+                        <ProfileAvatar 
+                            photoURL={sender?.photoURL}
+                            displayName={sender?.displayName}
+                        />
+                    </div>
                 ) : (
                     <div className="p-2 rounded-xl bg-slate-100 dark:bg-neutral-800 shrink-0 mt-0.5">
                         {renderTypeIcon()}
@@ -263,9 +277,20 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
                 
                 <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center justify-between gap-2">
-                        <h5 className={cn("text-xs font-bold truncate", !notification.isRead ? "text-primary" : "text-foreground")}>
-                            {notification.title}
-                        </h5>
+                        <div className="flex items-center gap-1.5 min-w-0 truncate">
+                            <h5 className={cn("text-xs font-bold truncate", !notification.isRead ? "text-primary" : "text-foreground")}>
+                                {notification.title}
+                            </h5>
+                            {sender?.displayName && (
+                                <button
+                                    type="button"
+                                    onClick={handleProfileClick}
+                                    className="text-[11px] font-semibold text-slate-600 dark:text-neutral-400 hover:text-primary hover:underline truncate"
+                                >
+                                    ({sender.displayName})
+                                </button>
+                            )}
+                        </div>
                         {!notification.isRead && (
                             <span className="h-2 w-2 rounded-full bg-primary shrink-0" aria-label={language === 'de' ? 'Ungelesen' : 'Unread'} />
                         )}
