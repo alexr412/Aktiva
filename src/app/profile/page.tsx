@@ -1058,7 +1058,7 @@ export default function ProfilePage() {
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-4">
                                         {favorites.map(fav => {
                                             const live = placesMetaMap[fav.id];
                                             const favPlace = fav as Place;
@@ -1066,6 +1066,7 @@ export default function ProfilePage() {
                                                 <PlaceCard 
                                                     key={fav.id} 
                                                     place={favPlace} 
+                                                    compact={true}
                                                     onClick={() => handlePlaceSelect(favPlace)} 
                                                     onAddActivity={() => handleOpenActivityModal(favPlace)} 
                                                     upvotes={live ? live.upvotes : (favPlace.upvotes || 0)}

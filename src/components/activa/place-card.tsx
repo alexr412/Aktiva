@@ -34,6 +34,7 @@ type PlaceCardProps = {
     role?: string | null;
     weightedUpvotes?: number;
     weightedDownvotes?: number;
+    compact?: boolean;
 };
 
 export function PlaceCard({
@@ -49,7 +50,8 @@ export function PlaceCard({
     onBookmarkToggle,
     role,
     weightedUpvotes = 0,
-    weightedDownvotes = 0
+    weightedDownvotes = 0,
+    compact = false
 }: PlaceCardProps) {
     if (!place) return null;
 
@@ -96,7 +98,8 @@ export function PlaceCard({
             onPointerCancel={() => setIsPressed(false)}
             onPointerLeave={() => setIsPressed(false)}
             className={cn(
-                "cursor-pointer group overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-[transform,box-shadow,border-color] duration-200 flex flex-col relative p-0 h-full w-full min-w-0",
+                "cursor-pointer group overflow-hidden bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-[transform,box-shadow,border-color] duration-200 flex flex-col relative p-0 h-full w-full min-w-0",
+                compact ? "rounded-xl sm:rounded-[22px]" : "rounded-[22px]",
                 isPressed ? "scale-[0.985] duration-75" : ""
             )}
         >
@@ -106,7 +109,7 @@ export function PlaceCard({
                 icon={PrimaryIcon}
                 label={primaryStyle.label}
                 variant="standard"
-                className="group-hover:scale-105"
+                className={cn("group-hover:scale-105", compact && "h-16 sm:h-20")}
             >
                 {/* Status Badges */}
                 <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-20 pointer-events-none select-none">
@@ -142,20 +145,31 @@ export function PlaceCard({
             </CategoryCardDecoration>
 
             {/* Content Bereich */}
-            <div className="p-3 pb-4 flex flex-col flex-1 min-w-0">
-                <div className="mb-2 min-w-0">
-                    <h3 className="text-base sm:text-lg font-black tracking-tight line-clamp-2 min-h-[2.5rem] leading-snug flex items-center gap-1.5 flex-wrap min-w-0">
+            <div className={cn(compact ? "p-2 sm:p-3 pb-2.5 sm:pb-4" : "p-3 pb-4", "flex flex-col flex-1 min-w-0")}>
+                <div className={cn(compact ? "mb-1 sm:mb-2" : "mb-2", "min-w-0")}>
+                    <h3 className={cn(
+                        "font-black tracking-tight flex items-center gap-1.5 flex-wrap min-w-0",
+                        compact 
+                            ? "text-xs sm:text-lg line-clamp-1 sm:line-clamp-2 min-h-0 sm:min-h-[2.5rem] leading-tight sm:leading-snug" 
+                            : "text-base sm:text-lg line-clamp-2 min-h-[2.5rem] leading-snug"
+                    )}>
                         <button
                             onClick={(e) => { e.stopPropagation(); onClick(); }}
-                            className="font-black text-base text-left text-[#0f172a] dark:text-neutral-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded truncate max-w-full"
+                            className={cn(
+                                "font-black text-left text-[#0f172a] dark:text-neutral-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded truncate max-w-full",
+                                compact ? "text-xs sm:text-base" : "text-base"
+                            )}
                         >
                             {place.name || (role === 'admin' ? `POI POI Ref: ${place.id.slice(-6)}` : (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'))}
                         </button>
                         {isEntityBoosted(place) && (
-                            <Sparkles className="h-4 w-4 text-amber-500 fill-amber-500/20 shrink-0 animate-pulse" />
+                            <Sparkles className={cn("text-amber-500 fill-amber-500/20 shrink-0 animate-pulse", compact ? "h-3 w-3 sm:h-4 sm:w-4" : "h-4 w-4")} />
                         )}
                     </h3>
-                    <div className="flex items-center gap-1.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px] min-w-0">
+                    <div className={cn(
+                        "flex items-center text-neutral-400 dark:text-neutral-500 font-bold min-w-0",
+                        compact ? "gap-1 text-[8.5px] sm:text-[9px] mt-0.5 sm:mt-0" : "gap-1.5 text-[9px]"
+                    )}>
                         {place.openingHours ? (
                             <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
                         ) : (
@@ -164,12 +178,15 @@ export function PlaceCard({
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1 mb-1 max-w-full">
+                <div className={cn(compact ? "flex flex-wrap gap-0.5 sm:gap-1 mb-0.5 sm:mb-1 max-w-full" : "flex flex-wrap gap-1 mb-1 max-w-full")}>
                     {processedTags.filter(item => item.isMain).map((item, index) => (
                         <Badge
                             key={index}
                             variant="secondary"
-                            className="rounded-[10px] text-[7px] font-black uppercase tracking-widest px-2 py-0.5 border-none bg-primary/5 text-primary max-w-full truncate"
+                            className={cn(
+                                "border-none bg-primary/5 text-primary max-w-full truncate font-black uppercase",
+                                compact ? "rounded-[8px] sm:rounded-[10px] text-[6.5px] sm:text-[7px] tracking-wider sm:tracking-widest px-1.5 sm:px-2 py-0.5" : "rounded-[10px] text-[7px] tracking-widest px-2 py-0.5"
+                            )}
                         >
                             {translateTag(item.tag, language)}
                         </Badge>
@@ -187,20 +204,21 @@ export function PlaceCard({
                 </div>
 
                 {/* Footer Actions - Einheitliche Zeile */}
-                <div className="flex items-center justify-between gap-1.5 sm:gap-2 mt-auto pt-2 max-w-full">
-                    <div className="flex items-center bg-neutral-50 dark:bg-neutral-900 rounded-2xl p-0.5 gap-0.5 border border-neutral-100 dark:border-neutral-800 shrink-0">
+                <div className={cn("flex items-center justify-between gap-1 sm:gap-2 mt-auto max-w-full", compact ? "pt-1 sm:pt-2" : "pt-2")}>
+                    <div className={cn("flex items-center bg-neutral-50 dark:bg-neutral-900 p-0.5 gap-0.5 border border-neutral-100 dark:border-neutral-800 shrink-0", compact ? "rounded-xl sm:rounded-2xl" : "rounded-2xl")}>
                         <button
                             onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
                             aria-pressed={userVote === 'up'}
                             className={cn(
-                                "h-7 rounded-xl flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-                                (role === 'admin' || role === 'supporter') ? "px-1.5 sm:px-2" : "w-7",
+                                "flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
+                                compact ? "h-6 sm:h-7 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px]" : "h-7 rounded-xl text-[11px]",
+                                (role === 'admin' || role === 'supporter') ? "px-1.5 sm:px-2" : compact ? "w-6 sm:w-7" : "w-7",
                                 userVote === 'up'
                                     ? "bg-emerald-600 text-white border border-emerald-500 shadow-md shadow-emerald-500/25 scale-[1.04] active:scale-95"
                                     : "bg-transparent text-emerald-600/50 dark:text-emerald-400/50 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent active:scale-95"
                             )}
                         >
-                            <ThumbsUp className="h-3.5 w-3.5 shrink-0" />
+                            <ThumbsUp className={cn("shrink-0", compact ? "h-3 w-3 sm:h-3.5 sm:w-3.5" : "h-3.5 w-3.5")} />
                             {(role === 'admin' || role === 'supporter') && (
                                 <span className={cn("text-[10px] font-black", userVote === 'up' ? "text-white opacity-100" : "opacity-70")}>
                                     {weightedUpvotes > 0 ? `+${weightedUpvotes}` : '0'}
@@ -212,14 +230,15 @@ export function PlaceCard({
                             onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
                             aria-pressed={userVote === 'down'}
                             className={cn(
-                                "h-7 rounded-xl flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
-                                (role === 'admin' || role === 'supporter') ? "px-1.5 sm:px-2" : "w-7",
+                                "flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
+                                compact ? "h-6 sm:h-7 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px]" : "h-7 rounded-xl text-[11px]",
+                                (role === 'admin' || role === 'supporter') ? "px-1.5 sm:px-2" : compact ? "w-6 sm:w-7" : "w-7",
                                 userVote === 'down'
                                     ? "bg-rose-600 text-white border border-rose-500 shadow-md shadow-rose-500/25 scale-[1.04] active:scale-95"
                                     : "bg-transparent text-rose-600/50 dark:text-rose-400/50 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 border border-transparent active:scale-95"
                             )}
                         >
-                            <ThumbsDown className="h-3.5 w-3.5 shrink-0" />
+                            <ThumbsDown className={cn("shrink-0", compact ? "h-3 w-3 sm:h-3.5 sm:w-3.5" : "h-3.5 w-3.5")} />
                             {(role === 'admin' || role === 'supporter') && (
                                 <span className={cn("text-[10px] font-black", userVote === 'down' ? "text-white opacity-100" : "opacity-70")}>
                                     {weightedDownvotes > 0 ? `-${weightedDownvotes}` : '0'}
@@ -234,19 +253,23 @@ export function PlaceCard({
                             size="icon"
                             onClick={handleBookmarkToggle}
                             className={cn(
-                                "h-7 w-7 sm:h-8 sm:w-8 rounded-xl transition-colors duration-200 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                                "transition-colors duration-200 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                                compact ? "h-6 w-6 sm:h-8 sm:w-8 rounded-lg sm:rounded-xl" : "h-7 w-7 sm:h-8 sm:w-8 rounded-xl",
                                 isFavorite ? "text-primary bg-primary/10" : "text-neutral-300 hover:text-primary hover:bg-primary/5"
                             )}
                         >
-                            <Bookmark className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4 transition-colors duration-200", isFavorite && "fill-primary")} />
+                            <Bookmark className={cn("transition-colors duration-200", compact ? "h-3 w-3 sm:h-4 sm:w-4" : "h-3.5 w-3.5 sm:h-4 sm:w-4", isFavorite && "fill-primary")} />
                         </Button>
 
                         <Button
                             size="icon"
                             onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
-                            className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-[color,background-color,transform,box-shadow] duration-200 active:scale-95 flex items-center justify-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                            className={cn(
+                                "rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-[color,background-color,transform,box-shadow] duration-200 active:scale-95 flex items-center justify-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                                compact ? "h-6 w-6 sm:h-8 sm:w-8" : "h-7 w-7 sm:h-8 sm:w-8"
+                            )}
                         >
-                            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={3} />
+                            <Plus className={compact ? "h-3 w-3 sm:h-4 sm:w-4" : "h-3.5 w-3.5 sm:h-4 sm:w-4"} strokeWidth={3} />
                         </Button>
                     </div>
                 </div>
