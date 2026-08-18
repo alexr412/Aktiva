@@ -837,7 +837,18 @@ export const secureRequestJoinActivity = onCall(async (request) => {
     });
 
     if (result.status === 'requested' && result.hostId) {
-      const requesterName = result.senderProfile?.displayName || 'Ein Nutzer';
+      const rawUsername = result.senderProfile?.username;
+      const rawDisplayName = result.senderProfile?.displayName;
+      let requesterName = 'Ein Nutzer';
+      if (rawUsername && typeof rawUsername === 'string' && rawUsername.trim().length > 0) {
+        const cleanUser = rawUsername.trim().replace(/^@+/, '');
+        if (cleanUser.length > 0) {
+          requesterName = `@${cleanUser}`;
+        }
+      } else if (rawDisplayName && typeof rawDisplayName === 'string' && rawDisplayName.trim().length > 0) {
+        requesterName = rawDisplayName.trim();
+      }
+
       await createNotificationAndDispatch({
         recipientId: result.hostId,
         actorId: result.requesterId,

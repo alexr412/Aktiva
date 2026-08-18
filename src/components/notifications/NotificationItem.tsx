@@ -164,6 +164,30 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
     };
 
     const sender = notification.senderProfile;
+    const isJoinRequest = notification.type === 'join_request' || notification.type === 'activity_join_request';
+
+    const getJoinRequesterLabel = () => {
+        if (sender?.username && typeof sender.username === 'string' && sender.username.trim().length > 0) {
+            const cleanUser = sender.username.trim().replace(/^@+/, '');
+            if (cleanUser.length > 0) {
+                return `@${cleanUser}`;
+            }
+        }
+        if (sender?.displayName && typeof sender.displayName === 'string' && sender.displayName.trim().length > 0) {
+            return sender.displayName.trim();
+        }
+        return 'Ein Nutzer';
+    };
+
+    const senderLabel = isJoinRequest
+        ? getJoinRequesterLabel()
+        : (sender?.displayName || (sender?.username ? `@${sender.username.trim().replace(/^@+/, '')}` : null));
+
+    const rawBody = notification.body || notification.message || '';
+    const displayedBody = isJoinRequest && rawBody
+        ? rawBody.replace(/^.+?( (?:möchte an|wants to join) )/, `${senderLabel}$1`)
+        : rawBody;
+
     const localeObj = language === 'de' ? de : enUS;
     const timeAgo = notification.createdAt && typeof (notification.createdAt as any).toDate === 'function'
         ? formatDistanceToNow((notification.createdAt as any).toDate(), { addSuffix: true, locale: localeObj }) 
@@ -206,19 +230,15 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
                 );
             case 'accepted':
                 return (
-                    <div className="pt-1.5">
-                        <span className="text-xs font-medium text-primary">
-                            {language === 'de' ? 'Freundschaftsanfrage angenommen' : 'Friend request accepted'}
-                        </span>
-                    </div>
+                    <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 pt-1">
+                        ✓ {language === 'de' ? 'Ihr seid befreundet' : 'You are friends'}
+                    </p>
                 );
             case 'declined':
                 return (
-                    <div className="pt-1.5">
-                        <span className="text-xs font-medium text-muted-foreground">
-                            {language === 'de' ? 'Freundschaftsanfrage abgelehnt' : 'Friend request declined'}
-                        </span>
-                    </div>
+                    <p className="text-[11px] text-muted-foreground pt-1">
+                        {language === 'de' ? 'Anfrage abgelehnt' : 'Request declined'}
+                    </p>
                 );
             case 'cancelled':
                 return (
@@ -254,23 +274,15 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
     return (
         <div 
             onClick={handleClick}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleClick(e as any);
-                }
-            }}
             className={cn(
-                "p-3 rounded-xl transition-all duration-200 cursor-pointer relative group border border-transparent",
-                !notification.isRead
-                    ? "bg-primary/5 dark:bg-primary/10 border-primary/10 hover:bg-primary/10 dark:hover:bg-primary/15"
-                    : "hover:bg-slate-100/80 dark:hover:bg-neutral-800/60"
+                "group relative p-3 rounded-xl transition-all duration-200 cursor-pointer border border-transparent",
+                !notification.isRead 
+                    ? "bg-slate-50 dark:bg-neutral-800/60 hover:bg-slate-100 dark:hover:bg-neutral-800 border-slate-200/50 dark:border-neutral-700/50" 
+                    : "hover:bg-slate-50 dark:hover:bg-neutral-800/40"
             )}
         >
             <div className="flex items-start gap-3">
-                {sender?.photoURL || sender?.displayName ? (
+                {sender?.photoURL || sender?.displayName || sender?.username ? (
                     <div 
                         onClick={handleProfileClick}
                         className="mt-0.5 shrink-0 cursor-pointer hover:opacity-85 transition-opacity"
@@ -278,7 +290,7 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
                     >
                         <ProfileAvatar 
                             photoURL={sender?.photoURL}
-                            displayName={sender?.displayName}
+                            displayName={senderLabel || sender?.displayName}
                         />
                     </div>
                 ) : (
@@ -293,13 +305,13 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
                             <h5 className={cn("text-xs font-bold truncate", !notification.isRead ? "text-primary" : "text-foreground")}>
                                 {notification.title}
                             </h5>
-                            {sender?.displayName && (
+                            {senderLabel && (
                                 <button
                                     type="button"
                                     onClick={handleProfileClick}
                                     className="text-[11px] font-semibold text-slate-600 dark:text-neutral-400 hover:text-primary hover:underline truncate"
                                 >
-                                    ({sender.displayName})
+                                    ({senderLabel})
                                 </button>
                             )}
                         </div>
@@ -307,7 +319,7 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
                             {!notification.isRead && (
                                 <span className="h-2 w-2 rounded-full bg-primary shrink-0" aria-label={language === 'de' ? 'Ungelesen' : 'Unread'} />
                             )}
-                            {notification.type !== 'join_request' && notification.type !== 'activity_join_request' && (
+                            {!isJoinRequest && (
                                 <button
                                     type="button"
                                     onClick={handleDelete}
@@ -322,7 +334,7 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
                     </div>
 
                     <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                        {notification.body || notification.message}
+                        {displayedBody}
                     </p>
 
                     {notification.customMessage && (
