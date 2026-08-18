@@ -26,10 +26,11 @@
     "test:optimistic-chat": "npx tsx src/app/chat/optimistic-chat.test.ts",
     "test:notifications": "npx tsx src/lib/notifications.test.ts",
     "test:geoapify": "npx tsx src/lib/geoapify.test.ts",
+    "test:feed": "npx tsx src/features/feed/__tests__/feed-engine.test.ts",
     "test:backend": "npm --prefix functions run test",
     "test:rules": "npx firebase-tools emulators:exec --only firestore,storage \"npx tsx firestore.rules.test.ts\"",
     "emulators": "npx firebase-tools emulators:start --only auth,firestore,functions,storage",
-    "test:all": "npm run test:ranking && npm run test:duplicate && npm run test:moderation && npm run test:reserved && npm run test:premium && npm run test:map && npm run test:radar-client && npm run test:radar-backend && npm run test:location && npm run test:communication && npm run test:referral && npm run test:reset-password && npm run test:address && npm run test:optimistic-chat && npm run test:notifications && npm run test:geoapify && npm run test:backend"
+    "test:all": "npm run test:ranking && npm run test:duplicate && npm run test:moderation && npm run test:reserved && npm run test:premium && npm run test:map && npm run test:radar-client && npm run test:radar-backend && npm run test:location && npm run test:communication && npm run test:referral && npm run test:reset-password && npm run test:address && npm run test:optimistic-chat && npm run test:notifications && npm run test:geoapify && npm run test:feed && npm run test:backend"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.28.0",

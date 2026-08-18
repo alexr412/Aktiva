@@ -72,6 +72,7 @@ import { getFeedCacheKey, getFeedCache, setFeedCache } from '@/lib/feed-cache';
 import { trackInteraction } from '@/lib/telemetry';
 import { isDuplicate } from '@/lib/duplicate-detector';
 import { monitoring } from '@/lib/monitoring';
+import { orchestrateFeedPipeline } from '@/features/feed/feed-engine';
 
 const CardSkeleton = () => (
   <div className="w-full overflow-hidden rounded-3xl bg-white shadow-sm flex flex-row p-0 border border-slate-100/50 min-h-[130px]">
@@ -742,102 +743,15 @@ export default function Home() {
   }, [displayData, isCommunityCategory, isAktivCategory, isHighlightsCategory, isFavoritesCategory, language, userProfile, userLocation, activeCategory, maxDistance]);
 
   const places = useMemo(() => {
-    if (basePlaces.length === 0) return [];
-
-    let finalPlaces: Place[] = [];
-    if (ENABLE_NEW_RANKING_PIPELINE) {
-      const placesWithVotes = basePlaces.map(place => {
-        const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0, weightedUpvotes: 0, weightedDownvotes: 0, voteBoostScore: 0 };
-        return {
-          ...place,
-          upvotes: votes.upvotes,
-          downvotes: votes.downvotes,
-          voteBoostScore: votes.voteBoostScore
-        };
-      });
-
-      const ranked = rankPlacesPipeline(
-        placesWithVotes,
-        userProfile || { role: 'user' } as any,
-        userLocation,
-        sessionEpochRef.current,
-        { debug: false }
-      );
-
-      // Filter duplicates
-      for (const place of ranked) {
-        if (!finalPlaces.some(u => isDuplicate(u, place))) {
-          finalPlaces.push(place);
-        }
-      }
-    } else {
-      const scored = basePlaces.map(place => {
-        const votes = votesMap[place.id] || { upvotes: 0, downvotes: 0, weightedUpvotes: 0, weightedDownvotes: 0, voteBoostScore: 0 };
-        const rawScore = calculateRelevance(
-          { ...place, upvotes: votes.upvotes, downvotes: votes.downvotes, voteBoostScore: votes.voteBoostScore },
-          userProfile || { role: 'user' } as any,
-          userLocation || { lat: 0, lng: 0 },
-          { debug: false }
-        );
-        // Guard: ensure score is always a finite number — prevents string-coercion sort bugs
-        const relevanceScore = typeof rawScore === 'number' && isFinite(rawScore) ? rawScore : 0;
-        return { ...place, relevanceScore };
-      });
-
-      // Strict descending sort by numeric score
-      scored.sort((a, b) => b.relevanceScore - a.relevanceScore);
-
-      // Filter duplicates
-      for (const place of scored) {
-        if (!finalPlaces.some(u => isDuplicate(u, place))) {
-          finalPlaces.push(place);
-        }
-      }
-    }
-
-    // Apply activePremiumFilters if user is Premium
-    if (activePremiumFilters.length > 0 && hasPremiumFeature(userProfile, 'advanced_filters')) {
-      finalPlaces = finalPlaces.filter(place => {
-        return activePremiumFilters.every(filterId => {
-          if (filterId === 'only_open_now') {
-            return isOpenNow(place.openingHours);
-          }
-          if (filterId === 'hidden_gems') {
-            const hasRatingMatch = typeof place.rating === 'number' && place.rating >= 4.2;
-            const hasVotesMatch = typeof place.upvotes === 'number' && place.upvotes >= 1 && (!place.downvotes || place.downvotes === 0);
-            return (hasRatingMatch || hasVotesMatch) && !place.categories.some(cat => cat.startsWith('tourism.attraction'));
-          }
-          if (filterId === 'high_rated') {
-            return typeof place.rating === 'number' && place.rating >= 4.4;
-          }
-          if (filterId === 'outdoor_only') {
-            return place.categories.some(cat =>
-              cat.includes('outdoor') || cat.includes('nature') || cat.includes('park') || cat.includes('beach') || cat.includes('zoo')
-            );
-          }
-          if (filterId === 'quiet_places') {
-            return place.categories.every(cat =>
-              !['party', 'nightclub', 'bar', 'pub', 'stadium', 'arcade', 'casino', 'entertainment'].some(bad => cat.includes(bad))
-            );
-          }
-          if (filterId === 'date_ideas') {
-            return place.categories.some(cat =>
-              ['catering.restaurant', 'catering.cafe', 'catering.bar', 'entertainment.cinema', 'tourism.sights', 'entertainment.museum', 'leisure.spa'].some(target => cat === target || cat.startsWith(target + '.'))
-            );
-          }
-          if (filterId === 'group_activities') {
-            return place.categories.some(cat =>
-              ['sport', 'entertainment.escape_game', 'entertainment.bowling_alley', 'entertainment.miniature_golf', 'entertainment.theme_park', 'sport.stadium'].some(target => cat === target || cat.startsWith(target + '.'))
-            );
-          }
-          return true;
-        });
-      });
-    }
-
-
-    monitoring.logFeedSize(finalPlaces.length);
-    return finalPlaces;
+    return orchestrateFeedPipeline({
+      basePlaces,
+      votesMap,
+      userProfile,
+      userLocation,
+      sessionEpoch: sessionEpochRef.current,
+      activePremiumFilters,
+      enableNewRankingPipeline: ENABLE_NEW_RANKING_PIPELINE,
+    });
   }, [basePlaces, votesMap, userProfile, userLocation, activePremiumFilters]);
 
   const visibleCommunityActivities = useMemo(() => {
