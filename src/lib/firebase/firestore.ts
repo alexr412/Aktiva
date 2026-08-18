@@ -1755,6 +1755,18 @@ export async function markAllNotificationsAsRead(userId: string): Promise<number
     }
 }
 
+export async function deleteNotification(notificationId: string): Promise<void> {
+    if (!notificationId || !functions) return;
+    try {
+        const { httpsCallable } = await import('firebase/functions');
+        const deleteFn = httpsCallable<{ notificationId: string }, { success: boolean }>(functions, 'deleteNotification');
+        await deleteFn({ notificationId });
+    } catch (e) {
+        console.error('[NotificationService] deleteNotification error:', e);
+        throw e;
+    }
+}
+
 function getPushTokenDocId(token: string): string {
   try {
     if (typeof btoa === 'function') {

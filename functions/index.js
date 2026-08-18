@@ -276,6 +276,7 @@ lazyExport('getNearbyFriends', './lib/radar');
 // Secure Notifications (Server-Side) (Lazy Loaded)
 lazyExport('markNotificationRead', './lib/notifications');
 lazyExport('markAllNotificationsRead', './lib/notifications');
+lazyExport('deleteNotification', './lib/notifications');
 lazyExport('sendScheduledEngagementReminders', './lib/notifications');
 lazyExport('sendTestNotification', './lib/notifications');
 

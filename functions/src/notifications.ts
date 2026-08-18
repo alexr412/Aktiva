@@ -608,3 +608,52 @@ export const sendTestNotification = onCall(async (request) => {
 
   return { success: res.created, pushSent: res.pushSent, notificationId: res.notificationId };
 });
+
+/**
+ * Server-authoritative Callable Function to delete a single notification.
+ */
+export const deleteNotification = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  }
+
+  const notificationId = request.data?.notificationId;
+  if (!notificationId || typeof notificationId !== 'string') {
+    throw new HttpsError('invalid-argument', 'Missing or invalid notificationId.');
+  }
+
+  const uid = request.auth.uid;
+  const db = admin.firestore();
+  const notifRef = db.collection('notifications').doc(notificationId);
+  const metaRef = db.collection('users').doc(uid).collection('notification_meta').doc('state');
+
+  await db.runTransaction(async (transaction) => {
+    // 1. All reads first
+    const notifSnap = await transaction.get(notifRef);
+    if (!notifSnap.exists) {
+      throw new HttpsError('not-found', 'Notification document not found.');
+    }
+
+    const notifData = notifSnap.data() || {};
+    if (notifData.recipientId !== uid) {
+      throw new HttpsError('permission-denied', 'Cannot delete notification for another recipient.');
+    }
+
+    const metaSnap = await transaction.get(metaRef);
+
+    // 2. All writes after reads
+    transaction.delete(notifRef);
+
+    if (!notifData.isRead) {
+      const currentUnread = metaSnap.exists ? (metaSnap.data()?.unreadCount || 0) : 0;
+      const nextUnread = Math.max(0, currentUnread - 1);
+
+      transaction.set(metaRef, {
+        unreadCount: nextUnread,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+  });
+
+  return { success: true };
+});

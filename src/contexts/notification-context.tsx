@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase/client';
 import { collection, doc, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import type { Notification } from '@/lib/types';
 import { normalizeNotification, formatUnreadBadge } from '@/lib/types';
-import { markNotificationAsRead, markAllNotificationsAsRead } from '@/lib/firebase/firestore';
+import { markNotificationAsRead, markAllNotificationsAsRead, deleteNotification as deleteNotificationFn } from '@/lib/firebase/firestore';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -17,6 +17,7 @@ interface NotificationContextType {
   newNotificationEvents: Notification[];
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  deleteNotification: (notificationId: string) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -28,6 +29,7 @@ const NotificationContext = createContext<NotificationContextType>({
   newNotificationEvents: [],
   markAsRead: async () => {},
   markAllAsRead: async () => {},
+  deleteNotification: async () => {},
 });
 
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
@@ -171,6 +173,21 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
+  const handleDeleteNotification = async (notificationId: string) => {
+    if (!notificationId) return;
+    const target = notifications.find((n) => n.id === notificationId);
+    // Optimistic update
+    setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    if (target && !target.isRead) {
+      setTotalUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+    try {
+      await deleteNotificationFn(notificationId);
+    } catch (err) {
+      console.error('Failed to delete notification:', err);
+    }
+  };
+
   return (
     <NotificationContext.Provider
       value={{
@@ -182,6 +199,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         newNotificationEvents,
         markAsRead: handleMarkAsRead,
         markAllAsRead: handleMarkAllAsRead,
+        deleteNotification: handleDeleteNotification,
       }}
     >
       {children}

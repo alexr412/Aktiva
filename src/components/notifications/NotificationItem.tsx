@@ -15,7 +15,7 @@ import {
 } from '@/lib/firebase/firestore';
 import { ProfileAvatar } from '../ui/profile-avatar';
 import { Button } from '../ui/button';
-import { Loader2, MessageSquare, UserPlus, Sparkles, MapPin, Bell } from 'lucide-react';
+import { Loader2, MessageSquare, UserPlus, Sparkles, MapPin, Bell, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
@@ -31,10 +31,11 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
     const { user: currentUser, userProfile } = useAuth();
     const { toast } = useToast();
     const language = useLanguage();
-    const { markAsRead } = useNotifications();
+    const { markAsRead, deleteNotification } = useNotifications();
     
     const notification = normalizeNotification(rawNotification);
     const [isLoading, setIsLoading] = useState<'accept' | 'decline' | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [isDeclining, setIsDeclining] = useState(false);
     const [declineMsg, setDeclineMsg] = useState('');
 
@@ -44,6 +45,19 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
     const friendRequestState = notification.type === 'friend_request'
         ? deriveFriendRequestNotificationState(notification, userProfile?.friendRequestsReceived, userProfile?.friends)
         : null;
+
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isDeleting) return;
+        setIsDeleting(true);
+        try {
+            await deleteNotification(notification.id);
+        } catch (error) {
+            console.error("Failed to delete notification:", error);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     const handleClick = async (e: React.MouseEvent) => {
         // Prevent trigger if clicking on action buttons inside
@@ -291,9 +305,22 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
                                 </button>
                             )}
                         </div>
-                        {!notification.isRead && (
-                            <span className="h-2 w-2 rounded-full bg-primary shrink-0" aria-label={language === 'de' ? 'Ungelesen' : 'Unread'} />
-                        )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            {!notification.isRead && (
+                                <span className="h-2 w-2 rounded-full bg-primary shrink-0" aria-label={language === 'de' ? 'Ungelesen' : 'Unread'} />
+                            )}
+                            {notification.type !== 'join_request' && notification.type !== 'activity_join_request' && (
+                                <button
+                                    type="button"
+                                    onClick={handleDelete}
+                                    disabled={isDeleting}
+                                    title={language === 'de' ? 'Benachrichtigung löschen' : 'Delete notification'}
+                                    className="p-1 rounded-md text-muted-foreground/50 hover:text-destructive hover:bg-slate-200/60 dark:hover:bg-neutral-700/60 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+                                >
+                                    {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
