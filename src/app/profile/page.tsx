@@ -35,7 +35,7 @@ import { CreateActivityDialog } from '@/components/activa/create-activity-dialog
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FriendList from '@/components/profile/FriendList';
 import { ProfileActivityCard } from "@/components/profile/ProfileActivityCard";
-import { cn, formatFirstName } from '@/lib/utils';
+import { cn, formatFirstName, toDateObject } from '@/lib/utils';
 import { UserBadge } from '@/components/common/UserBadge';
 import { format } from 'date-fns';
 
@@ -671,15 +671,16 @@ export default function ProfilePage() {
     const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
 
     const now = new Date();
-    const pastActivities = visibleActivities.filter(a =>
-        a.status === 'completed' ||
-        (a.activityDate?.toDate() && a.activityDate.toDate() < now)
-    );
-    const currentActivities = visibleActivities.filter(a =>
-        a.status !== 'completed' &&
-        a.status !== 'cancelled' &&
-        (!a.activityDate?.toDate() || a.activityDate.toDate() >= now)
-    );
+    const pastActivities = visibleActivities.filter(a => {
+        if (a.status === 'completed') return true;
+        const d = toDateObject(a.activityDate);
+        return d !== null && d < now;
+    });
+    const currentActivities = visibleActivities.filter(a => {
+        if (a.status === 'completed' || a.status === 'cancelled') return false;
+        const d = toDateObject(a.activityDate);
+        return d === null || d >= now;
+    });
 
     return (
         <>

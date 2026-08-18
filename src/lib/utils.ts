@@ -98,6 +98,10 @@ export function toDateObject(val: any): Date | null {
   if (val instanceof Date) {
     return isNaN(val.getTime()) ? null : val;
   }
+  if (typeof val?.seconds === 'number') {
+    const d = new Date(val.seconds * 1000);
+    return isNaN(d.getTime()) ? null : d;
+  }
   if (typeof val === 'number' || typeof val === 'string') {
     const d = new Date(val);
     return isNaN(d.getTime()) ? null : d;

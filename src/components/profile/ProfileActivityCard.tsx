@@ -1,12 +1,13 @@
 'use client';
 
-import { format, formatDistanceToNow } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
-import { Users, Star, Flame } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { useLanguage } from '@/hooks/use-language';
 import { getPrimaryIconData } from '@/lib/tag-config';
-import { cn } from '@/lib/utils';
+import { cn, toDateObject } from '@/lib/utils';
 import type { Activity } from '@/lib/types';
 
 interface ProfileActivityCardProps {
@@ -15,8 +16,9 @@ interface ProfileActivityCardProps {
   onJoin: (activity: Activity) => void;
 }
 
- export function ProfileActivityCard({ activity, user, onJoin }: ProfileActivityCardProps) {
+export function ProfileActivityCard({ activity, user, onJoin }: ProfileActivityCardProps) {
   const language = useLanguage();
+  const router = useRouter();
   const locale = language === 'de' ? de : enUS;
 
   const iconData = getPrimaryIconData({ 
@@ -30,10 +32,23 @@ interface ProfileActivityCardProps {
   
   const participantIds = activity.participantIds || [];
   const previewList = activity.participantsPreview || [];
-  const activityDate = activity.activityDate?.toDate();
+  const activityDate = toDateObject(activity.activityDate);
+
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, input, select, textarea, [role="button"], [data-card-interactive]')) {
+      return;
+    }
+    if (activity.id) {
+      router.push(`/activities/${activity.id}`);
+    }
+  };
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-4 sm:p-5 mb-4 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)] border border-slate-50 dark:border-neutral-800 transition-all hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] group cursor-pointer overflow-hidden relative w-full min-w-0">
+    <div 
+      onClick={handleCardClick}
+      className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-4 sm:p-5 mb-4 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.04)] border border-slate-50 dark:border-neutral-800 transition-all hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] group cursor-pointer overflow-hidden relative w-full min-w-0"
+    >
       <div className="flex items-center gap-3 sm:gap-4 min-w-0">
         {/* Category Icon */}
         <div className={cn(
