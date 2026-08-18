@@ -138,7 +138,6 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
         setIsLoading('accept');
         try {
             await acceptJoinRequest(notification.id, activityId, actorId);
-            await markAsRead(notification.id);
             toast({ title: language === 'de' ? "Anfrage akzeptiert!" : "Request accepted!" });
             if (onAction) onAction();
         } catch (error: any) {
@@ -155,7 +154,6 @@ export function NotificationItem({ notification: rawNotification, onAction }: No
         setIsLoading('decline');
         try {
             await declineJoinRequest(notification.id, activityId, actorId, declineMsg);
-            await markAsRead(notification.id);
             toast({ title: language === 'de' ? "Anfrage abgelehnt." : "Request declined." });
             if (onAction) onAction();
         } catch (error: any) {

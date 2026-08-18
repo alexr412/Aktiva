@@ -507,15 +507,29 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
             if (userProfile.isBanned) {
                 throw new https_1.HttpsError('failed-precondition', 'User is banned.');
             }
-            // 4. Verify if already participant or kicked
+            // 4. Get host notification meta state (Read phase - MUST be before any writes)
+            const metaRef = db.collection('users').doc(hostId).collection('notification_meta').doc('state');
+            const metaSnap = await transaction.get(metaRef);
+            const deleteNotificationAndDecrementUnread = () => {
+                if (!notif.isRead) {
+                    const currentUnread = metaSnap.exists ? (metaSnap.data()?.unreadCount || 0) : 0;
+                    const nextUnread = Math.max(0, currentUnread - 1);
+                    transaction.set(metaRef, {
+                        unreadCount: nextUnread,
+                        updatedAt: firestore_2.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                }
+                transaction.delete(notifRef);
+            };
+            // 5. Verify if already participant or kicked
             const participantIds = activity.participantIds || [];
             const kickedUserIds = activity.kickedUserIds || [];
             if (kickedUserIds.includes(userIdToJoin)) {
                 throw new https_1.HttpsError('permission-denied', 'User was removed from this activity and cannot rejoin.');
             }
             if (participantIds.includes(userIdToJoin)) {
-                // If already joined, we should resolve/delete the request to maintain idempotency
-                transaction.delete(notifRef);
+                // If already joined, resolve/delete the request and decrement unread counter if unread
+                deleteNotificationAndDecrementUnread();
                 return { success: true, alreadyParticipant: true };
             }
             if (action === 'accept') {
@@ -578,13 +592,13 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                     joinedAt: firestore_2.FieldValue.serverTimestamp(),
                     hasReviewed: false
                 });
-                // Delete original join request
-                transaction.delete(notifRef);
+                // Delete original join request & decrement host unread counter
+                deleteNotificationAndDecrementUnread();
             }
             else {
                 // action === 'decline'
-                // Delete original join request
-                transaction.delete(notifRef);
+                // Delete original join request & decrement host unread counter
+                deleteNotificationAndDecrementUnread();
             }
             return { success: true, activityTitle: activity.placeName || activity.title || 'Aktivität' };
         });

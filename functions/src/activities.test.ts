@@ -257,6 +257,7 @@ async function testRespondToJoinRequest() {
 
   // 8. Successful Accept
   seedFixtures();
+  mockDbState["users/host1/notification_meta"] = { state: { unreadCount: 2 } };
   const acceptResult = await respondToJoinRequest({ notificationId: "notif1", activityId: "act1", userIdToJoin: "joiner1", action: "accept" }, { uid: "host1" });
   assert.deepStrictEqual(acceptResult, { success: true });
   // Verify updates in database
@@ -264,6 +265,8 @@ async function testRespondToJoinRequest() {
   assert.strictEqual(mockDbState["chats"]["act1"].participantIds.includes("joiner1"), true);
   // Verify notification resolved/deleted
   assert.strictEqual(mockDbState["notifications"]["notif1"], undefined);
+  // Verify host unreadCount decremented from 2 to 1
+  assert.strictEqual(mockDbState["users/host1/notification_meta"]["state"].unreadCount, 1);
   // Verify exactly one response notification created
   const notifs = Object.values(mockDbState["notifications"]);
   assert.strictEqual(notifs.length, 1);
@@ -273,12 +276,15 @@ async function testRespondToJoinRequest() {
 
   // 9. Successful Decline
   seedFixtures();
+  mockDbState["users/host1/notification_meta"] = { state: { unreadCount: 1 } };
   const declineResult = await respondToJoinRequest({ notificationId: "notif1", activityId: "act1", userIdToJoin: "joiner1", action: "decline", customMessage: "Sorry" }, { uid: "host1" });
   assert.deepStrictEqual(declineResult, { success: true });
   // Verify target not added to participantIds
   assert.ok(!mockDbState["activities"]["act1"].participantIds.includes("joiner1"));
   // Verify notification resolved/deleted
   assert.strictEqual(mockDbState["notifications"]["notif1"], undefined);
+  // Verify host unreadCount decremented from 1 to 0 (never negative)
+  assert.strictEqual(mockDbState["users/host1/notification_meta"]["state"].unreadCount, 0);
   // Verify exactly one response notification created
   const declineNotifs = Object.values(mockDbState["notifications"]);
   assert.strictEqual(declineNotifs.length, 1);
