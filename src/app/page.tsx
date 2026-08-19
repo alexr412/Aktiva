@@ -37,6 +37,12 @@ import {
   DropdownMenuContent,
 } from '@/components/ui/dropdown-menu';
 import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, X, Compass, Clock, Trophy, TreePine, VolumeX, Heart, Users2 } from 'lucide-react';
+import {
+  getCachedTilePlaces,
+  saveTilePlaces,
+  searchCachedPlaces,
+  pruneExpiredCache,
+} from '@/lib/cache/places-cache';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlaceCardSkeleton, FeaturedPlaceCardSkeleton, ActivityCardSkeleton, FeaturedActivityCardSkeleton } from '@/components/activa/card-skeletons';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
@@ -181,8 +187,16 @@ export default function Home() {
   }, [scrollTriggerId, isOpenRoomsMode]);
   const { gateState, isLocating, position, cityName: resolvedCityName, isResolvingCity, requestLocation } = useLocation();
   const userLocation = useMemo(() => {
-    return position ? { lat: position.latitude, lng: position.longitude } : null;
-  }, [position]);
+    if (!position) return null;
+    const roundedLat = Math.round(position.latitude * 100) / 100;
+    const roundedLng = Math.round(position.longitude * 100) / 100;
+    return {
+      lat: roundedLat,
+      lng: roundedLng,
+      rawLat: position.latitude,
+      rawLng: position.longitude,
+    };
+  }, [position?.latitude, position?.longitude]);
   const defaultLocationLabel = language === 'de' ? "Aktueller Standort" : "Current location";
   const cityName = resolvedCityName || defaultLocationLabel;
   const isLocationLoading = gateState === 'requesting' || gateState === 'checking' || isLocating;
@@ -429,19 +443,35 @@ export default function Home() {
     try {
       let result: any = null;
       if (type === 'geoapify') {
-        const { url } = key;
+        const { url, lat, lng, radiusMeters } = key;
+        if (lat && lng && radiusMeters) {
+          const cachedPlaces = await getCachedTilePlaces(lat, lng, radiusMeters);
+          if (cachedPlaces && cachedPlaces.length > 0) {
+            return { features: [], _fromCache: true };
+          }
+        }
         result = await fetcher(url);
       } else if (type === 'multi_fetch_discovery') {
-        // Parallel multi-fetch: 3 requests with broad categories, limit=30 each to conserve credits (progressive loading).
         const { lat, lng, radiusMeters: r } = key;
+
+        // 1. Versuche zuerst, frische Daten aus dem lokalen IndexedDB-Cache zu laden
+        const cachedPlaces = await getCachedTilePlaces(lat, lng, r);
+        if (cachedPlaces && cachedPlaces.length > 0) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[GEOAPIFY CACHE HIT PAGE.TSX] Loaded ${cachedPlaces.length} places from IndexedDB`);
+          }
+          const features = cachedPlaces.map((p: any) => ({
+            properties: p,
+            geometry: { coordinates: [p.lon, p.lat] }
+          }));
+          return { features, _fromCache: true };
+        }
+
         const base = `https://api.geoapify.com/v2/places?filter=circle:${lng},${lat},${r}&bias=proximity:${lng},${lat}&limit=30&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
 
         const categoryBuckets = [
-          // Bucket 1: Adventure & Specific Entertainment
           "entertainment.zoo,entertainment.cinema,entertainment.water_park,sport.swimming_pool,entertainment.miniature_golf,entertainment.bowling_alley,entertainment.aquarium,entertainment.escape_game,entertainment.activity_park,entertainment.activity_park.trampoline,entertainment.amusement_arcade",
-          // Bucket 2: General Leisure, Sport & Tourism
           "entertainment,leisure,adult.nightclub,sport,tourism",
-          // Bucket 3: Catering & Heritage
           "catering,heritage",
         ];
 
@@ -452,7 +482,6 @@ export default function Home() {
           })
         );
 
-        // Deduplicate by place_id across all buckets
         const seenIds = new Set<string>();
         const merged: any[] = [];
         for (const res of results) {
@@ -466,14 +495,36 @@ export default function Home() {
           }
         }
 
+        // Gefundene Orte im lokalen Cache speichern
+        if (merged.length > 0) {
+          const placesToCache: Place[] = merged.map((f: any, idx: number) => {
+            const props = f.properties || f;
+            const fLat = f.geometry?.coordinates?.[1] ?? props.lat;
+            const fLon = f.geometry?.coordinates?.[0] ?? props.lon ?? props.lng;
+            const id = props.place_id || props.id || `place_${idx}_${fLat}_${fLon}`;
+            const name = props.name || props.formatted || 'Unbenannter Ort';
+            return {
+              id,
+              name,
+              address: props.address_line2 || props.formatted || props.street || '',
+              categories: props.categories || [],
+              lat: fLat,
+              lon: fLon,
+              distance: props.distance ? props.distance / 1000 : undefined,
+              rating: props.rating || 4.5,
+              relevanceScore: props.relevanceScore || 80,
+            } as Place;
+          });
+
+          void saveTilePlaces(lat, lng, r, placesToCache);
+        }
+
         result = { features: merged };
       } else if (type === 'geocoding') {
         const { url } = key;
         const res = await fetcher(url);
         const results = res.results || [];
 
-        // Enrichment: Geocoding V1 lacks detailed categories. We fetch them for the top 8 results
-        // instead of 20, using a cache to avoid duplicate place details requests.
         const detailedFeatures = await Promise.all(results.slice(0, 8).map(async (item: any) => {
           let categories = item.categories || [];
           if (item.place_id) {
@@ -493,7 +544,6 @@ export default function Home() {
               }
             }
           }
-          // Normalize to GeoJSON-like structure for compatibility with places memo
           return {
             properties: {
               ...item,
@@ -504,12 +554,11 @@ export default function Home() {
 
         result = { features: detailedFeatures };
       } else if (type === 'activities') {
-        const queryLimit = 300; // Fetch a large batch to avoid needing a composite index for pagination
+        const queryLimit = 300;
         const constraints: any[] = [
           where('categories', 'array-contains', 'user_event'),
           limit(queryLimit)
         ];
-        // We cannot use startAfter without orderBy, so we just fetch the first 300 and sort locally
         const q = query(collection(db!, 'activities'), ...constraints);
         const snap = await getDocs(q);
         result = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -556,10 +605,12 @@ export default function Home() {
 
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (isFavoritesCategory) return null;
-    if (previousPageData && (
-      (previousPageData.features && previousPageData.features.length === 0) ||
-      (Array.isArray(previousPageData) && previousPageData.length === 0)
-    )) return null;
+    if (previousPageData) {
+      const firstPage = Array.isArray(previousPageData) ? previousPageData[0] : previousPageData;
+      if (firstPage?._fromCache) return null;
+      if ((previousPageData.features && previousPageData.features.length === 0) ||
+          (Array.isArray(previousPageData) && previousPageData.length === 0)) return null;
+    }
 
     if (isCommunityCategory) {
       return null;
@@ -578,23 +629,17 @@ export default function Home() {
 
     const radiusMeters = maxDistance ? maxDistance * 1000 : 100000;
 
-    // CRITICAL: Pause fetching while the LLM is determining the intent/categories.
-    // This prevents "Endless fetches of default categories" while the search is starting.
     if (debouncedSearchQuery && activeCategory.length === 0 && isSearching) {
       return null;
     }
 
-    // PATH B: Specific Proper Names or Fallback Name Search
     if (shouldFilterByName && debouncedSearchQuery) {
       if (pageIndex > 0) return null;
-      // Smart Radius: If we are in fallback mode (categories were found but returned 0), 
-      // we expand the search radius to 5x to find something relevant further away.
       const fallbackRadius = (activeCategory.length > 0) ? Math.min(radiusMeters * 5, 100000) : radiusMeters;
       const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(debouncedSearchQuery)}&filter=circle:${userLocation.lng},${userLocation.lat},${fallbackRadius}&bias=proximity:${userLocation.lng},${userLocation.lat}&format=json&apiKey=${GEOAPIFY_API_KEY}`;
       return { type: 'geocoding', url, pageIndex };
     }
 
-    // Default categories are ONLY for discovery (no category AND no search text).
     const rawCategories: string[] = activeCategory.length > 0
       ? activeCategory
       : (debouncedSearchQuery ? [] : [
@@ -610,26 +655,18 @@ export default function Home() {
 
     const categoriesToFetch = rawCategories.map(tag => tag.trim()).filter(Boolean);
 
-    // If we have a search query but NO categories to fetch (and we are NOT in Name-Search mode above),
-    // we return null to avoid 400 Bad Request.
     if (debouncedSearchQuery && categoriesToFetch.length === 0 && !isSearching) {
       return null;
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // MULTI-FETCH PARALLEL DISCOVERY: Broad categories, max limits
-    // ═══════════════════════════════════════════════════════════════
-
-    // When a specific tab/category filter is active, use single-stream (reduced limits)
     if (activeCategory.length > 0) {
       const queryLimit = pageIndex === 0 ? 50 : 25;
       const offset = pageIndex === 0 ? 0 : 50 + (pageIndex - 1) * 25;
       const catParam = buildGeoapifyCategoriesParam(categoriesToFetch);
       const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
-      return { type: 'geoapify', url, pageIndex };
+      return { type: 'geoapify', url, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters };
     }
 
-    // Discovery mode: Parallel multi-fetch with broad top-level categories
     if (pageIndex === 0) {
       return {
         type: 'multi_fetch_discovery',
@@ -640,12 +677,11 @@ export default function Home() {
       };
     }
 
-    // Subsequent pages: standard paginated stream starting at offset 90 (since first page fetches less)
     const allCategories = "entertainment,leisure,sport,tourism,catering,adult.nightclub";
     const offset = 90 + (pageIndex - 1) * 50;
     const catParam = buildGeoapifyCategoriesParam(allCategories);
     const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
-    return { type: 'geoapify', url, pageIndex };
+    return { type: 'geoapify', url, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters };
   }
 
   const { data, size, setSize, isValidating, error, mutate } = useSWRInfinite(getKey, multiFetcher, {
