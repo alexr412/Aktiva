@@ -707,7 +707,7 @@ export default function Home() {
       const offset = pageIndex === 0 ? 0 : 50 + (pageIndex - 1) * 25;
       const catParam = buildGeoapifyCategoriesParam(categoriesToFetch);
       const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
-      return { type: 'geoapify', url, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters };
+      return { type: 'geoapify', url, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters, categories: categoriesToFetch };
     }
 
     if (pageIndex === 0) {
@@ -799,6 +799,7 @@ export default function Home() {
         : itemsToFilter;
 
       const safeItems = applyFilters(distanceCappedItems, activeCategory, userProfile?.blacklist?.hard || [], shouldFilterByName);
+      console.log('🔍 [AKTIVA LOG] safeItems after applyFilters count:', safeItems.length, 'activeCategory:', activeCategory);
 
       return safeItems.map((item: any) => {
         const props = item.properties;
