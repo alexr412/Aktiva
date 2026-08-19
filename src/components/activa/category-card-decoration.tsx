@@ -1,6 +1,5 @@
 'use client';
 
-import { useId } from 'react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 
@@ -21,7 +20,6 @@ export function CategoryCardDecoration({
   className,
   children
 }: CategoryCardDecorationProps) {
-  const patternId = useId();
   return (
     <div 
       className={cn(
@@ -35,19 +33,16 @@ export function CategoryCardDecoration({
       {/* Subtle overlay gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-black/25 pointer-events-none" />
 
-      {/* Lightweight Grid Pattern (SVG) */}
+      {/* Organic Wavy Curves Overlay */}
       <svg 
-        className="absolute inset-0 w-full h-full opacity-[0.06] text-white pointer-events-none" 
+        className="absolute inset-0 w-full h-full opacity-[0.18] text-white pointer-events-none" 
+        viewBox="0 0 100 100" 
+        preserveAspectRatio="none"
         aria-hidden="true" 
         focusable="false"
-        xmlns="http://www.w3.org/2000/svg"
       >
-        <defs>
-          <pattern id={patternId} width="12" height="12" patternUnits="userSpaceOnUse">
-            <path d="M 12 0 L 0 0 0 12" fill="none" stroke="currentColor" strokeWidth="1" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill={`url(#${patternId})`} />
+        <path d="M 0 35 Q 25 10, 50 45 T 100 25 L 100 100 L 0 100 Z" fill="currentColor" opacity="0.4" />
+        <path d="M 0 60 Q 35 85, 65 50 T 100 75 L 100 100 L 0 100 Z" fill="currentColor" opacity="0.6" />
       </svg>
 
       {/* Large faint rotated category icon watermark */}
