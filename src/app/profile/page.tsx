@@ -670,16 +670,18 @@ export default function ProfilePage() {
     const visibleRequestProfiles = requestProfiles.filter(p => !userProfile?.hiddenEntityIds?.includes(p.uid));
     const visibleActivities = activities.filter(act => !userProfile?.hiddenEntityIds?.includes(act.id!));
 
-    const now = new Date();
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     const pastActivities = visibleActivities.filter(a => {
         if (a.status === 'completed') return true;
         const d = toDateObject(a.activityDate);
-        return d !== null && d < now;
+        return d !== null && d < startOfToday;
     });
     const currentActivities = visibleActivities.filter(a => {
         if (a.status === 'completed' || a.status === 'cancelled') return false;
         const d = toDateObject(a.activityDate);
-        return d === null || d >= now;
+        return d === null || d >= startOfToday;
     });
 
     return (

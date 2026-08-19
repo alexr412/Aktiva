@@ -4,16 +4,19 @@ import type { Activity } from '../../../lib/types';
 
 // Helper simulating current/past activity classification from profile/page.tsx
 function classifyActivities(activities: Partial<Activity>[], referenceDate: Date = new Date()) {
+  const startOfToday = new Date(referenceDate);
+  startOfToday.setHours(0, 0, 0, 0);
+
   const pastActivities = activities.filter(a => {
     if (a.status === 'completed') return true;
     const d = toDateObject(a.activityDate);
-    return d !== null && d < referenceDate;
+    return d !== null && d < startOfToday;
   });
 
   const currentActivities = activities.filter(a => {
     if (a.status === 'completed' || a.status === 'cancelled') return false;
     const d = toDateObject(a.activityDate);
-    return d === null || d >= referenceDate;
+    return d === null || d >= startOfToday;
   });
 
   return { pastActivities, currentActivities };
@@ -23,25 +26,27 @@ function classifyActivities(activities: Partial<Activity>[], referenceDate: Date
 function runProfileActivityTests() {
   console.log('Running Profile Activity Tests...');
 
-  const now = new Date('2026-08-18T12:00:00Z');
-  const pastTime = new Date('2026-08-10T12:00:00Z');
-  const futureTime = new Date('2026-08-25T12:00:00Z');
+  const now = new Date('2026-08-19T11:30:00');
+  const todayMorning = new Date('2026-08-19T08:00:00');
+  const todayEvening = new Date('2026-08-19T20:00:00');
+  const tomorrowTime = new Date('2026-08-20T10:00:00');
+  const yesterdayTime = new Date('2026-08-18T20:00:00');
 
   // 1. Test toDateObject with various formats
   // Firestore Timestamp with .toDate()
-  const mockTimestamp = { toDate: () => pastTime };
-  assert.strictEqual(toDateObject(mockTimestamp)?.toISOString(), pastTime.toISOString());
+  const mockTimestamp = { toDate: () => yesterdayTime };
+  assert.strictEqual(toDateObject(mockTimestamp)?.toISOString(), yesterdayTime.toISOString());
 
   // JS Date
-  assert.strictEqual(toDateObject(pastTime)?.toISOString(), pastTime.toISOString());
+  assert.strictEqual(toDateObject(yesterdayTime)?.toISOString(), yesterdayTime.toISOString());
 
   // Object with seconds
-  const secondsObj = { seconds: Math.floor(pastTime.getTime() / 1000) };
-  assert.strictEqual(toDateObject(secondsObj)?.toISOString(), pastTime.toISOString());
+  const secondsObj = { seconds: Math.floor(yesterdayTime.getTime() / 1000) };
+  assert.strictEqual(toDateObject(secondsObj)?.toISOString(), yesterdayTime.toISOString());
 
   // ISO String
-  const isoStr = pastTime.toISOString();
-  assert.strictEqual(toDateObject(isoStr)?.toISOString(), pastTime.toISOString());
+  const isoStr = yesterdayTime.toISOString();
+  assert.strictEqual(toDateObject(isoStr)?.toISOString(), yesterdayTime.toISOString());
 
   // Null / undefined / invalid
   assert.strictEqual(toDateObject(null), null);
@@ -51,16 +56,13 @@ function runProfileActivityTests() {
 
   // 2. Test Activity Active vs Past Classification
   const testActivities: Partial<Activity>[] = [
-    { id: 'act_past_ts', activityDate: { toDate: () => pastTime } as any },
-    { id: 'act_past_jsdate', activityDate: pastTime as any },
-    { id: 'act_past_seconds', activityDate: { seconds: Math.floor(pastTime.getTime() / 1000) } as any },
-    { id: 'act_past_iso', activityDate: pastTime.toISOString() as any },
-    { id: 'act_future_ts', activityDate: { toDate: () => futureTime } as any },
-    { id: 'act_future_jsdate', activityDate: futureTime as any },
-    { id: 'act_future_seconds', activityDate: { seconds: Math.floor(futureTime.getTime() / 1000) } as any },
-    { id: 'act_completed', status: 'completed', activityDate: futureTime as any },
+    { id: 'act_today_morning', activityDate: todayMorning as any },
+    { id: 'act_today_evening', activityDate: todayEvening as any },
+    { id: 'act_tomorrow', activityDate: tomorrowTime as any },
+    { id: 'act_yesterday', activityDate: yesterdayTime as any },
+    { id: 'act_completed_today', status: 'completed', activityDate: todayMorning as any },
     { id: 'act_flexible', activityDate: null as any },
-    { id: 'act_cancelled', status: 'cancelled', activityDate: futureTime as any },
+    { id: 'act_cancelled', status: 'cancelled', activityDate: tomorrowTime as any },
   ];
 
   const { pastActivities, currentActivities } = classifyActivities(testActivities, now);
@@ -68,19 +70,30 @@ function runProfileActivityTests() {
   const pastIds = pastActivities.map(a => a.id);
   const currentIds = currentActivities.map(a => a.id);
 
-  assert.ok(pastIds.includes('act_past_ts'), 'Past timestamp must be in pastActivities');
-  assert.ok(pastIds.includes('act_past_jsdate'), 'Past JS Date must be in pastActivities');
-  assert.ok(pastIds.includes('act_past_seconds'), 'Past seconds object must be in pastActivities');
-  assert.ok(pastIds.includes('act_past_iso'), 'Past ISO string must be in pastActivities');
-  assert.ok(pastIds.includes('act_completed'), 'Completed activity must be in pastActivities');
+  // Assertions for "Heute morgens" and "Heute abends" -> Must be in currentActivities, NOT pastActivities
+  assert.ok(currentIds.includes('act_today_morning'), 'Today morning activity must be in currentActivities');
+  assert.ok(currentIds.includes('act_today_evening'), 'Today evening activity must be in currentActivities');
+  assert.strictEqual(pastIds.includes('act_today_morning'), false, 'Today morning activity must NOT be in pastActivities');
+  assert.strictEqual(pastIds.includes('act_today_evening'), false, 'Today evening activity must NOT be in pastActivities');
 
-  assert.ok(currentIds.includes('act_future_ts'), 'Future timestamp must be in currentActivities');
-  assert.ok(currentIds.includes('act_future_jsdate'), 'Future JS Date must be in currentActivities');
-  assert.ok(currentIds.includes('act_future_seconds'), 'Future seconds object must be in currentActivities');
+  // Assertions for "Morgen" -> Must be in currentActivities
+  assert.ok(currentIds.includes('act_tomorrow'), 'Tomorrow activity must be in currentActivities');
+  assert.strictEqual(pastIds.includes('act_tomorrow'), false, 'Tomorrow activity must NOT be in pastActivities');
+
+  // Assertions for "Gestern" -> Must be in pastActivities
+  assert.ok(pastIds.includes('act_yesterday'), 'Yesterday activity must be in pastActivities');
+  assert.strictEqual(currentIds.includes('act_yesterday'), false, 'Yesterday activity must NOT be in currentActivities');
+
+  // Assertions for "Completed today" -> Must be in pastActivities
+  assert.ok(pastIds.includes('act_completed_today'), 'Completed activity today must be in pastActivities');
+  assert.strictEqual(currentIds.includes('act_completed_today'), false, 'Completed activity must NOT be in currentActivities');
+
+  // Assertions for Flexible / Null Date -> Must be in currentActivities
   assert.ok(currentIds.includes('act_flexible'), 'Flexible activity (null date) must be in currentActivities');
+  assert.strictEqual(pastIds.includes('act_flexible'), false, 'Flexible activity must NOT be in pastActivities');
 
+  // Assertions for Cancelled -> Must NOT be in currentActivities
   assert.strictEqual(currentIds.includes('act_cancelled'), false, 'Cancelled activity must not be in currentActivities');
-  assert.strictEqual(currentIds.includes('act_past_jsdate'), false, 'Past JS Date must not be in currentActivities');
 
   // 3. Test ProfileActivityCard Navigation Target URL
   const getActivityTargetUrl = (activityId: string) => `/activities/${activityId}`;
