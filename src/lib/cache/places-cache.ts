@@ -155,8 +155,6 @@ export async function saveTilePlaces(
     const placeStore = tx.objectStore('places');
     const tileStore = tx.objectStore('tiles');
 
-    const putPromises: Promise<any>[] = [];
-
     for (const p of places) {
       if (!p || !p.id) continue;
       placeIds.push(p.id);
@@ -169,7 +167,7 @@ export async function saveTilePlaces(
         lon: p.lon,
         categories: p.categories || [],
       };
-      putPromises.push(placeStore.put(entry));
+      void placeStore.put(entry);
     }
 
     const tileEntry: CachedTileEntry = {
@@ -180,9 +178,8 @@ export async function saveTilePlaces(
       lon,
       radiusMeters,
     };
-    putPromises.push(tileStore.put(tileEntry));
+    void tileStore.put(tileEntry);
 
-    await Promise.all(putPromises);
     await tx.done;
 
     if (process.env.NODE_ENV === 'development') {
