@@ -148,16 +148,16 @@ export function PlaceCard({
             <div className={cn(compact ? "p-2 sm:p-3 pb-2.5 sm:pb-4" : "p-3 pb-4", "flex flex-col flex-1 min-w-0")}>
                 <div className={cn(compact ? "mb-1 sm:mb-2" : "mb-2", "min-w-0")}>
                     <h3 className={cn(
-                        "font-black tracking-tight flex items-center gap-1.5 flex-wrap min-w-0",
+                        "font-black tracking-tight flex items-center gap-1 flex-wrap min-w-0",
                         compact 
-                            ? "text-xs sm:text-lg line-clamp-1 sm:line-clamp-2 min-h-0 sm:min-h-[2.5rem] leading-tight sm:leading-snug" 
+                            ? "text-xs sm:text-lg line-clamp-2 min-h-0 sm:min-h-[2.5rem] leading-snug" 
                             : "text-base sm:text-lg line-clamp-2 min-h-[2.5rem] leading-snug"
                     )}>
                         <button
                             onClick={(e) => { e.stopPropagation(); onClick(); }}
                             className={cn(
-                                "font-black text-left text-[#0f172a] dark:text-neutral-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded truncate max-w-full",
-                                compact ? "text-xs sm:text-base" : "text-base"
+                                "font-black text-left text-[#0f172a] dark:text-neutral-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded max-w-full min-w-0",
+                                compact ? "text-xs sm:text-base line-clamp-2" : "text-base truncate"
                             )}
                         >
                             {place.name || (role === 'admin' ? `POI POI Ref: ${place.id.slice(-6)}` : (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'))}
@@ -168,7 +168,7 @@ export function PlaceCard({
                     </h3>
                     <div className={cn(
                         "flex items-center text-neutral-400 dark:text-neutral-500 font-bold min-w-0",
-                        compact ? "gap-1 text-[8.5px] sm:text-[9px] mt-0.5 sm:mt-0" : "gap-1.5 text-[9px]"
+                        compact ? "gap-1 text-[9px] sm:text-[9px] mt-0.5 sm:mt-0" : "gap-1.5 text-[9px]"
                     )}>
                         {place.openingHours ? (
                             <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
@@ -178,14 +178,14 @@ export function PlaceCard({
                     </div>
                 </div>
 
-                <div className={cn(compact ? "flex flex-wrap gap-0.5 sm:gap-1 mb-0.5 sm:mb-1 max-w-full" : "flex flex-wrap gap-1 mb-1 max-w-full")}>
-                    {processedTags.filter(item => item.isMain).map((item, index) => (
+                <div className={cn(compact ? "flex flex-wrap gap-0.5 sm:gap-1 mb-0.5 sm:mb-1 max-w-full overflow-hidden" : "flex flex-wrap gap-1 mb-1 max-w-full")}>
+                    {(compact ? processedTags.slice(0, 1) : processedTags).filter(item => item.isMain).map((item, index) => (
                         <Badge
                             key={index}
                             variant="secondary"
                             className={cn(
                                 "border-none bg-primary/5 text-primary max-w-full truncate font-black uppercase",
-                                compact ? "rounded-[8px] sm:rounded-[10px] text-[6.5px] sm:text-[7px] tracking-wider sm:tracking-widest px-1.5 sm:px-2 py-0.5" : "rounded-[10px] text-[7px] tracking-widest px-2 py-0.5"
+                                compact ? "rounded-[6px] sm:rounded-[10px] text-[7.5px] sm:text-[7px] tracking-wider sm:tracking-widest px-1.5 sm:px-2 py-0.5" : "rounded-[10px] text-[7px] tracking-widest px-2 py-0.5"
                             )}
                         >
                             {translateTag(item.tag, language)}
@@ -210,9 +210,9 @@ export function PlaceCard({
                             onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
                             aria-pressed={userVote === 'up'}
                             className={cn(
-                                "flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
+                                "flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 font-black leading-none gap-0.5 sm:gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
                                 compact ? "h-6 sm:h-7 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px]" : "h-7 rounded-xl text-[11px]",
-                                (role === 'admin' || role === 'supporter') ? "px-1.5 sm:px-2" : compact ? "w-6 sm:w-7" : "w-7",
+                                (role === 'admin' || role === 'supporter') ? "px-1 sm:px-2" : compact ? "w-6 sm:w-7" : "w-7",
                                 userVote === 'up'
                                     ? "bg-emerald-600 text-white border border-emerald-500 shadow-md shadow-emerald-500/25 scale-[1.04] active:scale-95"
                                     : "bg-transparent text-emerald-600/50 dark:text-emerald-400/50 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent active:scale-95"
@@ -220,7 +220,7 @@ export function PlaceCard({
                         >
                             <ThumbsUp className={cn("shrink-0", compact ? "h-3 w-3 sm:h-3.5 sm:w-3.5" : "h-3.5 w-3.5")} />
                             {(role === 'admin' || role === 'supporter') && (
-                                <span className={cn("text-[10px] font-black", userVote === 'up' ? "text-white opacity-100" : "opacity-70")}>
+                                <span className={cn("text-[9px] sm:text-[10px] font-black", userVote === 'up' ? "text-white opacity-100" : "opacity-70")}>
                                     {weightedUpvotes > 0 ? `+${weightedUpvotes}` : '0'}
                                 </span>
                             )}
@@ -230,9 +230,9 @@ export function PlaceCard({
                             onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
                             aria-pressed={userVote === 'down'}
                             className={cn(
-                                "flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
+                                "flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 font-black leading-none gap-0.5 sm:gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
                                 compact ? "h-6 sm:h-7 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px]" : "h-7 rounded-xl text-[11px]",
-                                (role === 'admin' || role === 'supporter') ? "px-1.5 sm:px-2" : compact ? "w-6 sm:w-7" : "w-7",
+                                (role === 'admin' || role === 'supporter') ? "px-1 sm:px-2" : compact ? "w-6 sm:w-7" : "w-7",
                                 userVote === 'down'
                                     ? "bg-rose-600 text-white border border-rose-500 shadow-md shadow-rose-500/25 scale-[1.04] active:scale-95"
                                     : "bg-transparent text-rose-600/50 dark:text-rose-400/50 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 border border-transparent active:scale-95"
@@ -240,14 +240,14 @@ export function PlaceCard({
                         >
                             <ThumbsDown className={cn("shrink-0", compact ? "h-3 w-3 sm:h-3.5 sm:w-3.5" : "h-3.5 w-3.5")} />
                             {(role === 'admin' || role === 'supporter') && (
-                                <span className={cn("text-[10px] font-black", userVote === 'down' ? "text-white opacity-100" : "opacity-70")}>
+                                <span className={cn("text-[9px] sm:text-[10px] font-black", userVote === 'down' ? "text-white opacity-100" : "opacity-70")}>
                                     {weightedDownvotes > 0 ? `-${weightedDownvotes}` : '0'}
                                 </span>
                             )}
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0 ml-auto">
+                    <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-auto">
                         <Button
                             variant="ghost"
                             size="icon"
