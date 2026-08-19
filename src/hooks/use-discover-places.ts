@@ -78,11 +78,24 @@ const multiFetcher = async (keyObj: any) => {
     }
   }
 
-  // Für Paginierungs-Anfragen: Auch prüfen, ob Kachel im Cache liegt
+  // Für Kategorie- oder Paginierungs-Anfragen: Prüfen, ob passende Orte im Cache liegen
   if (keyObj.lat && keyObj.lng && keyObj.radiusMeters) {
     const cachedPlaces = await getCachedTilePlaces(keyObj.lat, keyObj.lng, keyObj.radiusMeters);
     if (cachedPlaces && cachedPlaces.length > 0) {
-      return { features: [], _fromCache: true };
+      const activeCats = Array.isArray(keyObj.categories) ? keyObj.categories : (typeof keyObj.categories === 'string' ? keyObj.categories.split(',') : []);
+      const matchingPlaces = cachedPlaces.filter(p => {
+        if (activeCats.length === 0) return true;
+        const pCats = p.categories || [];
+        return pCats.some(cat =>
+          activeCats.some((activeCat: string) =>
+            cat === activeCat || cat.startsWith(activeCat + '.') || activeCat.startsWith(cat + '.')
+          )
+        );
+      });
+
+      if (matchingPlaces.length >= 3) {
+        return [{ features: matchingPlaces, _fromCache: true }];
+      }
     }
   }
 

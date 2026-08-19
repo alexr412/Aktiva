@@ -447,10 +447,47 @@ export default function Home() {
         if (lat && lng && radiusMeters) {
           const cachedPlaces = await getCachedTilePlaces(lat, lng, radiusMeters);
           if (cachedPlaces && cachedPlaces.length > 0) {
-            return { features: [], _fromCache: true };
+            const matchingPlaces = cachedPlaces.filter(p => {
+              if (activeCategory.length === 0) return true;
+              const pCats = p.categories || [];
+              return pCats.some(cat =>
+                activeCategory.some(activeCat =>
+                  cat === activeCat || cat.startsWith(activeCat + '.') || activeCat.startsWith(cat + '.')
+                )
+              );
+            });
+
+            if (matchingPlaces.length >= 3) {
+              const features = matchingPlaces.map((p: any) => ({
+                properties: p,
+                geometry: { coordinates: [p.lon, p.lat] }
+              }));
+              return { features, _fromCache: true };
+            }
           }
         }
         result = await fetcher(url);
+        if (result?.features && Array.isArray(result.features) && lat && lng && radiusMeters) {
+          const placesToCache: Place[] = result.features.map((f: any, idx: number) => {
+            const props = f.properties || f;
+            const fLat = f.geometry?.coordinates?.[1] ?? props.lat;
+            const fLon = f.geometry?.coordinates?.[0] ?? props.lon ?? props.lng;
+            const id = props.place_id || props.id || `place_${idx}_${fLat}_${fLon}`;
+            const name = props.name || props.formatted || 'Unbenannter Ort';
+            return {
+              id,
+              name,
+              address: props.address_line2 || props.formatted || props.street || '',
+              categories: props.categories || [],
+              lat: fLat,
+              lon: fLon,
+              distance: props.distance ? props.distance / 1000 : undefined,
+              rating: props.rating || 4.5,
+              relevanceScore: props.relevanceScore || 80,
+            } as Place;
+          });
+          void saveTilePlaces(lat, lng, radiusMeters, placesToCache);
+        }
       } else if (type === 'multi_fetch_discovery') {
         const { lat, lng, radiusMeters: r } = key;
 
