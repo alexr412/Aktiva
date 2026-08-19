@@ -39,7 +39,7 @@ interface PlacesDB extends DBSchema {
   };
 }
 
-const DB_NAME = 'aktiva_places_cache_v1';
+const DB_NAME = 'aktiva_places_cache_v2';
 const DB_VERSION = 1;
 export const DEFAULT_CACHE_TTL_MS = 5 * 24 * 60 * 60 * 1000; // 5 Tage Gültigkeit
 
@@ -173,9 +173,16 @@ export async function saveTilePlaces(
       void placeStore.put(entry);
     }
 
+    const existingTile = await tileStore.get(tileKey);
+    let finalPlaceIds = placeIds;
+    if (existingTile && Array.isArray(existingTile.placeIds) && existingTile.placeIds.length > 0) {
+      const mergedSet = new Set([...existingTile.placeIds, ...placeIds]);
+      finalPlaceIds = Array.from(mergedSet);
+    }
+
     const tileEntry: CachedTileEntry = {
       tileKey,
-      placeIds,
+      placeIds: finalPlaceIds,
       fetchedAt: now,
       lat: Number(lat),
       lon: Number(lon),
