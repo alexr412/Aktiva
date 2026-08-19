@@ -764,6 +764,11 @@ export default function Home() {
     let filteredList = list.filter((item: any) => {
       if (!item) return false;
       if (item.status === 'cancelled' || item.status === 'completed' || item.status === 'blacklisted') return false;
+      
+      // Community tab: Exclude activities tied to a Geoapify spot (place_activity)
+      const isGeoapifySpotActivity = item.creationSource === 'place_activity' || (item.placeId && item.placeId !== 'custom') || item.isUserEvent === false;
+      if (isGeoapifySpotActivity) return false;
+
       const hostId = item.hostId;
       if (hostId && userProfile?.blacklist) {
         const hardBlocked = userProfile.blacklist.hard || [];
