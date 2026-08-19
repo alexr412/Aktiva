@@ -162,7 +162,11 @@ export type PlaceVisualMeta = TagStyle;
  * Löst visuelle Prioritäten deterministisch nach einer definierten Kaskade auf.
  */
 export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): TagStyle => {
-  const rawTags = place?.categories || place?.category || place?.tags || [];
+  const placeCats = Array.isArray(place?.placeCategories) ? place.placeCategories : [];
+  const baseTags = place?.categories || place?.category || place?.tags || [];
+  const rawTags = placeCats.length > 0
+    ? [...placeCats, ...(Array.isArray(baseTags) ? baseTags : (typeof baseTags === 'string' ? [baseTags] : []))]
+    : baseTags;
   const tags = (Array.isArray(rawTags) ? rawTags.filter(Boolean) : (typeof rawTags === 'string' ? [rawTags] : [])).map((t: string) => t.trim().toLowerCase());
   let nameStr = '';
   if (place?.name) {

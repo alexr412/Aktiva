@@ -76,6 +76,9 @@ export function FeaturedActivityCard({ activity, user, onJoin, hasRequested }: F
     const excessCount = participantIds.length - visibleAvatars.length;
 
     let visualCategories: string[] = [];
+    if (activity.placeCategories && activity.placeCategories.length > 0) {
+      visualCategories.push(...activity.placeCategories);
+    }
     if (activity.category) {
       visualCategories.push(activity.category);
     }
@@ -91,6 +94,7 @@ export function FeaturedActivityCard({ activity, user, onJoin, hasRequested }: F
 
     const primaryStyle = getPrimaryIconData({ 
         categories: visualCategories.filter(c => c !== 'user_event'), 
+        placeCategories: activity.placeCategories,
         name: activity.placeName || (language === 'de' ? "Aktivität" : "Activity"),
         sourceType: activity.sourceType,
         isUserEvent: activity.isUserEvent,

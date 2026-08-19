@@ -72,6 +72,7 @@ export function ActivityInfoSheet({
   const primaryStyle = getPrimaryIconData(
     {
       categories: (activity.categories || []).filter(c => c !== 'user_event'),
+      placeCategories: activity.placeCategories,
       name: activity.placeName || (language === 'de' ? 'Aktivität' : 'Activity'),
       sourceType: activity.sourceType,
       isUserEvent: activity.isUserEvent,
