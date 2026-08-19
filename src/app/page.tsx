@@ -805,9 +805,9 @@ export default function Home() {
         const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
         const distance = item.distance || 0;
         return {
-          id: props.place_id,
+          id: props.place_id || props.id,
           name: props.name || props.address_line1 || (language === "de" ? "Unbekannter Ort" : "Unknown Place"),
-          address: props.address_line2 || (language === "de" ? "Keine Adresse verfügbar" : "No address available"),
+          address: props.address || props.address_line2 || (language === "de" ? "Keine Adresse verfügbar" : "No address available"),
           categories: cats,
           lat: props.lat,
           lon: props.lon,
