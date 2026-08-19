@@ -60,6 +60,9 @@ export interface RankingContext {
 }
 
 const tagRules = [
+  // Priorität 0: Passiver Kultur-Content (Museen/Ausstellungen) im Hauptfeed nach unten (40)
+  { pattern: /museum|exhibition/, score: 40 },
+
   // Tier 1: Absolute Highlights (80)
   { pattern: /^entertainment\.zoo(\..*)?$/, score: 80 },
   { pattern: /^entertainment\.theme_park(\..*)?$/, score: 80 },
