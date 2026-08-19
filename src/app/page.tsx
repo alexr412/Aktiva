@@ -443,16 +443,17 @@ export default function Home() {
     try {
       let result: any = null;
       if (type === 'geoapify') {
-        const { url, lat, lng, radiusMeters } = key;
+        const { url, lat, lng, radiusMeters, categories } = key;
         if (lat && lng && radiusMeters) {
           const cachedPlaces = await getCachedTilePlaces(lat, lng, radiusMeters);
           if (cachedPlaces && cachedPlaces.length > 0) {
+            const targetCategories: string[] = Array.isArray(categories) ? categories : (activeCategory || []);
             const matchingPlaces = cachedPlaces.filter(p => {
-              if (activeCategory.length === 0) return true;
+              if (targetCategories.length === 0) return true;
               const pCats = p.categories || [];
               return pCats.some(cat =>
-                activeCategory.some(activeCat =>
-                  cat === activeCat || cat.startsWith(activeCat + '.') || activeCat.startsWith(cat + '.')
+                targetCategories.some((targetCat: string) =>
+                  cat === targetCat || cat.startsWith(targetCat + '.') || targetCat.startsWith(cat + '.')
                 )
               );
             });
@@ -778,11 +779,15 @@ export default function Home() {
 
     return displayData.flatMap(page => {
       const features = page?.features || [];
-      const itemsToFilter = features.map((f: any) => ({
-        tags: Array.isArray(f.properties.categories) ? f.properties.categories : [f.properties.categories],
-        properties: f.properties,
-        distance: (f.properties.distance || 0) / 1000
-      }));
+      const itemsToFilter = features.map((f: any) => {
+        const rawDist = f.properties?.distance || 0;
+        const distKm = rawDist > 100 ? rawDist / 1000 : rawDist;
+        return {
+          tags: Array.isArray(f.properties?.categories) ? f.properties.categories : [f.properties?.categories],
+          properties: f.properties || {},
+          distance: distKm
+        };
+      });
 
       const distanceCappedItems = maxDistance
         ? itemsToFilter.filter((item: any) => item.distance <= maxDistance)
