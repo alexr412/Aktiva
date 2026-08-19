@@ -80,6 +80,9 @@ export function ActivityListItem({ activity, user, onJoin, hasRequested }: Activ
     const excessCount = participantIds.length - visibleAvatars.length;
 
     let visualCategories: string[] = [];
+    if (activity.placeCategories && activity.placeCategories.length > 0) {
+      visualCategories.push(...activity.placeCategories);
+    }
     if (activity.category) {
       visualCategories.push(activity.category);
     }

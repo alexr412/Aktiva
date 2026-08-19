@@ -681,9 +681,21 @@ export async function createActivity({
 
   const resolvedCreationSource = creationSourceParam || (isPlaceBasedActivity ? 'place_activity' : 'community');
 
+  let extractedPlaceCategories: string[] | undefined;
+  if (isPlaceBasedActivity && place) {
+    if (Array.isArray(place.categories) && place.categories.length > 0) {
+      extractedPlaceCategories = place.categories.filter((c: string) => c !== 'user_event');
+    } else if (place.category) {
+      extractedPlaceCategories = [place.category];
+    }
+  }
+
   if (isPlaceBasedActivity) {
     activityData.placeId = placeIdValue;
     activityData.categories = [finalCategory];
+    if (extractedPlaceCategories && extractedPlaceCategories.length > 0) {
+      activityData.placeCategories = extractedPlaceCategories;
+    }
     activityData.isUserEvent = false;
     activityData.sourceType = "activity";
     activityData.creationSource = resolvedCreationSource;
@@ -702,7 +714,7 @@ export async function createActivity({
     'isTimeFlexible', 'category', 'description', 'status', 'completionVotes', 'isBoosted', 'boostedAt',
     'isPaid', 'price', 'upvotes', 'downvotes', 'userVotes', 'globalScore', 'reportCount', 'avgRating',
     'reviewCount', 'stats', 'participantDetails', 'placeAddress', 'lat', 'lon', 'maxParticipants',
-    'requirements', 'joinMode', 'placeId', 'categories', 'isUserEvent', 'sourceType', 'creationSource',
+    'requirements', 'joinMode', 'placeId', 'categories', 'placeCategories', 'isUserEvent', 'sourceType', 'creationSource',
     'normalizedCategory', 'isDateFlexible', 'city', 'postalCode'
   ];
   const payloadKeys = Object.keys(activityData);
@@ -724,7 +736,7 @@ export async function createActivity({
   });
 
   const chatRef = doc(db, 'chats', activityRef.id);
-  batch.set(chatRef, {
+  const chatData: any = {
     activityId: activityRef.id,
     createdAt: serverTimestamp(),
     lastActivityAt: serverTimestamp(),
@@ -733,6 +745,8 @@ export async function createActivity({
     placeName: place?.name || customLocationName || "Aktivität",
     categories: activityData.categories,
     hostId: user.uid,
+    isUserEvent: !isPlaceBasedActivity,
+    creationSource: resolvedCreationSource,
     participantDetails: {
       [user.uid]: {
         displayName: displayNameToUse,
@@ -745,7 +759,14 @@ export async function createActivity({
     unreadCount: {
       [user.uid]: 0
     }
-  });
+  };
+  if (isPlaceBasedActivity) {
+    chatData.placeId = placeIdValue;
+    if (extractedPlaceCategories && extractedPlaceCategories.length > 0) {
+      chatData.placeCategories = extractedPlaceCategories;
+    }
+  }
+  batch.set(chatRef, chatData);
 
   if (isPlaceBasedActivity && placeRef) {
     const placeExists = placeSnap && placeSnap.exists();
@@ -791,7 +812,7 @@ export async function createActivity({
       'isTimeFlexible', 'category', 'description', 'status', 'completionVotes', 'isBoosted', 'boostedAt',
       'isPaid', 'price', 'upvotes', 'downvotes', 'userVotes', 'globalScore', 'reportCount', 'avgRating',
       'reviewCount', 'stats', 'participantDetails', 'placeAddress', 'lat', 'lon', 'maxParticipants',
-      'requirements', 'joinMode', 'placeId', 'categories', 'isUserEvent', 'sourceType', 'creationSource',
+      'requirements', 'joinMode', 'placeId', 'categories', 'placeCategories', 'isUserEvent', 'sourceType', 'creationSource',
       'normalizedCategory', 'isDateFlexible', 'city', 'postalCode'
     ];
 

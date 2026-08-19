@@ -21,7 +21,7 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { DesktopNav } from '@/components/desktop-nav';
 import { Input } from '@/components/ui/input';
 import { cn, formatLabel, formatFirstName } from '@/lib/utils';
-import { getPrimaryIconData } from '@/lib/tag-config';
+import { getPrimaryIconData, getRoomVisualCategory } from '@/lib/tag-config';
 
 const ChatListItemSkeleton = () => (
     <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-5 mb-3 shadow-sm flex items-center gap-5 border border-slate-100/50 dark:border-neutral-800">
@@ -145,12 +145,9 @@ export default function ChatPage() {
           const unreadCount = user ? (chat.unreadCount?.[user.uid] || 0) : 0;
           const hasUnread = unreadCount > 0;
           
-          // Mocking category data based on place icons if possible
-          const primaryStyle = chat.placeName ? getPrimaryIconData({ 
-              name: chat.placeName,
-              categories: (chat.categories || []).filter(c => c !== 'user_event'),
-              isUserEvent: chat.categories?.includes('user_event')
-          } as any, language) : null;
+          // Resolve category data based on place categories or activity categories
+          const visualCategoryData = getRoomVisualCategory({ activity: null, place: null, chat });
+          const primaryStyle = chat.placeName ? getPrimaryIconData(visualCategoryData, language) : null;
           
           // Generate a consistent color for DMs or places without style
           const fallbackColor = isDM ? ['#f43f5e', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'][chat.id.charCodeAt(0) % 5] : '#94a3b8';

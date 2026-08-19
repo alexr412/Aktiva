@@ -567,6 +567,8 @@ export function getRoomVisualCategory({
   const isPlaceBased =
     Boolean(activity?.placeId && activity?.placeId !== 'custom') ||
     activity?.creationSource === 'place_activity' ||
+    Boolean(chat?.placeId && chat?.placeId !== 'custom') ||
+    chat?.creationSource === 'place_activity' ||
     Boolean(place);
 
   let categories: string[] = [];
@@ -577,6 +579,10 @@ export function getRoomVisualCategory({
       categories = place.categories;
     } else if (place?.category) {
       categories = [place.category];
+    } else if (activity?.placeCategories && activity.placeCategories.length > 0) {
+      categories = activity.placeCategories;
+    } else if (chat?.placeCategories && chat.placeCategories.length > 0) {
+      categories = chat.placeCategories;
     } else if (activity?.category) {
       categories = [activity.category];
     } else if (activity?.categories && activity.categories.length > 0) {

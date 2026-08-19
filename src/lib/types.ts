@@ -266,6 +266,7 @@ export interface Activity {
   isUserEvent?: boolean;
   normalizedCategory?: string;
   creationSource?: 'community' | 'place_activity';
+  placeCategories?: string[];
 }
 
 export interface Message {
@@ -302,8 +303,10 @@ export interface Chat {
     id: string;
     type?: 'direct' | 'activity';
     activityId?: string;
+    placeId?: string;
     placeName?: string;
     categories?: string[];
+    placeCategories?: string[];
     hostId?: string;
     hostName?: string | null;
     hostUsername?: string | null;
