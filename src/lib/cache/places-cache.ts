@@ -157,15 +157,18 @@ export async function saveTilePlaces(
 
     for (const p of places) {
       if (!p || !p.id) continue;
-      placeIds.push(p.id);
+      const cleanId = String(p.id);
+      placeIds.push(cleanId);
+
+      const cleanPlace = JSON.parse(JSON.stringify(p));
 
       const entry: CachedPlaceEntry = {
-        id: p.id,
-        place: p,
+        id: cleanId,
+        place: cleanPlace,
         fetchedAt: now,
-        lat: p.lat,
-        lon: p.lon,
-        categories: p.categories || [],
+        lat: Number(p.lat),
+        lon: Number(p.lon),
+        categories: Array.isArray(p.categories) ? p.categories : [],
       };
       void placeStore.put(entry);
     }
@@ -174,21 +177,17 @@ export async function saveTilePlaces(
       tileKey,
       placeIds,
       fetchedAt: now,
-      lat,
-      lon,
-      radiusMeters,
+      lat: Number(lat),
+      lon: Number(lon),
+      radiusMeters: Number(radiusMeters),
     };
     void tileStore.put(tileEntry);
 
     await tx.done;
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[PLACES CACHE] Successfully saved ${placeIds.length} places for tile ${tileKey}`);
-    }
+    console.log(`[PLACES CACHE] Successfully saved ${placeIds.length} places for tile ${tileKey}`);
   } catch (err) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[PLACES CACHE] Failed to save tile places:', err);
-    }
+    console.error('[PLACES CACHE ERROR] Failed to save tile places:', err);
   }
 }
 

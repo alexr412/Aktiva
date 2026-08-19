@@ -133,8 +133,16 @@ export function useDiscoverPlaces() {
   const { favorites } = useFavorites();
 
   const userLocation = useMemo(() => {
-    return position ? { lat: position.latitude, lng: position.longitude } : null;
-  }, [position]);
+    if (!position) return null;
+    const roundedLat = Math.round(position.latitude * 100) / 100;
+    const roundedLng = Math.round(position.longitude * 100) / 100;
+    return {
+      lat: roundedLat,
+      lng: roundedLng,
+      rawLat: position.latitude,
+      rawLng: position.longitude,
+    };
+  }, [position?.latitude, position?.longitude]);
 
   const cityName = resolvedCityName || 'Aktueller Standort';
 
