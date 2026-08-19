@@ -1007,20 +1007,28 @@ export default function ProfilePage() {
                                             </TabsTrigger>
                                         </TabsList>
                                         <TabsContent value="active" className="space-y-1 mt-0">
-                                            {currentActivities.length > 0 ? currentActivities.map(activity => (
-                                                <ProfileActivityCard key={activity.id} activity={activity} user={user} onJoin={handleJoin} />
-                                            )) : (
+                                            {currentActivities.length > 0 ? (
+                                                <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                                                    {currentActivities.map(activity => (
+                                                        <ProfileActivityCard key={activity.id} activity={activity} user={user} onJoin={handleJoin} compact={true} />
+                                                    ))}
+                                                </div>
+                                            ) : (
                                                 <div className="text-center p-6 bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-[#E5E7EB]/50 dark:border-neutral-800 shadow-sm max-w-xl mx-auto lg:mx-0">
                                                     <p className="text-slate-400 font-bold leading-relaxed">{language === 'de' ? 'Uncharted territory. Start exploring nearby treasures.' : 'Uncharted territory. Start exploring nearby treasures.'}</p>
                                                 </div>
                                             )}
                                         </TabsContent>
                                         <TabsContent value="past" className="space-y-1 mt-0">
-                                            {pastActivities.length > 0 ? pastActivities.map(activity => (
-                                                <div key={activity.id} className="opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
-                                                    <ProfileActivityCard activity={activity} user={user} onJoin={handleJoin} />
+                                            {pastActivities.length > 0 ? (
+                                                <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                                                    {pastActivities.map(activity => (
+                                                        <div key={activity.id} className="opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
+                                                            <ProfileActivityCard activity={activity} user={user} onJoin={handleJoin} compact={true} />
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            )) : (
+                                            ) : (
                                                 <div className="text-center p-6 bg-white dark:bg-neutral-900 rounded-[3rem] border border-slate-100 dark:border-neutral-800 shadow-sm max-w-xl mx-auto lg:mx-0">
                                                     <p className="text-slate-400 font-bold">{language === 'de' ? 'Keine vergangenen Aktivitäten.' : 'No past activities.'}</p>
                                                 </div>
