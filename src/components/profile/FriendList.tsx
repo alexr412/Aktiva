@@ -167,11 +167,12 @@ export default function FriendList({ friendIds }: FriendListProps) {
               {language === 'de' ? 'Vernetze dich mit Entdeckern in deiner Umgebung.' : 'Connect with explorers worldwide and build your circle.'}
             </p>
             
-            <Link href="/community" className="w-full">
-              <Button className="w-full h-11 rounded-full font-black tracking-tight text-[13px] shadow-none border-none transition-all active:scale-[0.98]">
-                {language === 'de' ? 'Freunde suchen' : 'Search For New Friends'}
-              </Button>
-            </Link>
+            <Button
+              onClick={() => setShowAddFriendDialog(true)}
+              className="w-full h-11 rounded-full font-black tracking-tight text-[13px] shadow-none border-none transition-all active:scale-[0.98]"
+            >
+              {language === 'de' ? 'Freunde suchen' : 'Search For New Friends'}
+            </Button>
           </div>
         </div>
       </div>

@@ -67,7 +67,6 @@ export function AdminQuickNavigator() {
     { label: 'Startseite (Feed)', path: '/', icon: Home, category: 'core', requiresAdmin: false },
     { label: 'Entdecken (Karte)', path: '/explore', icon: Compass, category: 'core', requiresAdmin: false },
     { label: 'Favoriten & Sammlungen', path: '/favorites', icon: Sparkles, category: 'core', requiresAdmin: false },
-    { label: 'Community & Freunde', path: '/community', icon: Users, category: 'core', requiresAdmin: false },
     { label: 'Wallet & Token-Shop', path: '/wallet', icon: Wallet, category: 'core', requiresAdmin: false },
     { label: 'Mein Profil', path: '/profile', icon: User, category: 'core', requiresAdmin: false },
     { label: 'Einstellungen', path: '/settings', icon: Settings, category: 'core', requiresAdmin: false },
