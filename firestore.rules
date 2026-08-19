@@ -83,7 +83,7 @@ service cloud.firestore {
           'isTimeFlexible', 'category', 'description', 'status', 'completionVotes', 'isBoosted', 'boostedAt',
           'isPaid', 'price', 'upvotes', 'downvotes', 'userVotes', 'globalScore', 'reportCount', 'avgRating',
           'reviewCount', 'stats', 'participantDetails', 'placeAddress', 'lat', 'lon', 'maxParticipants',
-          'requirements', 'joinMode', 'placeId', 'categories', 'isUserEvent', 'sourceType', 'creationSource',
+          'requirements', 'joinMode', 'placeId', 'categories', 'placeCategories', 'isUserEvent', 'sourceType', 'creationSource',
           'normalizedCategory', 'isDateFlexible', 'city', 'postalCode'
         ]) &&
         
@@ -144,6 +144,7 @@ service cloud.firestore {
         (!request.resource.data.keys().hasAny(['postalCode']) || (request.resource.data.postalCode is string && request.resource.data.postalCode.size() <= 20)) &&
         (!request.resource.data.keys().hasAny(['placeAddress']) || (request.resource.data.placeAddress is string && request.resource.data.placeAddress.size() <= 200)) &&
         (!request.resource.data.keys().hasAny(['joinMode']) || request.resource.data.joinMode in ['direct', 'request']) &&
+        (!request.resource.data.keys().hasAny(['placeCategories']) || (request.resource.data.placeCategories is list && request.resource.data.placeCategories.size() <= 20)) &&
         
         (request.resource.data.get('placeId', 'custom') == 'custom' || (
           request.resource.data.placeId is string &&
