@@ -88,7 +88,7 @@ const multiFetcher = async (keyObj: any) => {
         const pCats = p.categories || [];
         return pCats.some(cat =>
           activeCats.some((activeCat: string) =>
-            cat === activeCat || cat.startsWith(activeCat + '.') || activeCat.startsWith(cat + '.')
+            cat === activeCat || cat.startsWith(activeCat + '.')
           )
         );
       });

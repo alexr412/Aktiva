@@ -455,7 +455,7 @@ export default function Home() {
               const pCats = p.categories || [];
               return pCats.some(cat =>
                 targetCategories.some((targetCat: string) =>
-                  cat === targetCat || cat.startsWith(targetCat + '.') || targetCat.startsWith(cat + '.')
+                  cat === targetCat || cat.startsWith(targetCat + '.')
                 )
               );
             });

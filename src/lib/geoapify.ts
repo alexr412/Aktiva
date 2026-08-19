@@ -638,7 +638,7 @@ export const applyFilters = (
     const passesCategoryFilter = isGlobalSearch || activeCategories.length === 0 ||
       allTags.some(tag =>
         activeCategories.includes(tag) ||
-        activeCategories.some(cat => tag.startsWith(cat + '.') || cat.startsWith(tag + '.'))
+        activeCategories.some(cat => tag.startsWith(cat + '.'))
       );
 
     if (!passesCategoryFilter) return false;
