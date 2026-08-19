@@ -78,6 +78,14 @@ const multiFetcher = async (keyObj: any) => {
     }
   }
 
+  // Für Paginierungs-Anfragen: Auch prüfen, ob Kachel im Cache liegt
+  if (keyObj.lat && keyObj.lng && keyObj.radiusMeters) {
+    const cachedPlaces = await getCachedTilePlaces(keyObj.lat, keyObj.lng, keyObj.radiusMeters);
+    if (cachedPlaces && cachedPlaces.length > 0) {
+      return { features: [], _fromCache: true };
+    }
+  }
+
   const res = await fetch(keyObj.url);
   if (!res.ok) {
     const body = await res.text().catch(() => '');
@@ -227,7 +235,12 @@ export function useDiscoverPlaces() {
 
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (!userLocation) return null;
-    if (previousPageData && (!previousPageData.features || previousPageData.features.length === 0)) return null;
+
+    if (previousPageData) {
+      const firstPage = Array.isArray(previousPageData) ? previousPageData[0] : previousPageData;
+      if (firstPage?._fromCache) return null; // Keine Paginierung, wenn Seite 0 bereits aus dem Cache kam!
+      if (!firstPage?.features || firstPage.features.length === 0) return null;
+    }
 
     if (pageIndex === 0) {
       return {

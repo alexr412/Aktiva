@@ -135,6 +135,7 @@ export async function getCachedTilePlaces(
 
 /**
  * Speichert Orte und deren Kachel-Verknüpfung in IndexedDB.
+ * Verwendet Promise.all innerhalb der synchronen Transaktion, um Auto-Commit-Fehler zu vermeiden.
  */
 export async function saveTilePlaces(
   lat: number,
@@ -144,7 +145,7 @@ export async function saveTilePlaces(
 ): Promise<void> {
   try {
     const db = await getDB();
-    if (!db || !places) return;
+    if (!db || !places || places.length === 0) return;
 
     const tileKey = getTileKey(lat, lon, radiusMeters);
     const now = Date.now();
@@ -153,6 +154,8 @@ export async function saveTilePlaces(
     const tx = db.transaction(['places', 'tiles'], 'readwrite');
     const placeStore = tx.objectStore('places');
     const tileStore = tx.objectStore('tiles');
+
+    const putPromises: Promise<any>[] = [];
 
     for (const p of places) {
       if (!p || !p.id) continue;
@@ -166,7 +169,7 @@ export async function saveTilePlaces(
         lon: p.lon,
         categories: p.categories || [],
       };
-      await placeStore.put(entry);
+      putPromises.push(placeStore.put(entry));
     }
 
     const tileEntry: CachedTileEntry = {
@@ -177,8 +180,14 @@ export async function saveTilePlaces(
       lon,
       radiusMeters,
     };
-    await tileStore.put(tileEntry);
+    putPromises.push(tileStore.put(tileEntry));
+
+    await Promise.all(putPromises);
     await tx.done;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[PLACES CACHE] Successfully saved ${placeIds.length} places for tile ${tileKey}`);
+    }
   } catch (err) {
     if (process.env.NODE_ENV === 'development') {
       console.warn('[PLACES CACHE] Failed to save tile places:', err);
@@ -252,24 +261,25 @@ export async function pruneExpiredCache(maxAgeMs = 7 * 24 * 60 * 60 * 1000): Pro
     if (!db) return;
 
     const cutoff = Date.now() - maxAgeMs;
+
+    const oldTiles = await db.getAllFromIndex('tiles', 'by-fetchedAt', IDBKeyRange.upperBound(cutoff));
+    const oldPlaces = await db.getAllFromIndex('places', 'by-fetchedAt', IDBKeyRange.upperBound(cutoff));
+
+    if (oldTiles.length === 0 && oldPlaces.length === 0) return;
+
     const tx = db.transaction(['places', 'tiles'], 'readwrite');
     const tileStore = tx.objectStore('tiles');
     const placeStore = tx.objectStore('places');
 
-    const oldTilesIndex = tileStore.index('by-fetchedAt');
-    let tileCursor = await oldTilesIndex.openCursor(IDBKeyRange.upperBound(cutoff));
-    while (tileCursor) {
-      await tileCursor.delete();
-      tileCursor = await tileCursor.continue();
+    const deletePromises: Promise<any>[] = [];
+    for (const t of oldTiles) {
+      deletePromises.push(tileStore.delete(t.tileKey));
+    }
+    for (const p of oldPlaces) {
+      deletePromises.push(placeStore.delete(p.id));
     }
 
-    const oldPlacesIndex = placeStore.index('by-fetchedAt');
-    let placeCursor = await oldPlacesIndex.openCursor(IDBKeyRange.upperBound(cutoff));
-    while (placeCursor) {
-      await placeCursor.delete();
-      placeCursor = await placeCursor.continue();
-    }
-
+    await Promise.all(deletePromises);
     await tx.done;
   } catch (err) {
     if (process.env.NODE_ENV === 'development') {
