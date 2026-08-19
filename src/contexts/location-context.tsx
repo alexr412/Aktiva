@@ -124,11 +124,42 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     if (process.env.NODE_ENV === 'development') {
       console.log('[CITY TRACE] reverse geocode started');
     }
+
+    const roundedLat = Math.round(lat * 100) / 100;
+    const roundedLon = Math.round(lon * 100) / 100;
+    const cacheKey = `activa_city_cache_${roundedLat}_${roundedLon}`;
+
+    if (typeof window !== 'undefined') {
+      try {
+        const rawCached = localStorage.getItem(cacheKey);
+        if (rawCached) {
+          const parsed = JSON.parse(rawCached);
+          if (parsed && typeof parsed.city === 'string' && typeof parsed.ts === 'number') {
+            if (Date.now() - parsed.ts < 30 * 24 * 60 * 60 * 1000) {
+              if (cityRequestId === cityRequestCounterRef.current) {
+                setCityName(parsed.city);
+                setIsResolvingCity(false);
+                if (process.env.NODE_ENV === 'development') {
+                  console.log(`[CITY TRACE] resolved city from cache=${parsed.city}`);
+                }
+                return;
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
     try {
       const { reverseGeocodeCity } = await import('@/lib/geoapify');
       const resolved = await reverseGeocodeCity(lat, lon);
       if (cityRequestId !== cityRequestCounterRef.current) return;
       setCityName(resolved);
+      if (resolved && typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({ city: resolved, ts: Date.now() }));
+        } catch (e) {}
+      }
       if (process.env.NODE_ENV === 'development') {
         if (resolved) {
           console.log(`[CITY TRACE] resolved city=${resolved}`);

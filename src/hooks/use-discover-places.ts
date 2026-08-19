@@ -8,13 +8,30 @@ import { useAuth } from '@/hooks/use-auth';
 import { useFavorites } from '@/contexts/favorites-context';
 import { subscribeCommunityActivities } from '@/lib/firebase/firestore';
 import { buildGeoapifyCategoriesParam, sanitizeUrlForLogging } from '@/lib/geoapify';
+import {
+  getCachedTilePlaces,
+  saveTilePlaces,
+  searchCachedPlaces,
+  pruneExpiredCache,
+} from '@/lib/cache/places-cache';
 
 const GEOAPIFY_API_KEY = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY || 'a34b22c7104d49a0a16efb4eeab1d48c';
 
 const multiFetcher = async (keyObj: any) => {
   if (!keyObj) return [];
+
   if (keyObj.type === 'multi_fetch_discovery') {
     const { lat, lng, radiusMeters } = keyObj;
+
+    // 1. Versuche zuerst, frische Daten aus dem lokalen IndexedDB-Cache zu laden
+    const cachedPlaces = await getCachedTilePlaces(lat, lng, radiusMeters);
+    if (cachedPlaces && cachedPlaces.length > 0) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[GEOAPIFY CACHE HIT] Loaded ${cachedPlaces.length} places from IndexedDB for tile`);
+      }
+      return [{ features: cachedPlaces, _fromCache: true }];
+    }
+
     const catGroup1 = "entertainment,adult.nightclub,sport.stadium,sport.ice_rink";
     const catGroup2 = "entertainment.escape_game,leisure,sport,tourism.attraction";
 
@@ -30,6 +47,31 @@ const multiFetcher = async (keyObj: any) => {
       const data2 = res2.ok ? await res2.json() : { features: [] };
 
       const combinedFeatures = [...(data1.features || []), ...(data2.features || [])];
+
+      // Nach erfolgreichem Laden: Orte asynchron im lokalen Cache speichern
+      if (combinedFeatures.length > 0) {
+        const placesToCache: Place[] = combinedFeatures.map((f: any, idx: number) => {
+          const props = f.properties || f;
+          const fLat = f.geometry?.coordinates?.[1] ?? props.lat;
+          const fLon = f.geometry?.coordinates?.[0] ?? props.lon ?? props.lng;
+          const id = props.place_id || props.id || `place_${idx}_${fLat}_${fLon}`;
+          const name = props.name || props.formatted || 'Unbenannter Ort';
+          return {
+            id,
+            name,
+            address: props.address_line2 || props.formatted || props.street || '',
+            categories: props.categories || [],
+            lat: fLat,
+            lon: fLon,
+            distance: props.distance ? props.distance / 1000 : undefined,
+            rating: props.rating || 4.5,
+            relevanceScore: props.relevanceScore || 80,
+          } as Place;
+        });
+
+        void saveTilePlaces(lat, lng, radiusMeters, placesToCache);
+      }
+
       return [{ features: combinedFeatures }];
     } catch (e) {
       return [{ features: [] }];
@@ -50,7 +92,31 @@ const multiFetcher = async (keyObj: any) => {
     }
     throw new Error(`Geoapify API error (${res.status}): ${body}`);
   }
-  return res.json();
+  const data = await res.json();
+
+  if (data?.features && Array.isArray(data.features) && keyObj.lat && keyObj.lng) {
+    const placesToCache: Place[] = data.features.map((f: any, idx: number) => {
+      const props = f.properties || f;
+      const fLat = f.geometry?.coordinates?.[1] ?? props.lat;
+      const fLon = f.geometry?.coordinates?.[0] ?? props.lon ?? props.lng;
+      const id = props.place_id || props.id || `place_${idx}_${fLat}_${fLon}`;
+      const name = props.name || props.formatted || 'Unbenannter Ort';
+      return {
+        id,
+        name,
+        address: props.address_line2 || props.formatted || props.street || '',
+        categories: props.categories || [],
+        lat: fLat,
+        lon: fLon,
+        distance: props.distance ? props.distance / 1000 : undefined,
+        rating: props.rating || 4.5,
+        relevanceScore: props.relevanceScore || 80,
+      } as Place;
+    });
+    void saveTilePlaces(keyObj.lat, keyObj.lng, keyObj.radiusMeters || 10000, placesToCache);
+  }
+
+  return data;
 };
 
 export function useDiscoverPlaces() {
@@ -71,6 +137,14 @@ export function useDiscoverPlaces() {
   const [communityActivities, setCommunityActivities] = useState<Activity[]>([]);
   const [isCommunityLoading, setIsCommunityLoading] = useState(false);
 
+  const [searchResults, setSearchResults] = useState<Place[]>([]);
+  const [isSearchingNetwork, setIsSearchingNetwork] = useState(false);
+
+  // Veralteten Cache im Hintergrund aufräumen
+  useEffect(() => {
+    void pruneExpiredCache();
+  }, []);
+
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -78,6 +152,61 @@ export function useDiscoverPlaces() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Hybride Suche (Erst Cache durchsuchen, bei Bedarf API-Abfrage nachladen)
+  useEffect(() => {
+    if (!debouncedSearchQuery.trim() || !userLocation) {
+      setSearchResults([]);
+      return;
+    }
+
+    let isMounted = true;
+    const performSearch = async () => {
+      // 1. Erst lokalen Cache durchsuchen
+      const localMatches = await searchCachedPlaces(
+        debouncedSearchQuery,
+        userLocation.lat,
+        userLocation.lng,
+        maxDistance
+      );
+
+      if (!isMounted) return;
+      setSearchResults(localMatches);
+
+      // 2. Falls weniger als 5 lokale Treffer existieren, gezielt Geoapify-Suche aufrufen
+      if (localMatches.length < 5) {
+        setIsSearchingNetwork(true);
+        try {
+          const { searchTextPlaces } = await import('@/lib/geoapify');
+          const onlinePlaces = await searchTextPlaces(
+            debouncedSearchQuery,
+            userLocation.lat,
+            userLocation.lng
+          );
+
+          if (!isMounted) return;
+          if (onlinePlaces && onlinePlaces.length > 0) {
+            void saveTilePlaces(userLocation.lat, userLocation.lng, (maxDistance || 10) * 1000, onlinePlaces);
+            const combinedMap = new Map<string, Place>();
+            [...localMatches, ...onlinePlaces].forEach(p => combinedMap.set(p.id, p));
+            setSearchResults(Array.from(combinedMap.values()));
+          }
+        } catch (e) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[SEARCH NETWORK FALLBACK FAILED]', e);
+          }
+        } finally {
+          if (isMounted) setIsSearchingNetwork(false);
+        }
+      }
+    };
+
+    void performSearch();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [debouncedSearchQuery, userLocation, maxDistance]);
 
   // Subscribe to Firestore Community Activities
   useEffect(() => {
@@ -114,7 +243,7 @@ export function useDiscoverPlaces() {
     const offset = 90 + (pageIndex - 1) * 50;
     const catParam = buildGeoapifyCategoriesParam(allCategories);
     const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
-    return { type: 'geoapify', url, pageIndex };
+    return { type: 'geoapify', url, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters };
   };
 
   const { data, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {
@@ -157,7 +286,9 @@ export function useDiscoverPlaces() {
 
   // Apply hidden entity filtering, name search, and distance constraints
   const visiblePlaces = useMemo<Place[]>(() => {
-    let filtered = rawPlaces.filter((place) => {
+    const baseList = debouncedSearchQuery.trim() ? [...rawPlaces, ...searchResults] : rawPlaces;
+
+    let filtered = baseList.filter((place) => {
       if (userProfile?.hiddenEntityIds?.includes(place.id)) return false;
       if (!debouncedSearchQuery) return true;
       const rawName = place.name;
@@ -166,7 +297,9 @@ export function useDiscoverPlaces() {
         : (rawName && typeof rawName === 'object'
           ? ((rawName as any).de || (rawName as any).en || '')
           : String(rawName || ''));
-      return nameStr.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+      const addrStr = place.address || '';
+      const q = debouncedSearchQuery.toLowerCase();
+      return nameStr.toLowerCase().includes(q) || addrStr.toLowerCase().includes(q);
     });
 
     if (maxDistance !== null) {
@@ -182,7 +315,7 @@ export function useDiscoverPlaces() {
     });
 
     return Array.from(uniqueMap.values());
-  }, [rawPlaces, userProfile, debouncedSearchQuery, maxDistance]);
+  }, [rawPlaces, searchResults, userProfile, debouncedSearchQuery, maxDistance]);
 
   const finalFeedPlaces = useMemo<Place[]>(() => {
     return visiblePlaces;
@@ -201,7 +334,7 @@ export function useDiscoverPlaces() {
     setSearchQuery,
     activeCategory,
     setActiveCategory,
-    isLoading: (!data && !error) || isCommunityLoading,
+    isLoading: (!data && !error && searchResults.length === 0) || isCommunityLoading || isSearchingNetwork,
     error,
   };
 }
