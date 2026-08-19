@@ -444,8 +444,10 @@ export default function Home() {
       let result: any = null;
       if (type === 'geoapify') {
         const { url, lat, lng, radiusMeters, categories } = key;
+        console.log('🔍 [AKTIVA LOG] multiFetcher type=geoapify', { categories, lat, lng });
         if (lat && lng && radiusMeters) {
           const cachedPlaces = await getCachedTilePlaces(lat, lng, radiusMeters);
+          console.log('🔍 [AKTIVA LOG] getCachedTilePlaces total count:', cachedPlaces ? cachedPlaces.length : 0);
           if (cachedPlaces && cachedPlaces.length > 0) {
             const targetCategories: string[] = Array.isArray(categories) ? categories : (activeCategory || []);
             const matchingPlaces = cachedPlaces.filter(p => {
@@ -458,7 +460,9 @@ export default function Home() {
               );
             });
 
-            if (matchingPlaces.length >= 3) {
+            console.log('🔍 [AKTIVA LOG] matchingPlaces count for category:', matchingPlaces.length, targetCategories);
+
+            if (matchingPlaces.length >= 1) {
               const features = matchingPlaces.map((p: any) => ({
                 properties: p,
                 geometry: { coordinates: [p.lon, p.lat] }
@@ -467,6 +471,7 @@ export default function Home() {
             }
           }
         }
+        console.log('🔍 [AKTIVA LOG] Fetching fresh from Geoapify for category tab:', categories);
         result = await fetcher(url);
         if (result?.features && Array.isArray(result.features) && lat && lng && radiusMeters) {
           const placesToCache: Place[] = result.features.map((f: any, idx: number) => {
@@ -1331,6 +1336,7 @@ export default function Home() {
   }, [isLoadingInitialData, isValidating, activeCategory, places.length, debouncedSearchQuery, error, shouldFilterByName]);
 
   const handleCategoryChange = (categoryId: string[], tabId: string) => {
+    console.log('🔍 [AKTIVA LOG] handleCategoryChange tapped:', { categoryId, tabId });
     setIsOpenRoomsMode(false);
     if (activeTabId !== tabId) {
       setIsSwitchingTab(true);
