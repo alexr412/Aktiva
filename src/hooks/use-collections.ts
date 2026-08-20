@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './use-auth';
 import { db } from '@/lib/firebase/client';
 import { collection, getDocs } from 'firebase/firestore';
-import { SavedCollection, hasPremiumFeature } from '@/lib/types';
+import { SavedCollection, getCollectionLimits, isPremiumActive } from '@/lib/types';
 import { useToast } from './use-toast';
 
 import { getMigratedItem, setMigratedItem } from '@/lib/storage-migration';
@@ -15,9 +15,8 @@ export function useCollections() {
   const [collections, setCollections] = useState<SavedCollection[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isPremium = hasPremiumFeature(userProfile, 'collections');
-  const maxCollections = isPremium ? Infinity : 3;
-  const maxItems = isPremium ? Infinity : 25;
+  const isPremium = isPremiumActive(userProfile);
+  const { maxCollections, maxItems } = getCollectionLimits(userProfile);
 
   useEffect(() => {
     // Primary local storage lookup with backward-compatible migration

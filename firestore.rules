@@ -509,7 +509,7 @@ service cloud.firestore {
       return resource != null && resource.data != null &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'role', 'isAdmin', 'isBanned', 'isPremium', 'isSupporter', 'isCreator',
-          'isOrganizer', 'balancesInCents', 'kycStatus', 'premiumSource',
+          'isOrganizer', 'premiumTier', 'balancesInCents', 'kycStatus', 'premiumSource',
           'premiumCampaignId', 'escrowBalance', 'fiatBalance', 'referralCode',
           'referredBy', 'username', 'usernameLowercase', 'successfulFreeHosts',
           'ratingCount', 'averageRating', 'successfulReferrals', 'pointsBalance',

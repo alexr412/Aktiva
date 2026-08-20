@@ -277,8 +277,9 @@ lazyExport('getNearbyFriends', './lib/radar');
 lazyExport('markNotificationRead', './lib/notifications');
 lazyExport('markAllNotificationsRead', './lib/notifications');
 lazyExport('deleteNotification', './lib/notifications');
-lazyExport('sendScheduledEngagementReminders', './lib/notifications');
-lazyExport('sendTestNotification', './lib/notifications');
+// RevenueCat Integration (Lazy Loaded)
+lazyExport('revenueCatWebhook', './lib/revenuecat');
+
 
 
 

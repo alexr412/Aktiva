@@ -599,6 +599,7 @@ export interface UserProfile {
   updatedAt?: Timestamp | any;
   isExplorer?: boolean;
   isOrganizer?: boolean;
+  premiumTier?: 'tier1' | 'tier2' | 'tier3' | null;
   premiumEntitlements?: string[];
   premiumStartsAt?: Timestamp;
   premiumExpiresAt?: Timestamp | null;
@@ -643,7 +644,15 @@ export type PremiumFeature =
   | 'boost_tokens'
   | 'premium_badge'
   | 'ai_discovery'
-  | 'organizer_analytics';
+  | 'organizer_analytics'
+  | 'profile_visitors'
+  | 'incognito_mode'
+  | 'priority_join'
+  | 'read_receipts'
+  | 'co_hosts'
+  | 'custom_banners'
+  | 'passcode_events'
+  | 'waitlist_management';
 
 /**
  * Defensive helper to convert various timestamp forms (Firestore Timestamp, JS Date, number, ISO string)
@@ -689,14 +698,61 @@ export function hasPremiumFeature(profile: UserProfile | null, feature: PremiumF
 }
 
 /**
- * Returns the binding participant limit for activity creation.
- * Hierarchy: 1. Organizer (50) -> 2. Active Premium (12) -> 3. Free (4)
+ * Returns the binding participant limit for activity creation based on tier.
+ * Hierarchy: Organizer Tier 3 / Role (50) -> Tier 2 (12) -> Tier 1 (8) -> Free (4)
  */
 export function getParticipantLimit(profile: UserProfile | null, now?: Date | number): number {
-  if (profile?.isOrganizer) return 50;
-  if (isPremiumActive(profile, now)) return 12;
+  if (profile?.isOrganizer || profile?.premiumTier === 'tier3') return 50;
+  if (isPremiumActive(profile, now)) {
+    if (profile?.premiumTier === 'tier2') return 12;
+    if (profile?.premiumTier === 'tier1') return 8;
+    return 8; // Default active premium fallback
+  }
   return 4;
 }
+
+/**
+ * Returns the maximum radar radius limit in km based on tier.
+ * Free (10km) -> Tier 1 (30km) -> Tier 2 (50km) -> Tier 3 (100km)
+ */
+export function getRadarRadiusLimit(profile: UserProfile | null, now?: Date | number): number {
+  if (profile?.premiumTier === 'tier3' || profile?.isOrganizer) return 100;
+  if (isPremiumActive(profile, now)) {
+    if (profile?.premiumTier === 'tier2') return 50;
+    return 30; // Tier 1 or default active premium
+  }
+  return 10;
+}
+
+/**
+ * Returns collection limits (maxCollections & maxItems per collection).
+ * Free: 1 / 10 | Tier 1: 5 / 25 | Tier 2: 15 / 50 | Tier 3: 30 / 100
+ */
+export function getCollectionLimits(profile: UserProfile | null, now?: Date | number): { maxCollections: number; maxItems: number } {
+  if (profile?.premiumTier === 'tier3' || profile?.isOrganizer) {
+    return { maxCollections: 30, maxItems: 100 };
+  }
+  if (isPremiumActive(profile, now)) {
+    if (profile?.premiumTier === 'tier2') {
+      return { maxCollections: 15, maxItems: 50 };
+    }
+    return { maxCollections: 5, maxItems: 25 }; // Tier 1 or fallback
+  }
+  return { maxCollections: 1, maxItems: 10 };
+}
+
+/**
+ * Returns monthly AI discovery request limit.
+ * Free: 0 | Tier 1: 10 | Tier 2: 30 | Tier 3: 60
+ */
+export function getAiDiscoveryLimit(profile: UserProfile | null, now?: Date | number): number {
+  if (profile?.premiumTier === 'tier3' || profile?.isOrganizer) return 60;
+  if (isPremiumActive(profile, now)) {
+    if (profile?.premiumTier === 'tier2') return 30;
+    return 10;
+  }
+  return 0;
+};
 
 /**
  * Returns a human-readable expiration string if user has temporary active premium.
