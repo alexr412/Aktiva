@@ -35,6 +35,7 @@ import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatFirstName } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
+import { useAddressLongPress } from '@/hooks/use-address-long-press';
 
 interface SpotActionSheetProps {
     place: Place | null;
@@ -125,6 +126,12 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
     const primaryStyle = getPrimaryIconData(place, language);
     const PrimaryIcon = primaryStyle.icon;
 
+    const { mapsUrl, handlers: addressHandlers } = useAddressLongPress({
+        address: place.address,
+        placeName: place.name,
+        language,
+    });
+
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent side="bottom" className="rounded-t-[2.5rem] border-none bg-white dark:bg-neutral-900 px-6 pb-10 sm:max-w-xl mx-auto h-[80vh] flex flex-col gap-0 shadow-2xl">
@@ -139,10 +146,18 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
                             <SheetTitle className="text-2xl font-black truncate text-neutral-900 dark:text-white leading-tight">
                                 {place.name}
                             </SheetTitle>
-                            <SheetDescription className="flex items-center gap-1 font-bold text-neutral-400 uppercase text-[10px] tracking-widest mt-0.5">
-                                <MapPin className="h-3 w-3" />
-                                {place.address.split(',')[0]}
-                            </SheetDescription>
+                            <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                {...addressHandlers}
+                                className="flex items-center gap-1 font-bold text-rose-500 hover:text-rose-600 uppercase text-[10px] tracking-widest mt-0.5 underline decoration-rose-500/40 underline-offset-2 select-none cursor-pointer group w-fit max-w-full"
+                                style={{ WebkitTouchCallout: 'none' }}
+                                title={language === 'de' ? 'Antippen zum Öffnen, gedrückt halten zum Kopieren' : 'Tap to open, hold to copy'}
+                            >
+                                <MapPin className="h-3 w-3 shrink-0 group-hover:scale-110 transition-transform" />
+                                <span className="truncate">{place.address.split(',')[0]}</span>
+                            </a>
                         </div>
                     </div>
                 </SheetHeader>

@@ -9,6 +9,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { cn, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import type { Activity } from '@/lib/types';
+import { useAddressLongPress } from '@/hooks/use-address-long-press';
 
 import {
   Sheet,
@@ -147,10 +148,11 @@ export function ActivityInfoSheet({
               {activity.isCustomActivity ? (activity.title || activity.placeName) : (activity.placeName || (language === 'de' ? 'Aktivität' : 'Activity'))}
             </h2>
             {activity.placeAddress && (
-              <p className="text-[11px] font-bold opacity-90 truncate max-w-full flex items-center gap-1 mt-1 drop-shadow-sm">
-                <MapPin className="h-3 w-3 shrink-0" />
-                {activity.placeAddress}
-              </p>
+              <ActivityAddressLink
+                address={activity.placeAddress}
+                placeName={activity.placeName}
+                language={language}
+              />
             )}
           </div>
 
@@ -398,5 +400,36 @@ export function ActivityInfoSheet({
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function ActivityAddressLink({
+  address,
+  placeName,
+  language,
+}: {
+  address: string;
+  placeName?: string;
+  language: 'de' | 'en';
+}) {
+  const { mapsUrl, handlers } = useAddressLongPress({
+    address,
+    placeName,
+    language,
+  });
+
+  return (
+    <a
+      href={mapsUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      {...handlers}
+      className="text-[11px] font-bold opacity-90 hover:opacity-100 truncate max-w-full flex items-center gap-1 mt-1 drop-shadow-sm underline decoration-white/40 underline-offset-2 cursor-pointer select-none"
+      style={{ WebkitTouchCallout: 'none' }}
+      title={language === 'de' ? 'Antippen zum Öffnen, gedrückt halten zum Kopieren' : 'Tap to open, hold to copy'}
+    >
+      <MapPin className="h-3 w-3 shrink-0" />
+      <span className="truncate">{address}</span>
+    </a>
   );
 }

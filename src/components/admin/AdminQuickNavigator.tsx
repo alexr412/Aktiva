@@ -14,36 +14,22 @@ import {
 } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Home,
-  Compass,
-  MessageSquare,
-  Users,
-  Wallet,
-  User,
-  Settings,
-  Shield,
-  FileText,
-  Sparkles,
-  Info,
+  ALL_QUICK_NAV_ITEMS,
+  CATEGORY_LABELS,
+  GROUP_TITLES,
+  QuickNavItem,
+} from '@/lib/quick-navigator-items';
+import {
   Terminal,
-  Code,
-  AlertTriangle,
   Search,
-  ExternalLink,
   ChevronRight,
   Command,
-  Globe
+  Maximize2,
+  ExternalLink,
 } from 'lucide-react';
-
-interface NavItem {
-  label: string;
-  path: string;
-  icon: React.ComponentType<any>;
-  category: 'core' | 'admin' | 'auth' | 'legal' | 'mock';
-  requiresAdmin: boolean;
-}
 
 export function AdminQuickNavigator() {
   const router = useRouter();
@@ -58,65 +44,18 @@ export function AdminQuickNavigator() {
   const isSwitchEnabled = process.env.NEXT_PUBLIC_ENABLE_ADMIN_NAVIGATOR === 'true';
 
   // SECURITY GATE:
-  // - Strictly visible ONLY to logged-in users with role === 'admin' || 'superadmin' or 'supporter'.
-  const isNavigatorActive = userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
+  // Visible to logged-in users with role === 'admin' || 'superadmin' || 'supporter' or dev mode.
+  const isNavigatorActive = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
 
-  // Static list of app routes
-  const navItems = useMemo<NavItem[]>(() => [
-    // Core App Group
-    { label: 'Startseite (Feed)', path: '/', icon: Home, category: 'core', requiresAdmin: false },
-    { label: 'Entdecken (Karte)', path: '/explore', icon: Compass, category: 'core', requiresAdmin: false },
-    { label: 'Favoriten & Sammlungen', path: '/favorites', icon: Sparkles, category: 'core', requiresAdmin: false },
-    { label: 'Wallet & Token-Shop', path: '/wallet', icon: Wallet, category: 'core', requiresAdmin: false },
-    { label: 'Mein Profil', path: '/profile', icon: User, category: 'core', requiresAdmin: false },
-    { label: 'Einstellungen', path: '/settings', icon: Settings, category: 'core', requiresAdmin: false },
-
-    // Admin Group
-    { label: 'Admin Dashboard', path: '/admin', icon: Shield, category: 'admin', requiresAdmin: true },
-    { label: 'Nutzerverwaltung', path: '/admin/users', icon: Users, category: 'admin', requiresAdmin: true },
-    { label: 'Meldungen & Berichte', path: '/admin/reports', icon: FileText, category: 'admin', requiresAdmin: true },
-    { label: 'Auszahlungen', path: '/admin/payouts', icon: Wallet, category: 'admin', requiresAdmin: true },
-    { label: 'Rückerstattungen', path: '/admin/refunds', icon: AlertTriangle, category: 'admin', requiresAdmin: true },
-
-    // Auth & Flow Group
-    { label: 'Login / Anmeldung', path: '/login', icon: ExternalLink, category: 'auth', requiresAdmin: false },
-    { label: 'Registrieren', path: '/signup', icon: User, category: 'auth', requiresAdmin: false },
-    { label: 'Onboarding (Profilsetup)', path: '/onboarding', icon: Sparkles, category: 'auth', requiresAdmin: false },
-
-    // Legal Group
-    { label: 'Datenschutzerklärung', path: '/privacy', icon: Info, category: 'legal', requiresAdmin: false },
-    { label: 'Allgemeine Geschäftsbedingungen', path: '/terms', icon: Info, category: 'legal', requiresAdmin: false },
-    { label: 'Impressum', path: '/imprint', icon: Info, category: 'legal', requiresAdmin: false },
-    { label: 'Kündigungs-Informationen', path: '/cancellation', icon: Info, category: 'legal', requiresAdmin: false },
-    { label: 'Barrierefreiheit', path: '/accessibility', icon: Info, category: 'legal', requiresAdmin: false },
-    { label: 'Lizenzen & Open Source', path: '/licenses', icon: Info, category: 'legal', requiresAdmin: false },
-
-    // Developer Tools & Test (Development Only)
-    { label: 'Developer Debug Panel', path: '/debug', icon: Terminal, category: 'admin', requiresAdmin: false },
-    { label: 'Testumgebung (Sandbox)', path: '/test', icon: Code, category: 'admin', requiresAdmin: false },
-
-    // Dynamic Route Mocks (Development Only)
-    { label: 'Chat-Unterhaltung (Mock ID)', path: '/chat/mock-chat-room', icon: MessageSquare, category: 'mock', requiresAdmin: false },
-    { label: 'Aktivität-Detail (Mock ID)', path: '/activities/mock-activity-id', icon: Compass, category: 'mock', requiresAdmin: false },
-    { label: 'QR-Scanner (Mock ID)', path: '/activities/mock-activity-id/scanner', icon: Code, category: 'mock', requiresAdmin: false },
-    { label: 'Statistiken (Mock ID)', path: '/activities/mock-activity-id/stats', icon: FileText, category: 'mock', requiresAdmin: false },
-    { label: 'Buchungs-Checkout (Mock ID)', path: '/checkout/mock-activity-id', icon: Wallet, category: 'mock', requiresAdmin: false },
-    { label: 'Öffentliches Profil (Mock ID)', path: '/users/mock-user-id', icon: User, category: 'mock', requiresAdmin: false },
-    { label: 'Gesperrte Nutzer (Settings)', path: '/settings/blocked', icon: AlertTriangle, category: 'mock', requiresAdmin: false },
-    { label: 'Spracheinstellungen (Settings)', path: '/settings/language', icon: Globe, category: 'mock', requiresAdmin: false },
-    { label: 'Rechtliche Infos (Settings)', path: '/settings/legal', icon: Info, category: 'mock', requiresAdmin: false },
-  ], []);
-
-  // Filter items based on security constraints, query and category
   const filteredItems = useMemo(() => {
-    return navItems.filter((item) => {
-      // 1. Admin-Only paths require role === 'admin' in all environments
-      if (item.requiresAdmin && userProfile?.role !== 'admin') {
+    return ALL_QUICK_NAV_ITEMS.filter((item) => {
+      // 1. Admin-Only paths
+      if (item.requiresAdmin && userProfile?.role !== 'admin' && userProfile?.role !== 'superadmin') {
         return false;
       }
 
-      // 2. Dynamic route mocks, debug and test pages strictly hidden in production
-      if ((item.category === 'mock' || item.path === '/test' || item.path === '/debug') && !isDev) {
+      // 2. Dynamic route mocks, debug and test pages strictly hidden in production if non-dev
+      if ((item.isMock || item.path === '/test' || item.path === '/debug') && !isDev) {
         return false;
       }
 
@@ -130,22 +69,22 @@ export function AdminQuickNavigator() {
         const query = searchQuery.toLowerCase();
         return (
           item.label.toLowerCase().includes(query) ||
-          item.path.toLowerCase().includes(query)
+          item.path.toLowerCase().includes(query) ||
+          (item.description && item.description.toLowerCase().includes(query))
         );
       }
 
       return true;
     });
-  }, [navItems, searchQuery, selectedCategory, userProfile?.role, isDev]);
+  }, [searchQuery, selectedCategory, userProfile?.role, isDev]);
 
-  // Group items for rendering
   const groupedItems = useMemo(() => {
-    const groups: Record<string, NavItem[]> = {
+    const groups: Record<string, QuickNavItem[]> = {
       core: [],
+      activities: [],
       admin: [],
       auth: [],
       legal: [],
-      mock: []
     };
 
     filteredItems.forEach((item) => {
@@ -161,13 +100,15 @@ export function AdminQuickNavigator() {
     return null;
   }
 
-  const handleNavigate = (item: NavItem) => {
+  const handleNavigate = (path: string, label?: string) => {
     setIsOpen(false);
-    toast({
-      title: 'Seitenwechsel',
-      description: `Navigiere zu: ${item.label}`,
-    });
-    router.push(item.path);
+    if (label) {
+      toast({
+        title: 'Seitenwechsel',
+        description: `Navigiere zu: ${label}`,
+      });
+    }
+    router.push(path);
   };
 
   return (
@@ -187,21 +128,43 @@ export function AdminQuickNavigator() {
         className="w-full sm:max-w-md p-0 flex flex-col bg-background border-l border-slate-100 dark:border-neutral-800 z-50"
       >
         <SheetHeader className="p-6 pb-4 border-b border-slate-100 dark:border-neutral-800 text-left">
-          <div className="flex items-center gap-2 mb-1">
-            <Badge variant="default" className="bg-[#7c3aed] text-white font-bold uppercase tracking-wider text-[9px] px-2 py-0.5 shadow-none border-none">
-              {isDev ? 'DEV MODE' : 'ADMIN ONLY'}
-            </Badge>
-            {isSwitchEnabled && (
-              <Badge variant="secondary" className="text-[9px] px-2 py-0.5">
-                SWITCH ON
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="bg-[#7c3aed] text-white font-bold uppercase tracking-wider text-[9px] px-2 py-0.5 shadow-none border-none">
+                {isDev ? 'DEV MODE' : 'ADMIN ONLY'}
               </Badge>
-            )}
+              {isSwitchEnabled && (
+                <Badge variant="secondary" className="text-[9px] px-2 py-0.5">
+                  SWITCH ON
+                </Badge>
+              )}
+            </div>
+
+            {/* Top link to open the full Quick Navigator page */}
+            <Button
+              onClick={() => handleNavigate('/quick-navigator', 'Quick Navigator Vollbild-Seite')}
+              variant="outline"
+              size="sm"
+              className="h-7 px-2.5 text-[11px] font-bold rounded-xl text-[#7c3aed] border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 flex items-center gap-1 shrink-0"
+              title="Als eigene Seite öffnen"
+            >
+              <span>Vollbild-Seite</span>
+              <Maximize2 className="w-3 h-3" />
+            </Button>
           </div>
-          <SheetTitle className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-            <Terminal className="w-5 h-5 text-[#7c3aed]" />
-            Quick Navigator
-          </SheetTitle>
-          <SheetDescription className="text-xs text-slate-400 dark:text-neutral-400 font-medium">
+
+          <div 
+            onClick={() => handleNavigate('/quick-navigator', 'Quick Navigator Vollbild-Seite')}
+            className="cursor-pointer group flex items-center justify-between"
+          >
+            <SheetTitle className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2 group-hover:text-[#7c3aed] transition-colors">
+              <Terminal className="w-5 h-5 text-[#7c3aed]" />
+              Quick Navigator
+            </SheetTitle>
+            <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-[#7c3aed] transition-colors" />
+          </div>
+
+          <SheetDescription className="text-xs text-slate-400 dark:text-neutral-400 font-medium mt-1">
             Schneller Zugriff auf alle App-Seiten und Dynamic Mocks.
           </SheetDescription>
         </SheetHeader>
@@ -220,18 +183,9 @@ export function AdminQuickNavigator() {
           </div>
           
           <div className="flex flex-wrap gap-1.5">
-            {['all', 'core', 'admin', 'auth', 'legal', 'mock'].map((cat) => {
+            {['all', 'core', 'activities', 'admin', 'auth', 'legal'].map((cat) => {
               const isActive = selectedCategory === cat;
-              const catLabels: Record<string, string> = {
-                all: 'Alle',
-                core: 'Core App',
-                admin: 'Admin & Dev',
-                auth: 'Auth',
-                legal: 'Rechtliches',
-                mock: 'Mocks (Dev)'
-              };
-              
-              if (cat === 'mock' && !isDev) return null;
+              const label = CATEGORY_LABELS[cat] || cat;
               
               return (
                 <button
@@ -243,7 +197,7 @@ export function AdminQuickNavigator() {
                       : 'bg-white dark:bg-neutral-950 text-slate-500 border-slate-200 dark:border-neutral-800 dark:text-neutral-400 hover:bg-slate-50'
                   }`}
                 >
-                  {catLabels[cat]}
+                  {label}
                 </button>
               );
             })}
@@ -256,18 +210,12 @@ export function AdminQuickNavigator() {
             {Object.entries(groupedItems).map(([group, items]) => {
               if (items.length === 0) return null;
               
-              const groupTitles: Record<string, string> = {
-                core: 'Hauptanwendung',
-                admin: 'Administration & Debug',
-                auth: 'Login & Registrierung',
-                legal: 'Rechtliches & Information',
-                mock: 'Dynamic Route Mocks (Dev Only)'
-              };
+              const groupTitle = GROUP_TITLES[group] || group;
 
               return (
                 <div key={group} className="flex flex-col gap-1.5">
                   <h4 className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-widest px-1">
-                    {groupTitles[group] || group}
+                    {groupTitle} ({items.length})
                   </h4>
                   <div className="flex flex-col gap-1.5">
                     {items.map((item) => {
@@ -277,7 +225,7 @@ export function AdminQuickNavigator() {
                       return (
                         <button
                           key={item.path}
-                          onClick={() => handleNavigate(item)}
+                          onClick={() => handleNavigate(item.path, item.label)}
                           className={`w-full flex items-center justify-between p-3 rounded-2xl transition-all border text-left group ${
                             isActivePage
                               ? 'bg-purple-500/5 dark:bg-purple-500/10 border-purple-500/20 text-[#7c3aed]'

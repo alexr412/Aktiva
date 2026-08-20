@@ -10,6 +10,7 @@ import { formatPlaceDistance, getPlaceCategoryIconSVG, getActivityJoinState, for
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatDistanceBucketText, normalizePrecisionMeters } from '@/lib/radar-types';
 import { cn } from '@/lib/utils';
+import { useAddressLongPress } from '@/hooks/use-address-long-press';
 
 export interface MapEntityCardProps {
   entity: SelectedMapEntity;
@@ -136,14 +137,7 @@ export function MapEntityCard({
             {distText && <span className="text-slate-400 dark:text-neutral-400">• {distText}</span>}
           </div>
 
-          <div className="text-[11px] text-slate-500 dark:text-neutral-400 truncate">
-            {openStatusText && (
-              <span className={cn('mr-1.5 font-bold', isOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500')}>
-                {openStatusText}
-              </span>
-            )}
-            <span>{place.address || (place as any).city || ''}</span>
-          </div>
+          <PlaceAddressLink place={place} language={language} isDe={isDe} openStatusText={openStatusText} isOpen={isOpen} />
 
           {/* Primary & Secondary Actions */}
           <div className="mt-3 flex flex-col gap-2">
@@ -394,4 +388,48 @@ export function MapEntityCard({
   }
 
   return null;
+}
+
+function PlaceAddressLink({
+  place,
+  language,
+  isDe,
+  openStatusText,
+  isOpen,
+}: {
+  place: Place;
+  language: 'de' | 'en';
+  isDe: boolean;
+  openStatusText?: string;
+  isOpen?: boolean;
+}) {
+  const addressText = place.address || (place as any).city || '';
+  const { mapsUrl, handlers } = useAddressLongPress({
+    address: addressText,
+    placeName: place.name,
+    language,
+  });
+
+  return (
+    <div className="text-[11px] text-slate-500 dark:text-neutral-400 truncate flex items-center gap-1.5 flex-wrap">
+      {openStatusText && (
+        <span className={cn('font-bold shrink-0', isOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500')}>
+          {openStatusText}
+        </span>
+      )}
+      {addressText ? (
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          {...handlers}
+          className="text-rose-500 hover:text-rose-600 font-medium underline decoration-rose-500/40 underline-offset-2 select-none cursor-pointer truncate max-w-full"
+          style={{ WebkitTouchCallout: 'none' }}
+          title={isDe ? 'Antippen zum Öffnen, gedrückt halten zum Kopieren' : 'Tap to open, hold to copy'}
+        >
+          {addressText}
+        </a>
+      ) : null}
+    </div>
+  );
 }

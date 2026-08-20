@@ -365,6 +365,18 @@ async function test12_FailsafeTimeoutResetsPreventClick() {
     console.log('✅ Test 12 passed');
 }
 
+function test13_MapsUrlGeneration() {
+    console.log('Test 13: Maps URL generation for address link long-press...');
+    const { getMapsUrl } = require('../../hooks/use-address-long-press');
+    const url1 = getMapsUrl('Hauptstraße 12, 10115 Berlin', 'Kaffee Haus');
+    assert(url1.includes('https://www.google.com/maps/search/?api=1&query='), 'Should use Google Maps search endpoint');
+    assert(url1.includes(encodeURIComponent('Kaffee Haus, Hauptstraße 12, 10115 Berlin')), 'Should combine place name and address');
+
+    const url2 = getMapsUrl('Berliner Park, Hauptstraße 12', 'Berliner Park');
+    assert(url2.includes(encodeURIComponent('Berliner Park, Hauptstraße 12')), 'Should avoid repeating place name if already present in address');
+    console.log('✅ Test 13 passed');
+}
+
 async function runAllTests() {
     test1_PermanentUnderline();
     test2_MouseClickExecutesDirectionAction();
@@ -378,7 +390,8 @@ async function runAllTests() {
     test10_CopyIconFunctionality();
     await test11_SequentialInteractionsNoStaleState();
     await test12_FailsafeTimeoutResetsPreventClick();
-    console.log('\nALL 12 ADDRESS INTERACTION TESTS PASSED SUCCESSFULLY! 🎉');
+    test13_MapsUrlGeneration();
+    console.log('\nALL 13 ADDRESS INTERACTION TESTS PASSED SUCCESSFULLY! 🎉');
 }
 
 runAllTests().catch(err => {
