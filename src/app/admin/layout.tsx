@@ -3,8 +3,9 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 
@@ -32,10 +33,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (loading) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-slate-50 dark:bg-neutral-950 font-mono text-muted-foreground">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span>Verifiziere Administrator-Berechtigung...</span>
+      <div className="flex h-full w-full items-center justify-center bg-neutral-950 text-white font-mono">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="relative w-16 h-16 animate-pulse">
+            <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="64px" className="object-contain" />
+          </div>
+          <span className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Verifiziere Administrator-Berechtigung…</span>
         </div>
       </div>
     );

@@ -7,35 +7,37 @@ import { cn } from '@/lib/utils';
 
 export function AppSplashScreen() {
   const { loading: authLoading } = useAuth();
-  const [isVisible, setIsVisible] = useState<boolean | null>(null);
+
+  // Lazy state initializer: synchronously TRUE on frame 0 (unless session flag exists)
+  const [isVisible, setIsVisible] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('activa_app_splash_shown') !== 'true';
+    }
+    return true;
+  });
+
   const [isFading, setIsFading] = useState(false);
   const [minTimerDone, setMinTimerDone] = useState(false);
 
   useEffect(() => {
-    // Check if splash was already shown in this session
     if (typeof window !== 'undefined') {
       const alreadyShown = sessionStorage.getItem('activa_app_splash_shown');
       if (alreadyShown === 'true') {
         setIsVisible(false);
         return;
       }
-      setIsVisible(true);
     }
+
+    // Display duration for initial load (~2.2 seconds)
+    const minTimer = setTimeout(() => {
+      setMinTimerDone(true);
+    }, 2200);
+
+    return () => clearTimeout(minTimer);
   }, []);
 
   useEffect(() => {
-    if (isVisible !== true) return;
-
-    // Minimum display time for a smooth startup experience (~1.8 seconds)
-    const minTimer = setTimeout(() => {
-      setMinTimerDone(true);
-    }, 1800);
-
-    return () => clearTimeout(minTimer);
-  }, [isVisible]);
-
-  useEffect(() => {
-    if (isVisible === true && minTimerDone && !authLoading && !isFading) {
+    if (isVisible && minTimerDone && !authLoading && !isFading) {
       setIsFading(true);
       const fadeTimer = setTimeout(() => {
         setIsVisible(false);
@@ -48,47 +50,65 @@ export function AppSplashScreen() {
     }
   }, [isVisible, minTimerDone, authLoading, isFading]);
 
-  if (isVisible !== true) {
+  if (!isVisible) {
     return null;
   }
 
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-white dark:bg-neutral-950 transition-opacity duration-500 ease-out select-none pointer-events-auto",
+        "fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-neutral-950 text-white transition-opacity duration-500 ease-out select-none pointer-events-auto",
         isFading ? "opacity-0" : "opacity-100"
       )}
     >
-      {/* Background Subtle Gradient Glow */}
-      <div className="absolute w-72 h-72 rounded-full bg-rose-500/10 dark:bg-rose-500/20 blur-3xl animate-pulse pointer-events-none" />
+      <style>{`
+        @keyframes splashBar {
+          0% { left: -40%; width: 35%; }
+          50% { left: 30%; width: 50%; }
+          100% { left: 105%; width: 35%; }
+        }
+        @keyframes logoPulse {
+          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.35)); }
+          50% { transform: scale(1.05); filter: drop-shadow(0 0 38px rgba(239, 68, 68, 0.65)); }
+        }
+      `}</style>
 
-      {/* Main Logo & Brand Box */}
-      <div className="relative z-10 flex flex-col items-center text-center p-6 space-y-6 animate-in fade-in zoom-in-95 duration-700">
-        {/* Heart Logo Image */}
-        <div className="relative w-28 h-28 md:w-36 md:h-36 drop-shadow-2xl hover:scale-105 transition-transform">
+      {/* Background Glow */}
+      <div className="absolute w-80 h-80 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
+
+      {/* Main Content Box */}
+      <div className="relative z-10 flex flex-col items-center text-center p-6 space-y-6">
+        {/* Animated Heart Logo */}
+        <div
+          className="relative w-32 h-32 md:w-40 md:h-40"
+          style={{ animation: 'logoPulse 2.4s ease-in-out infinite' }}
+        >
           <Image
             src="/assets/logo-heart.png"
             alt="Activa Logo"
             fill
-            sizes="(max-width: 768px) 112px, 144px"
+            sizes="(max-width: 768px) 128px, 160px"
             className="object-contain"
             priority
           />
         </div>
 
-        {/* Brand Name */}
+        {/* Brand Typography */}
         <div className="space-y-1">
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+          <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">
             activa<span className="text-rose-500">.</span>
           </h1>
-          <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.25em] text-slate-400 dark:text-neutral-500">
-            Connect • Explore • Live
+          <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.25em] text-neutral-400">
+            CONNECT • EXPLORE • LIVE
           </p>
         </div>
 
-        {/* Smooth Loading Indicator Line */}
-        <div className="w-24 h-1 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden relative mt-4">
-          <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-rose-500 to-pink-500 w-1/2 rounded-full animate-[shimmer_1.2s_infinite_linear]" />
+        {/* Animated Fluid Loading Bar */}
+        <div className="w-36 h-1.5 bg-neutral-900 rounded-full overflow-hidden relative mt-4 border border-white/10 shadow-inner">
+          <div
+            className="absolute inset-y-0 bg-gradient-to-r from-rose-600 via-red-500 to-pink-500 rounded-full"
+            style={{ animation: 'splashBar 1.3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}
+          />
         </div>
       </div>
     </div>
