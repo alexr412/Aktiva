@@ -118,7 +118,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [dbProfile, setDbProfile] = useState<UserProfile | null>(null);
   const [simulatedRole, setSimulatedRoleState] = useState<'superadmin' | 'admin' | 'moderator' | 'supporter' | 'user' | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authInitializing, setAuthInitializing] = useState(true);
   const [isRefreshingProfile, setIsRefreshingProfile] = useState(false);
   const [error, setError] = useState<any | null>(null);
   const initialAuthResolutionRef = useRef(false);
@@ -392,10 +391,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsMounted(true);
     if (!auth || !db) {
       setLoading(false);
-      if (!initialAuthResolutionRef.current) {
-        initialAuthResolutionRef.current = true;
-        setAuthInitializing(false);
-      }
+      initialAuthResolutionRef.current = true;
       return;
     }
 
@@ -531,20 +527,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
           }
         }).finally(() => {
-          if (!initialAuthResolutionRef.current) {
-            initialAuthResolutionRef.current = true;
-            setAuthInitializing(false);
-          }
+          initialAuthResolutionRef.current = true;
         });
       } else {
         setUser(null);
         setDbProfile(null);
         setSocialLegalConsentPending(false);
         setLoading(false);
-        if (!initialAuthResolutionRef.current) {
-          initialAuthResolutionRef.current = true;
-          setAuthInitializing(false);
-        }
+        initialAuthResolutionRef.current = true;
       }
     });
 
@@ -657,27 +647,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   if (!isMounted) return null;
 
-  console.log(`[AUTH TRACE] authInitializing=${authInitializing} childrenRendered=${!authInitializing}`);
-
   return (
     <AuthContext.Provider value={contextValue}>
-      {authInitializing ? (
-        <div className="flex h-dvh w-full items-center justify-center bg-white dark:bg-neutral-950">
-          <Loader2 className="w-8 h-8 animate-spin text-[#10b981]" />
-        </div>
-      ) : (
-        <>
-          {children}
-          {socialLegalConsentPending && (
-            <LegalConsentDialog
-              open={true}
-              onOpenChange={() => {}}
-              onAccept={handleAcceptSocialConsent}
-              onDecline={handleDeclineSocialConsent}
-              language={language}
-            />
-          )}
-        </>
+      {children}
+      {socialLegalConsentPending && (
+        <LegalConsentDialog
+          open={true}
+          onOpenChange={() => {}}
+          onAccept={handleAcceptSocialConsent}
+          onDecline={handleDeclineSocialConsent}
+          language={language}
+        />
       )}
     </AuthContext.Provider>
   );
