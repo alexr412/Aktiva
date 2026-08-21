@@ -18,6 +18,7 @@ import { ChatSyncProvider } from '@/contexts/chat-sync-context';
 import { NotificationProvider } from '@/contexts/notification-context';
 import { InAppNotificationContainer } from '@/components/notifications/InAppNotificationContainer';
 import { FriendRadarProvider } from '@/hooks/use-friend-radar';
+import { AppSplashScreen } from '@/components/common/AppSplashScreen';
 
 export const metadata: Metadata = {
   title: 'Activa',
@@ -104,6 +105,7 @@ export default function RootLayout({
         <AppInit />
         <ThemeProvider>
           <AuthProvider>
+            <AppSplashScreen />
             <LocationProvider>
               <AppBootstrapGate>
                 <PlanningModeProvider>
