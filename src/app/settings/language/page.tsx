@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Globe, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -32,7 +33,9 @@ export default function LanguageSettingsPage() {
     if (authLoading || !user || (userProfile && userProfile.onboardingCompleted === false)) {
         return (
             <div className="flex flex-1 min-h-0 w-full items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="relative w-12 h-12 animate-pulse">
+                    <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
+                </div>
             </div>
         );
     }

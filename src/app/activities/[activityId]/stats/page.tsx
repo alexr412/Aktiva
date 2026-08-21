@@ -10,6 +10,7 @@ import type { Activity } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft, BarChart3, Users, Eye, Target, TrendingUp, Sparkles, Flame, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 export default function ActivityStatsPage() {
@@ -45,8 +46,10 @@ export default function ActivityStatsPage() {
 
     if (loading) {
         return (
-            <div className="flex h-full w-full items-center justify-center bg-slate-50">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex h-full w-full items-center justify-center bg-slate-50 dark:bg-neutral-950">
+                <div className="relative w-12 h-12 animate-pulse">
+                    <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
+                </div>
             </div>
         );
     }

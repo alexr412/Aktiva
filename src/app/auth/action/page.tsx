@@ -6,6 +6,7 @@ import { PasswordResetUI } from '@/components/auth/password-reset-ui';
 import { verifyEmailCode, recoverEmailCode } from '@/lib/firebase/auth';
 import { useLanguage } from '@/hooks/use-language';
 import { MapPin, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 
@@ -13,7 +14,9 @@ export default function AuthActionPage() {
   return (
     <Suspense fallback={
       <div className="flex-1 min-h-0 w-full flex items-center justify-center bg-white dark:bg-neutral-950">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <div className="relative w-12 h-12 animate-pulse">
+          <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
+        </div>
       </div>
     }>
       <AuthActionContent />
@@ -96,7 +99,9 @@ function AuthActionContent() {
 
           {verifyState === 'loading' && (
             <div className="text-center py-10 space-y-4">
-              <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
+              <div className="relative w-12 h-12 animate-pulse mx-auto">
+                <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
+              </div>
               <p className="text-sm font-bold text-slate-600 dark:text-neutral-400">
                 {language === 'de' ? 'Link wird verarbeitet...' : 'Processing link...'}
               </p>

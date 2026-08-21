@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, User, Bell, Users, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2, ShieldBan, Scale, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -356,7 +357,9 @@ export default function SettingsPage() {
     if (authLoading || !user || (userProfile && userProfile.onboardingCompleted === false)) {
         return (
             <div className="flex flex-1 min-h-0 w-full items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="relative w-12 h-12 animate-pulse">
+                    <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
+                </div>
             </div>
         );
     }

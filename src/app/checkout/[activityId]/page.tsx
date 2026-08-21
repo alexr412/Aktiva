@@ -10,6 +10,7 @@ import type { Activity } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { CreditCard, ArrowLeft, Loader2, CheckCircle2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -142,8 +143,10 @@ export default function CheckoutPage() {
     // 4. Loading State Rendering
     if (loading || authLoading) {
         return (
-            <div className="flex flex-1 min-h-0 w-full items-center justify-center bg-slate-50">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex flex-1 min-h-0 w-full items-center justify-center bg-slate-50 dark:bg-neutral-950">
+                <div className="relative w-12 h-12 animate-pulse">
+                    <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
+                </div>
             </div>
         );
     }

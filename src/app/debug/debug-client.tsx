@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Loader2, Search, AlertCircle, CheckCircle2, XCircle, Info, Navigation } from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 export default function DebugClient() {
@@ -19,7 +20,9 @@ export default function DebugClient() {
   // Unautorisierter Zugriff blockieren
   if (authLoading) return (
     <div className="flex flex-1 min-h-0 w-full items-center justify-center bg-neutral-950">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="relative w-12 h-12 animate-pulse">
+        <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
+      </div>
     </div>
   );
 

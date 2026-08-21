@@ -25,6 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
+import Image from 'next/image';
 import { Loader2, ArrowLeft, UserCircle, MapPin, Sparkles, Camera, Check, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -304,7 +305,9 @@ export default function EditProfilePage() {
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-secondary/30">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="relative w-12 h-12 animate-pulse">
+          <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
+        </div>
       </div>
     );
   }

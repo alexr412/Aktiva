@@ -9,6 +9,7 @@ import { verifyTicket } from '@/lib/firebase/firestore';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, CheckCircle2, XCircle, Camera, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -106,8 +107,10 @@ export default function ScannerPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-slate-50">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex h-full w-full items-center justify-center bg-slate-50 dark:bg-neutral-950">
+        <div className="relative w-12 h-12 animate-pulse">
+          <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
+        </div>
       </div>
     );
   }

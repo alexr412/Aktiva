@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useFavorites } from '@/contexts/favorites-context';
+import Image from 'next/image';
 import { useCollections } from '@/hooks/use-collections';
 import { PlaceCard } from '@/components/activa/place-card';
 import type { Place, ActivityCategory } from '@/lib/types';
@@ -599,7 +600,9 @@ export default function FavoritesPage() {
                                   if (isLoading) {
                                     return (
                                       <div key={placeId} className="h-72 bg-white dark:bg-neutral-800 rounded-3xl animate-pulse flex items-center justify-center">
-                                        <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
+                                        <div className="relative w-8 h-8 opacity-60">
+                                          <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="32px" className="object-contain" />
+                                        </div>
                                       </div>
                                     );
                                   }

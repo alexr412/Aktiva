@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, useAnimation, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -403,7 +404,9 @@ export default function ExplorePage() {
                         {!userLocation ? (
                             isLocationLoading ? (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                    <div className="relative w-12 h-12 animate-pulse">
+                                        <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
+                                    </div>
                                     <p className="mt-4 text-sm font-semibold text-slate-500 dark:text-neutral-400">
                                         {language === 'de' ? 'Standort wird ermittelt...' : 'Determining location...'}
                                     </p>
