@@ -17,7 +17,7 @@ export function AppSplashScreen() {
   });
 
   const [isFading, setIsFading] = useState(false);
-  const [minTimerDone, setMinTimerDone] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -28,27 +28,36 @@ export function AppSplashScreen() {
       }
     }
 
-    // Display duration for initial load (~2.2 seconds)
-    const minTimer = setTimeout(() => {
-      setMinTimerDone(true);
-    }, 2200);
+    // Smooth progressive progress bar fill from 0% to 90%
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 90) return prev;
+        const step = Math.max(1, Math.floor((90 - prev) / 6));
+        return prev + step;
+      });
+    }, 70);
 
-    return () => clearTimeout(minTimer);
+    return () => clearInterval(interval);
   }, []);
 
+  // When authLoading completes, smoothly finish progress to 100% and fade out
   useEffect(() => {
-    if (isVisible && minTimerDone && !authLoading && !isFading) {
-      setIsFading(true);
-      const fadeTimer = setTimeout(() => {
-        setIsVisible(false);
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('activa_app_splash_shown', 'true');
-        }
-      }, 500);
+    if (!authLoading && isVisible && !isFading) {
+      setProgress(100);
+      const finishTimer = setTimeout(() => {
+        setIsFading(true);
+        const fadeTimer = setTimeout(() => {
+          setIsVisible(false);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('activa_app_splash_shown', 'true');
+          }
+        }, 500);
+        return () => clearTimeout(fadeTimer);
+      }, 350);
 
-      return () => clearTimeout(fadeTimer);
+      return () => clearTimeout(finishTimer);
     }
-  }, [isVisible, minTimerDone, authLoading, isFading]);
+  }, [authLoading, isVisible, isFading]);
 
   if (!isVisible) {
     return null;
@@ -62,11 +71,6 @@ export function AppSplashScreen() {
       )}
     >
       <style>{`
-        @keyframes splashBar {
-          0% { left: -40%; width: 35%; }
-          50% { left: 30%; width: 50%; }
-          100% { left: 105%; width: 35%; }
-        }
         @keyframes logoPulse {
           0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.35)); }
           50% { transform: scale(1.05); filter: drop-shadow(0 0 38px rgba(239, 68, 68, 0.65)); }
@@ -103,11 +107,11 @@ export function AppSplashScreen() {
           </p>
         </div>
 
-        {/* Animated Fluid Loading Bar */}
-        <div className="w-36 h-1.5 bg-neutral-900 rounded-full overflow-hidden relative mt-4 border border-white/10 shadow-inner">
+        {/* Progressive Loading Bar (Fills 0% to 100% from left to right) */}
+        <div className="w-48 sm:w-56 h-2 bg-neutral-900 rounded-full overflow-hidden relative mt-4 border border-white/10 shadow-inner">
           <div
-            className="absolute inset-y-0 bg-gradient-to-r from-rose-600 via-red-500 to-pink-500 rounded-full"
-            style={{ animation: 'splashBar 1.3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}
+            className="h-full bg-gradient-to-r from-rose-600 via-red-500 to-pink-500 rounded-full transition-all duration-150 ease-out"
+            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
           />
         </div>
       </div>
