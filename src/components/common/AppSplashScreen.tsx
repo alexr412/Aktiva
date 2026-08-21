@@ -8,39 +8,34 @@ import { cn } from '@/lib/utils';
 export function AppSplashScreen() {
   const { loading: authLoading } = useAuth();
 
-  // Lazy state initializer: synchronously TRUE on frame 0 (unless session flag exists)
-  const [isVisible, setIsVisible] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('activa_app_splash_shown') !== 'true';
-    }
-    return true;
-  });
-
+  // Show splash screen synchronously on frame 0 during initial mount or page refresh
+  const [isVisible, setIsVisible] = useState(true);
   const [isFading, setIsFading] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  // Progressive progress bar animation (0% -> 90% while loading)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const alreadyShown = sessionStorage.getItem('activa_app_splash_shown');
-      if (alreadyShown === 'true') {
-        setIsVisible(false);
-        return;
-      }
-    }
+    let active = true;
+    setProgress(0);
+    setIsFading(false);
+    setIsVisible(true);
 
-    // Smooth progressive progress bar fill from 0% to 90%
     const interval = setInterval(() => {
+      if (!active) return;
       setProgress((prev) => {
         if (prev >= 90) return prev;
-        const step = Math.max(1, Math.floor((90 - prev) / 6));
+        const step = Math.max(1, Math.floor((90 - prev) / 5));
         return prev + step;
       });
-    }, 70);
+    }, 60);
 
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  // When authLoading completes, smoothly finish progress to 100% and fade out
+  // When authLoading finishes, rapidly complete progress to 100% and fade out
   useEffect(() => {
     if (!authLoading && isVisible && !isFading) {
       setProgress(100);
@@ -48,12 +43,9 @@ export function AppSplashScreen() {
         setIsFading(true);
         const fadeTimer = setTimeout(() => {
           setIsVisible(false);
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('activa_app_splash_shown', 'true');
-          }
-        }, 500);
+        }, 450);
         return () => clearTimeout(fadeTimer);
-      }, 350);
+      }, 300);
 
       return () => clearTimeout(finishTimer);
     }

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import Link from 'next/link';
 import type { Place, Activity } from '@/lib/types';
 import type { SelectedMapEntity } from '@/components/map/map-types';
@@ -28,7 +29,9 @@ const ActivaMap = dynamic(() => import('@/components/map/activa-map').then((mod)
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex flex-col items-center justify-center bg-slate-50 dark:bg-neutral-900">
-      <Loader2 className="h-8 w-8 text-emerald-500 animate-spin mb-2" />
+      <div className="relative w-12 h-12 animate-pulse mb-2">
+        <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
+      </div>
       <span className="text-xs font-bold text-slate-500 dark:text-neutral-400">Karte wird geladen...</span>
     </div>
   ),
