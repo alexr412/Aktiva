@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -833,7 +834,9 @@ export function ActivaMap({
       {/* Loading Overlay */}
       {mapStatus === 'loading' && (
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-50/90 dark:bg-neutral-900/90 backdrop-blur-sm transition-opacity duration-300">
-          <Loader2 className="h-8 w-8 text-emerald-500 animate-spin mb-2" />
+          <div className="relative w-8 h-8 animate-pulse mb-2">
+            <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="32px" className="object-contain" />
+          </div>
           <span className="text-xs font-bold text-slate-600 dark:text-neutral-400">
             {language === 'de' ? 'Karte wird geladen...' : 'Loading map...'}
           </span>

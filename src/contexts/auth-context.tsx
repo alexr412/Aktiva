@@ -645,8 +645,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return <AccountStatusScreen profile={userProfile} />;
   }
 
-  if (!isMounted) return null;
-
   return (
     <AuthContext.Provider value={contextValue}>
       {children}

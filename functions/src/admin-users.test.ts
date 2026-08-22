@@ -93,6 +93,7 @@ async function runAdminUsersBackendTests() {
     uid: 'p1',
     onboardingCompleted: true,
     isPremium: true,
+    premiumTier: 'tier2',
     premiumExpiresAt: futureMs as any,
   };
   assert.strictEqual(getParticipantLimit(premiumUser, nowMs), 12, 'Active premium limit must be 12');

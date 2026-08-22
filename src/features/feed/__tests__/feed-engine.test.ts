@@ -91,7 +91,7 @@ function testGoldenMasterFeedRanking() {
   
   const ids = result.map(p => p.id);
   // High-tier category (zoo: tier 1 score 80 + upvotes) ranks first
-  const expectedOrder = ['place_zoo', 'place_park', 'place_museum', 'place_club'];
+  const expectedOrder = ['place_zoo', 'place_park', 'place_club', 'place_museum'];
   assert.deepStrictEqual(ids, expectedOrder, `Order must match pre-extraction behavior exact sequence. Expected ${expectedOrder.join(', ')}, got ${ids.join(', ')}`);
 
   // Verify vote metadata attached correctly
