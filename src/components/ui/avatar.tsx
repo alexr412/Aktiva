@@ -21,7 +21,7 @@ const Avatar = React.forwardRef<
     isCreator 
       ? "bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_20px_rgba(168,85,247,0.6)]" 
       : isPremium 
-        ? "bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-600 shadow-[0_0_20px_rgba(251,191,36,0.6)]" 
+        ? "bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-700 shadow-[0_0_15px_rgba(217,119,6,0.5)]" 
         : isSupporter 
           ? "bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]" 
           : "",

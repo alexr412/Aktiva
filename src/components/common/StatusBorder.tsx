@@ -20,8 +20,8 @@ export function StatusBorder() {
   let label = '';
 
   if (isPremium) {
-    statusColor = 'bg-[#FFD700]';
-    glowColor = 'shadow-[0_1px_12px_rgba(255,215,0,0.85)]';
+    statusColor = 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-600';
+    glowColor = 'shadow-[0_1px_14px_rgba(245,158,11,0.6)]';
     label = 'Premium';
   } else if (isCreator) {
     statusColor = 'bg-[#A855F7]';
@@ -57,7 +57,7 @@ export function StatusBorder() {
                 "cursor-pointer hover:brightness-110 active:scale-95 select-none",
                 simulatedRole === 'user' 
                   ? "bg-slate-600/80 border border-t-0 border-slate-500 text-slate-200" 
-                  : (isPremium ? "bg-[#FFD700] text-black" : 
+                  : (isPremium ? "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-600 text-slate-950 font-black" : 
                      isCreator ? "bg-[#A855F7]" : 
                      "bg-[#3B82F6]")
               )}
@@ -70,7 +70,7 @@ export function StatusBorder() {
           ) : (
             <div className={cn(
               "px-3 py-1 rounded-b-lg text-[10px] font-black uppercase tracking-widest text-white shadow-2xl",
-              isPremium ? "bg-[#FFD700] text-black" : 
+              isPremium ? "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-600 text-slate-950 font-black" : 
               isCreator ? "bg-[#A855F7]" : 
               "bg-[#3B82F6]"
             )}>
