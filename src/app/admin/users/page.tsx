@@ -134,7 +134,11 @@ function AdminUsersContent() {
       const res: any = await listUsersFn(payload);
 
       if (res.data) {
-        setUsers(res.data.users || []);
+        const rawFetched = res.data.users || [];
+        const safeList = selectedStatus !== 'all'
+          ? rawFetched.filter((u: UserProfile) => getEffectiveAccountStatus(u) === selectedStatus)
+          : rawFetched;
+        setUsers(safeList);
         setHasMore(!!res.data.hasMore);
         setLastDocId(res.data.lastDocId);
       }
@@ -422,14 +426,18 @@ function AdminUsersContent() {
                     </Button>
                   </td>
                 </tr>
-              ) : users.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="p-8 text-center text-slate-400 font-medium italic">
-                    Keine Nutzer für die aktuellen Filterkriterien gefunden.
-                  </td>
-                </tr>
-              ) : (
-                users.map((u) => {
+              ) : (() => {
+                const displayUsers = users.filter(u => selectedStatus === 'all' || getEffectiveAccountStatus(u) === selectedStatus);
+                if (displayUsers.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={11} className="p-8 text-center text-slate-400 font-medium italic">
+                        Keine Nutzer für die aktuellen Filterkriterien gefunden.
+                      </td>
+                    </tr>
+                  );
+                }
+                return displayUsers.map((u) => {
                   const effectiveStatus = getEffectiveAccountStatus(u);
                   const isPrem = isPremiumActive(u);
                   const isOrg = !!u.isOrganizer;
@@ -565,8 +573,8 @@ function AdminUsersContent() {
                       </td>
                     </tr>
                   );
-                })
-              )}
+                });
+              })()}
             </tbody>
           </table>
         </div>

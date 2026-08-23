@@ -105,6 +105,49 @@ export async function assertNotLastSuperadmin(
   }
 }
 
+export function normalizeUserProfile(uid: string, raw: any, nowMs: number = Date.now()) {
+  const roleVal = raw.role || (raw.isAdmin ? 'admin' : (raw.isSupporter ? 'supporter' : 'user'));
+  
+  // Canonical effective account status calculation
+  let statusVal: 'active' | 'suspended' | 'banned' = 'active';
+  if (raw.isBanned === true || raw.accountStatus === 'banned') {
+    statusVal = 'banned';
+  } else if (raw.accountStatus === 'suspended' && raw.suspendedUntil) {
+    let untilMs: number | null = null;
+    const su = raw.suspendedUntil;
+    if (su && typeof su.toMillis === 'function') untilMs = su.toMillis();
+    else if (su && typeof su.toDate === 'function') untilMs = su.toDate().getTime();
+    else if (typeof su === 'number') untilMs = su;
+    else if (typeof su === 'string') untilMs = Date.parse(su);
+
+    if (untilMs !== null && !isNaN(untilMs) && untilMs > nowMs) {
+      statusVal = 'suspended';
+    } else {
+      statusVal = 'active';
+    }
+  } else {
+    statusVal = 'active';
+  }
+
+  const isOrgVal = raw.isOrganizer === true;
+  const isPremVal = raw.isPremium === true;
+  const displayNameVal = raw.displayName || raw.username || 'Activa-Nutzer';
+  const emailVal = raw.email || null;
+  const createdAtVal = raw.createdAt || raw.creationTime || null;
+
+  return {
+    uid,
+    ...raw,
+    role: roleVal,
+    accountStatus: statusVal,
+    isOrganizer: isOrgVal,
+    isPremium: isPremVal,
+    displayName: displayNameVal,
+    email: emailVal,
+    createdAt: createdAtVal,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. adminListUsers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,57 +184,18 @@ export const adminListUsers = onCall(async (request) => {
     startAfterDocId,
   });
 
-  // Pure Read-Only Response Normalizer (No Firestore Writes during list)
   const normalizeUserDoc = (doc: admin.firestore.DocumentSnapshot) => {
-    const raw = doc.data() || {};
-    const roleVal = raw.role || (raw.isAdmin ? 'admin' : (raw.isSupporter ? 'supporter' : 'user'));
-    
-    // Canonical effective account status calculation
-    let statusVal: 'active' | 'suspended' | 'banned' = 'active';
-    if (raw.isBanned === true || raw.accountStatus === 'banned') {
-      statusVal = 'banned';
-    } else if (raw.accountStatus === 'suspended' && raw.suspendedUntil) {
-      let untilMs: number | null = null;
-      const su = raw.suspendedUntil;
-      if (su && typeof su.toMillis === 'function') untilMs = su.toMillis();
-      else if (su && typeof su.toDate === 'function') untilMs = su.toDate().getTime();
-      else if (typeof su === 'number') untilMs = su;
-      else if (typeof su === 'string') untilMs = Date.parse(su);
-
-      if (untilMs !== null && !isNaN(untilMs) && untilMs > Date.now()) {
-        statusVal = 'suspended';
-      } else {
-        statusVal = 'active';
-      }
-    } else {
-      statusVal = 'active';
-    }
-
-    const isOrgVal = raw.isOrganizer === true;
-    const isPremVal = raw.isPremium === true;
-    const displayNameVal = raw.displayName || raw.username || 'Activa-Nutzer';
-    const emailVal = raw.email || null;
-    const createdAtVal = raw.createdAt || raw.creationTime || null;
-
-    return {
-      uid: doc.id,
-      ...raw,
-      role: roleVal,
-      accountStatus: statusVal,
-      isOrganizer: isOrgVal,
-      isPremium: isPremVal,
-      displayName: displayNameVal,
-      email: emailVal,
-      createdAt: createdAtVal,
-    };
+    return normalizeUserProfile(doc.id, doc.data() || {}, Date.now());
   };
 
   // Exact Lookup: UID
   if (search && typeof search === 'string' && search.trim().length >= 20 && !search.includes(' ') && !search.includes('@')) {
     const docSnap = await db.collection('users').doc(search.trim()).get();
     if (docSnap.exists) {
-      const users = [normalizeUserDoc(docSnap)];
-      console.log('[ADMIN USERS RESULT - UID MATCH]', { count: 1, uid: docSnap.id });
+      let users = [normalizeUserDoc(docSnap)];
+      if (accountStatus && accountStatus !== 'all' && ['active', 'suspended', 'banned'].includes(accountStatus)) {
+        users = users.filter(u => u.accountStatus === accountStatus);
+      }
       return { users, hasMore: false };
     }
   }
@@ -204,8 +208,10 @@ export const adminListUsers = onCall(async (request) => {
       emailSnap = await db.collection('users').where('email', '==', search.trim()).limit(10).get();
     }
     if (!emailSnap.empty) {
-      const users = emailSnap.docs.map(normalizeUserDoc);
-      console.log('[ADMIN USERS RESULT - EMAIL MATCH]', { count: users.length });
+      let users = emailSnap.docs.map(normalizeUserDoc);
+      if (accountStatus && accountStatus !== 'all' && ['active', 'suspended', 'banned'].includes(accountStatus)) {
+        users = users.filter(u => u.accountStatus === accountStatus);
+      }
       return { users, hasMore: false };
     }
   }
@@ -218,74 +224,112 @@ export const adminListUsers = onCall(async (request) => {
       unameSnap = await db.collection('users').where('username', '==', search.trim()).limit(10).get();
     }
     if (!unameSnap.empty) {
-      const users = unameSnap.docs.map(normalizeUserDoc);
-      console.log('[ADMIN USERS RESULT - USERNAME MATCH]', { count: users.length });
+      let users = unameSnap.docs.map(normalizeUserDoc);
+      if (accountStatus && accountStatus !== 'all' && ['active', 'suspended', 'banned'].includes(accountStatus)) {
+        users = users.filter(u => u.accountStatus === accountStatus);
+      }
       return { users, hasMore: false };
     }
   }
 
-  let query: admin.firestore.Query = db.collection('users');
+  let baseQuery: admin.firestore.Query = db.collection('users');
 
   // Filter: Role (ignore 'all' or empty)
   if (role && role !== 'all' && ['user', 'moderator', 'admin', 'superadmin'].includes(role)) {
-    query = query.where('role', '==', role);
+    baseQuery = baseQuery.where('role', '==', role);
   }
 
   // Filter: Organizer
   if (typeof isOrganizer === 'boolean') {
-    query = query.where('isOrganizer', '==', isOrganizer);
+    baseQuery = baseQuery.where('isOrganizer', '==', isOrganizer);
   }
 
   // Filter: Account Status (ignore 'all' or empty)
   if (accountStatus && accountStatus !== 'all' && ['active', 'suspended', 'banned'].includes(accountStatus)) {
-    query = query.where('accountStatus', '==', accountStatus);
+    baseQuery = baseQuery.where('accountStatus', '==', accountStatus);
   }
 
   // Filter: Premium (ignore 'all' or empty)
   if (premium === 'active') {
-    query = query.where('isPremium', '==', true);
+    baseQuery = baseQuery.where('isPremium', '==', true);
   } else if (premium === 'inactive') {
-    query = query.where('isPremium', '==', false);
+    baseQuery = baseQuery.where('isPremium', '==', false);
   }
 
   // Prefix Search on Name if provided
   if (search && typeof search === 'string' && search.trim().length > 0) {
     const term = search.trim().toLowerCase().replace(/^@/, '');
-    query = query.where('displayNameLower', '>=', term).where('displayNameLower', '<=', term + '\uf8ff');
-    query = query.orderBy('displayNameLower', 'asc');
+    baseQuery = baseQuery.where('displayNameLower', '>=', term).where('displayNameLower', '<=', term + '\uf8ff');
+    baseQuery = baseQuery.orderBy('displayNameLower', 'asc');
   }
 
-  // Cursor Pagination (Page 2+)
+  const targetCount = queryLimit;
+  const matchingUsers: any[] = [];
+  let currentCursorDoc: admin.firestore.DocumentSnapshot | null = null;
+
   if (startAfterDocId) {
     const startDoc = await db.collection('users').doc(startAfterDocId).get();
     if (startDoc.exists) {
-      query = query.startAfter(startDoc);
+      currentCursorDoc = startDoc;
     }
   }
 
-  query = query.limit(queryLimit + 1);
-  const snapshot = await query.get();
+  let hasMore = false;
+  let lastEvaluatedDoc: admin.firestore.DocumentSnapshot | null = currentCursorDoc;
+  const fetchBatchSize = targetCount + 15;
 
-  const docs = snapshot.docs;
-  const hasMore = docs.length > queryLimit;
-  const resultDocs = hasMore ? docs.slice(0, queryLimit) : docs;
+  while (matchingUsers.length < targetCount) {
+    let batchQuery = baseQuery;
+    if (lastEvaluatedDoc && lastEvaluatedDoc.exists) {
+      batchQuery = batchQuery.startAfter(lastEvaluatedDoc);
+    }
+    batchQuery = batchQuery.limit(fetchBatchSize);
 
-  const rawUsers = resultDocs.map(normalizeUserDoc);
-  let users = rawUsers;
-  if (accountStatus && accountStatus !== 'all' && ['active', 'suspended', 'banned'].includes(accountStatus)) {
-    users = rawUsers.filter(u => u.accountStatus === accountStatus);
+    const snapshot = await batchQuery.get();
+    if (snapshot.empty) {
+      hasMore = false;
+      break;
+    }
+
+    const docs = snapshot.docs;
+
+    for (const doc of docs) {
+      lastEvaluatedDoc = doc;
+      const normalized = normalizeUserDoc(doc);
+
+      const matchesStatus = !accountStatus || accountStatus === 'all'
+        ? true
+        : normalized.accountStatus === accountStatus;
+
+      if (matchesStatus) {
+        matchingUsers.push(normalized);
+        if (matchingUsers.length === targetCount) {
+          const docIndex = docs.indexOf(doc);
+          hasMore = docIndex < docs.length - 1 || docs.length === fetchBatchSize;
+          break;
+        }
+      }
+    }
+
+    if (docs.length < fetchBatchSize || matchingUsers.length === targetCount) {
+      if (matchingUsers.length < targetCount) {
+        hasMore = false;
+      }
+      break;
+    }
   }
-  const lastDocId = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1].id : undefined;
+
+  const lastDocId = lastEvaluatedDoc && lastEvaluatedDoc.exists ? lastEvaluatedDoc.id : undefined;
 
   console.log('[ADMIN USERS RESULT]', {
-    count: snapshot.size,
-    returnedCount: users.length,
+    requestedLimit: queryLimit,
+    returnedCount: matchingUsers.length,
     hasMore,
     lastDocId,
-    sampleIds: users.slice(0, 5).map(u => u.uid),
+    sampleIds: matchingUsers.slice(0, 5).map(u => u.uid),
   });
 
-  return { users, hasMore, lastDocId };
+  return { users: matchingUsers, hasMore, lastDocId };
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -863,6 +907,24 @@ export const adminBackfillUsers = onCall(async (request) => {
     }
     if (!raw.accountStatus) {
       updates.accountStatus = raw.isBanned ? 'banned' : 'active';
+    }
+
+    // Clean up expired suspensions in Firestore
+    if (raw.accountStatus === 'suspended') {
+      let untilMs: number | null = null;
+      const su = raw.suspendedUntil;
+      if (su && typeof su.toMillis === 'function') untilMs = su.toMillis();
+      else if (su && typeof su.toDate === 'function') untilMs = su.toDate().getTime();
+      else if (typeof su === 'number') untilMs = su;
+      else if (typeof su === 'string') untilMs = Date.parse(su);
+
+      if (!untilMs || isNaN(untilMs) || untilMs <= Date.now()) {
+        updates.accountStatus = 'active';
+        updates.suspendedUntil = FieldValue.delete();
+        updates.suspendedBy = FieldValue.delete();
+        updates.suspensionReasonPublic = FieldValue.delete();
+        updates.suspensionNoteInternal = FieldValue.delete();
+      }
     }
     if (raw.displayName && !raw.displayNameLower) {
       updates.displayNameLower = raw.displayName.trim().toLowerCase();
