@@ -26,6 +26,8 @@ export interface PublicUserProfile {
   isSupporter?: boolean;
   isCreator?: boolean;
   level?: number;
+  equippedTitle?: string | null;
+  equippedBorder?: string | null;
   age?: number;
   location?: string;
   bio?: string;
@@ -575,6 +577,8 @@ export interface UserProfile {
   pointsBalance?: number;
   pointsLifetime?: number;
   level?: number;
+  equippedTitle?: string | null;
+  equippedBorder?: string | null;
   referralCode?: string;
   referredBy?: string | null;
   averageRating?: number;

@@ -13,6 +13,7 @@ interface ProfileAvatarProps {
   isSupporter?: boolean;
   level?: number;
   showLevelBadge?: boolean;
+  equippedBorder?: string | null;
   className?: string;
   fallbackClassName?: string;
 }
@@ -25,6 +26,7 @@ export function ProfileAvatar({
   isSupporter,
   level,
   showLevelBadge = true,
+  equippedBorder,
   className,
   fallbackClassName,
 }: ProfileAvatarProps) {
@@ -43,6 +45,7 @@ export function ProfileAvatar({
       isSupporter={isSupporter}
       level={level}
       showLevelBadge={showLevelBadge}
+      equippedBorder={equippedBorder}
       className={adjustedClassName}
     >
       {photoURL ? (

@@ -5,7 +5,7 @@ import * as React from "react"
 import * as AvatarPrimitive from "@radix-ui/react-avatar"
 
 import { cn } from "@/lib/utils"
-import { getLevelTierInfo } from "@/lib/levels"
+import { getLevelTierInfo, getCustomBorderGradient } from "@/lib/levels"
 
 const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
@@ -15,20 +15,24 @@ const Avatar = React.forwardRef<
     isSupporter?: boolean;
     level?: number;
     showLevelBadge?: boolean;
+    equippedBorder?: string | null;
   }
->(({ className, isPremium, isCreator, isSupporter, level, showLevelBadge, ...props }, ref) => {
+>(({ className, isPremium, isCreator, isSupporter, level, showLevelBadge, equippedBorder, ...props }, ref) => {
   const tierInfo = level ? getLevelTierInfo(level) : null;
-  const hasStatus = isPremium || isCreator || isSupporter || (level !== undefined && level > 0);
+  const customGradient = getCustomBorderGradient(equippedBorder);
+  const hasStatus = isPremium || isCreator || isSupporter || (level !== undefined && level > 0) || Boolean(customGradient);
   
-  const statusBorderClass = isCreator 
-    ? "bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_20px_rgba(168,85,247,0.6)]" 
-    : isPremium 
-      ? "bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-700 shadow-[0_0_15px_rgba(217,119,6,0.5)]" 
-      : isSupporter 
-        ? "bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]" 
-        : tierInfo 
-          ? tierInfo.borderGradient 
-          : "";
+  const statusBorderClass = customGradient
+    ? customGradient
+    : isCreator 
+      ? "bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_20px_rgba(168,85,247,0.6)]" 
+      : isPremium 
+        ? "bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-700 shadow-[0_0_15px_rgba(217,119,6,0.5)]" 
+        : isSupporter 
+          ? "bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]" 
+          : tierInfo 
+            ? tierInfo.borderGradient 
+            : "";
 
   const statusWrapperClasses = cn(
     "p-[3px] rounded-full",
@@ -58,7 +62,7 @@ const Avatar = React.forwardRef<
       {showLevelBadge && level !== undefined && level > 0 && (
         <span 
           className={cn(
-            "absolute -bottom-1 -right-1 z-10 px-1 py-0.25 rounded-full text-[9px] font-black uppercase tracking-tight shadow-md border border-white dark:border-slate-900 leading-none select-none flex items-center justify-center",
+            "absolute -bottom-1.5 left-1/2 -translate-x-1/2 z-20 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight shadow-md border border-white dark:border-slate-900 leading-none select-none flex items-center justify-center whitespace-nowrap",
             tierInfo?.badgeBg || "bg-slate-700",
             tierInfo?.badgeText || "text-white"
           )}

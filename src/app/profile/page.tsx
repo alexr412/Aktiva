@@ -41,7 +41,7 @@ import { format } from 'date-fns';
 
 
 
-import { LEVEL_THRESHOLDS, getLevelTitle, getLevelTierInfo } from '@/lib/levels';
+import { LEVEL_THRESHOLDS, getLevelTitle, getLevelTierInfo, getUnlockedTitles, getUnlockedBorders } from '@/lib/levels';
 
 export default function ProfilePage() {
     const { user, userProfile, loading: authLoading } = useAuth();
@@ -305,6 +305,46 @@ export default function ProfilePage() {
     const [isSavingPreset, setIsSavingPreset] = useState(false);
     const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
     const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
+
+    // Dialog States for Title & Frame Customization
+    const [isCustomizeDialogOpen, setIsCustomizeDialogOpen] = useState(false);
+    const [selectedTitle, setSelectedTitle] = useState<string>('default');
+    const [selectedBorder, setSelectedBorder] = useState<string>('default');
+    const [isSavingCustomization, setIsSavingCustomization] = useState(false);
+
+    useEffect(() => {
+        if (userData) {
+            setSelectedTitle(userData.equippedTitle || 'default');
+            setSelectedBorder(userData.equippedBorder || 'default');
+        }
+    }, [userData]);
+
+    const handleSaveCustomization = async () => {
+        if (!user?.uid || !db) return;
+        setIsSavingCustomization(true);
+        try {
+            const userRef = doc(db, 'users', user.uid);
+            await updateDoc(userRef, {
+                equippedTitle: selectedTitle,
+                equippedBorder: selectedBorder,
+            });
+            setUserData(prev => prev ? { ...prev, equippedTitle: selectedTitle, equippedBorder: selectedBorder } : null);
+            toast({
+                title: language === 'de' ? 'Anpassung gespeichert' : 'Customization saved',
+                description: language === 'de' ? 'Dein Titel & Rahmen wurden aktualisiert.' : 'Your title & frame have been updated.',
+            });
+            setIsCustomizeDialogOpen(false);
+        } catch (err) {
+            console.error("Failed to save customization", err);
+            toast({
+                variant: 'destructive',
+                title: language === 'de' ? 'Fehler' : 'Error',
+                description: language === 'de' ? 'Konnte nicht gespeichert werden.' : 'Could not save customization.',
+            });
+        } finally {
+            setIsSavingCustomization(false);
+        }
+    };
 
     const handleOpenAvatarDialog = () => {
         const currentPhotoUrl = userData?.photoURL || '';
@@ -721,30 +761,49 @@ export default function ProfilePage() {
                             <div className="flex flex-row items-start gap-4 sm:gap-6 w-full">
                                 {/* Left Column: Avatar + Change Button + Name + Username + Rating */}
                                 <div className="flex flex-col items-center text-center shrink-0 w-32 sm:w-36">
-                                    {/* Avatar */}
-                                    <div className="relative group cursor-pointer mb-2" onClick={handleOpenAvatarDialog}>
-                                        <ProfileAvatar 
-                                            className="h-24 w-24 sm:h-28 sm:w-28 relative z-10 transition-transform group-hover:scale-105 active:scale-95"
-                                            photoURL={photoUrlToDisplay}
-                                            displayName={displayName}
-                                            isPremium={userData?.isPremium}
-                                            isCreator={userData?.isCreator}
-                                            isSupporter={userData?.isSupporter}
-                                            level={userData?.level || 1}
-                                            showLevelBadge={true}
-                                        />
-                                        {/* Hover overlay */}
-                                        <div className="absolute inset-0 z-20 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[9px] font-black uppercase tracking-widest text-center px-1">
-                                            {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
-                                        </div>
-                                        
-                                        <button
-                                            type="button"
-                                            className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-90 transition-all z-30"
-                                        >
-                                            <Camera className="h-3.5 w-3.5" />
-                                        </button>
-                                    </div>
+                                     {/* Avatar */}
+                                     <div className="relative group mb-2">
+                                         <div className="cursor-pointer" onClick={handleOpenAvatarDialog}>
+                                             <ProfileAvatar 
+                                                 className="h-24 w-24 sm:h-28 sm:w-28 relative z-10 transition-transform group-hover:scale-105 active:scale-95"
+                                                 photoURL={photoUrlToDisplay}
+                                                 displayName={displayName}
+                                                 isPremium={userData?.isPremium}
+                                                 isCreator={userData?.isCreator}
+                                                 isSupporter={userData?.isSupporter}
+                                                 level={userData?.level || 1}
+                                                 equippedBorder={userData?.equippedBorder}
+                                                 showLevelBadge={true}
+                                             />
+                                             {/* Hover overlay */}
+                                             <div className="absolute inset-0 z-20 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[9px] font-black uppercase tracking-widest text-center px-1">
+                                                 {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
+                                             </div>
+                                         </div>
+                                         
+                                         {/* Left Button: Settings / Gear for Title & Frame */}
+                                         <button
+                                             type="button"
+                                             onClick={(e) => {
+                                                 e.stopPropagation();
+                                                 setIsCustomizeDialogOpen(true);
+                                             }}
+                                             className="absolute bottom-0 left-0 h-8 w-8 rounded-full bg-slate-800 dark:bg-neutral-800 text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-90 transition-all z-30 border border-slate-700 dark:border-neutral-700"
+                                             title={language === 'de' ? 'Titel & Rahmen anpassen' : 'Customize Title & Frame'}
+                                         >
+                                             <Settings className="h-3.5 w-3.5" />
+                                         </button>
+
+                                         {/* Right Button: Camera for Avatar Photo */}
+                                         <button
+                                             type="button"
+                                             onClick={handleOpenAvatarDialog}
+                                             className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-90 transition-all z-30"
+                                             title={language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
+                                         >
+                                             <Camera className="h-3.5 w-3.5" />
+                                         </button>
+                                     </div>
                                     <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/jpeg,image/png,image/webp" />
                                     
                                     <button
@@ -852,7 +911,7 @@ export default function ProfilePage() {
                                         <div className="space-y-1 text-left">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <Badge className={cn("text-white font-black px-3 py-1 rounded-full text-xs tracking-wider border-none", getLevelTierInfo(userData.level || 1).badgeBg)}>
-                                                    LEVEL {userData.level || 1} • {getLevelTitle(userData.level || 1, language)}
+                                                    LEVEL {userData.level || 1} • {getLevelTitle(userData.level || 1, language, userData.equippedTitle)}
                                                 </Badge>
                                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                                                     {userData.level && userData.level >= 100 
@@ -1353,6 +1412,108 @@ export default function ProfilePage() {
                             </DialogFooter>
                         </>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Title & Frame Customization Dialog */}
+            <Dialog open={isCustomizeDialogOpen} onOpenChange={setIsCustomizeDialogOpen}>
+                <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <Settings className="h-5 w-5 text-emerald-500" />
+                            {language === 'de' ? 'Titel & Rahmen anpassen' : 'Customize Title & Frame'}
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-slate-500 dark:text-neutral-400">
+                            {language === 'de' 
+                                ? 'Wähle deinen angezeigten Rang-Titel und deinen Avatarrand aus deinen freigeschalteten Stufen.' 
+                                : 'Choose your displayed rank title and avatar frame from your unlocked tiers.'}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Live Preview */}
+                    <div className="flex flex-col items-center justify-center p-5 bg-slate-50 dark:bg-neutral-850 rounded-2xl gap-2 border border-slate-100 dark:border-neutral-800 my-2">
+                        <ProfileAvatar 
+                            className="h-24 w-24"
+                            photoURL={photoUrlToDisplay}
+                            displayName={displayName}
+                            isPremium={userData?.isPremium}
+                            isCreator={userData?.isCreator}
+                            isSupporter={userData?.isSupporter}
+                            level={userData?.level || 1}
+                            equippedBorder={selectedBorder}
+                            showLevelBadge={true}
+                        />
+                        <Badge className={cn("text-white font-black px-3 py-1 rounded-full text-xs tracking-wider border-none mt-2", getLevelTierInfo(userData?.level || 1).badgeBg)}>
+                            LEVEL {userData?.level || 1} • {getLevelTitle(userData?.level || 1, language, selectedTitle)}
+                        </Badge>
+                    </div>
+
+                    {/* Title Selector */}
+                    <div className="space-y-2">
+                        <label className="text-[11px] font-black uppercase text-slate-400 dark:text-neutral-400 tracking-wider">
+                            {language === 'de' ? 'Angezeigter Rang-Titel' : 'Displayed Rank Title'}
+                        </label>
+                        <div className="grid grid-cols-1 gap-2 max-h-36 overflow-y-auto pr-1">
+                            {getUnlockedTitles(userData?.level || 1).map((t) => (
+                                <button
+                                    key={t.id}
+                                    type="button"
+                                    onClick={() => setSelectedTitle(t.id)}
+                                    className={cn(
+                                        "flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all text-left cursor-pointer",
+                                        selectedTitle === t.id
+                                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                                            : "border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800"
+                                    )}
+                                >
+                                    <span>{language === 'de' ? t.titleDe : t.titleEn}</span>
+                                    {selectedTitle === t.id && <Check className="h-4 w-4 text-emerald-500" />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Border Selector */}
+                    <div className="space-y-2 mt-3">
+                        <label className="text-[11px] font-black uppercase text-slate-400 dark:text-neutral-400 tracking-wider">
+                            {language === 'de' ? 'Avatarrand / Frame' : 'Avatar Frame'}
+                        </label>
+                        <div className="grid grid-cols-1 gap-2 max-h-36 overflow-y-auto pr-1">
+                            {getUnlockedBorders(userData?.level || 1, userData?.isPremium).map((b) => (
+                                <button
+                                    key={b.id}
+                                    type="button"
+                                    onClick={() => setSelectedBorder(b.id)}
+                                    className={cn(
+                                        "flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all text-left cursor-pointer",
+                                        selectedBorder === b.id
+                                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                                            : "border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <div className={cn("h-4 w-4 rounded-full border border-white/50 shrink-0", b.gradient || "bg-slate-300")} />
+                                        <span>{language === 'de' ? b.nameDe : b.nameEn}</span>
+                                    </div>
+                                    {selectedBorder === b.id && <Check className="h-4 w-4 text-emerald-500" />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0 mt-4">
+                        <Button variant="ghost" onClick={() => setIsCustomizeDialogOpen(false)}>
+                            {language === 'de' ? 'Abbrechen' : 'Cancel'}
+                        </Button>
+                        <Button 
+                            onClick={handleSaveCustomization}
+                            disabled={isSavingCustomization}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold"
+                        >
+                            {isSavingCustomization && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                            {language === 'de' ? 'Speichern' : 'Save'}
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
