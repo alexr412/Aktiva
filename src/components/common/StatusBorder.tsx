@@ -15,36 +15,35 @@ export function StatusBorder() {
   const { isCreator, role } = userProfile;
 
   // Priority: Premium > Creator > Support/Admin (based on simulated/active role)
-  let borderColor = '';
-  let shadowColor = '';
+  let statusColor = '';
+  let glowColor = '';
   let label = '';
 
   if (isPremium) {
-    borderColor = 'border-[#FFD700]';
-    shadowColor = 'shadow-[inset_0_0_15px_rgba(255,215,0,0.4),0_0_15px_rgba(255,215,0,0.2)]';
+    statusColor = 'bg-[#FFD700]';
+    glowColor = 'shadow-[0_1px_12px_rgba(255,215,0,0.85)]';
     label = 'Premium';
   } else if (isCreator) {
-    borderColor = 'border-[#A855F7]';
-    shadowColor = 'shadow-[inset_0_0_15px_rgba(168,85,247,0.4),0_0_15px_rgba(168,85,247,0.2)]';
+    statusColor = 'bg-[#A855F7]';
+    glowColor = 'shadow-[0_1px_12px_rgba(168,85,247,0.85)]';
     label = 'Creator';
   } else if (role === 'admin' || role === 'supporter') {
-    borderColor = 'border-[#3B82F6]';
-    shadowColor = 'shadow-[inset_0_0_15px_rgba(59,130,246,0.4),0_0_15px_rgba(59,130,246,0.2)]';
+    statusColor = 'bg-[#3B82F6]';
+    glowColor = 'shadow-[0_1px_12px_rgba(59,130,246,0.85)]';
     label = role === 'admin' ? 'Admin' : 'Support';
   }
 
   return (
     <>
-      {borderColor && (
+      {statusColor && (
         <div className={cn(
-          "fixed inset-0 pointer-events-none z-[100000] border-[4px] transition-all duration-1000 ease-in-out",
-          borderColor,
-          shadowColor,
-          "animate-pulse-subtle"
+          "fixed top-0 left-0 right-0 h-[2.5px] pointer-events-none z-[100000] transition-all duration-700 ease-in-out",
+          statusColor,
+          glowColor
         )} />
       )}
 
-      {(borderColor || isEligible) && (
+      {(statusColor || isEligible) && (
         <div className="fixed top-0 right-12 z-[100001] pointer-events-auto">
           {isEligible ? (
             <button
