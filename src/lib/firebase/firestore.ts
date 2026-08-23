@@ -194,10 +194,22 @@ export async function getPublicProfileClient(targetUserId: string): Promise<User
 
 export async function getPublicProfileDirect(targetUserId: string): Promise<PublicUserProfile | null> {
   if (!db) throw new Error('Firestore is not initialized.');
-  const docRef = doc(db, 'publicProfiles', targetUserId);
-  const snap = await getDoc(docRef);
-  if (!snap.exists()) return null;
-  return snap.data() as PublicUserProfile;
+  try {
+    const docRef = doc(db, 'publicProfiles', targetUserId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as PublicUserProfile;
+    }
+  } catch (error) {
+    console.warn("Direct public profile read failed, attempting Cloud Function fallback:", error);
+  }
+
+  try {
+    const profile = await getPublicProfileClient(targetUserId);
+    return profile as PublicUserProfile | null;
+  } catch {
+    return null;
+  }
 }
 
 export const PROTECTED_USER_FIELDS = new Set([

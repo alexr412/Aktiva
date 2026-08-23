@@ -8,7 +8,7 @@ import { useLanguage } from '@/hooks/use-language';
 import {
   fetchUserActivities,
   joinActivity,
-  getPublicProfileDirect,
+  getPublicProfileClient,
   sendFriendRequest,
   cancelFriendRequest,
   removeFriend,
@@ -115,12 +115,12 @@ export default function UserProfilePage() {
             setLoading(true);
             try {
                 const [profile, userActivities] = await Promise.all([
-                    getPublicProfileDirect(userId),
+                    getPublicProfileClient(userId),
                     fetchUserActivities(userId)
                 ]);
 
                 if (profile) {
-                    setUserData(profile);
+                    setUserData(profile as PublicUserProfile);
                     
                     const mappedActivities = (userActivities as Activity[]).map(act => ({
                         ...act,
