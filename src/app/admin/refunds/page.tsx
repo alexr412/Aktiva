@@ -1,42 +1,72 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RotateCcw, CheckCircle2, Loader2, Banknote, Clock, ArrowLeft, RefreshCcw } from 'lucide-react';
+import { RotateCcw, Clock, ArrowLeft, Loader2, CheckCircle2, AlertTriangle, RefreshCcw, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { AdminSummaryBar } from '@/components/admin/AdminSummaryBar';
 
-export default function AdminRefundsPage() {
+function AdminRefundsContent() {
   const { userProfile, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+
+  const initialStatus = searchParams.get('status') || 'pending';
+
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
   const [refunds, setRefunds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const isDev = process.env.NODE_ENV === 'development';
   const isAllowed = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
 
+  // Sync filter to URL query params
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== 'pending') params.set('status', statusFilter);
+
+    const queryString = params.toString();
+    const newUrl = queryString ? `/admin/refunds?${queryString}` : '/admin/refunds';
+    router.replace(newUrl, { scroll: false });
+  }, [statusFilter, router]);
+
   useEffect(() => {
     if (!db || authLoading || !userProfile || !isAllowed) return;
-    const q = query(collection(db, 'refunds'), where('status', '==', 'pending'));
+
+    let q;
+    if (statusFilter === 'all') {
+      q = query(collection(db, 'refunds'));
+    } else {
+      q = query(collection(db, 'refunds'), where('status', '==', statusFilter));
+    }
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setRefunds(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
+    }, (err) => {
+      console.warn('Refunds snapshot error:', err);
+      setLoading(false);
     });
     return () => unsubscribe();
-  }, [userProfile, authLoading, isAllowed]);
+  }, [userProfile, authLoading, isAllowed, statusFilter]);
 
   const handleConfirmRefund = async (refundId: string) => {
     if (!db) return;
     if (!window.confirm("Bist du sicher, dass du diese Rückzahlung als erstattet markieren möchtest? Der Status wird permanent auf 'completed' gesetzt.")) {
       return;
     }
+    setActionLoading(refundId);
     try {
       const refundRef = doc(db, 'refunds', refundId);
       await updateDoc(refundRef, { 
@@ -46,81 +76,156 @@ export default function AdminRefundsPage() {
       toast({ title: "Rückzahlung bestätigt", description: "Der Status wurde auf 'completed' gesetzt." });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Fehler", description: err.message });
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  if (authLoading || loading) return null;
+  if (authLoading || !userProfile || !isAllowed) return null;
 
-  if (!userProfile || !isAllowed) {
-    return null;
-  }
+  // Calculate summary stats
+  const pendingItems = refunds.filter(r => r.status === 'pending');
+  const openVolume = pendingItems.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const pendingCount = pendingItems.length;
+
+  const startOfTodayMillis = new Date().setHours(0,0,0,0);
+  const completedTodayCount = refunds.filter(r => {
+    if (r.status !== 'completed') return false;
+    const millis = r.processedAt?.toMillis ? r.processedAt.toMillis() : Date.now();
+    return millis >= startOfTodayMillis;
+  }).length;
+
+  const failedCount = refunds.filter(r => r.status === 'failed').length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-300">
+      
+      {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild className="rounded-full" aria-label="Zurück zum Admin-Dashboard">
+        <Button variant="ghost" size="icon" asChild className="rounded-full" aria-label="Zurück zum Dashboard">
           <Link href="/admin"><ArrowLeft className="h-5 w-5" /></Link>
         </Button>
         <div>
-          <h2>Rückzahlungen</h2>
-          <p className="text-slate-500 font-medium">Verwaltung von Erstattungen stornierter Aktivitäten.</p>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <RotateCcw className="h-6 w-6 text-amber-600" />
+            Rückerstattungen (Refunds)
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-neutral-400 font-medium">
+            Verwaltung von Erstattungen stornierter Aktivitäten und Stripe-Rückbuchungen.
+          </p>
         </div>
       </div>
 
-      <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-        <span className="text-xs font-black uppercase tracking-widest text-slate-400">Modus: Reversal</span>
-        <Badge variant="secondary" className="bg-orange-50 text-orange-600 font-black px-3 py-1 rounded-lg">
-          {refunds.length} Offene Erstattungen
-        </Badge>
+      {/* KPI SUMMARY BAR */}
+      <AdminSummaryBar
+        metrics={[
+          { label: 'Offenes Refund-Volumen', value: `€${openVolume.toFixed(2)}`, icon: RefreshCcw, colorClass: 'text-amber-600 bg-amber-50 dark:bg-amber-950/40' },
+          { label: 'Offene Anträge', value: pendingCount, icon: RotateCcw, colorClass: 'text-purple-600 bg-purple-50 dark:bg-purple-950/40' },
+          { label: 'Heute Abgeschlossen', value: completedTodayCount, icon: CheckCircle2, colorClass: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40' },
+          { label: 'Fehlgeschlagen', value: failedCount, icon: AlertTriangle, colorClass: 'text-red-600 bg-red-50 dark:bg-red-950/40' },
+        ]}
+      />
+
+      {/* FILTER TABS */}
+      <div className="flex items-center justify-between bg-white dark:bg-neutral-900 p-4 rounded-3xl border border-slate-200/80 dark:border-neutral-800 shadow-sm">
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { id: 'pending', label: 'Ausstehend (Pending)' },
+            { id: 'completed', label: 'Abgeschlossen' },
+            { id: 'failed', label: 'Fehlgeschlagen' },
+            { id: 'all', label: 'Alle Refunds' },
+          ].map(st => (
+            <button
+              key={st.id}
+              onClick={() => setStatusFilter(st.id)}
+              className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all border ${
+                statusFilter === st.id
+                  ? 'bg-amber-600 text-white border-transparent shadow-sm'
+                  : 'bg-slate-50 dark:bg-neutral-950 text-slate-600 dark:text-neutral-400 border-slate-200 dark:border-neutral-800 hover:bg-slate-100'
+              }`}
+            >
+              {st.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {refunds.length === 0 ? (
-        <Card className="border-dashed border-2 border-slate-200 p-20 text-center bg-transparent rounded-[2.5rem]">
-          <RefreshCcw className="mx-auto h-16 w-16 text-emerald-500 mb-6 opacity-20" />
-          <p className="text-slate-400 font-black uppercase tracking-wider">Keine offenen Rückzahlungen. Ledger ist ausgeglichen.</p>
+      {/* LIST CONTENT */}
+      {loading ? (
+        <div className="flex items-center justify-center p-16 text-slate-400 font-bold">
+          <Loader2 className="w-5 h-5 animate-spin mr-2 text-amber-600" />
+          Lade Rückerstattungsdaten...
+        </div>
+      ) : refunds.length === 0 ? (
+        <Card className="border-dashed border-2 border-slate-200 dark:border-neutral-800 p-20 text-center bg-transparent rounded-[2.5rem]">
+          <RefreshCcw className="mx-auto h-16 w-16 text-emerald-500 mb-4 opacity-20" />
+          <p className="text-slate-400 dark:text-neutral-500 font-black uppercase tracking-wider text-sm">
+            Keine offenen Rückzahlungen für diesen Filter. Ledger ist ausgeglichen.
+          </p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {refunds.map((refund) => (
-            <Card key={refund.id} className="overflow-hidden border-none shadow-md bg-white rounded-[2.5rem] animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-              <div className="absolute top-0 left-0 w-2 h-full bg-orange-500" />
-              <CardHeader className="pb-4 p-8">
+            <Card key={refund.id} className="overflow-hidden border-none shadow-md bg-white dark:bg-neutral-900 rounded-3xl relative">
+              <div className="absolute top-0 left-0 w-2 h-full bg-amber-500" />
+              <CardHeader className="pb-4 p-6 sm:p-8">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-orange-600">
+                  <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
                     <RotateCcw className="h-4 w-4" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Rückabwicklung</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Rückabwicklung</span>
                   </div>
-                  <div className="flex items-center gap-1 text-[10px] text-slate-400 font-black uppercase">
+                  <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
                     <Clock className="h-3 w-3" />
-                    {refund.createdAt ? format(refund.createdAt.toDate(), 'Pp', { locale: de }) : 'Unbekannt'}
+                    {refund.createdAt?.toDate ? format(refund.createdAt.toDate(), 'Pp', { locale: de }) : 'Unbekannt'}
                   </div>
                 </div>
-                <div className="mt-6">
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1">Rückerstattungsbetrag</span>
-                  <CardTitle className="">€{refund.amount?.toFixed(2)}</CardTitle>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+
+                <div className="mt-4 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1">Nutzer-ID</span>
-                    <span className="font-mono text-xs bg-slate-50 px-2 py-1 rounded border border-slate-100">{refund.userId}</span>
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block mb-0.5">
+                      Rückerstattungsbetrag
+                    </span>
+                    <CardTitle className="text-3xl font-black text-slate-900 dark:text-white">
+                      €{Number(refund.amount || 0).toFixed(2)}
+                    </CardTitle>
+                  </div>
+                  <Badge variant={refund.status === 'completed' ? 'default' : 'secondary'} className="text-xs font-bold uppercase">
+                    {refund.status || 'Pending'}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block mb-0.5">Nutzer-ID</span>
+                    <span className="font-mono text-xs bg-slate-100 dark:bg-neutral-800 px-2.5 py-1 rounded-xl text-slate-700 dark:text-neutral-300 block truncate">
+                      {refund.userId}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1">Aktivitäts-ID</span>
-                    <span className="font-mono text-xs bg-slate-50 px-2 py-1 rounded border border-slate-100">{refund.activityId}</span>
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block mb-0.5">Aktivitäts-ID</span>
+                    <span className="font-mono text-xs bg-slate-100 dark:bg-neutral-800 px-2.5 py-1 rounded-xl text-slate-700 dark:text-neutral-300 block truncate">
+                      {refund.activityId}
+                    </span>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-8 pt-4">
-                <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-50 pt-6 gap-6">
-                  <div className="text-[11px] font-bold text-slate-400 max-w-[300px] leading-relaxed italic">
-                    ACHTUNG: Führe die Rückbuchung im Stripe-Dashboard aus, bevor du den System-Status aktualisierst.
+
+              <CardContent className="p-6 sm:p-8 pt-0">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between border-t border-slate-100 dark:border-neutral-800 pt-4 gap-4">
+                  <div className="text-[11px] font-medium text-slate-400 max-w-[320px] leading-relaxed italic">
+                    Führe die Rückbuchung im Stripe-Dashboard aus, bevor du den System-Status aktualisierst.
                   </div>
-                  <Button 
-                    onClick={() => handleConfirmRefund(refund.id)}
-                    className="rounded-2xl font-black text-xs uppercase tracking-widest bg-slate-900 hover:bg-black text-white px-8 h-14 shadow-2xl shadow-slate-200 transition-transform active:scale-95"
-                  >
-                    Als Rückerstattet markieren
-                  </Button>
+                  
+                  {refund.status === 'pending' && (
+                    <Button 
+                      onClick={() => handleConfirmRefund(refund.id)}
+                      disabled={actionLoading === refund.id}
+                      className="rounded-2xl font-black text-xs uppercase tracking-wider bg-slate-900 hover:bg-black text-white dark:bg-neutral-800 dark:hover:bg-neutral-700 h-12 px-6 shadow-md"
+                    >
+                      {actionLoading === refund.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                      Als Rückerstattet Markieren
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -128,5 +233,18 @@ export default function AdminRefundsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminRefundsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center p-12 font-bold text-slate-400">
+        <Loader2 className="w-5 h-5 animate-spin mr-2 text-amber-600" />
+        Lade Rückerstattungsseite...
+      </div>
+    }>
+      <AdminRefundsContent />
+    </Suspense>
   );
 }
