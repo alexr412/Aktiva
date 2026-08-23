@@ -329,12 +329,12 @@ export default function UserProfilePage() {
         switch (friendshipStatus) {
             case 'friends':
                 return (
-                    <div className="w-full flex flex-col sm:flex-row gap-2.5">
+                    <div className="w-full flex flex-row items-center gap-2.5">
                         <Button onClick={handleMessage} disabled={isCreatingChat} aria-label={language === 'de' ? 'Nachricht senden' : 'Send message'} className="flex-1 h-11 rounded-full font-black text-xs uppercase tracking-wider bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm">
                             {isCreatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
                             {language === 'de' ? 'Nachricht' : 'Message'}
                         </Button>
-                        <Button onClick={() => handleFriendAction('remove')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freund entfernen' : 'Remove friend'} variant="outline" className="h-11 rounded-full px-6 font-black text-xs uppercase tracking-wider border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800">
+                        <Button onClick={() => handleFriendAction('remove')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freund entfernen' : 'Remove friend'} variant="outline" className="flex-1 sm:flex-none h-11 rounded-full px-5 font-black text-xs uppercase tracking-wider border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800">
                             {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserMinus className="mr-2 h-4 w-4" />}
                             {language === 'de' ? 'Entfernen' : 'Remove'}
                         </Button>
@@ -418,72 +418,63 @@ export default function UserProfilePage() {
                 {/* Profile Hero Card */}
                 <div className="bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-850 rounded-[2.5rem] p-6 sm:p-8 shadow-sm space-y-6">
                     
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 w-full">
+                    <div className="flex flex-row items-start gap-4 sm:gap-6 w-full">
                         
                         {/* Avatar, Name & Badges Column */}
-                        <div className="flex flex-col items-center text-center shrink-0 w-full sm:w-44">
+                        <div className="flex flex-col items-center text-center shrink-0 w-28 sm:w-44">
                             <ProfileAvatar 
-                                className="h-28 w-28 sm:h-32 sm:w-32 mb-3 shadow-md"
+                                className="h-20 w-20 sm:h-32 sm:w-32 mb-2 sm:mb-3 shadow-md"
                                 photoURL={photoUrlToDisplay}
                                 displayName={displayName}
                                 isPremium={userData.isPremium}
                                 isCreator={userData.isCreator}
                                 isSupporter={userData.isSupporter}
                             />
-                            <div className="flex flex-col items-center gap-1 w-full">
-                                <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                            <div className="flex flex-col items-center gap-0.5 sm:gap-1 w-full">
+                                <div className="flex items-center justify-center gap-1 flex-wrap">
+                                    <h2 className="text-base sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
                                         {displayName}
-                                        {userData.age && <span className="text-slate-400 font-bold text-base sm:text-lg">, {userData.age}</span>}
+                                        {userData.age && <span className="text-slate-400 font-bold text-sm sm:text-lg">, {userData.age}</span>}
                                     </h2>
                                     <UserBadge isPremium={userData.isPremium} isSupporter={userData.isSupporter} isCreator={userData.isCreator} />
                                 </div>
                                 {userData.location && (
-                                    <p className="text-xs font-bold text-slate-400 dark:text-neutral-500 mt-0.5">{userData.location}</p>
+                                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-neutral-500">{userData.location}</p>
                                 )}
                             </div>
 
                             {/* Rating */}
                             {userData.ratingCount && userData.ratingCount > 0 ? (
-                                <div className="flex items-center justify-center gap-1.5 mt-3 bg-amber-50 dark:bg-amber-950/30 px-3 py-1 rounded-full border border-amber-100 dark:border-amber-900/50">
-                                    <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                                    <span className="font-black text-amber-700 dark:text-amber-400 text-sm">{userData.averageRating?.toFixed(1)}</span>
-                                    <span className="text-[10px] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase">({userData.ratingCount})</span>
+                                <div className="flex items-center justify-center gap-1 mt-2 sm:mt-3 bg-amber-50 dark:bg-amber-950/30 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-amber-100 dark:border-amber-900/50">
+                                    <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-500 fill-amber-500" />
+                                    <span className="font-black text-amber-700 dark:text-amber-400 text-xs sm:text-sm">{userData.averageRating?.toFixed(1)}</span>
+                                    <span className="text-[9px] sm:text-[10px] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase">({userData.ratingCount})</span>
                                 </div>
                             ) : null}
                         </div>
 
                         {/* Bio & Interests Column */}
-                        <div className="flex-1 min-w-0 w-full space-y-4 pt-1">
-                            {userData.bio ? (
-                                <div className="bg-slate-50/70 dark:bg-neutral-950/60 border border-slate-100 dark:border-neutral-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl space-y-1.5">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block">
+                        <div className="flex-1 min-w-0 w-full space-y-3 pt-0.5">
+                            {userData.bio && (
+                                <div className="bg-slate-50/70 dark:bg-neutral-950/60 border border-slate-100 dark:border-neutral-800 p-3 sm:p-5 rounded-2xl sm:rounded-3xl space-y-1">
+                                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block">
                                         {language === 'de' ? 'Bio' : 'Bio'}
                                     </span>
                                     <p className="text-xs sm:text-sm font-medium text-slate-700 dark:text-neutral-300 leading-relaxed whitespace-pre-line break-words">
                                         {userData.bio}
                                     </p>
                                 </div>
-                            ) : (
-                                <div className="bg-slate-50/50 dark:bg-neutral-950/30 border border-dashed border-slate-200 dark:border-neutral-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl text-left">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500 block">
-                                        {language === 'de' ? 'Bio' : 'Bio'}
-                                    </span>
-                                    <p className="text-xs text-slate-400 dark:text-neutral-500 italic mt-0.5">
-                                        {language === 'de' ? 'Noch keine Bio vorhanden.' : 'No bio added yet.'}
-                                    </p>
-                                </div>
                             )}
 
                             {/* Interests */}
                             {userData.interests && userData.interests.length > 0 && (
-                                <div className="space-y-2">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500 block">
+                                <div className="space-y-1.5">
+                                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500 block">
                                         {language === 'de' ? 'Interessen' : 'Interests'}
                                     </span>
                                     <div className="flex flex-wrap gap-1.5 items-center">
                                         {userData.interests.map((tag: string) => (
-                                            <Badge key={tag} variant="secondary" className="text-xs py-1 px-3 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-bold border-none">
+                                            <Badge key={tag} variant="secondary" className="text-[10px] sm:text-xs py-0.5 sm:py-1 px-2.5 sm:px-3 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-bold border-none">
                                                 {tag}
                                             </Badge>
                                         ))}
