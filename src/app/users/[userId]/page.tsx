@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ActivityListItem } from '@/components/activa/activity-list-item';
+import { ProfileActivityCard } from '@/components/profile/ProfileActivityCard';
 import {
   ArrowLeft,
   Compass,
@@ -329,12 +329,12 @@ export default function UserProfilePage() {
         switch (friendshipStatus) {
             case 'friends':
                 return (
-                    <div className="w-full flex gap-4">
-                        <Button onClick={handleMessage} disabled={isCreatingChat} aria-label={language === 'de' ? 'Nachricht senden' : 'Send message'} className="flex-1">
+                    <div className="w-full flex flex-col sm:flex-row gap-2.5">
+                        <Button onClick={handleMessage} disabled={isCreatingChat} aria-label={language === 'de' ? 'Nachricht senden' : 'Send message'} className="flex-1 h-11 rounded-full font-black text-xs uppercase tracking-wider bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm">
                             {isCreatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
                             {language === 'de' ? 'Nachricht' : 'Message'}
                         </Button>
-                        <Button onClick={() => handleFriendAction('remove')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freund entfernen' : 'Remove friend'} variant="outline" className="flex-1">
+                        <Button onClick={() => handleFriendAction('remove')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freund entfernen' : 'Remove friend'} variant="outline" className="h-11 rounded-full px-6 font-black text-xs uppercase tracking-wider border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800">
                             {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserMinus className="mr-2 h-4 w-4" />}
                             {language === 'de' ? 'Entfernen' : 'Remove'}
                         </Button>
@@ -342,19 +342,19 @@ export default function UserProfilePage() {
                 );
             case 'request_sent':
                 return (
-                    <Button onClick={() => handleFriendAction('cancel')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freundschaftsanfrage zurückziehen' : 'Cancel friend request'} variant="secondary">
+                    <Button onClick={() => handleFriendAction('cancel')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freundschaftsanfrage zurückziehen' : 'Cancel friend request'} variant="secondary" className="w-full h-11 rounded-full font-black text-xs uppercase tracking-wider bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300">
                         {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
                         {language === 'de' ? 'Anfrage gesendet' : 'Request Sent'}
                     </Button>
                 );
             case 'request_received':
                 return (
-                    <div className="flex gap-2">
-                         <Button onClick={() => handleFriendAction('accept')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freundschaftsanfrage annehmen' : 'Accept friend request'} className="flex-1">
+                    <div className="w-full flex gap-2.5">
+                         <Button onClick={() => handleFriendAction('accept')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freundschaftsanfrage annehmen' : 'Accept friend request'} className="flex-1 h-11 rounded-full font-black text-xs uppercase tracking-wider bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm">
                             {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
                             {language === 'de' ? 'Annehmen' : 'Accept'}
                         </Button>
-                        <Button onClick={() => handleFriendAction('decline')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freundschaftsanfrage ablehnen' : 'Decline friend request'} variant="outline" className="flex-1">
+                        <Button onClick={() => handleFriendAction('decline')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freundschaftsanfrage ablehnen' : 'Decline friend request'} variant="outline" className="flex-1 h-11 rounded-full font-black text-xs uppercase tracking-wider border-slate-200 dark:border-neutral-800">
                              <X className="mr-2 h-4 w-4" />
                             {language === 'de' ? 'Ablehnen' : 'Decline'}
                         </Button>
@@ -362,7 +362,7 @@ export default function UserProfilePage() {
                 );
             case 'not_friends':
                 return (
-                    <Button onClick={() => handleFriendAction('send')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freund hinzufügen' : 'Add friend'}>
+                    <Button onClick={() => handleFriendAction('send')} disabled={isFriendActionLoading} aria-label={language === 'de' ? 'Freund hinzufügen' : 'Add friend'} className="w-full h-11 rounded-full font-black text-xs uppercase tracking-wider bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm">
                         {isFriendActionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
                         {language === 'de' ? 'Freund hinzufügen' : 'Add Friend'}
                     </Button>
@@ -393,12 +393,17 @@ export default function UserProfilePage() {
     const currentActivities = visibleActivities.filter(a => a.status !== 'completed');
 
     return (
-        <div className="flex flex-col h-full w-full bg-background overflow-y-auto pb-bottom-nav-safe">
-            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background/80 px-4 backdrop-blur-sm">
-                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => router.back()} aria-label={language === 'de' ? 'Zurück' : 'Back'}>
-                    <ArrowLeft />
-                </Button>
-                <h1 className="truncate">{language === 'de' ? `Profil von ${displayName}` : `${displayName}'s Profile`}</h1>
+        <div className="relative flex flex-col h-full w-full bg-[#F8FAFC] dark:bg-neutral-950 overflow-y-auto pb-bottom-nav-safe">
+            {/* Background Gradient */}
+            <div className="absolute top-0 left-0 right-0 h-[35vh] bg-gradient-to-b from-emerald-50/50 to-transparent dark:from-emerald-950/10 z-0" />
+
+            <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background/80 px-4 backdrop-blur-md">
+                <div className="flex items-center gap-3 min-w-0">
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => router.back()} aria-label={language === 'de' ? 'Zurück' : 'Back'}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <h1 className="text-lg font-black truncate">{language === 'de' ? `Profil von ${displayName}` : `${displayName}'s Profile`}</h1>
+                </div>
 
                 <EntityMoreOptions
                     entityId={userId}
@@ -407,145 +412,169 @@ export default function UserProfilePage() {
                 />
             </header>
 
-            <div className="p-6 flex flex-col items-center justify-center text-center space-y-4">
-                <ProfileAvatar 
-                    className="h-24 w-24 border-4 border-white"
-                    photoURL={photoUrlToDisplay}
-                    displayName={displayName}
-                    isPremium={userData.isPremium}
-                    isCreator={userData.isCreator}
-                    isSupporter={userData.isSupporter}
-                />
-
-                <div className="flex flex-col items-center">
-                    <div className="flex items-center justify-center gap-2">
-                        <h2 className="text-2xl font-bold">
-                            {displayName}
-                        </h2>
-                        {userData.age && <span className="text-muted-foreground text-2xl font-bold">, {userData.age}</span>}
-                        <UserBadge isPremium={userData.isPremium} isSupporter={userData.isSupporter} />
-                    </div>
-
-                    {/* MODUL 11: REPUTATION DISPLAY */}
-                    {userData.ratingCount && userData.ratingCount > 0 ? (
-                      <div className="flex items-center justify-center gap-1.5 mt-1 bg-amber-50 px-3 py-1 rounded-full border border-amber-100">
-                        <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                        <span className="font-black text-amber-700 text-sm">{userData.averageRating?.toFixed(1)}</span>
-                        <span className="text-[10px] font-bold text-amber-600/70 uppercase tracking-tighter">({userData.ratingCount} {language === 'de' ? 'Bewertungen' : 'Reviews'})</span>
-
-                      </div>
-                    ) : null}
+            {/* Main Content Container */}
+            <div className="relative w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 z-10 pt-4 sm:pt-6 flex flex-col gap-6">
+                
+                {/* Profile Hero Card */}
+                <div className="bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-850 rounded-[2.5rem] p-6 sm:p-8 shadow-sm space-y-6">
                     
-                    {userData.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
-                </div>
-
-                <div className="w-full max-w-sm flex flex-col gap-2.5">
-                    {renderFriendButton()}
-                    {currentUser && friendshipStatus !== 'is_self' && (
-                      <div className="flex justify-center pt-1">
-                        <EntityMoreOptions
-                          entityId={userId}
-                          entityType="user"
-                          entityName={displayName}
-                          variant="button"
-                        />
-                      </div>
-                    )}
-                </div>
-            </div>
-            
-            {userData.bio && (
-                <div className="px-6 text-center">
-                    <p className="text-foreground/80">{userData.bio}</p>
-                </div>
-            )}
-            
-            {(userData.interests && userData.interests.length > 0) &&
-              <div className="p-6 space-y-4">
-                 <h2 className="font-bold text-lg">{language === 'de' ? 'Interessen' : 'Interests'}</h2>
-
-                <div className="flex flex-wrap gap-2 items-center">
-                    {userData.interests.map((tag: string) => (
-                         <Badge key={tag} variant="secondary" className="text-base py-1 px-3">
-                            {tag}
-                        </Badge>
-                    ))}
-                </div>
-            </div>
-            }
-            
-            <div className="w-full mt-2">
-                <Tabs defaultValue="active" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 rounded-none border-b bg-transparent h-12">
-                        <TabsTrigger 
-                            value="active" 
-                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-bold text-sm"
-                        >
-                            {language === 'de' ? 'Aktiv' : 'Active'} ({currentActivities.length})
-
-                        </TabsTrigger>
-                        <TabsTrigger 
-                            value="past" 
-                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-bold text-sm"
-                        >
-                            {language === 'de' ? 'Vergangen' : 'Past'} ({pastActivities.length})
-
-                        </TabsTrigger>
-                    </TabsList>
-
-                    <div className="flex-1">
-                        <TabsContent value="active" className="mt-0">
-                            <div className="pt-4">
-                                {loading ? (
-                                     <div className="divide-y divide-border">
-                                        <ActivityListItemSkeleton />
-                                        <ActivityListItemSkeleton />
-                                    </div>
-                                ) : currentActivities.length > 0 ? (
-                                    <ul className="divide-y divide-border">
-                                        {currentActivities.map(activity => (
-                                            <li key={activity.id}>
-                                                <ActivityListItem
-                                                    activity={activity}
-                                                    user={currentUser}
-                                                    onJoin={handleJoin}
-                                                />
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : (
-                                    <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
-                                        <p className="text-muted-foreground">{language === 'de' ? 'Keine aktiven Aktivitäten gefunden.' : 'No active activities found.'}</p>
-
-                                    </div>
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 w-full">
+                        
+                        {/* Avatar, Name & Badges Column */}
+                        <div className="flex flex-col items-center text-center shrink-0 w-full sm:w-44">
+                            <ProfileAvatar 
+                                className="h-28 w-28 sm:h-32 sm:w-32 mb-3 shadow-md"
+                                photoURL={photoUrlToDisplay}
+                                displayName={displayName}
+                                isPremium={userData.isPremium}
+                                isCreator={userData.isCreator}
+                                isSupporter={userData.isSupporter}
+                            />
+                            <div className="flex flex-col items-center gap-1 w-full">
+                                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                                        {displayName}
+                                        {userData.age && <span className="text-slate-400 font-bold text-base sm:text-lg">, {userData.age}</span>}
+                                    </h2>
+                                    <UserBadge isPremium={userData.isPremium} isSupporter={userData.isSupporter} isCreator={userData.isCreator} />
+                                </div>
+                                {userData.location && (
+                                    <p className="text-xs font-bold text-slate-400 dark:text-neutral-500 mt-0.5">{userData.location}</p>
                                 )}
                             </div>
-                        </TabsContent>
 
-                        <TabsContent value="past" className="mt-0">
-                            <div className="pt-4">
-                                {pastActivities.length > 0 ? (
-                                    <ul className="divide-y divide-border">
-                                        {pastActivities.map(activity => (
-                                            <li key={activity.id} className="opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
-                                                <ActivityListItem
-                                                    activity={activity}
-                                                    user={currentUser}
-                                                    onJoin={handleJoin}
-                                                />
-                                            </li>
+                            {/* Rating */}
+                            {userData.ratingCount && userData.ratingCount > 0 ? (
+                                <div className="flex items-center justify-center gap-1.5 mt-3 bg-amber-50 dark:bg-amber-950/30 px-3 py-1 rounded-full border border-amber-100 dark:border-amber-900/50">
+                                    <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                                    <span className="font-black text-amber-700 dark:text-amber-400 text-sm">{userData.averageRating?.toFixed(1)}</span>
+                                    <span className="text-[10px] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase">({userData.ratingCount})</span>
+                                </div>
+                            ) : null}
+                        </div>
+
+                        {/* Bio & Interests Column */}
+                        <div className="flex-1 min-w-0 w-full space-y-4 pt-1">
+                            {userData.bio ? (
+                                <div className="bg-slate-50/70 dark:bg-neutral-950/60 border border-slate-100 dark:border-neutral-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl space-y-1.5">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block">
+                                        {language === 'de' ? 'Bio' : 'Bio'}
+                                    </span>
+                                    <p className="text-xs sm:text-sm font-medium text-slate-700 dark:text-neutral-300 leading-relaxed whitespace-pre-line break-words">
+                                        {userData.bio}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="bg-slate-50/50 dark:bg-neutral-950/30 border border-dashed border-slate-200 dark:border-neutral-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl text-left">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500 block">
+                                        {language === 'de' ? 'Bio' : 'Bio'}
+                                    </span>
+                                    <p className="text-xs text-slate-400 dark:text-neutral-500 italic mt-0.5">
+                                        {language === 'de' ? 'Noch keine Bio vorhanden.' : 'No bio added yet.'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Interests */}
+                            {userData.interests && userData.interests.length > 0 && (
+                                <div className="space-y-2">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500 block">
+                                        {language === 'de' ? 'Interessen' : 'Interests'}
+                                    </span>
+                                    <div className="flex flex-wrap gap-1.5 items-center">
+                                        {userData.interests.map((tag: string) => (
+                                            <Badge key={tag} variant="secondary" className="text-xs py-1 px-3 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-bold border-none">
+                                                {tag}
+                                            </Badge>
                                         ))}
-                                    </ul>
-                                ) : (
-                                    <div className="text-center p-10 flex flex-col items-center justify-center gap-4">
-                                        <p className="text-muted-foreground">{language === 'de' ? 'Keine vergangenen Aktivitäten gefunden.' : 'No past activities found.'}</p>
-
                                     </div>
-                                )}
-                            </div>
-                        </TabsContent>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </Tabs>
+
+                    {/* Action Buttons Row */}
+                    <div className="pt-4 border-t border-slate-100 dark:border-neutral-800 flex flex-col sm:flex-row items-center gap-3 w-full">
+                        {renderFriendButton()}
+                        {currentUser && friendshipStatus !== 'is_self' && (
+                            <EntityMoreOptions
+                                entityId={userId}
+                                entityType="user"
+                                entityName={displayName}
+                                variant="button"
+                            />
+                        )}
+                    </div>
+                </div>
+
+                {/* Activities Tabs & Grid */}
+                <div className="w-full pb-12">
+                    <Tabs defaultValue="active" className="w-full space-y-4">
+                        <TabsList className="grid w-full grid-cols-2 rounded-2xl bg-slate-200/60 dark:bg-neutral-900 p-1.5 h-12">
+                            <TabsTrigger 
+                                value="active" 
+                                className="rounded-xl font-black text-xs uppercase tracking-wider data-[state=active]:bg-white dark:data-[state=active]:bg-neutral-800 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                            >
+                                {language === 'de' ? 'Aktiv' : 'Active'} ({currentActivities.length})
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="past" 
+                                className="rounded-xl font-black text-xs uppercase tracking-wider data-[state=active]:bg-white dark:data-[state=active]:bg-neutral-800 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                            >
+                                {language === 'de' ? 'Vergangen' : 'Past'} ({pastActivities.length})
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="active" className="mt-0 pt-2">
+                            {loading ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <ActivityListItemSkeleton />
+                                    <ActivityListItemSkeleton />
+                                </div>
+                            ) : currentActivities.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {currentActivities.map(activity => (
+                                        <ProfileActivityCard
+                                            key={activity.id}
+                                            activity={activity}
+                                            user={currentUser}
+                                            onJoin={handleJoin}
+                                            compact
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 px-4 bg-white dark:bg-neutral-900 rounded-3xl border border-slate-100 dark:border-neutral-800">
+                                    <p className="text-xs font-bold text-slate-400 dark:text-neutral-500">
+                                        {language === 'de' ? 'Keine aktiven Aktivitäten gefunden.' : 'No active activities found.'}
+                                    </p>
+                                </div>
+                            )}
+                        </TabsContent>
+
+                        <TabsContent value="past" className="mt-0 pt-2">
+                            {pastActivities.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 opacity-75">
+                                    {pastActivities.map(activity => (
+                                        <ProfileActivityCard
+                                            key={activity.id}
+                                            activity={activity}
+                                            user={currentUser}
+                                            onJoin={handleJoin}
+                                            compact
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 px-4 bg-white dark:bg-neutral-900 rounded-3xl border border-slate-100 dark:border-neutral-800">
+                                    <p className="text-xs font-bold text-slate-400 dark:text-neutral-500">
+                                        {language === 'de' ? 'Keine vergangenen Aktivitäten gefunden.' : 'No past activities found.'}
+                                    </p>
+                                </div>
+                            )}
+                        </TabsContent>
+                    </Tabs>
+                </div>
             </div>
         </div>
     );
