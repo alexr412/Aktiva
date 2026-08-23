@@ -714,82 +714,103 @@ export default function ProfilePage() {
                     {/* Hero Composition: Mobile vertical column / Desktop 12-column grid */}
                     <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 lg:items-start">
 
-                        {/* Left Hero Column (Identity, Stats & Edit Profile) - 5 Cols on Desktop */}
-                        <div className="lg:col-span-5 flex flex-col items-center lg:items-start text-center lg:text-left gap-6 w-full">
+                        {/* Left Hero Column (Identity, Stats & Edit Profile) - 6 Cols on Desktop */}
+                        <div className="lg:col-span-6 flex flex-col items-start text-left gap-6 w-full">
                             
-                            {/* Avatar & Basic Info Container */}
-                            <div className="flex flex-col items-center lg:items-start w-full">
-                                {/* Avatar */}
-                                <div className="relative group cursor-pointer mb-4" onClick={handleOpenAvatarDialog}>
-                                    <ProfileAvatar 
-                                        className="h-28 w-28 sm:h-32 sm:w-32 relative z-10 transition-transform group-hover:scale-105 active:scale-95"
-                                        photoURL={photoUrlToDisplay}
-                                        displayName={displayName}
-                                        isPremium={userData?.isPremium}
-                                        isCreator={userData?.isCreator}
-                                        isSupporter={userData?.isSupporter}
-                                    />
-                                    {/* Hover overlay */}
-                                    <div className="absolute inset-0 z-20 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-black uppercase tracking-widest text-center px-2">
-                                        {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
+                            {/* Avatar, Identity & Bio Row (Mobile & Desktop) */}
+                            <div className="flex flex-row items-start gap-4 sm:gap-6 w-full">
+                                {/* Left Column: Avatar + Change Button + Name + Username + Rating */}
+                                <div className="flex flex-col items-center text-center shrink-0 w-32 sm:w-36">
+                                    {/* Avatar */}
+                                    <div className="relative group cursor-pointer mb-2" onClick={handleOpenAvatarDialog}>
+                                        <ProfileAvatar 
+                                            className="h-24 w-24 sm:h-28 sm:w-28 relative z-10 transition-transform group-hover:scale-105 active:scale-95"
+                                            photoURL={photoUrlToDisplay}
+                                            displayName={displayName}
+                                            isPremium={userData?.isPremium}
+                                            isCreator={userData?.isCreator}
+                                            isSupporter={userData?.isSupporter}
+                                        />
+                                        {/* Hover overlay */}
+                                        <div className="absolute inset-0 z-20 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[9px] font-black uppercase tracking-widest text-center px-1">
+                                            {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
+                                        </div>
+                                        
+                                        <button
+                                            type="button"
+                                            className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-90 transition-all z-30"
+                                        >
+                                            <Camera className="h-3.5 w-3.5" />
+                                        </button>
                                     </div>
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/jpeg,image/png,image/webp" />
                                     
                                     <button
                                         type="button"
-                                        className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-none hover:scale-110 active:scale-90 transition-all z-30"
+                                        onClick={handleOpenAvatarDialog}
+                                        className="mb-3 text-[10px] sm:text-xs font-bold text-primary hover:underline uppercase tracking-wider text-center"
                                     >
-                                        <Camera className="h-4 w-4" />
+                                        {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
                                     </button>
-                                </div>
-                                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/jpeg,image/png,image/webp" />
-                                
-                                <button
-                                    type="button"
-                                    onClick={handleOpenAvatarDialog}
-                                    className="mb-4 text-xs font-bold text-primary hover:underline uppercase tracking-widest"
-                                >
-                                    {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
-                                </button>
 
-                                {/* Name & Badges */}
-                                <div className="flex flex-col items-center lg:items-start gap-1 w-full">
-                                    <div className="flex items-center gap-2 flex-wrap justify-center lg:justify-start">
-                                        <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                                            {displayName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
-                                            {displayAge && <span className="text-slate-400 font-bold text-xl">, {displayAge}</span>}
-                                        </h1>
-                                        <UserBadge isPremium={userData?.isPremium} isSupporter={userData?.isSupporter} isCreator={userData?.isCreator} />
-                                    </div>
-                                    {userData?.username && (
-                                        <span
-                                            onClick={handleCopyUsername}
-                                            className="text-slate-400 font-black text-[11px] uppercase tracking-[0.2em] cursor-pointer hover:text-emerald-500 transition-colors"
-                                        >
-                                            @{userData.username}
-                                        </span>
-                                    )}
-                                    {userData?.bio && (
-                                        <p className="mt-2 text-sm font-medium text-slate-600 dark:text-neutral-400 leading-relaxed max-w-md">
-                                            {userData.bio}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Rating */}
-                                {(userData?.ratingCount && userData.ratingCount > 0) ? (
-                                    <button
-                                        onClick={loadReviews}
-                                        className="flex items-center gap-2 mt-4 group active:opacity-70 transition-opacity"
-                                    >
-                                        <div className="flex gap-0.5">
-                                            {[1, 2, 3, 4, 5].map(i => (
-                                                <Star key={i} className={cn("h-4 w-4", i <= (userData.averageRating || 0) ? "text-[#f59e0b] fill-[#f59e0b]" : "text-slate-200 fill-slate-100")} />
-                                            ))}
+                                    {/* Name & Badges */}
+                                    <div className="flex flex-col items-center text-center gap-1 w-full">
+                                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                                                {displayName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
+                                                {displayAge && <span className="text-slate-400 font-bold text-base sm:text-lg">, {displayAge}</span>}
+                                            </h1>
+                                            <UserBadge isPremium={userData?.isPremium} isSupporter={userData?.isSupporter} isCreator={userData?.isCreator} />
                                         </div>
-                                        <span className="text-lg font-black text-slate-900 dark:text-neutral-100">{userData.averageRating?.toFixed(1) || '0.0'}</span>
-                                        <span className="text-sm font-bold text-slate-400">({userData.ratingCount})</span>
-                                    </button>
-                                ) : <div className="h-2" />}
+                                        {userData?.username && (
+                                            <span
+                                                onClick={handleCopyUsername}
+                                                className="text-slate-400 font-black text-[10px] sm:text-[11px] uppercase tracking-[0.15em] cursor-pointer hover:text-emerald-500 transition-colors"
+                                            >
+                                                @{userData.username}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Rating */}
+                                    {(userData?.ratingCount && userData.ratingCount > 0) ? (
+                                        <button
+                                            onClick={loadReviews}
+                                            className="flex items-center justify-center gap-1 mt-3 group active:opacity-70 transition-opacity"
+                                        >
+                                            <div className="flex gap-0.5">
+                                                {[1, 2, 3, 4, 5].map(i => (
+                                                    <Star key={i} className={cn("h-3.5 w-3.5", i <= (userData.averageRating || 0) ? "text-[#f59e0b] fill-[#f59e0b]" : "text-slate-200 fill-slate-100")} />
+                                                ))}
+                                            </div>
+                                            <span className="text-base font-black text-slate-900 dark:text-neutral-100">{userData.averageRating?.toFixed(1) || '0.0'}</span>
+                                            <span className="text-xs font-bold text-slate-400">({userData.ratingCount})</span>
+                                        </button>
+                                    ) : null}
+                                </div>
+
+                                {/* Right Side: Bio */}
+                                <div className="flex-1 min-w-0 pt-1">
+                                    {userData?.bio ? (
+                                        <div className="bg-white dark:bg-neutral-900/90 border border-slate-100 dark:border-neutral-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm space-y-1.5 h-full min-h-[140px]">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block">
+                                                {language === 'de' ? 'Bio' : 'Bio'}
+                                            </span>
+                                            <p className="text-xs sm:text-sm font-medium text-slate-700 dark:text-neutral-300 leading-relaxed whitespace-pre-line break-words">
+                                                {userData.bio}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-slate-50/50 dark:bg-neutral-900/40 border border-dashed border-slate-200 dark:border-neutral-800/80 p-4 sm:p-5 rounded-2xl sm:rounded-3xl text-left h-full min-h-[140px] flex flex-col justify-center gap-2">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500 block">
+                                                {language === 'de' ? 'Bio' : 'Bio'}
+                                            </span>
+                                            <p className="text-xs text-slate-400 dark:text-neutral-500 italic">
+                                                {language === 'de' ? 'Noch keine Bio vorhanden. Tippe auf "Profil bearbeiten", um eine hinzuzufügen.' : 'No bio added yet. Tap "Edit Profile" to add one.'}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Stats - Asymmetric Pastel Tints */}
@@ -820,8 +841,8 @@ export default function ProfilePage() {
 
                         </div>
 
-                        {/* Right Hero Column (Gamification / Level & XP & Referral) - 7 Cols on Desktop */}
-                        <div className="lg:col-span-7 w-full flex flex-col gap-6">
+                        {/* Right Hero Column (Gamification / Level & XP & Referral) - 6 Cols on Desktop */}
+                        <div className="lg:col-span-6 w-full flex flex-col gap-6">
                             {userData && (
                                 <div className="w-full bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-850 rounded-[2.5rem] p-6 sm:p-8 shadow-sm flex flex-col gap-6">
                                     {/* Level info */}
