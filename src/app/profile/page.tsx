@@ -1417,23 +1417,29 @@ export default function ProfilePage() {
 
             {/* Title & Frame Customization Dialog */}
             <Dialog open={isCustomizeDialogOpen} onOpenChange={setIsCustomizeDialogOpen}>
-                <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                            <Settings className="h-5 w-5 text-emerald-500" />
-                            {language === 'de' ? 'Titel & Rahmen anpassen' : 'Customize Title & Frame'}
-                        </DialogTitle>
-                        <DialogDescription className="text-xs text-slate-500 dark:text-neutral-400">
-                            {language === 'de' 
-                                ? 'Wähle deinen angezeigten Rang-Titel und deinen Avatarrand aus deinen freigeschalteten Stufen.' 
-                                : 'Choose your displayed rank title and avatar frame from your unlocked tiers.'}
-                        </DialogDescription>
-                    </DialogHeader>
+                <DialogContent className="sm:max-w-lg bg-neutral-900 border border-neutral-800 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl overflow-hidden dark">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
+                            <Settings className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-xl sm:text-2xl font-black text-white tracking-tight leading-tight">
+                                {language === 'de' ? 'Titel & Rahmen anpassen' : 'Customize Title & Frame'}
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-neutral-400 font-medium">
+                                {language === 'de' 
+                                    ? 'Personalisieren Sie Ihren Rang-Titel und Rahmen auf Aktiva.' 
+                                    : 'Personalize your rank title and frame on Aktiva.'}
+                            </DialogDescription>
+                        </div>
+                    </div>
 
-                    {/* Live Preview */}
-                    <div className="flex flex-col items-center justify-center p-5 bg-slate-50 dark:bg-neutral-850 rounded-2xl gap-2 border border-slate-100 dark:border-neutral-800 my-2">
+                    {/* Live Preview Stage */}
+                    <div className="flex flex-col items-center justify-center p-6 bg-gradient-to-b from-neutral-850 via-neutral-900 to-neutral-950 border border-neutral-800 rounded-[2rem] relative overflow-hidden shadow-inner my-3">
+                        <div className="absolute inset-0 bg-emerald-500/5 blur-2xl pointer-events-none" />
                         <ProfileAvatar 
-                            className="h-24 w-24"
+                            className="h-28 w-28 shadow-2xl relative z-10 transition-all duration-300"
                             photoURL={photoUrlToDisplay}
                             displayName={displayName}
                             isPremium={userData?.isPremium}
@@ -1443,72 +1449,124 @@ export default function ProfilePage() {
                             equippedBorder={selectedBorder}
                             showLevelBadge={true}
                         />
-                        <Badge className={cn("text-white font-black px-3 py-1 rounded-full text-xs tracking-wider border-none mt-2", getLevelTierInfo(userData?.level || 1).badgeBg)}>
+                        <Badge className={cn("text-white font-black px-4 py-1.5 rounded-full text-xs tracking-wider border-none shadow-md transition-all duration-300 mt-4 relative z-10", getLevelTierInfo(userData?.level || 1).badgeBg)}>
                             LEVEL {userData?.level || 1} • {getLevelTitle(userData?.level || 1, language, selectedTitle)}
                         </Badge>
                     </div>
 
-                    {/* Title Selector */}
-                    <div className="space-y-2">
-                        <label className="text-[11px] font-black uppercase text-slate-400 dark:text-neutral-400 tracking-wider">
-                            {language === 'de' ? 'Angezeigter Rang-Titel' : 'Displayed Rank Title'}
-                        </label>
-                        <div className="grid grid-cols-1 gap-2 max-h-36 overflow-y-auto pr-1">
-                            {getUnlockedTitles(userData?.level || 1).map((t) => (
-                                <button
-                                    key={t.id}
-                                    type="button"
-                                    onClick={() => setSelectedTitle(t.id)}
-                                    className={cn(
-                                        "flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all text-left cursor-pointer",
-                                        selectedTitle === t.id
-                                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shadow-xs"
-                                            : "border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800"
-                                    )}
-                                >
-                                    <span>{language === 'de' ? t.titleDe : t.titleEn}</span>
-                                    {selectedTitle === t.id && <Check className="h-4 w-4 text-emerald-500" />}
-                                </button>
-                            ))}
+                    {/* Scrollable Selectors Container */}
+                    <div className="space-y-4 max-h-[42vh] overflow-y-auto pr-1.5 scrollbar-thin scrollbar-thumb-neutral-800">
+                        {/* Title Selector */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase text-neutral-400 tracking-widest px-1 block">
+                                {language === 'de' ? 'Angezeigter Rang-Titel' : 'Displayed Rank Title'}
+                            </label>
+                            <div className="space-y-2">
+                                {getUnlockedTitles(userData?.level || 1).map((t) => {
+                                    const isSelected = selectedTitle === t.id;
+                                    return (
+                                        <button
+                                            key={t.id}
+                                            type="button"
+                                            onClick={() => setSelectedTitle(t.id)}
+                                            className={cn(
+                                                "w-full flex items-center justify-between p-3.5 rounded-2xl border text-xs font-bold transition-all text-left cursor-pointer group",
+                                                isSelected
+                                                    ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.12)]"
+                                                    : "border-neutral-800 bg-neutral-850/50 text-neutral-300 hover:bg-neutral-800 hover:border-neutral-700"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn("h-7 w-7 rounded-xl flex items-center justify-center text-xs font-black transition-colors shrink-0", isSelected ? "bg-emerald-500/20 text-emerald-400" : "bg-neutral-800 text-neutral-400 group-hover:text-neutral-200")}>
+                                                    {t.minLevel === 1 ? '✦' : `L${t.minLevel}`}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-sm text-white">{language === 'de' ? t.titleDe : t.titleEn}</span>
+                                                    <span className="text-[10px] font-semibold text-neutral-400">
+                                                        {t.id === 'default' 
+                                                            ? (language === 'de' ? 'Basiert auf aktuellem Level' : 'Based on current level')
+                                                            : (language === 'de' ? `Freigeschaltet ab Level ${t.minLevel}` : `Unlocked at Level ${t.minLevel}`)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {isSelected && (
+                                                <div className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center text-slate-950 font-black shadow-sm shrink-0">
+                                                    <Check className="h-3 w-3 stroke-[3]" />
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Border Selector */}
+                        <div className="space-y-2 pt-1">
+                            <label className="text-[10px] font-black uppercase text-neutral-400 tracking-widest px-1 block">
+                                {language === 'de' ? 'Avatarrand / Frame' : 'Avatar Frame'}
+                            </label>
+                            <div className="space-y-2">
+                                {getUnlockedBorders(userData?.level || 1, userData?.isPremium).map((b) => {
+                                    const isSelected = selectedBorder === b.id;
+                                    return (
+                                        <button
+                                            key={b.id}
+                                            type="button"
+                                            onClick={() => setSelectedBorder(b.id)}
+                                            className={cn(
+                                                "w-full flex items-center justify-between p-3.5 rounded-2xl border text-xs font-bold transition-all text-left cursor-pointer group",
+                                                isSelected
+                                                    ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.12)]"
+                                                    : "border-neutral-800 bg-neutral-850/50 text-neutral-300 hover:bg-neutral-800 hover:border-neutral-700"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn("h-7 w-7 rounded-full p-[2.5px] shrink-0 border border-white/20 shadow-md", b.gradient || "bg-slate-400")}>
+                                                    <div className="w-full h-full rounded-full bg-neutral-900" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-sm text-white flex items-center gap-2">
+                                                        {language === 'de' ? b.nameDe : b.nameEn}
+                                                        {b.isPremiumOnly && (
+                                                            <span className="bg-amber-500/20 text-amber-400 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-amber-500/30">
+                                                                Premium
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <span className="text-[10px] font-semibold text-neutral-400">
+                                                        {b.id === 'default' 
+                                                            ? (language === 'de' ? 'Basiert auf aktuellem Level' : 'Based on current level')
+                                                            : b.isPremiumOnly
+                                                                ? (language === 'de' ? 'Exklusiver Premium-Glow' : 'Exclusive Premium Glow')
+                                                                : (language === 'de' ? `Freigeschaltet ab Level ${b.minLevel}` : `Unlocked at Level ${b.minLevel}`)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {isSelected && (
+                                                <div className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center text-slate-950 font-black shadow-sm shrink-0">
+                                                    <Check className="h-3 w-3 stroke-[3]" />
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Border Selector */}
-                    <div className="space-y-2 mt-3">
-                        <label className="text-[11px] font-black uppercase text-slate-400 dark:text-neutral-400 tracking-wider">
-                            {language === 'de' ? 'Avatarrand / Frame' : 'Avatar Frame'}
-                        </label>
-                        <div className="grid grid-cols-1 gap-2 max-h-36 overflow-y-auto pr-1">
-                            {getUnlockedBorders(userData?.level || 1, userData?.isPremium).map((b) => (
-                                <button
-                                    key={b.id}
-                                    type="button"
-                                    onClick={() => setSelectedBorder(b.id)}
-                                    className={cn(
-                                        "flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all text-left cursor-pointer",
-                                        selectedBorder === b.id
-                                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 shadow-xs"
-                                            : "border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-neutral-800"
-                                    )}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <div className={cn("h-4 w-4 rounded-full border border-white/50 shrink-0", b.gradient || "bg-slate-300")} />
-                                        <span>{language === 'de' ? b.nameDe : b.nameEn}</span>
-                                    </div>
-                                    {selectedBorder === b.id && <Check className="h-4 w-4 text-emerald-500" />}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <DialogFooter className="gap-2 sm:gap-0 mt-4">
-                        <Button variant="ghost" onClick={() => setIsCustomizeDialogOpen(false)}>
+                    {/* Footer Actions */}
+                    <DialogFooter className="gap-2 sm:gap-0 mt-5 pt-3 border-t border-neutral-800 flex flex-row items-center justify-end">
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => setIsCustomizeDialogOpen(false)}
+                            className="rounded-full font-bold text-neutral-400 hover:text-white hover:bg-neutral-800 h-11 px-6 text-xs uppercase tracking-wider"
+                        >
                             {language === 'de' ? 'Abbrechen' : 'Cancel'}
                         </Button>
                         <Button 
                             onClick={handleSaveCustomization}
                             disabled={isSavingCustomization}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold"
+                            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black rounded-full h-11 px-8 shadow-lg shadow-emerald-500/25 active:scale-95 transition-all border-none text-xs uppercase tracking-wider"
                         >
                             {isSavingCustomization && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                             {language === 'de' ? 'Speichern' : 'Save'}
