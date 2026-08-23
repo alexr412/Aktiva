@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Compass, Plus } from 'lucide-react';
+import { Compass, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { translateAppString } from '@/lib/tag-config';
@@ -124,8 +124,8 @@ export function ActivaPulseHero({
 
       {/* Main content wrapper */}
       <div className="flex-1 flex flex-col justify-between lg:justify-center min-w-0 gap-1 lg:gap-1">
-        {/* Eyebrow & Mobile Indicators */}
-        <div className="flex items-center justify-between w-full lg:justify-start">
+        {/* Eyebrow & Slider Navigation */}
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-1.5">
             {/* Status breathing pulse dot */}
             <span className="relative flex h-1.5 w-1.5">
@@ -137,37 +137,39 @@ export function ActivaPulseHero({
             </span>
           </div>
 
-          {/* Indicators on Mobile (<lg) */}
+          {/* Chevron Navigation Controls */}
           {metricsAvailable && !prefersReducedMotion && (
             <div 
-              className="flex items-center lg:hidden -mr-2.5" 
+              className="flex items-center gap-1.5 shrink-0" 
               aria-label={language === 'de' ? 'Statistik-Auswahl' : 'Metric selection'}
             >
               <button
-                aria-pressed={activeMetric === 'rooms'}
-                aria-label={language === 'de' ? 'Offene Räume anzeigen' : 'Show open rooms'}
+                type="button"
+                disabled={activeMetric === 'rooms'}
+                aria-label={language === 'de' ? 'Vorheriger Slide' : 'Previous slide'}
                 onClick={() => handleManualSwitch('rooms')}
-                className="h-7 w-7 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className={cn(
+                  "w-7 h-7 flex items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.05] text-white/70 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                  activeMetric === 'rooms'
+                    ? "opacity-30 cursor-default pointer-events-none"
+                    : "hover:bg-white/10 hover:text-white active:bg-white/15 cursor-pointer"
+                )}
               >
-                <span 
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full transition-colors duration-200",
-                    activeMetric === 'rooms' ? "bg-white" : "bg-white/40"
-                  )} 
-                />
+                <ChevronLeft className="h-3.5 w-3.5" />
               </button>
               <button
-                aria-pressed={activeMetric === 'participants'}
-                aria-label={language === 'de' ? 'Teilnehmer anzeigen' : 'Show participants'}
+                type="button"
+                disabled={activeMetric === 'participants'}
+                aria-label={language === 'de' ? 'Nächster Slide' : 'Next slide'}
                 onClick={() => handleManualSwitch('participants')}
-                className="h-7 w-7 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className={cn(
+                  "w-7 h-7 flex items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.05] text-white/70 transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                  activeMetric === 'participants'
+                    ? "opacity-30 cursor-default pointer-events-none"
+                    : "hover:bg-white/10 hover:text-white active:bg-white/15 cursor-pointer"
+                )}
               >
-                <span 
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full transition-colors duration-200",
-                    activeMetric === 'participants' ? "bg-white" : "bg-white/40"
-                  )} 
-                />
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
@@ -181,7 +183,7 @@ export function ActivaPulseHero({
           {headingText}
         </h2>
 
-        {/* Stats & Desktop Indicators */}
+        {/* Stats */}
         <div className="flex items-center gap-3">
           <div className="grid grid-cols-1 grid-rows-1 min-h-[1.5rem] lg:min-h-[1.25rem] items-center">
             {!metricsAvailable ? (
@@ -215,41 +217,6 @@ export function ActivaPulseHero({
               </>
             )}
           </div>
-
-          {/* Desktop-only indicator dots */}
-          {metricsAvailable && !prefersReducedMotion && (
-            <div 
-              className="hidden lg:flex items-center gap-0.5 shrink-0" 
-              aria-label={language === 'de' ? 'Statistik-Auswahl' : 'Metric selection'}
-            >
-              <button
-                aria-pressed={activeMetric === 'rooms'}
-                aria-label={language === 'de' ? 'Offene Räume anzeigen' : 'Show open rooms'}
-                onClick={() => handleManualSwitch('rooms')}
-                className="h-6 w-6 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              >
-                <span 
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full transition-colors duration-200",
-                    activeMetric === 'rooms' ? "bg-white" : "bg-white/40"
-                  )} 
-                />
-              </button>
-              <button
-                aria-pressed={activeMetric === 'participants'}
-                aria-label={language === 'de' ? 'Teilnehmer anzeigen' : 'Show participants'}
-                onClick={() => handleManualSwitch('participants')}
-                className="h-6 w-6 flex items-center justify-center rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              >
-                <span 
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full transition-colors duration-200",
-                    activeMetric === 'participants' ? "bg-white" : "bg-white/40"
-                  )} 
-                />
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
