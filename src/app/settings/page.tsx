@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User, Bell, Users, Palette, Info, ChevronRight, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2, ShieldBan, Scale, MessageSquare } from 'lucide-react';
+import { ArrowLeft, User, Bell, Users, Palette, Info, ChevronRight, ChevronDown, Trash2, Loader2, KeyRound, Globe, Ban, Bug, LogOut, Heart, Radar, MapPin, Sparkles, UserCheck, Star, Activity, CheckCircle2, ShieldBan, Scale, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { useToast } from '@/hooks/use-toast';
@@ -95,6 +96,7 @@ export default function SettingsPage() {
 
     const [consentOpen, setConsentOpen] = useState(false);
     const [localRadius, setLocalRadius] = useState(5);
+    const [isRadarDetailsOpen, setIsRadarDetailsOpen] = useState(false);
 
     useEffect(() => {
       if (radarRadius) {
@@ -264,6 +266,7 @@ export default function SettingsPage() {
     const handleConsentAccept = async () => {
       try {
         await activateRadar(localRadius);
+        setIsRadarDetailsOpen(true);
         toast({ title: language === 'de' ? "Radar aktiviert" : "Radar activated" });
       } catch (err) {
         console.error(err);
@@ -453,82 +456,119 @@ export default function SettingsPage() {
                                 )}
                                 
                                 {radarEnabled && (
-                                  <>
+                                  <Collapsible open={isRadarDetailsOpen} onOpenChange={setIsRadarDetailsOpen} className="w-full space-y-4 pt-1">
                                     <Separator />
-                                    <div className="space-y-4 pt-1">
-                                      <div className="flex items-center justify-between">
-                                        <Label className="text-sm font-medium">{language === 'de' ? 'Radar-Radius' : 'Radar Radius'}</Label>
-                                        <span className="text-primary font-bold text-sm">{localRadius} km</span>
-                                      </div>
-                                      <Slider
-                                        value={[localRadius]}
-                                        max={25}
-                                        min={1}
-                                        step={1}
-                                        onValueChange={(val) => setLocalRadius(val[0])}
-                                        onValueCommit={(val) => setRadius(val[0])}
-                                      />
-                                      
-                                      <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-neutral-800/80 text-[11px] text-slate-500 dark:text-neutral-400">
-                                        <div className="flex justify-between items-center gap-2 min-w-0">
-                                          <span className="truncate">{language === 'de' ? 'Berechtigungsstatus:' : 'Permission status:'}</span>
-                                          <span className="font-semibold text-slate-700 dark:text-neutral-300 shrink-0 text-right">
-                                            {formatPermissionState(radarPermissionState, language === 'de')}
-                                          </span>
+                                    <CollapsibleTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="flex w-full items-center justify-between py-1 text-xs font-semibold text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-neutral-200 transition-colors cursor-pointer"
+                                      >
+                                        <span>{language === 'de' ? 'Einstellungen & Datenschutz' : 'Settings & Privacy'}</span>
+                                        <ChevronDown className={cn("h-4 w-4 transition-transform duration-200 text-slate-400", isRadarDetailsOpen && "rotate-180")} />
+                                      </button>
+                                    </CollapsibleTrigger>
+
+                                    <CollapsibleContent className="space-y-4 pt-2">
+                                      <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                          <Label className="text-sm font-medium">{language === 'de' ? 'Radar-Radius' : 'Radar Radius'}</Label>
+                                          <span className="text-primary font-bold text-sm">{localRadius} km</span>
                                         </div>
-                                        <div className="flex justify-between items-center gap-2 min-w-0">
-                                          <span className="truncate">{language === 'de' ? 'Letzte Aktualisierung:' : 'Last update:'}</span>
-                                          <span className="font-semibold text-slate-700 dark:text-neutral-300 shrink-0 text-right">
-                                            {lastLocationUpdatedAt ? lastLocationUpdatedAt.toLocaleTimeString() : '-'}
-                                          </span>
-                                        </div>
-                                        {nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime() && (
-                                          <div className="flex justify-between items-center gap-2 min-w-0 text-amber-600 dark:text-amber-500">
-                                            <span className="truncate">{language === 'de' ? 'Nächstes Update in:' : 'Next update allowed in:'}</span>
-                                            <span className="font-bold font-mono shrink-0 text-right">
-                                              {formatCountdown(Math.ceil((nextAllowedLocationUpdateAt.getTime() - Date.now()) / 1000))}
+                                        <Slider
+                                          value={[localRadius]}
+                                          max={25}
+                                          min={1}
+                                          step={1}
+                                          onValueChange={(val) => setLocalRadius(val[0])}
+                                          onValueCommit={(val) => setRadius(val[0])}
+                                        />
+                                        
+                                        <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-neutral-800/80 text-[11px] text-slate-500 dark:text-neutral-400">
+                                          <div className="flex justify-between items-center gap-2 min-w-0">
+                                            <span className="truncate">{language === 'de' ? 'Berechtigungsstatus:' : 'Permission status:'}</span>
+                                            <span className="font-semibold text-slate-700 dark:text-neutral-300 shrink-0 text-right">
+                                              {formatPermissionState(radarPermissionState, language === 'de')}
                                             </span>
                                           </div>
-                                        )}
-                                      </div>
+                                          <div className="flex justify-between items-center gap-2 min-w-0">
+                                            <span className="truncate">{language === 'de' ? 'Letzte Aktualisierung:' : 'Last update:'}</span>
+                                            <span className="font-semibold text-slate-700 dark:text-neutral-300 shrink-0 text-right">
+                                              {lastLocationUpdatedAt ? lastLocationUpdatedAt.toLocaleTimeString() : '-'}
+                                            </span>
+                                          </div>
+                                          {nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime() && (
+                                            <div className="flex justify-between items-center gap-2 min-w-0 text-amber-600 dark:text-amber-500">
+                                              <span className="truncate">{language === 'de' ? 'Nächstes Update in:' : 'Next update allowed in:'}</span>
+                                              <span className="font-bold font-mono shrink-0 text-right">
+                                                {formatCountdown(Math.ceil((nextAllowedLocationUpdateAt.getTime() - Date.now()) / 1000))}
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
 
-                                      <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
-                                        <Button
-                                          onClick={() => updateLocation()}
-                                          disabled={isUpdatingLocation || (nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime()) ? true : false}
-                                          className="w-full sm:flex-1 h-10 rounded-full text-xs font-bold text-white shadow-sm disabled:bg-emerald-500/15 dark:disabled:bg-emerald-500/20 disabled:text-emerald-700 dark:disabled:text-emerald-400 disabled:opacity-100 disabled:shadow-none"
-                                        >
-                                          {isUpdatingLocation ? (language === 'de' ? 'Aktualisiere...' : 'Updating...') : (language === 'de' ? 'Standort jetzt aktualisieren' : 'Update location now')}
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          onClick={deactivateRadar}
-                                          className="w-full sm:w-auto h-10 rounded-full text-xs font-bold border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800"
-                                        >
-                                          {language === 'de' ? 'Standortdaten löschen' : 'Delete location data'}
-                                        </Button>
+                                        <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+                                          <Button
+                                            onClick={() => updateLocation()}
+                                            disabled={isUpdatingLocation || (nextAllowedLocationUpdateAt && Date.now() < nextAllowedLocationUpdateAt.getTime()) ? true : false}
+                                            className="w-full sm:flex-1 h-10 rounded-full text-xs font-bold text-white shadow-sm disabled:bg-emerald-500/15 dark:disabled:bg-emerald-500/20 disabled:text-emerald-700 dark:disabled:text-emerald-400 disabled:opacity-100 disabled:shadow-none"
+                                          >
+                                            {isUpdatingLocation ? (language === 'de' ? 'Aktualisiere...' : 'Updating...') : (language === 'de' ? 'Standort jetzt aktualisieren' : 'Update location now')}
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            onClick={deactivateRadar}
+                                            className="w-full sm:w-auto h-10 rounded-full text-xs font-bold border-slate-200 dark:border-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800"
+                                          >
+                                            {language === 'de' ? 'Standortdaten löschen' : 'Delete location data'}
+                                          </Button>
+                                        </div>
+
+                                        <div className="p-4 mt-3 bg-slate-50/50 dark:bg-neutral-900/30 rounded-3xl border border-slate-100 dark:border-neutral-800/50 space-y-2 text-[10px] text-slate-400 dark:text-neutral-500 leading-normal">
+                                          <p className="font-black uppercase tracking-widest">{language === 'de' ? 'Datenschutzhinweise' : 'Privacy Notice'}</p>
+                                          <ul className="list-disc pl-4 space-y-1">
+                                            <li>{language === 'de' ? 'Standort wird nur bei aktiver Nutzung der App aktualisiert.' : 'Location is only updated while actively using the app.'}</li>
+                                            <li>{language === 'de' ? 'Keine dauerhafte Hintergrundortung.' : 'No background location tracking.'}</li>
+                                            <li>{language === 'de' ? 'Nur bestätigte Freunde mit gegenseitigem Radar-Opt-in können dich sehen.' : 'Only confirmed friends with mutual opt-in can see you.'}</li>
+                                            <li>{language === 'de' ? 'Keine exakten Freundespositionen werden übertragen.' : 'No exact friend positions are transmitted.'}</li>
+                                            <li>{language === 'de' ? 'Kein Standortverlauf wird gespeichert.' : 'No location history is saved.'}</li>
+                                            <li>{language === 'de' ? 'Standortdaten werden nach 24 Stunden automatisch ungültig.' : 'Location data expires automatically after 24 hours.'}</li>
+                                          </ul>
+                                        </div>
                                       </div>
-                                    </div>
-                                  </>
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
+
+                                {!radarEnabled && (
+                                  <Collapsible open={isRadarDetailsOpen} onOpenChange={setIsRadarDetailsOpen} className="w-full space-y-4 pt-1">
+                                    <Separator />
+                                    <CollapsibleTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="flex w-full items-center justify-between py-1 text-xs font-semibold text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-neutral-200 transition-colors cursor-pointer"
+                                      >
+                                        <span>{language === 'de' ? 'Datenschutzhinweise' : 'Privacy Notice'}</span>
+                                        <ChevronDown className={cn("h-4 w-4 transition-transform duration-200 text-slate-400", isRadarDetailsOpen && "rotate-180")} />
+                                      </button>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="pt-2">
+                                      <div className="p-4 bg-slate-50/50 dark:bg-neutral-900/30 rounded-3xl border border-slate-100 dark:border-neutral-800/50 space-y-2 text-[10px] text-slate-400 dark:text-neutral-500 leading-normal">
+                                        <p className="font-black uppercase tracking-widest">{language === 'de' ? 'Datenschutzhinweise' : 'Privacy Notice'}</p>
+                                        <ul className="list-disc pl-4 space-y-1">
+                                          <li>{language === 'de' ? 'Standort wird nur bei aktiver Nutzung der App aktualisiert.' : 'Location is only updated while actively using the app.'}</li>
+                                          <li>{language === 'de' ? 'Keine dauerhafte Hintergrundortung.' : 'No background location tracking.'}</li>
+                                          <li>{language === 'de' ? 'Nur bestätigte Freunde mit gegenseitigem Radar-Opt-in können dich sehen.' : 'Only confirmed friends with mutual opt-in can see you.'}</li>
+                                          <li>{language === 'de' ? 'Keine exakten Freundespositionen werden übertragen.' : 'No exact friend positions are transmitted.'}</li>
+                                          <li>{language === 'de' ? 'Kein Standortverlauf wird gespeichert.' : 'No location history is saved.'}</li>
+                                          <li>{language === 'de' ? 'Standortdaten werden nach 24 Stunden automatisch ungültig.' : 'Location data expires automatically after 24 hours.'}</li>
+                                        </ul>
+                                      </div>
+                                    </CollapsibleContent>
+                                  </Collapsible>
                                 )}
                               </>
                             )}
                         </div>
-
-                        {/* Privacy notices */}
-                        {hasAccess && (
-                          <div className="p-4 bg-slate-50/50 dark:bg-neutral-900/30 rounded-3xl border border-slate-100 dark:border-neutral-800/50 space-y-2 text-[10px] text-slate-400 dark:text-neutral-500 leading-normal">
-                            <p className="font-black uppercase tracking-widest">{language === 'de' ? 'Datenschutzhinweise' : 'Privacy Notice'}</p>
-                            <ul className="list-disc pl-4 space-y-1">
-                              <li>{language === 'de' ? 'Standort wird nur bei aktiver Nutzung der App aktualisiert.' : 'Location is only updated while actively using the app.'}</li>
-                              <li>{language === 'de' ? 'Keine dauerhafte Hintergrundortung.' : 'No background location tracking.'}</li>
-                              <li>{language === 'de' ? 'Nur bestätigte Freunde mit gegenseitigem Radar-Opt-in können dich sehen.' : 'Only confirmed friends with mutual opt-in can see you.'}</li>
-                              <li>{language === 'de' ? 'Keine exakten Freundespositionen werden übertragen.' : 'No exact friend positions are transmitted.'}</li>
-                              <li>{language === 'de' ? 'Kein Standortverlauf wird gespeichert.' : 'No location history is saved.'}</li>
-                              <li>{language === 'de' ? 'Standortdaten werden nach 24 Stunden automatisch ungültig.' : 'Location data expires automatically after 24 hours.'}</li>
-                            </ul>
-                          </div>
-                        )}
                     </div>
 
                     <RadarConsentDialog

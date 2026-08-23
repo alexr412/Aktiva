@@ -439,8 +439,18 @@ export default function UserProfilePage() {
                     {userData.location && <p className="text-sm text-muted-foreground mt-1">{userData.location}</p>}
                 </div>
 
-                <div className="w-full max-w-sm">
+                <div className="w-full max-w-sm flex flex-col gap-2.5">
                     {renderFriendButton()}
+                    {currentUser && friendshipStatus !== 'is_self' && (
+                      <div className="flex justify-center pt-1">
+                        <EntityMoreOptions
+                          entityId={userId}
+                          entityType="user"
+                          entityName={displayName}
+                          variant="button"
+                        />
+                      </div>
+                    )}
                 </div>
             </div>
             
