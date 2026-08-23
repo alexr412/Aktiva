@@ -38,7 +38,7 @@ import {
   UserX,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { isPremiumActive, isAccountActive, parseTimestampMillis, type UserProfile } from '@/lib/types';
+import { isPremiumActive, isAccountActive, getEffectiveAccountStatus, parseTimestampMillis, type UserProfile } from '@/lib/types';
 import { AdminSummaryBar } from '@/components/admin/AdminSummaryBar';
 import { UserDetailDrawer } from '@/components/admin/users/UserDetailDrawer';
 import { BulkActionDialog } from '@/components/admin/users/BulkActionDialog';
@@ -223,7 +223,7 @@ function AdminUsersContent() {
   // Calculate summary metrics for current view
   const adminCount = users.filter(u => u.role === 'admin' || u.role === 'superadmin').length;
   const organizerCount = users.filter(u => u.isOrganizer).length;
-  const restrictedCount = users.filter(u => u.isBanned || u.accountStatus === 'banned' || u.accountStatus === 'suspended').length;
+  const restrictedCount = users.filter(u => getEffectiveAccountStatus(u) !== 'active').length;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -430,11 +430,9 @@ function AdminUsersContent() {
                 </tr>
               ) : (
                 users.map((u) => {
+                  const effectiveStatus = getEffectiveAccountStatus(u);
                   const isPrem = isPremiumActive(u);
                   const isOrg = !!u.isOrganizer;
-                  const isBanned = u.isBanned || u.accountStatus === 'banned';
-                  const isSuspended = u.accountStatus === 'suspended' && u.suspendedUntil && parseTimestampMillis(u.suspendedUntil)! > Date.now();
-                  const isActive = isAccountActive(u);
                   const roleName = u.role || 'user';
                   const createdDate = u.createdAt ? new Date(parseTimestampMillis(u.createdAt) || Date.now()).toLocaleDateString('de-DE') : '-';
 
@@ -515,8 +513,11 @@ function AdminUsersContent() {
 
                       {/* Account Status */}
                       <td className="p-4">
-                        <Badge variant={isBanned ? 'destructive' : (isSuspended ? 'outline' : 'default')} className={isActive ? 'bg-emerald-600 text-white text-[10px] font-bold' : (isSuspended ? 'border-amber-500 text-amber-500 text-[10px] font-bold' : 'text-[10px] font-bold')}>
-                          {isBanned ? 'BANNED' : (isSuspended ? 'SUSPENDED' : 'ACTIVE')}
+                        <Badge
+                          variant={effectiveStatus === 'banned' ? 'destructive' : (effectiveStatus === 'suspended' ? 'outline' : 'default')}
+                          className={effectiveStatus === 'active' ? 'bg-emerald-600 text-white text-[10px] font-bold' : (effectiveStatus === 'suspended' ? 'border-amber-500 text-amber-500 text-[10px] font-bold font-mono' : 'text-[10px] font-bold')}
+                        >
+                          {effectiveStatus.toUpperCase()}
                         </Badge>
                       </td>
 
@@ -553,7 +554,7 @@ function AdminUsersContent() {
                               <AlertTriangle className="h-3.5 w-3.5 mr-2" /> Suspendieren
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openSpecificDialog(u, 'ban')} className="text-xs font-bold text-red-500">
-                              <Ban className="h-3.5 w-3.5 mr-2" /> {isBanned ? 'Unban' : 'Bannen'}
+                              <Ban className="h-3.5 w-3.5 mr-2" /> {effectiveStatus === 'banned' ? 'Unban' : 'Bannen'}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => openSpecificDialog(u, 'delete')} className="text-xs font-bold text-red-600">

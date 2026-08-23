@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { getRoleRank, checkRoleModificationPermission } from './admin-users';
-import { isAccountActive, getParticipantLimit, isPremiumActive, UserProfile } from '../../src/lib/types';
+import { isAccountActive, getEffectiveAccountStatus, getParticipantLimit, isPremiumActive, UserProfile } from '../../src/lib/types';
 
 async function runAdminUsersBackendTests() {
   console.log('🧪 Starting Aktiva Admin Users Backend Unit Tests...\n');
@@ -54,34 +54,60 @@ async function runAdminUsersBackendTests() {
   });
   console.log('  ✅ Role modification privilege escalation safeguards passed');
 
-  // 3. Account Status Evaluation (isAccountActive)
-  console.log('\nTest 3: Account Status Evaluation (isAccountActive)');
+  // 3. Account Status Evaluation (isAccountActive & getEffectiveAccountStatus)
+  console.log('\nTest 3: Account Status Evaluation (getEffectiveAccountStatus & isAccountActive)');
   const nowMs = Date.now();
   const futureMs = nowMs + 1000 * 60 * 60 * 24; // +1 day
   const pastMs = nowMs - 1000 * 60 * 60 * 24; // -1 day
 
-  const activeUser: UserProfile = { uid: 'u1', onboardingCompleted: true, accountStatus: 'active' };
-  assert.strictEqual(isAccountActive(activeUser, nowMs), true, 'Active user must pass');
-
-  const bannedUser: UserProfile = { uid: 'u2', onboardingCompleted: true, isBanned: true, accountStatus: 'banned' };
-  assert.strictEqual(isAccountActive(bannedUser, nowMs), false, 'Banned user must fail');
-
+  // Scenario 1: Aktuell temporär suspendierter Nutzer (suspendedUntil in der Zukunft)
   const activeSuspendedUser: UserProfile = {
-    uid: 'u3',
+    uid: 'u_suspended_active',
     onboardingCompleted: true,
     accountStatus: 'suspended',
     suspendedUntil: futureMs as any,
   };
-  assert.strictEqual(isAccountActive(activeSuspendedUser, nowMs), false, 'Active suspended user must fail');
+  assert.strictEqual(getEffectiveAccountStatus(activeSuspendedUser, nowMs), 'suspended', '1. Currently suspended user must return status suspended');
+  assert.strictEqual(isAccountActive(activeSuspendedUser, nowMs), false, '1. Currently suspended user must fail isAccountActive');
 
+  // Scenario 2: Abgelaufene Suspension (suspendedUntil in der Vergangenheit)
   const expiredSuspendedUser: UserProfile = {
-    uid: 'u4',
+    uid: 'u_suspended_expired',
     onboardingCompleted: true,
     accountStatus: 'suspended',
     suspendedUntil: pastMs as any,
   };
-  assert.strictEqual(isAccountActive(expiredSuspendedUser, nowMs), true, 'Expired suspended user must pass');
-  console.log('  ✅ Account status evaluation passed');
+  assert.strictEqual(getEffectiveAccountStatus(expiredSuspendedUser, nowMs), 'active', '2. Expired suspension must return status active');
+  assert.strictEqual(isAccountActive(expiredSuspendedUser, nowMs), true, '2. Expired suspension must pass isAccountActive');
+
+  // Scenario 3: Manuell aufgehobene Suspension (accountStatus: active, keine restlichen Felder)
+  const unsuspendedUser: UserProfile = {
+    uid: 'u_unsuspended',
+    onboardingCompleted: true,
+    accountStatus: 'active',
+  };
+  assert.strictEqual(getEffectiveAccountStatus(unsuspendedUser, nowMs), 'active', '3. Manually unsuspended user must return status active');
+  assert.strictEqual(isAccountActive(unsuspendedUser, nowMs), true, '3. Manually unsuspended user must pass isAccountActive');
+
+  // Scenario 4: Normal aktiver Nutzer
+  const normalActiveUser: UserProfile = {
+    uid: 'u_normal_active',
+    onboardingCompleted: true,
+    accountStatus: 'active',
+  };
+  assert.strictEqual(getEffectiveAccountStatus(normalActiveUser, nowMs), 'active', '4. Normal active user must return status active');
+  assert.strictEqual(isAccountActive(normalActiveUser, nowMs), true, '4. Normal active user must pass isAccountActive');
+
+  // Scenario 5: Permanent gesperrter Nutzer
+  const bannedUser: UserProfile = {
+    uid: 'u_banned',
+    onboardingCompleted: true,
+    isBanned: true,
+    accountStatus: 'banned',
+  };
+  assert.strictEqual(getEffectiveAccountStatus(bannedUser, nowMs), 'banned', '5. Permanently banned user must return status banned');
+  assert.strictEqual(isAccountActive(bannedUser, nowMs), false, '5. Permanently banned user must fail isAccountActive');
+  console.log('  ✅ Account status evaluation passed for all 5 scenarios');
 
   // 4. Entitlements & Participant Limits
   console.log('\nTest 4: Entitlements & Participant Limits');

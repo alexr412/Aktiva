@@ -621,20 +621,32 @@ export function getEffectiveCommunicationPreferences(profile: UserProfile | null
   };
 }
 
+export type AccountStatus = 'active' | 'suspended' | 'banned';
+
 /**
- * Helper to check if a user account is active (not banned and not currently suspended).
+ * Single canonical calculation of the effective account status.
+ * - 'banned': if isBanned === true or accountStatus === 'banned'
+ * - 'suspended': if accountStatus === 'suspended' and suspendedUntil is in the future (> now)
+ * - 'active': in all other cases (including active users, missing status, or expired suspensions)
  */
-export function isAccountActive(profile: UserProfile | null, now?: Date | number): boolean {
-  if (!profile) return false;
-  if (profile.isBanned || profile.accountStatus === 'banned') return false;
+export function getEffectiveAccountStatus(profile: UserProfile | null, now?: Date | number): AccountStatus {
+  if (!profile) return 'active';
+  if (profile.isBanned || profile.accountStatus === 'banned') return 'banned';
   if (profile.accountStatus === 'suspended' && profile.suspendedUntil) {
     const suspendedMillis = parseTimestampMillis(profile.suspendedUntil);
     const currentMillis = now instanceof Date ? now.getTime() : (typeof now === 'number' ? now : Date.now());
     if (suspendedMillis !== null && suspendedMillis > currentMillis) {
-      return false;
+      return 'suspended';
     }
   }
-  return true;
+  return 'active';
+}
+
+/**
+ * Helper to check if a user account is active (not banned and not currently suspended).
+ */
+export function isAccountActive(profile: UserProfile | null, now?: Date | number): boolean {
+  return getEffectiveAccountStatus(profile, now) === 'active';
 }
 
 export type PremiumFeature =

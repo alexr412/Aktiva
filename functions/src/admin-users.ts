@@ -145,7 +145,28 @@ export const adminListUsers = onCall(async (request) => {
   const normalizeUserDoc = (doc: admin.firestore.DocumentSnapshot) => {
     const raw = doc.data() || {};
     const roleVal = raw.role || (raw.isAdmin ? 'admin' : (raw.isSupporter ? 'supporter' : 'user'));
-    const statusVal = raw.accountStatus || (raw.isBanned ? 'banned' : 'active');
+    
+    // Canonical effective account status calculation
+    let statusVal: 'active' | 'suspended' | 'banned' = 'active';
+    if (raw.isBanned === true || raw.accountStatus === 'banned') {
+      statusVal = 'banned';
+    } else if (raw.accountStatus === 'suspended' && raw.suspendedUntil) {
+      let untilMs: number | null = null;
+      const su = raw.suspendedUntil;
+      if (su && typeof su.toMillis === 'function') untilMs = su.toMillis();
+      else if (su && typeof su.toDate === 'function') untilMs = su.toDate().getTime();
+      else if (typeof su === 'number') untilMs = su;
+      else if (typeof su === 'string') untilMs = Date.parse(su);
+
+      if (untilMs !== null && !isNaN(untilMs) && untilMs > Date.now()) {
+        statusVal = 'suspended';
+      } else {
+        statusVal = 'active';
+      }
+    } else {
+      statusVal = 'active';
+    }
+
     const isOrgVal = raw.isOrganizer === true;
     const isPremVal = raw.isPremium === true;
     const displayNameVal = raw.displayName || raw.username || 'Activa-Nutzer';
@@ -249,7 +270,11 @@ export const adminListUsers = onCall(async (request) => {
   const hasMore = docs.length > queryLimit;
   const resultDocs = hasMore ? docs.slice(0, queryLimit) : docs;
 
-  const users = resultDocs.map(normalizeUserDoc);
+  const rawUsers = resultDocs.map(normalizeUserDoc);
+  let users = rawUsers;
+  if (accountStatus && accountStatus !== 'all' && ['active', 'suspended', 'banned'].includes(accountStatus)) {
+    users = rawUsers.filter(u => u.accountStatus === accountStatus);
+  }
   const lastDocId = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1].id : undefined;
 
   console.log('[ADMIN USERS RESULT]', {

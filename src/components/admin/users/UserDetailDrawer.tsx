@@ -35,7 +35,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase/client';
-import { isPremiumActive, isAccountActive, parseTimestampMillis, type UserProfile } from '@/lib/types';
+import { isPremiumActive, isAccountActive, getEffectiveAccountStatus, parseTimestampMillis, type UserProfile } from '@/lib/types';
 import { RoleChangeDialog } from './RoleChangeDialog';
 import { OrganizerDialog } from './OrganizerDialog';
 import { PremiumManagementDialog } from './PremiumManagementDialog';
@@ -116,11 +116,12 @@ export function UserDetailDrawer({
     setTimeout(() => setCopiedUid(false), 2000);
   };
 
+  const effectiveStatus = getEffectiveAccountStatus(userDoc);
   const isPrem = isPremiumActive(userDoc);
   const isOrg = !!userDoc.isOrganizer;
-  const isBanned = userDoc.isBanned || userDoc.accountStatus === 'banned';
-  const isSuspended = userDoc.accountStatus === 'suspended' && userDoc.suspendedUntil && parseTimestampMillis(userDoc.suspendedUntil)! > Date.now();
-  const isActive = isAccountActive(userDoc);
+  const isBanned = effectiveStatus === 'banned';
+  const isSuspended = effectiveStatus === 'suspended';
+  const isActive = effectiveStatus === 'active';
 
   const roleName = userDoc.role || 'user';
   const createdDate = userDoc.createdAt ? new Date(parseTimestampMillis(userDoc.createdAt) || Date.now()).toLocaleDateString('de-DE') : '-';
