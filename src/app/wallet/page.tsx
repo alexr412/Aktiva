@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ArrowLeft, Wallet, ArrowUpCircle, Info, Loader2, CheckCircle2, History, Banknote, ShieldAlert, Upload, ShieldCheck, Lock, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { TrophyXpPopover } from '@/components/profile/TrophyXpPopover';
 import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { format } from 'date-fns';
@@ -504,16 +505,20 @@ export default function WalletPage() {
                         <>
                             {/* XP & Level Card */}
                             <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden text-left w-full">
-                                <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-2 opacity-80">
-                                        <div className="flex items-center gap-2">
-                                            🏆
+                                <div className="flex items-center justify-between mb-2 opacity-90">
+                                    <TrophyXpPopover language={language} align="start">
+                                        <div className="flex items-center gap-2 cursor-pointer hover:opacity-100 transition-opacity">
+                                            <span>🏆</span>
                                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">{language === 'de' ? 'Gesammelte XP (Lifetime)' : 'Earned XP (Lifetime)'}</span>
                                         </div>
-                                        <div className="bg-white/20 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase">
+                                    </TrophyXpPopover>
+                                    <TrophyXpPopover language={language} align="end">
+                                        <div className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase cursor-pointer transition-colors">
                                             {language === 'de' ? `Level ${userProfile?.level || 1}` : `Level ${userProfile?.level || 1}`}
                                         </div>
-                                    </div>
+                                    </TrophyXpPopover>
+                                </div>
+                                <div className="relative z-10">
                                     <div className="flex items-baseline gap-2 mt-4">
                                         <span className="text-5xl font-black">{userProfile?.pointsLifetime || 0}</span>
                                         <span className="text-lg font-black uppercase tracking-wider text-emerald-200">XP</span>

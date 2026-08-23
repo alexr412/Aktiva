@@ -39,6 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EntityMoreOptions } from '@/components/common/EntityMoreOptions';
 import { getLevelTitle, getLevelTierInfo } from '@/lib/levels';
+import { TrophyXpPopover } from '@/components/profile/TrophyXpPopover';
 import { UserBadge } from '@/components/common/UserBadge';
 import { cn, formatFirstName } from '@/lib/utils';
 
@@ -442,9 +443,12 @@ export default function UserProfilePage() {
                                     <UserBadge isPremium={userData.isPremium} isSupporter={userData.isSupporter} isCreator={userData.isCreator} />
                                 </div>
                                 <div className="mt-0.5">
-                                    <Badge className={cn("text-white font-black px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs tracking-wider border-none", getLevelTierInfo(userData.level || 1).badgeBg)}>
-                                        Lv. {userData.level || 1} • {getLevelTitle(userData.level || 1, language)}
-                                    </Badge>
+                                    <TrophyXpPopover language={language} align="center">
+                                        <Badge className={cn("text-white font-black px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs tracking-wider border-none hover:opacity-90 transition-all cursor-pointer shadow-sm flex items-center gap-1", getLevelTierInfo(userData.level || 1).badgeBg)}>
+                                            <span>Lv. {userData.level || 1} • {getLevelTitle(userData.level || 1, language)}</span>
+                                            <span>🏆</span>
+                                        </Badge>
+                                    </TrophyXpPopover>
                                 </div>
                                 {userData.location && (
                                     <p className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-neutral-500">{userData.location}</p>

@@ -35,6 +35,7 @@ import { CreateActivityDialog } from '@/components/activa/create-activity-dialog
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FriendList from '@/components/profile/FriendList';
 import { ProfileActivityCard } from "@/components/profile/ProfileActivityCard";
+import { TrophyXpPopover } from "@/components/profile/TrophyXpPopover";
 import { cn, formatFirstName, toDateObject } from '@/lib/utils';
 import { UserBadge } from '@/components/common/UserBadge';
 import { format } from 'date-fns';
@@ -910,9 +911,11 @@ export default function ProfilePage() {
                                     <div className="flex items-center justify-between">
                                         <div className="space-y-1 text-left">
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <Badge className={cn("text-white font-black px-3 py-1 rounded-full text-xs tracking-wider border-none", getLevelTierInfo(userData.level || 1).badgeBg)}>
-                                                    LEVEL {userData.level || 1} • {getLevelTitle(userData.level || 1, language, userData.equippedTitle)}
-                                                </Badge>
+                                                <TrophyXpPopover language={language} align="start">
+                                                    <Badge className={cn("text-white font-black px-3 py-1 rounded-full text-xs tracking-wider border-none hover:opacity-95 transition-all cursor-pointer shadow-sm", getLevelTierInfo(userData.level || 1).badgeBg)}>
+                                                        LEVEL {userData.level || 1} • {getLevelTitle(userData.level || 1, language, userData.equippedTitle)}
+                                                    </Badge>
+                                                </TrophyXpPopover>
                                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                                                     {userData.level && userData.level >= 100 
                                                         ? (language === 'de' ? 'Maximales Level erreicht' : 'Max Level Reached') 
@@ -923,9 +926,11 @@ export default function ProfilePage() {
                                                 {userData.pointsLifetime || 0} <span className="text-sm font-black uppercase text-slate-400 font-heading">{language === 'de' ? 'XP Gesamt' : 'Total XP'}</span>
                                             </h3>
                                         </div>
-                                        <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-500 font-black text-lg shrink-0">
-                                            🏆
-                                        </div>
+                                        <TrophyXpPopover language={language} align="end">
+                                            <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100/80 dark:border-emerald-900/50 flex items-center justify-center text-emerald-500 font-black text-lg shrink-0 group-hover:bg-emerald-100/80 dark:group-hover:bg-emerald-900/60 group-hover:scale-105 transition-all shadow-sm">
+                                                🏆
+                                            </div>
+                                        </TrophyXpPopover>
                                     </div>
 
                                     {/* Progress bar */}
