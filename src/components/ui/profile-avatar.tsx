@@ -11,6 +11,8 @@ interface ProfileAvatarProps {
   isPremium?: boolean;
   isCreator?: boolean;
   isSupporter?: boolean;
+  level?: number;
+  showLevelBadge?: boolean;
   className?: string;
   fallbackClassName?: string;
 }
@@ -21,6 +23,8 @@ export function ProfileAvatar({
   isPremium,
   isCreator,
   isSupporter,
+  level,
+  showLevelBadge = true,
   className,
   fallbackClassName,
 }: ProfileAvatarProps) {
@@ -37,6 +41,8 @@ export function ProfileAvatar({
       isPremium={isPremium}
       isCreator={isCreator}
       isSupporter={isSupporter}
+      level={level}
+      showLevelBadge={showLevelBadge}
       className={adjustedClassName}
     >
       {photoURL ? (

@@ -151,6 +151,10 @@ const MessageBubble = ({
     ? Boolean(currentUserProfile?.isCreator)
     : Boolean(message.isCreator || participantDetails?.[message.senderId]?.isCreator);
 
+  const userLevel = isOwnMessage
+    ? (currentUserProfile?.level || 1)
+    : (participantDetails?.[message.senderId]?.level || 1);
+
   return (
     <div className={cn(
       "w-full flex px-4 mb-1",
@@ -164,7 +168,7 @@ const MessageBubble = ({
         {isFirstInGroup && !isDirectMessage && !isOwnMessage && (
           <Link 
             href={`/users/${message.senderId}`} 
-            className="flex items-center gap-1 mb-1 mx-1 hover:opacity-80 transition-opacity cursor-pointer group h-4"
+            className="flex items-center gap-1.5 mb-1 mx-1 hover:opacity-80 transition-opacity cursor-pointer group h-4"
           >
             <span className={cn("text-[10px] font-black uppercase tracking-wider group-hover:underline leading-none flex items-center", getColorForUser(message.senderId))}>
               {resolvePublicUsername({
@@ -175,6 +179,9 @@ const MessageBubble = ({
               })}
             </span>
             <UserBadge isPremium={badgePremium} isSupporter={badgeSupporter} isCreator={badgeCreator} size="sm" />
+            <span className="text-[9px] font-black opacity-75 bg-slate-200 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 px-1.5 py-0.25 rounded-md">
+              Lv. {userLevel}
+            </span>
           </Link>
         )}
         
@@ -1108,6 +1115,8 @@ export default function ChatRoomPage() {
                       isPremium={otherUser.isPremium}
                       isCreator={otherUser.isCreator}
                       isSupporter={otherUser.isSupporter}
+                      level={otherUser.level || 1}
+                      showLevelBadge={true}
                     />
                     <div className="flex items-center gap-1.5 truncate">
                       <h1 className="">{formatFirstName(otherUser.displayName, "User")}</h1>

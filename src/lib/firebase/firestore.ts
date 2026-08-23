@@ -28,7 +28,7 @@ import { calculateDistance, buildApproximateLocationData } from '../geo-utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory, CommunicationPreferences, NotificationPreferences } from '@/lib/types';
-import { getParticipantLimit, isPremiumActive } from '@/lib/types';
+import { getParticipantLimit, getMaxOpenRoomsLimit, isPremiumActive } from '@/lib/types';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
 import { formatFirstName } from '@/lib/utils';
 
@@ -524,9 +524,16 @@ export async function createActivity({
   
   const userRef = doc(db, 'users', user.uid);
   const placeRef = isPlaceBasedActivity ? doc(db, 'places', placeIdValue) : null;
-  const [userSnap, placeSnap] = await Promise.all([
+  const activeHostedRoomsQuery = query(
+    collection(db, 'activities'),
+    where('hostId', '==', user.uid),
+    where('status', 'in', ['open', 'active'])
+  );
+
+  const [userSnap, placeSnap, activeHostedRoomsSnap] = await Promise.all([
     getDoc(userRef),
-    placeRef ? getDoc(placeRef) : Promise.resolve(null)
+    placeRef ? getDoc(placeRef) : Promise.resolve(null),
+    getDocs(activeHostedRoomsQuery)
   ]);
 
   if (!userSnap.exists()) {
@@ -551,9 +558,18 @@ export async function createActivity({
     }
     throw new Error("Dein Konto ist gesperrt.");
   }
+
+  const userProfileLang = userProfileData?.language || 'de';
+  const maxOpenRoomsLimit = getMaxOpenRoomsLimit(userProfileData);
+  if (activeHostedRoomsSnap.size >= maxOpenRoomsLimit) {
+    throw new Error(
+      userProfileLang === 'de'
+        ? `Du hast dein Limit von ${maxOpenRoomsLimit} gleichzeitig offenen Räumen erreicht. Beende oder schließe ein bestehendes Treffen, um ein neues zu erstellen.`
+        : `You have reached your limit of ${maxOpenRoomsLimit} concurrent open rooms. Close or finish an existing event to create a new one.`
+    );
+  }
   
   const usernameToUse = userProfileData?.username || null;
-  const userProfileLang = userProfileData?.language || 'de';
   const usernameFormatted = usernameToUse ? `@${usernameToUse.replace(/^@/, '')}` : (userProfileLang === 'de' ? 'Activa-Nutzer' : 'Activa user');
   const displayNameToUse = usernameFormatted;
   const photoURLToUse = userProfileData?.photoURL ?? null;

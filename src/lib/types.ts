@@ -25,6 +25,7 @@ export interface PublicUserProfile {
   isPremium?: boolean;
   isSupporter?: boolean;
   isCreator?: boolean;
+  level?: number;
   age?: number;
   location?: string;
   bio?: string;
@@ -40,6 +41,7 @@ export interface ParticipantDetailEntry {
   isPremium?: boolean;
   isSupporter?: boolean;
   isCreator?: boolean;
+  level?: number;
   checkInStatus?: CheckInStatus;
   checkInTime?: Timestamp;
   hasReviewed?: boolean;
@@ -722,6 +724,21 @@ export function getParticipantLimit(profile: UserProfile | null, now?: Date | nu
   }
   return 4;
 }
+
+/**
+ * Returns the maximum number of concurrent open/active hosted rooms based on tier.
+ * Free (5) -> Tier 1 (10) -> Tier 2 (25) -> Tier 3 / Organizer (50)
+ */
+export function getMaxOpenRoomsLimit(profile: UserProfile | null, now?: Date | number): number {
+  if (profile?.isOrganizer || profile?.premiumTier === 'tier3') return 50;
+  if (isPremiumActive(profile, now)) {
+    if (profile?.premiumTier === 'tier2') return 25;
+    if (profile?.premiumTier === 'tier1') return 10;
+    return 10; // Default active premium fallback
+  }
+  return 5;
+}
+
 
 /**
  * Returns the maximum radar radius limit in km based on tier.

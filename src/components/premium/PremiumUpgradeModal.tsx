@@ -35,6 +35,7 @@ export function PremiumUpgradeModal({ isOpen, onClose }: PremiumUpgradeModalProp
       discountTag: '-15%',
       benefits: language === 'de' ? [
         'Bis zu 8 Personen pro Event',
+        'Bis zu 10 zeitgleich offene Räume',
         '30 km Radar-Umkreis',
         '100% Werbefrei & Premium Badge',
         '5 Favoriten-Sammlungen',
@@ -42,6 +43,7 @@ export function PremiumUpgradeModal({ isOpen, onClose }: PremiumUpgradeModalProp
         'Profilbesucher & Inkognito-Modus'
       ] : [
         'Up to 8 participants per event',
+        'Up to 10 concurrent open rooms',
         '30 km radar radius',
         '100% Ad-Free & Premium Badge',
         '5 Favorite Collections',
@@ -62,6 +64,7 @@ export function PremiumUpgradeModal({ isOpen, onClose }: PremiumUpgradeModalProp
       discountTag: '-25%',
       benefits: language === 'de' ? [
         'Bis zu 12 Personen pro Event',
+        'Bis zu 25 zeitgleich offene Räume',
         '50 km Radar-Umkreis',
         '2x Activity Boost Tokens / Monat',
         'Priority Join bei Anfragen',
@@ -70,6 +73,7 @@ export function PremiumUpgradeModal({ isOpen, onClose }: PremiumUpgradeModalProp
         'Co-Hosts & Custom Event-Banner'
       ] : [
         'Up to 12 participants per event',
+        'Up to 25 concurrent open rooms',
         '50 km radar radius',
         '2x Activity Boost Tokens / Month',
         'Priority Join for requests',
@@ -90,6 +94,7 @@ export function PremiumUpgradeModal({ isOpen, onClose }: PremiumUpgradeModalProp
       discountTag: '-33%',
       benefits: language === 'de' ? [
         'Bis zu 50 Personen pro Event',
+        'Bis zu 50 zeitgleich offene Räume',
         '100 km Radar-Umkreis',
         '5x Activity Boost Tokens / Monat',
         'Veranstalter-Analytics & Dashboard',
@@ -98,6 +103,7 @@ export function PremiumUpgradeModal({ isOpen, onClose }: PremiumUpgradeModalProp
         'Wartelisten-Management'
       ] : [
         'Up to 50 participants per event',
+        'Up to 50 concurrent open rooms',
         '100 km radar radius',
         '5x Activity Boost Tokens / Month',
         'Organizer Analytics & Dashboard',

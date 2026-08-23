@@ -41,7 +41,7 @@ import { format } from 'date-fns';
 
 
 
-import { LEVEL_THRESHOLDS } from '@/lib/levels';
+import { LEVEL_THRESHOLDS, getLevelTitle, getLevelTierInfo } from '@/lib/levels';
 
 export default function ProfilePage() {
     const { user, userProfile, loading: authLoading } = useAuth();
@@ -730,6 +730,8 @@ export default function ProfilePage() {
                                             isPremium={userData?.isPremium}
                                             isCreator={userData?.isCreator}
                                             isSupporter={userData?.isSupporter}
+                                            level={userData?.level || 1}
+                                            showLevelBadge={true}
                                         />
                                         {/* Hover overlay */}
                                         <div className="absolute inset-0 z-20 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[9px] font-black uppercase tracking-widest text-center px-1">
@@ -848,9 +850,9 @@ export default function ProfilePage() {
                                     {/* Level info */}
                                     <div className="flex items-center justify-between">
                                         <div className="space-y-1 text-left">
-                                            <div className="flex items-center gap-2">
-                                                <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-3 py-1 rounded-full text-xs tracking-wider border-none">
-                                                    {language === 'de' ? `LEVEL ${userData.level || 1}` : `LEVEL ${userData.level || 1}`}
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <Badge className={cn("text-white font-black px-3 py-1 rounded-full text-xs tracking-wider border-none", getLevelTierInfo(userData.level || 1).badgeBg)}>
+                                                    LEVEL {userData.level || 1} • {getLevelTitle(userData.level || 1, language)}
                                                 </Badge>
                                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                                                     {userData.level && userData.level >= 100 

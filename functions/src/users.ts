@@ -47,7 +47,8 @@ export const syncUserProfileUpdates = onDocumentUpdated({
     before.username === after.username &&
     before.isPremium === after.isPremium &&
     before.isSupporter === after.isSupporter &&
-    before.isCreator === after.isCreator
+    before.isCreator === after.isCreator &&
+    before.level === after.level
   ) {
     return null;
   }
@@ -66,7 +67,8 @@ export const syncUserProfileUpdates = onDocumentUpdated({
       photoURL: newPhotoURL,
       isPremium: after.isPremium || false,
       isSupporter: after.isSupporter || false,
-      isCreator: after.isCreator || false
+      isCreator: after.isCreator || false,
+      level: after.level || 1
     }, { merge: true });
   } else {
     await db.collection('publicProfiles').doc(userId).delete().catch(() => {});
