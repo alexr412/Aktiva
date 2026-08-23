@@ -794,7 +794,12 @@ export default function SettingsPage() {
                                 <Button 
                                   onClick={handleApplyCreator} 
                                   disabled={!canApply || isApplying}
-                                  className="w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest bg-slate-900 hover:bg-black dark:bg-primary dark:hover:bg-primary/90 dark:text-white text-white"
+                                  className={cn(
+                                    "w-full h-12 rounded-xl font-black text-xs uppercase tracking-widest transition-all",
+                                    canApply
+                                      ? "bg-slate-900 hover:bg-black dark:bg-primary dark:hover:bg-primary/90 text-white dark:text-white shadow-sm cursor-pointer"
+                                      : "bg-slate-200 text-slate-400 dark:bg-neutral-800/90 dark:text-neutral-500 opacity-50 cursor-not-allowed"
+                                  )}
                                 >
                                   {isApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : language === 'de' ? "Als Creator bewerben" : "Apply as Creator"}
                                 </Button>
