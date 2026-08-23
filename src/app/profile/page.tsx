@@ -781,30 +781,31 @@ export default function ProfilePage() {
                                                  {language === 'de' ? 'Foto ändern' : 'Change Photo'}
                                              </div>
                                          </div>
-                                     </div>
-                                     <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/jpeg,image/png,image/webp" />
+                                         
+                                         {/* Left Icon Button: Gear / Settings for Title & Frame */}
+                                         <button
+                                             type="button"
+                                             onClick={(e) => {
+                                                 e.stopPropagation();
+                                                 setIsCustomizeDialogOpen(true);
+                                             }}
+                                             className="absolute bottom-0 left-0 h-8 w-8 rounded-full bg-slate-900/90 dark:bg-neutral-800/90 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all z-30 border border-slate-700 dark:border-neutral-700 backdrop-blur-sm cursor-pointer"
+                                             title={language === 'de' ? 'Titel & Rahmen anpassen' : 'Customize Title & Frame'}
+                                         >
+                                             <Settings className="h-3.5 w-3.5" />
+                                         </button>
 
-                                     {/* Action Pill Buttons (Photo & Customize) */}
-                                     <div className="flex items-center gap-1.5 mb-3">
+                                         {/* Right Icon Button: Camera for Photo */}
                                          <button
                                              type="button"
                                              onClick={handleOpenAvatarDialog}
-                                             className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-all border border-emerald-500/20 active:scale-95 cursor-pointer"
-                                             title={language === 'de' ? 'Profilbild ändern' : 'Change Profile Picture'}
+                                             className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all z-30 cursor-pointer"
+                                             title={language === 'de' ? 'Foto ändern' : 'Change Photo'}
                                          >
-                                             <Camera className="h-3 w-3" />
-                                             <span>{language === 'de' ? 'Foto' : 'Photo'}</span>
-                                         </button>
-                                         <button
-                                             type="button"
-                                             onClick={() => setIsCustomizeDialogOpen(true)}
-                                             className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-750 text-slate-700 dark:text-neutral-300 text-[10px] font-black uppercase tracking-wider transition-all border border-slate-200 dark:border-neutral-700 active:scale-95 cursor-pointer"
-                                             title={language === 'de' ? 'Titel & Rahmen anpassen' : 'Customize Title & Frame'}
-                                         >
-                                             <Settings className="h-3 w-3" />
-                                             <span>{language === 'de' ? 'Aussehen' : 'Appearance'}</span>
+                                             <Camera className="h-3.5 w-3.5" />
                                          </button>
                                      </div>
+                                     <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/jpeg,image/png,image/webp" />
 
                                     {/* Name & Badges */}
                                     <div className="flex flex-col items-center text-center gap-1 w-full">
