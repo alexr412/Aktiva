@@ -19,15 +19,18 @@ export default function AdminPayoutsPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  const isDev = process.env.NODE_ENV === 'development';
+  const isAllowed = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
+
   useEffect(() => {
-    if (!db || authLoading || !userProfile || userProfile.role !== 'admin') return;
+    if (!db || authLoading || !userProfile || !isAllowed) return;
     const q = query(collection(db, 'payoutRequests'), where('status', '==', 'pending'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setPayouts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [userProfile, authLoading]);
+  }, [userProfile, authLoading, isAllowed]);
 
   const handleConfirmPayout = async (requestId: string) => {
     if (!db) return;
@@ -48,7 +51,7 @@ export default function AdminPayoutsPage() {
 
   if (authLoading || loading) return null;
 
-  if (!userProfile || userProfile.role !== 'admin') {
+  if (!userProfile || !isAllowed) {
     return null;
   }
 

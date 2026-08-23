@@ -126,7 +126,7 @@ export default function QuickNavigatorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 pb-20">
+    <div className="h-full flex-1 overflow-y-auto bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 pb-24">
       {/* Header Banner */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-neutral-800 px-4 py-4 md:px-8">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">

@@ -33,6 +33,9 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const isDev = process.env.NODE_ENV === 'development';
+  const isAllowed = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
+
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [flaggedUsers, setFlaggedUsers] = useState<UserProfile[]>([]);
   const [creatorApps, setCreatorApps] = useState<CreatorApplication[]>([]);
@@ -41,13 +44,13 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!userProfile || userProfile.role !== 'admin') {
+      if (!userProfile || !isAllowed) {
         router.replace('/');
         return;
       }
     }
 
-    if (!db || !userProfile || userProfile.role !== 'admin') return;
+    if (!db || !userProfile || !isAllowed) return;
 
     const qRefunds = query(collection(db, 'refunds'), where('status', '==', 'pending'));
     const unsubRefunds = onSnapshot(qRefunds, (snap) => {
@@ -166,7 +169,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  if (authLoading || !userProfile || userProfile.role !== 'admin') {
+  if (authLoading || !userProfile || !isAllowed) {
     return null;
   }
 

@@ -14,6 +14,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
 
+  const isDev = process.env.NODE_ENV === 'development';
+  const isAllowed = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
+
   useEffect(() => {
     if (!loading) {
       if (!userProfile) {
@@ -24,12 +27,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         router.replace("/onboarding");
         return;
       }
-      if (userProfile.role !== 'admin' && userProfile.role !== 'superadmin') {
+      if (!isAllowed) {
         router.replace("/");
         return;
       }
     }
-  }, [userProfile, loading, router, pathname]);
+  }, [userProfile, loading, router, pathname, isAllowed]);
 
   if (loading) {
     return (
@@ -45,7 +48,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   // Finaler Guard vor dem Rendering
-  if (!userProfile || (userProfile.role !== 'admin' && userProfile.role !== 'superadmin')) {
+  if (!userProfile || !isAllowed) {
     return null;
   }
 
