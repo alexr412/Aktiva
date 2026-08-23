@@ -763,10 +763,10 @@ export default function ProfilePage() {
                                 {/* Left Column: Avatar + Change Button + Name + Username + Rating */}
                                 <div className="flex flex-col items-center text-center shrink-0 w-32 sm:w-36">
                                      {/* Avatar */}
-                                     <div className="relative group mb-2">
+                                     <div className="relative group mb-3">
                                          <div className="cursor-pointer" onClick={handleOpenAvatarDialog}>
                                              <ProfileAvatar 
-                                                 className="h-24 w-24 sm:h-28 sm:w-28 relative z-10 transition-transform group-hover:scale-105 active:scale-95"
+                                                 className="h-24 w-24 sm:h-28 sm:w-28 relative z-10 transition-transform group-hover:scale-105 active:scale-95 shadow-lg"
                                                  photoURL={photoUrlToDisplay}
                                                  displayName={displayName}
                                                  isPremium={userData?.isPremium}
@@ -778,42 +778,33 @@ export default function ProfilePage() {
                                              />
                                              {/* Hover overlay */}
                                              <div className="absolute inset-0 z-20 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[9px] font-black uppercase tracking-widest text-center px-1">
-                                                 {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
+                                                 {language === 'de' ? 'Foto ändern' : 'Change Photo'}
                                              </div>
                                          </div>
-                                         
-                                         {/* Left Button: Settings / Gear for Title & Frame */}
-                                         <button
-                                             type="button"
-                                             onClick={(e) => {
-                                                 e.stopPropagation();
-                                                 setIsCustomizeDialogOpen(true);
-                                             }}
-                                             className="absolute bottom-0 left-0 h-8 w-8 rounded-full bg-slate-800 dark:bg-neutral-800 text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-90 transition-all z-30 border border-slate-700 dark:border-neutral-700"
-                                             title={language === 'de' ? 'Titel & Rahmen anpassen' : 'Customize Title & Frame'}
-                                         >
-                                             <Settings className="h-3.5 w-3.5" />
-                                         </button>
+                                     </div>
+                                     <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/jpeg,image/png,image/webp" />
 
-                                         {/* Right Button: Camera for Avatar Photo */}
+                                     {/* Action Pill Buttons (Photo & Customize) */}
+                                     <div className="flex items-center gap-1.5 mb-3">
                                          <button
                                              type="button"
                                              onClick={handleOpenAvatarDialog}
-                                             className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md hover:scale-110 active:scale-90 transition-all z-30"
-                                             title={language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
+                                             className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider transition-all border border-emerald-500/20 active:scale-95 cursor-pointer"
+                                             title={language === 'de' ? 'Profilbild ändern' : 'Change Profile Picture'}
                                          >
-                                             <Camera className="h-3.5 w-3.5" />
+                                             <Camera className="h-3 w-3" />
+                                             <span>{language === 'de' ? 'Foto' : 'Photo'}</span>
+                                         </button>
+                                         <button
+                                             type="button"
+                                             onClick={() => setIsCustomizeDialogOpen(true)}
+                                             className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-750 text-slate-700 dark:text-neutral-300 text-[10px] font-black uppercase tracking-wider transition-all border border-slate-200 dark:border-neutral-700 active:scale-95 cursor-pointer"
+                                             title={language === 'de' ? 'Titel & Rahmen anpassen' : 'Customize Title & Frame'}
+                                         >
+                                             <Settings className="h-3 w-3" />
+                                             <span>{language === 'de' ? 'Aussehen' : 'Appearance'}</span>
                                          </button>
                                      </div>
-                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/jpeg,image/png,image/webp" />
-                                    
-                                    <button
-                                        type="button"
-                                        onClick={handleOpenAvatarDialog}
-                                        className="mb-3 text-[10px] sm:text-xs font-bold text-primary hover:underline uppercase tracking-wider text-center"
-                                    >
-                                        {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
-                                    </button>
 
                                     {/* Name & Badges */}
                                     <div className="flex flex-col items-center text-center gap-1 w-full">
@@ -1422,9 +1413,9 @@ export default function ProfilePage() {
 
             {/* Title & Frame Customization Dialog */}
             <Dialog open={isCustomizeDialogOpen} onOpenChange={setIsCustomizeDialogOpen}>
-                <DialogContent className="sm:max-w-lg bg-neutral-900 border border-neutral-800 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl overflow-hidden dark">
+                <DialogContent className="sm:max-w-lg max-h-[85vh] h-auto flex flex-col bg-neutral-900 border border-neutral-800 rounded-[2.5rem] p-6 sm:p-7 shadow-2xl overflow-hidden dark">
                     {/* Header */}
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-2 shrink-0">
                         <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
                             <Settings className="h-5 w-5" />
                         </div>
@@ -1440,27 +1431,27 @@ export default function ProfilePage() {
                         </div>
                     </div>
 
-                    {/* Live Preview Stage */}
-                    <div className="flex flex-col items-center justify-center p-6 bg-gradient-to-b from-neutral-850 via-neutral-900 to-neutral-950 border border-neutral-800 rounded-[2rem] relative overflow-hidden shadow-inner my-3">
-                        <div className="absolute inset-0 bg-emerald-500/5 blur-2xl pointer-events-none" />
-                        <ProfileAvatar 
-                            className="h-28 w-28 shadow-2xl relative z-10 transition-all duration-300"
-                            photoURL={photoUrlToDisplay}
-                            displayName={displayName}
-                            isPremium={userData?.isPremium}
-                            isCreator={userData?.isCreator}
-                            isSupporter={userData?.isSupporter}
-                            level={userData?.level || 1}
-                            equippedBorder={selectedBorder}
-                            showLevelBadge={true}
-                        />
-                        <Badge className={cn("text-white font-black px-4 py-1.5 rounded-full text-xs tracking-wider border-none shadow-md transition-all duration-300 mt-4 relative z-10", getLevelTierInfo(userData?.level || 1).badgeBg)}>
-                            LEVEL {userData?.level || 1} • {getLevelTitle(userData?.level || 1, language, selectedTitle)}
-                        </Badge>
-                    </div>
+                    {/* Scrollable Middle Body (Live Preview + Title & Border Selectors) */}
+                    <div className="flex-1 overflow-y-auto min-h-0 py-1 pr-2 space-y-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-700/70 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-neutral-600">
+                        {/* Live Preview Stage */}
+                        <div className="flex flex-col items-center justify-center p-5 bg-gradient-to-b from-neutral-850 via-neutral-900 to-neutral-950 border border-neutral-800 rounded-[2rem] relative overflow-hidden shadow-inner my-1">
+                            <div className="absolute inset-0 bg-emerald-500/5 blur-2xl pointer-events-none" />
+                            <ProfileAvatar 
+                                className="h-24 w-24 sm:h-28 sm:w-28 shadow-2xl relative z-10 transition-all duration-300"
+                                photoURL={photoUrlToDisplay}
+                                displayName={displayName}
+                                isPremium={userData?.isPremium}
+                                isCreator={userData?.isCreator}
+                                isSupporter={userData?.isSupporter}
+                                level={userData?.level || 1}
+                                equippedBorder={selectedBorder}
+                                showLevelBadge={true}
+                            />
+                            <Badge className={cn("text-white font-black px-4 py-1.5 rounded-full text-xs tracking-wider border-none shadow-md transition-all duration-300 mt-3 relative z-10", getLevelTierInfo(userData?.level || 1).badgeBg)}>
+                                LEVEL {userData?.level || 1} • {getLevelTitle(userData?.level || 1, language, selectedTitle)}
+                            </Badge>
+                        </div>
 
-                    {/* Scrollable Selectors Container */}
-                    <div className="space-y-4 max-h-[42vh] overflow-y-auto pr-1.5 scrollbar-thin scrollbar-thumb-neutral-800">
                         {/* Title Selector */}
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase text-neutral-400 tracking-widest px-1 block">
@@ -1559,8 +1550,8 @@ export default function ProfilePage() {
                         </div>
                     </div>
 
-                    {/* Footer Actions */}
-                    <DialogFooter className="gap-2 sm:gap-0 mt-5 pt-3 border-t border-neutral-800 flex flex-row items-center justify-end">
+                    {/* Fixed Footer Actions */}
+                    <DialogFooter className="gap-2 sm:gap-0 pt-4 mt-3 border-t border-neutral-800 shrink-0 flex flex-row items-center justify-end bg-neutral-900">
                         <Button 
                             variant="ghost" 
                             onClick={() => setIsCustomizeDialogOpen(false)}
