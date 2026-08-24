@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Zap, Award, Sparkles, UserPlus, CalendarPlus, Users, Crown, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -222,10 +222,10 @@ export function TrophyXpPopover({
 
   return (
     <>
-      {/* Mobile View (< sm): Bottom Sheet */}
+      {/* Mobile View (< sm): Floating Card Dialog */}
       <div className="sm:hidden inline-flex">
-        <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-          <SheetTrigger asChild>
+        <Dialog open={isMobileOpen} onOpenChange={setIsMobileOpen}>
+          <DialogTrigger asChild>
             <button
               type="button"
               className={cn(
@@ -240,17 +240,16 @@ export function TrophyXpPopover({
                 </div>
               )}
             </button>
-          </SheetTrigger>
-          <SheetContent 
-            side="bottom" 
+          </DialogTrigger>
+          <DialogContent 
             hideCloseButton={true}
-            className="bg-white dark:bg-neutral-900 border-t border-slate-200 dark:border-neutral-800 rounded-t-[2.5rem] p-0 max-h-[80vh] flex flex-col shadow-2xl overflow-hidden text-left"
+            className="w-[calc(100vw-2.5rem)] max-w-sm max-h-[80vh] flex flex-col p-0 border border-slate-200/80 dark:border-neutral-800 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md shadow-2xl rounded-[2.5rem] overflow-hidden text-left font-sans"
           >
-            <SheetTitle className="sr-only">{isDe ? 'Level & XP System' : 'Level & XP System'}</SheetTitle>
-            <SheetDescription className="sr-only">{isDe ? 'Fortschritt & Belohnungen' : 'Progress & Rewards'}</SheetDescription>
+            <DialogTitle className="sr-only">{isDe ? 'Level & XP System' : 'Level & XP System'}</DialogTitle>
+            <DialogDescription className="sr-only">{isDe ? 'Fortschritt & Belohnungen' : 'Progress & Rewards'}</DialogDescription>
             <TrophyXpContent isDe={isDe} onClose={() => setIsMobileOpen(false)} />
-          </SheetContent>
-        </Sheet>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Desktop View (>= sm): Hover/Click Popover */}
