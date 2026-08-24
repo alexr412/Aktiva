@@ -804,7 +804,7 @@ export function ActivaMap({
         map.easeTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 14) });
       }
     }
-  }, [selectedEntity, isMapLoaded]);
+  }, [layers, places, communityActivities, nearbyFriends, selectedEntity, isMapLoaded]);
 
   const handleZoomIn = () => mapInstanceRef.current?.zoomIn();
   const handleZoomOut = () => mapInstanceRef.current?.zoomOut();

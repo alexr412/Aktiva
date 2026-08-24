@@ -743,12 +743,16 @@ export function createFriendPopupHTML(
 export const neutralizedRoadShieldLayers = new Set<string>();
 
 export const OPTIONAL_MISSING_IMAGE_PATTERNS = [
-  /^transportation:road_/,
-  /^road[-_:]?shield/i,
+  /^transportation[:_]/i,
+  /^highway[:_]/i,
+  /^road[-_:]?/i,
   /^shield[-_:]?/i,
-  /^route[-_:]?number/i,
-  /^road[-_:]?number/i,
-  /^road[-_:]?ref/i,
+  /^route[-_:]?/i,
+  /^poi[-_:]?/i,
+  /.*[-_]shield/i,
+  /.*[-_]ref/i,
+  /.*[-_]number/i,
+  /.*road.*/i,
 ];
 
 export function handleOptionalMissingImage(map: any, event: { id: string }): boolean {
@@ -799,7 +803,12 @@ export function neutralizeBrokenRoadShieldLayers(map: any): void {
       layerId.includes('route-number') ||
       layerId.includes('road-ref') ||
       layerId.includes('road_ref') ||
-      (Boolean(iconTextFit) && serializedIconImage.includes('road_'));
+      layerId.includes('transportation') ||
+      layerId.includes('highway') ||
+      Boolean(iconTextFit) ||
+      serializedIconImage.includes('road') ||
+      serializedIconImage.includes('transportation') ||
+      serializedIconImage.includes('shield');
 
     if (!isBrokenRoadShieldLayer) continue;
 
