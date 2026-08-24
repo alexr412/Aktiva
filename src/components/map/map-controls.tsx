@@ -3,13 +3,15 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Minus, Navigation } from 'lucide-react';
-import { MapLayerToggle } from './map-layer-toggle';
+import { MapLayerToggle, type SpotCategoryFilter } from './map-layer-toggle';
 import type { MapLayerVisibility } from './map-types';
 import { cn } from '@/lib/utils';
 
 interface MapControlsProps {
   layers: MapLayerVisibility;
   onToggleLayer: (layerKey: keyof MapLayerVisibility) => void;
+  selectedSpotCategory?: SpotCategoryFilter;
+  onSelectSpotCategory?: (cat: SpotCategoryFilter) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onRecenter: () => void;
@@ -22,6 +24,8 @@ interface MapControlsProps {
 export function MapControls({
   layers,
   onToggleLayer,
+  selectedSpotCategory,
+  onSelectSpotCategory,
   onZoomIn,
   onZoomOut,
   onRecenter,
@@ -32,9 +36,16 @@ export function MapControls({
 }: MapControlsProps) {
   return (
     <div className={cn('absolute inset-0 pointer-events-none z-20 flex flex-col justify-between p-4', className)}>
-      {/* Top Controls: Layer Visibility Toggles */}
+      {/* Top Controls: Layer Visibility Toggles & Spot Category Filters */}
       <div className="flex justify-center pointer-events-auto">
-        <MapLayerToggle layers={layers} onToggleLayer={onToggleLayer} language={language} hasRadarAccess={hasRadarAccess} />
+        <MapLayerToggle
+          layers={layers}
+          onToggleLayer={onToggleLayer}
+          selectedSpotCategory={selectedSpotCategory}
+          onSelectSpotCategory={onSelectSpotCategory}
+          language={language}
+          hasRadarAccess={hasRadarAccess}
+        />
       </div>
 
       {/* Right Controls: Zoom & Location Recenter */}

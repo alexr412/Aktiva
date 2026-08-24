@@ -517,6 +517,16 @@ export function createPlacePopupHTML(
 
   const categoryIconSVG = getPlaceCategoryIconSVG(place.categories, place.category);
 
+  const upvotes = typeof place.upvotes === 'number' ? place.upvotes : 0;
+  const downvotes = typeof place.downvotes === 'number' ? place.downvotes : 0;
+  const totalVotes = upvotes + downvotes;
+  const hasVotes = totalVotes > 0;
+  const upvotePct = hasVotes ? Math.round((upvotes / totalVotes) * 100) : 0;
+
+  const ratingBadgeHTML = hasVotes
+    ? `<span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-extrabold"><svg class="w-3.5 h-3.5 fill-emerald-500 inline" viewBox="0 0 24 24"><path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2c-.55 0-1 .45-1 1v9c0 .55.45 1 1 1zm20-11h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L15.17 2 8.59 8.59C8.22 8.95 8 9.45 8 10v8c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2c0-1.1-.9-2-2-2z"/></svg>${upvotePct}% (${totalVotes} ${lang === 'de' ? 'Upvotes' : 'Upvotes'})</span>`
+    : (ratingText ? `<span class="inline-flex items-center gap-0.5 text-amber-500 font-bold"><svg class="w-3.5 h-3.5 fill-amber-400 inline" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>${ratingText} ★</span>` : `<span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold"><svg class="w-3.5 h-3.5 text-emerald-500 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/></svg>${lang === 'de' ? 'Neu in Activa' : 'New on Activa'}</span>`);
+
   const htmlContent = `
     <div class="relative w-full h-24 bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-500 overflow-hidden flex items-center justify-center place-popup-header">
       <button type="button" class="friend-popup-close absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 active:bg-black/80 text-white flex items-center justify-center transition-all z-20 shadow-md cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="${lang === 'de' ? 'Schließen' : 'Close'}">
@@ -548,7 +558,7 @@ export function createPlacePopupHTML(
       </div>
 
       <div class="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-neutral-300">
-        ${ratingText ? `<span class="inline-flex items-center gap-0.5 text-amber-500 font-bold"><svg class="w-3.5 h-3.5 fill-amber-400 inline" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>${ratingText} ★</span>` : ''}
+        ${ratingBadgeHTML}
         ${distText ? `<span class="text-slate-400 dark:text-neutral-400">• ${distText}</span>` : ''}
       </div>
 
@@ -575,7 +585,7 @@ export function createPlacePopupHTML(
       </div>
     </div>
   `;
-  const containerClass = 'activa-place-card aktiva-place-card relative overflow-hidden rounded-[22px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-md border border-emerald-500/30 dark:border-emerald-600/30 shadow-2xl flex flex-col w-[250px] sm:w-[270px] cursor-pointer group transition-all hover:border-emerald-400/60';
+  const containerClass = 'activa-place-card aktiva-place-card relative overflow-hidden rounded-[26px] bg-slate-50/95 dark:bg-neutral-900/95 backdrop-blur-xl border border-emerald-500/30 dark:border-emerald-600/30 shadow-2xl flex flex-col w-[260px] sm:w-[280px] cursor-pointer group transition-all hover:border-emerald-400/60 mb-2';
   const container = createSafeElement('div', containerClass, htmlContent);
 
   return {

@@ -62,12 +62,22 @@ export function MapResultSheet({
   return (
     <div
       className={cn(
-        'fixed bottom-0 left-0 right-0 z-30 transition-all duration-300 pointer-events-none mb-bottom-nav-safe lg:mb-0',
-        selectedEntity ? 'h-auto max-h-[80dvh]' : snapState === 'collapsed' ? 'h-16' : snapState === 'half' ? 'h-[45dvh]' : 'h-[85dvh]',
+        'fixed z-30 transition-all duration-300 pointer-events-none mb-bottom-nav-safe lg:mb-0',
+        selectedEntity
+          ? 'bottom-20 left-3 right-3 sm:left-6 sm:right-6 max-w-lg mx-auto h-auto max-h-[75dvh]'
+          : 'bottom-0 left-0 right-0',
+        !selectedEntity && (snapState === 'collapsed' ? 'h-16' : snapState === 'half' ? 'h-[45dvh]' : 'h-[85dvh]'),
         className
       )}
     >
-      <div className="w-full h-full bg-white/95 dark:bg-neutral-900/95 rounded-t-[2.5rem] shadow-2xl border-t border-slate-200/80 dark:border-neutral-800 flex flex-col pointer-events-auto overflow-hidden backdrop-blur-md">
+      <div
+        className={cn(
+          'w-full h-full bg-white/95 dark:bg-neutral-900/95 shadow-2xl flex flex-col pointer-events-auto overflow-hidden backdrop-blur-xl transition-all',
+          selectedEntity
+            ? 'rounded-[2.2rem] border border-slate-200/90 dark:border-neutral-800 ring-1 ring-black/5 animate-in slide-in-from-bottom-4 duration-200'
+            : 'rounded-t-[2.5rem] border-t border-slate-200/80 dark:border-neutral-800'
+        )}
+      >
         {/* Sheet Drag Handle & Summary Header */}
         {!selectedEntity && (
           <div

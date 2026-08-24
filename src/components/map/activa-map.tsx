@@ -38,6 +38,7 @@ import {
   getActivityActionStatus,
 } from '@/lib/activity-action-state';
 import { MapControls } from './map-controls';
+import type { SpotCategoryFilter } from './map-layer-toggle';
 import { MapResultPanel } from './map-result-panel';
 import { MapResultSheet } from './map-result-sheet';
 import { AlertTriangle, MapPin, Loader2 } from 'lucide-react';
@@ -107,12 +108,13 @@ export function ActivaMap({
 
   const isMapLoaded = mapStatus === 'ready';
 
-  // Layer visibility state
+  // Layer visibility state & Spot category filter state
   const [layers, setLayers] = useState<MapLayerVisibility>({
     places: true,
     activities: true,
     friends: false,
   });
+  const [selectedSpotCategory, setSelectedSpotCategory] = useState<SpotCategoryFilter>('all');
 
   const { user, userProfile } = useAuth();
   const { isPremium, isOrganizer } = useActivePremium(userProfile);
@@ -644,7 +646,20 @@ export function ActivaMap({
     // Update Places Source
     const placeSource = map.getSource('places-source') as maplibregl.GeoJSONSource;
     if (placeSource) {
-      const placeMarkers = layers.places ? parsePlaceMarkers(places) : [];
+      const filteredPlaces = layers.places
+        ? (selectedSpotCategory === 'all'
+            ? places
+            : places.filter((p) => {
+                const cats = [...(p.categories || []), p.category || ''].map((c) => (c || '').toLowerCase()).join(' ');
+                if (selectedSpotCategory === 'gastronomie') return /catering|restaurant|food|caf[eé]|bar|dining|gastronomy|bakery|pub/.test(cats);
+                if (selectedSpotCategory === 'sport') return /sport|fitness|gym|swimming|climbing|stadium|sports_centre|bouldering|active/.test(cats);
+                if (selectedSpotCategory === 'kultur') return /museum|historic|landmark|building|memorial|monument|architecture|tourism/.test(cats);
+                if (selectedSpotCategory === 'entertainment') return /entertainment|leisure|culture|event|arts|theater|cinema|nightlife|attraction/.test(cats);
+                if (selectedSpotCategory === 'natur') return /park|nature|outdoor|garden|beach|forest|lake|playground|recreation/.test(cats);
+                return true;
+              }))
+        : [];
+      const placeMarkers = parsePlaceMarkers(filteredPlaces);
       const geoJsonData = createMapGeoJSON(placeMarkers);
       const geoJsonStr = JSON.stringify(geoJsonData);
       if (geoJsonStr !== prevPlacesGeoJsonStrRef.current) {
@@ -804,7 +819,7 @@ export function ActivaMap({
         map.easeTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 14) });
       }
     }
-  }, [layers, places, communityActivities, nearbyFriends, selectedEntity, isMapLoaded]);
+  }, [layers, selectedSpotCategory, places, communityActivities, nearbyFriends, selectedEntity, isMapLoaded]);
 
   const handleZoomIn = () => mapInstanceRef.current?.zoomIn();
   const handleZoomOut = () => mapInstanceRef.current?.zoomOut();
@@ -850,6 +865,8 @@ export function ActivaMap({
       <MapControls
         layers={layers}
         onToggleLayer={handleToggleLayer}
+        selectedSpotCategory={selectedSpotCategory}
+        onSelectSpotCategory={(cat) => setSelectedSpotCategory(cat)}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onRecenter={handleRecenter}

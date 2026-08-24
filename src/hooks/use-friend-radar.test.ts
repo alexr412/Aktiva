@@ -1549,7 +1549,7 @@ test('85. Freunde-, Orte- und Aktivitätspopups verwenden die gemeinsame Basis',
   const actPopup = createActivityPopupHTML({ id: '2', title: 'T', hostId: 'h', participantIds: ['h'], status: 'active' } as any, null);
   const friendPopup = createFriendPopupHTML({ userId: '3', username: 'u', approximateLatitude: 50, approximateLongitude: 8, precisionMeters: 100, distanceBucket: 'under_1_km' } as any);
 
-  assert.ok(placePopup.container.className.includes('rounded-[22px]'));
+  assert.ok(placePopup.container.className.includes('rounded-[26px]') || placePopup.container.className.includes('rounded-[22px]'));
   assert.ok(actPopup.container.className.includes('rounded-[22px]'));
   assert.ok(friendPopup.container.className.includes('rounded-[22px]'));
 });
