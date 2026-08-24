@@ -27,12 +27,12 @@ function TrophyXpContent({ isDe, onClose }: { isDe: boolean; onClose: () => void
               🏆
             </div>
             <div>
-              <SheetTitle className="font-black text-slate-900 dark:text-white text-sm tracking-tight leading-snug">
+              <h4 className="font-black text-slate-900 dark:text-white text-sm tracking-tight leading-snug">
                 {isDe ? 'Level & XP System' : 'Level & XP System'}
-              </SheetTitle>
-              <SheetDescription className="text-[10px] font-semibold text-slate-500 dark:text-neutral-400">
+              </h4>
+              <p className="text-[10px] font-semibold text-slate-500 dark:text-neutral-400">
                 {isDe ? 'Fortschritt & Belohnungen' : 'Progress & Rewards'}
-              </SheetDescription>
+              </p>
             </div>
           </div>
 
@@ -246,6 +246,8 @@ export function TrophyXpPopover({
             hideCloseButton={true}
             className="bg-white dark:bg-neutral-900 border-t border-slate-200 dark:border-neutral-800 rounded-t-[2.5rem] p-0 max-h-[80vh] flex flex-col shadow-2xl overflow-hidden text-left"
           >
+            <SheetTitle className="sr-only">{isDe ? 'Level & XP System' : 'Level & XP System'}</SheetTitle>
+            <SheetDescription className="sr-only">{isDe ? 'Fortschritt & Belohnungen' : 'Progress & Rewards'}</SheetDescription>
             <TrophyXpContent isDe={isDe} onClose={() => setIsMobileOpen(false)} />
           </SheetContent>
         </Sheet>
