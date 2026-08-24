@@ -2093,6 +2093,187 @@ export const submitCreatorApplication = onCall(async (request) => {
   return { success: true, applicationId: appRef.id };
 });
 
+/**
+ * Callable Cloud Function: matchContacts
+ * Performs privacy-safe matching between contacts (via ephemeral contactKey + email) and registered Activa users.
+ * Enforces Auth, App Check (enforceAppCheck: true), rate limits, batch limits, and returns safe public user profiles.
+ */
+export const matchContacts = onCall({ enforceAppCheck: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  }
+
+  const callerUid = request.auth.uid;
+  const db = admin.firestore();
+
+  const contactsPayload = request.data?.contacts;
+  if (!Array.isArray(contactsPayload) || contactsPayload.length === 0) {
+    return { matches: [] };
+  }
+
+  if (contactsPayload.length > 100) {
+    throw new HttpsError('invalid-argument', 'Batch limit exceeded.');
+  }
+
+  const contactLookup = new Map<string, string[]>();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  for (const item of contactsPayload) {
+    if (!item || typeof item.contactKey !== 'string' || typeof item.email !== 'string') {
+      continue;
+    }
+    const key = item.contactKey.trim();
+    const rawEmail = item.email.trim().toLowerCase();
+    if (!key || !rawEmail || !emailRegex.test(rawEmail)) {
+      continue;
+    }
+    const existing = contactLookup.get(rawEmail) || [];
+    existing.push(key);
+    contactLookup.set(rawEmail, existing);
+  }
+
+  const uniqueEmails = Array.from(contactLookup.keys());
+  if (uniqueEmails.length === 0) {
+    return { matches: [] };
+  }
+
+  if (uniqueEmails.length > 100) {
+    throw new HttpsError('invalid-argument', 'Batch limit exceeded.');
+  }
+
+  // Atomic Rate Limiting
+  const now = Date.now();
+  const todayStr = new Date().toISOString().split('T')[0];
+  const rateLimitRef = db.collection('rate_limits').doc(`contacts_${callerUid}`);
+
+  await db.runTransaction(async (tx) => {
+    const docSnap = await tx.get(rateLimitRef);
+    let minuteWindowStart = now;
+    let minuteRequestCount = 0;
+    let day = todayStr;
+    let dailyIdentifierCount = 0;
+
+    if (docSnap.exists) {
+      const data = docSnap.data() || {};
+      minuteWindowStart = Number(data.minuteWindowStart) || now;
+      minuteRequestCount = Number(data.minuteRequestCount) || 0;
+      day = String(data.day || todayStr);
+      dailyIdentifierCount = Number(data.dailyIdentifierCount) || 0;
+    }
+
+    if (now - minuteWindowStart > 60000) {
+      minuteWindowStart = now;
+      minuteRequestCount = 0;
+    }
+
+    if (day !== todayStr) {
+      day = todayStr;
+      dailyIdentifierCount = 0;
+    }
+
+    if (minuteRequestCount >= 3) {
+      throw new HttpsError('resource-exhausted', 'Rate limit exceeded. Please try again in a minute.');
+    }
+
+    if (dailyIdentifierCount + uniqueEmails.length > 500) {
+      throw new HttpsError('resource-exhausted', 'Daily contact matching limit reached.');
+    }
+
+    tx.set(rateLimitRef, {
+      minuteWindowStart,
+      minuteRequestCount: minuteRequestCount + 1,
+      day,
+      dailyIdentifierCount: dailyIdentifierCount + uniqueEmails.length,
+      updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+  });
+
+  let userRecords: admin.auth.UserRecord[] = [];
+  try {
+    const identifiers = uniqueEmails.map(email => ({ email }));
+    const getUsersResult = await admin.auth().getUsers(identifiers);
+    userRecords = getUsersResult.users || [];
+  } catch (err) {
+    throw new HttpsError('internal', 'Contact lookup service error.');
+  }
+
+  const callerSnap = await db.collection('users').doc(callerUid).get();
+  const callerData = callerSnap.exists ? callerSnap.data()! : {};
+  const callerFriends = new Set<string>(callerData.friends || []);
+  const callerSent = new Set<string>(callerData.friendRequestsSent || []);
+  const callerReceived = new Set<string>(callerData.friendRequestsReceived || []);
+  const callerBlacklist = callerData.blacklist || {};
+  const callerBlockedList = new Set<string>([
+    ...(callerBlacklist.hard || []),
+    ...(callerBlacklist.soft || [])
+  ]);
+
+  const matches: Array<{
+    contactKey: string;
+    user: {
+      uid: string;
+      displayName: string | null;
+      username: string | null;
+      photoURL: string | null;
+      friendState: 'self' | 'friend' | 'sent' | 'received' | 'none';
+    };
+  }> = [];
+
+  for (const userRecord of userRecords) {
+    const targetUid = userRecord.uid;
+    if (targetUid === callerUid) continue;
+    if (callerBlockedList.has(targetUid)) continue;
+
+    const targetSnap = await db.collection('users').doc(targetUid).get();
+    if (!targetSnap.exists) continue;
+
+    const targetData = targetSnap.data()!;
+    // Comprehensive account status evaluation (banned, deleted, active suspension)
+    if (targetData.isBanned || targetData.accountStatus === 'banned' || targetData.accountStatus === 'deleted' || targetData.accountStatus === 'disabled') {
+      continue;
+    }
+    if (targetData.accountStatus === 'suspended') {
+      const suspendedUntilMs = targetData.suspendedUntil?.toMillis 
+        ? targetData.suspendedUntil.toMillis() 
+        : (targetData.suspendedUntil ? new Date(targetData.suspendedUntil).getTime() : 0);
+      if (suspendedUntilMs > Date.now()) {
+        continue; // Still actively suspended
+      }
+    }
+
+    const targetBlacklist = targetData.blacklist || {};
+    const targetBlockedCaller = (targetBlacklist.hard || []).includes(callerUid) || (targetBlacklist.soft || []).includes(callerUid);
+    if (targetBlockedCaller) continue;
+
+    let friendState: 'self' | 'friend' | 'sent' | 'received' | 'none' = 'none';
+    if (callerFriends.has(targetUid)) {
+      friendState = 'friend';
+    } else if (callerSent.has(targetUid)) {
+      friendState = 'sent';
+    } else if (callerReceived.has(targetUid)) {
+      friendState = 'received';
+    }
+
+    const matchedEmail = (userRecord.email || '').trim().toLowerCase();
+    const contactKeys = contactLookup.get(matchedEmail) || [];
+
+    for (const key of contactKeys) {
+      matches.push({
+        contactKey: key,
+        user: {
+          uid: targetUid,
+          displayName: targetData.displayName || null,
+          username: targetData.username || null,
+          photoURL: targetData.photoURL || null,
+          friendState,
+        }
+      });
+    }
+  }
+
+  return { matches };
+});
+
 
 
 

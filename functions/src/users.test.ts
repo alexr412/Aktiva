@@ -310,6 +310,22 @@ const mockAdmin = {
   firestore: firestoreFunc,
   auth: () => ({
     getUser: async (uid: string) => ({ uid, metadata: {} }),
+    getUsers: async (identifiers: Array<{ email?: string; uid?: string }>) => {
+      const users: any[] = [];
+      const usersCol = mockDbState['users'] || {};
+      for (const idObj of identifiers) {
+        if (idObj.email) {
+          const emailLower = idObj.email.trim().toLowerCase();
+          for (const uId of Object.keys(usersCol)) {
+            const uData = usersCol[uId];
+            if (uData.email && uData.email.trim().toLowerCase() === emailLower) {
+              users.push({ uid: uId, email: uData.email });
+            }
+          }
+        }
+      }
+      return { users, notFound: [] };
+    }
   }),
   storage: () => ({
     bucket: () => ({
@@ -340,12 +356,18 @@ class HttpsError extends Error {
 }
 
 const mockFunctionsHttps = {
-  onCall: (handler: any) => {
-    return async (reqOrData: any, auth?: any) => {
+  onCall: (optsOrHandler: any, handlerFn?: any) => {
+    const actualHandler = typeof optsOrHandler === 'function' ? optsOrHandler : handlerFn;
+    return async (reqOrData: any, authOrContext?: any) => {
+      let authObj = null;
+      let dataObj = reqOrData;
       if (reqOrData && typeof reqOrData === 'object' && ('data' in reqOrData || 'auth' in reqOrData)) {
-        return handler({ data: reqOrData.data, auth: reqOrData.auth || null });
+        dataObj = reqOrData.data;
+        authObj = reqOrData.auth || null;
+      } else if (authOrContext && typeof authOrContext === 'object') {
+        authObj = authOrContext.auth ? authOrContext.auth : authOrContext;
       }
-      return handler({ data: reqOrData, auth: auth || null });
+      return actualHandler({ data: dataObj, auth: authObj });
     };
   },
   HttpsError: HttpsError,
@@ -1027,6 +1049,137 @@ async function testSubmitCreatorApplication() {
   console.log("✅ testSubmitCreatorApplication passed successfully!");
 }
 
+async function testMatchContacts() {
+  console.log("Running testMatchContacts...");
+  const { matchContacts } = require("./users");
+
+  resetMockDb();
+  mockDbState["users"] = {
+    user_caller: { uid: "user_caller", email: "caller@example.com", displayName: "Caller", friends: ["user_friend"], friendRequestsSent: ["user_sent"], friendRequestsReceived: ["user_received"] },
+    user_friend: { uid: "user_friend", email: "friend@example.com", displayName: "Friend", username: "friend_un" },
+    user_sent: { uid: "user_sent", email: "sent@example.com", displayName: "Sent", username: "sent_un" },
+    user_received: { uid: "user_received", email: "received@example.com", displayName: "Received", username: "received_un" },
+    user_none: { uid: "user_none", email: "none@example.com", displayName: "None", username: "none_un" },
+    user_blocked_by_caller: { uid: "user_blocked_by_caller", email: "blocked1@example.com", displayName: "Blocked1" },
+    user_blocked_caller: { uid: "user_blocked_caller", email: "blocked2@example.com", displayName: "Blocked2", blacklist: { hard: ["user_caller"] } },
+    user_banned: { uid: "user_banned", email: "banned@example.com", displayName: "Banned", isBanned: true },
+  };
+
+  mockDbState["users"]["user_caller"].blacklist = { hard: ["user_blocked_by_caller"] };
+
+  // 1. Unauthenticated -> Reject
+  await assert.rejects(
+    matchContacts({ contacts: [{ contactKey: "c1", email: "friend@example.com" }] }, null),
+    (err: any) => err.name === "HttpsError" && err.code === "unauthenticated"
+  );
+
+  // 2. Empty payload -> Empty matches
+  const emptyRes = await matchContacts({ contacts: [] }, { auth: { uid: "user_caller" } });
+  assert.deepStrictEqual(emptyRes, { matches: [] });
+
+  // 3. Batch limit > 100 -> Reject
+  const tooManyContacts = Array.from({ length: 101 }, (_, i) => ({ contactKey: `c_${i}`, email: `user${i}@example.com` }));
+  await assert.rejects(
+    matchContacts({ contacts: tooManyContacts }, { auth: { uid: "user_caller" } }),
+    (err: any) => err.name === "HttpsError" && err.code === "invalid-argument"
+  );
+
+  // 4. Valid Matching & friendState calculation (including suspension checks)
+  resetMockDb();
+  const futureDate = mockTimestamp.fromDate(new Date(Date.now() + 86400000));
+  const pastDate = mockTimestamp.fromDate(new Date(Date.now() - 86400000));
+
+  mockDbState["users"] = {
+    user_caller: { uid: "user_caller", email: "caller@example.com", displayName: "Caller", friends: ["user_friend"], friendRequestsSent: ["user_sent"], friendRequestsReceived: ["user_received"] },
+    user_friend: { uid: "user_friend", email: "friend@example.com", displayName: "Friend", username: "friend_un" },
+    user_sent: { uid: "user_sent", email: "sent@example.com", displayName: "Sent", username: "sent_un" },
+    user_received: { uid: "user_received", email: "received@example.com", displayName: "Received", username: "received_un" },
+    user_none: { uid: "user_none", email: "none@example.com", displayName: "None", username: "none_un" },
+    user_blocked_by_caller: { uid: "user_blocked_by_caller", email: "blocked1@example.com", displayName: "Blocked1" },
+    user_blocked_caller: { uid: "user_blocked_caller", email: "blocked2@example.com", displayName: "Blocked2", blacklist: { hard: ["user_caller"] } },
+    user_banned: { uid: "user_banned", email: "banned@example.com", displayName: "Banned", isBanned: true },
+    user_suspended_active: { uid: "user_suspended_active", email: "susp_act@example.com", displayName: "SuspActive", accountStatus: "suspended", suspendedUntil: futureDate },
+    user_suspended_expired: { uid: "user_suspended_expired", email: "susp_exp@example.com", displayName: "SuspExpired", accountStatus: "suspended", suspendedUntil: pastDate },
+  };
+  mockDbState["users"]["user_caller"].blacklist = { hard: ["user_blocked_by_caller"] };
+
+  const validPayload = {
+    contacts: [
+      { contactKey: "k_self", email: "caller@example.com" },
+      { contactKey: "k_friend", email: "friend@example.com" },
+      { contactKey: "k_sent", email: "sent@example.com" },
+      { contactKey: "k_received", email: "received@example.com" },
+      { contactKey: "k_none", email: "none@example.com" },
+      { contactKey: "k_b1", email: "blocked1@example.com" },
+      { contactKey: "k_b2", email: "blocked2@example.com" },
+      { contactKey: "k_banned", email: "banned@example.com" },
+      { contactKey: "k_susp_act", email: "susp_act@example.com" },
+      { contactKey: "k_susp_exp", email: "susp_exp@example.com" },
+      { contactKey: "k_unknown", email: "unknown@example.com" },
+    ]
+  };
+
+  const res = await matchContacts(validPayload, { auth: { uid: "user_caller" } });
+  assert(Array.isArray(res.matches));
+
+  const matchedKeys = res.matches.map((m: any) => m.contactKey);
+  // Self, Blocked, Banned, Active Suspension & Unknown must NOT be present
+  assert(!matchedKeys.includes("k_self"));
+  assert(!matchedKeys.includes("k_b1"));
+  assert(!matchedKeys.includes("k_b2"));
+  assert(!matchedKeys.includes("k_banned"));
+  assert(!matchedKeys.includes("k_susp_act"));
+  assert(!matchedKeys.includes("k_unknown"));
+
+  // Expired suspension MUST be present
+  assert(matchedKeys.includes("k_susp_exp"));
+
+  // Friend states must match expectations
+  const friendMatch = res.matches.find((m: any) => m.contactKey === "k_friend");
+  assert.strictEqual(friendMatch.user.friendState, "friend");
+
+  const sentMatch = res.matches.find((m: any) => m.contactKey === "k_sent");
+  assert.strictEqual(sentMatch.user.friendState, "sent");
+
+  const receivedMatch = res.matches.find((m: any) => m.contactKey === "k_received");
+  assert.strictEqual(receivedMatch.user.friendState, "received");
+
+  const noneMatch = res.matches.find((m: any) => m.contactKey === "k_none");
+  assert.strictEqual(noneMatch.user.friendState, "none");
+
+  // 5. Minute Rate Limit (4th request in 1 minute -> Reject)
+  // Call 1 (validPayload) = 1, Call 2 & Call 3 = 2 & 3, Call 4 = Reject
+  await matchContacts({ contacts: [{ contactKey: "c_test2", email: "friend@example.com" }] }, { auth: { uid: "user_caller" } });
+  await matchContacts({ contacts: [{ contactKey: "c_test3", email: "friend@example.com" }] }, { auth: { uid: "user_caller" } });
+  await assert.rejects(
+    matchContacts({ contacts: [{ contactKey: "c_test4", email: "friend@example.com" }] }, { auth: { uid: "user_caller" } }),
+    (err: any) => err.name === "HttpsError" && err.code === "resource-exhausted"
+  );
+
+  // 6. Daily Rate Limit (> 500 email identifiers -> Reject)
+  resetMockDb();
+  mockDbState["users"] = {
+    user_heavy: { uid: "user_heavy", email: "heavy@example.com" }
+  };
+  mockDbState["rate_limits"] = {
+    contacts_user_heavy: {
+      minuteWindowStart: Date.now(),
+      minuteRequestCount: 1,
+      day: new Date().toISOString().split('T')[0],
+      dailyIdentifierCount: 490
+    }
+  };
+
+  // 15 new emails -> 490 + 15 = 505 > 500 -> Reject
+  const bulkContacts = Array.from({ length: 15 }, (_, i) => ({ contactKey: `ck_${i}`, email: `bulk${i}@example.com` }));
+  await assert.rejects(
+    matchContacts({ contacts: bulkContacts }, { auth: { uid: "user_heavy" } }),
+    (err: any) => err.name === "HttpsError" && err.code === "resource-exhausted"
+  );
+
+  console.log("✅ testMatchContacts (full security & rate limit suite) passed successfully!");
+}
+
 async function runAllTests() {
   try {
     await testLaunchCampaign2026();
@@ -1039,6 +1192,7 @@ async function runAllTests() {
     await testSecureDeclineFriendRequest();
     await testSecureCancelFriendRequest();
     await testSubmitCreatorApplication();
+    await testMatchContacts();
     console.log("🎉 ALL USERS MODULE TESTS PASSED SUCCESSFULLY! 🎉");
   } catch (error) {
     console.error("❌ TEST RUNNER FAILED:", error);

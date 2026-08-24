@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, UserPlus, Users, MessageCircle, UserMinus, Loader2 } from "lucide-react";
+import { MapPin, UserPlus, Users, MessageCircle, UserMinus, Loader2, Smartphone } from "lucide-react";
 import { formatFirstName } from "@/lib/utils";
 import { useLanguage } from "@/hooks/use-language";
 import { db } from "@/lib/firebase/client";
@@ -48,9 +48,15 @@ export default function FriendList({ friendIds }: FriendListProps) {
   const [friends, setFriends] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddFriendDialog, setShowAddFriendDialog] = useState(false);
+  const [addFriendTab, setAddFriendTab] = useState<'username' | 'contacts'>('username');
   const [showAllFriendsDialog, setShowAllFriendsDialog] = useState(false);
   const [friendToRemove, setFriendToRemove] = useState<UserProfile | null>(null);
   const [startingDmUid, setStartingDmUid] = useState<string | null>(null);
+
+  const openAddFriendDialog = (tab: 'username' | 'contacts' = 'username') => {
+    setAddFriendTab(tab);
+    setShowAddFriendDialog(true);
+  };
 
   useEffect(() => {
     const loadFriends = async () => {
@@ -201,11 +207,22 @@ export default function FriendList({ friendIds }: FriendListProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setShowAddFriendDialog(true)}
+              onClick={() => openAddFriendDialog('username')}
               aria-label={language === 'de' ? 'Freund hinzufügen' : 'Add friend'}
+              title={language === 'de' ? 'Freund hinzufügen' : 'Add friend'}
               className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary transition-all active:scale-95 shrink-0"
             >
               <UserPlus className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => openAddFriendDialog('contacts')}
+              aria-label={language === 'de' ? 'Kontakte & Einladen' : 'Contacts & Invite'}
+              title={language === 'de' ? 'Kontakte & Einladen' : 'Contacts & Invite'}
+              className="h-8 w-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all active:scale-95 shrink-0"
+            >
+              <Smartphone className="h-4 w-4" />
             </Button>
             <button
               onClick={() => setShowAllFriendsDialog(true)}
@@ -261,7 +278,7 @@ export default function FriendList({ friendIds }: FriendListProps) {
         </div>
       </div>
 
-      <AddFriendDialog open={showAddFriendDialog} onOpenChange={setShowAddFriendDialog} />
+      <AddFriendDialog open={showAddFriendDialog} onOpenChange={setShowAddFriendDialog} initialTab={addFriendTab} />
 
       {/* Alle Freunde Modal */}
       <Dialog open={showAllFriendsDialog} onOpenChange={setShowAllFriendsDialog}>
