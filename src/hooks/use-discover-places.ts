@@ -8,14 +8,13 @@ import { useAuth } from '@/hooks/use-auth';
 import { useFavorites } from '@/contexts/favorites-context';
 import { subscribeCommunityActivities } from '@/lib/firebase/firestore';
 import { buildGeoapifyCategoriesParam, sanitizeUrlForLogging } from '@/lib/geoapify';
+import { GEOAPIFY_API_KEY } from '@/lib/config';
 import {
   getCachedTilePlaces,
   saveTilePlaces,
   searchCachedPlaces,
   pruneExpiredCache,
 } from '@/lib/cache/places-cache';
-
-const GEOAPIFY_API_KEY = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY || 'a34b22c7104d49a0a16efb4eeab1d48c';
 
 const multiFetcher = async (keyObj: any) => {
   if (!keyObj) return [];
