@@ -1367,7 +1367,7 @@ export default function ProfilePage() {
                                                 onClick={() => setSelectedPresetUrl(avatar.url)}
                                                 className={cn(
                                                     "w-14 h-14 rounded-full overflow-hidden border-2 border-transparent bg-slate-100 dark:bg-neutral-800 transition-all hover:scale-105 active:scale-95 focus:outline-none relative shadow-sm",
-                                                    isSelected && "border-emerald-500 ring-4 ring-emerald-500/20 dark:ring-emerald-500/30 scale-105"
+                                                    isSelected && "border-primary ring-4 ring-primary/20 dark:ring-primary/30 scale-105"
                                                 )}
                                             >
                                                 <img src={avatar.url} alt={avatar.label} className="w-full h-full object-cover rounded-full" />
@@ -1405,7 +1405,7 @@ export default function ProfilePage() {
                                 </Button>
                                 <Button 
                                     onClick={handleSavePresetAvatar} 
-                                    className="h-11 px-6 rounded-2xl font-black text-xs text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
+                                    className="h-11 px-6 rounded-2xl font-black text-xs text-primary-foreground bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
                                     disabled={!selectedPresetUrl || isSavingPreset}
                                 >
                                     {isSavingPreset ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />}

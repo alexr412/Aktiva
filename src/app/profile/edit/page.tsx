@@ -602,7 +602,7 @@ export default function EditProfilePage() {
                           setHasAcknowledgedWarning(true);
                           setIsUsernameWarningOpen(false);
                       }} 
-                      className="w-full h-14 bg-slate-900 hover:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded-2xl font-black shadow-lg"
+                      className="w-full h-14 bg-slate-900 hover:bg-black dark:bg-primary dark:hover:bg-primary/90 text-white dark:text-primary-foreground rounded-2xl font-black shadow-lg"
                   >
                       Verstanden, weiter
                   </Button>
