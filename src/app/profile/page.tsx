@@ -1288,7 +1288,7 @@ export default function ProfilePage() {
                      setIsRemovingAvatar(false);
                  }
              }}>
-                <DialogContent className={avatarStyles.dialogContent}>
+                <DialogContent className="sm:max-w-[420px] w-full p-6 rounded-[24px] bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 text-slate-900 dark:text-white shadow-2xl overflow-hidden">
                     {showRemoveConfirm ? (
                         <>
                             <DialogHeader className={avatarStyles.dialogHeader}>

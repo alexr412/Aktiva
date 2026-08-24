@@ -73,7 +73,7 @@ export function TrophyXpPopover({
         side={side}
         sideOffset={8}
         className={cn(
-          "w-[calc(100vw-2rem)] sm:w-88 max-h-[75vh] sm:max-h-[80vh] flex flex-col p-0 border border-slate-200/80 dark:border-neutral-800 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md shadow-2xl rounded-3xl z-50 overflow-hidden text-left",
+          "w-80 sm:w-96 max-w-[calc(100vw-2rem)] max-h-[60vh] sm:max-h-[65vh] flex flex-col p-0 border border-slate-200/80 dark:border-neutral-800 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md shadow-2xl rounded-3xl z-50 overflow-hidden text-left",
           className
         )}
         onMouseEnter={handleMouseEnter}
