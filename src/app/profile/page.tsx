@@ -1288,23 +1288,23 @@ export default function ProfilePage() {
                      setIsRemovingAvatar(false);
                  }
              }}>
-                <DialogContent className="sm:max-w-[420px] w-full p-6 rounded-[24px] bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 text-slate-900 dark:text-white shadow-2xl overflow-hidden">
+                <DialogContent className="sm:max-w-[440px] w-full p-6 sm:p-7 rounded-[2.5rem] bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 text-slate-900 dark:text-white shadow-2xl overflow-hidden">
                     {showRemoveConfirm ? (
                         <>
-                            <DialogHeader className={avatarStyles.dialogHeader}>
-                                <DialogTitle className="text-xl font-black text-rose-600">
+                            <DialogHeader className="text-center flex flex-col items-center gap-1 mb-4 pr-10">
+                                <DialogTitle className="text-xl font-black text-rose-600 dark:text-rose-500">
                                     {language === 'de' ? 'Avatar entfernen?' : 'Remove Avatar?'}
                                 </DialogTitle>
-                                <DialogDescription className="font-medium text-slate-500 dark:text-neutral-400">
+                                <DialogDescription className="font-medium text-xs text-slate-500 dark:text-neutral-400">
                                     {language === 'de' 
                                         ? 'Möchtest du deinen Avatar wirklich entfernen?' 
                                         : 'Are you sure you want to remove your avatar?'}
                                 </DialogDescription>
                             </DialogHeader>
-                            <DialogFooter className="mt-6 flex gap-2">
+                            <DialogFooter className="mt-6 flex justify-end gap-3">
                                 <Button 
                                     variant="ghost" 
-                                    className="rounded-xl font-bold dark:text-neutral-400" 
+                                    className="h-11 px-5 rounded-2xl font-bold text-xs bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors" 
                                     onClick={() => setShowRemoveConfirm(false)}
                                     disabled={isRemovingAvatar}
                                 >
@@ -1312,7 +1312,7 @@ export default function ProfilePage() {
                                 </Button>
                                 <Button 
                                     onClick={handleRemoveAvatar} 
-                                    className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black flex-1 shadow-lg shadow-rose-100 dark:shadow-none"
+                                    className="h-11 px-6 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs flex-1 shadow-lg shadow-rose-600/20"
                                     disabled={isRemovingAvatar}
                                 >
                                     {isRemovingAvatar ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -1322,25 +1322,30 @@ export default function ProfilePage() {
                         </>
                     ) : (
                         <>
-                            <DialogHeader className={avatarStyles.dialogHeader}>
-                                <DialogTitle className="text-xl font-black text-slate-900 dark:text-white">
+                            <DialogHeader className="text-center flex flex-col items-center gap-1 mb-4 pr-10 sm:pr-12">
+                                <DialogTitle className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                                     {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
                                 </DialogTitle>
-                                <DialogDescription className="font-medium text-slate-500 dark:text-neutral-400">
+                                <DialogDescription className="text-xs font-medium text-slate-500 dark:text-neutral-400 max-w-[280px] leading-relaxed">
                                     {language === 'de' ? 'Wähle einen vorgefertigten Avatar oder lade ein eigenes Bild hoch.' : 'Choose a preset avatar or upload your own image.'}
                                 </DialogDescription>
                             </DialogHeader>
-                                 <div className={avatarStyles.previewWrapper}>
-                                     <img src={selectedPresetUrl ?? userData?.photoURL ?? ''} alt="Avatar preview" className={avatarStyles.previewImage} />
-                                 </div>
+
+                            <div className="flex justify-center my-3">
+                                <img 
+                                    src={selectedPresetUrl ?? userData?.photoURL ?? ''} 
+                                    alt="Avatar preview" 
+                                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-slate-100 dark:border-neutral-800 object-cover shadow-md" 
+                                />
+                            </div>
 
                             {userData?.photoURL && (
-                                <div className="mt-4">
+                                <div className="my-2">
                                     <Button
                                         type="button"
                                         variant="outline"
                                         onClick={() => setShowRemoveConfirm(true)}
-                                        className="w-full h-11 border-rose-200 dark:border-rose-900/40 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all"
+                                        className="w-full h-10 border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 rounded-xl font-bold text-xs uppercase tracking-widest transition-all"
                                     >
                                         {language === 'de' ? 'Avatar entfernen' : 'Remove avatar'}
                                     </Button>
@@ -1348,8 +1353,8 @@ export default function ProfilePage() {
                             )}
 
                             {/* Presets Grid */}
-                            <div className="space-y-4 my-4">
-                                <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-left">
+                            <div className="space-y-2.5 my-3">
+                                <p className="text-[10px] font-black text-slate-400 dark:text-neutral-400 uppercase tracking-widest text-left">
                                     {language === 'de' ? 'Vorgefertigten Avatar wählen:' : 'Choose preset avatar:'}
                                 </p>
                                 <div className="grid grid-cols-4 gap-3 justify-items-center">
@@ -1361,8 +1366,8 @@ export default function ProfilePage() {
                                                 type="button"
                                                 onClick={() => setSelectedPresetUrl(avatar.url)}
                                                 className={cn(
-                                                    avatarStyles.presetButton,
-                                                    isSelected && avatarStyles.presetButtonSelected
+                                                    "w-14 h-14 rounded-full overflow-hidden border-2 border-transparent bg-slate-100 dark:bg-neutral-800 transition-all hover:scale-105 active:scale-95 focus:outline-none relative shadow-sm",
+                                                    isSelected && "border-emerald-500 ring-4 ring-emerald-500/20 dark:ring-emerald-500/30 scale-105"
                                                 )}
                                             >
                                                 <img src={avatar.url} alt={avatar.label} className="w-full h-full object-cover rounded-full" />
@@ -1373,12 +1378,12 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Custom Upload Option */}
-                            <div className="pt-2 border-t border-slate-100 dark:border-neutral-800 flex flex-col items-center">
+                            <div className="my-3">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={handleTriggerCustomUpload}
-                                    className={avatarStyles.uploadButton}
+                                    className="w-full h-11 border border-dashed border-slate-300 dark:border-neutral-700 text-slate-700 dark:text-neutral-200 bg-slate-50 dark:bg-neutral-800/60 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all"
                                 >
                                     <Camera className="w-4 h-4 text-slate-500 dark:text-neutral-400" />
                                     {language === 'de' ? 'Eigenes Bild hochladen' : 'Upload own image'}
@@ -1386,10 +1391,10 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Footer Buttons */}
-                            <DialogFooter className={avatarStyles.footer}>
+                            <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-neutral-800 flex items-center justify-end gap-3">
                                 <Button 
                                     variant="ghost" 
-                                    className={avatarStyles.cancelBtn} 
+                                    className="h-11 px-5 rounded-2xl font-bold text-xs text-slate-600 dark:text-neutral-300 bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors" 
                                     onClick={() => {
                                         setIsAvatarSelectionDialogOpen(false);
                                         setSelectedPresetUrl(null);
@@ -1400,13 +1405,13 @@ export default function ProfilePage() {
                                 </Button>
                                 <Button 
                                     onClick={handleSavePresetAvatar} 
-                                    className={avatarStyles.saveBtn}
+                                    className="h-11 px-6 rounded-2xl font-black text-xs text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
                                     disabled={!selectedPresetUrl || isSavingPreset}
                                 >
-                                    {isSavingPreset ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                    {isSavingPreset ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />}
                                     {language === 'de' ? 'Speichern' : 'Save'}
                                 </Button>
-                            </DialogFooter>
+                            </div>
                         </>
                     )}
                 </DialogContent>
