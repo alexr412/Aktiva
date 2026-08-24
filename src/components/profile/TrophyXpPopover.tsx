@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Zap, Award, Sparkles, UserPlus, CalendarPlus, Users, Crown, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -27,12 +27,12 @@ function TrophyXpContent({ isDe, onClose }: { isDe: boolean; onClose: () => void
               🏆
             </div>
             <div>
-              <h4 className="font-black text-slate-900 dark:text-white text-sm tracking-tight leading-snug">
+              <SheetTitle className="font-black text-slate-900 dark:text-white text-sm tracking-tight leading-snug">
                 {isDe ? 'Level & XP System' : 'Level & XP System'}
-              </h4>
-              <p className="text-[10px] font-semibold text-slate-500 dark:text-neutral-400">
+              </SheetTitle>
+              <SheetDescription className="text-[10px] font-semibold text-slate-500 dark:text-neutral-400">
                 {isDe ? 'Fortschritt & Belohnungen' : 'Progress & Rewards'}
-              </p>
+              </SheetDescription>
             </div>
           </div>
 
@@ -202,72 +202,77 @@ export function TrophyXpPopover({
   className,
   triggerClassName,
 }: TrophyXpPopoverProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isDesktopOpen, setIsDesktopOpen] = useState(false);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleMouseEnter = () => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    setIsOpen(true);
-  };
-
-  const handleMouseLeave = () => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    hoverTimerRef.current = setTimeout(() => {
-      setIsOpen(false);
-    }, 250);
-  };
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    setIsOpen(prev => !prev);
-  };
 
   const isDe = language === 'de';
 
-  const triggerButton = (
-    <button
-      type="button"
-      className={cn(
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-full transition-all duration-200 active:scale-95 cursor-pointer select-none group relative inline-flex items-center justify-center",
-        triggerClassName
-      )}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
-      aria-label={isDe ? 'Level & XP Informationen anzeigen' : 'Show Level & XP Information'}
-    >
-      {children || (
-        <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center text-emerald-500 font-black text-lg shrink-0 group-hover:bg-emerald-100/80 dark:group-hover:bg-emerald-900/60 group-hover:scale-105 transition-all shadow-sm">
-          🏆
-        </div>
-      )}
-    </button>
-  );
+  const handleDesktopMouseEnter = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setIsDesktopOpen(true);
+  };
+
+  const handleDesktopMouseLeave = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => {
+      setIsDesktopOpen(false);
+    }, 200);
+  };
 
   return (
     <>
       {/* Mobile View (< sm): Bottom Sheet */}
-      <div className="sm:hidden">
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+      <div className="sm:hidden inline-flex">
+        <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
           <SheetTrigger asChild>
-            {triggerButton}
+            <button
+              type="button"
+              className={cn(
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-full transition-all duration-200 active:scale-95 cursor-pointer select-none group relative inline-flex items-center justify-center",
+                triggerClassName
+              )}
+              aria-label={isDe ? 'Level & XP Informationen anzeigen' : 'Show Level & XP Information'}
+            >
+              {children || (
+                <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center text-emerald-500 font-black text-lg shrink-0 group-hover:bg-emerald-100/80 dark:group-hover:bg-emerald-900/60 group-hover:scale-105 transition-all shadow-sm">
+                  🏆
+                </div>
+              )}
+            </button>
           </SheetTrigger>
           <SheetContent 
             side="bottom" 
             hideCloseButton={true}
             className="bg-white dark:bg-neutral-900 border-t border-slate-200 dark:border-neutral-800 rounded-t-[2.5rem] p-0 max-h-[80vh] flex flex-col shadow-2xl overflow-hidden text-left"
           >
-            <TrophyXpContent isDe={isDe} onClose={() => setIsOpen(false)} />
+            <TrophyXpContent isDe={isDe} onClose={() => setIsMobileOpen(false)} />
           </SheetContent>
         </Sheet>
       </div>
 
-      {/* Desktop View (>= sm): Attached Popover */}
-      <div className="hidden sm:block">
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
+      {/* Desktop View (>= sm): Hover/Click Popover */}
+      <div 
+        className="hidden sm:inline-flex relative"
+        onMouseEnter={handleDesktopMouseEnter}
+        onMouseLeave={handleDesktopMouseLeave}
+      >
+        <Popover open={isDesktopOpen} onOpenChange={setIsDesktopOpen}>
           <PopoverTrigger asChild>
-            {triggerButton}
+            <button
+              type="button"
+              className={cn(
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-full transition-all duration-200 active:scale-95 cursor-pointer select-none group relative inline-flex items-center justify-center",
+                triggerClassName
+              )}
+              aria-label={isDe ? 'Level & XP Informationen anzeigen' : 'Show Level & XP Information'}
+            >
+              {children || (
+                <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center text-emerald-500 font-black text-lg shrink-0 group-hover:bg-emerald-100/80 dark:group-hover:bg-emerald-900/60 group-hover:scale-105 transition-all shadow-sm">
+                  🏆
+                </div>
+              )}
+            </button>
           </PopoverTrigger>
 
           <PopoverContent
@@ -278,10 +283,8 @@ export function TrophyXpPopover({
               "w-96 max-w-[calc(100vw-2rem)] max-h-[65vh] flex flex-col p-0 border border-slate-200/80 dark:border-neutral-800 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md shadow-2xl rounded-3xl z-50 overflow-hidden text-left",
               className
             )}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
           >
-            <TrophyXpContent isDe={isDe} onClose={() => setIsOpen(false)} />
+            <TrophyXpContent isDe={isDe} onClose={() => setIsDesktopOpen(false)} />
           </PopoverContent>
         </Popover>
       </div>
