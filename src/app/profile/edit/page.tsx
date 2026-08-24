@@ -534,10 +534,10 @@ export default function EditProfilePage() {
               }
           }
       }}>
-          <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 overflow-hidden">
+          <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 rounded-3xl p-6 overflow-hidden shadow-2xl">
               <DialogHeader>
-                  <DialogTitle className="text-xl font-black">Bild zuschneiden</DialogTitle>
-                  <DialogDescription className="font-medium">Wähle den perfekten Ausschnitt.</DialogDescription>
+                  <DialogTitle className="text-xl font-black text-slate-900 dark:text-white">Bild zuschneiden</DialogTitle>
+                  <DialogDescription className="font-medium text-slate-600 dark:text-neutral-400">Wähle den perfekten Ausschnitt.</DialogDescription>
               </DialogHeader>
               
               <div className="relative h-64 w-full bg-slate-900 rounded-2xl overflow-hidden mt-4">
@@ -559,7 +559,7 @@ export default function EditProfilePage() {
               <DialogFooter className="mt-6 flex gap-2">
                   <Button 
                       variant="ghost" 
-                      className="rounded-xl font-bold" 
+                      className="rounded-xl font-bold bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700" 
                       onClick={() => { 
                           setIsCropModalOpen(false); 
                           setImageToCrop(null); 
@@ -573,7 +573,7 @@ export default function EditProfilePage() {
                   </Button>
                   <Button 
                       onClick={handleSaveCroppedImage} 
-                      className="rounded-xl font-black flex-1 shadow-lg shadow-primary/10"
+                      className="rounded-xl font-black flex-1 shadow-lg shadow-primary/10 bg-primary hover:opacity-90 text-white"
                       disabled={isUploading}
                   >
                       {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
@@ -585,13 +585,13 @@ export default function EditProfilePage() {
 
       {/* Username Warning Modal */}
       <Dialog open={isUsernameWarningOpen} onOpenChange={setIsUsernameWarningOpen}>
-          <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 overflow-hidden border-none shadow-2xl">
+          <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 rounded-3xl p-6 overflow-hidden shadow-2xl">
               <DialogHeader>
-                  <div className="h-12 w-12 bg-amber-100 rounded-2xl flex items-center justify-center mb-4">
-                      <Sparkles className="h-6 w-6 text-amber-600" />
+                  <div className="h-12 w-12 bg-amber-100 dark:bg-amber-950/50 rounded-2xl flex items-center justify-center mb-4">
+                      <Sparkles className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                   </div>
-                  <DialogTitle className="text-xl font-black">Username ändern?</DialogTitle>
-                  <DialogDescription className="font-medium text-slate-600 leading-relaxed">
+                  <DialogTitle className="text-xl font-black text-slate-900 dark:text-white">Username ändern?</DialogTitle>
+                  <DialogDescription className="font-medium text-slate-600 dark:text-neutral-400 leading-relaxed">
                       Wähle deinen Usernamen weise! Du kannst ihn nach dieser Änderung erst in <span className="text-primary font-black">180 Tagen</span> wieder anpassen.
                   </DialogDescription>
               </DialogHeader>
@@ -602,13 +602,13 @@ export default function EditProfilePage() {
                           setHasAcknowledgedWarning(true);
                           setIsUsernameWarningOpen(false);
                       }} 
-                      className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-2xl font-black shadow-lg"
+                      className="w-full h-14 bg-slate-900 hover:bg-black dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded-2xl font-black shadow-lg"
                   >
                       Verstanden, weiter
                   </Button>
                   <Button 
                       variant="ghost" 
-                      className="w-full h-12 rounded-xl font-bold text-slate-400" 
+                      className="w-full h-12 rounded-xl font-bold text-slate-400 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800" 
                       onClick={() => setIsUsernameWarningOpen(false)}
                   >
                       Abbrechen

@@ -73,14 +73,14 @@ export function TrophyXpPopover({
         side={side}
         sideOffset={8}
         className={cn(
-          "w-[calc(100vw-2rem)] sm:w-80 p-0 border border-slate-200/80 dark:border-neutral-800 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md shadow-2xl rounded-3xl z-50 overflow-hidden text-left",
+          "w-[calc(100vw-2rem)] sm:w-88 max-h-[75vh] sm:max-h-[80vh] flex flex-col p-0 border border-slate-200/80 dark:border-neutral-800 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md shadow-2xl rounded-3xl z-50 overflow-hidden text-left",
           className
         )}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 dark:from-emerald-500/20 dark:via-teal-500/20 dark:to-cyan-500/20 p-4 pb-3 border-b border-slate-100 dark:border-neutral-800 relative">
+        <div className="shrink-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 dark:from-emerald-500/20 dark:via-teal-500/20 dark:to-cyan-500/20 p-4 pb-3 border-b border-slate-100 dark:border-neutral-800 relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="h-8 w-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 font-black text-sm shrink-0">
@@ -105,8 +105,8 @@ export function TrophyXpPopover({
           </div>
         </div>
 
-        {/* Scrollable Content Body - Vertical Stacking & Hidden Scrollbar */}
-        <div className="p-3.5 space-y-4 max-h-[75vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Scrollable Content Body - Fixed Layout & Sleek Dark Scrollbar */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-3.5 space-y-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-700/80 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-emerald-500/60 transition-colors">
           {/* Section 1: Wie bekommt man XP */}
           <div className="space-y-2">
             <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-black text-[10px] uppercase tracking-wider">
@@ -236,7 +236,7 @@ export function TrophyXpPopover({
         </div>
 
         {/* Footer / Wallet Link */}
-        <div className="p-2.5 px-3.5 bg-slate-50 dark:bg-neutral-900/80 border-t border-slate-100 dark:border-neutral-800 flex items-center justify-between text-[10px]">
+        <div className="shrink-0 p-2.5 px-3.5 bg-slate-50 dark:bg-neutral-900/80 border-t border-slate-100 dark:border-neutral-800 flex items-center justify-between text-[10px]">
           <span className="text-slate-400 dark:text-neutral-500 font-medium">
             {isDe ? 'Deine XP im Wallet einsehen' : 'View your XP in Wallet'}
           </span>

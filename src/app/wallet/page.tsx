@@ -249,16 +249,16 @@ export default function WalletPage() {
 
     if (showSuccess) {
         return (
-            <div className="flex h-full w-full items-center justify-center p-4 bg-emerald-50">
-                <Card className="w-full max-w-md border-none shadow-2xl rounded-[2.5rem] text-center p-8">
-                    <div className="mx-auto bg-emerald-100 p-4 rounded-full w-fit mb-6">
-                        <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+            <div className="flex h-full w-full items-center justify-center p-4 bg-emerald-50 dark:bg-neutral-950">
+                <Card className="w-full max-w-md border border-slate-100 dark:border-neutral-800 shadow-2xl rounded-[2.5rem] text-center p-8 bg-white dark:bg-neutral-900">
+                    <div className="mx-auto bg-emerald-100 dark:bg-emerald-950/60 p-4 rounded-full w-fit mb-6">
+                        <CheckCircle2 className="h-12 w-12 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <CardTitle className="text-2xl font-black mb-2 text-slate-900">{language === 'de' ? 'Anfrage erhalten!' : 'Request received!'}</CardTitle>
-                    <CardDescription className="text-base font-medium text-emerald-800">
+                    <CardTitle className="text-2xl font-black mb-2 text-slate-900 dark:text-white">{language === 'de' ? 'Anfrage erhalten!' : 'Request received!'}</CardTitle>
+                    <CardDescription className="text-base font-medium text-emerald-800 dark:text-emerald-300">
                         {language === 'de' ? 'Wir überweisen' : 'We will transfer'} <strong>€{currentBalance.toFixed(2)}</strong> {language === 'de' ? 'auf dein hinterlegtes Konto.' : 'to your account.'}
                     </CardDescription>
-                    <Button onClick={() => router.replace('/profile')} className="mt-8 w-full h-14 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-100">
+                    <Button onClick={() => router.replace('/profile')} className="mt-8 w-full h-14 rounded-2xl font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-100 dark:shadow-none">
                         {language === 'de' ? 'Zum Profil' : 'Back to Profile'}
                     </Button>
 
@@ -268,19 +268,19 @@ export default function WalletPage() {
     }
 
     return (
-        <div className="flex h-full w-full flex-col bg-slate-50 overflow-y-auto">
-            <header className="flex h-16 shrink-0 items-center px-4 bg-white border-b border-slate-100 sticky top-0 z-10">
-                <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2 rounded-full">
+        <div className="flex h-full w-full flex-col bg-slate-50 dark:bg-neutral-950 overflow-y-auto">
+            <header className="flex h-16 shrink-0 items-center px-4 bg-white dark:bg-neutral-900 border-b border-slate-100 dark:border-neutral-800 sticky top-0 z-10">
+                <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2 rounded-full text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-neutral-800">
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <h1 className="font-black text-lg">{language === 'de' ? 'Mein Wallet' : 'My Wallet'}</h1>
+                <h1 className="font-black text-lg text-slate-900 dark:text-white">{language === 'de' ? 'Mein Wallet' : 'My Wallet'}</h1>
 
             </header>
 
             <main className="flex-1 p-4 sm:p-8 flex flex-col items-center">
                 <div className="w-full max-w-md space-y-6">
                     {/* Tab Selection */}
-                    <div className="flex bg-slate-100 dark:bg-neutral-900 p-1.5 rounded-2xl w-full">
+                    <div className="flex bg-slate-100 dark:bg-neutral-900 p-1.5 rounded-2xl w-full border border-slate-200/50 dark:border-neutral-800">
                         <button
                             onClick={() => setActiveTab('fiat')}
                             className={cn(
@@ -298,7 +298,7 @@ export default function WalletPage() {
                                 "flex-1 py-3 text-center text-xs font-black uppercase tracking-wider rounded-xl transition-all border-none outline-none",
                                 activeTab === 'points'
                                     ? "bg-white dark:bg-neutral-800 text-slate-900 dark:text-white shadow-sm"
-                                    : "text-slate-405 hover:text-slate-600 dark:hover:text-slate-300"
+                                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                             )}
                         >
                             {language === 'de' ? 'Level & XP' : 'Level & XP'}
@@ -310,15 +310,15 @@ export default function WalletPage() {
                             {/* KYC Indicator Section */}
                             <div className={cn(
                                 "p-4 rounded-2xl border flex items-center gap-4",
-                                kycStatus === 'verified' ? "bg-emerald-50 border-emerald-100 text-emerald-700" :
-                                kycStatus === 'pending' ? "bg-blue-50 border-blue-100 text-blue-700" :
-                                "bg-amber-50 border-amber-100 text-amber-700"
+                                kycStatus === 'verified' ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300" :
+                                kycStatus === 'pending' ? "bg-blue-50 dark:bg-blue-950/40 border-blue-100 dark:border-blue-900/50 text-blue-700 dark:text-blue-300" :
+                                "bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900/50 text-amber-700 dark:text-amber-300"
                             )}>
                                 <div className={cn(
-                                    "p-2 rounded-xl bg-white shadow-sm",
-                                    kycStatus === 'verified' ? "text-emerald-600" :
-                                    kycStatus === 'pending' ? "text-blue-600" :
-                                    "text-amber-600"
+                                    "p-2 rounded-xl bg-white dark:bg-neutral-800 shadow-sm",
+                                    kycStatus === 'verified' ? "text-emerald-600 dark:text-emerald-400" :
+                                    kycStatus === 'pending' ? "text-blue-600 dark:text-blue-400" :
+                                    "text-amber-600 dark:text-amber-400"
                                 )}>
                                     {kycStatus === 'verified' ? <ShieldCheck className="h-5 w-5" /> : 
                                      kycStatus === 'pending' ? <Loader2 className="h-5 w-5 animate-spin" /> : 
@@ -335,7 +335,7 @@ export default function WalletPage() {
                                         size="sm" 
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={isUploadingKYC}
-                                        className="rounded-xl font-black text-[10px] uppercase bg-white/50"
+                                        className="rounded-xl font-black text-[10px] uppercase bg-white/50 dark:bg-neutral-800/80 dark:text-white hover:bg-white dark:hover:bg-neutral-700"
                                     >
                                         {isUploadingKYC ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
                                         {language === 'de' ? 'Verifizieren' : 'Verify'}
@@ -345,7 +345,7 @@ export default function WalletPage() {
                             </div>
 
                             {/* Balance Card */}
-                            <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden text-left w-full">
+                            <div className="bg-slate-900 dark:bg-neutral-900 border border-transparent dark:border-neutral-800 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden text-left w-full">
                                 <div className="relative z-10">
                                     <div className="flex items-center gap-2 mb-2 opacity-60">
                                         <Wallet className="h-4 w-4" />
@@ -397,13 +397,13 @@ export default function WalletPage() {
                             )}
 
                             {/* Modul 16: Escrow Info */}
-                            <div className="bg-blue-50 border border-blue-100 rounded-3xl p-6 flex items-start gap-4 text-left">
-                                <div className="bg-white p-2 rounded-xl shadow-sm shrink-0">
-                                    <Lock className="h-5 w-5 text-blue-600" />
+                            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-3xl p-6 flex items-start gap-4 text-left">
+                                <div className="bg-white dark:bg-neutral-800 p-2 rounded-xl shadow-sm shrink-0">
+                                    <Lock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <div>
-                                    <h4 className="font-black text-blue-900 text-sm mb-1">{language === 'de' ? 'Über ausstehende Zahlungen' : 'About pending payments'}</h4>
-                                    <p className="text-xs text-blue-800/70 font-medium leading-relaxed">
+                                    <h4 className="font-black text-blue-900 dark:text-blue-300 text-sm mb-1">{language === 'de' ? 'Über ausstehende Zahlungen' : 'About pending payments'}</h4>
+                                    <p className="text-xs text-blue-800/70 dark:text-blue-300/70 font-medium leading-relaxed">
                                         {language === 'de' ? 'Einnahmen aus Ticketverkäufen werden in Treuhand (Escrow) gehalten, bis du die Aktivität erfolgreich abgeschlossen hast. Dies schützt Teilnehmer und sichert faire Rückerstattungen bei Absagen.' : 'Earnings from ticket sales are held in escrow until you have successfully completed the activity. This protects participants and ensures fair refunds in case of cancellations.'}
                                     </p>
                                 </div>
@@ -411,20 +411,20 @@ export default function WalletPage() {
 
                             {/* Progress to Payout */}
                             {kycStatus === 'verified' && !canWithdraw && currentBalance > 0 && (
-                                <Card className="border-none shadow-sm rounded-3xl p-6 bg-white text-left">
+                                <Card className="border border-slate-100 dark:border-neutral-800 shadow-sm rounded-3xl p-6 bg-white dark:bg-neutral-900 text-left">
                                     <div className="space-y-4">
-                                        <div className="flex justify-between items-center text-sm font-bold text-slate-600">
+                                        <div className="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-neutral-300">
                                             <span>{language === 'de' ? 'Auszahlungsziel' : 'Payout Goal'}</span>
                                             <span>{((currentBalance / MIN_PAYOUT) * 100).toFixed(0)}%</span>
                                         </div>
 
-                                        <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                                        <div className="h-3 w-full bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                                             <div 
                                                 className="h-full bg-emerald-500 rounded-full transition-all duration-1000" 
                                                 style={{ width: `${(currentBalance / MIN_PAYOUT) * 100}%` }}
                                             />
                                         </div>
-                                        <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                                        <p className="text-[11px] text-slate-400 dark:text-neutral-400 font-medium leading-relaxed">
                                             {language === 'de' ? `Du kannst dein Guthaben ab einem Betrag von <strong>€${MIN_PAYOUT}.00</strong> anfordern. Sammle weitere Teilnahmen bei deinen Events, um das Ziel zu erreichen.` : `You can request your balance starting from <strong>€${MIN_PAYOUT}.00</strong>. Collect more participations in your events to reach the goal.`}
                                         </p>
                                     </div>
@@ -433,7 +433,7 @@ export default function WalletPage() {
 
                             {/* Transaction History List */}
                             <div className="space-y-4 pt-4 w-full text-left">
-                                <h3 className="font-black text-xs uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                <h3 className="font-black text-xs uppercase tracking-widest text-slate-400 dark:text-neutral-400 flex items-center gap-2">
                                     <History className="h-3 w-3" /> {language === 'de' ? 'Zahlungs-Verlauf' : 'Payment History'}
                                 </h3>
                                 {loadingFiat ? (
@@ -441,8 +441,8 @@ export default function WalletPage() {
                                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                     </div>
                                 ) : fiatTransactions.length === 0 ? (
-                                    <div className="text-center p-10 bg-white rounded-3xl border-2 border-dashed border-slate-200">
-                                        <p className="text-slate-400 text-sm font-medium">{language === 'de' ? 'Noch keine Transaktionen vorhanden.' : 'No transactions yet.'}</p>
+                                    <div className="text-center p-10 bg-white dark:bg-neutral-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-neutral-800">
+                                        <p className="text-slate-400 dark:text-neutral-400 text-sm font-medium">{language === 'de' ? 'Noch keine Transaktionen vorhanden.' : 'No transactions yet.'}</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
@@ -456,12 +456,12 @@ export default function WalletPage() {
                                             return (
                                                 <div 
                                                     key={tx.id} 
-                                                    className="p-4 rounded-2xl bg-white border border-slate-100 flex items-center justify-between shadow-sm hover:scale-[1.01] transition-all"
+                                                    className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 flex items-center justify-between shadow-sm hover:scale-[1.01] transition-all"
                                                 >
                                                     <div className="flex items-center gap-3">
                                                         <div className={cn(
                                                             "h-10 w-10 rounded-full flex items-center justify-center text-lg",
-                                                            isPayout ? "bg-rose-50 text-rose-500" : "bg-emerald-50 text-emerald-500"
+                                                            isPayout ? "bg-rose-50 dark:bg-rose-950/40 text-rose-500 dark:text-rose-400" : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 dark:text-emerald-400"
                                                         )}>
                                                             {isPayout ? '📤' : '📥'}
                                                         </div>
@@ -471,14 +471,14 @@ export default function WalletPage() {
                                                                     ? (language === 'de' ? 'Auszahlung' : 'Withdrawal Payout') 
                                                                     : (language === 'de' ? 'Rückerstattung' : 'Refund')}
                                                             </h4>
-                                                            <p className="text-slate-450 text-[10px] font-bold mt-0.5">
+                                                            <p className="text-slate-400 dark:text-neutral-400 text-[10px] font-bold mt-0.5">
                                                                 {formatTimestamp(tx.createdAt)}
                                                             </p>
                                                             <p className={cn(
                                                                 "text-[10px] font-black uppercase tracking-wider mt-1",
-                                                                tx.status === 'completed' ? "text-emerald-500" :
-                                                                tx.status === 'failed' ? "text-rose-500" :
-                                                                "text-blue-500"
+                                                                tx.status === 'completed' ? "text-emerald-500 dark:text-emerald-400" :
+                                                                tx.status === 'failed' ? "text-rose-500 dark:text-rose-400" :
+                                                                "text-blue-500 dark:text-blue-400"
                                                             )}>
                                                                 {statusLabel}
                                                             </p>
@@ -488,8 +488,8 @@ export default function WalletPage() {
                                                         <span className={cn(
                                                             "font-mono font-black text-sm px-3 py-1 rounded-full border",
                                                             isPayout 
-                                                                ? "text-rose-500 bg-rose-50/50 border-rose-100" 
-                                                                : "text-emerald-500 bg-emerald-50/50 border-emerald-100"
+                                                                ? "text-rose-500 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/40" 
+                                                                : "text-emerald-500 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/40"
                                                         )}>
                                                             {isPayout ? '-' : '+'}€{tx.amount?.toFixed(2)}
                                                         </span>
@@ -529,7 +529,7 @@ export default function WalletPage() {
 
                             {/* Points / XP Ledger List */}
                             <div className="space-y-4 pt-4 w-full text-left">
-                                <h3 className="font-black text-xs uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                <h3 className="font-black text-xs uppercase tracking-widest text-slate-400 dark:text-neutral-400 flex items-center gap-2">
                                     <History className="h-3 w-3" /> {language === 'de' ? 'XP-Verlauf' : 'XP History'}
                                 </h3>
 
@@ -538,11 +538,11 @@ export default function WalletPage() {
                                         <Loader2 className="h-8 w-8 animate-spin text-[#10b981]" />
                                     </div>
                                 ) : ledgerEntries.length === 0 ? (
-                                    <div className="text-center p-10 bg-white rounded-3xl border-2 border-dashed border-slate-200">
-                                        <p className="text-slate-400 text-sm font-bold">
+                                    <div className="text-center p-10 bg-white dark:bg-neutral-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-neutral-800">
+                                        <p className="text-slate-400 dark:text-neutral-400 text-sm font-bold">
                                             {language === 'de' ? 'Bisher keine Punkte gesammelt.' : 'No points earned yet.'}
                                         </p>
-                                        <p className="text-slate-400 text-xs mt-2 leading-relaxed">
+                                        <p className="text-slate-400 dark:text-neutral-400 text-xs mt-2 leading-relaxed">
                                             {language === 'de' 
                                                 ? 'Erstelle Aktivitäten oder nimm daran teil, um Activa Points zu erhalten!' 
                                                 : 'Create or join activities to earn Activa Points!'}
@@ -555,7 +555,7 @@ export default function WalletPage() {
                                             return (
                                                 <div 
                                                     key={entry.id} 
-                                                    className="p-4 rounded-2xl bg-white border border-slate-100 flex items-center justify-between shadow-sm hover:scale-[1.01] transition-transform"
+                                                    className="p-4 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 flex items-center justify-between shadow-sm hover:scale-[1.01] transition-transform"
                                                 >
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-10 w-10 rounded-full bg-slate-50 dark:bg-neutral-800 flex items-center justify-center text-lg">
@@ -565,18 +565,18 @@ export default function WalletPage() {
                                                             <h4 className="font-black text-slate-800 dark:text-neutral-100 text-sm leading-snug">
                                                                 {details.label}
                                                             </h4>
-                                                            <p className="text-slate-450 text-[10px] font-bold mt-0.5">
+                                                            <p className="text-slate-400 dark:text-neutral-400 text-[10px] font-bold mt-0.5">
                                                                 {formatTimestamp(entry.createdAt)}
                                                             </p>
                                                             {details.desc && (
-                                                                <p className="text-slate-500 text-xs font-semibold mt-1">
+                                                                <p className="text-slate-500 dark:text-neutral-400 text-xs font-semibold mt-1">
                                                                     {details.desc}
                                                                 </p>
                                                             )}
                                                         </div>
                                                     </div>
                                                     <div className="text-right shrink-0">
-                                                        <span className="text-emerald-500 font-black text-sm bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-900/50">
+                                                        <span className="text-emerald-500 dark:text-emerald-400 font-black text-sm bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-900/50">
                                                             +{entry.points}
                                                         </span>
                                                     </div>

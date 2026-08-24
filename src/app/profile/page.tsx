@@ -1241,13 +1241,13 @@ export default function ProfilePage() {
                     }
                 }
             }}>
-                <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 rounded-3xl p-6 border-none shadow-2xl overflow-hidden">
-                    <DialogHeader><DialogTitle className="">{language === 'de' ? 'Bild zuschneiden' : 'Crop Image'}</DialogTitle></DialogHeader>
+                <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 rounded-3xl p-6 border border-slate-100 dark:border-neutral-800 shadow-2xl overflow-hidden">
+                    <DialogHeader><DialogTitle className="text-xl font-black text-slate-900 dark:text-white">{language === 'de' ? 'Bild zuschneiden' : 'Crop Image'}</DialogTitle></DialogHeader>
                     <div className="relative h-64 w-full bg-slate-900 rounded-2xl overflow-hidden mt-4">
                         {imageToCrop && <Cropper image={imageToCrop} crop={crop} zoom={zoom} aspect={1} cropShape="round" showGrid={false} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />}
                     </div>
                     <DialogFooter className="mt-6 flex gap-2">
-                        <Button variant="ghost" className="rounded-xl font-bold dark:text-neutral-400" onClick={() => { 
+                        <Button variant="ghost" className="rounded-xl font-bold bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 hover:bg-slate-200 dark:hover:bg-neutral-700" onClick={() => { 
                             setIsCropModalOpen(false); 
                             setImageToCrop(null); 
                             if (fileInputRef.current) {
@@ -1380,7 +1380,7 @@ export default function ProfilePage() {
                                     onClick={handleTriggerCustomUpload}
                                     className={avatarStyles.uploadButton}
                                 >
-                                    <Camera className="w-4 h-4 text-slate-500" />
+                                    <Camera className="w-4 h-4 text-slate-500 dark:text-neutral-400" />
                                     {language === 'de' ? 'Eigenes Bild hochladen' : 'Upload own image'}
                                 </Button>
                             </div>
