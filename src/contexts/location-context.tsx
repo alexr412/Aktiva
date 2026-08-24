@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, ReactNode } from 'react';
+import { debugLog, debugWarn } from '@/lib/debug';
 
 export type LocationGateState =
   | 'checking'
@@ -56,7 +57,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const cityRequestCounterRef = useRef(0);
 
   const setGateState = useCallback((newState: LocationGateState) => {
-    console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} gateState=${newState}`);
+    debugLog('location', `LOCATION TRACE provider=${instanceIdRef.current} gateState=${newState}`);
     setGateStateState(newState);
   }, []);
 
@@ -112,18 +113,16 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} event=MOUNT`);
+    debugLog('location', `LOCATION TRACE provider=${instanceIdRef.current} event=MOUNT`);
     return () => {
-      console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} event=UNMOUNT`);
+      debugLog('location', `LOCATION TRACE provider=${instanceIdRef.current} event=UNMOUNT`);
     };
   }, []);
 
   const resolveCityName = useCallback(async (lat: number, lon: number) => {
     const cityRequestId = ++cityRequestCounterRef.current;
     setIsResolvingCity(true);
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[CITY TRACE] reverse geocode started');
-    }
+    debugLog('location', 'CITY TRACE reverse geocode started');
 
     const roundedLat = Math.round(lat * 100) / 100;
     const roundedLon = Math.round(lon * 100) / 100;
@@ -139,9 +138,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
               if (cityRequestId === cityRequestCounterRef.current) {
                 setCityName(parsed.city);
                 setIsResolvingCity(false);
-                if (process.env.NODE_ENV === 'development') {
-                  console.log(`[CITY TRACE] resolved city from cache=${parsed.city}`);
-                }
+                debugLog('location', `CITY TRACE resolved city from cache=${parsed.city}`);
                 return;
               }
             }
@@ -160,19 +157,15 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(cacheKey, JSON.stringify({ city: resolved, ts: Date.now() }));
         } catch (e) {}
       }
-      if (process.env.NODE_ENV === 'development') {
-        if (resolved) {
-          console.log(`[CITY TRACE] resolved city=${resolved}`);
-        } else {
-          console.log('[CITY TRACE] reverse geocode failed');
-        }
+      if (resolved) {
+        debugLog('location', `CITY TRACE resolved city=${resolved}`);
+      } else {
+        debugLog('location', 'CITY TRACE reverse geocode failed');
       }
     } catch (e) {
       if (cityRequestId !== cityRequestCounterRef.current) return;
       setCityName(null);
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[CITY TRACE] reverse geocode failed');
-      }
+      debugLog('location', 'CITY TRACE reverse geocode failed');
     } finally {
       if (cityRequestId === cityRequestCounterRef.current) {
         setIsResolvingCity(false);
@@ -189,7 +182,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     };
 
     if (requestInFlightRef.current) {
-      console.log(`[LOCATION TRACE] provider=${instanceIdRef.current} requestLocation suppressed (in flight)`);
+      debugLog('location', `LOCATION TRACE provider=${instanceIdRef.current} requestLocation suppressed (in flight)`);
       return;
     }
 
@@ -205,7 +198,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
 
     const requestId = ++requestCounterRef.current;
-    console.log(`[GPS TRACE] requestId=${requestId} started (interactive=${isInteractive})`);
+    debugLog('location', `GPS TRACE requestId=${requestId} started (interactive=${isInteractive})`);
 
     requestInFlightRef.current = true;
     activeRequestIdRef.current = requestId;
@@ -218,14 +211,14 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     navigator.geolocation.getCurrentPosition(
       pos => {
         if (activeRequestIdRef.current !== requestId) {
-          console.log(`[GPS TRACE] requestId=${requestId} ignored stale callback`);
+          debugLog('location', `GPS TRACE requestId=${requestId} ignored stale callback`);
           return;
         }
 
         activeRequestIdRef.current = null;
         requestInFlightRef.current = false;
         setIsLocating(false);
-        console.log(`[GPS TRACE] requestId=${requestId} success`);
+        debugLog('location', `GPS TRACE requestId=${requestId} success`);
 
         const latitude = pos.coords.latitude;
         const longitude = pos.coords.longitude;
@@ -267,14 +260,14 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       },
       error => {
         if (activeRequestIdRef.current !== requestId) {
-          console.log(`[GPS TRACE] requestId=${requestId} ignored stale error callback`);
+          debugLog('location', `GPS TRACE requestId=${requestId} ignored stale error callback`);
           return;
         }
 
         activeRequestIdRef.current = null;
         requestInFlightRef.current = false;
         setIsLocating(false);
-        console.log(`[GPS TRACE] requestId=${requestId} error code=${error.code}`);
+        debugLog('location', `GPS TRACE requestId=${requestId} error code=${error.code}`);
 
         const isPreviouslyGranted =
           hasGrantedHintState ||
@@ -300,7 +293,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
                 'Dein Standort ist momentan nicht verfügbar. Prüfe, ob die Ortungsdienste deines Geräts aktiviert sind.'
               );
             } else {
-              console.warn('[LOCATION TRACE] Background GPS position unavailable; maintaining granted state.');
+              debugWarn('location', 'LOCATION TRACE Background GPS position unavailable; maintaining granted state.');
             }
             break;
 
@@ -311,7 +304,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
                 'Die Standortermittlung hat zu lange gedauert. Versuche es erneut.'
               );
             } else {
-              console.warn('[LOCATION TRACE] Background GPS timeout; maintaining granted state.');
+              debugWarn('location', 'LOCATION TRACE Background GPS timeout; maintaining granted state.');
             }
             break;
 
@@ -322,7 +315,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
                 'Dein Standort konnte nicht ermittelt werden.'
               );
             } else {
-              console.warn('[LOCATION TRACE] Background GPS unknown error; maintaining granted state.');
+              debugWarn('location', 'LOCATION TRACE Background GPS unknown error; maintaining granted state.');
             }
         }
       },
@@ -362,7 +355,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
           const handleStatusChange = (newStatusState: PermissionState) => {
             if (!isMounted) return;
-            console.log(`[LOCATION TRACE] permissions API status changed: ${newStatusState}`);
+            debugLog('location', `LOCATION TRACE permissions API status changed: ${newStatusState}`);
             if (newStatusState === 'granted') {
               try {
                 localStorage.setItem('activa_location_permission_granted', 'true');
@@ -403,7 +396,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           }
           return;
         } catch (e) {
-          console.warn('[LOCATION TRACE] navigator.permissions.query failed:', e);
+          debugWarn('location', 'LOCATION TRACE navigator.permissions.query failed:', e);
         }
       }
 

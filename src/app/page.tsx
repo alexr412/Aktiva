@@ -54,7 +54,7 @@ import { createActivity, joinActivity, searchActivitiesBySemanticVector, castAct
 import { Button } from '@/components/ui/button';
 import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter, doc, documentId } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
-import { debugWarn, debugError } from '@/lib/debug';
+import { debugLog, debugWarn, debugError } from '@/lib/debug';
 import { ActivityListItem } from "@/components/activa/activity-list-item";
 import { PremiumUpgradeModal } from '@/components/premium/PremiumUpgradeModal';
 import { Input } from '@/components/ui/input';
@@ -444,10 +444,10 @@ export default function Home() {
       let result: any = null;
       if (type === 'geoapify') {
         const { url, lat, lng, radiusMeters, categories } = key;
-        console.log('🔍 [AKTIVA LOG] multiFetcher type=geoapify', { categories, lat, lng });
+        debugLog('feed', 'multiFetcher type=geoapify', { categories, lat, lng });
         if (lat && lng && radiusMeters) {
           const cachedPlaces = await getCachedTilePlaces(lat, lng, radiusMeters);
-          console.log('🔍 [AKTIVA LOG] getCachedTilePlaces total count:', cachedPlaces ? cachedPlaces.length : 0);
+          debugLog('feed', 'getCachedTilePlaces total count:', cachedPlaces ? cachedPlaces.length : 0);
           if (cachedPlaces && cachedPlaces.length > 0) {
             const targetCategories: string[] = Array.isArray(categories) ? categories : (activeCategory || []);
             const matchingPlaces = cachedPlaces.filter(p => {
@@ -460,7 +460,7 @@ export default function Home() {
               );
             });
 
-            console.log('🔍 [AKTIVA LOG] matchingPlaces count for category:', matchingPlaces.length, targetCategories);
+            debugLog('feed', 'matchingPlaces count for category:', matchingPlaces.length, targetCategories);
 
             if (matchingPlaces.length >= 1) {
               const features = matchingPlaces.map((p: any) => ({
@@ -471,7 +471,7 @@ export default function Home() {
             }
           }
         }
-        console.log('🔍 [AKTIVA LOG] Fetching fresh from Geoapify for category tab:', categories);
+        debugLog('feed', 'Fetching fresh from Geoapify for category tab:', categories);
         result = await fetcher(url);
         if (result?.features && Array.isArray(result.features) && lat && lng && radiusMeters) {
           const placesToCache: Place[] = result.features.map((f: any, idx: number) => {
@@ -808,7 +808,7 @@ export default function Home() {
         : itemsToFilter;
 
       const safeItems = applyFilters(distanceCappedItems, activeCategory, userProfile?.blacklist?.hard || [], shouldFilterByName);
-      console.log('🔍 [AKTIVA LOG] safeItems after applyFilters count:', safeItems.length, 'activeCategory:', activeCategory);
+      debugLog('feed', 'safeItems after applyFilters count:', safeItems.length, 'activeCategory:', activeCategory);
 
       return safeItems.map((item: any) => {
         const props = item.properties;
@@ -1346,7 +1346,7 @@ export default function Home() {
   }, [isLoadingInitialData, isValidating, activeCategory, places.length, debouncedSearchQuery, error, shouldFilterByName]);
 
   const handleCategoryChange = (categoryId: string[], tabId: string) => {
-    console.log('🔍 [AKTIVA LOG] handleCategoryChange tapped:', { categoryId, tabId });
+    debugLog('feed', 'handleCategoryChange tapped:', { categoryId, tabId });
     setIsOpenRoomsMode(false);
     if (activeTabId !== tabId) {
       setIsSwitchingTab(true);

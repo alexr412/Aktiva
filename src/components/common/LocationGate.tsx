@@ -6,6 +6,7 @@ import { MapPin, Lock, Loader2, RefreshCw, Navigation, AlertTriangle, ShieldAler
 import { Button } from '@/components/ui/button';
 import { useLocation } from '@/contexts/location-context';
 import { detectDevice } from '@/lib/device-detection';
+import { debugLog } from '@/lib/debug';
 
 export function LocationGate({ children }: { children?: ReactNode }) {
   const instanceIdRef = useRef<string | null>(null);
@@ -19,15 +20,16 @@ export function LocationGate({ children }: { children?: ReactNode }) {
   const pathname = usePathname();
   const { gateState, needsLocationGate, errorMessage, requestLocation } = useLocation();
 
-  console.log(
-    `[LOCATION TRACE] gate=${instanceIdRef.current} render=${renderCountRef.current} state=${gateState} path=${pathname}`
+  debugLog(
+    'location',
+    `LOCATION TRACE gate=${instanceIdRef.current} render=${renderCountRef.current} state=${gateState} path=${pathname}`
   );
 
   useEffect(() => {
-    console.log(`[ROUTE TRACE] initial path=${typeof window !== 'undefined' ? window.location.pathname + window.location.search : pathname}`);
-    console.log(`[LOCATION TRACE] gate=${instanceIdRef.current} event=MOUNT`);
+    debugLog('location', `ROUTE TRACE initial path=${typeof window !== 'undefined' ? window.location.pathname + window.location.search : pathname}`);
+    debugLog('location', `LOCATION TRACE gate=${instanceIdRef.current} event=MOUNT`);
     return () => {
-      console.log(`[LOCATION TRACE] gate=${instanceIdRef.current} event=UNMOUNT`);
+      debugLog('location', `LOCATION TRACE gate=${instanceIdRef.current} event=UNMOUNT`);
     };
   }, []);
 
@@ -45,23 +47,7 @@ export function LocationGate({ children }: { children?: ReactNode }) {
   const handleLocationRetry = (event: React.MouseEvent<HTMLButtonElement>): void => {
     event.preventDefault();
     event.stopPropagation();
-
-    console.log('[LOCATION BUTTON] clicked');
-    console.log(`[LOCATION BUTTON] element tag=${event.currentTarget.tagName}`);
-    console.log(`[LOCATION BUTTON] type=${event.currentTarget.type || 'button'}`);
-    console.log(`[LOCATION BUTTON] defaultPrevented=${event.defaultPrevented}`);
-
-    if (typeof window !== 'undefined') {
-      console.log(`[LOCATION BUTTON] window.location.href before=${window.location.href}`);
-      console.log(`[LOCATION BUTTON] window.scrollY before=${window.scrollY}`);
-    }
-
     requestLocation({ interactive: true });
-
-    if (typeof window !== 'undefined') {
-      console.log(`[LOCATION BUTTON] window.location.href after=${window.location.href}`);
-      console.log(`[LOCATION BUTTON] window.scrollY after=${window.scrollY}`);
-    }
   };
 
   const shouldShowGate = !isPublicRoute && needsLocationGate;

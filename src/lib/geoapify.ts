@@ -3,6 +3,7 @@
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import type { Place, GeoapifyFeature, UserPreferences } from '@/lib/types';
 import { calculateRelevanceScore } from '@/lib/ranking';
+import { debugLog } from '@/lib/debug';
 
 /**
  * Centralized defensive normalization rule for place names:
@@ -957,9 +958,7 @@ export async function reverseGeocodeCity(lat: number, lon: number): Promise<stri
       return typeof resolvedName === 'string' && resolvedName.trim().length > 0 ? resolvedName.trim() : null;
     }
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[CITY TRACE] reverse geocode failed');
-    }
+    debugLog('location', 'CITY TRACE reverse geocode failed');
   }
   return null;
 }

@@ -3,6 +3,7 @@
 import React, { ReactNode, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/use-auth';
+import { debugLog } from '@/lib/debug';
 
 export function AppBootstrapGate({ children }: { children: ReactNode }) {
   const { loading } = useAuth();
@@ -12,13 +13,13 @@ export function AppBootstrapGate({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    console.log(`[BOOTSTRAP TRACE] gate=${instanceIdRef.current} event=MOUNT`);
+    debugLog('bootstrap', `BOOTSTRAP TRACE gate=${instanceIdRef.current} event=MOUNT`);
     return () => {
-      console.log(`[BOOTSTRAP TRACE] gate=${instanceIdRef.current} event=UNMOUNT`);
+      debugLog('bootstrap', `BOOTSTRAP TRACE gate=${instanceIdRef.current} event=UNMOUNT`);
     };
   }, []);
 
-  console.log(`[BOOTSTRAP TRACE] gate=${instanceIdRef.current} state=loading:${loading} childrenRendered=true`);
+  debugLog('bootstrap', `BOOTSTRAP TRACE gate=${instanceIdRef.current} state=loading:${loading} childrenRendered=true`);
 
   return (
     <>
