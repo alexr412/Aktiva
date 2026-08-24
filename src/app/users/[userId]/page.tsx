@@ -38,6 +38,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EntityMoreOptions } from '@/components/common/EntityMoreOptions';
+import { getFormattedInterest } from '@/lib/interests';
 import { getLevelTitle, getLevelTierInfo } from '@/lib/levels';
 import { TrophyXpPopover } from '@/components/profile/TrophyXpPopover';
 import { UserBadge } from '@/components/common/UserBadge';
@@ -478,21 +479,38 @@ export default function UserProfilePage() {
                                 </div>
                             )}
 
-                            {/* Interests */}
-                            {userData.interests && userData.interests.length > 0 && (
-                                <div className="space-y-1.5">
-                                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500 block">
-                                        {language === 'de' ? 'Interessen' : 'Interests'}
-                                    </span>
-                                    <div className="flex flex-wrap gap-1.5 items-center">
-                                        {userData.interests.map((tag: string) => (
-                                            <Badge key={tag} variant="secondary" className="text-[10px] sm:text-xs py-0.5 sm:py-1 px-2.5 sm:px-3 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-bold border-none">
-                                                {tag}
-                                            </Badge>
-                                        ))}
+                            {/* Interests & Hobbies */}
+                            {(() => {
+                                const rawInterests = [
+                                    ...(userData.interests || []),
+                                    ...(userData.tinderInterests || []),
+                                ];
+                                const uniqueKeys = Array.from(new Set(rawInterests));
+                                if (uniqueKeys.length === 0) return null;
+
+                                return (
+                                    <div className="space-y-1.5">
+                                        <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500 block">
+                                            {language === 'de' ? 'Interessen & Hobbys' : 'Interests & Hobbies'}
+                                        </span>
+                                        <div className="flex flex-wrap gap-1.5 items-center">
+                                            {uniqueKeys.map((tag: string) => {
+                                                const formatted = getFormattedInterest(tag, language as 'de' | 'en');
+                                                return (
+                                                    <Badge
+                                                        key={tag}
+                                                        variant="secondary"
+                                                        className="text-[10px] sm:text-xs py-1 px-3 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-700 dark:text-neutral-300 font-bold border border-slate-200/50 dark:border-neutral-700/50 shadow-xs flex items-center gap-1.5"
+                                                    >
+                                                        <span>{formatted.emoji}</span>
+                                                        <span>{formatted.label}</span>
+                                                    </Badge>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
                         </div>
                     </div>
 

@@ -32,6 +32,7 @@ export interface PublicUserProfile {
   location?: string;
   bio?: string;
   interests?: string[];
+  tinderInterests?: string[];
   ratingCount?: number;
   averageRating?: number;
 }

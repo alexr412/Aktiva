@@ -45,7 +45,8 @@ exports.syncUserProfileUpdates = (0, firestore_1.onDocumentUpdated)({
         before.username === after.username &&
         before.isPremium === after.isPremium &&
         before.isSupporter === after.isSupporter &&
-        before.isCreator === after.isCreator) {
+        before.isCreator === after.isCreator &&
+        before.level === after.level) {
         return null;
     }
     const newUsername = after.username || null;
@@ -61,7 +62,8 @@ exports.syncUserProfileUpdates = (0, firestore_1.onDocumentUpdated)({
             photoURL: newPhotoURL,
             isPremium: after.isPremium || false,
             isSupporter: after.isSupporter || false,
-            isCreator: after.isCreator || false
+            isCreator: after.isCreator || false,
+            level: after.level || 1
         }, { merge: true });
     }
     else {
