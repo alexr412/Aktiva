@@ -43,14 +43,14 @@ export const UserPreferenceSlider: React.FC<UserPreferenceSliderProps> = ({
   const displayScore = currentIndex - 4; // Mapped to -4 to +4 scale
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-[1.5rem] p-5 border border-slate-200 dark:border-neutral-800 transition-all group shadow-none">
+    <div className="bg-white dark:bg-neutral-800/60 rounded-[1.5rem] p-5 border border-slate-200 dark:border-neutral-700/60 transition-all group shadow-none">
       <div className="flex justify-between items-center mb-4">
         <span className="font-black text-[#0f172a] dark:text-neutral-100 tracking-tight text-sm uppercase leading-none">{label}</span>
         <div className={cn(
             "px-3 py-1 rounded-lg text-[11px] font-black tracking-widest transition-colors",
             displayScore < 0 ? "bg-rose-500 text-white" : 
             displayScore > 0 ? "bg-emerald-500 text-white" : 
-            "bg-slate-100 text-slate-500"
+            "bg-slate-100 dark:bg-neutral-700 text-slate-500 dark:text-neutral-300"
         )}>
           {displayScore > 0 ? `+${displayScore}` : displayScore}
         </div>

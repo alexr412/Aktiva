@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import maplibregl from 'maplibre-gl';
@@ -630,6 +630,37 @@ export function ActivaMap({
   }, []);
 
   // 2. Update GeoJSON Sources & HTML Markers on filtered data or layer toggle changes
+  const filteredPlaces = useMemo(() => {
+    if (!layers.places) return [];
+    if (!Array.isArray(places)) return [];
+    if (selectedSpotCategory === 'all') return places;
+
+    return places.filter((p) => {
+      if (!p) return false;
+      const catsList = Array.isArray(p.categories)
+        ? p.categories
+        : (typeof p.categories === 'string' ? [p.categories] : []);
+      const catStr = [...catsList, p.category || '', (p as any).primaryCategory || ''].map((c) => String(c || '').toLowerCase()).join(' ');
+
+      if (selectedSpotCategory === 'gastronomie') {
+        return /catering|restaurant|food|caf[eé]|bar|dining|gastronomy|bakery|pub|commercial|fast_food|bistro|coffee/.test(catStr);
+      }
+      if (selectedSpotCategory === 'sport') {
+        return /sport|fitness|gym|swimming|climbing|stadium|sports_centre|bouldering|active|leisure|playground/.test(catStr);
+      }
+      if (selectedSpotCategory === 'kultur') {
+        return /museum|historic|landmark|building|memorial|monument|architecture|tourism|sightseeing|attraction/.test(catStr);
+      }
+      if (selectedSpotCategory === 'entertainment') {
+        return /entertainment|leisure|culture|event|arts|theater|cinema|nightlife|attraction|club|bowling/.test(catStr);
+      }
+      if (selectedSpotCategory === 'natur') {
+        return /park|nature|outdoor|garden|beach|forest|lake|playground|recreation|camping/.test(catStr);
+      }
+      return true;
+    });
+  }, [places, layers.places, selectedSpotCategory]);
+
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !isMapLoaded) return;
@@ -646,19 +677,6 @@ export function ActivaMap({
     // Update Places Source
     const placeSource = map.getSource('places-source') as maplibregl.GeoJSONSource;
     if (placeSource) {
-      const filteredPlaces = layers.places
-        ? (selectedSpotCategory === 'all'
-            ? places
-            : places.filter((p) => {
-                const cats = [...(p.categories || []), p.category || ''].map((c) => (c || '').toLowerCase()).join(' ');
-                if (selectedSpotCategory === 'gastronomie') return /catering|restaurant|food|caf[eé]|bar|dining|gastronomy|bakery|pub/.test(cats);
-                if (selectedSpotCategory === 'sport') return /sport|fitness|gym|swimming|climbing|stadium|sports_centre|bouldering|active/.test(cats);
-                if (selectedSpotCategory === 'kultur') return /museum|historic|landmark|building|memorial|monument|architecture|tourism/.test(cats);
-                if (selectedSpotCategory === 'entertainment') return /entertainment|leisure|culture|event|arts|theater|cinema|nightlife|attraction/.test(cats);
-                if (selectedSpotCategory === 'natur') return /park|nature|outdoor|garden|beach|forest|lake|playground|recreation/.test(cats);
-                return true;
-              }))
-        : [];
       const placeMarkers = parsePlaceMarkers(filteredPlaces);
       const geoJsonData = createMapGeoJSON(placeMarkers);
       const geoJsonStr = JSON.stringify(geoJsonData);
@@ -899,9 +917,9 @@ export function ActivaMap({
       {/* Mobile Bottom Sheet */}
       {isMobile && (
         <MapResultSheet
-          placesCount={places.length}
+          placesCount={filteredPlaces.length}
           activitiesCount={communityActivities.length}
-          places={places}
+          places={filteredPlaces}
           activities={communityActivities}
           selectedEntity={selectedEntity}
           onSelectEntity={onSelectEntity}

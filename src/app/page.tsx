@@ -785,11 +785,20 @@ export default function Home() {
     return displayData.flatMap(page => {
       const features = page?.features || [];
       const itemsToFilter = features.map((f: any) => {
-        const rawDist = f.properties?.distance || 0;
-        const distKm = rawDist > 100 ? rawDist / 1000 : rawDist;
+        const props = f.properties || {};
+        const lat = f.geometry?.coordinates?.[1] ?? props.lat;
+        const lon = f.geometry?.coordinates?.[0] ?? props.lon ?? props.lng;
+        let distKm = 0;
+        if (props.distance !== undefined && props.distance !== null) {
+          const rawDist = props.distance;
+          distKm = rawDist > 100 ? rawDist / 1000 : rawDist;
+        } else if (userLocation && lat && lon) {
+          distKm = calculateDistance(userLocation.lat, userLocation.lng, lat, lon);
+        }
+
         return {
-          tags: Array.isArray(f.properties?.categories) ? f.properties.categories : [f.properties?.categories],
-          properties: f.properties || {},
+          tags: Array.isArray(props.categories) ? props.categories : [props.categories],
+          properties: props,
           distance: distKm
         };
       });

@@ -304,7 +304,7 @@ export default function EditProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-secondary/30">
+      <div className="flex h-full w-full items-center justify-center bg-secondary/30 dark:bg-neutral-950">
         <div className="relative w-12 h-12 animate-pulse">
           <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
         </div>
@@ -313,12 +313,12 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="flex flex-col h-full w-full bg-secondary/30 overflow-y-auto">
-      <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-white/80 backdrop-blur-md px-4 shrink-0">
-        <Button variant="ghost" size="icon" className="mr-2 h-10 w-10 rounded-full" onClick={() => router.back()}>
+    <div className="flex flex-col h-full w-full bg-secondary/30 dark:bg-neutral-950 overflow-y-auto">
+      <header className="sticky top-0 z-20 flex h-16 items-center border-b border-slate-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md px-4 shrink-0">
+        <Button variant="ghost" size="icon" className="mr-2 h-10 w-10 rounded-full text-slate-700 dark:text-neutral-200 hover:bg-slate-100 dark:hover:bg-neutral-800" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="">Profil bearbeiten</h1>
+        <h1 className="font-bold text-lg text-slate-900 dark:text-white">Profil bearbeiten</h1>
       </header>
       
       <main className="flex-1 p-4 sm:p-8 pb-24">
@@ -335,7 +335,7 @@ export default function EditProfilePage() {
                     photoURL={profilePhoto}
                     displayName={formData.displayName}
                 />
-                <div className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-white transform group-hover:scale-110 transition-transform">
+                <div className="absolute bottom-1 right-1 h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-white dark:border-neutral-900 transform group-hover:scale-110 transition-transform">
                     <Camera className="h-5 w-5" />
                 </div>
                 <input 
@@ -346,32 +346,32 @@ export default function EditProfilePage() {
                     accept="image/jpeg,image/png,image/webp" 
                 />
             </div>
-            <p className="mt-3 text-xs font-bold text-slate-400 uppercase tracking-widest">Profilbild ändern</p>
+            <p className="mt-3 text-xs font-bold text-slate-400 dark:text-neutral-400 uppercase tracking-widest">Profilbild ändern</p>
           </div>
 
-          <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden">
+          <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white dark:bg-neutral-900">
             <CardHeader className="bg-primary/5 pb-8">
               <div className="flex items-center gap-3 mb-2">
                 <UserCircle className="h-6 w-6 text-primary" />
-                <CardTitle className="">Persönliche Infos</CardTitle>
+                <CardTitle className="text-slate-900 dark:text-white">Persönliche Infos</CardTitle>
               </div>
-              <CardDescription className="text-base font-medium">Aktualisiere deine öffentlichen Profilinformationen.</CardDescription>
+              <CardDescription className="text-base font-medium text-slate-500 dark:text-neutral-400">Aktualisiere deine öffentlichen Profilinformationen.</CardDescription>
             </CardHeader>
             <CardContent className="pt-8 space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                    <Label htmlFor="displayName" className="font-semibold text-slate-700 ml-1">Anzeigename</Label>
+                    <Label htmlFor="displayName" className="font-semibold text-slate-700 dark:text-neutral-200 ml-1">Anzeigename</Label>
                     <Input 
                         id="displayName" 
                         name="displayName" 
                         autoComplete="name"
                         value={formData.displayName || ''} 
                         onChange={handleChange} 
-                        className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg px-6 focus-visible:ring-primary/50"
+                        className="h-14 rounded-2xl bg-slate-50 dark:bg-neutral-800/80 border-slate-100 dark:border-neutral-700/80 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-neutral-500 font-bold text-lg px-6 focus-visible:ring-primary/50"
                     />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="username" className="font-semibold text-slate-700 ml-1">Username (@)</Label>
+                    <Label htmlFor="username" className="font-semibold text-slate-700 dark:text-neutral-200 ml-1">Username (@)</Label>
                     <div className="relative">
                         <Input 
                             id="username" 
@@ -391,17 +391,17 @@ export default function EditProfilePage() {
                                 }
                             }} 
                             className={cn(
-                                "h-14 rounded-2xl bg-slate-50 font-bold text-lg px-6 focus-visible:ring-primary/50 pr-12 transition-all",
+                                "h-14 rounded-2xl bg-slate-50 dark:bg-neutral-800/80 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-neutral-500 font-bold text-lg px-6 focus-visible:ring-primary/50 pr-12 transition-all",
                                 isUsernameCooldownActive && "opacity-50 grayscale cursor-not-allowed",
                                 !hasAcknowledgedWarning && !isUsernameCooldownActive && "cursor-pointer",
                                 usernameAvailability === 'available' ? "border-emerald-500" : 
-                                (usernameAvailability === 'taken' || usernameAvailability === 'invalid') ? "border-rose-500" : "border-slate-100"
+                                (usernameAvailability === 'taken' || usernameAvailability === 'invalid') ? "border-rose-500" : "border-slate-100 dark:border-neutral-700/80"
                             )}
                         />
                         <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                            {isUsernameChecking && <Loader2 className="h-5 w-5 animate-spin text-slate-300" />}
+                            {isUsernameChecking && <Loader2 className="h-5 w-5 animate-spin text-slate-300 dark:text-neutral-500" />}
                             {!isUsernameChecking && !isUsernameCooldownActive && usernameAvailability === 'available' && <Check className="h-5 w-5 text-emerald-500" />}
-                            {isUsernameCooldownActive && <Lock className="h-4 w-4 text-slate-400" />}
+                            {isUsernameCooldownActive && <Lock className="h-4 w-4 text-slate-400 dark:text-neutral-400" />}
                         </div>
                     </div>
                     {isUsernameCooldownActive && (
@@ -415,27 +415,25 @@ export default function EditProfilePage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="pronouns" className="font-semibold text-slate-700 ml-1">Pronomen</Label>
+                <Label htmlFor="pronouns" className="font-semibold text-slate-700 dark:text-neutral-200 ml-1">Pronomen</Label>
                 <Input 
                   id="pronouns" 
                   name="pronouns" 
                   placeholder="z.B. sie/ihr" 
                   value={formData.pronouns || ''} 
                   onChange={handleChange} 
-                  className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg px-6"
+                  className="h-14 rounded-2xl bg-slate-50 dark:bg-neutral-800/80 border-slate-100 dark:border-neutral-700/80 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-neutral-500 font-bold text-lg px-6"
                 />
               </div>
 
-
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                    <Label htmlFor="gender" className="font-semibold text-slate-700 ml-1">Geschlecht</Label>
+                    <Label htmlFor="gender" className="font-semibold text-slate-700 dark:text-neutral-200 ml-1">Geschlecht</Label>
                     <Select name="gender" value={formData.gender || ''} onValueChange={(value) => handleSelectChange('gender', value)}>
-                        <SelectTrigger id="gender" className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold px-6">
+                        <SelectTrigger id="gender" className="h-14 rounded-2xl bg-slate-50 dark:bg-neutral-800/80 border-slate-100 dark:border-neutral-700/80 text-slate-900 dark:text-white font-bold px-6">
                             <SelectValue placeholder="Wählen..." />
                         </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-none shadow-xl font-bold">
+                        <SelectContent className="rounded-2xl border-none shadow-xl font-bold bg-white dark:bg-neutral-900 text-slate-900 dark:text-white border border-slate-100 dark:border-neutral-800">
                             <SelectItem value="not-specified">Keine Angabe</SelectItem>
                             <SelectItem value="female">Weiblich</SelectItem>
                             <SelectItem value="male">Männlich</SelectItem>
@@ -445,12 +443,12 @@ export default function EditProfilePage() {
                     </Select>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="socialBattery" className="font-semibold text-slate-700 ml-1">Social Battery</Label>
+                    <Label htmlFor="socialBattery" className="font-semibold text-slate-700 dark:text-neutral-200 ml-1">Social Battery</Label>
                     <Select name="socialBattery" value={formData.socialBattery || ''} onValueChange={(value) => handleSelectChange('socialBattery', value)}>
-                        <SelectTrigger id="socialBattery" className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold px-6">
+                        <SelectTrigger id="socialBattery" className="h-14 rounded-2xl bg-slate-50 dark:bg-neutral-800/80 border-slate-100 dark:border-neutral-700/80 text-slate-900 dark:text-white font-bold px-6">
                             <SelectValue placeholder="Wählen..." />
                         </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-none shadow-xl font-bold">
+                        <SelectContent className="rounded-2xl border-none shadow-xl font-bold bg-white dark:bg-neutral-900 text-slate-900 dark:text-white border border-slate-100 dark:border-neutral-800">
                              <SelectItem value="not-specified">Keine Angabe</SelectItem>
                             <SelectItem value="introverted">Introvertiert (Kleine Gruppen)</SelectItem>
                             <SelectItem value="extroverted">Extrovertiert (Große Gruppen)</SelectItem>
@@ -463,7 +461,7 @@ export default function EditProfilePage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-1">
                     <Sparkles className="h-4 w-4 text-primary" />
-                    <Label htmlFor="bio" className="font-semibold text-slate-700">Über mich</Label>
+                    <Label htmlFor="bio" className="font-semibold text-slate-700 dark:text-neutral-200">Über mich</Label>
                 </div>
                 <Textarea 
                     id="bio" 
@@ -473,30 +471,30 @@ export default function EditProfilePage() {
                     rows={4} 
                     maxLength={150} 
                     placeholder="Erzähl uns etwas über dich..." 
-                    className="rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg px-6 py-4 resize-none"
+                    className="rounded-2xl bg-slate-50 dark:bg-neutral-800/80 border-slate-100 dark:border-neutral-700/80 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-neutral-500 font-bold text-lg px-6 py-4 resize-none"
                 />
-                <p className="text-[10px] text-neutral-400 text-right font-black">{(formData.bio || '').length}/150</p>
+                <p className="text-[10px] text-neutral-400 dark:text-neutral-500 text-right font-black">{(formData.bio || '').length}/150</p>
               </div>
             </CardContent>
           </Card>
           
           {/* Categories & Interests Section */}
-          <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden mt-6">
+          <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden mt-6 bg-white dark:bg-neutral-900">
             <CardHeader className="bg-primary/5 pb-8">
               <div className="flex items-center gap-3 mb-2">
                 <Sparkles className="h-6 w-6 text-primary" />
-                <CardTitle className="">Interessen-Gewichtung</CardTitle>
+                <CardTitle className="text-slate-900 dark:text-white">Interessen-Gewichtung</CardTitle>
               </div>
-              <CardDescription className="text-base font-medium">
+              <CardDescription className="text-base font-medium text-slate-500 dark:text-neutral-400">
                 Bestimme hier, wie sehr dir bestimmte Kategorien gefallen. Dies beeinflusst direkt deinen Feed-Algorithmus.
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
               {/* Globale Legende */}
-              <div className="flex justify-between px-6 mb-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                <span className="text-rose-500/70">Abneigung</span>
+              <div className="flex justify-between px-6 mb-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-neutral-400">
+                <span className="text-rose-500/70 dark:text-rose-400/80">Abneigung</span>
                 <span className="translate-x-1">Neutral</span>
-                <span className="text-emerald-500/70">Favorit</span>
+                <span className="text-emerald-500/70 dark:text-emerald-400/80">Favorit</span>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-1">
