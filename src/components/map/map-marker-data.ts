@@ -47,8 +47,8 @@ export function parsePlaceMarkers(places: Place[]): MapMarkerItem[] {
   const markers: MapMarkerItem[] = [];
 
   for (const place of places) {
-    const lat = place.lat;
-    const lon = place.lon ?? (place as any).lng;
+    const lat = place.lat ?? (place as any).latitude;
+    const lon = place.lon ?? (place as any).lng ?? (place as any).longitude;
 
     if (!isValidCoordinate(lat, lon)) {
       continue;

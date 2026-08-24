@@ -25,15 +25,15 @@ const multiFetcher = async (keyObj: any) => {
 
     // 1. Versuche zuerst, frische Daten aus dem lokalen IndexedDB-Cache zu laden
     const cachedPlaces = await getCachedTilePlaces(lat, lng, radiusMeters);
-    if (cachedPlaces && cachedPlaces.length > 0) {
+    if (cachedPlaces && cachedPlaces.length >= 5) {
       if (process.env.NODE_ENV === 'development') {
         console.log(`[GEOAPIFY CACHE HIT] Loaded ${cachedPlaces.length} places from IndexedDB for tile`);
       }
       return [{ features: cachedPlaces, _fromCache: true }];
     }
 
-    const catGroup1 = "entertainment,adult.nightclub,sport.stadium,sport.ice_rink";
-    const catGroup2 = "entertainment.escape_game,leisure,sport,tourism.attraction";
+    const catGroup1 = "catering,entertainment,tourism,adult.nightclub";
+    const catGroup2 = "leisure,sport,commercial.shopping_mall,building.tourism";
 
     const catParam1 = buildGeoapifyCategoriesParam(catGroup1);
     const catParam2 = buildGeoapifyCategoriesParam(catGroup2);
@@ -303,17 +303,21 @@ export function useDiscoverPlaces() {
       const lon = f.geometry?.coordinates?.[0] ?? props.lon ?? props.lng;
       const id = props.place_id || props.id || `place_${idx}_${lat}_${lon}`;
       const name = props.name || props.formatted || 'Unbenannter Ort';
+      const rawDist = props.distance ?? f.distance;
+      const distance = rawDist !== undefined && rawDist !== null
+        ? (rawDist > 100 ? rawDist / 1000 : rawDist)
+        : undefined;
 
       return {
         id,
         name,
-        address: props.address_line2 || props.formatted || props.street || '',
-        categories: props.categories || [],
+        address: props.address || props.address_line2 || props.formatted || props.street || f.address || '',
+        categories: props.categories || f.categories || (props.category ? [props.category] : []),
         lat,
         lon,
-        distance: props.distance ? props.distance / 1000 : undefined,
-        rating: props.rating || 4.5,
-        relevanceScore: props.relevanceScore || 80,
+        distance,
+        rating: props.rating || f.rating || 4.5,
+        relevanceScore: props.relevanceScore || f.relevanceScore || 80,
       } as Place;
     });
   }, [data]);
