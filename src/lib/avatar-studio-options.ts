@@ -21,17 +21,21 @@ export const SKIN_COLOR_OPTIONS = [
 
 export const TOP_OPTIONS = [
   { id: 'shortFlat', labelDe: 'Kurz Schlicht', labelEn: 'Short Flat' },
-  { id: 'shortWavy', labelDe: 'Kurz Wellig', labelEn: 'Short Wavy' },
+  { id: 'shortWaved', labelDe: 'Kurz Wellig', labelEn: 'Short Wavy' },
   { id: 'shortCurly', labelDe: 'Kurz Lockig', labelEn: 'Short Curly' },
-  { id: 'dreads01', labelDe: 'Dreads', labelEn: 'Dreads' },
-  { id: 'longHair', labelDe: 'Lang Glatt', labelEn: 'Long Straight' },
+  { id: 'straight01', labelDe: 'Lang Glatt', labelEn: 'Long Straight' },
+  { id: 'straight02', labelDe: 'Lang Glatt (Scheitel)', labelEn: 'Long Straight Parted' },
   { id: 'curly', labelDe: 'Lang Lockig', labelEn: 'Long Curly' },
+  { id: 'dreads01', labelDe: 'Dreads', labelEn: 'Dreads' },
   { id: 'bun', labelDe: 'Dutt / Bun', labelEn: 'Bun' },
+  { id: 'bob', labelDe: 'Bob', labelEn: 'Bob Cut' },
+  { id: 'fro', labelDe: 'Afro', labelEn: 'Afro' },
+  { id: 'shaggy', labelDe: 'Shaggy', labelEn: 'Shaggy' },
+  { id: 'shavedSides', labelDe: 'Undercut', labelEn: 'Undercut' },
   { id: 'hijab', labelDe: 'Hijab', labelEn: 'Hijab' },
+  { id: 'turban', labelDe: 'Turban', labelEn: 'Turban' },
   { id: 'hat', labelDe: 'Mütze', labelEn: 'Hat' },
   { id: 'winterHat02', labelDe: 'Beanie', labelEn: 'Beanie' },
-  { id: 'eyepatch', labelDe: 'Augenklappe', labelEn: 'Eyepatch' },
-  { id: 'turban', labelDe: 'Turban', labelEn: 'Turban' },
 ];
 
 export const HAIR_COLOR_OPTIONS = [
@@ -85,10 +89,12 @@ export const MOUTH_OPTIONS = [
 
 export const ACCESSORIES_OPTIONS = [
   { id: 'none', labelDe: 'Keine', labelEn: 'None' },
+  { id: 'eyepatch', labelDe: 'Augenklappe', labelEn: 'Eyepatch' },
   { id: 'round', labelDe: 'Runde Brille', labelEn: 'Round Glasses' },
   { id: 'prescription02', labelDe: 'Eckige Brille', labelEn: 'Square Glasses' },
   { id: 'sunglasses', labelDe: 'Sonnenbrille', labelEn: 'Sunglasses' },
   { id: 'wayfarers', labelDe: 'Cool / Wayfarer', labelEn: 'Wayfarers' },
+  { id: 'kurt', labelDe: 'Retro Oval', labelEn: 'Retro Oval' },
 ];
 
 export const BACKGROUND_COLOR_OPTIONS = [
@@ -96,10 +102,20 @@ export const BACKGROUND_COLOR_OPTIONS = [
   { id: 'ffd5dc', labelDe: 'Rosa', labelEn: 'Rose', hex: '#ffd5dc' },
   { id: 'c0aede', labelDe: 'Flieder', labelEn: 'Lavender', hex: '#c0aede' },
   { id: 'ffdfbf', labelDe: 'Pfirsich', labelEn: 'Peach', hex: '#ffdfbf' },
-  { id: 'd1d4f9', labelDe: 'Perlweiß/Perlblau', labelEn: 'Ice Blue', hex: '#d1d4f9' },
+  { id: 'd1d4f9', labelDe: 'Perlweiß', labelEn: 'Ice Blue', hex: '#d1d4f9' },
   { id: 'b1e5d9', labelDe: 'Pastellgrün', labelEn: 'Mint', hex: '#b1e5d9' },
   { id: 'fbe7c6', labelDe: 'Creme', labelEn: 'Cream', hex: '#fbe7c6' },
   { id: '1a1a2e', labelDe: 'Midnight Dark', labelEn: 'Midnight', hex: '#1a1a2e' },
+  { id: 'fbbf24', labelDe: 'Sonnengelb', labelEn: 'Sunny Yellow', hex: '#fbbf24' },
+  { id: 'f97316', labelDe: 'Sunset Orange', labelEn: 'Sunset Orange', hex: '#f97316' },
+  { id: 'ef4444', labelDe: 'Rubinrot', labelEn: 'Ruby Red', hex: '#ef4444' },
+  { id: 'ec4899', labelDe: 'Hot Pink', labelEn: 'Hot Pink', hex: '#ec4899' },
+  { id: '8b5cf6', labelDe: 'Violett', labelEn: 'Violet', hex: '#8b5cf6' },
+  { id: '3b82f6', labelDe: 'Ozeanblau', labelEn: 'Ocean Blue', hex: '#3b82f6' },
+  { id: '10b981', labelDe: 'Smaragd', labelEn: 'Emerald', hex: '#10b981' },
+  { id: '06b6d4', labelDe: 'Türkis', labelEn: 'Cyan', hex: '#06b6d4' },
+  { id: '475569', labelDe: 'Schiefergrau', labelEn: 'Slate', hex: '#475569' },
+  { id: 'facc15', labelDe: 'Gold', labelEn: 'Gold', hex: '#facc15' },
 ];
 
 export const DEFAULT_STUDIO_CONFIG: AvatarStudioConfig = {

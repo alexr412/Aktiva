@@ -156,7 +156,7 @@ export function AvatarStudioDialog({
               {language === 'de' ? 'Outfit' : 'Outfit'}
             </TabsTrigger>
             <TabsTrigger value="extras" className="text-[11px] font-bold rounded-xl data-[state=active]:bg-neutral-700 data-[state=active]:text-white">
-              {language === 'de' ? 'Brille' : 'Extras'}
+              {language === 'de' ? 'Extras' : 'Extras'}
             </TabsTrigger>
             <TabsTrigger value="bg" className="text-[11px] font-bold rounded-xl data-[state=active]:bg-neutral-700 data-[state=active]:text-white">
               {language === 'de' ? 'Farbe' : 'Color'}
