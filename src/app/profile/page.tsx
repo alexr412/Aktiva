@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ActivityListItem } from '@/components/activa/activity-list-item';
 import { shareOrCopyReferralLink } from '@/lib/referral';
-import { LogOut, User, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell, Camera, Search, Share2 } from 'lucide-react';
+import { LogOut, User, UserPlus, Compass, Edit, UserCheck, X, Loader2, Settings, Copy, Bookmark, ShieldCheck, Check, Coins, Unlock, Wallet, Star, MessageSquare, Bell, Camera, Search, Share2, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { uploadProfileImage } from '@/lib/firebase/storage';
 import { validateAvatarFile } from '@/lib/avatar-utils';
@@ -32,6 +32,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, Di
 import { PlaceDetails } from '@/components/activa/place-details';
 import avatarStyles from './avatar-dialog.module.css';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
+import { AvatarStudioDialog } from '@/components/profile/AvatarStudioDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import FriendList from '@/components/profile/FriendList';
 import { ProfileActivityCard } from "@/components/profile/ProfileActivityCard";
@@ -302,6 +303,7 @@ export default function ProfilePage() {
 
     // Dialog States for Avatar Selection
     const [isAvatarSelectionDialogOpen, setIsAvatarSelectionDialogOpen] = useState(false);
+    const [isAvatarStudioOpen, setIsAvatarStudioOpen] = useState(false);
     const [selectedPresetUrl, setSelectedPresetUrl] = useState<string | null>(null);
     const [isSavingPreset, setIsSavingPreset] = useState(false);
     const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
@@ -1377,8 +1379,27 @@ export default function ProfilePage() {
                                 </div>
                             </div>
 
+                            {/* Avatar Studio Option (Premium) */}
+                            <div className="my-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setIsAvatarSelectionDialogOpen(false);
+                                        setIsAvatarStudioOpen(true);
+                                    }}
+                                    className="w-full h-11 border border-amber-400/50 text-amber-500 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-400/10 dark:hover:bg-amber-400/20 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
+                                >
+                                    <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                                    {language === 'de' ? '✨ Avatar-Studio (Selbst erstellen)' : '✨ Avatar Studio (Create Custom)'}
+                                    <Badge className="bg-amber-500 text-slate-950 text-[9px] font-black uppercase px-1.5 py-0.2 rounded ml-1 border-none">
+                                        Premium
+                                    </Badge>
+                                </Button>
+                            </div>
+
                             {/* Custom Upload Option */}
-                            <div className="my-3">
+                            <div className="my-2">
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -1416,6 +1437,17 @@ export default function ProfilePage() {
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Avatar Studio Modal */}
+            <AvatarStudioDialog
+                open={isAvatarStudioOpen}
+                onOpenChange={setIsAvatarStudioOpen}
+                userId={user?.uid}
+                isPremium={Boolean(userData?.isPremium)}
+                onSuccess={(newPhotoUrl) => {
+                    setUserData(prev => prev ? { ...prev, photoURL: newPhotoUrl } : null);
+                }}
+            />
 
             {/* Title & Frame Customization Dialog */}
             <Dialog open={isCustomizeDialogOpen} onOpenChange={setIsCustomizeDialogOpen}>
