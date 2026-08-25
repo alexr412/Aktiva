@@ -1290,10 +1290,11 @@ export default function ProfilePage() {
                      setIsRemovingAvatar(false);
                  }
              }}>
-                <DialogContent className="sm:max-w-[440px] w-full max-h-[88vh] overflow-y-auto p-6 sm:p-7 rounded-[2.5rem] bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 text-slate-900 dark:text-white shadow-2xl [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-700/70 [&::-webkit-scrollbar-thumb]:rounded-full">
+                <DialogContent className="sm:max-w-[440px] w-full max-h-[88vh] p-0 rounded-[2.5rem] bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 text-slate-900 dark:text-white shadow-2xl overflow-hidden flex flex-col">
+                    <div className="max-h-[88vh] overflow-y-auto p-6 sm:p-7 pr-4 sm:pr-5 my-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-700/70 [&::-webkit-scrollbar-thumb]:rounded-full">
                     {showRemoveConfirm ? (
                         <>
-                            <DialogHeader className="text-center flex flex-col items-center gap-1 mb-4 pr-10">
+                            <DialogHeader className="text-center flex flex-col items-center gap-1 mb-4 pr-6">
                                 <DialogTitle className="text-xl font-black text-rose-600 dark:text-rose-500">
                                     {language === 'de' ? 'Avatar entfernen?' : 'Remove Avatar?'}
                                 </DialogTitle>
@@ -1324,7 +1325,7 @@ export default function ProfilePage() {
                         </>
                     ) : (
                         <>
-                            <DialogHeader className="text-center flex flex-col items-center gap-1 mb-4 pr-10 sm:pr-12">
+                            <DialogHeader className="text-center flex flex-col items-center gap-1 mb-4 pr-6">
                                 <DialogTitle className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                                     {language === 'de' ? 'Avatar ändern' : 'Change Avatar'}
                                 </DialogTitle>
@@ -1435,6 +1436,7 @@ export default function ProfilePage() {
                             </div>
                         </>
                     )}
+                    </div>
                 </DialogContent>
             </Dialog>
 

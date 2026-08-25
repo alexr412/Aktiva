@@ -104,7 +104,8 @@ export function AvatarStudioDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg w-full max-h-[88vh] overflow-y-auto flex flex-col p-5 sm:p-7 rounded-[2.5rem] bg-neutral-900 border border-neutral-800 text-white shadow-2xl [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-700/70 [&::-webkit-scrollbar-thumb]:rounded-full dark">
+      <DialogContent className="sm:max-w-lg w-full max-h-[88vh] p-0 rounded-[2.5rem] bg-neutral-900 border border-neutral-800 text-white shadow-2xl overflow-hidden flex flex-col dark">
+        <div className="max-h-[88vh] overflow-y-auto p-5 sm:p-7 pr-4 sm:pr-5 my-1 flex flex-col gap-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-700/70 [&::-webkit-scrollbar-thumb]:rounded-full">
         {/* Header */}
         <DialogHeader className="flex flex-col items-center text-center gap-1.5 shrink-0">
           <div className="flex items-center gap-2">
@@ -427,6 +428,7 @@ export function AvatarStudioDialog({
                 : 'Unlock with Premium'}
           </Button>
         </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
