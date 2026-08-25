@@ -104,7 +104,7 @@ export function AvatarStudioDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg w-full max-h-[90vh] h-auto flex flex-col p-5 sm:p-7 rounded-[2.5rem] bg-neutral-900 border border-neutral-800 text-white shadow-2xl overflow-hidden dark">
+      <DialogContent className="sm:max-w-lg w-full max-h-[88vh] overflow-y-auto flex flex-col p-5 sm:p-7 rounded-[2.5rem] bg-neutral-900 border border-neutral-800 text-white shadow-2xl [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-700/70 [&::-webkit-scrollbar-thumb]:rounded-full dark">
         {/* Header */}
         <DialogHeader className="flex flex-col items-center text-center gap-1.5 shrink-0">
           <div className="flex items-center gap-2">
@@ -144,7 +144,7 @@ export function AvatarStudioDialog({
         </div>
 
         {/* Customization Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <TabsList className="w-full grid grid-cols-5 bg-neutral-850 p-1 rounded-2xl border border-neutral-800 text-neutral-400 shrink-0">
             <TabsTrigger value="hair" className="text-[11px] font-bold rounded-xl data-[state=active]:bg-neutral-700 data-[state=active]:text-white">
               {language === 'de' ? 'Haare' : 'Hair'}
@@ -164,14 +164,14 @@ export function AvatarStudioDialog({
           </TabsList>
 
           {/* Options Scrollable Content */}
-          <div className="flex-1 overflow-y-auto mt-3 pr-1 space-y-4 min-h-[160px] max-h-[220px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-700/70 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="flex-1 overflow-y-auto mt-3 px-1 py-1 space-y-4 min-h-[160px] max-h-[230px] overflow-x-hidden [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-700/70 [&::-webkit-scrollbar-thumb]:rounded-full">
             {/* HAIR TAB */}
             <TabsContent value="hair" className="space-y-3 mt-0">
               <div>
                 <label className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-1.5 block">
                   {language === 'de' ? 'Frisur & Kopfbedeckung' : 'Hairstyle & Headwear'}
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {TOP_OPTIONS.map((item) => (
                     <button
                       key={item.id}
@@ -194,14 +194,14 @@ export function AvatarStudioDialog({
                 <label className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-1.5 block">
                   {language === 'de' ? 'Haarfarbe' : 'Hair Color'}
                 </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2.5 py-1">
                   {HAIR_COLOR_OPTIONS.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => setConfig((prev) => ({ ...prev, hairColor: item.id }))}
                       className={cn(
-                        'w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center',
+                        'w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center justify-self-center',
                         config.hairColor === item.id ? 'border-amber-400 ring-2 ring-amber-400/30 scale-110' : 'border-transparent'
                       )}
                       style={{ backgroundColor: item.hex }}
@@ -220,14 +220,14 @@ export function AvatarStudioDialog({
                 <label className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-1.5 block">
                   {language === 'de' ? 'Hautton' : 'Skin Tone'}
                 </label>
-                <div className="flex flex-wrap gap-2.5">
+                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2.5 py-1">
                   {SKIN_COLOR_OPTIONS.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => setConfig((prev) => ({ ...prev, skinColor: item.id }))}
                       className={cn(
-                        'w-9 h-9 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center shadow-md',
+                        'w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center justify-self-center shadow-md',
                         config.skinColor === item.id ? 'border-amber-400 ring-2 ring-amber-400/30 scale-110' : 'border-transparent'
                       )}
                       style={{ backgroundColor: item.hex }}
@@ -243,14 +243,14 @@ export function AvatarStudioDialog({
                 <label className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-1.5 block">
                   {language === 'de' ? 'Augen' : 'Eyes'}
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {EYES_OPTIONS.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => setConfig((prev) => ({ ...prev, eyes: item.id }))}
                       className={cn(
-                        'p-2 text-xs font-bold rounded-xl border text-center transition-all',
+                        'p-2 text-xs font-bold rounded-xl border text-center transition-all truncate',
                         config.eyes === item.id
                           ? 'border-amber-400 bg-amber-400/10 text-amber-300'
                           : 'border-neutral-800 bg-neutral-850 text-neutral-300 hover:bg-neutral-800'
@@ -266,14 +266,14 @@ export function AvatarStudioDialog({
                 <label className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-1.5 block">
                   {language === 'de' ? 'Mund' : 'Mouth'}
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {MOUTH_OPTIONS.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => setConfig((prev) => ({ ...prev, mouth: item.id }))}
                       className={cn(
-                        'p-2 text-xs font-bold rounded-xl border text-center transition-all',
+                        'p-2 text-xs font-bold rounded-xl border text-center transition-all truncate',
                         config.mouth === item.id
                           ? 'border-amber-400 bg-amber-400/10 text-amber-300'
                           : 'border-neutral-800 bg-neutral-850 text-neutral-300 hover:bg-neutral-800'
@@ -315,14 +315,14 @@ export function AvatarStudioDialog({
                 <label className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-1.5 block">
                   {language === 'de' ? 'Kleidungsfarbe' : 'Clothes Color'}
                 </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-6 sm:grid-cols-8 gap-2.5 py-1">
                   {CLOTHES_COLOR_OPTIONS.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => setConfig((prev) => ({ ...prev, clothesColor: item.id }))}
                       className={cn(
-                        'w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center shadow-sm',
+                        'w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center justify-self-center shadow-sm',
                         config.clothesColor === item.id ? 'border-amber-400 ring-2 ring-amber-400/30 scale-110' : 'border-transparent'
                       )}
                       style={{ backgroundColor: item.hex }}
@@ -367,14 +367,14 @@ export function AvatarStudioDialog({
                 <label className="text-[10px] font-black uppercase text-neutral-400 tracking-wider mb-1.5 block">
                   {language === 'de' ? 'Hintergrundfarbe' : 'Background Color'}
                 </label>
-                <div className="flex flex-wrap gap-2.5">
+                <div className="grid grid-cols-6 sm:grid-cols-9 gap-2.5 py-1">
                   {BACKGROUND_COLOR_OPTIONS.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => setConfig((prev) => ({ ...prev, backgroundColor: item.id }))}
                       className={cn(
-                        'w-9 h-9 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center shadow-md',
+                        'w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center justify-self-center shadow-md',
                         config.backgroundColor === item.id ? 'border-amber-400 ring-2 ring-amber-400/30 scale-110' : 'border-transparent'
                       )}
                       style={{ backgroundColor: item.hex }}

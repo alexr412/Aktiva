@@ -1290,7 +1290,7 @@ export default function ProfilePage() {
                      setIsRemovingAvatar(false);
                  }
              }}>
-                <DialogContent className="sm:max-w-[440px] w-full p-6 sm:p-7 rounded-[2.5rem] bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 text-slate-900 dark:text-white shadow-2xl overflow-hidden">
+                <DialogContent className="sm:max-w-[440px] w-full max-h-[88vh] overflow-y-auto p-6 sm:p-7 rounded-[2.5rem] bg-white dark:bg-neutral-900 border border-slate-200/80 dark:border-neutral-800 text-slate-900 dark:text-white shadow-2xl [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-700/70 [&::-webkit-scrollbar-thumb]:rounded-full">
                     {showRemoveConfirm ? (
                         <>
                             <DialogHeader className="text-center flex flex-col items-center gap-1 mb-4 pr-10">
