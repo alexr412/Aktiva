@@ -233,7 +233,7 @@ export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProp
           <div className="flex items-center gap-2.5 min-w-0">
             <Link href="/profile" title={language === 'de' ? 'Mein Profil' : 'My Profile'} className="hover:opacity-85 transition-opacity shrink-0">
               <ProfileAvatar 
-                className="h-8.5 w-8.5 border border-white dark:border-neutral-800 shadow-2xs"
+                className="h-9 w-9 border border-white dark:border-neutral-800 shadow-2xs shrink-0"
                 photoURL={userProfile?.photoURL || user?.photoURL}
                 displayName={userProfile?.displayName || user?.displayName}
                 isPremium={userProfile?.isPremium}
