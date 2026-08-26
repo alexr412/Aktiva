@@ -18,7 +18,7 @@ console.log('--- RUNNING AKTIVA RECOMMENDATION PIPELINE TESTS ---');
 function testBasePrior() {
   console.log('Running testBasePrior...');
   assert.strictEqual(computeBasePrior(['entertainment.zoo']), 80);
-  assert.strictEqual(computeBasePrior(['entertainment.cinema']), 80);
+  assert.strictEqual(computeBasePrior(['entertainment.cinema']), 72);
   assert.strictEqual(computeBasePrior(['entertainment.bowling_alley']), 72);
   assert.strictEqual(computeBasePrior(['leisure.spa']), 72);
   assert.strictEqual(computeBasePrior(['tourism.attraction']), 50);
@@ -548,10 +548,10 @@ function testFeedQualityFix() {
   assert.strictEqual(adjFirestoreSingleWord.qualityPenalty, 0);
 
   // 4. Activity-Boost
-  assert.strictEqual(computeAdjustments(['entertainment.cinema'], 'Cinema', 0, 50, false).activityBoost, 8);
+  assert.strictEqual(computeAdjustments(['entertainment.cinema'], 'Cinema', 0, 50, false).activityBoost, 4);
   assert.strictEqual(computeAdjustments(['entertainment.minigolf'], 'Golf', 0, 50, false).activityBoost, 8);
   assert.strictEqual(computeAdjustments(['entertainment.bowling'], 'Bowling', 0, 50, false).activityBoost, 8);
-  assert.strictEqual(computeAdjustments(['sport.swimming_pool'], 'Pool', 0, 50, false).activityBoost, 16);
+  assert.strictEqual(computeAdjustments(['sport.swimming_pool'], 'Pool', 0, 50, false).activityBoost, 12);
   assert.strictEqual(computeAdjustments(['entertainment.zoo'], 'Zoo', 0, 50, false).activityBoost, 8);
   assert.strictEqual(computeAdjustments(['tourism.museum'], 'Museum', 0, 50, false).activityBoost, 8);
   assert.strictEqual(computeAdjustments(['leisure.park'], 'Park', 0, 50, false).activityBoost, 8);

@@ -67,10 +67,9 @@ const tagRules = [
   { pattern: /^entertainment\.zoo(\..*)?$/, score: 80 },
   { pattern: /^entertainment\.theme_park(\..*)?$/, score: 80 },
   { pattern: /^entertainment\.planetarium(\..*)?$/, score: 80 },
-  { pattern: /^entertainment\.cinema(\..*)?$/, score: 80 },
 
   // Tier 2: Aktives Entertainment & Fun-Spots (72)
-  { pattern: /^entertainment\.(miniature_golf|bowling_alley|escape_game|aquarium|water_park|amusement_arcade|activity_park)(\..*)?$/, score: 72 },
+  { pattern: /^entertainment\.(miniature_golf|bowling_alley|escape_game|aquarium|water_park|amusement_arcade|activity_park|cinema)(\..*)?$/, score: 72 },
   { pattern: /^sport\.ice_rink(\..*)?$/, score: 72 },
   { pattern: /laser_tag|paintball|trampoline|climbing|bouldering|karting|arcade|bowling/, score: 72 },
   { pattern: /^leisure\.spa(\..*)?$/, score: 72 },
@@ -589,10 +588,10 @@ export function computeAdjustments(
 
   // 2. Activity Boosts
   const activityBoostBySubCategory: Record<string, number> = {
-    cinema: 8,
+    cinema: 4,
     minigolf: 8,
     bowling: 8,
-    swimming_pool: 8,
+    swimming_pool: 4,
     zoo: 8,
     museum: 8,
     park: 8,
