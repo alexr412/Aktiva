@@ -53,10 +53,10 @@ export function PlaceCard({
     weightedDownvotes = 0,
     compact = false
 }: PlaceCardProps) {
-    if (!place) return null;
-
     const language = useLanguage();
     const [isPressed, setIsPressed] = useState(false);
+
+    if (!place) return null;
 
     const primaryStyle = getPrimaryIconData(place, language);
     const PrimaryIcon = primaryStyle.icon;

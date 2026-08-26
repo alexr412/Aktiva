@@ -121,16 +121,16 @@ export function SpotActionSheet({ place, open, onOpenChange, onCreateNew }: Spot
         }
     };
 
+    const { mapsUrl, handlers: addressHandlers } = useAddressLongPress({
+        address: place?.address || '',
+        placeName: place?.name || '',
+        language,
+    });
+
     if (!place) return null;
 
     const primaryStyle = getPrimaryIconData(place, language);
     const PrimaryIcon = primaryStyle.icon;
-
-    const { mapsUrl, handlers: addressHandlers } = useAddressLongPress({
-        address: place.address,
-        placeName: place.name,
-        language,
-    });
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>

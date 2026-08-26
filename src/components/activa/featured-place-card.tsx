@@ -50,10 +50,10 @@ export function FeaturedPlaceCard({
     weightedUpvotes = 0,
     weightedDownvotes = 0
 }: FeaturedPlaceCardProps) {
-    if (!place) return null;
-
     const language = useLanguage();
     const [isPressed, setIsPressed] = useState(false);
+
+    if (!place) return null;
 
     const primaryStyle = getPrimaryIconData(place, language);
     const PrimaryIcon = primaryStyle.icon;
