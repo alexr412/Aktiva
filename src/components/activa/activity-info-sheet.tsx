@@ -440,7 +440,7 @@ export function ActivityInfoSheet({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="flex flex-col p-0 w-full h-[90vh] border-none rounded-t-[2.5rem] overflow-hidden outline-none bg-white dark:bg-neutral-950 z-[9999]">
+        <SheetContent side="bottom" hideCloseButton className="flex flex-col p-0 w-full h-[90vh] border-none rounded-t-[2.5rem] overflow-hidden outline-none bg-white dark:bg-neutral-950 z-[9999]">
           <SheetHeader className="sr-only">
             <SheetTitle>{activity.isCustomActivity ? (activity.title || activity.placeName) : activity.placeName}</SheetTitle>
             <SheetDescription>
