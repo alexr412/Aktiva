@@ -15,8 +15,9 @@ import { useChatSync } from '@/contexts/chat-sync-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Users, UserPlus, Search, Bell, MessageCircle, User, Building } from 'lucide-react';
+import { Users, UserPlus, Search, MessageCircle, User, Building } from 'lucide-react';
 import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { DesktopNav } from '@/components/desktop-nav';
 import { Input } from '@/components/ui/input';
 import { cn, formatLabel } from '@/lib/utils';
@@ -250,19 +251,7 @@ export default function ChatPage() {
             </div>
             <DesktopNav />
             <div className="flex items-center gap-3 shrink-0">
-              <div className="relative">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="secondary-header-button" 
-                  aria-label={language === 'de' ? 'Benachrichtigungen' : 'Notifications'}
-                >
-                  <Bell className="h-5 w-5" />
-                </Button>
-                {unreadNotifications > 0 && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-xs" />
-                )}
-              </div>
+              <NotificationBell />
               <Button 
                 variant="ghost" 
                 size="icon" 

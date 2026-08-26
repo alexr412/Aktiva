@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { useChatSync } from '@/contexts/chat-sync-context';
 import { MAIN_NAV_ITEMS, getIsActiveNav } from '@/lib/navigation-config';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export function DesktopNavRail({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -25,16 +25,16 @@ export function DesktopNavRail({ className }: { className?: string }) {
       <div className="flex flex-col items-center gap-4 w-full">
         <Link 
           href="/" 
-          className="h-10 w-10 rounded-2xl bg-emerald-500 flex items-center justify-center text-white font-black text-lg shadow-md shadow-emerald-500/20 hover:scale-105 transition-transform"
+          className="relative h-10 w-10 flex items-center justify-center hover:scale-105 transition-transform"
           title="Aktiva Home"
         >
-          A
+          <Image src="/assets/logo-heart.png" alt="Aktiva" width={36} height={36} className="object-contain" priority />
         </Link>
         <div className="w-8 h-[1px] bg-slate-200 dark:bg-neutral-800" />
       </div>
 
       {/* Center: Navigation Links */}
-      <nav className="flex flex-col items-center gap-3 w-full px-2">
+      <nav className="flex flex-col items-center gap-3 w-full px-2 mb-auto">
         {MAIN_NAV_ITEMS.map((item) => {
           const isActive = getIsActiveNav(item.href, pathname);
           const label = language === 'de' ? item.labelDe : item.labelEn;
@@ -64,11 +64,6 @@ export function DesktopNavRail({ className }: { className?: string }) {
           );
         })}
       </nav>
-
-      {/* Bottom: 1:1 NotificationBell */}
-      <div className="flex flex-col items-center gap-3 shrink-0">
-        <NotificationBell />
-      </div>
     </aside>
   );
 }
