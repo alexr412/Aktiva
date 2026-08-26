@@ -162,7 +162,7 @@ const MessageBubble = ({
       isFirstInGroup ? "mt-4" : "mt-0.5"
     )}>
       <div className={cn(
-        "flex flex-col max-w-[85%]",
+        "flex flex-col max-w-[88%] sm:max-w-[75%] md:max-w-[65%] lg:max-w-[55%]",
         isOwnMessage ? "items-end" : "items-start"
       )}>
         {isFirstInGroup && !isDirectMessage && !isOwnMessage && (
@@ -1100,190 +1100,137 @@ export default function ChatRoomPage() {
   return (
     <>
       <div onClick={() => setActiveMenuMessageId(null)} className="flex flex-col h-full bg-slate-50 dark:bg-black/95 overflow-hidden">
-        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-3 bg-white/90 dark:bg-neutral-900/90 px-3 backdrop-blur-md border-b border-slate-100 dark:border-neutral-800/80 shadow-xs">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-500 dark:text-neutral-400 shrink-0" onClick={() => router.back()}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            
+        <header className="sticky top-0 z-20 flex h-20 shrink-0 items-center justify-center bg-white/95 dark:bg-neutral-900/95 px-4 sm:px-6 backdrop-blur-md border-b border-slate-100 dark:border-neutral-800/80 shadow-xs">
+          <div className="flex items-center justify-between gap-3 w-full max-w-5xl">
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              {isDirectMessage && otherUser ? (
-                  <Link href={`/users/${otherUser.uid}`} className="flex items-center gap-2.5 truncate hover:opacity-80 transition-opacity cursor-pointer">
-                      <ProfileAvatar 
-                        className="h-9 w-9 shadow-sm border border-white dark:border-neutral-800 shrink-0"
-                        photoURL={otherUser.photoURL}
-                        displayName={otherUser.displayName}
-                        isPremium={otherUser.isPremium}
-                        isCreator={otherUser.isCreator}
-                        isSupporter={otherUser.isSupporter}
-                        level={otherUser.level || 1}
-                        showLevelBadge={true}
-                      />
-                      <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-1.5 truncate">
-                          <h1 className="font-extrabold text-base text-slate-900 dark:text-neutral-100 truncate">{formatFirstName(otherUser.displayName, "User")}</h1>
-                          <UserBadge isPremium={otherUser.isPremium} isSupporter={otherUser.isSupporter} isCreator={otherUser.isCreator} size="sm" />
-                        </div>
-                        {otherUser.username && (
-                          <span className="text-[10px] font-bold text-slate-400 dark:text-neutral-500 truncate">
-                            @{otherUser.username.replace(/^@/, '')}
-                          </span>
-                        )}
-                      </div>
-                  </Link>
-              ) : (
-                  <div 
-                    onClick={() => setShowRoomInfo(true)}
-                    className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-85 active:scale-[0.99] transition-all cursor-pointer group select-none text-left"
-                    role="button"
-                    tabIndex={0}
-                  >
-                    {activity ? (
-                      (() => {
-                        const visualCategoryData = getRoomVisualCategory({ activity, place, chat });
-                        const primaryStyle = getPrimaryIconData(visualCategoryData, language);
-                        const PrimaryIcon = primaryStyle.icon;
-                        return (
-                          <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-105", primaryStyle.gradientClass || "bg-primary/10")}>
-                            <PrimaryIcon className="text-white h-5 w-5 drop-shadow-xs" />
+              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500 dark:text-neutral-400 shrink-0" onClick={() => router.back()}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              
+              <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                {isDirectMessage && otherUser ? (
+                    <Link href={`/users/${otherUser.uid}`} className="flex items-center gap-3 truncate hover:opacity-80 transition-opacity cursor-pointer">
+                        <ProfileAvatar 
+                          className="h-11 w-11 sm:h-12 sm:w-12 shadow-sm border border-white dark:border-neutral-800 shrink-0"
+                          photoURL={otherUser.photoURL}
+                          displayName={otherUser.displayName}
+                          isPremium={otherUser.isPremium}
+                          isCreator={otherUser.isCreator}
+                          isSupporter={otherUser.isSupporter}
+                          level={otherUser.level || 1}
+                          showLevelBadge={true}
+                        />
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <h1 className="font-black text-lg sm:text-xl text-slate-900 dark:text-neutral-100 truncate">{formatFirstName(otherUser.displayName, "User")}</h1>
+                            <UserBadge isPremium={otherUser.isPremium} isSupporter={otherUser.isSupporter} isCreator={otherUser.isCreator} size="sm" />
                           </div>
-                        );
-                      })()
-                    ) : (
-                      <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105">
-                        <Users className="h-5 w-5 text-primary" />
-                      </div>
-                    )}
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <h1 className="font-extrabold text-base text-slate-900 dark:text-neutral-100 truncate group-hover:text-primary transition-colors flex items-center gap-1.5 leading-tight">
-                        <span>{activity?.title || chat?.placeName}</span>
-                        <Info className="h-4 w-4 text-slate-400 group-hover:text-primary transition-colors shrink-0 ml-0.5" />
-                      </h1>
-                      <span className="text-[11px] font-bold text-slate-500 dark:text-neutral-400 truncate block">
-                        {chat?.participantIds?.length || 1}{activity?.maxParticipants ? `/${activity.maxParticipants}` : ''} {language === 'de' ? 'Mitglieder' : 'members'}
-                        {activity && activity.maxParticipants && (activity.maxParticipants - (chat?.participantIds?.length || 0)) > 0 && (
-                          <span className="text-violet-600 dark:text-violet-400 font-extrabold ml-1">
-                            • Noch {activity.maxParticipants - (chat?.participantIds?.length || 0)} Plätze frei
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-              )}
-            </div>
-          </div>
-
-          {!isDirectMessage && (
-            <div className="flex items-center gap-1 shrink-0">
-              {activity && activity.status === 'active' && user && chat && (() => {
-                const spotsLeft = (activity.maxParticipants || 0) - (chat.participantIds?.length || 0);
-                if (activity.maxParticipants && spotsLeft > 0) {
-                  return (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 rounded-full text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40"
-                      title={language === 'de' ? 'Link teilen' : 'Share Link'}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const refCode = userProfile?.referralCode || '';
-                        const shareUrl = `${window.location.origin}/activities/${activity.id}/invite${refCode ? `?ref=${refCode}` : ''}`;
-                        const shareTitle = activity.title || chat.placeName || 'Aktiva';
-                        const dateStr = activity.activityDate && typeof activity.activityDate.toDate === 'function'
-                          ? activity.activityDate.toDate().toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })
-                          : '';
-                        const shareText = language === 'de'
-                          ? `Komm dazu: ${shareTitle} in ${activity.placeName || ''} am ${dateStr}. Noch ${spotsLeft} Plätze frei.`
-                          : `Join us: ${shareTitle} at ${activity.placeName || ''} on ${dateStr}. ${spotsLeft} spots left.`;
-
-                        if (typeof navigator !== 'undefined' && navigator.share) {
-                          try {
-                            await navigator.share({
-                              title: shareTitle,
-                              text: shareText,
-                              url: shareUrl
-                            });
-                          } catch (err) {
-                            console.error('Error sharing:', err);
-                          }
-                        } else {
-                          await navigator.clipboard.writeText(shareUrl);
-                          toast({
-                            title: language === 'de' ? 'Link kopiert!' : 'Link copied!',
-                            description: language === 'de' ? 'Der Einladungslink wurde in die Zwischenablage kopiert.' : 'Invitation link copied to clipboard.'
-                          });
-                        }
-                      }}
+                          {otherUser.username && (
+                            <span className="text-xs font-bold text-slate-400 dark:text-neutral-500 truncate">
+                              @{otherUser.username.replace(/^@/, '')}
+                            </span>
+                          )}
+                        </div>
+                    </Link>
+                ) : (
+                    <div 
+                      onClick={() => setShowRoomInfo(true)}
+                      className="flex items-center gap-3.5 min-w-0 flex-1 hover:opacity-85 active:scale-[0.99] transition-all cursor-pointer group select-none text-left"
+                      role="button"
+                      tabIndex={0}
                     >
-                      <Share2 className="h-4 w-4" />
-                      <span className="sr-only">{language === 'de' ? 'Link teilen' : 'Share Link'}</span>
-                    </Button>
-                  );
-                }
-                return null;
-              })()}
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800" onClick={() => setInfoSheetOpen(true)}>
-                <MoreVertical className="h-5 w-5" />
-                <span className="sr-only">Chat Info</span>
-              </Button>
-            </div>
-          )}
-        </header>
-
-        {/* MODUL: Freunde einladen Banner */}
-        {!isDirectMessage && activity && user && chat && activity.status === 'active' && (() => {
-          const spotsLeft = (activity.maxParticipants || 0) - (chat.participantIds?.length || 0);
-          if (!activity.maxParticipants || spotsLeft <= 0) return null;
-
-          return (
-            <div className="sticky top-16 z-10 w-full bg-gradient-to-r from-violet-500/10 to-indigo-500/10 dark:from-violet-500/20 dark:to-indigo-500/20 border-b border-violet-100/30 dark:border-neutral-800/80 px-4 py-2 flex items-center justify-between shadow-xs animate-in slide-in-from-top-2 duration-250">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs font-bold text-slate-700 dark:text-neutral-300">
-                  {spotsLeft === 1 
-                    ? (language === 'de' ? 'Noch 1 Platz frei' : '1 spot left') 
-                    : (language === 'de' ? `Noch ${spotsLeft} Plätze frei` : `${spotsLeft} spots left`)}
-                </span>
+                      {activity ? (
+                        (() => {
+                          const visualCategoryData = getRoomVisualCategory({ activity, place, chat });
+                          const primaryStyle = getPrimaryIconData(visualCategoryData, language);
+                          const PrimaryIcon = primaryStyle.icon;
+                          return (
+                            <div className={cn("h-11 w-11 sm:h-12 sm:w-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md transition-transform group-hover:scale-105", primaryStyle.gradientClass || "bg-primary/10")}>
+                              <PrimaryIcon className="text-white h-6 w-6 drop-shadow-xs" />
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105">
+                          <Users className="h-6 w-6 text-primary" />
+                        </div>
+                      )}
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <h1 className="font-black text-lg sm:text-xl text-slate-900 dark:text-neutral-100 truncate group-hover:text-primary transition-colors flex items-center gap-1.5 leading-tight">
+                          <span>{activity?.title || chat?.placeName}</span>
+                          <Info className="h-4.5 w-4.5 text-slate-400 group-hover:text-primary transition-colors shrink-0 ml-0.5" />
+                        </h1>
+                        <span className="text-xs font-bold text-slate-500 dark:text-neutral-400 truncate block mt-0.5">
+                          {chat?.participantIds?.length || 1}{activity?.maxParticipants ? `/${activity.maxParticipants}` : ''} {language === 'de' ? 'Mitglieder' : 'members'}
+                          {activity && activity.maxParticipants && (activity.maxParticipants - (chat?.participantIds?.length || 0)) > 0 && (
+                            <span className="text-violet-600 dark:text-violet-400 font-black ml-1.5">
+                              • Noch {activity.maxParticipants - (chat?.participantIds?.length || 0)} Plätze frei
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                )}
               </div>
-              <Button
-                onClick={async () => {
-                  const refCode = userProfile?.referralCode || '';
-                  const shareUrl = `${window.location.origin}/activities/${activity.id}/invite${refCode ? `?ref=${refCode}` : ''}`;
-                  const shareTitle = activity.title || chat.placeName || 'Aktiva';
-                  const dateStr = activity.activityDate && typeof activity.activityDate.toDate === 'function'
-                    ? activity.activityDate.toDate().toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })
-                    : '';
-                  const shareText = language === 'de'
-                    ? `Komm dazu: ${shareTitle} in ${activity.placeName || ''} am ${dateStr}. Noch ${spotsLeft} Plätze frei.`
-                    : `Join us: ${shareTitle} at ${activity.placeName || ''} on ${dateStr}. ${spotsLeft} spots left.`;
-
-                  if (typeof navigator !== 'undefined' && navigator.share) {
-                    try {
-                      await navigator.share({
-                        title: shareTitle,
-                        text: shareText,
-                        url: shareUrl
-                      });
-                    } catch (err) {
-                      console.error('Error sharing:', err);
-                    }
-                  } else {
-                    await navigator.clipboard.writeText(shareUrl);
-                    toast({
-                      title: language === 'de' ? 'Link kopiert!' : 'Link copied!',
-                      description: language === 'de' ? 'Der Einladungslink wurde in die Zwischenablage kopiert.' : 'Invitation link copied to clipboard.'
-                    });
-                  }
-                }}
-                variant="outline"
-                size="sm"
-                className="h-7 rounded-xl font-bold bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-[11px] px-3 shadow-2xs text-slate-800 dark:text-neutral-200 hover:bg-slate-50 dark:hover:bg-neutral-750 transition-all flex items-center gap-1.5"
-              >
-                <Share2 className="h-3 w-3 text-violet-500" />
-                <span>{language === 'de' ? 'Link teilen' : 'Share Link'}</span>
-              </Button>
             </div>
-          );
-        })()}
+
+            {!isDirectMessage && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                {activity && activity.status === 'active' && user && chat && (() => {
+                  const spotsLeft = (activity.maxParticipants || 0) - (chat.participantIds?.length || 0);
+                  if (activity.maxParticipants && spotsLeft > 0) {
+                    return (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-full text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40"
+                        title={language === 'de' ? 'Link teilen' : 'Share Link'}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const refCode = userProfile?.referralCode || '';
+                          const shareUrl = `${window.location.origin}/activities/${activity.id}/invite${refCode ? `?ref=${refCode}` : ''}`;
+                          const shareTitle = activity.title || chat.placeName || 'Aktiva';
+                          const dateStr = activity.activityDate && typeof activity.activityDate.toDate === 'function'
+                            ? activity.activityDate.toDate().toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })
+                            : '';
+                          const shareText = language === 'de'
+                            ? `Komm dazu: ${shareTitle} in ${activity.placeName || ''} am ${dateStr}. Noch ${spotsLeft} Plätze frei.`
+                            : `Join us: ${shareTitle} at ${activity.placeName || ''} on ${dateStr}. ${spotsLeft} spots left.`;
+
+                          if (typeof navigator !== 'undefined' && navigator.share) {
+                            try {
+                              await navigator.share({
+                                title: shareTitle,
+                                text: shareText,
+                                url: shareUrl
+                              });
+                            } catch (err) {
+                              console.error('Error sharing:', err);
+                            }
+                          } else {
+                            await navigator.clipboard.writeText(shareUrl);
+                            toast({
+                              title: language === 'de' ? 'Link kopiert!' : 'Link copied!',
+                              description: language === 'de' ? 'Der Einladungslink wurde in die Zwischenablage kopiert.' : 'Invitation link copied to clipboard.'
+                            });
+                          }
+                        }}
+                      >
+                        <Share2 className="h-5 w-5" />
+                        <span className="sr-only">{language === 'de' ? 'Link teilen' : 'Share Link'}</span>
+                      </Button>
+                    );
+                  }
+                  return null;
+                })()}
+                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800" onClick={() => setInfoSheetOpen(true)}>
+                  <MoreVertical className="h-5 w-5" />
+                  <span className="sr-only">Chat Info</span>
+                </Button>
+              </div>
+            )}
+          </div>
+        </header>
 
         {!isDirectMessage && activity && user && chat && activity.status === 'active' && activity.completionVotes && activity.completionVotes.length > 0 && (
           <CompletionBanner activity={activity} currentUser={user} participantDetails={chat.participantDetails} />
@@ -1291,8 +1238,8 @@ export default function ChatRoomPage() {
 
         {/* Pinned Messages Bar */}
         {chat?.pinnedMessages && chat.pinnedMessages.length > 0 && (
-          <div className="sticky top-16 z-10 w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border-b border-slate-200 dark:border-neutral-800 px-4 py-2 flex items-center justify-between shadow-xs animate-in slide-in-from-top-2 duration-250">
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="sticky top-20 z-10 w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border-b border-slate-200 dark:border-neutral-800 px-4 py-2 flex items-center justify-between shadow-xs animate-in slide-in-from-top-2 duration-250">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1 max-w-5xl mx-auto">
               <Pin className="h-4 w-4 text-primary shrink-0" />
               <div className="min-w-0 flex-1">
                 <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
@@ -1361,8 +1308,8 @@ export default function ChatRoomPage() {
           </div>
         )}
 
-        <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto pt-4 pb-32">
-          <div className="flex flex-col w-full max-w-3xl mx-auto">
+        <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto pt-4 pb-36">
+          <div className="flex flex-col w-full max-w-5xl mx-auto px-2 sm:px-6">
             {isLoadingOlder && (
               <div className="flex items-center justify-center py-2">
                 <Loader2 className="h-5 w-5 text-primary animate-spin" />
@@ -1413,7 +1360,7 @@ export default function ChatRoomPage() {
       </div>
 
       <footer 
-        className="fixed left-0 right-0 z-10 mx-auto w-full max-w-3xl bg-white dark:bg-neutral-900 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.05)] border-t border-slate-200 dark:border-neutral-800 transition-colors"
+        className="fixed left-0 right-0 z-10 mx-auto w-full max-w-5xl px-2 sm:px-6 bg-white dark:bg-neutral-900 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.05)] border-t border-slate-200 dark:border-neutral-800 transition-colors sm:rounded-t-2xl"
         style={{ bottom: 'max(env(safe-area-inset-bottom), 8px)' }}
       >
         {/* Reply Preview */}
