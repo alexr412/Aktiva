@@ -69,7 +69,7 @@ export function NotificationBell() {
                     )}
                 </div>
                 <Separator />
-                <div className="p-2 max-h-80 overflow-y-auto space-y-1">
+                <div className="p-2 max-h-80 overflow-y-auto custom-scrollbar space-y-1">
                     {notifications.length > 0 ? (
                         notifications.map((notification) => (
                             <NotificationItem 

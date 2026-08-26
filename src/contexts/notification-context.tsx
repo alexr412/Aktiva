@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import { collection, doc, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import type { Notification } from '@/lib/types';
-import { normalizeNotification, formatUnreadBadge } from '@/lib/types';
+import { normalizeNotification, formatUnreadBadge, isGenericSystemNotification } from '@/lib/types';
 import { markNotificationAsRead, markAllNotificationsAsRead, deleteNotification as deleteNotificationFn } from '@/lib/firebase/firestore';
 
 interface NotificationContextType {
@@ -105,9 +105,39 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           })
         );
 
+        // Filter & prune: keep max 3 generic system notifications, auto-delete excess
+        const systemNotifs: Notification[] = [];
+        const personalNotifs: Notification[] = [];
+
+        for (const n of parsedNotifications) {
+          if (isGenericSystemNotification(n.type)) {
+            systemNotifs.push(n);
+          } else {
+            personalNotifs.push(n);
+          }
+        }
+
+        const keptSystemNotifs = systemNotifs.slice(0, 3);
+        const excessSystemNotifs = systemNotifs.slice(3);
+
+        const filteredNotifications = [...personalNotifs, ...keptSystemNotifs].sort((a, b) => {
+          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+          return timeB - timeA;
+        });
+
+        // Trigger background deletion for excess system notifications
+        if (excessSystemNotifs.length > 0) {
+          excessSystemNotifs.forEach((excessNotif) => {
+            deleteNotificationFn(excessNotif.id).catch((err) => {
+              console.warn(`[NotificationContext] Auto-deleting excess system notification ${excessNotif.id} failed:`, err);
+            });
+          });
+        }
+
         if (!initialLoadCompleted) {
           initialLoadCompleted = true;
-          setNotifications(parsedNotifications);
+          setNotifications(filteredNotifications);
           setIsInitialSnapshotDone(true);
           setLoading(false);
         } else {
@@ -119,11 +149,13 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
                 id: change.doc.id,
                 ...change.doc.data(),
               });
-              newlyAddedDocs.push(normalized);
+              if (filteredNotifications.some((fn) => fn.id === normalized.id)) {
+                newlyAddedDocs.push(normalized);
+              }
             }
           });
 
-          setNotifications(parsedNotifications);
+          setNotifications(filteredNotifications);
           if (newlyAddedDocs.length > 0) {
             setNewNotificationEvents((prev) => [...prev, ...newlyAddedDocs]);
           }

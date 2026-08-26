@@ -82,6 +82,18 @@ export interface NotificationSenderProfile {
   username?: string;
 }
 
+export const GENERIC_SYSTEM_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  'system',
+  'engagement_reminder',
+  'recommendation',
+  'nearby_activity',
+  'nearby_spot',
+];
+
+export function isGenericSystemNotification(type: string): boolean {
+  return GENERIC_SYSTEM_NOTIFICATION_TYPES.includes(type as NotificationType);
+}
+
 export interface Notification {
   id: string;
   recipientId: string;

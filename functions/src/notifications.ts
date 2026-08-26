@@ -232,6 +232,29 @@ export async function createNotificationAndDispatch(params: CreateNotificationPa
 
   console.log(`[NotificationService] Created notification ${notificationId} for user ${sanitizedRecipientId} (pushSent=${pushSent})`);
 
+  // Auto-prune generic system notifications if recipient has more than 3
+  const GENERIC_SYSTEM_TYPES = ['system', 'engagement_reminder', 'recommendation', 'nearby_activity', 'nearby_spot'];
+  if (GENERIC_SYSTEM_TYPES.includes(type)) {
+    db.collection('notifications')
+      .where('recipientId', '==', sanitizedRecipientId)
+      .where('type', 'in', GENERIC_SYSTEM_TYPES)
+      .orderBy('createdAt', 'desc')
+      .get()
+      .then((existingSnap) => {
+        if (existingSnap.size > 3) {
+          const docsToDelete = existingSnap.docs.slice(3);
+          docsToDelete.forEach((docToDelete) => {
+            if (docToDelete.id !== notificationId) {
+              docToDelete.ref.delete().catch(() => {});
+            }
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn(`[NotificationService] Prune system notifications failed for ${sanitizedRecipientId}:`, err);
+      });
+  }
+
   return { created: true, notificationId, pushSent };
 }
 
