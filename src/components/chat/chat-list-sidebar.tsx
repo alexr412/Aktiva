@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import type { Chat } from '@/lib/types';
@@ -11,13 +12,13 @@ import { formatDistanceToNow } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
 import { useChatSync } from '@/contexts/chat-sync-context';
+import { MAIN_NAV_ITEMS, getIsActiveNav } from '@/lib/navigation-config';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Users, UserPlus, Search, Bell, MessageCircle, User, Building } from 'lucide-react';
 import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
-import { DesktopNav } from '@/components/desktop-nav';
 import { Input } from '@/components/ui/input';
 import { cn, formatLabel } from '@/lib/utils';
 import { getPrimaryIconData, getRoomVisualCategory } from '@/lib/tag-config';
@@ -41,6 +42,7 @@ export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProp
   const { user, userProfile, loading: authLoading } = useAuth();
   const { chats, loading: syncLoading } = useChatSync();
   const language = useLanguage();
+  const pathname = usePathname();
   const [showAddFriendDialog, setShowAddFriendDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'places' | 'people'>('all');
@@ -231,7 +233,27 @@ export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProp
             <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-neutral-100 truncate">Chats</h1>
             <MessageCircle className="h-5 w-5 text-violet-500 fill-current opacity-30 shrink-0" />
           </div>
-          <DesktopNav />
+          {/* Compact App Navigation */}
+          <nav aria-label="Quick App Navigation" className="hidden sm:flex items-center gap-1 bg-slate-100/80 dark:bg-neutral-900/80 p-1 rounded-xl border border-slate-200/50 dark:border-neutral-800/80">
+            {MAIN_NAV_ITEMS.map((item) => {
+              const isActive = getIsActiveNav(item.href, pathname);
+              const label = language === 'de' ? item.labelDe : item.labelEn;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={label}
+                  aria-label={label}
+                  className={cn(
+                    "p-1.5 rounded-lg transition-all duration-200 relative text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white",
+                    isActive && "bg-white dark:bg-neutral-800 text-emerald-500 dark:text-emerald-400 shadow-2xs font-bold"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" strokeWidth={isActive ? 2.5 : 2} />
+                </Link>
+              );
+            })}
+          </nav>
           <div className="flex items-center gap-2 shrink-0">
             <div className="relative">
               <Button 

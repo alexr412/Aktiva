@@ -1365,12 +1365,12 @@ export default function ChatRoomPage() {
         </div>
 
       <footer 
-        className="sticky bottom-0 z-10 w-full max-w-4xl mx-auto px-2 sm:px-6 bg-white dark:bg-neutral-900 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.05)] border-t border-slate-200 dark:border-neutral-800 transition-colors sm:rounded-t-2xl"
-        style={{ bottom: 'max(env(safe-area-inset-bottom), 8px)' }}
+        className="sticky bottom-0 z-10 w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border-t border-slate-200 dark:border-neutral-800/80 transition-colors px-4 py-3"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
       >
         {/* Reply Preview */}
         {replyingToMessage && (
-          <div className="px-4 py-2 bg-slate-50 dark:bg-neutral-800/50 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-150">
+          <div className="px-4 py-2 mb-2 bg-slate-50 dark:bg-neutral-800/50 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between rounded-xl animate-in slide-in-from-bottom-2 duration-150">
             <div className="flex-1 min-w-0 border-l-4 border-primary pl-2.5">
               <span className="block text-[9px] font-black uppercase text-primary tracking-wider truncate">
                 {language === 'de' ? 'Antworten auf' : 'Replying to'} {(() => {
@@ -1400,7 +1400,7 @@ export default function ChatRoomPage() {
 
         {/* Edit Preview */}
         {editingMessage && (
-          <div className="px-4 py-2 bg-amber-500/5 dark:bg-amber-500/10 border-b border-amber-500/10 flex items-center justify-between animate-in slide-in-from-bottom-2 duration-150">
+          <div className="px-4 py-2 mb-2 bg-amber-500/5 dark:bg-amber-500/10 border-b border-amber-500/10 flex items-center justify-between rounded-xl animate-in slide-in-from-bottom-2 duration-150">
             <div className="flex-1 min-w-0 border-l-4 border-amber-500 pl-2.5">
               <span className="block text-[9px] font-black uppercase text-amber-500 tracking-wider truncate">
                 {language === 'de' ? 'Nachricht bearbeiten' : 'Edit message'}
@@ -1423,7 +1423,7 @@ export default function ChatRoomPage() {
           </div>
         )}
 
-        <div className="p-3 sm:p-4">
+        <div>
           {activity && (activity.status === 'completed' || activity.status === 'cancelled' || activity.status === 'blacklisted') ? (
             <div className="text-center text-xs font-bold text-slate-400 py-3 bg-slate-50 dark:bg-neutral-850/20 rounded-2xl border border-slate-100 dark:border-neutral-800">
               {language === 'de'
@@ -1431,7 +1431,7 @@ export default function ChatRoomPage() {
                 : 'This chat is archived because the activity has ended or been cancelled.'}
             </div>
           ) : (
-            <form onSubmit={handleSendMessage} className="relative flex items-center gap-2">
+            <form onSubmit={handleSendMessage} className="flex items-center gap-3 w-full">
               <Input
                 value={newMessage}
                 onChange={(e) => {
@@ -1441,16 +1441,16 @@ export default function ChatRoomPage() {
                 }}
                 placeholder={language === 'de' ? "Nachricht schreiben..." : "Write a message..."}
                 autoComplete="off"
-                className="w-full rounded-full bg-slate-50 dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 pr-12 h-12 text-sm font-medium focus-visible:ring-primary/20 text-foreground"
+                className="flex-1 rounded-2xl bg-slate-100 dark:bg-neutral-800 border-none px-4 h-11 text-sm font-medium focus-visible:ring-primary/20 text-foreground"
                 disabled={isSending}
               />
               <Button
                 type="submit"
                 size="icon"
                 disabled={!newMessage.trim() || isSending}
-                className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 flex-shrink-0 transition-transform active:scale-95"
+                className="h-11 w-11 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 flex-shrink-0 transition-transform active:scale-95"
               >
-                <Send className="h-4 w-4" />
+                <Send className="h-4.5 w-4.5" />
                 <span className="sr-only">{language === 'de' ? 'Senden' : 'Send'}</span>
               </Button>
             </form>
