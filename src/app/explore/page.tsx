@@ -483,7 +483,7 @@ export default function ExplorePage() {
                                 </motion.div>
                             )
                         ) : (
-                            <div className="relative w-full max-w-[340px] xs:max-w-[370px] sm:max-w-[420px] aspect-[3.4/5] max-h-[min(450px,52vh)] sm:max-h-[540px] my-auto">
+                            <div className="relative w-full max-w-[320px] xs:max-w-[350px] sm:max-w-[420px] aspect-[3.3/5] max-h-[min(390px,44vh)] sm:max-h-[540px] my-auto">
                               <AnimatePresence mode="popLayout">
                                   {cards.slice(-3).map((card, index) => {
                                       const displayedIndex = cards.length - cards.slice(-3).length + index;
@@ -723,7 +723,7 @@ export default function ExplorePage() {
 
                         {/* Action Buttons */}
                         {cards.length > 0 && !isLoading && (
-                            <div className="w-full shrink-0 py-2 flex items-center justify-center z-20 pointer-events-none">
+                            <div className="w-full shrink-0 pt-1 pb-1 mb-2 sm:mb-3 flex items-center justify-center z-20 pointer-events-none">
                                 <motion.div 
                                     initial={{ y: 20, opacity: 0 }}
                                     animate={{ y: 0, opacity: 1 }}

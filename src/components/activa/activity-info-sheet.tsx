@@ -66,6 +66,14 @@ export function ActivityInfoSheet({
   const router = useRouter();
   const [internalIsJoining, setInternalIsJoining] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   if (!activity) return null;
 
   const isJoining = externalIsJoining || internalIsJoining;
@@ -123,14 +131,6 @@ export function ActivityInfoSheet({
       setInternalIsJoining(false);
     }
   };
-
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 640);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Gender Labels mapping
   const genderLabels: Record<string, string> = {
