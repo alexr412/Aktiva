@@ -28,8 +28,8 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full w-full bg-[#fcfcfb] dark:bg-black/95 overflow-hidden">
-      {/* Sidebar: Full width on mobile, 380px-420px fixed column on desktop */}
-      <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 h-full">
+      {/* Sidebar: Full width on mobile, 320px-350px fixed column on desktop */}
+      <div className="w-full lg:w-[320px] xl:w-[350px] shrink-0 h-full">
         <ChatListSidebar />
       </div>
 

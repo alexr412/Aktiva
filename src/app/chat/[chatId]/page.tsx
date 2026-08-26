@@ -1102,7 +1102,7 @@ export default function ChatRoomPage() {
     <>
       <div className="flex h-full w-full bg-slate-50 dark:bg-black/95 overflow-hidden">
         {/* Left Sidebar on Desktop */}
-        <div className="hidden lg:block lg:w-[380px] xl:w-[420px] shrink-0 h-full">
+        <div className="hidden lg:block lg:w-[320px] xl:w-[350px] shrink-0 h-full">
           <ChatListSidebar activeChatId={chatId} />
         </div>
 
@@ -1110,8 +1110,16 @@ export default function ChatRoomPage() {
         <div onClick={() => setActiveMenuMessageId(null)} className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative">
           <header className="sticky top-0 z-20 flex h-16 sm:h-18 shrink-0 items-center justify-between gap-3 bg-white/95 dark:bg-neutral-900/95 px-4 sm:px-6 backdrop-blur-md border-b border-slate-100 dark:border-neutral-800/80 shadow-xs w-full">
           <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
-            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500 dark:text-neutral-400 shrink-0 hover:bg-slate-100 dark:hover:bg-neutral-800" onClick={() => router.back()}>
-              <ArrowLeft className="h-5 w-5" />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-10 w-10 rounded-full text-slate-500 dark:text-neutral-400 shrink-0 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors" 
+              onClick={() => router.push('/chat')}
+              title={language === 'de' ? 'Chat schließen' : 'Close chat'}
+            >
+              <X className="hidden lg:block h-5 w-5 text-slate-500 hover:text-slate-900 dark:text-neutral-400 dark:hover:text-white" />
+              <ArrowLeft className="lg:hidden h-5 w-5" />
+              <span className="sr-only">{language === 'de' ? 'Chat schließen' : 'Close chat'}</span>
             </Button>
             
             <div className="flex items-center gap-3 min-w-0 flex-1">

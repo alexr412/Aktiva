@@ -15,6 +15,7 @@ import { useChatSync } from '@/contexts/chat-sync-context';
 import { MAIN_NAV_ITEMS, getIsActiveNav } from '@/lib/navigation-config';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Users, UserPlus, Search, Bell, MessageCircle, User, Building } from 'lucide-react';
@@ -229,49 +230,38 @@ export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProp
     <div className={cn("flex flex-col h-full w-full bg-[#fcfcfb] dark:bg-neutral-950 border-r border-slate-200/80 dark:border-neutral-800/80 overflow-hidden", className)}>
       <header className="px-4 pt-4 pb-2 shrink-0 border-b border-slate-100 dark:border-neutral-900 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md">
         <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Link href="/profile" title={language === 'de' ? 'Mein Profil' : 'My Profile'} className="hover:opacity-85 transition-opacity shrink-0">
+              <ProfileAvatar 
+                className="h-8.5 w-8.5 border border-white dark:border-neutral-800 shadow-2xs"
+                photoURL={userProfile?.photoURL || user?.photoURL}
+                displayName={userProfile?.displayName || user?.displayName}
+                isPremium={userProfile?.isPremium}
+                isCreator={userProfile?.isCreator}
+                isSupporter={userProfile?.isSupporter}
+              />
+            </Link>
             <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-neutral-100 truncate">Chats</h1>
             <MessageCircle className="h-5 w-5 text-violet-500 fill-current opacity-30 shrink-0" />
           </div>
-          {/* Compact App Navigation */}
-          <nav aria-label="Quick App Navigation" className="hidden sm:flex items-center gap-1 bg-slate-100/80 dark:bg-neutral-900/80 p-1 rounded-xl border border-slate-200/50 dark:border-neutral-800/80">
-            {MAIN_NAV_ITEMS.map((item) => {
-              const isActive = getIsActiveNav(item.href, pathname);
-              const label = language === 'de' ? item.labelDe : item.labelEn;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={label}
-                  aria-label={label}
-                  className={cn(
-                    "p-1.5 rounded-lg transition-all duration-200 relative text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white",
-                    isActive && "bg-white dark:bg-neutral-800 text-emerald-500 dark:text-emerald-400 shadow-2xs font-bold"
-                  )}
-                >
-                  <item.icon className="h-4 w-4" strokeWidth={isActive ? 2.5 : 2} />
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <div className="relative">
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-9 w-9 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800" 
+                className="h-8.5 w-8.5 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800" 
                 aria-label={language === 'de' ? 'Benachrichtigungen' : 'Notifications'}
               >
                 <Bell className="h-4.5 w-4.5" />
               </Button>
               {unreadNotifications > 0 && (
-                <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 border-2 border-white dark:border-neutral-950 rounded-full shadow-xs" />
+                <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-rose-500 border-2 border-white dark:border-neutral-950 rounded-full shadow-xs" />
               )}
             </div>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-9 w-9 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800" 
+              className="h-8.5 w-8.5 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800" 
               aria-label={language === 'de' ? 'Freund hinzufügen' : 'Add friend'}
               onClick={() => setShowAddFriendDialog(true)}
             >
