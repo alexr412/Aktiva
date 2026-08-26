@@ -25,6 +25,7 @@ import { MobileRadarCard } from '@/components/radar/mobile-radar-card';
 import { cn, formatLabel } from '@/lib/utils';
 import { calculateDistance } from '@/lib/geo-utils';
 import { PlaceDetails } from '@/components/activa/place-details';
+import { ActivityInfoSheet } from '@/components/activa/activity-info-sheet';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { getPrimaryIconData, ACTIVITY_EXPIRY_THRESHOLD_MS } from '@/lib/tag-config';
@@ -58,7 +59,7 @@ export default function ExplorePage() {
     const [activeTabId, setActiveTabId] = useState<string>('all');
     const [radiusKm, setRadiusKm] = useState<number | null>(null);
     const [lastSwipedCard, setLastSwipedCard] = useState<Activity | null>(null);
-    const [selectedPlace, setSelectedPlace] = useState<Activity | null>(null);
+    const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [swipedIds, setSwipedIds] = useState<Set<string>>(new Set());
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
@@ -292,6 +293,40 @@ export default function ExplorePage() {
         setCards(prev => [...prev, lastSwipedCard]);
         setLastSwipedCard(null);
     };
+
+    const handleJoinFromSheet = async (activityToJoin: Activity) => {
+        if (!user) {
+            router.push('/login');
+            return;
+        }
+        if (activityToJoin.isPaid && activityToJoin.price && activityToJoin.price > 0) {
+            router.push(`/checkout/${activityToJoin.id}`);
+            return;
+        }
+        try {
+            const status = await joinActivity(activityToJoin.id!, user, null, null, activityToJoin.joinMode);
+            if (status === 'requested') {
+                toast({ 
+                    title: language === 'de' ? 'Anfrage gesendet!' : 'Request sent!', 
+                    description: language === 'de' ? 'Der Host wird benachrichtigt.' : 'The host will be notified.' 
+                });
+            } else {
+                toast({ 
+                    title: language === 'de' ? 'Aktivität beigetreten!' : 'Activity joined!', 
+                    description: language === 'de' ? 'Du findest sie jetzt in deinen Chats.' : 'You can find it in your chats now.' 
+                });
+            }
+            setSwipedIds(prev => new Set(prev).add(activityToJoin.id!));
+            setCards(prev => prev.filter(c => c.id !== activityToJoin.id));
+        } catch (error: any) {
+            toast({ 
+                title: language === 'de' ? 'Fehler' : 'Error', 
+                description: error.message || (language === 'de' ? 'Beitritt fehlgeschlagen.' : 'Joining failed.'), 
+                variant: 'destructive' 
+            });
+            throw error;
+        }
+    };
     
     const onDragEnd = (event: any, info: any) => {
       const { offset } = info;
@@ -471,7 +506,7 @@ export default function ExplorePage() {
                                               key={card.id}
                                               onClick={() => {
                                                   if (isTopCard && Math.abs(dragX) < 10) {
-                                                      setSelectedPlace(card);
+                                                      setSelectedActivity(card);
                                                   }
                                               }}
                                               className={cn(
@@ -706,7 +741,7 @@ export default function ExplorePage() {
                                     whileTap={{ scale: 0.9 }}
                                     onClick={() => {
                                         const topCard = cards[cards.length - 1];
-                                        if (topCard) setSelectedPlace(topCard);
+                                        if (topCard) setSelectedActivity(topCard);
                                     }}
                                     aria-label={language === 'de' ? 'Details anzeigen' : 'Show details'}
                                     className="h-12 w-12 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-400 flex items-center justify-center transition-colors hover:bg-slate-200"
@@ -830,7 +865,7 @@ export default function ExplorePage() {
                                 </div>
 
                                 <Button
-                                    onClick={() => setSelectedPlace(topCard)}
+                                    onClick={() => setSelectedActivity(topCard)}
                                     className="w-full rounded-2xl bg-slate-900 dark:bg-neutral-100 hover:bg-slate-800 dark:hover:bg-neutral-200 text-white dark:text-slate-900 font-extrabold text-xs py-3.5 h-auto transition-all shadow-md active:scale-95"
                                 >
                                     <Info className="h-4 w-4 mr-2" />
@@ -842,61 +877,13 @@ export default function ExplorePage() {
                 })()}
             </aside>
 
-            {/* Place Details Overlay */}
-            {(() => {
-                if (!selectedPlace) return null;
-                const mappedPlace = {
-                    id: selectedPlace.placeId || selectedPlace.id || '',
-                    name: selectedPlace.placeName || (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'),
-                    address: selectedPlace.placeAddress || '',
-                    lat: selectedPlace.lat || 0,
-                    lon: selectedPlace.lon || 0,
-                    categories: selectedPlace.categories || [],
-                    distance: (userLocation && selectedPlace.lat && selectedPlace.lon) 
-                      ? calculateDistance(userLocation.lat, userLocation.lng, selectedPlace.lat, selectedPlace.lon)
-                      : undefined,
-                    openingHours: (selectedPlace as any).openingHours || null
-                } as Place;
-
-                if (isMobile) {
-                    return (
-                        <Sheet open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
-                            <SheetContent side="bottom" className="p-0 h-[92vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none bg-white dark:bg-neutral-900 z-[9999]">
-                                <SheetHeader className="sr-only">
-                                    <SheetTitle>{mappedPlace.name}</SheetTitle>
-                                </SheetHeader>
-                                <div className="h-full w-full">
-                                    <PlaceDetails
-                                        place={mappedPlace}
-                                        onClose={() => setSelectedPlace(null)}
-                                        onCreateActivity={() => {
-                                            setActivityModalPlace(mappedPlace);
-                                            setSelectedPlace(null);
-                                        }}
-                                    />
-                                </div>
-                            </SheetContent>
-                        </Sheet>
-                    );
-                } else {
-                    return (
-                        <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
-                            <DialogContent className="p-0 w-full max-w-4xl h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] sm:h-[88vh] sm:max-h-[88vh] flex flex-col min-h-0 gap-0 overflow-hidden border-none outline-none rounded-none sm:rounded-[2.5rem] dark:bg-neutral-900 z-[9999]" hideCloseButton>
-                                <DialogTitle className="sr-only">{mappedPlace.name || (language === 'de' ? 'Ort Details' : 'Place Details')}</DialogTitle>
-                                <DialogDescription className="sr-only">{language === 'de' ? 'Details zum ausgewählten Ort' : 'Details about the selected place'}</DialogDescription>
-                                <PlaceDetails
-                                    place={mappedPlace}
-                                    onClose={() => setSelectedPlace(null)}
-                                    onCreateActivity={() => {
-                                        setActivityModalPlace(mappedPlace);
-                                        setSelectedPlace(null);
-                                    }}
-                                />
-                            </DialogContent>
-                        </Dialog>
-                    );
-                }
-            })()}
+            {/* Activity Details Overlay */}
+            <ActivityInfoSheet
+                activity={selectedActivity}
+                open={!!selectedActivity}
+                onOpenChange={(open) => !open && setSelectedActivity(null)}
+                onJoin={handleJoinFromSheet}
+            />
 
             <CreateActivityDialog 
                 place={activityModalPlace === 'custom' ? null : activityModalPlace} 

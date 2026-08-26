@@ -128,7 +128,7 @@ export function ActivityInfoSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex flex-col p-0 sm:max-w-md border-none rounded-l-[2.5rem] overflow-hidden dark:bg-neutral-950">
+      <SheetContent side="bottom" className="flex flex-col p-0 w-full sm:max-w-md border-none rounded-t-[2.5rem] sm:rounded-l-[2.5rem] overflow-hidden dark:bg-neutral-950 z-[9999]">
         <SheetHeader className="sr-only">
           <SheetTitle>{activity.isCustomActivity ? (activity.title || activity.placeName) : activity.placeName}</SheetTitle>
           <SheetDescription>
