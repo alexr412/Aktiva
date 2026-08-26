@@ -191,7 +191,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
                 <PrimaryIcon className="text-white h-10 w-10 drop-shadow-md" />
               </div>
               
-              <h2 className="">
+              <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100 mb-3 leading-snug">
                 {activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.title || chat.placeName) : chat.placeName}
               </h2>
               
@@ -340,7 +340,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
 
             <div className="space-y-6">
               <div className="flex items-center justify-between px-2">
-                <h3 className="">{language === 'de' ? 'Mitglieder' : 'Members'}</h3>
+                <h3 className="text-xs font-black text-slate-400 dark:text-neutral-400 uppercase tracking-wider">{language === 'de' ? 'Mitglieder' : 'Members'}</h3>
                 <span className="h-1 flex-1 mx-4 bg-slate-50 dark:bg-neutral-800 rounded-full" />
               </div>
               
@@ -435,7 +435,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
               </AlertDialogTrigger>
               <AlertDialogContent className="rounded-3xl border-none shadow-2xl dark:bg-neutral-900">
                 <AlertDialogHeader>
-                   <AlertDialogTitle className="">
+                   <AlertDialogTitle className="text-xl font-black dark:text-neutral-100">
                      {language === 'de' ? 'Wirklich verlassen?' : 'Really leave?'}
                    </AlertDialogTitle>
                    <AlertDialogDescription className="text-sm font-medium dark:text-neutral-400">

@@ -1100,73 +1100,133 @@ export default function ChatRoomPage() {
   return (
     <>
       <div onClick={() => setActiveMenuMessageId(null)} className="flex flex-col h-full bg-slate-50 dark:bg-black/95 overflow-hidden">
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-white/90 dark:bg-neutral-900/90 px-2 backdrop-blur-md shadow-sm">
-          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500 dark:text-neutral-400" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          
-          <div className="flex items-center gap-3 flex-1 truncate">
-            {isDirectMessage && otherUser ? (
-                <Link href={`/users/${otherUser.uid}`} className="flex items-center gap-2.5 truncate hover:opacity-80 transition-opacity cursor-pointer">
-                    <ProfileAvatar 
-                      className="h-9 w-9 shadow-sm border border-white dark:border-neutral-800"
-                      photoURL={otherUser.photoURL}
-                      displayName={otherUser.displayName}
-                      isPremium={otherUser.isPremium}
-                      isCreator={otherUser.isCreator}
-                      isSupporter={otherUser.isSupporter}
-                      level={otherUser.level || 1}
-                      showLevelBadge={true}
-                    />
-                    <div className="flex items-center gap-1.5 truncate">
-                      <h1 className="">{formatFirstName(otherUser.displayName, "User")}</h1>
-                      <UserBadge isPremium={otherUser.isPremium} isSupporter={otherUser.isSupporter} isCreator={otherUser.isCreator} size="sm" />
-                    </div>
-                </Link>
-            ) : (
-                <div 
-                  className="flex items-center gap-2.5 truncate"
-                >
-                  {activity ? (
-                    (() => {
-                      const visualCategoryData = getRoomVisualCategory({ activity, place, chat });
-                      const primaryStyle = getPrimaryIconData(visualCategoryData, language);
-                      const PrimaryIcon = primaryStyle.icon;
-                      return (
-                        <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm", primaryStyle.gradientClass || "bg-primary/10")}>
-                          <PrimaryIcon className="text-white h-5 w-5 text-white drop-shadow-sm" />
+        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-3 bg-white/90 dark:bg-neutral-900/90 px-3 backdrop-blur-md border-b border-slate-100 dark:border-neutral-800/80 shadow-xs">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-500 dark:text-neutral-400 shrink-0" onClick={() => router.back()}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              {isDirectMessage && otherUser ? (
+                  <Link href={`/users/${otherUser.uid}`} className="flex items-center gap-2.5 truncate hover:opacity-80 transition-opacity cursor-pointer">
+                      <ProfileAvatar 
+                        className="h-9 w-9 shadow-sm border border-white dark:border-neutral-800 shrink-0"
+                        photoURL={otherUser.photoURL}
+                        displayName={otherUser.displayName}
+                        isPremium={otherUser.isPremium}
+                        isCreator={otherUser.isCreator}
+                        isSupporter={otherUser.isSupporter}
+                        level={otherUser.level || 1}
+                        showLevelBadge={true}
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <h1 className="font-extrabold text-base text-slate-900 dark:text-neutral-100 truncate">{formatFirstName(otherUser.displayName, "User")}</h1>
+                          <UserBadge isPremium={otherUser.isPremium} isSupporter={otherUser.isSupporter} isCreator={otherUser.isCreator} size="sm" />
                         </div>
-                      );
-                    })()
-                  ) : (
-                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Users className="h-5 w-5 text-primary" />
-                    </div>
-                  )}
-                  <h1 className="font-black text-lg text-slate-900 dark:text-neutral-100 truncate flex items-center gap-1.5">
-                    {activity?.title || chat?.placeName}
-                    {place && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowRoomInfo(true);
-                        }}
-                        className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-500 dark:text-neutral-450 hover:text-primary hover:bg-slate-200 dark:hover:bg-neutral-700 transition-colors shrink-0 outline-none"
-                        title={language === 'de' ? 'Raum-Info' : 'Room Info'}
-                      >
-                        <Info className="h-3.5 w-3.5" />
-                      </button>
+                        {otherUser.username && (
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-neutral-500 truncate">
+                            @{otherUser.username.replace(/^@/, '')}
+                          </span>
+                        )}
+                      </div>
+                  </Link>
+              ) : (
+                  <div 
+                    onClick={() => setShowRoomInfo(true)}
+                    className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-85 active:scale-[0.99] transition-all cursor-pointer group select-none text-left"
+                    role="button"
+                    tabIndex={0}
+                  >
+                    {activity ? (
+                      (() => {
+                        const visualCategoryData = getRoomVisualCategory({ activity, place, chat });
+                        const primaryStyle = getPrimaryIconData(visualCategoryData, language);
+                        const PrimaryIcon = primaryStyle.icon;
+                        return (
+                          <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-105", primaryStyle.gradientClass || "bg-primary/10")}>
+                            <PrimaryIcon className="text-white h-5 w-5 drop-shadow-xs" />
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105">
+                        <Users className="h-5 w-5 text-primary" />
+                      </div>
                     )}
-                  </h1>
-                </div>
-            )}
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <h1 className="font-extrabold text-base text-slate-900 dark:text-neutral-100 truncate group-hover:text-primary transition-colors flex items-center gap-1.5 leading-tight">
+                        <span>{activity?.title || chat?.placeName}</span>
+                        <Info className="h-4 w-4 text-slate-400 group-hover:text-primary transition-colors shrink-0 ml-0.5" />
+                      </h1>
+                      <span className="text-[11px] font-bold text-slate-500 dark:text-neutral-400 truncate block">
+                        {chat?.participantIds?.length || 1}{activity?.maxParticipants ? `/${activity.maxParticipants}` : ''} {language === 'de' ? 'Mitglieder' : 'members'}
+                        {activity && activity.maxParticipants && (activity.maxParticipants - (chat?.participantIds?.length || 0)) > 0 && (
+                          <span className="text-violet-600 dark:text-violet-400 font-extrabold ml-1">
+                            • Noch {activity.maxParticipants - (chat?.participantIds?.length || 0)} Plätze frei
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+              )}
+            </div>
           </div>
 
           {!isDirectMessage && (
-              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-500 dark:text-neutral-400" onClick={() => setInfoSheetOpen(true)}>
+            <div className="flex items-center gap-1 shrink-0">
+              {activity && activity.status === 'active' && user && chat && (() => {
+                const spotsLeft = (activity.maxParticipants || 0) - (chat.participantIds?.length || 0);
+                if (activity.maxParticipants && spotsLeft > 0) {
+                  return (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-full text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/40"
+                      title={language === 'de' ? 'Link teilen' : 'Share Link'}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const refCode = userProfile?.referralCode || '';
+                        const shareUrl = `${window.location.origin}/activities/${activity.id}/invite${refCode ? `?ref=${refCode}` : ''}`;
+                        const shareTitle = activity.title || chat.placeName || 'Aktiva';
+                        const dateStr = activity.activityDate && typeof activity.activityDate.toDate === 'function'
+                          ? activity.activityDate.toDate().toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })
+                          : '';
+                        const shareText = language === 'de'
+                          ? `Komm dazu: ${shareTitle} in ${activity.placeName || ''} am ${dateStr}. Noch ${spotsLeft} Plätze frei.`
+                          : `Join us: ${shareTitle} at ${activity.placeName || ''} on ${dateStr}. ${spotsLeft} spots left.`;
+
+                        if (typeof navigator !== 'undefined' && navigator.share) {
+                          try {
+                            await navigator.share({
+                              title: shareTitle,
+                              text: shareText,
+                              url: shareUrl
+                            });
+                          } catch (err) {
+                            console.error('Error sharing:', err);
+                          }
+                        } else {
+                          await navigator.clipboard.writeText(shareUrl);
+                          toast({
+                            title: language === 'de' ? 'Link kopiert!' : 'Link copied!',
+                            description: language === 'de' ? 'Der Einladungslink wurde in die Zwischenablage kopiert.' : 'Invitation link copied to clipboard.'
+                          });
+                        }
+                      }}
+                    >
+                      <Share2 className="h-4 w-4" />
+                      <span className="sr-only">{language === 'de' ? 'Link teilen' : 'Share Link'}</span>
+                    </Button>
+                  );
+                }
+                return null;
+              })()}
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800" onClick={() => setInfoSheetOpen(true)}>
                 <MoreVertical className="h-5 w-5" />
-                <span className='sr-only'>Chat Info</span>
+                <span className="sr-only">Chat Info</span>
               </Button>
+            </div>
           )}
         </header>
 
@@ -1176,7 +1236,7 @@ export default function ChatRoomPage() {
           if (!activity.maxParticipants || spotsLeft <= 0) return null;
 
           return (
-            <div className="sticky top-0 z-10 w-full bg-gradient-to-r from-violet-500/10 to-indigo-500/10 dark:from-violet-500/20 dark:to-indigo-500/20 border-b border-violet-100/30 dark:border-neutral-800/80 px-4 py-2.5 flex items-center justify-between shadow-sm animate-in slide-in-from-top-2 duration-250">
+            <div className="sticky top-16 z-10 w-full bg-gradient-to-r from-violet-500/10 to-indigo-500/10 dark:from-violet-500/20 dark:to-indigo-500/20 border-b border-violet-100/30 dark:border-neutral-800/80 px-4 py-2 flex items-center justify-between shadow-xs animate-in slide-in-from-top-2 duration-250">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xs font-bold text-slate-700 dark:text-neutral-300">
                   {spotsLeft === 1 
@@ -1216,9 +1276,9 @@ export default function ChatRoomPage() {
                 }}
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-xl font-bold bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-xs px-3.5 shadow-sm text-slate-800 dark:text-neutral-200 hover:bg-slate-50 dark:hover:bg-neutral-750 transition-all flex items-center gap-1.5"
+                className="h-7 rounded-xl font-bold bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-[11px] px-3 shadow-2xs text-slate-800 dark:text-neutral-200 hover:bg-slate-50 dark:hover:bg-neutral-750 transition-all flex items-center gap-1.5"
               >
-                <Share2 className="h-3.5 w-3.5 text-violet-500" />
+                <Share2 className="h-3 w-3 text-violet-500" />
                 <span>{language === 'de' ? 'Link teilen' : 'Share Link'}</span>
               </Button>
             </div>
@@ -1231,7 +1291,7 @@ export default function ChatRoomPage() {
 
         {/* Pinned Messages Bar */}
         {chat?.pinnedMessages && chat.pinnedMessages.length > 0 && (
-          <div className="sticky top-0 z-10 w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border-b border-slate-200 dark:border-neutral-800 px-4 py-2 flex items-center justify-between shadow-sm animate-in slide-in-from-top-2 duration-250">
+          <div className="sticky top-16 z-10 w-full bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md border-b border-slate-200 dark:border-neutral-800 px-4 py-2 flex items-center justify-between shadow-xs animate-in slide-in-from-top-2 duration-250">
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <Pin className="h-4 w-4 text-primary shrink-0" />
               <div className="min-w-0 flex-1">

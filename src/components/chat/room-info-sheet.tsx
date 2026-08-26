@@ -12,6 +12,8 @@ import { de, enUS } from 'date-fns/locale';
 import { cn, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay } from '@/lib/utils';
 import { getPrimaryIconData, getRoomVisualCategory } from '@/lib/tag-config';
 import { MemberFriendActionButton } from './member-friend-action-button';
+import { UserBadge } from '@/components/common/UserBadge';
+import Link from 'next/link';
 
 import {
   Sheet,
@@ -35,7 +37,7 @@ import {
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Copy, Check, ExternalLink, Share2, LogOut, Trash2, Users, Calendar, Info, X, UserMinus } from 'lucide-react';
+import { Copy, Check, ExternalLink, Share2, LogOut, Users, Calendar, Info, X, UserMinus, MapPin, Sparkles, Shield, ChevronRight } from 'lucide-react';
 import type { Chat, Activity, Place } from '@/lib/types';
 
 interface RoomInfoSheetProps {
@@ -77,7 +79,6 @@ export function RoomInfoSheet({
   if (!chat || !currentUserId) return null;
 
   const isHost = activity?.hostId === currentUserId || chat.hostId === currentUserId;
-  const isOnlyParticipant = chat.participantIds?.length === 1;
 
   const isPast = activity?.activityDate?.toDate
     ? activity.activityDate.toDate().getTime() < Date.now()
@@ -90,12 +91,12 @@ export function RoomInfoSheet({
   const primaryStyle = getPrimaryIconData(visualCategoryData, language);
   const PrimaryIcon = primaryStyle.icon;
 
-  // Status Chip Berechnung
+  // Status Chip
   const getStatusTextAndStyle = () => {
     if (!activity) {
       return {
         text: language === 'de' ? 'Aktiv' : 'Active',
-        bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400',
+        bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/50',
       };
     }
 
@@ -119,27 +120,27 @@ export function RoomInfoSheet({
     ) {
       return {
         text: language === 'de' ? 'Beendet' : 'Completed',
-        bg: 'bg-slate-100 text-slate-700 dark:bg-neutral-800 dark:text-neutral-300',
+        bg: 'bg-slate-100 text-slate-700 dark:bg-neutral-800 dark:text-neutral-300 border border-slate-200 dark:border-neutral-700',
       };
     }
 
     if (activity.status === 'cancelled' || activity.status === 'blacklisted') {
       return {
         text: language === 'de' ? 'Abgesagt' : 'Cancelled',
-        bg: 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400',
+        bg: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/50 dark:border-rose-800/50',
       };
     }
 
     if (dateObj && isToday(dateObj)) {
       return {
         text: language === 'de' ? 'Heute' : 'Today',
-        bg: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400',
+        bg: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/50',
       };
     }
 
     return {
       text: language === 'de' ? 'Aktiv' : 'Active',
-      bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400',
+      bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/50',
     };
   };
 
@@ -153,7 +154,6 @@ export function RoomInfoSheet({
     return `${dateRange} (${timeDisplay})`;
   };
 
-  // Kopieren der Adresse
   const handleCopyAddress = (e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
@@ -173,7 +173,6 @@ export function RoomInfoSheet({
     }
   };
 
-  // Raum teilen
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -230,7 +229,6 @@ export function RoomInfoSheet({
       window.open(url, '_blank');
     }
   };
-
 
   const handleLeaveOrDelete = async () => {
     if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
@@ -289,7 +287,6 @@ export function RoomInfoSheet({
     }
   };
 
-  // Teilnehmer-Liste vorbereiten
   const participantEntries = participants ? Object.entries(participants) : [];
   const visibleParticipants = isExpanded ? participantEntries : participantEntries.slice(0, 5);
   const remainingCount = participantEntries.length - 5;
@@ -298,7 +295,7 @@ export function RoomInfoSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="p-0 h-[85vh] max-h-[85vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none bg-white dark:bg-neutral-900 flex flex-col"
+        className="p-0 h-[88vh] max-h-[88vh] w-full max-w-xl mx-auto border-none rounded-t-[2.5rem] overflow-hidden outline-none bg-white dark:bg-neutral-900 shadow-2xl flex flex-col"
       >
         <SheetHeader className="sr-only">
           <SheetTitle>{activity?.title || chat?.placeName || 'Chat Info'}</SheetTitle>
@@ -309,33 +306,40 @@ export function RoomInfoSheet({
           </SheetDescription>
         </SheetHeader>
 
-        {/* Custom Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-neutral-800 flex items-start justify-between">
-          <div className="flex items-center gap-3">
+        {/* Header Bar */}
+        <div className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-neutral-800 flex items-center justify-between bg-slate-50/50 dark:bg-neutral-900/50 backdrop-blur-md">
+          <div className="flex items-center gap-3.5 min-w-0 flex-1">
             <div
               className={cn(
-                'h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm',
+                'h-12 w-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md transform -rotate-1',
                 primaryStyle.gradientClass || 'bg-primary/10'
               )}
             >
-              <PrimaryIcon className="h-5 w-5 text-white drop-shadow-sm" />
+              <PrimaryIcon className="h-6 w-6 text-white drop-shadow-md" />
             </div>
-            <div>
-              <h2 className="text-lg font-black text-slate-900 dark:text-neutral-100 leading-snug">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100 truncate tracking-tight">
                 {activity?.title || chat?.placeName}
               </h2>
-              <span
-                className={cn(
-                  'inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider',
-                  statusChip.bg
+              <div className="flex items-center gap-2 mt-0.5">
+                <span
+                  className={cn(
+                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-2xs',
+                    statusChip.bg
+                  )}
+                >
+                  {statusChip.text}
+                </span>
+                {activity?.maxParticipants && (
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-neutral-400">
+                    {participantEntries.length}/{activity.maxParticipants} {language === 'de' ? 'Plätze' : 'spots'}
+                  </span>
                 )}
-              >
-                {statusChip.text}
-              </span>
+              </div>
             </div>
           </div>
-          <SheetClose className="rounded-full p-1.5 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors">
-            <X className="h-5 w-5 text-slate-500" />
+          <SheetClose className="rounded-full p-2 text-slate-400 hover:text-slate-600 dark:hover:text-neutral-200 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-all ml-2">
+            <X className="h-5 w-5" />
           </SheetClose>
         </div>
 
@@ -343,30 +347,32 @@ export function RoomInfoSheet({
           <div className="p-6 space-y-6 pb-12">
             {/* Ort Sektion */}
             {(place || activity?.placeAddress || chat?.placeName) && (
-              <div className="bg-slate-50 dark:bg-neutral-800/50 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800">
-                <h3 className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-widest mb-1 flex items-center gap-1">
-                  <Info className="h-3.5 w-3.5" />
-                  <span>{language === 'de' ? 'Ort' : 'Location'}</span>
-                </h3>
-                <div className="font-bold text-slate-900 dark:text-neutral-100">
-                  {place?.name || activity?.placeName || chat?.placeName}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-neutral-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                  <span>{activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.placeAddress || '') : (place?.address || activity?.placeAddress || '')}</span>
+              <div className="bg-slate-50 dark:bg-neutral-800/40 rounded-2xl p-4.5 border border-slate-200/60 dark:border-neutral-800 shadow-sm transition-all hover:border-slate-300 dark:hover:border-neutral-700">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-[11px] font-black text-slate-400 dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-primary" />
+                    <span>{language === 'de' ? 'Ort & Adresse' : 'Location & Address'}</span>
+                  </h3>
                   {place?.distance !== undefined && place?.distance !== null && formatDistance(place.distance) && (
-                    <span className="bg-slate-200 dark:bg-neutral-750 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                    <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
                       {formatDistance(place.distance)}
                     </span>
                   )}
                 </div>
-                <div className="flex gap-2 mt-3.5">
+                <div className="font-extrabold text-base text-slate-900 dark:text-neutral-100 leading-snug">
+                  {place?.name || activity?.placeName || chat?.placeName}
+                </div>
+                <div className="text-xs font-medium text-slate-500 dark:text-neutral-400 mt-1 leading-normal">
+                  {activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.placeAddress || '') : (place?.address || activity?.placeAddress || '')}
+                </div>
+                <div className="flex gap-2.5 mt-4">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleCopyAddress()}
-                    className="rounded-full text-xs font-bold px-3.5 py-1 bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-250 flex items-center gap-1.5"
+                    className="rounded-xl text-xs font-bold px-3.5 py-1.5 bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-200 hover:bg-slate-50 dark:hover:bg-neutral-750 flex items-center gap-1.5 shadow-2xs"
                   >
-                    {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 text-slate-400" />}
                     <span>
                       {copied
                         ? language === 'de'
@@ -382,10 +388,10 @@ export function RoomInfoSheet({
                       variant="outline"
                       size="sm"
                       onClick={handleViewPlace}
-                      className="rounded-full text-xs font-bold px-3.5 py-1 bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-250 flex items-center gap-1.5"
+                      className="rounded-xl text-xs font-bold px-3.5 py-1.5 bg-white dark:bg-neutral-800 border-slate-200 dark:border-neutral-700 text-slate-700 dark:text-neutral-200 hover:bg-slate-50 dark:hover:bg-neutral-750 flex items-center gap-1.5 shadow-2xs"
                     >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      <span>{language === 'de' ? 'Ort ansehen' : 'View Place'}</span>
+                      <ExternalLink className="h-3.5 w-3.5 text-primary" />
+                      <span>{language === 'de' ? 'In Maps öffnen' : 'View in Maps'}</span>
                     </Button>
                   )}
                 </div>
@@ -394,48 +400,51 @@ export function RoomInfoSheet({
 
             {/* Raumdetails */}
             <div className="space-y-3">
-              <h3 className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-widest">
-                {language === 'de' ? 'Raumdetails' : 'Room Details'}
+              <h3 className="text-[11px] font-black text-slate-400 dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                <span>{language === 'de' ? 'Raumdetails' : 'Room Details'}</span>
               </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 dark:bg-neutral-800/50 p-3 rounded-xl border border-slate-100 dark:border-neutral-800 flex flex-col">
-                  <span className="text-[10px] text-slate-400 dark:text-neutral-500 font-bold uppercase flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5" />
+              
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="bg-slate-50 dark:bg-neutral-800/40 p-3.5 rounded-2xl border border-slate-200/60 dark:border-neutral-800 flex flex-col justify-between">
+                  <span className="text-[10px] text-slate-400 dark:text-neutral-500 font-black uppercase tracking-wider flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5 text-indigo-500" />
                     <span>{language === 'de' ? 'Datum & Uhrzeit' : 'Date & Time'}</span>
                   </span>
-                  <span className="text-xs font-bold text-slate-800 dark:text-neutral-200 mt-1">
+                  <span className="text-xs font-bold text-slate-800 dark:text-neutral-200 mt-2 leading-tight">
                     {renderDate() || '...'}
                   </span>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-neutral-800/50 p-3 rounded-xl border border-slate-100 dark:border-neutral-800 flex flex-col">
-                  <span className="text-[10px] text-slate-400 dark:text-neutral-500 font-bold uppercase flex items-center gap-1">
-                    <Users className="h-3.5 w-3.5" />
+                <div className="bg-slate-50 dark:bg-neutral-800/40 p-3.5 rounded-2xl border border-slate-200/60 dark:border-neutral-800 flex flex-col justify-between">
+                  <span className="text-[10px] text-slate-400 dark:text-neutral-500 font-black uppercase tracking-wider flex items-center gap-1">
+                    <Users className="h-3.5 w-3.5 text-emerald-500" />
                     <span>{language === 'de' ? 'Teilnehmer' : 'Participants'}</span>
                   </span>
-                  <span className="text-xs font-bold text-slate-800 dark:text-neutral-200 mt-1">
+                  <span className="text-xs font-bold text-slate-800 dark:text-neutral-200 mt-2">
                     {activity?.participantIds?.length || chat.participantIds?.length || 0}
-                    {activity?.maxParticipants ? ` / ${activity.maxParticipants}` : ''}
+                    {activity?.maxParticipants ? ` / ${activity.maxParticipants}` : ''} {language === 'de' ? 'Personen' : 'people'}
                   </span>
                 </div>
 
                 {activity?.hostName && (
-                  <div className="bg-slate-50 dark:bg-neutral-800/50 p-3 rounded-xl border border-slate-100 dark:border-neutral-800 flex flex-col col-span-2">
-                    <span className="text-[10px] text-slate-400 dark:text-neutral-500 font-bold uppercase">
-                      {language === 'de' ? 'Host / Ersteller' : 'Host / Creator'}
+                  <div className="bg-slate-50 dark:bg-neutral-800/40 p-3.5 rounded-2xl border border-slate-200/60 dark:border-neutral-800 flex flex-col col-span-2">
+                    <span className="text-[10px] text-slate-400 dark:text-neutral-500 font-black uppercase tracking-wider flex items-center gap-1">
+                      <Shield className="h-3.5 w-3.5 text-amber-500" />
+                      <span>{language === 'de' ? 'Host / Ersteller' : 'Host / Creator'}</span>
                     </span>
-                    <span className="text-xs font-bold text-slate-800 dark:text-neutral-200 mt-1">
+                    <span className="text-xs font-extrabold text-slate-900 dark:text-neutral-100 mt-1">
                       {formatFirstName(activity.hostName, 'User')}
                     </span>
                   </div>
                 )}
 
                 {activity?.description && (
-                  <div className="bg-slate-50 dark:bg-neutral-800/50 p-3.5 rounded-xl border border-slate-100 dark:border-neutral-800 flex flex-col col-span-2">
-                    <span className="text-[10px] text-slate-400 dark:text-neutral-500 font-bold uppercase">
+                  <div className="bg-slate-50 dark:bg-neutral-800/40 p-4 rounded-2xl border border-slate-200/60 dark:border-neutral-800 flex flex-col col-span-2">
+                    <span className="text-[10px] text-slate-400 dark:text-neutral-500 font-black uppercase tracking-wider">
                       {language === 'de' ? 'Beschreibung' : 'Description'}
                     </span>
-                    <p className="text-xs font-medium text-slate-600 dark:text-neutral-355 mt-1 leading-relaxed italic">
+                    <p className="text-xs font-medium text-slate-700 dark:text-neutral-300 mt-1.5 leading-relaxed italic border-l-2 border-primary/30 pl-3">
                       "{activity.description}"
                     </p>
                   </div>
@@ -447,8 +456,9 @@ export function RoomInfoSheet({
             {participantEntries.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-widest">
-                    {language === 'de' ? 'Im Raum' : 'In the Room'} ({participantEntries.length})
+                  <h3 className="text-[11px] font-black text-slate-400 dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5 text-blue-500" />
+                    <span>{language === 'de' ? 'Im Raum' : 'In the Room'} ({participantEntries.length})</span>
                   </h3>
                 </div>
 
@@ -456,36 +466,49 @@ export function RoomInfoSheet({
                   {visibleParticipants.map(([uid, p]) => {
                     const isUserHost = uid === activity?.hostId || uid === chat.hostId;
                     const isCurrentUser = uid === currentUserId;
+                    const usernameText = p.username ? `@${p.username.replace(/^@/, '')}` : formatFirstName(p.displayName, language === 'de' ? 'Activa-Nutzer' : 'Activa user');
 
                     return (
                       <div
                         key={uid}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/50 border border-slate-100 dark:border-neutral-800"
+                        className="flex items-center justify-between p-2.5 rounded-2xl bg-slate-50/80 dark:bg-neutral-800/40 border border-slate-200/60 dark:border-neutral-800 hover:border-slate-300 dark:hover:border-neutral-700 transition-all group"
                       >
-                        <div className="flex items-center gap-3">
+                        <Link
+                          href={currentUserId === uid ? '/profile' : `/users/${uid}`}
+                          className="flex items-center gap-3 flex-1 min-w-0"
+                          onClick={() => onOpenChange(false)}
+                        >
                           <ProfileAvatar
-                            className="h-8 w-8 shadow-sm border border-white dark:border-neutral-800"
+                            className="h-10 w-10 shadow-sm border-2 border-white dark:border-neutral-800 group-hover:scale-105 transition-transform"
                             photoURL={p.photoURL}
                             displayName={p.displayName}
                             isPremium={p.isPremium}
                             isCreator={p.isCreator}
                             isSupporter={p.isSupporter}
+                            level={p.level || 1}
+                            showLevelBadge={true}
                           />
-                          <div className="flex flex-col">
-                            <span className="text-xs font-bold text-slate-900 dark:text-neutral-100">
-                              {p.username ? `@${p.username.replace(/^@/, '')}` : (language === 'de' ? 'Activa-Nutzer' : 'Activa user')}
+                          <div className="flex flex-col min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-black text-slate-900 dark:text-neutral-100 truncate group-hover:text-primary transition-colors">
+                                {usernameText}
+                              </span>
+                              <UserBadge isPremium={p.isPremium} isSupporter={p.isSupporter} isCreator={p.isCreator} size="sm" />
                               {isCurrentUser && (
-                                <span className="text-[10px] text-slate-400 dark:text-neutral-500 font-bold ml-1">
+                                <span className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-tight">
                                   {language === 'de' ? '(Du)' : '(You)'}
                                 </span>
                               )}
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-neutral-500">
+                              Lv. {p.level || 1}
                             </span>
                           </div>
-                        </div>
+                        </Link>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2 pr-1">
                           {isUserHost && (
-                            <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900/50">
+                            <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
                               Host
                             </span>
                           )}
@@ -494,7 +517,10 @@ export function RoomInfoSheet({
                               variant="ghost"
                               size="sm"
                               disabled={isKicking}
-                              onClick={() => setParticipantToKick({ uid, displayName: p.displayName || 'Nutzer' })}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setParticipantToKick({ uid, displayName: p.displayName || 'Nutzer' });
+                              }}
                               className="h-7 px-2 rounded-lg text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                             >
                               <UserMinus className="h-3 w-3 mr-1" />
@@ -505,6 +531,7 @@ export function RoomInfoSheet({
                             targetUserId={uid}
                             currentUserId={currentUserId || ''}
                           />
+                          <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-primary transition-colors" />
                         </div>
                       </div>
                     );
@@ -513,7 +540,7 @@ export function RoomInfoSheet({
                   {!isExpanded && remainingCount > 0 && (
                     <button
                       onClick={() => setIsExpanded(true)}
-                      className="w-full flex items-center justify-center p-2.5 rounded-xl bg-slate-50 dark:bg-neutral-800/35 border border-dashed border-slate-200 dark:border-neutral-850 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors text-xs font-bold text-slate-500 dark:text-neutral-400"
+                      className="w-full flex items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-neutral-800/35 border border-dashed border-slate-200 dark:border-neutral-750 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-all text-xs font-black text-slate-600 dark:text-neutral-300"
                     >
                       {language === 'de'
                         ? `+ ${remainingCount} weitere anzeigen`
@@ -526,7 +553,7 @@ export function RoomInfoSheet({
 
             {/* Aktionen */}
             <div className="space-y-3 pt-2">
-              <h3 className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-widest">
+              <h3 className="text-[11px] font-black text-slate-400 dark:text-neutral-400 uppercase tracking-wider">
                 {language === 'de' ? 'Aktionen' : 'Actions'}
               </h3>
               <div className="flex flex-col gap-2.5">
@@ -536,7 +563,7 @@ export function RoomInfoSheet({
                     return (
                       <Button
                         disabled
-                        className="w-full h-11 rounded-2xl font-bold bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 flex items-center justify-center gap-2 shadow-none border-none"
+                        className="w-full h-12 rounded-2xl font-bold bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 flex items-center justify-center gap-2 shadow-none border-none"
                       >
                         <Share2 className="h-4 w-4" />
                         <span>{language === 'de' ? 'Vollbesetzt' : 'Full'}</span>
@@ -544,9 +571,9 @@ export function RoomInfoSheet({
                     );
                   }
                   return (
-                    <div className="bg-gradient-to-r from-violet-500/10 to-indigo-500/10 dark:from-violet-500/20 dark:to-indigo-500/20 border border-violet-100/20 dark:border-neutral-800/80 p-4 rounded-2xl flex flex-col gap-2.5 mb-2">
+                    <div className="bg-gradient-to-r from-violet-500/10 via-indigo-500/10 to-purple-500/10 border border-violet-200/50 dark:border-neutral-750 p-4.5 rounded-2xl flex flex-col gap-3 shadow-xs">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-slate-700 dark:text-neutral-300">
+                        <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
                           {spotsLeft === 1 
                             ? (language === 'de' ? 'Noch 1 Platz frei' : '1 spot left') 
                             : (language === 'de' ? `Noch ${spotsLeft} Plätze frei` : `${spotsLeft} spots left`)}
@@ -554,7 +581,7 @@ export function RoomInfoSheet({
                       </div>
                       <Button
                         onClick={handleShare}
-                        className="w-full h-10 rounded-xl font-bold bg-violet-600 hover:bg-violet-750 text-white flex items-center justify-center gap-2 shadow-sm"
+                        className="w-full h-11 rounded-xl font-black bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white flex items-center justify-center gap-2 shadow-md shadow-indigo-500/20"
                       >
                         <Share2 className="h-4 w-4" />
                         <span>{language === 'de' ? 'Freunde einladen' : 'Invite Friends'}</span>
@@ -563,23 +590,13 @@ export function RoomInfoSheet({
                   );
                 })()}
 
-                {participantEntries.length > 5 && !isExpanded && (
-                  <Button
-                    onClick={() => setIsExpanded(true)}
-                    className="w-full h-11 rounded-2xl font-bold bg-slate-100 dark:bg-neutral-800 hover:bg-slate-200 dark:hover:bg-neutral-700 text-slate-800 dark:text-slate-200 flex items-center justify-center gap-2 shadow-none border-none"
-                  >
-                    <Users className="h-4 w-4" />
-                    <span>{language === 'de' ? 'Teilnehmer ansehen' : 'View Participants'}</span>
-                  </Button>
-                )}
-
-                {/* Normal Leave Button for everyone (host and non-host) */}
+                {/* Normal Leave Button */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
                       variant="destructive"
                       disabled={isActing}
-                      className="w-full h-11 rounded-2xl font-black bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-900/30 flex items-center justify-center gap-2 shadow-none border-none mt-2"
+                      className="w-full h-12 rounded-2xl font-black bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/40 flex items-center justify-center gap-2 shadow-none border-none transition-all mt-1"
                     >
                       <LogOut className="h-4 w-4" />
                       <span>{language === 'de' ? 'Raum verlassen' : 'Leave Room'}</span>
@@ -587,10 +604,10 @@ export function RoomInfoSheet({
                   </AlertDialogTrigger>
                   <AlertDialogContent className="rounded-3xl border-none shadow-2xl dark:bg-neutral-900">
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="text-lg font-black dark:text-neutral-100">
+                      <AlertDialogTitle className="text-xl font-black dark:text-neutral-100">
                         {language === 'de' ? 'Raum wirklich verlassen?' : 'Really leave room?'}
                       </AlertDialogTitle>
-                      <AlertDialogDescription className="text-sm font-medium text-slate-500 dark:text-neutral-400">
+                      <AlertDialogDescription className="text-sm font-medium text-slate-500 dark:text-neutral-400 leading-relaxed">
                         {isHost
                           ? (language === 'de' ? 'Da du der Host bist, wird die Host-Rolle auf ein anderes Mitglied übertragen. Falls du der letzte Teilnehmer bist, wird der Raum gelöscht.' : 'Since you are the host, host ownership will be transferred to another member. If you are the last participant, the meetup will be deleted.')
                           : (language === 'de' ? 'Du verlässt den Chat und die Aktivität. Du kannst später wieder beitreten, solange Plätze frei sind.' : 'You will leave the chat and activity. You can join again later as long as spaces are available.')}
@@ -602,7 +619,7 @@ export function RoomInfoSheet({
                       </AlertDialogCancel>
                       <AlertDialogAction
                         onClick={handleLeaveOrDelete}
-                        className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-black h-11 border-none shadow-md shadow-red-200 dark:shadow-none"
+                        className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-black h-11 border-none shadow-md shadow-rose-200 dark:shadow-none"
                       >
                         {language === 'de' ? 'Ja, verlassen' : 'Yes, leave'}
                       </AlertDialogAction>
@@ -616,24 +633,24 @@ export function RoomInfoSheet({
       </SheetContent>
 
       <AlertDialog open={!!participantToKick} onOpenChange={(open) => !open && setParticipantToKick(null)}>
-        <AlertDialogContent className="rounded-3xl">
+        <AlertDialogContent className="rounded-3xl border-none dark:bg-neutral-900">
           <AlertDialogHeader>
-            <AlertDialogTitle>
+            <AlertDialogTitle className="font-black text-xl">
               {language === 'de' ? 'Teilnehmer entfernen?' : 'Remove participant?'}
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-sm font-medium text-slate-500 dark:text-neutral-400">
               {language === 'de'
                 ? `Möchtest du ${participantToKick?.displayName || 'diesen Teilnehmer'} wirklich aus der Aktivität und dem zugehörigen Gruppenchat entfernen? Der Nutzer kann danach nicht mehr beitreten.`
                 : `Are you sure you want to remove ${participantToKick?.displayName || 'this participant'} from the activity and associated chat? The user will not be able to rejoin.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">
+            <AlertDialogCancel className="rounded-xl font-bold">
               {language === 'de' ? 'Abbrechen' : 'Cancel'}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => participantToKick && handleKickParticipant(participantToKick.uid)}
-              className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl"
+              className="bg-rose-500 hover:bg-rose-600 text-white font-black rounded-xl"
             >
               {language === 'de' ? 'Teilnehmer entfernen' : 'Remove participant'}
             </AlertDialogAction>
@@ -643,3 +660,4 @@ export function RoomInfoSheet({
     </Sheet>
   );
 }
+
