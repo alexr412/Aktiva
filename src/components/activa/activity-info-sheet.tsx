@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
-import { cn, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay } from '@/lib/utils';
+import { cn, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay, formatLabel } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import type { Activity } from '@/lib/types';
 import { useAddressLongPress } from '@/hooks/use-address-long-press';
@@ -44,6 +44,7 @@ import {
   CheckCircle,
   ArrowRight,
   Loader2,
+  X,
 } from 'lucide-react';
 
 interface ActivityInfoSheetProps {
@@ -140,53 +141,85 @@ export function ActivityInfoSheet({
   };
 
   const modalContent = (
-    <div className="flex flex-col h-full min-h-0 w-full overflow-hidden">
+    <div className="flex flex-col h-full min-h-0 w-full overflow-hidden bg-white dark:bg-neutral-950">
       <ScrollArea className="flex-1 min-h-0">
         {/* Header Banner */}
-        <div className={cn('w-full h-40 flex flex-col items-center justify-center relative p-6 text-white text-center', primaryStyle.gradientClass)}>
-          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/20 mb-3 transform rotate-3">
-            <PrimaryIcon className="text-white h-7 w-7 drop-shadow-md" />
+        <div className={cn('w-full h-48 sm:h-52 flex flex-col items-center justify-center relative p-6 text-white text-center select-none overflow-hidden shrink-0', primaryStyle.gradientClass)}>
+          {/* Glassmorphism Close Button */}
+          <button
+            onClick={() => onOpenChange(false)}
+            className="absolute top-4 right-4 z-30 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-90 border border-white/20 shadow-md cursor-pointer"
+            aria-label={language === 'de' ? 'Schließen' : 'Close'}
+          >
+            <X className="h-5 w-5 stroke-[2.5]" />
+          </button>
+
+          {/* Category Badge */}
+          <div className="absolute top-4 left-4 flex gap-2 z-20">
+            <span className="bg-white/25 backdrop-blur-md text-white text-[10px] font-black uppercase px-3 py-1 rounded-full border border-white/20 shadow-sm tracking-wider">
+              {formatLabel(activity.categories?.[0] || (language === 'de' ? 'Aktivität' : 'Activity'))}
+            </span>
           </div>
-          <h2 className="text-xl font-black truncate max-w-full drop-shadow-sm px-4">
-            {activity.isCustomActivity ? (activity.title || activity.placeName) : (activity.placeName || (language === 'de' ? 'Aktivität' : 'Activity'))}
-          </h2>
-          {activity.placeAddress && (
-            <ActivityAddressLink
-              address={activity.placeAddress}
-              placeName={activity.placeName}
-              language={language}
-            />
-          )}
+
+          <div className="relative z-10 flex flex-col items-center pt-2">
+            <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/30 mb-2 transform rotate-2 hover:rotate-0 transition-transform duration-300">
+              <PrimaryIcon className="text-white h-8 w-8 sm:h-9 sm:w-9 drop-shadow-md" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black truncate max-w-full drop-shadow-md px-4 tracking-tight">
+              {activity.isCustomActivity ? (activity.title || activity.placeName) : (activity.placeName || (language === 'de' ? 'Aktivität' : 'Activity'))}
+            </h2>
+            {activity.placeAddress && (
+              <ActivityAddressLink
+                address={activity.placeAddress}
+                placeName={activity.placeName}
+                language={language}
+              />
+            )}
+          </div>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 sm:p-8 space-y-6">
           {/* Date & Time and Cost section */}
-          <div className="grid grid-cols-1 gap-3">
-            <div className="bg-slate-50 dark:bg-neutral-900 rounded-2xl p-4 flex items-center gap-3 border border-slate-100 dark:border-neutral-800">
-              <div className="h-10 w-10 rounded-xl bg-orange-50 dark:bg-orange-950/30 text-orange-500 flex items-center justify-center shrink-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-4 flex items-center gap-3.5 border border-slate-100 dark:border-neutral-800/80">
+              <div className="h-11 w-11 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
                 <Calendar className="h-5 w-5" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-wider">
                   {language === 'de' ? 'Datum & Uhrzeit' : 'Date & Time'}
                 </p>
-                <p className="text-sm font-black text-slate-800 dark:text-neutral-200">
+                <p className="text-sm font-black text-slate-800 dark:text-neutral-200 truncate">
                   {renderDate()}
                 </p>
               </div>
             </div>
 
-            {isPaidEvent && (
-              <div className="bg-slate-50 dark:bg-neutral-900 rounded-2xl p-4 flex items-center gap-3 border border-slate-100 dark:border-neutral-800">
-                <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500 flex items-center justify-center shrink-0">
+            {isPaidEvent ? (
+              <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-4 flex items-center gap-3.5 border border-slate-100 dark:border-neutral-800/80">
+                <div className="h-11 w-11 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                   <span className="font-black text-base">€</span>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-wider">
                     {language === 'de' ? 'Eintrittspreis' : 'Price'}
                   </p>
                   <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
                     {activity.price?.toFixed(2)} €
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-4 flex items-center gap-3.5 border border-slate-100 dark:border-neutral-800/80">
+                <div className="h-11 w-11 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-wider">
+                    {language === 'de' ? 'Teilnehmer' : 'Participants'}
+                  </p>
+                  <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                    {participantIds.length} {activity.maxParticipants ? `/ ${activity.maxParticipants}` : ''} {language === 'de' ? 'dabei' : 'joined'}
                   </p>
                 </div>
               </div>
@@ -212,7 +245,7 @@ export function ActivityInfoSheet({
             <h4 className="text-xs font-black text-slate-400 dark:text-neutral-500 uppercase tracking-wider px-1">
               {language === 'de' ? 'Kriterien zum Beitreten' : 'Join Criteria'}
             </h4>
-            <div className="bg-slate-50 dark:bg-neutral-900 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800 space-y-3.5">
+            <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-5 border border-slate-100 dark:border-neutral-800/80 space-y-3.5">
               {/* Join Mode */}
               <div className="flex items-start gap-3">
                 <HelpCircle className="h-4 w-4 mt-0.5 text-slate-400 shrink-0" />
@@ -335,7 +368,7 @@ export function ActivityInfoSheet({
               </span>
             </div>
 
-            <div className="bg-slate-50 dark:bg-neutral-900 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800">
+            <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800/80">
               <ul className="space-y-3">
                 {Object.entries(activity.participantDetails || {}).map(([uid, p]) => (
                   <li key={uid} className="flex items-center gap-3">
@@ -368,11 +401,11 @@ export function ActivityInfoSheet({
       </ScrollArea>
 
       {/* Footer Action */}
-      <div className="p-6 bg-slate-50 dark:bg-neutral-900 border-t border-slate-100 dark:border-neutral-800 shrink-0">
+      <div className="p-5 sm:p-6 bg-slate-50/90 dark:bg-neutral-900/90 backdrop-blur-md border-t border-slate-100 dark:border-neutral-800 shrink-0">
         <Button
           onClick={handleAction}
           disabled={isJoining || (!isParticipant && !isHost && isFull)}
-          className="w-full h-14 text-base font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+          className="w-full h-14 text-base font-black rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/25 transition-all active:scale-95 flex items-center justify-center gap-2"
         >
           {isJoining ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -424,7 +457,7 @@ export function ActivityInfoSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="p-0 w-full max-w-xl h-[85vh] max-h-[85vh] flex flex-col min-h-0 gap-0 overflow-hidden border-none outline-none rounded-[2.5rem] dark:bg-neutral-950 z-[9999]" hideCloseButton>
+      <DialogContent className="p-0 w-full max-w-2xl sm:max-w-2xl h-[85vh] max-h-[85vh] flex flex-col min-h-0 gap-0 overflow-hidden border border-slate-200/40 dark:border-neutral-800/80 outline-none rounded-[2.5rem] bg-white dark:bg-neutral-950 z-[9999] shadow-2xl" hideCloseButton>
         <DialogTitle className="sr-only">{activity.isCustomActivity ? (activity.title || activity.placeName) : activity.placeName}</DialogTitle>
         <DialogDescription className="sr-only">
           {language === 'de'
