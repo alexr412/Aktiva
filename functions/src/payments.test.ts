@@ -378,6 +378,7 @@ const {
   secureJoinPaidActivity,
   secureRequestPayout,
   secureCompleteActivity,
+  secureVoteToCompleteActivity,
   secureLeaveActivity,
   secureCancelActivity,
 } = require("./payments");
@@ -1390,6 +1391,77 @@ async function testSecureCancelActivity() {
   console.log("✅ testSecureCancelActivity passed");
 }
 
+// 5.5 Test secureVoteToCompleteActivity HTTPS Callable
+async function testSecureVoteToCompleteActivity() {
+  console.log("Running testSecureVoteToCompleteActivity...");
+
+  // Test Case A: rejects unauthenticated/missing arguments
+  resetMockDb();
+  await assert.rejects(
+    (secureVoteToCompleteActivity as any)({ activityId: "act1", operationId: "op1" }, null),
+    (err: any) => err.name === "HttpsError" && err.code === "unauthenticated"
+  );
+  await assert.rejects(
+    (secureVoteToCompleteActivity as any)({ activityId: "act1" }, { uid: "user1" }),
+    (err: any) => err.name === "HttpsError" && err.code === "invalid-argument"
+  );
+
+  // Test Case B: non-participant cannot vote
+  resetMockDb();
+  mockDbState["activities"] = {
+    act1: {
+      creatorId: "host1",
+      participantIds: ["host1", "user1"],
+      status: "active",
+      price: 10.0,
+      completionVotes: [],
+    },
+  };
+  await assert.rejects(
+    (secureVoteToCompleteActivity as any)({ activityId: "act1", operationId: "op_vote1" }, { uid: "outsider" }),
+    (err: any) => err.name === "HttpsError" && err.code === "permission-denied"
+  );
+
+  // Test Case C: participant votes (partial vote, not all voted yet)
+  resetMockDb();
+  mockDbState["activities"] = {
+    act1: {
+      creatorId: "host1",
+      participantIds: ["host1", "user1"],
+      status: "active",
+      price: 10.0,
+      completionVotes: [],
+    },
+  };
+  const vote1Res = await (secureVoteToCompleteActivity as any)(
+    { activityId: "act1", operationId: "op_vote1" },
+    { uid: "user1" }
+  );
+  assert.strictEqual(vote1Res.success, true);
+  assert.strictEqual(vote1Res.allVoted, false);
+
+  // Re-voting by same participant returns message "Stimme bereits registriert."
+  const vote1Retry = await (secureVoteToCompleteActivity as any)(
+    { activityId: "act1", operationId: "op_vote1_retry" },
+    { uid: "user1" }
+  );
+  assert.strictEqual(vote1Retry.success, true);
+
+  // Test Case D: final vote completes activity and releases escrow to host (using legacy creatorId)
+  mockDbState["users"] = {
+    host1: { escrowBalance: 9.0, fiatBalance: 0.0, balancesInCents: false },
+  };
+  const vote2Res = await (secureVoteToCompleteActivity as any)(
+    { activityId: "act1", operationId: "op_vote2" },
+    { uid: "host1" }
+  );
+  assert.strictEqual(vote2Res.success, true);
+  assert.strictEqual(vote2Res.allVoted, true);
+  assert.strictEqual(mockDbState["activities"]["act1"].status, "completed");
+
+  console.log("✅ testSecureVoteToCompleteActivity passed");
+}
+
 // ─── RUNNER ──────────────────────────────────────────────────────────────────
 
 async function runAllTests() {
@@ -1399,9 +1471,11 @@ async function runAllTests() {
     await testSecureJoinPaidActivity();
     await testSecureRequestPayout();
     await testSecureCompleteActivity();
+    await testSecureVoteToCompleteActivity();
     await testSecureLeaveActivity();
     await testSecureCancelActivity();
     console.log("🎉 ALL PHASE 1, 2A & 2B PAYMENTS TESTS PASSED SUCCESSFULLY! 🎉");
+    process.exit(0);
   } catch (error) {
     console.error("❌ TEST RUNNER FAILED:", error);
     process.exit(1);

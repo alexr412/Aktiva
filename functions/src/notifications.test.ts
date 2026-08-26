@@ -181,6 +181,7 @@ async function runNotificationUnitTests() {
   testMulticastChunkingLogic();
   testDeleteNotificationLogic();
   console.log('🎉 ALL SERVER NOTIFICATION SERVICE UNIT TESTS PASSED! 🎉');
+  process.exit(0);
 }
 
 runNotificationUnitTests();

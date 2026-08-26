@@ -493,6 +493,7 @@ async function runAllTests() {
     await testSecureRequestJoinActivity();
     await testKickParticipant();
     console.log("🎉 ALL ACTIVITIES MODULE TESTS PASSED SUCCESSFULLY! 🎉");
+    process.exit(0);
   } catch (error) {
     console.error("❌ TEST RUNNER FAILED:", error);
     process.exit(1);

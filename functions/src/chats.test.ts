@@ -436,6 +436,7 @@ async function runAllTests() {
     await testSendChatMessage();
     await testOnChatUpdatedTrigger();
     console.log("🎉 ALL CHAT CALLABLE FUNCTION & TRIGGER TESTS PASSED SUCCESSFULLY! 🎉");
+    process.exit(0);
   } catch (error) {
     console.error("❌ TEST RUNNER FAILED:", error);
     process.exit(1);

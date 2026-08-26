@@ -31,6 +31,18 @@ function mockModule(moduleName: string, mockExports: any) {
 let mockDbState: { [collection: string]: { [docId: string]: any } } = {};
 let mockTransactionsRun = 0;
 
+function cloneData(data: any): any {
+  if (data === null || typeof data !== 'object') return data;
+  if (typeof data.toMillis === 'function') return data;
+  if (data instanceof Date) return new Date(data.getTime());
+  if (Array.isArray(data)) return data.map(cloneData);
+  const copy: any = {};
+  for (const key of Object.keys(data)) {
+    copy[key] = cloneData(data[key]);
+  }
+  return copy;
+}
+
 function resetMockDb() {
   mockDbState = {};
   mockTransactionsRun = 0;
@@ -48,10 +60,10 @@ class MockDocumentReference {
     if (options?.merge) {
       mockDbState[this.collectionPath][this.docId] = {
         ...(mockDbState[this.collectionPath][this.docId] || {}),
-        ...JSON.parse(JSON.stringify(data))
+        ...cloneData(data)
       };
     } else {
-      mockDbState[this.collectionPath][this.docId] = JSON.parse(JSON.stringify(data));
+      mockDbState[this.collectionPath][this.docId] = cloneData(data);
     }
   }
   async update(data: any) {
@@ -60,7 +72,7 @@ class MockDocumentReference {
     }
     mockDbState[this.collectionPath][this.docId] = {
       ...mockDbState[this.collectionPath][this.docId],
-      ...JSON.parse(JSON.stringify(data))
+      ...cloneData(data)
     };
   }
   async get() {
@@ -69,7 +81,7 @@ class MockDocumentReference {
       id: this.docId,
       ref: this,
       exists: data !== undefined,
-      data: () => data ? JSON.parse(JSON.stringify(data)) : undefined,
+      data: () => data ? cloneData(data) : undefined,
     };
   }
 }
@@ -96,7 +108,7 @@ class MockQuery {
       return {
         id: docId,
         ref,
-        data: () => JSON.parse(JSON.stringify(data)),
+        data: () => cloneData(data),
       };
     });
 
@@ -136,7 +148,7 @@ class MockCollectionReference {
   async add(data: any) {
     const docId = Math.random().toString(36).substring(7);
     if (!mockDbState[this.collectionPath]) mockDbState[this.collectionPath] = {};
-    mockDbState[this.collectionPath][docId] = JSON.parse(JSON.stringify(data));
+    mockDbState[this.collectionPath][docId] = cloneData(data);
     return new MockDocumentReference(this.collectionPath, docId);
   }
   where(field: string, op: string, value: any) {
@@ -193,7 +205,7 @@ class MockBatch {
           }
         }
       });
-      mockDbState[ref.collectionPath][ref.docId] = JSON.parse(JSON.stringify(updatedDoc));
+      mockDbState[ref.collectionPath][ref.docId] = cloneData(updatedDoc);
     });
   }
 
@@ -220,7 +232,7 @@ class MockTransaction {
       id: ref.docId,
       ref: ref,
       exists: data !== undefined,
-      data: () => data ? JSON.parse(JSON.stringify(data)) : undefined,
+      data: () => data ? cloneData(data) : undefined,
     };
   }
   set(ref: MockDocumentReference, data: any, options?: any) {
@@ -228,10 +240,10 @@ class MockTransaction {
     if (options?.merge) {
       mockDbState[ref.collectionPath][ref.docId] = {
         ...(mockDbState[ref.collectionPath][ref.docId] || {}),
-        ...JSON.parse(JSON.stringify(data))
+        ...cloneData(data)
       };
     } else {
-      mockDbState[ref.collectionPath][ref.docId] = JSON.parse(JSON.stringify(data));
+      mockDbState[ref.collectionPath][ref.docId] = cloneData(data);
     }
   }
   update(ref: MockDocumentReference, data: any) {
@@ -283,7 +295,7 @@ class MockTransaction {
         }
       }
     });
-    mockDbState[ref.collectionPath][ref.docId] = JSON.parse(JSON.stringify(updatedDoc));
+    mockDbState[ref.collectionPath][ref.docId] = cloneData(updatedDoc);
   }
   delete(ref: MockDocumentReference) {
     if (mockDbState[ref.collectionPath]) {
@@ -1194,6 +1206,7 @@ async function runAllTests() {
     await testSubmitCreatorApplication();
     await testMatchContacts();
     console.log("🎉 ALL USERS MODULE TESTS PASSED SUCCESSFULLY! 🎉");
+    process.exit(0);
   } catch (error) {
     console.error("❌ TEST RUNNER FAILED:", error);
     process.exit(1);

@@ -228,6 +228,7 @@ async function runAdminUsersBackendTests() {
   console.log('  ✅ Real adminListUsers status=suspended filter & batch pagination passed for Scenarios A-F');
 
   console.log('\n🎉 ALL ADMIN USERS BACKEND UNIT TESTS PASSED SUCCESSFULLY!\n');
+  process.exit(0);
 }
 
 runAdminUsersBackendTests().catch((err) => {

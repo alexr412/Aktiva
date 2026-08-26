@@ -120,6 +120,9 @@ async function releaseEscrow(
   initiatedBy: string,
   executionSource: string
 ) {
+  if (!hostId) {
+    throw new HttpsError("failed-precondition", "Host-ID für die Aktivität fehlt.");
+  }
   const hostRef = db.collection("users").doc(hostId);
   const hostSnap = await transaction.get(hostRef);
   if (!hostSnap.exists) {
@@ -130,7 +133,8 @@ async function releaseEscrow(
 
   // Use price locked at activity creation time — not a mutable field
   const priceCents = Math.round((activityData.price || 0) * 100);
-  const payingParticipants = (activityData.participantIds || []).filter((id: string) => id !== hostId);
+  const participantIds: string[] = Array.isArray(activityData.participantIds) ? activityData.participantIds : [];
+  const payingParticipants = participantIds.filter((id: string) => id !== hostId);
   const releaseAmountCents = payingParticipants.length * Math.round(priceCents * 0.9);
 
   if (releaseAmountCents > 0) {
@@ -663,13 +667,13 @@ export const secureVoteToCompleteActivity = onCall(async (request) => {
       }
 
       // Authorization: voter must be a participant
-      const participantIds: string[] = activityData.participantIds || [];
+      const participantIds: string[] = Array.isArray(activityData.participantIds) ? activityData.participantIds : [];
       if (!participantIds.includes(uid)) {
         throw new HttpsError("permission-denied", "Nur Teilnehmer können für den Abschluss stimmen.");
       }
 
       // Add vote (deduplicated)
-      const currentVotes: string[] = activityData.completionVotes || [];
+      const currentVotes: string[] = Array.isArray(activityData.completionVotes) ? activityData.completionVotes : [];
       if (currentVotes.includes(uid)) {
         return { success: true, message: "Stimme bereits registriert." };
       }
@@ -693,7 +697,8 @@ export const secureVoteToCompleteActivity = onCall(async (request) => {
           transaction.set(placeRef, { activityCount: FieldValue.increment(-1) }, { merge: true });
         }
 
-        await releaseEscrow(transaction, db, activityData, activityId, activityData.hostId, operationId, uid, "secureVoteToCompleteActivity");
+        const hostId = activityData.hostId || activityData.creatorId || activityData.userId;
+        await releaseEscrow(transaction, db, activityData, activityId, hostId, operationId, uid, "secureVoteToCompleteActivity");
       }
 
       // Idempotency marker with TTL
@@ -720,7 +725,7 @@ export const secureVoteToCompleteActivity = onCall(async (request) => {
       inputPayload: { activityId, operationId },
     });
     if (error instanceof HttpsError) throw error;
-    throw new HttpsError("internal", "Fehler bei der Stimmenabgabe.");
+    throw new HttpsError("internal", error instanceof Error ? error.message : "Fehler bei der Stimmenabgabe.");
   }
 });
 
