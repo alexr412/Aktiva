@@ -79,6 +79,10 @@ exports.onActivityCreated = (0, firestore_1.onDocumentCreated)({
     catch (error) {
         console.error(`Error processing event creation bonus for activity ${activityId}:`, error);
     }
+    // Dispatch nearby & friends push notifications for newly created activity
+    (0, notifications_1.dispatchNearbyActivityNotifications)(activityId).catch((err) => {
+        console.error(`Error dispatching nearby notifications for activity ${activityId}:`, err);
+    });
     return null;
 });
 /**

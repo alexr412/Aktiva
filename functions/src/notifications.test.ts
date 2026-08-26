@@ -40,7 +40,7 @@ function testDistanceCalculation() {
 }
 
 function testConstantsAndRateLimits() {
-  assert.strictEqual(NEARBY_NOTIFICATION_MAX_RADIUS_KM, 2);
+  assert.strictEqual(NEARBY_NOTIFICATION_MAX_RADIUS_KM, 10);
   assert.strictEqual(NEARBY_PUSH_DAILY_LIMIT, 3);
   assert.strictEqual(ENGAGEMENT_PUSH_DAILY_LIMIT, 1);
   console.log('✅ testConstantsAndRateLimits passed successfully!');

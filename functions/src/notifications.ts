@@ -23,7 +23,7 @@ export interface CreateNotificationParams {
   };
 }
 
-export const NEARBY_NOTIFICATION_MAX_RADIUS_KM = 2;
+export const NEARBY_NOTIFICATION_MAX_RADIUS_KM = 10;
 export const NEARBY_PUSH_DAILY_LIMIT = 3;
 export const ENGAGEMENT_PUSH_DAILY_LIMIT = 1;
 
@@ -238,7 +238,7 @@ export async function createNotificationAndDispatch(params: CreateNotificationPa
 // ─── DISCOVERY & PROXIMITY NOTIFICATIONS ────────────────────────────────
 
 /**
- * Dispatches nearby activity notifications to users within geographical radius (max 2km).
+ * Dispatches nearby activity notifications to users within geographical radius (default max 10km).
  * Enforces rate limiting (max 3/day) and privacy guidelines.
  */
 export async function dispatchNearbyActivityNotifications(activityId: string): Promise<{ notifiedCount: number }> {
@@ -264,28 +264,43 @@ export async function dispatchNearbyActivityNotifications(activityId: string): P
   const lng = typeof activityLocation.longitude === 'number' ? activityLocation.longitude : (typeof activityLocation.lng === 'number' ? activityLocation.lng : null);
   const city = activityLocation.city || activity.city || null;
 
-  let candidatesSnap: any;
-  if (city && typeof city === 'string') {
-    candidatesSnap = await db.collection('users').where('location.city', '==', city).get();
-  } else {
-    candidatesSnap = await db.collection('users').limit(100).get();
-  }
-
-  if (!candidatesSnap || candidatesSnap.empty) return { notifiedCount: 0 };
-
   const hostSnap = hostId ? await db.collection('users').doc(hostId).get() : null;
   const hostData = hostSnap?.exists ? hostSnap.data() || {} : {};
   const hostFriends: string[] = hostData.friends || [];
   const hostBlacklist = hostData.blacklist || {};
   const hostBlocked = [...(hostBlacklist.hard || []), ...(hostBlacklist.soft || [])];
 
+  const candidateDocsMap = new Map<string, admin.firestore.DocumentSnapshot>();
+
+  // 1. Fetch candidates in the same city
+  if (city && typeof city === 'string') {
+    const citySnap = await db.collection('users').where('location.city', '==', city).get();
+    citySnap.docs.forEach(doc => candidateDocsMap.set(doc.id, doc));
+  }
+
+  // 2. Always fetch host's friends as candidates so no friend is missed regardless of city
+  if (hostFriends.length > 0) {
+    const friendRefs = hostFriends.slice(0, 100).map(fId => db.collection('users').doc(fId));
+    if (friendRefs.length > 0) {
+      const friendSnaps = await db.getAll(...friendRefs);
+      friendSnaps.forEach(fSnap => {
+        if (fSnap.exists) candidateDocsMap.set(fSnap.id, fSnap);
+      });
+    }
+  }
+
+  // 3. Fallback: query up to 100 recent users if candidate map is empty
+  if (candidateDocsMap.size === 0) {
+    const fallbackSnap = await db.collection('users').limit(100).get();
+    fallbackSnap.docs.forEach(doc => candidateDocsMap.set(doc.id, doc));
+  }
+
   const nowMs = Date.now();
   const oneDayAgoMs = nowMs - 24 * 60 * 60 * 1000;
   const todayBerlinStr = getBerlinDateString();
   let notifiedCount = 0;
 
-  for (const docSnap of candidatesSnap.docs) {
-    const candidateId = docSnap.id;
+  for (const [candidateId, docSnap] of candidateDocsMap.entries()) {
     if (candidateId === hostId) continue;
     if (hostBlocked.includes(candidateId)) continue;
 
@@ -316,10 +331,12 @@ export async function dispatchNearbyActivityNotifications(activityId: string): P
       const candLoc = candData.location || {};
       const locUpdatedAtMs = candLoc.updatedAt?.toMillis ? candLoc.updatedAt.toMillis() : (candData.updatedAt?.toMillis ? candData.updatedAt.toMillis() : 0);
 
-      if (locUpdatedAtMs >= oneDayAgoMs) {
-        candLat = typeof candLoc.latitude === 'number' ? candLoc.latitude : candLoc.lat;
-        candLng = typeof candLoc.longitude === 'number' ? candLoc.longitude : candLoc.lng;
-        locationFresh = true;
+      if (locUpdatedAtMs === 0 || locUpdatedAtMs >= oneDayAgoMs) {
+        candLat = typeof candLoc.latitude === 'number' ? candLoc.latitude : (typeof candLoc.lat === 'number' ? candLoc.lat : null);
+        candLng = typeof candLoc.longitude === 'number' ? candLoc.longitude : (typeof candLoc.lng === 'number' ? candLoc.lng : null);
+        if (candLat !== null && candLng !== null) {
+          locationFresh = true;
+        }
       }
     }
 
@@ -329,8 +346,8 @@ export async function dispatchNearbyActivityNotifications(activityId: string): P
 
     if (lat !== null && lng !== null && typeof candLat === 'number' && typeof candLng === 'number') {
       const distance = calculateDistanceKm(lat, lng, candLat, candLng);
-      const userRadius = Number(candData.radarRadius) || NEARBY_NOTIFICATION_MAX_RADIUS_KM;
-      const maxAllowedRadius = Math.min(NEARBY_NOTIFICATION_MAX_RADIUS_KM, userRadius);
+      const userRadius = Number(candData.radarRadius) || Number(candData.notificationSettings?.nearbyRadius) || NEARBY_NOTIFICATION_MAX_RADIUS_KM;
+      const maxAllowedRadius = Math.max(NEARBY_NOTIFICATION_MAX_RADIUS_KM, userRadius);
 
       if (distance > maxAllowedRadius) continue;
     }
@@ -358,12 +375,12 @@ export async function dispatchNearbyActivityNotifications(activityId: string): P
 
     const isFriend = hostFriends.includes(candidateId);
     const notifType = isFriend ? 'friend_nearby_activity' : 'nearby_activity';
-    const hostName = candData.username ? `@${candData.username.replace(/^@/, '')}` : 'Ein Freund';
+    const hostDisplayName = hostData.displayName || (hostData.username ? `@${hostData.username.replace(/^@/, '')}` : 'Ein Freund');
 
     const notifTitle = isFriend ? 'Aktivität in deiner Nähe' : 'Neues Event in deiner Nähe';
     const notifBody = isFriend
-      ? `${hostName} hat eine Aktivität in deiner Nähe erstellt.`
-      : `${title} wurde in deiner Nähe erstellt.`;
+      ? `${hostDisplayName} hat "${title}" in deiner Nähe erstellt.`
+      : `"${title}" wurde in deiner Nähe erstellt.`;
 
     const res = await createNotificationAndDispatch({
       recipientId: candidateId,
@@ -374,7 +391,12 @@ export async function dispatchNearbyActivityNotifications(activityId: string): P
       targetUrl: `/activities/${activityId}`,
       entityId: activityId,
       eventId: `nearby_${activityId}_${candidateId}`,
-      customId: `nearby_${activityId}_${candidateId}`
+      customId: `nearby_${activityId}_${candidateId}`,
+      senderProfile: {
+        displayName: hostData.displayName || hostData.username || 'Freund',
+        photoURL: hostData.photoURL || null,
+        username: hostData.username || null,
+      }
     });
 
     if (res.created) {

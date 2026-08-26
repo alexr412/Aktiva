@@ -2,7 +2,7 @@ import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/fire
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { createNotificationAndDispatch } from './notifications';
+import { createNotificationAndDispatch, dispatchNearbyActivityNotifications } from './notifications';
 import { calculateLevel, maybeActivateReferral } from './users';
 
 /**
@@ -86,6 +86,11 @@ export const onActivityCreated = onDocumentCreated({
   } catch (error) {
     console.error(`Error processing event creation bonus for activity ${activityId}:`, error);
   }
+
+  // Dispatch nearby & friends push notifications for newly created activity
+  dispatchNearbyActivityNotifications(activityId).catch((err) => {
+    console.error(`Error dispatching nearby notifications for activity ${activityId}:`, err);
+  });
 
   return null;
 });
