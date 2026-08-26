@@ -18,8 +18,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Users, UserPlus, Search, Bell, MessageCircle, User, Building } from 'lucide-react';
+import { Users, UserPlus, Search, MessageCircle, User, Building } from 'lucide-react';
 import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Input } from '@/components/ui/input';
 import { cn, formatLabel } from '@/lib/utils';
 import { getPrimaryIconData, getRoomVisualCategory } from '@/lib/tag-config';
@@ -245,23 +246,11 @@ export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProp
             <MessageCircle className="h-5 w-5 text-violet-500 fill-current opacity-30 shrink-0" />
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <div className="relative">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8.5 w-8.5 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800" 
-                aria-label={language === 'de' ? 'Benachrichtigungen' : 'Notifications'}
-              >
-                <Bell className="h-4.5 w-4.5" />
-              </Button>
-              {unreadNotifications > 0 && (
-                <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-rose-500 border-2 border-white dark:border-neutral-950 rounded-full shadow-xs" />
-              )}
-            </div>
+            <NotificationBell />
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8.5 w-8.5 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800" 
+              className="h-9 w-9 rounded-full text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800" 
               aria-label={language === 'de' ? 'Freund hinzufügen' : 'Add friend'}
               onClick={() => setShowAddFriendDialog(true)}
             >

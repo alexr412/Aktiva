@@ -25,6 +25,7 @@ import { ChatInfoSheet } from '@/components/activa/chat-info-sheet';
 import { PlaceDetails } from '@/components/activa/place-details';
 import { RoomInfoSheet } from '@/components/chat/room-info-sheet';
 import { ChatListSidebar } from '@/components/chat/chat-list-sidebar';
+import { DesktopNavRail } from '@/components/desktop-nav-rail';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ArrowLeft, Send, MoreVertical, Loader2, Users, Info, Reply, Edit3, Pin, Copy, CornerUpLeft, X, PinOff, Check, Share2, Clock, AlertCircle, RefreshCw } from 'lucide-react';
 import { CompletionBanner } from '@/components/activa/CompletionBanner';
@@ -1101,6 +1102,9 @@ export default function ChatRoomPage() {
   return (
     <>
       <div className="flex h-full w-full bg-slate-50 dark:bg-black/95 overflow-hidden">
+        {/* Desktop Vertical Nav Rail */}
+        <DesktopNavRail />
+
         {/* Left Sidebar on Desktop */}
         <div className="hidden lg:block lg:w-[320px] xl:w-[350px] shrink-0 h-full">
           <ChatListSidebar activeChatId={chatId} />
