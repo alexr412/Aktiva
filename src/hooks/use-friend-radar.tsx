@@ -521,8 +521,15 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
 
       try {
         setIsLoadingFriends(true);
+        lastAttemptFetchMsRef.current = Date.now();
+        if (user?.uid) {
+          acquireCrossTabLock(user.uid);
+        }
         const getFriendsCall = httpsCallable<void, any>(functions!, 'getNearbyFriends');
         const res = await getFriendsCall();
+
+        lastSuccessfulFetchMsRef.current = Date.now();
+        lastLocationFetchedRef.current = { lat, lng: lon };
         
         // Validate and filter using defensive helper
         const parsed = validateRadarResponse(res.data);
@@ -653,7 +660,12 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
     if (now < nextAllowedFetchMsRef.current) return;
     if (isCrossTabLocked(user.uid)) return;
 
-    if (trigger !== 'manual') {
+    if (trigger === 'manual') {
+      // Throttle manual refreshes to at least 15 seconds to respect backend rate limits (max 2 per 30s)
+      if (now - lastAttemptFetchMsRef.current < 15000) {
+        return;
+      }
+    } else {
       // 5-minute minimum interval for non-manual triggers
       if (now - lastAttemptFetchMsRef.current < FRIEND_RADAR_REFRESH_INTERVAL_MS) {
         return;

@@ -1,62 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase/client';
-import type { Chat } from '@/lib/types';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { formatDistanceToNow } from 'date-fns';
-import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
-import { useChatSync } from '@/contexts/chat-sync-context';
-
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ChatListSidebar } from '@/components/chat/chat-list-sidebar';
+import { MessageSquare, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Users, UserPlus, Search, Bell, MessageCircle, MoreHorizontal, User, Building } from 'lucide-react';
-import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
-import { DesktopNav } from '@/components/desktop-nav';
-import { Input } from '@/components/ui/input';
-import { cn, formatLabel, formatFirstName } from '@/lib/utils';
-import { getPrimaryIconData, getRoomVisualCategory } from '@/lib/tag-config';
-
-const ChatListItemSkeleton = () => (
-    <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-5 mb-3 shadow-sm flex items-center gap-5 border border-slate-100/50 dark:border-neutral-800">
-        <Skeleton className="h-20 w-20 rounded-[2rem] shrink-0" />
-        <div className="flex-1 space-y-2">
-            <Skeleton className="h-5 w-1/2 rounded-full" />
-            <Skeleton className="h-4 w-3/4 rounded-full" />
-            <Skeleton className="h-4 w-1/4 rounded-full" />
-        </div>
-    </div>
-);
-
-const EmptyState = ({ language }: { language: string }) => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full">
-    <div className="bg-primary/10 p-6 rounded-[2.5rem]">
-      <Users className="h-12 w-12 text-primary" />
-    </div>
-    <h2 className="">{language === 'de' ? 'Noch keine Chats' : 'No chats yet'}</h2>
-    <p className="text-slate-500 dark:text-neutral-400 font-medium max-w-xs">
-      {language === 'de' ? 'Tritt einer Aktivität bei oder füge Freunde hinzu, um loszulegen.' : 'Join an activity or add friends to get started.'}
-    </p>
-    <Button asChild className="rounded-2xl h-12 px-8 font-black shadow-lg shadow-primary/20">
-      <Link href="/">{language === 'de' ? 'Aktivitäten finden' : 'Find activities'}</Link>
-    </Button>
-  </div>
-);
 
 export default function ChatPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
-  const { chats, loading: syncLoading } = useChatSync();
   const language = useLanguage();
-  const [showAddFriendDialog, setShowAddFriendDialog] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'unread' | 'places' | 'people'>('all');
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -71,262 +26,30 @@ export default function ChatPage() {
     }
   }, [user, userProfile, authLoading, router]);
 
-  useEffect(() => {
-    if (!user || !db) return;
-    const q = query(
-      collection(db!, "notifications"),
-      where("recipientId", "==", user.uid),
-      where("isRead", "==", false)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setUnreadNotifications(snapshot.docs.length);
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  const filteredChats = chats.filter(chat => {
-    const chatName = chat.placeName?.toLowerCase() || "";
-    if (searchQuery && !chatName.includes(searchQuery.toLowerCase())) return false;
-    if (filter === 'unread') {
-        const unreadCount = user ? (chat.unreadCount?.[user.uid] || 0) : 0;
-        return unreadCount > 0;
-    }
-    if (filter === 'places') return !!chat.activityId;
-    if (filter === 'people') return !chat.activityId;
-    return true;
-  });
-
-  const getGradient = (chatId: string) => {
-    const gradients = ['from-teal-400 to-emerald-500', 'from-indigo-400 to-cyan-400', 'from-orange-400 to-pink-500', 'from-blue-400 to-indigo-500', 'from-purple-400 to-pink-400'];
-    const index = (chatId.charCodeAt(0) + (chatId.charCodeAt(chatId.length - 1) || 0)) % gradients.length;
-    return gradients[index];
-  };
-
-  const renderContent = () => {
-    if ((syncLoading && chats.length === 0) || authLoading) {
-      return (
-        <div className="p-4 space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => <ChatListItemSkeleton key={i} />)}
-        </div>
-      );
-    }
-
-    if (filteredChats.length === 0) {
-      return <EmptyState language={language} />;
-    }
-
-    return (
-      <div className="px-4 py-2 space-y-3 pb-32">
-        {filteredChats.map((chat) => {
-          const isDM = !chat.activityId;
-          let otherUser: { 
-            displayName: string | null; 
-            username?: string | null;
-            photoURL: string | null; 
-            isPremium?: boolean;
-            isCreator?: boolean;
-            isSupporter?: boolean;
-          } | undefined;
-          let chatName = chat.placeName;
-          let avatarUrl: string | undefined;
-          let avatarFallback = chat.placeName?.charAt(0).toUpperCase() || 'C';
-
-          if (isDM && user) {
-              const otherUserId = chat.participantIds.find(id => id !== user.uid);
-              if (otherUserId && chat.participantDetails) {
-                  otherUser = chat.participantDetails[otherUserId];
-                  const otherUsername = otherUser?.username || null;
-                  chatName = otherUsername ? `@${otherUsername.replace(/^@/, '')}` : (language === 'de' ? 'Aktiva-Nutzer' : 'Aktiva user');
-                  avatarUrl = otherUser?.photoURL || undefined;
-                  avatarFallback = chatName.replace(/^@/, '').charAt(0).toUpperCase() || 'U';
-              }
-          }
-
-          const unreadCount = user ? (chat.unreadCount?.[user.uid] || 0) : 0;
-          const hasUnread = unreadCount > 0;
-          
-          // Resolve category data based on place categories or activity categories
-          const visualCategoryData = getRoomVisualCategory({ activity: null, place: null, chat });
-          const primaryStyle = chat.placeName ? getPrimaryIconData(visualCategoryData, language) : null;
-          
-          // Generate a consistent color for DMs or places without style
-          const fallbackColor = isDM ? ['#f43f5e', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'][chat.id.charCodeAt(0) % 5] : '#94a3b8';
-          const displayColor = primaryStyle?.color || fallbackColor;
-          const CategoryIcon = isDM ? User : (primaryStyle?.icon || MessageCircle);
-
-          return (
-            <Link 
-              key={chat.id} 
-              href={`/chat/${chat.id}`} 
-              className={cn(
-                "bg-white dark:bg-neutral-900 rounded-3xl p-3.5 shadow-xl shadow-slate-200/50 dark:shadow-none transition-all duration-300 flex items-center gap-3.5 border border-transparent active:scale-95",
-                hasUnread && "ring-2 ring-emerald-500/20 bg-emerald-50/10"
-              )}
-            >
-              {/* Square Icon Container */}
-              <div className={cn(
-                "h-16 w-16 rounded-[1.25rem] flex items-center justify-center flex-shrink-0 relative overflow-hidden",
-                !isDM && primaryStyle ? primaryStyle.gradientClass : (isDM ? "bg-white" : "bg-neutral-100")
-              )}
-              style={isDM ? { 
-                  backgroundColor: displayColor + '25',
-                  boxShadow: `inset 0 0 0 1px ${displayColor}10`
-              } : undefined}
-              >
-                <Avatar 
-                  className="h-16 w-16 rounded-[1.25rem]"
-                  isPremium={otherUser?.isPremium}
-                  isCreator={otherUser?.isCreator}
-                  isSupporter={otherUser?.isSupporter}
-                >
-                  {avatarUrl ? (
-                    <AvatarImage src={avatarUrl} alt={chatName || ''} className="object-cover" />
-                  ) : (
-                    <AvatarFallback className="bg-transparent">
-                      {!isDM && primaryStyle?.icon === Building ? (
-                        <span className="text-xl font-black text-white drop-shadow-sm">{chatName?.charAt(0).toUpperCase()}</span>
-                      ) : (
-                        <CategoryIcon className={cn("h-7.5 w-7.5 drop-shadow-md", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
-                      )}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                {/* Active Indicator */}
-                {!isDM && <div className="absolute bottom-2 right-2 w-2.5 h-2.5 rounded-full bg-emerald-500 border-[1.5px] border-white shadow-sm" />}
-              </div>
-
-              {/* Text Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start mb-1 gap-2 min-w-0">
-                  <h3 className="text-base font-black text-[#0f172a] dark:text-neutral-100 truncate pr-2 font-heading tracking-tight leading-none pt-0.5 flex-1 min-w-0">
-                    {chatName}
-                  </h3>
-                  {chat.lastMessage?.sentAt && (
-                    <time className="shrink-0 text-[11px] font-bold text-neutral-400 uppercase tracking-tighter">
-                      {formatDistanceToNow(chat.lastMessage.sentAt.toDate(), { addSuffix: false, locale: language === 'de' ? de : enUS })
-                        .replace('about ', '')
-                        .replace('Stunden', 'h')
-                        .replace('Stunde', 'h')
-                        .replace('Minuten', 'm')
-                        .replace('Minute', 'm')
-                        .replace('Tage', 'd')
-                        .replace('Tag', 'd')
-                        .replace(' hours', 'h')
-                        .replace(' hour', 'h')
-                        .replace(' minutes', 'm')
-                        .replace(' minute', 'm')
-                        .replace(' days', 'd')
-                        .replace(' day', 'd')}
-                    </time>
-                  )}
-                </div>
-                
-                <p className="truncate text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-1.5 leading-tight">
-                  {chat.lastMessage ? (
-                    <>
-                      {chat.lastMessage.senderId === user?.uid && <span className="text-neutral-400 mr-1">{language === 'de' ? 'Du:' : 'You:'}</span>}
-                      {chat.lastMessage.text}
-                    </>
-                  ) : (language === 'de' ? 'Erste Nachricht senden' : 'Send first message')}
-                </p>
-
-                <div className="flex items-center justify-between gap-2">
-                   <div className="text-[9px] font-bold px-2.5 py-1 rounded-full truncate max-w-full"
-                   style={{ color: displayColor, backgroundColor: displayColor + '15' }}
-                   >
-                     {isDM ? formatLabel(language === 'de' ? 'Person' : 'Person') : formatLabel(primaryStyle?.label || (language === 'de' ? 'Interessanter Ort' : 'Place of Interest'))}
-                   </div>
-
-                    {hasUnread && (
-                        <div className="bg-emerald-500 text-white text-[10px] font-black min-w-[20px] h-5 rounded-full flex items-center justify-center px-1 shadow-lg shadow-emerald-500/20 shrink-0">
-                            {unreadCount}
-                        </div>
-                    )}
-                </div>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
-    );
-  };
-
   return (
-    <>
-      <div className="flex h-full w-full flex-col bg-[#fcfcfb] dark:bg-neutral-950 overflow-hidden">
-          <header className="global-viewport-header compact pb-3">
-            <div className="global-header-container mb-3.5">
-              <div className="flex items-center gap-2 min-w-0">
-                <h1 className="text-[22px] font-black tracking-tight text-slate-900 dark:text-neutral-100 truncate">Chats</h1>
-                <MessageCircle className="h-5 w-5 text-violet-400 fill-current opacity-30 shrink-0" />
-              </div>
-              <DesktopNav />
-              <div className="flex items-center gap-3 shrink-0">
-                <div className="relative">
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="secondary-header-button" 
-                        aria-label={language === 'de' ? 'Benachrichtigungen' : 'Notifications'}
-                    >
-                        <Bell className="h-5 w-5" />
-                    </Button>
-                    {unreadNotifications > 0 && (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 border-2 border-white rounded-full shadow-sm" />
-                    )}
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="secondary-header-button" 
-                  aria-label={language === 'de' ? 'Freund hinzufügen' : 'Add friend'}
-                  onClick={() => setShowAddFriendDialog(true)}
-                >
-                    <UserPlus className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="px-4 sm:px-6 space-y-3">
-                <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
-                    <Input 
-                        placeholder={language === 'de' ? "Chats durchsuchen..." : "Search chats..."}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="h-11 w-full rounded-[16px] border-none bg-neutral-100/60 pl-11 font-bold text-xs text-neutral-600 focus-visible:ring-offset-0 focus-visible:ring-emerald-500/20 dark:bg-neutral-900/50 dark:text-neutral-100 placeholder:text-neutral-400"
-                    />
-                </div>
-
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
-                    {[
-                        { id: 'all', label: language === 'de' ? 'Alle' : 'All' },
-                        { id: 'unread', label: language === 'de' ? 'Ungelesen' : 'Unread' },
-                        { id: 'places', label: language === 'de' ? 'Orte' : 'Places' },
-                        { id: 'people', label: language === 'de' ? 'Personen' : 'People' }
-                    ].map((btn) => (
-                        <button
-                            key={btn.id}
-                            onClick={() => setFilter(btn.id as any)}
-                            className={cn(
-                                "flex-shrink-0 px-5 h-11 rounded-full text-xs font-semibold transition-all",
-                                filter === btn.id 
-                                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
-                                    : "bg-neutral-100 text-neutral-400 hover:bg-neutral-200/50 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                            )}
-                        >
-                            {btn.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-          </header>
-          
-          <div className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
-              {renderContent()}
-          </div>
+    <div className="flex h-full w-full bg-[#fcfcfb] dark:bg-black/95 overflow-hidden">
+      {/* Sidebar: Full width on mobile, 380px-420px fixed column on desktop */}
+      <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 h-full">
+        <ChatListSidebar />
       </div>
-      <AddFriendDialog open={showAddFriendDialog} onOpenChange={setShowAddFriendDialog} />
-    </>
+
+      {/* Desktop Placeholder: Hidden on mobile, flex-1 on desktop */}
+      <div className="hidden lg:flex flex-1 flex-col items-center justify-center p-12 text-center h-full bg-slate-50/50 dark:bg-neutral-900/30">
+        <div className="bg-emerald-500/10 p-6 rounded-3xl mb-4 border border-emerald-500/20 shadow-sm">
+          <MessageSquare className="h-12 w-12 text-emerald-500" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100 mb-2">
+          {language === 'de' ? 'Deine Unterhaltungen' : 'Your Conversations'}
+        </h2>
+        <p className="text-sm font-medium text-slate-500 dark:text-neutral-400 max-w-sm mb-6 leading-relaxed">
+          {language === 'de' 
+            ? 'Wähle links einen Chat aus, um Nachrichten zu lesen oder eine neue Unterhaltung zu beginnen.' 
+            : 'Select a chat from the left sidebar to read messages or start a new conversation.'}
+        </p>
+        <Button asChild className="rounded-2xl h-11 px-6 font-bold shadow-md shadow-emerald-500/20 bg-emerald-500 hover:bg-emerald-600">
+          <Link href="/">{language === 'de' ? 'Aktivitäten entdecken' : 'Discover activities'}</Link>
+        </Button>
+      </div>
+    </div>
   );
 }

@@ -728,7 +728,9 @@ class PollingDispatcherTester {
     if (now < this.nextAllowedFetchMs) return false;
     if (this.isCrossTabLocked(this.userUid)) return false;
 
-    if (trigger !== 'manual') {
+    if (trigger === 'manual') {
+      if (now - this.lastAttemptFetchMs < 15000) return false;
+    } else {
       if (now - this.lastAttemptFetchMs < 5 * 60 * 1000) return false;
 
       if (trigger === 'movement' && this.lastLocationFetched) {
@@ -1091,6 +1093,25 @@ test('31. userProfile.lastLocation NEVER overwrites effectiveLocation in current
   // Effective location stays Bielefeld
   assert.strictEqual(tester.effectiveLocation.lat, 52.026);
   assert.strictEqual(tester.effectiveLocation.lng, 8.522);
+});
+
+test('31b. Manual refresh burst within 15s is throttled', async () => {
+  mockLocalStorage.clear();
+  const tester = new PollingDispatcherTester();
+  tester.userUid = 'user123';
+  tester.effectiveLocation = { lat: 52.026, lng: 8.522 };
+  tester.locationStatus = 'resolved';
+
+  const firstCall = await tester.requestNearbyFriends('manual');
+  assert.strictEqual(firstCall, true, 'First manual call should succeed');
+  assert.strictEqual(tester.requestCount, 1);
+
+  mockLocalStorage.removeItem('activa_radar_fetch_lock');
+  mockLocalStorage.removeItem('aktiva_radar_fetch_lock');
+
+  const burstCall = await tester.requestNearbyFriends('manual');
+  assert.strictEqual(burstCall, false, 'Manual burst call within 15s must be throttled');
+  assert.strictEqual(tester.requestCount, 1);
 });
 
 test('32. NearbyFriend with approximateLatitude & approximateLongitude generates friend point marker with [longitude, latitude]', () => {
