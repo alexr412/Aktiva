@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Compass, X, Check, Info, MapPin, Star, PlusCircle, Plus, RefreshCw, ChevronDown, Loader2 } from 'lucide-react';
+import { Compass, X, Check, Info, MapPin, Star, PlusCircle, Plus, RefreshCw, ChevronDown, Loader2, ExternalLink, Calendar, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
@@ -395,9 +395,9 @@ export default function ExplorePage() {
                          </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col items-center justify-start relative min-h-0 pt-4 pb-36 w-full">
+                    <div className="flex-1 flex flex-col items-center justify-center relative min-h-0 pt-2 pb-20 sm:pb-24 w-full">
                         {userLocation && (
-                          <div className="lg:hidden w-full max-w-[400px] mb-4 shrink-0 px-1">
+                          <div className="lg:hidden w-full max-w-[400px] mb-3 shrink-0 px-1">
                             <MobileRadarCard />
                           </div>
                         )}
@@ -448,7 +448,7 @@ export default function ExplorePage() {
                                 </motion.div>
                             )
                         ) : (
-                            <div className="relative w-full max-w-[400px] aspect-[3.6/5] max-h-[540px]">
+                            <div className="relative w-full max-w-[360px] xs:max-w-[380px] sm:max-w-[420px] aspect-[3.5/5] max-h-[min(490px,56vh)] sm:max-h-[540px]">
                               <AnimatePresence mode="popLayout">
                                   {cards.slice(-3).map((card, index) => {
                                       const displayedIndex = cards.length - cards.slice(-3).length + index;
@@ -469,11 +469,17 @@ export default function ExplorePage() {
                                       return (
                                           <motion.div
                                               key={card.id}
+                                              onClick={() => {
+                                                  if (isTopCard && Math.abs(dragX) < 10) {
+                                                      setSelectedPlace(card);
+                                                  }
+                                              }}
                                               className={cn(
-                                                "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[2rem] sm:rounded-[2.5rem] elevation-high border-none overflow-hidden flex flex-col transition-shadow duration-300"
+                                                "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[2rem] sm:rounded-[2.5rem] elevation-high border-none overflow-hidden flex flex-col transition-shadow duration-300",
+                                                isTopCard && "cursor-pointer select-none"
                                               )}
                                               style={{ 
-                                                  zIndex: isTopCard ? 100 : (10 + index),
+                                                  zIndex: isTopCard ? 5 : (1 + index),
                                                   x: isTopCard ? 0 : (cards.length - 1 - displayedIndex) * 8,
                                                   rotate: isTopCard ? 0 : (cards.length - 1 - displayedIndex) * 2,
                                                   scale: isTopCard ? 1 : 1 - (cards.length - 1 - displayedIndex) * 0.04
@@ -493,7 +499,7 @@ export default function ExplorePage() {
                                                   x: (cards.length - 1 - displayedIndex) * (index % 2 === 0 ? 5 : -5),
                                                   rotate: (cards.length - 1 - displayedIndex) * (index % 2 === 0 ? 2 : -2),
                                               }}
-                                              whileDrag={{ scale: 1.02, opacity: 1, zIndex: 200 }}
+                                              whileDrag={{ scale: 1.02, opacity: 1, zIndex: 10 }}
                                               exit={{ x: dragX > 0 ? 1000 : -1000, opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
                                               transition={{ type: "spring", stiffness: 400, damping: 40 }}
                                               drag={isTopCard ? "x" : false}
@@ -723,6 +729,119 @@ export default function ExplorePage() {
                 </div>
             </main>
 
+            {/* Desktop Right Preview Sidebar */}
+            <aside className="hidden xl:flex w-[340px] 2xl:w-[380px] shrink-0 border-l border-slate-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 flex-col overflow-y-auto p-6 gap-6">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-neutral-800">
+                    <div className="flex items-center gap-2">
+                        <MapPin className="h-5 w-5 text-rose-500" />
+                        <h3 className="font-black text-slate-900 dark:text-neutral-100 text-sm">
+                            {language === 'de' ? 'Vorschau & Ort' : 'Preview & Location'}
+                        </h3>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full">
+                        {language === 'de' ? 'Top Karte' : 'Top Card'}
+                    </span>
+                </div>
+
+                {(() => {
+                    const topCard = cards[cards.length - 1];
+                    if (!topCard) {
+                        return (
+                            <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-neutral-800/30 rounded-3xl border border-slate-100 dark:border-neutral-800/50 gap-3 my-auto">
+                                <Compass className="h-10 w-10 text-slate-300 dark:text-neutral-600" />
+                                <p className="text-xs font-bold text-slate-400 dark:text-neutral-500">
+                                    {language === 'de' ? 'Keine weiteren Karten zum Anzeigen.' : 'No more cards to preview.'}
+                                </p>
+                            </div>
+                        );
+                    }
+
+                    const topDistance = (userLocation && topCard.lat && topCard.lon)
+                        ? calculateDistance(userLocation.lat, userLocation.lng, topCard.lat, topCard.lon)
+                        : null;
+
+                    return (
+                        <div className="flex flex-col gap-5">
+                            {/* Map Preview Embed */}
+                            <div className="relative h-44 w-full rounded-3xl overflow-hidden border border-slate-100 dark:border-neutral-800 bg-slate-100 dark:bg-neutral-800 group shadow-sm">
+                                {topCard.lat && topCard.lon ? (
+                                    <iframe
+                                        width="100%"
+                                        height="100%"
+                                        loading="lazy"
+                                        allowFullScreen
+                                        referrerPolicy="no-referrer-when-downgrade"
+                                        src={`https://maps.google.com/maps?q=${topCard.lat},${topCard.lon}&z=14&output=embed`}
+                                        className="w-full h-full border-0 grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-neutral-800 dark:to-neutral-900">
+                                        <MapPin className="h-8 w-8 text-slate-400 opacity-50" />
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+                                <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(topCard.placeAddress || topCard.placeName || '')}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="absolute bottom-3 left-3 right-3 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-3 py-2 rounded-2xl text-xs font-bold text-slate-800 dark:text-neutral-200 flex items-center justify-between shadow-md hover:bg-white dark:hover:bg-neutral-900 transition-all"
+                                >
+                                    <span className="truncate pr-2">{topCard.placeAddress || topCard.placeName}</span>
+                                    <ExternalLink className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                                </a>
+                            </div>
+
+                            {/* Card Quick Info */}
+                            <div className="bg-slate-50/70 dark:bg-neutral-800/40 rounded-3xl p-5 border border-slate-100 dark:border-neutral-800/60 flex flex-col gap-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="bg-amber-400 text-white text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase">
+                                            {formatLabel(topCard.categories?.[0] || (language === 'de' ? 'Aktivität' : 'Activity'))}
+                                        </span>
+                                        {topDistance !== null && (
+                                            <span className="text-[10px] font-extrabold text-slate-400">
+                                                {topDistance < 1 ? '< 1 km' : `${topDistance.toFixed(1)} km`}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <h4 className="font-black text-base text-slate-900 dark:text-neutral-100 leading-snug">
+                                        {topCard.title || topCard.placeName}
+                                    </h4>
+                                    {topCard.placeAddress && (
+                                        <p className="text-xs font-bold text-slate-400 dark:text-neutral-400 truncate mt-0.5">
+                                            {topCard.placeAddress}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                                    <div className="bg-white dark:bg-neutral-900 p-2.5 rounded-2xl border border-slate-100 dark:border-neutral-800/80 flex flex-col">
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{language === 'de' ? 'Datum' : 'Date'}</span>
+                                        <span className="text-slate-800 dark:text-neutral-200 mt-0.5 truncate">
+                                            {format(topCard.activityDate.toDate(), language === 'de' ? "eee, d. MMM" : "eee, MMM d", { locale: language === 'de' ? de : enUS })}
+                                        </span>
+                                    </div>
+                                    <div className="bg-white dark:bg-neutral-900 p-2.5 rounded-2xl border border-slate-100 dark:border-neutral-800/80 flex flex-col">
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{language === 'de' ? 'Freie Plätze' : 'Free spots'}</span>
+                                        <span className="text-emerald-600 mt-0.5 font-black">
+                                            {(topCard.maxParticipants || 10) - topCard.participantIds.length} {language === 'de' ? 'frei' : 'free'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <Button
+                                    onClick={() => setSelectedPlace(topCard)}
+                                    className="w-full rounded-2xl bg-slate-900 dark:bg-neutral-100 hover:bg-slate-800 dark:hover:bg-neutral-200 text-white dark:text-slate-900 font-extrabold text-xs py-3.5 h-auto transition-all shadow-md active:scale-95"
+                                >
+                                    <Info className="h-4 w-4 mr-2" />
+                                    {language === 'de' ? 'Details öffnen' : 'Open Details'}
+                                </Button>
+                            </div>
+                        </div>
+                    );
+                })()}
+            </aside>
+
             {/* Place Details Overlay */}
             {(() => {
                 if (!selectedPlace) return null;
@@ -742,7 +861,7 @@ export default function ExplorePage() {
                 if (isMobile) {
                     return (
                         <Sheet open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
-                            <SheetContent side="bottom" className="p-0 h-[92vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none bg-white dark:bg-neutral-900">
+                            <SheetContent side="bottom" className="p-0 h-[92vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none bg-white dark:bg-neutral-900 z-[9999]">
                                 <SheetHeader className="sr-only">
                                     <SheetTitle>{mappedPlace.name}</SheetTitle>
                                 </SheetHeader>
@@ -762,7 +881,7 @@ export default function ExplorePage() {
                 } else {
                     return (
                         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
-                            <DialogContent className="p-0 w-full max-w-4xl h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] sm:h-[88vh] sm:max-h-[88vh] flex flex-col min-h-0 gap-0 overflow-hidden border-none outline-none rounded-none sm:rounded-[2.5rem] dark:bg-neutral-900" hideCloseButton>
+                            <DialogContent className="p-0 w-full max-w-4xl h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] sm:h-[88vh] sm:max-h-[88vh] flex flex-col min-h-0 gap-0 overflow-hidden border-none outline-none rounded-none sm:rounded-[2.5rem] dark:bg-neutral-900 z-[9999]" hideCloseButton>
                                 <DialogTitle className="sr-only">{mappedPlace.name || (language === 'de' ? 'Ort Details' : 'Place Details')}</DialogTitle>
                                 <DialogDescription className="sr-only">{language === 'de' ? 'Details zum ausgewählten Ort' : 'Details about the selected place'}</DialogDescription>
                                 <PlaceDetails
