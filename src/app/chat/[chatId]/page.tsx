@@ -1490,7 +1490,9 @@ export default function ChatRoomPage() {
             currentUser={user}
             onReviewSubmitted={() => {
                 setHasReviewed(true);
-                setShowCleanupDialog(true);
+                setTimeout(() => {
+                    setShowCleanupDialog(true);
+                }, 200);
             }}
         />
       )}

@@ -142,8 +142,8 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
             description: language === 'de' ? 'Danke, dass du die Aktiva Community stärkst.' : 'Thank you for strengthening the Aktiva community.' 
         });
 
-        onReviewSubmitted();
         onOpenChange(false);
+        onReviewSubmitted();
     } catch (error: any) {
       toast({ 
         variant: 'destructive', 
