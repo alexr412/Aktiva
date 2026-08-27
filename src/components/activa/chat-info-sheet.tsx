@@ -405,7 +405,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
               <Button 
                 onClick={handleCompleteActivity} 
                 disabled={isActing}
-                 className="w-full h-12 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 dark:shadow-none transition-all gap-2 mb-2"
+                 className="w-full h-12 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 dark:shadow-none transition-all gap-2"
                >
                  {isActing ? <BarChart3 className="h-4 w-4 animate-spin"/> : <CheckCircle2 className="h-4 w-4" />}
                  <span>{language === 'de' ? 'Aktivität erfolgreich abschließen' : 'Successfully complete activity'}</span>
