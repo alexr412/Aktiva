@@ -1067,7 +1067,7 @@ export default function ChatRoomPage() {
     if (!chatId || !user) return;
     setIsDeleting(true);
     try {
-      prepareLeave(chatId);
+      setShowCleanupDialog(false);
       await removeUserFromChat(chatId, user.uid);
       toast({ 
         title: language === 'de' ? "Chat entfernt" : "Chat removed", 
@@ -1437,7 +1437,7 @@ export default function ChatRoomPage() {
 
         <div>
           {activity && (activity.status === 'completed' || activity.status === 'cancelled' || activity.status === 'blacklisted') ? (
-            <div className="text-center text-xs font-bold text-slate-400 py-3 bg-slate-50 dark:bg-neutral-850/20 rounded-2xl border border-slate-100 dark:border-neutral-800">
+            <div className="text-center text-xs font-bold text-slate-400 dark:text-neutral-400 py-3 bg-slate-50 dark:bg-neutral-900/90 rounded-2xl border border-slate-100 dark:border-neutral-800">
               {language === 'de'
                 ? 'Dieser Chat ist archiviert, da die Aktivität beendet oder abgesagt wurde.'
                 : 'This chat is archived because the activity has ended or been cancelled.'}
