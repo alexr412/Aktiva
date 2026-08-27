@@ -816,7 +816,10 @@ service cloud.firestore {
 
     match /reviews/{reviewId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow create: if isSignedIn() && (
+        request.resource.data.authorId == request.auth.uid ||
+        request.resource.data.reviewerId == request.auth.uid
+      );
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }

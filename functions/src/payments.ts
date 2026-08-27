@@ -108,7 +108,7 @@ function idempotencyExpiresAt(): Date {
 
 /**
  * Shared server-side logic to release funds from escrow to host's fiat balance.
- * All reads occur inside the provided transaction for consistency.
+ * All reads occur inside the provided transaction for consistency BEFORE any writes.
  */
 async function releaseEscrow(
   transaction: admin.firestore.Transaction,
@@ -116,6 +116,7 @@ async function releaseEscrow(
   activityData: any,
   activityId: string,
   hostId: string,
+  hostSnap: admin.firestore.DocumentSnapshot | null,
   operationId: string,
   initiatedBy: string,
   executionSource: string
@@ -123,9 +124,7 @@ async function releaseEscrow(
   if (!hostId) {
     throw new HttpsError("failed-precondition", "Host-ID für die Aktivität fehlt.");
   }
-  const hostRef = db.collection("users").doc(hostId);
-  const hostSnap = await transaction.get(hostRef);
-  if (!hostSnap.exists) {
+  if (!hostSnap || !hostSnap.exists) {
     throw new HttpsError("not-found", "Host-Profil nicht gefunden.");
   }
   const hostData = hostSnap.data() || {};
@@ -136,6 +135,7 @@ async function releaseEscrow(
   const participantIds: string[] = Array.isArray(activityData.participantIds) ? activityData.participantIds : [];
   const payingParticipants = participantIds.filter((id: string) => id !== hostId);
   const releaseAmountCents = payingParticipants.length * Math.round(priceCents * 0.9);
+  const hostRef = db.collection("users").doc(hostId);
 
   if (releaseAmountCents > 0) {
     // Escrow deduction is capped at actual escrow balance to prevent negative escrow
@@ -580,6 +580,13 @@ export const secureCompleteActivity = onCall(async (request) => {
         throw new HttpsError("failed-precondition", "Aktivität wurde bereits storniert.");
       }
 
+      // Pre-read host document before ANY writes (Firestore transaction constraint)
+      const hostId = activityData.hostId || activityData.creatorId || activityData.userId;
+      const hostRef = hostId ? db.collection("users").doc(hostId) : null;
+      const hostSnap = hostRef ? await transaction.get(hostRef) : null;
+
+      // ── ALL WRITES BELOW THIS LINE ────────────────────────────────────────
+
       // Set status
       transaction.update(activityRef, {
         status: "completed",
@@ -593,7 +600,7 @@ export const secureCompleteActivity = onCall(async (request) => {
       }
 
       // Release escrow
-      await releaseEscrow(transaction, db, activityData, activityId, uid, operationId, uid, "secureCompleteActivity");
+      await releaseEscrow(transaction, db, activityData, activityId, hostId, hostSnap, operationId, uid, "secureCompleteActivity");
 
       // Idempotency marker with TTL
       transaction.set(opRef, {
@@ -679,6 +686,13 @@ export const secureVoteToCompleteActivity = onCall(async (request) => {
       }
       const newVotes = [...new Set([...currentVotes, uid])];
 
+      // Pre-read host document before ANY writes (Firestore transaction constraint)
+      const hostId = activityData.hostId || activityData.creatorId || activityData.userId;
+      const hostRef = hostId ? db.collection("users").doc(hostId) : null;
+      const hostSnap = hostRef ? await transaction.get(hostRef) : null;
+
+      // ── ALL WRITES BELOW THIS LINE ────────────────────────────────────────
+
       transaction.update(activityRef, {
         completionVotes: newVotes,
         lastInteractionAt: FieldValue.serverTimestamp(),
@@ -697,8 +711,7 @@ export const secureVoteToCompleteActivity = onCall(async (request) => {
           transaction.set(placeRef, { activityCount: FieldValue.increment(-1) }, { merge: true });
         }
 
-        const hostId = activityData.hostId || activityData.creatorId || activityData.userId;
-        await releaseEscrow(transaction, db, activityData, activityId, hostId, operationId, uid, "secureVoteToCompleteActivity");
+        await releaseEscrow(transaction, db, activityData, activityId, hostId, hostSnap, operationId, uid, "secureVoteToCompleteActivity");
       }
 
       // Idempotency marker with TTL

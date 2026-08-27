@@ -45,14 +45,21 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
   const [activityRating, setActivityRating] = useState(0);
   const [activityComment, setActivityComment] = useState('');
 
-  // State for peer reviews (individual ratings)
+  // State for peer reviews (individual ratings & comments)
   const peers = (activity.participantsPreview || []).filter(p => p.uid !== currentUser.uid);
   const [peerRatings, setPeerRatings] = useState<Record<string, number>>(
     peers.reduce((acc, p) => ({ ...acc, [p.uid]: 0 }), {})
   );
+  const [peerComments, setPeerComments] = useState<Record<string, string>>(
+    peers.reduce((acc, p) => ({ ...acc, [p.uid]: '' }), {})
+  );
 
   const handlePeerRatingChange = (uid: string, rating: number) => {
     setPeerRatings(prev => ({ ...prev, [uid]: rating }));
+  };
+
+  const handlePeerCommentChange = (uid: string, comment: string) => {
+    setPeerComments(prev => ({ ...prev, [uid]: comment }));
   };
 
   const handleSubmit = async () => {
@@ -72,6 +79,17 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
         description: language === 'de' ? "Diese Nachricht enthält nicht erlaubte Inhalte." : "This message contains disallowed content."
       });
       return;
+    }
+
+    for (const comment of Object.values(peerComments)) {
+      if (comment && !validateChatMessage(comment)) {
+        toast({
+          variant: 'destructive',
+          title: language === 'de' ? "Inhalt blockiert" : "Content Blocked",
+          description: language === 'de' ? "Diese Nachricht enthält nicht erlaubte Inhalte." : "This message contains disallowed content."
+        });
+        return;
+      }
     }
 
     const now = Date.now();
@@ -114,7 +132,7 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
                 targetId: uid,
                 targetType: 'user' as const,
                 rating: rating,
-                comment: '' // Participants get only rating in this view
+                comment: peerComments[uid] || ''
             });
         });
 
@@ -186,19 +204,27 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
                 </div>
                 <div className="space-y-3">
                   {peers.map((peer) => (
-                    <div key={peer.uid} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-primary/20">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <ProfileAvatar 
-                          className="h-10 w-10"
-                          photoURL={peer.photoURL}
-                          displayName={peer.displayName}
+                    <div key={peer.uid} className="flex flex-col gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-primary/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <ProfileAvatar 
+                            className="h-10 w-10"
+                            photoURL={peer.photoURL}
+                            displayName={peer.displayName}
+                          />
+                          <span className="font-bold text-slate-900 truncate text-sm">{formatFirstName(peer.displayName, 'Teilnehmer')}</span>
+                        </div>
+                        <StarRating 
+                          rating={peerRatings[peer.uid] || 0} 
+                          onRatingChange={(r) => handlePeerRatingChange(peer.uid, r)} 
+                          size={20} 
                         />
-                        <span className="font-bold text-slate-900 truncate text-sm">{formatFirstName(peer.displayName, 'Teilnehmer')}</span>
                       </div>
-                      <StarRating 
-                        rating={peerRatings[peer.uid] || 0} 
-                        onRatingChange={(r) => handlePeerRatingChange(peer.uid, r)} 
-                        size={20} 
+                      <Textarea 
+                        value={peerComments[peer.uid] || ''}
+                        onChange={(e) => handlePeerCommentChange(peer.uid, e.target.value)}
+                        placeholder={language === 'de' ? `Wie war ${formatFirstName(peer.displayName, 'der Teilnehmer')}? (optional)` : `How was ${formatFirstName(peer.displayName, 'the participant')}? (optional)`}
+                        className="rounded-2xl border-none bg-slate-50 shadow-sm font-medium text-xs focus-visible:ring-primary/20 min-h-[60px] resize-none"
                       />
                     </div>
                   ))}

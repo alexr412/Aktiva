@@ -82,20 +82,23 @@ function idempotencyExpiresAt() {
 // ─── SHARED LOGIC ─────────────────────────────────────────────────────────────
 /**
  * Shared server-side logic to release funds from escrow to host's fiat balance.
- * All reads occur inside the provided transaction for consistency.
+ * All reads occur inside the provided transaction for consistency BEFORE any writes.
  */
-async function releaseEscrow(transaction, db, activityData, activityId, hostId, operationId, initiatedBy, executionSource) {
-    const hostRef = db.collection("users").doc(hostId);
-    const hostSnap = await transaction.get(hostRef);
-    if (!hostSnap.exists) {
+async function releaseEscrow(transaction, db, activityData, activityId, hostId, hostSnap, operationId, initiatedBy, executionSource) {
+    if (!hostId) {
+        throw new https_1.HttpsError("failed-precondition", "Host-ID für die Aktivität fehlt.");
+    }
+    if (!hostSnap || !hostSnap.exists) {
         throw new https_1.HttpsError("not-found", "Host-Profil nicht gefunden.");
     }
     const hostData = hostSnap.data() || {};
     const hostBalances = getUserBalancesInCents(hostData);
     // Use price locked at activity creation time — not a mutable field
     const priceCents = Math.round((activityData.price || 0) * 100);
-    const payingParticipants = (activityData.participantIds || []).filter((id) => id !== hostId);
+    const participantIds = Array.isArray(activityData.participantIds) ? activityData.participantIds : [];
+    const payingParticipants = participantIds.filter((id) => id !== hostId);
     const releaseAmountCents = payingParticipants.length * Math.round(priceCents * 0.9);
+    const hostRef = db.collection("users").doc(hostId);
     if (releaseAmountCents > 0) {
         // Escrow deduction is capped at actual escrow balance to prevent negative escrow
         const escrowDeduction = Math.min(hostBalances.escrowBalanceCents, releaseAmountCents);
@@ -491,6 +494,11 @@ exports.secureCompleteActivity = (0, https_1.onCall)(async (request) => {
             if (activityData.status === "cancelled") {
                 throw new https_1.HttpsError("failed-precondition", "Aktivität wurde bereits storniert.");
             }
+            // Pre-read host document before ANY writes (Firestore transaction constraint)
+            const hostId = activityData.hostId || activityData.creatorId || activityData.userId;
+            const hostRef = hostId ? db.collection("users").doc(hostId) : null;
+            const hostSnap = hostRef ? await transaction.get(hostRef) : null;
+            // ── ALL WRITES BELOW THIS LINE ────────────────────────────────────────
             // Set status
             transaction.update(activityRef, {
                 status: "completed",
@@ -502,7 +510,7 @@ exports.secureCompleteActivity = (0, https_1.onCall)(async (request) => {
                 transaction.set(placeRef, { activityCount: firestore_2.FieldValue.increment(-1) }, { merge: true });
             }
             // Release escrow
-            await releaseEscrow(transaction, db, activityData, activityId, uid, operationId, uid, "secureCompleteActivity");
+            await releaseEscrow(transaction, db, activityData, activityId, hostId, hostSnap, operationId, uid, "secureCompleteActivity");
             // Idempotency marker with TTL
             transaction.set(opRef, {
                 operationType: "complete_activity",
@@ -567,16 +575,21 @@ exports.secureVoteToCompleteActivity = (0, https_1.onCall)(async (request) => {
                 throw new https_1.HttpsError("failed-precondition", "Aktivität wurde bereits storniert.");
             }
             // Authorization: voter must be a participant
-            const participantIds = activityData.participantIds || [];
+            const participantIds = Array.isArray(activityData.participantIds) ? activityData.participantIds : [];
             if (!participantIds.includes(uid)) {
                 throw new https_1.HttpsError("permission-denied", "Nur Teilnehmer können für den Abschluss stimmen.");
             }
             // Add vote (deduplicated)
-            const currentVotes = activityData.completionVotes || [];
+            const currentVotes = Array.isArray(activityData.completionVotes) ? activityData.completionVotes : [];
             if (currentVotes.includes(uid)) {
                 return { success: true, message: "Stimme bereits registriert." };
             }
             const newVotes = [...new Set([...currentVotes, uid])];
+            // Pre-read host document before ANY writes (Firestore transaction constraint)
+            const hostId = activityData.hostId || activityData.creatorId || activityData.userId;
+            const hostRef = hostId ? db.collection("users").doc(hostId) : null;
+            const hostSnap = hostRef ? await transaction.get(hostRef) : null;
+            // ── ALL WRITES BELOW THIS LINE ────────────────────────────────────────
             transaction.update(activityRef, {
                 completionVotes: newVotes,
                 lastInteractionAt: firestore_2.FieldValue.serverTimestamp(),
@@ -591,7 +604,7 @@ exports.secureVoteToCompleteActivity = (0, https_1.onCall)(async (request) => {
                     const placeRef = db.collection("places").doc(activityData.placeId);
                     transaction.set(placeRef, { activityCount: firestore_2.FieldValue.increment(-1) }, { merge: true });
                 }
-                await releaseEscrow(transaction, db, activityData, activityId, activityData.hostId, operationId, uid, "secureVoteToCompleteActivity");
+                await releaseEscrow(transaction, db, activityData, activityId, hostId, hostSnap, operationId, uid, "secureVoteToCompleteActivity");
             }
             // Idempotency marker with TTL
             transaction.set(opRef, {
@@ -618,7 +631,7 @@ exports.secureVoteToCompleteActivity = (0, https_1.onCall)(async (request) => {
         });
         if (error instanceof https_1.HttpsError)
             throw error;
-        throw new https_1.HttpsError("internal", "Fehler bei der Stimmenabgabe.");
+        throw new https_1.HttpsError("internal", error instanceof Error ? error.message : "Fehler bei der Stimmenabgabe.");
     }
 });
 /**
