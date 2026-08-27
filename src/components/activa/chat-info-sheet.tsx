@@ -405,7 +405,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
               <Button 
                 onClick={handleCompleteActivity} 
                 disabled={isActing}
-                 className="w-full h-12 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 transition-all gap-2 mb-2"
+                 className="w-full h-12 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 dark:shadow-none transition-all gap-2 mb-2"
                >
                  {isActing ? <BarChart3 className="h-4 w-4 animate-spin"/> : <CheckCircle2 className="h-4 w-4" />}
                  <span>{language === 'de' ? 'Aktivität erfolgreich abschließen' : 'Successfully complete activity'}</span>
@@ -448,7 +448,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
                    <AlertDialogCancel className="rounded-xl font-bold h-11 border-none bg-slate-100 dark:bg-neutral-800 dark:text-neutral-300">{language === 'de' ? 'Abbrechen' : 'Cancel'}</AlertDialogCancel>
                   <AlertDialogAction 
                     disabled={isActing} 
-                    className='bg-red-500 hover:bg-red-600 text-white rounded-xl font-black h-11 border-none shadow-lg shadow-red-200'
+                    className='bg-red-500 hover:bg-red-600 text-white rounded-xl font-black h-11 border-none shadow-md shadow-red-500/20 dark:shadow-none'
                      onClick={handleLeaveOrDelete}
                    >
                      {isActing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

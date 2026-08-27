@@ -887,7 +887,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex flex-col gap-2 sm:gap-0 mt-4">
                       <AlertDialogCancel className="rounded-xl font-bold h-10">{language === 'de' ? 'Abbrechen' : 'Cancel'}</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleCancel} disabled={isCancelling} className="rounded-xl font-black h-10 bg-red-500 hover:bg-red-600 shadow-lg shadow-red-100">
+                      <AlertDialogAction onClick={handleCancel} disabled={isCancelling} className="rounded-xl font-black h-10 bg-red-500 hover:bg-red-600 shadow-md shadow-red-500/20 dark:shadow-none">
                         {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : (language === 'de' ? "Ja, Stornieren" : "Yes, Cancel")}
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -940,7 +940,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                           <AlertDialogAction 
                             onClick={handleLeave} 
                             disabled={isLeaving} 
-                            className="rounded-xl font-black h-10 bg-red-500 hover:bg-red-600 shadow-lg shadow-red-100"
+                            className="rounded-xl font-black h-10 bg-red-500 hover:bg-red-600 shadow-md shadow-red-500/20 dark:shadow-none"
                           >
                             {isLeaving ? <Loader2 className="h-4 w-4 animate-spin" /> : (language === 'de' ? 'Ja, verlassen' : 'Yes, leave')}
                           </AlertDialogAction>
