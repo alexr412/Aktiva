@@ -1590,28 +1590,10 @@ export async function submitMultiReview(activityId: string, reviewerId: string, 
             // Permanenten Ort-Anker vorbereiten
             const placeId = activityData.placeId;
             const placeRef = placeId && placeId !== 'custom' ? doc(db!, 'places', placeId) : null;
-
-            // Alle Ziel-Snapshots atomar abrufen
-            const targetRefs = reviews.map(r => ({
-                ref: r.targetType === 'user' ? doc(db!, 'users', r.targetId) : activityRef,
-                review: r
-            }));
-
-            const targetSnaps = await Promise.all(targetRefs.map(entry => {
-                if (entry.ref.id === activityId && entry.review.targetType === 'activity') {
-                    return Promise.resolve(activitySnap);
-                }
-                return transaction.get(entry.ref);
-            }));
-
-            // Falls ein Place-Dokument existiert, dessen Snapshot ebenfalls laden (für persistente Aggregation)
             const placeSnap = placeRef ? await transaction.get(placeRef) : null;
 
             // REVIEWS VERARBEITEN
-            targetRefs.forEach((entry, index) => {
-                const snap = targetSnaps[index];
-                const review = entry.review;
-                
+            reviews.forEach((review) => {
                 const reviewRef = doc(collection(db!, 'reviews'));
                 transaction.set(reviewRef, {
                     ...review,
@@ -1620,42 +1602,32 @@ export async function submitMultiReview(activityId: string, reviewerId: string, 
                     createdAt: serverTimestamp()
                 });
 
-                if (snap.exists()) {
-                    const data = snap.data();
-                    const isUser = review.targetType === 'user';
-                    
-                    const currentCount = isUser ? (data.ratingCount || 0) : (data.reviewCount || 0);
-                    const currentAvg = isUser ? (data.averageRating || 0) : (data.avgRating || 0);
+                if (review.targetType === 'activity') {
+                    const currentCount = activityData.reviewCount || 0;
+                    const currentAvg = activityData.avgRating || 0;
                     
                     const newCount = currentCount + 1;
                     const newAvg = ((currentAvg * currentCount) + review.rating) / newCount;
                     
-                    if (isUser) {
-                        transaction.update(entry.ref, {
-                            averageRating: newAvg,
-                            ratingCount: newCount
-                        });
-                    } else {
-                        transaction.update(entry.ref, {
-                            avgRating: newAvg,
-                            reviewCount: newCount
-                        });
+                    transaction.update(activityRef, {
+                        avgRating: newAvg,
+                        reviewCount: newCount
+                    });
 
-                        // --- MODUL 18: PERSISTENTE KASKADIERUNG ZUM ORT ---
-                        if (placeRef) {
-                            const pData = placeSnap?.exists() ? placeSnap.data() : { avgRating: 0, reviewCount: 0 };
-                            const pCount = pData.reviewCount || 0;
-                            const pAvg = pData.avgRating || 0;
-                            
-                            const newPCount = pCount + 1;
-                            const newPAvg = ((pAvg * pCount) + review.rating) / newPCount;
-                            
-                            // Nutze set mit merge, falls der Ort noch nie bewertet wurde
-                            transaction.set(placeRef, {
-                                avgRating: newPAvg,
-                                reviewCount: newPCount
-                            }, { merge: true });
-                        }
+                    // --- MODUL 18: PERSISTENTE KASKADIERUNG ZUM ORT ---
+                    if (placeRef) {
+                        const pData = placeSnap?.exists() ? placeSnap.data() : { avgRating: 0, reviewCount: 0 };
+                        const pCount = pData.reviewCount || 0;
+                        const pAvg = pData.avgRating || 0;
+                        
+                        const newPCount = pCount + 1;
+                        const newPAvg = ((pAvg * pCount) + review.rating) / newPCount;
+                        
+                        // Nutze set mit merge, falls der Ort noch nie bewertet wurde
+                        transaction.set(placeRef, {
+                            avgRating: newPAvg,
+                            reviewCount: newPCount
+                        }, { merge: true });
                     }
                 }
             });
