@@ -897,7 +897,7 @@ export const kickParticipant = onCall(async (request) => {
 
   try {
     const result = await db.runTransaction(async (transaction) => {
-      // 1. Get activity doc
+      // 1. Get activity doc (READ)
       const activityRef = db.collection('activities').doc(activityId);
       const activitySnap = await transaction.get(activityRef);
       if (!activitySnap.exists) {
@@ -905,24 +905,29 @@ export const kickParticipant = onCall(async (request) => {
       }
       const activity = activitySnap.data()!;
 
-      // 2. Check host authorization
+      // 2. Get chat doc (READ) - MUST occur before any writes
+      const chatRef = db.collection('chats').doc(activityId);
+      const chatSnap = await transaction.get(chatRef);
+
+      // 3. Check host authorization
       const isHost = activity.hostId === callerId;
       if (!isHost) {
         throw new HttpsError('permission-denied', 'Only the activity host can remove participants.');
       }
 
-      // 3. Prevent removing host
+      // 4. Prevent removing host
       if (targetUserId === activity.hostId) {
         throw new HttpsError('failed-precondition', 'The activity host cannot be removed.');
       }
 
-      // 4. Verify target is a participant
+      // 5. Verify target is a participant
       const participantIds: string[] = activity.participantIds || [];
       if (!participantIds.includes(targetUserId)) {
         throw new HttpsError('failed-precondition', 'Target user is not a participant of this activity.');
       }
 
-      // 5. Update activity document
+      // 6. ALL WRITES AFTER ALL READS:
+      // Update activity document
       const updatedParticipantIds = participantIds.filter(id => id !== targetUserId);
       const currentPreview = activity.participantsPreview || [];
       const updatedPreview = currentPreview.filter((p: any) => p.uid !== targetUserId);
@@ -935,9 +940,7 @@ export const kickParticipant = onCall(async (request) => {
         lastInteractionAt: FieldValue.serverTimestamp()
       });
 
-      // 6. Update chat document if present
-      const chatRef = db.collection('chats').doc(activityId);
-      const chatSnap = await transaction.get(chatRef);
+      // Update chat document if present
       if (chatSnap.exists) {
         transaction.update(chatRef, {
           participantIds: FieldValue.arrayRemove(targetUserId),
@@ -946,11 +949,11 @@ export const kickParticipant = onCall(async (request) => {
         });
       }
 
-      // 7. Delete subcollection document activities/{activityId}/participants/{targetUserId}
+      // Delete subcollection document activities/{activityId}/participants/{targetUserId}
       const pSubRef = activityRef.collection('participants').doc(targetUserId);
       transaction.delete(pSubRef);
 
-      // 8. Create notification for kicked user
+      // Create notification for kicked user
       const notifRef = db.collection('notifications').doc();
       transaction.set(notifRef, {
         recipientId: targetUserId,
