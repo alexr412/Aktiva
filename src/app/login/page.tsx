@@ -33,7 +33,8 @@ import {
   Eye, 
   EyeOff, 
   MapPin,
-  AlertCircle
+  AlertCircle,
+  KeyRound
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -685,50 +686,53 @@ function LoginPageContent() {
 
       {/* Dialog for Reset */}
       <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-        <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl p-8 bg-white dark:bg-neutral-950">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black text-slate-900 dark:text-white uppercase">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-[2.5rem] border border-slate-200/80 dark:border-neutral-800 shadow-2xl p-6 sm:p-8 bg-white dark:bg-neutral-900 text-slate-900 dark:text-white">
+          <DialogHeader className="text-center sm:text-left space-y-2 pr-10">
+            <div className="mx-auto sm:mx-0 w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1">
+              <KeyRound className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
               {language === 'de' ? 'Passwort zurücksetzen' : 'Password Recovery'}
             </DialogTitle>
-            <DialogDescription className="font-bold text-slate-500 pt-2">
+            <DialogDescription className="text-xs sm:text-sm font-medium text-slate-500 dark:text-neutral-400 leading-relaxed">
                {language === 'de' 
                  ? 'Gib deine E-Mail-Adresse ein und wir senden dir einen Link zur Wiederherstellung.' 
-                 : 'Enter your email and we will send you a recovery link.'}
+                 : 'Enter your email address and we will send you a recovery link.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-6">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
+          <div className="py-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-widest px-1">
                 {language === 'de' ? 'Deine E-Mail-Adresse' : 'Your Email'}
               </label>
-              <div className="relative group mt-2">
-                <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-neutral-500 group-focus-within:text-emerald-500 transition-colors" />
                 <Input 
                   type="email" 
                   placeholder="name@example.com" 
                   autoComplete="email"
                   value={resetEmail} 
                   onChange={(e) => setResetEmail(e.target.value)} 
-                  className="h-14 pl-14 pr-4 rounded-full bg-slate-100 dark:bg-neutral-900 border-none font-bold text-base lg:text-sm focus-visible:ring-primary/20"
+                  className="h-12 pl-11 pr-4 rounded-2xl bg-slate-100 dark:bg-neutral-800 border-none font-medium text-sm text-slate-900 dark:text-white focus-visible:ring-2 focus-visible:ring-emerald-500/20"
                 />
               </div>
             </div>
           </div>
-          <DialogFooter className="flex flex-col sm:flex-row gap-3">
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2.5 pt-2">
             <Button 
               variant="ghost" 
               onClick={() => setIsResetDialogOpen(false)} 
-              className="rounded-xl h-14 font-black text-slate-400 hover:bg-slate-50 uppercase tracking-widest"
+              className="rounded-2xl h-12 font-bold text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800 text-xs uppercase tracking-wider"
             >
               {language === 'de' ? 'Abbrechen' : 'Cancel'}
             </Button>
             <Button 
               onClick={handlePasswordReset} 
-              className="rounded-full h-14 font-black flex-1 uppercase tracking-widest" 
+              className="rounded-2xl h-12 font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition-all flex-1" 
               disabled={isResetting || !resetEmail}
             >
               {isResetting ? (
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 language === 'de' ? 'Link anfordern' : 'Request Link'
               )}
