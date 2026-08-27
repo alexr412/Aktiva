@@ -413,13 +413,13 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
         {/* Featured Hero Card */}
         <div className={cn(
-          "rounded-[2rem] p-6 relative overflow-hidden transition-all duration-1000 border-none shadow-xl shadow-slate-200/50 bg-white text-slate-900",
+          "rounded-[2rem] p-6 relative overflow-hidden transition-all duration-1000 border border-slate-100 dark:border-neutral-800 shadow-xl shadow-slate-200/50 dark:shadow-none bg-white dark:bg-neutral-900 text-slate-900 dark:text-white",
           isCancelled ? "opacity-40 grayscale blur-[1px]" : "",
-          activity.isBoosted && !isCancelled ? "ring-4 ring-orange-500/10 shadow-orange-500/20 bg-orange-50/10" : ""
+          activity.isBoosted && !isCancelled ? "ring-4 ring-orange-500/10 shadow-orange-500/20 bg-orange-50/10 dark:bg-orange-950/20" : ""
         )}>
           <div className="relative z-10">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-neutral-500">
                 {language === 'de' ? 'Aktivität Details' : 'Activity Details'}
               </span>
               {activity.isBoosted && (
@@ -430,43 +430,43 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
               )}
             </div>
             
-            <h1 className="text-2xl font-black mb-2 leading-tight text-slate-900">
+            <h1 className="text-2xl font-black mb-2 leading-tight text-slate-900 dark:text-white">
               {activity.title || activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup')}
             </h1>
             
             {activity.title && activity.placeName && (
-              <div className="text-slate-700 font-bold mb-1 flex items-center gap-1.5 text-sm">
+              <div className="text-slate-700 dark:text-neutral-300 font-bold mb-1 flex items-center gap-1.5 text-sm">
                 <MapPin className="h-4 w-4 text-primary shrink-0" /> 
                 <span>{activity.placeName}</span>
               </div>
             )}
             
             {activity.placeAddress && (
-              <div className="text-slate-450 font-bold mb-4 flex items-center gap-1.5 text-xs">
+              <div className="text-slate-450 dark:text-neutral-400 font-bold mb-4 flex items-center gap-1.5 text-xs">
                 {!(activity.title && activity.placeName) && <MapPin className="h-4 w-4 text-primary shrink-0" />}
                 <span className={cn(activity.title && activity.placeName && "pl-5.5")}>{activity.placeAddress}</span>
               </div>
             )}
 
             {activity.description && (
-              <div className="bg-primary/5 rounded-xl p-3 mb-4 border-l-2 border-primary/30">
-                <p className="text-xs text-slate-600 font-medium italic leading-relaxed">"{activity.description}"</p>
+              <div className="bg-primary/5 dark:bg-primary/10 rounded-xl p-3 mb-4 border-l-2 border-primary/30">
+                <p className="text-xs text-slate-600 dark:text-neutral-300 font-medium italic leading-relaxed">"{activity.description}"</p>
               </div>
             )}
             
             <div className="flex items-center gap-3">
-              <div className="bg-slate-50 rounded-xl p-2.5 flex-1 flex items-center gap-2 border border-slate-100">
+              <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-xl p-2.5 flex-1 flex items-center gap-2 border border-slate-100 dark:border-neutral-700/50">
                 <Calendar className="h-4 w-4 text-primary shrink-0" />
                 <div>
-                  <p className="text-[8px] font-bold uppercase text-slate-400 leading-none mb-0.5">{language === 'de' ? 'Datum' : 'Date'}</p>
-                  <p className="text-xs font-black text-slate-800 leading-none">{formatActivityDateRange(activity.activityDate, activity.activityEndDate, language)}</p>
+                  <p className="text-[8px] font-bold uppercase text-slate-400 dark:text-neutral-400 leading-none mb-0.5">{language === 'de' ? 'Datum' : 'Date'}</p>
+                  <p className="text-xs font-black text-slate-800 dark:text-white leading-none">{formatActivityDateRange(activity.activityDate, activity.activityEndDate, language)}</p>
                 </div>
               </div>
-              <div className="bg-slate-50 rounded-xl p-2.5 flex-1 flex items-center gap-2 border border-slate-100">
+              <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-xl p-2.5 flex-1 flex items-center gap-2 border border-slate-100 dark:border-neutral-700/50">
                 <Clock className="h-4 w-4 text-primary shrink-0" />
                 <div>
-                  <p className="text-[8px] font-bold uppercase text-slate-400 leading-none mb-0.5">{language === 'de' ? 'Zeit' : 'Time'}</p>
-                  <p className="text-xs font-black text-slate-800 leading-none">{formatActivityTimeDisplay(activity.activityDate, activity.isTimeFlexible, language)}</p>
+                  <p className="text-[8px] font-bold uppercase text-slate-400 dark:text-neutral-400 leading-none mb-0.5">{language === 'de' ? 'Zeit' : 'Time'}</p>
+                  <p className="text-xs font-black text-slate-800 dark:text-white leading-none">{formatActivityTimeDisplay(activity.activityDate, activity.isTimeFlexible, language)}</p>
                 </div>
               </div>
             </div>
@@ -475,21 +475,21 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
         {/* Opening Hours Info Section */}
         {place?.openingHours && (
-          <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+          <Card className="border border-slate-100 dark:border-neutral-800 shadow-sm rounded-[2rem] bg-white dark:bg-neutral-900 overflow-hidden animate-in fade-in zoom-in-95 duration-500">
             <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-slate-400 dark:text-neutral-400">
                 <Clock className="h-4 w-4" />
-                <CardTitle className="">{language === 'de' ? 'Betriebszeiten des Ortes' : 'Opening Hours of the Place'}</CardTitle>
+                <CardTitle className="text-base font-black text-slate-850 dark:text-neutral-200">{language === 'de' ? 'Betriebszeiten des Ortes' : 'Opening Hours of the Place'}</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="bg-slate-50 rounded-2xl p-4">
-                <p className="text-sm font-bold text-slate-700 leading-relaxed">
+              <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-4 border border-slate-100/50 dark:border-neutral-700/50">
+                <p className="text-sm font-bold text-slate-700 dark:text-neutral-200 leading-relaxed">
                   {place.openingHours.split(';').map((segment, idx) => (
                     <span key={idx} className="block">{segment.trim()}</span>
                   ))}
                 </p>
-                <p className="text-[9px] font-medium text-slate-400 mt-3 uppercase tracking-tighter italic">
+                <p className="text-[9px] font-medium text-slate-400 dark:text-neutral-400 mt-3 uppercase tracking-tighter italic">
                   {language === 'de' ? '* Angaben ohne Gewähr. Daten stammen von OpenStreetMap via Geoapify.' : '* Information subject to change. Data from OpenStreetMap via Geoapify.'}
                 </p>
               </div>
@@ -500,26 +500,26 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
         {/* Participants & Stats */}
         <div className="grid grid-cols-2 gap-3">
-          <Card className="border-none shadow-sm rounded-3xl bg-white p-4 flex flex-col items-center justify-center text-center">
+          <Card className="border border-slate-100 dark:border-neutral-800 shadow-sm rounded-3xl bg-white dark:bg-neutral-900 p-4 flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-2 mb-1">
               <Users className="h-4 w-4 text-primary" />
-              <p className="text-xl font-black text-slate-900 leading-none">{renderedParticipantIds.length} / {activity.maxParticipants || '∞'}</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-none">{renderedParticipantIds.length} / {activity.maxParticipants || '∞'}</p>
             </div>
-            <p className="text-[9px] font-bold text-slate-400 uppercase">{language === 'de' ? 'Teilnehmer' : 'Participants'}</p>
+            <p className="text-[9px] font-bold text-slate-400 dark:text-neutral-400 uppercase">{language === 'de' ? 'Teilnehmer' : 'Participants'}</p>
           </Card>
-          <Card className="border-none shadow-sm rounded-3xl bg-white p-4 flex flex-col items-center justify-center text-center">
+          <Card className="border border-slate-100 dark:border-neutral-800 shadow-sm rounded-3xl bg-white dark:bg-neutral-900 p-4 flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-2 mb-1">
               <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-              <p className="text-xl font-black text-slate-900 leading-none">{hostProfile?.averageRating?.toFixed(1) || '0.0'}</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-none">{hostProfile?.averageRating?.toFixed(1) || '0.0'}</p>
             </div>
-            <p className="text-[9px] font-bold text-slate-400 uppercase">{language === 'de' ? `Host Bewertung (${hostProfile?.ratingCount || 0})` : `Host Rating (${hostProfile?.ratingCount || 0})`}</p>
+            <p className="text-[9px] font-bold text-slate-400 dark:text-neutral-400 uppercase">{language === 'de' ? `Host Bewertung (${hostProfile?.ratingCount || 0})` : `Host Rating (${hostProfile?.ratingCount || 0})`}</p>
           </Card>
         </div>
 
         {/* Participants List Section */}
-        <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
+        <Card className="border border-slate-100 dark:border-neutral-800 shadow-sm rounded-[2rem] bg-white dark:bg-neutral-900 overflow-hidden">
           <CardHeader className="pb-2">
-            <div className="flex items-center gap-2 text-slate-400">
+            <div className="flex items-center gap-2 text-slate-400 dark:text-neutral-400">
               <Users className="h-4 w-4" />
               <CardTitle className="text-base font-black text-slate-850 dark:text-neutral-200">
                 {translateAppString('activity.participants_list', language, renderedParticipantIds.length)}
@@ -538,10 +538,10 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                     const canKick = activity.hostId === user?.uid && uid !== activity.hostId && user?.uid !== uid;
 
                     return (
-                      <li key={uid} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-none">
+                      <li key={uid} className="flex items-center justify-between py-1.5 border-b border-slate-50 dark:border-neutral-800 last:border-none">
                         <div className="flex items-center gap-2.5">
                           <Avatar 
-                            className="h-8 w-8 border border-slate-100"
+                            className="h-8 w-8 border border-slate-100 dark:border-neutral-700"
                             isPremium={details?.isPremium}
                             isCreator={details?.isCreator}
                             isSupporter={details?.isSupporter}
@@ -558,7 +558,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                               </span>
                               <UserBadge isPremium={details?.isPremium} size="sm" />
                               {isHostUser && (
-                                <Badge variant="secondary" className="px-1.5 py-0 text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-none leading-none">
+                                <Badge variant="secondary" className="px-1.5 py-0 text-[8px] font-black uppercase bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border-none leading-none">
                                   Host
                                 </Badge>
                               )}
@@ -567,7 +567,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                         </div>
                         <div className="flex items-center gap-1">
                           {user?.uid !== uid && (
-                            <Button asChild variant="ghost" size="sm" className="h-7 rounded-lg text-[10px] font-bold text-slate-500 hover:text-slate-900">
+                            <Button asChild variant="ghost" size="sm" className="h-7 rounded-lg text-[10px] font-bold text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white">
                               <Link href={`/users/${uid}`}>
                                 {language === 'de' ? 'Profil' : 'Profile'}
                               </Link>
@@ -607,12 +607,12 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                 const rows = [];
                 for (let i = 0; i < rowsToShow; i++) {
                   rows.push(
-                    <li key={`open-spot-${i}`} className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-none">
+                    <li key={`open-spot-${i}`} className="flex items-center justify-between py-1.5 border-b border-slate-50 dark:border-neutral-800 last:border-none">
                       <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-full border border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center shrink-0">
-                          <UserPlus className="h-3.5 w-3.5 text-slate-400" />
+                        <div className="h-8 w-8 rounded-full border border-dashed border-slate-200 dark:border-neutral-700 bg-slate-50/50 dark:bg-neutral-800/50 flex items-center justify-center shrink-0">
+                          <UserPlus className="h-3.5 w-3.5 text-slate-400 dark:text-neutral-500" />
                         </div>
-                        <span className="text-xs font-bold text-slate-450 dark:text-neutral-450">
+                        <span className="text-xs font-bold text-slate-450 dark:text-neutral-400">
                           {translateAppString('ticket.spot_open', language)}
                         </span>
                       </div>
@@ -622,7 +622,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
                 if (hasRemainder) {
                   rows.push(
-                    <li key="open-spot-remainder" className="flex items-center py-1.5 border-b border-slate-50 last:border-none">
+                    <li key="open-spot-remainder" className="flex items-center py-1.5 border-b border-slate-50 dark:border-neutral-800 last:border-none">
                       <span className="text-[11px] font-black text-slate-400 dark:text-neutral-500 pl-10.5">
                         {translateAppString('ticket.spots_remaining_summary', language, remainingSpots - 3)}
                       </span>
@@ -638,9 +638,9 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
         {/* Map & Navigation Section */}
         {isValidCoordinate(activity.lat, activity.lon) && (
-          <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
+          <Card className="border border-slate-100 dark:border-neutral-800 shadow-sm rounded-[2rem] bg-white dark:bg-neutral-900 overflow-hidden">
             <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-slate-400 dark:text-neutral-400">
                 <MapPin className="h-4 w-4" />
                 <CardTitle className="text-base font-black text-slate-850 dark:text-neutral-200">
                   {language === 'de' ? 'Karten-Pin & Navigation' : 'Map Pin & Navigation'}
@@ -648,12 +648,12 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
               </div>
             </CardHeader>
             <CardContent className="p-5 pt-2">
-              <div className="bg-slate-50 dark:bg-neutral-900 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800 flex flex-col gap-3">
+              <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-4 border border-slate-100 dark:border-neutral-700/50 flex flex-col gap-3">
                 <div className="text-xs font-bold text-slate-800 dark:text-neutral-200">
                   {activity.placeName}
                 </div>
                 {activity.placeAddress && (
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-slate-500 dark:text-neutral-400">
                     {activity.placeAddress}
                   </div>
                 )}
@@ -679,9 +679,9 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
         {/* Join Criteria / Kriterien */}
         {activity.requirements && (
-          <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
+          <Card className="border border-slate-100 dark:border-neutral-800 shadow-sm rounded-[2rem] bg-white dark:bg-neutral-900 overflow-hidden">
             <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-slate-400 dark:text-neutral-400">
                 <ShieldCheck className="h-4 w-4" />
                 <CardTitle className="text-base font-black text-slate-800 dark:text-neutral-200">
                   {language === 'de' ? 'Kriterien zum Beitreten' : 'Join Criteria'}
@@ -689,12 +689,12 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
               </div>
             </CardHeader>
             <CardContent className="p-5 pt-2">
-              <div className="bg-slate-50 dark:bg-neutral-900 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800 space-y-3">
+              <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-4 border border-slate-100 dark:border-neutral-700/50 space-y-3">
                 {/* Join Mode */}
                 <div className="flex items-start gap-3">
-                  <HelpCircle className="h-4 w-4 mt-0.5 text-slate-400 shrink-0" />
+                  <HelpCircle className="h-4 w-4 mt-0.5 text-slate-400 dark:text-neutral-500 shrink-0" />
                   <div>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                    <span className="text-[10px] font-black text-slate-400 dark:text-neutral-400 uppercase tracking-wider block">
                       {language === 'de' ? 'Beitrittsmethode' : 'Join Method'}
                     </span>
                     <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
@@ -710,7 +710,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   <div className="flex items-start gap-3">
                     <Star className="h-4 w-4 mt-0.5 text-amber-500 fill-amber-500 shrink-0" />
                     <div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                      <span className="text-[10px] font-black text-slate-400 dark:text-neutral-400 uppercase tracking-wider block">
                         {language === 'de' ? 'Mindestbewertung' : 'Minimum Rating'}
                       </span>
                       <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
@@ -725,7 +725,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   <div className="flex items-start gap-3">
                     <Users className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
                     <div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                      <span className="text-[10px] font-black text-slate-400 dark:text-neutral-400 uppercase tracking-wider block">
                         {language === 'de' ? 'Altersbereich' : 'Age Range'}
                       </span>
                       <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
@@ -744,7 +744,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   <div className="flex items-start gap-3">
                     <UserCircle className="h-4 w-4 mt-0.5 text-purple-500 shrink-0" />
                     <div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                      <span className="text-[10px] font-black text-slate-400 dark:text-neutral-400 uppercase tracking-wider block">
                         {language === 'de' ? 'Zugelassene Geschlechter' : 'Allowed Genders'}
                       </span>
                       <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
@@ -766,7 +766,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   <div className="flex items-start gap-3">
                     <CheckCircle className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" />
                     <div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                      <span className="text-[10px] font-black text-slate-400 dark:text-neutral-400 uppercase tracking-wider block">
                         {language === 'de' ? 'Profilbild' : 'Profile Picture'}
                       </span>
                       <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
@@ -781,7 +781,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   <div className="flex items-start gap-3">
                     <ShieldCheck className="h-4 w-4 mt-0.5 text-primary shrink-0" />
                     <div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                      <span className="text-[10px] font-black text-slate-400 dark:text-neutral-400 uppercase tracking-wider block">
                         {language === 'de' ? 'Verifizierung' : 'Verification'}
                       </span>
                       <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
@@ -798,8 +798,8 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   (!activity.requirements.gender || activity.requirements.gender.length === 0) &&
                   !activity.requirements.requireProfilePicture &&
                   !activity.requirements.requireVerification && (
-                    <div className="flex items-center gap-3 text-slate-400 py-1">
-                      <ShieldCheck className="h-4 w-4 text-slate-400 shrink-0" />
+                    <div className="flex items-center gap-3 text-slate-400 dark:text-neutral-400 py-1">
+                      <ShieldCheck className="h-4 w-4 text-slate-400 dark:text-neutral-400 shrink-0" />
                       <span className="text-xs font-black">
                         {language === 'de' ? 'Keine Einschränkungen zum Beitreten' : 'No requirements to join'}
                       </span>
@@ -812,15 +812,15 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
         {/* Participant Ticket Section */}
         {isParticipant && !isCancelled && (
-          <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden p-6 relative">
+          <Card className="border border-slate-100 dark:border-neutral-800 shadow-sm rounded-[2rem] bg-white dark:bg-neutral-900 overflow-hidden p-6 relative">
             <CardHeader className="pb-0 p-0 pr-12 text-left sm:text-center sm:pr-0">
-              <CardTitle className="text-xl">{language === 'de' ? 'Dein Ticket' : 'Your Ticket'}</CardTitle>
-              <CardDescription className="font-medium text-xs mt-1">{language === 'de' ? 'Zeige diesen Code beim Einlass vor.' : 'Show this code at the entrance.'}</CardDescription>
+              <CardTitle className="text-xl text-slate-900 dark:text-white">{language === 'de' ? 'Dein Ticket' : 'Your Ticket'}</CardTitle>
+              <CardDescription className="font-medium text-xs mt-1 text-slate-500 dark:text-neutral-400">{language === 'de' ? 'Zeige diesen Code beim Einlass vor.' : 'Show this code at the entrance.'}</CardDescription>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsTicketExpanded(!isTicketExpanded)}
-                className="absolute top-4 right-4 h-11 w-11 rounded-full text-slate-400 hover:text-slate-650 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none transition-[background-color,color,border-color] duration-200 flex items-center justify-center shrink-0 border border-slate-100"
+                className="absolute top-4 right-4 h-11 w-11 rounded-full text-slate-400 dark:text-neutral-400 hover:text-slate-650 hover:bg-slate-50 dark:hover:bg-neutral-800 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none transition-[background-color,color,border-color] duration-200 flex items-center justify-center shrink-0 border border-slate-100 dark:border-neutral-700"
                 aria-expanded={isTicketExpanded}
                 aria-controls="activity-ticket-qr-content"
                 aria-label={translateAppString(isTicketExpanded ? 'ticket.hide' : 'ticket.show', language)}
@@ -841,8 +841,8 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
               </div>
               
               {checkInStatus === 'scanned' && (
-                <div className="mt-3 flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 animate-in fade-in zoom-in-95">
-                  <Star className="h-3.5 w-3.5 fill-emerald-600" />
+                <div className="mt-3 flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-full border border-emerald-100 dark:border-emerald-800 animate-in fade-in zoom-in-95">
+                  <Star className="h-3.5 w-3.5 fill-emerald-600 dark:fill-emerald-400" />
                   <span className="text-[10px] font-black uppercase tracking-widest">{language === 'de' ? 'Eingetreten & Verifiziert' : 'Entered & Verified'}</span>
                 </div>
               )}
@@ -852,12 +852,12 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
 
         {/* Host Control Section */}
         {isHost && isActive && (
-          <Card className="border border-primary/10 shadow-sm shadow-primary/5 rounded-[2rem] bg-white overflow-hidden">
+          <Card className="border border-primary/20 dark:border-neutral-800 shadow-sm shadow-primary/5 rounded-[2rem] bg-white dark:bg-neutral-900 overflow-hidden">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
                   <span className="text-[9px] font-black uppercase tracking-widest text-primary leading-tight">Host Panel</span>
-                  <p className="font-bold text-sm leading-tight text-slate-900">Ticketing & Einlass</p>
+                  <p className="font-bold text-sm leading-tight text-slate-900 dark:text-white">Ticketing & Einlass</p>
                 </div>
                 <Button asChild size="sm" className="rounded-xl font-black bg-primary hover:bg-primary/90 text-white gap-1.5 h-8">
                   <Link href={`/activities/${activity.id}/scanner`}>
@@ -867,7 +867,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                 </Button>
               </div>
               
-              <div className="pt-3 border-t border-slate-100">
+              <div className="pt-3 border-t border-slate-100 dark:border-neutral-800">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="sm" className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg font-bold gap-1.5 h-8">
@@ -956,7 +956,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                   className={cn(
                     "w-full h-14 rounded-2xl font-black text-lg transition-all shadow-xl",
                     activity.isPaid 
-                      ? "bg-slate-900 hover:bg-black text-white shadow-slate-200" 
+                      ? "bg-slate-900 hover:bg-black text-white shadow-slate-200 dark:shadow-none" 
                       : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
                   )}
                 >
