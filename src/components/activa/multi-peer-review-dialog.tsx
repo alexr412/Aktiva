@@ -158,17 +158,17 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-[2.5rem] p-0 sm:max-w-md mx-auto h-[90vh] flex flex-col bg-white border-none shadow-2xl overflow-hidden">
-        <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-slate-100" />
+      <SheetContent side="bottom" className="rounded-t-[2.5rem] p-0 sm:max-w-md mx-auto h-[90vh] flex flex-col bg-white dark:bg-neutral-900 border-none shadow-2xl overflow-hidden">
+        <div className="absolute left-1/2 top-3 h-1.5 w-12 -translate-x-1/2 rounded-full bg-slate-100 dark:bg-neutral-800" />
         
         <SheetHeader className="pt-10 px-8 pb-4 text-center items-center shrink-0">
           <div className="bg-primary/10 p-3 rounded-2xl mb-2">
             <UserCheck className="h-6 w-6 text-primary" />
           </div>
-          <SheetTitle className="">{language === 'de' ? 'Review Time' : 'Review Time'}</SheetTitle>
+          <SheetTitle className="text-xl font-black text-slate-900 dark:text-white">{language === 'de' ? 'Review Time' : 'Review Time'}</SheetTitle>
 
-          <SheetDescription className="text-sm font-medium text-slate-500">
-            {language === 'de' ? 'Wie war dein Treffen bei ' : 'How was your meetup at '} <strong>{activity.placeName}</strong>?
+          <SheetDescription className="text-sm font-medium text-slate-500 dark:text-neutral-400">
+            {language === 'de' ? 'Wie war dein Treffen bei ' : 'How was your meetup at '} <strong className="text-slate-900 dark:text-white">{activity.placeName}</strong>?
           </SheetDescription>
 
         </SheetHeader>
@@ -179,17 +179,17 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-amber-500" />
-                <h3 className="">{language === 'de' ? 'Das Event' : 'The Event'}</h3>
+                <h3 className="font-bold text-slate-900 dark:text-white">{language === 'de' ? 'Das Event' : 'The Event'}</h3>
 
               </div>
-              <div className="flex flex-col items-center gap-4 bg-slate-50 p-6 rounded-3xl border border-slate-100">
+              <div className="flex flex-col items-center gap-4 bg-slate-50 dark:bg-neutral-800/60 p-6 rounded-3xl border border-slate-100 dark:border-neutral-800">
                 <StarRating rating={activityRating} onRatingChange={setActivityRating} size={32} />
                 <Textarea 
                   value={activityComment}
                   onChange={(e) => setActivityComment(e.target.value)}
                   placeholder={language === 'de' ? 'Erzähl uns kurz, wie es war... (optional)' : 'Tell us briefly how it was... (optional)'}
 
-                  className="rounded-2xl border-none bg-white shadow-sm font-medium focus-visible:ring-primary/20"
+                  className="rounded-2xl border-none bg-white dark:bg-neutral-900 text-slate-900 dark:text-white shadow-sm font-medium focus-visible:ring-primary/20 placeholder:text-slate-400 dark:placeholder:text-neutral-500"
                 />
               </div>
             </div>
@@ -199,12 +199,12 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
-                  <h3 className="">{language === 'de' ? 'Die Teilnehmer' : 'The Participants'}</h3>
+                  <h3 className="font-bold text-slate-900 dark:text-white">{language === 'de' ? 'Die Teilnehmer' : 'The Participants'}</h3>
 
                 </div>
                 <div className="space-y-3">
                   {peers.map((peer) => (
-                    <div key={peer.uid} className="flex flex-col gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:border-primary/20">
+                    <div key={peer.uid} className="flex flex-col gap-3 p-4 bg-white dark:bg-neutral-800/60 rounded-2xl border border-slate-100 dark:border-neutral-800 shadow-sm transition-all hover:border-primary/20">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 min-w-0">
                           <ProfileAvatar 
@@ -212,7 +212,7 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
                             photoURL={peer.photoURL}
                             displayName={peer.displayName}
                           />
-                          <span className="font-bold text-slate-900 truncate text-sm">{formatFirstName(peer.displayName, 'Teilnehmer')}</span>
+                          <span className="font-bold text-slate-900 dark:text-white truncate text-sm">{formatFirstName(peer.displayName, 'Teilnehmer')}</span>
                         </div>
                         <StarRating 
                           rating={peerRatings[peer.uid] || 0} 
@@ -224,7 +224,7 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
                         value={peerComments[peer.uid] || ''}
                         onChange={(e) => handlePeerCommentChange(peer.uid, e.target.value)}
                         placeholder={language === 'de' ? `Wie war ${formatFirstName(peer.displayName, 'der Teilnehmer')}? (optional)` : `How was ${formatFirstName(peer.displayName, 'the participant')}? (optional)`}
-                        className="rounded-2xl border-none bg-slate-50 shadow-sm font-medium text-xs focus-visible:ring-primary/20 min-h-[60px] resize-none"
+                        className="rounded-2xl border-none bg-slate-50 dark:bg-neutral-900 text-slate-900 dark:text-white shadow-sm font-medium text-xs focus-visible:ring-primary/20 min-h-[60px] resize-none placeholder:text-slate-400 dark:placeholder:text-neutral-500"
                       />
                     </div>
                   ))}
@@ -234,11 +234,11 @@ export function MultiPeerReviewDialog({ open, onOpenChange, activity, currentUse
           </div>
         </ScrollArea>
 
-        <SheetFooter className="p-8 pt-4 bg-slate-50 border-t border-slate-100 shrink-0">
+        <SheetFooter className="p-8 pt-4 bg-slate-50 dark:bg-neutral-900 border-t border-slate-100 dark:border-neutral-800 shrink-0">
           <Button 
             onClick={handleSubmit} 
             disabled={isSubmitting}
-            className="w-full h-14 rounded-2xl font-black text-lg bg-slate-900 hover:bg-black text-white shadow-xl shadow-slate-200 transition-all active:scale-95"
+            className="w-full h-14 rounded-2xl font-black text-lg bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 shadow-xl shadow-slate-200 dark:shadow-none transition-all active:scale-95"
           >
             {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UserCheck className="mr-2 h-5 w-5" />}
             {language === 'de' ? 'Reviews absenden' : 'Submit Reviews'}
