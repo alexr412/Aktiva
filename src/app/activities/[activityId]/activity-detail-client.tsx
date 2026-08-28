@@ -583,7 +583,10 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                               variant="ghost"
                               size="sm"
                               disabled={isKicking}
-                              onClick={() => setParticipantToKick({ uid, displayName })}
+                              onClick={(e) => {
+                                (e.currentTarget as HTMLElement)?.blur();
+                                setParticipantToKick({ uid, displayName });
+                              }}
                               className="h-7 rounded-lg text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                             >
                               <UserMinus className="h-3 w-3 mr-1" />

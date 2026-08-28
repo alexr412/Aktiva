@@ -519,6 +519,7 @@ export function RoomInfoSheet({
                               disabled={isKicking}
                               onClick={(e) => {
                                 e.stopPropagation();
+                                (e.currentTarget as HTMLElement)?.blur();
                                 setParticipantToKick({ uid, displayName: p.displayName || 'Nutzer' });
                               }}
                               className="h-7 px-2 rounded-lg text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"

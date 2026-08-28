@@ -379,7 +379,10 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
                                 variant="ghost"
                                 size="sm"
                                 disabled={isKicking}
-                                onClick={() => setParticipantToKick({ uid, displayName: p.displayName || 'Nutzer' })}
+                                onClick={(e) => {
+                                  (e.currentTarget as HTMLElement)?.blur();
+                                  setParticipantToKick({ uid, displayName: p.displayName || 'Nutzer' });
+                                }}
                                 className="h-7 px-2 rounded-lg text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                               >
                                 <UserMinus className="h-3 w-3 mr-1" />
