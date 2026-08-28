@@ -154,7 +154,9 @@ function AdminUsageContent() {
       if (typeof window !== 'undefined') {
         try {
           const { auth } = await import('@/lib/firebase/client');
-          token = await auth?.currentUser?.getIdToken() || null;
+          if (auth?.currentUser) {
+            token = await auth.currentUser.getIdToken(true);
+          }
         } catch (e) {
           // Token read fallback
         }
@@ -212,8 +214,10 @@ function AdminUsageContent() {
   }, [debouncedSearch, selectedRole, selectedSort, selectedTimeframe]);
 
   useEffect(() => {
-    fetchUsageData();
-  }, [fetchUsageData]);
+    if (!authLoading) {
+      fetchUsageData();
+    }
+  }, [authLoading, fetchUsageData]);
 
   const handleCopyUid = (uid: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
