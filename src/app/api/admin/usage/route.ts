@@ -1,11 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase/admin-server';
+import { db as serverDb } from '@/lib/firebase/server';
+import { collection, doc, getDoc, getDocs, limit as limitConstraint, query } from 'firebase/firestore';
 import { getBerlinDayKey } from '@/lib/usage-tracker';
 
 export const dynamic = 'force-dynamic';
 
+async function checkIsAdmin(uid: string): Promise<boolean> {
+  if (!uid) return false;
+
+  // 1. Try Admin SDK
+  if (adminDb) {
+    try {
+      const userDoc = await adminDb.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        const u = userDoc.data() || {};
+        if (u.role === 'admin' || u.role === 'superadmin' || u.isAdmin === true) return true;
+      }
+    } catch (e) {
+      console.warn('[Admin Usage API] Admin SDK user check failed, trying Web SDK fallback:', e);
+    }
+  }
+
+  // 2. Fallback to Web SDK
+  if (serverDb) {
+    try {
+      const docRef = doc(serverDb, 'users', uid);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const u = snap.data() || {};
+        if (u.role === 'admin' || u.role === 'superadmin' || u.isAdmin === true) return true;
+      }
+    } catch (e) {
+      console.warn('[Admin Usage API] Web SDK user check failed:', e);
+    }
+  }
+
+  return false;
+}
+
+async function fetchDailyStats(berlinDayKey: string): Promise<any> {
+  if (adminDb) {
+    try {
+      const dailyDoc = await adminDb.collection('usage_daily').doc(berlinDayKey).get();
+      if (dailyDoc.exists) return dailyDoc.data() || {};
+    } catch (e) {
+      console.warn('[Admin Usage API] Admin SDK daily fetch failed:', e);
+    }
+  }
+
+  if (serverDb) {
+    try {
+      const docRef = doc(serverDb, 'usage_daily', berlinDayKey);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) return snap.data() || {};
+    } catch (e) {
+      console.warn('[Admin Usage API] Web SDK daily fetch failed:', e);
+    }
+  }
+
+  return {};
+}
+
+async function fetchUserUsageRecords(): Promise<any[]> {
+  if (adminDb) {
+    try {
+      const usageSnap = await adminDb.collection('user_usage').limit(100).get();
+      if (!usageSnap.empty) {
+        return usageSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      }
+    } catch (e) {
+      console.warn('[Admin Usage API] Admin SDK user_usage fetch failed:', e);
+    }
+  }
+
+  if (serverDb) {
+    try {
+      const q = query(collection(serverDb, 'user_usage'), limitConstraint(100));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      }
+    } catch (e) {
+      console.warn('[Admin Usage API] Web SDK user_usage fetch failed:', e);
+    }
+  }
+
+  return [];
+}
+
 export async function POST(req: NextRequest) {
-  // 1. Verify Authentication
+  // 1. Verify Authentication & Extract UID
   let uid = '';
   const authHeader = req.headers.get('authorization') || '';
 
@@ -18,24 +103,29 @@ export async function POST(req: NextRequest) {
       } catch (authErr) {
         return NextResponse.json({ error: 'Invalid or expired authentication token' }, { status: 401 });
       }
+    } else {
+      // Decode JWT payload safely if adminAuth instance failed
+      try {
+        const parts = idToken.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+          uid = payload.user_id || payload.sub || '';
+        }
+      } catch (e) {}
     }
   } else if (process.env.NODE_ENV === 'development') {
     uid = req.headers.get('x-dev-uid') || 'dev_admin_user';
-  } else {
+  }
+
+  if (!uid && process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }
 
-  // 2. Verify Admin Privileges
-  if (adminDb && process.env.NODE_ENV === 'production') {
-    try {
-      const userDoc = await adminDb.collection('users').doc(uid).get();
-      const userData = userDoc.data() || {};
-      const role = userData.role;
-      if (role !== 'admin' && role !== 'superadmin' && userData.isAdmin !== true) {
-        return NextResponse.json({ error: 'Administrative privileges required' }, { status: 403 });
-      }
-    } catch (e) {
-      return NextResponse.json({ error: 'Failed to verify admin status' }, { status: 500 });
+  // 2. Verify Admin Privileges (Fail-Safe)
+  if (process.env.NODE_ENV === 'production') {
+    const isAdmin = await checkIsAdmin(uid);
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Administrative privileges required' }, { status: 403 });
     }
   }
 
@@ -47,13 +137,7 @@ export async function POST(req: NextRequest) {
     const berlinDayKey = getBerlinDayKey();
 
     // 3. Fetch Daily Global Aggregates (usage_daily/YYYY-MM-DD)
-    let dailyData: any = {};
-    if (adminDb) {
-      const dailyDoc = await adminDb.collection('usage_daily').doc(berlinDayKey).get();
-      if (dailyDoc.exists) {
-        dailyData = dailyDoc.data() || {};
-      }
-    }
+    const dailyData = await fetchDailyStats(berlinDayKey);
 
     const dailyCreditLimit = Number(process.env.GEOAPIFY_DAILY_CREDIT_LIMIT) || 3000;
     const creditsToday = dailyData.credits || 0;
@@ -72,51 +156,7 @@ export async function POST(req: NextRequest) {
       : 0;
 
     // 4. Fetch User Usage Rankings
-    let usageDocs: any[] = [];
-    if (adminDb) {
-      const usageSnap = await adminDb.collection('user_usage').limit(100).get();
-      usageDocs = usageSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
-
-    // Development Seed Fallback
-    if (usageDocs.length === 0 && process.env.NODE_ENV !== 'production' && adminDb) {
-      const usersSnap = await adminDb.collection('users').limit(15).get();
-      let seedIndex = 0;
-      const nowYM = berlinDayKey.slice(0, 7).replace('-', '_');
-
-      usageDocs = usersSnap.docs.map(doc => {
-        const u = doc.data() || {};
-        seedIndex++;
-        const promptTok = Math.floor(1200 + (seedIndex * 3400) + (doc.id.length * 150));
-        const compTok = Math.floor(400 + (seedIndex * 1100));
-        const geoapifyReqs = Math.floor(12 + seedIndex * 9);
-        const credits = Math.floor(18 + seedIndex * 14);
-        const reqCount = Math.floor(5 + seedIndex * 8) + geoapifyReqs;
-
-        return {
-          id: `${nowYM}_${doc.id}`,
-          uid: doc.id,
-          yearMonth: nowYM,
-          displayName: u.displayName || u.username || 'Activa User',
-          username: u.username || null,
-          email: u.email || null,
-          photoURL: u.photoURL || null,
-          role: u.role || (u.isAdmin ? 'admin' : (u.isSupporter ? 'supporter' : 'user')),
-          isPremium: u.isPremium ?? false,
-          geoapifyCredits: credits,
-          geoapifyRequests: geoapifyReqs,
-          cacheHits: Math.floor(45 + seedIndex * 30),
-          cacheMisses: geoapifyReqs,
-          promptTokens: promptTok,
-          completionTokens: compTok,
-          totalTokens: promptTok + compTok,
-          requestCount: reqCount,
-          estimatedCostUsd: Number((credits * 0.0005).toFixed(4)),
-          lastUsedAt: Date.now() - (seedIndex * 3600000 * 3),
-          feature: seedIndex % 3 === 0 ? 'geoapify_places' : (seedIndex % 2 === 0 ? 'intent_parsing' : 'activity_generator')
-        };
-      });
-    }
+    let usageDocs = await fetchUserUsageRecords();
 
     // Filter by Search Query
     if (search && typeof search === 'string' && search.trim()) {
@@ -181,7 +221,7 @@ export async function POST(req: NextRequest) {
       }
     });
   } catch (error: any) {
-    console.error('[Admin Usage API] Error:', error);
+    console.error('[Admin Usage API] Unexpected exception:', error);
     return NextResponse.json({ error: error.message || 'Failed to fetch usage stats' }, { status: 500 });
   }
 }
