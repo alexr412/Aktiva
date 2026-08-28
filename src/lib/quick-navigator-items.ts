@@ -26,6 +26,7 @@ import {
   BarChart3,
   Heart,
   UserX,
+  Zap,
   Scale
 } from 'lucide-react';
 
@@ -68,6 +69,7 @@ export const ALL_QUICK_NAV_ITEMS: QuickNavItem[] = [
   { label: 'Quick Navigator (Vollbild)', path: '/quick-navigator', description: 'Gesamtübersicht aller Seiten als eigene Seite', icon: Grid, category: 'admin' },
   { label: 'Admin Dashboard', path: '/admin', description: 'Zentrale Admin-Steuerung', icon: Shield, category: 'admin', requiresAdmin: true },
   { label: 'Nutzerverwaltung', path: '/admin/users', description: 'User-Moderation & Konten', icon: Users, category: 'admin', requiresAdmin: true },
+  { label: 'Verbrauchsübersicht', path: '/admin/usage', description: 'Token-Nutzung, KI-Requests & Kosten pro User', icon: Zap, category: 'admin', requiresAdmin: true },
   { label: 'Meldungen & Berichte', path: '/admin/reports', description: 'Gemeldete Inhalte & Konflikte', icon: FileText, category: 'admin', requiresAdmin: true },
   { label: 'Auszahlungen', path: '/admin/payouts', description: 'Host-Auszahlungsanträge', icon: Wallet, category: 'admin', requiresAdmin: true },
   { label: 'Rückerstattungen', path: '/admin/refunds', description: 'Refunds & Stornierungen', icon: AlertTriangle, category: 'admin', requiresAdmin: true },

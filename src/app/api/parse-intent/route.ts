@@ -123,6 +123,22 @@ export async function POST(req: NextRequest) {
     // Final safety check: ensure all tags are in our whitelist
     const validatedCategories = categories.filter(tag => VALID_GEOAPIFY_TAGS.includes(tag));
 
+    // Record Token Usage asynchronously
+    const userId = req.headers.get('x-user-id') || body?.uid || 'anonymous';
+    const promptTokens = (result as any).usage?.inputTokens || Math.ceil((SYSTEM_PROMPT.length + query.length) / 4);
+    const completionTokens = (result as any).usage?.outputTokens || Math.ceil(JSON.stringify(result.output).length / 4);
+
+    if (userId !== 'anonymous') {
+      import('@/lib/usage-tracker').then(({ recordUserTokenUsage }) => {
+        recordUserTokenUsage({
+          uid: userId,
+          promptTokens,
+          completionTokens,
+          feature: 'intent_parsing',
+        }).catch(err => console.error('[parse-intent] Token log error:', err));
+      });
+    }
+
     return NextResponse.json({ categories: validatedCategories, filterByName });
   } catch (error) {
     console.error('[parse-intent] Error:', error);

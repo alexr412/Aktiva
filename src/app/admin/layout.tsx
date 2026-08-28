@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter, usePathname } from "next/navigation";
-import { ShieldAlert, Grid, ArrowLeft, Search, LayoutDashboard, Users, AlertTriangle, Wallet, RotateCcw, Cpu } from "lucide-react";
+import { ShieldAlert, Grid, ArrowLeft, Search, LayoutDashboard, Users, AlertTriangle, Wallet, RotateCcw, Cpu, Zap } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -60,6 +60,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/users", label: "Nutzer", icon: Users },
+    { href: "/admin/usage", label: "Verbrauch", icon: Zap },
     { href: "/admin/reports", label: "Moderation", icon: AlertTriangle, badge: openReportsCount },
     { href: "/admin/payouts", label: "Auszahlungen", icon: Wallet, badge: pendingPayoutsCount },
     { href: "/admin/refunds", label: "Rückzahlungen", icon: RotateCcw, badge: pendingRefundsCount },
