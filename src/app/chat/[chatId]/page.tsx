@@ -190,6 +190,7 @@ const MessageBubble = ({
                 uid: message.senderId,
                 participantDetails,
                 currentUserProfile,
+                fallbackUsername: message.senderUsername || message.senderName,
                 language: language === 'en' ? 'en' : 'de'
               })}
             </span>
@@ -508,6 +509,8 @@ export default function ChatRoomPage() {
       });
     };
 
+    let messagesSyncStarted = false;
+
     const chatUnsubscribe = onSnapshot(doc(db!, 'chats', currentChatId), (chatDoc) => {
       if (chatDoc.exists()) {
         // Reset leavingChatIdRef only on successful chat load
@@ -525,6 +528,11 @@ export default function ChatRoomPage() {
           });
           router.replace("/chat");
           return;
+        }
+
+        if (!messagesSyncStarted) {
+          messagesSyncStarted = true;
+          initMessagesSync();
         }
 
         setChat(chatData);
@@ -760,8 +768,6 @@ export default function ChatRoomPage() {
         if (reconUnsubscribe) reconUnsubscribe();
       };
     }
-
-    initMessagesSync();
 
     return () => {
       active = false;
@@ -1372,7 +1378,13 @@ export default function ChatRoomPage() {
               const prevDate = prevMessage?.sentAt ? getMessageDate(prevMessage.sentAt) : null;
               const currDate = message.sentAt ? getMessageDate(message.sentAt) : null;
               const showDateSeparator = !prevDate || !currDate || !isSameDay(currDate, prevDate);
-              const isFirstInGroup = !prevMessage || prevMessage.senderId !== message.senderId || showDateSeparator;
+              const isPrevSystem = Boolean(
+                prevMessage?.senderPhotoURL === "system:join" ||
+                prevMessage?.senderPhotoURL === "system:leave" ||
+                prevMessage?.senderPhotoURL === "system:kick" ||
+                prevMessage?.senderPhotoURL?.startsWith("system:")
+              );
+              const isFirstInGroup = !prevMessage || isPrevSystem || prevMessage.senderId !== message.senderId || showDateSeparator;
               
               return (
                 <div key={message.id} id={`msg-${message.id}`} className="w-full transition-all duration-300 rounded-xl">

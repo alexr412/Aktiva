@@ -52,12 +52,14 @@ export function resolvePublicUsername({
   participantDetails,
   currentUserProfile,
   otherUser,
+  fallbackUsername,
   language = 'de'
 }: {
   uid: string;
   participantDetails?: Record<string, ParticipantDetailEntry> | null;
   currentUserProfile?: any;
   otherUser?: any;
+  fallbackUsername?: string | null;
   language?: 'de' | 'en';
 }): string {
   const neutralFallback = language === 'de' ? 'Activa-Nutzer' : 'Activa user';
@@ -78,6 +80,13 @@ export function resolvePublicUsername({
   
   if (participantDetails?.[uid]?.username) {
     return `@${participantDetails[uid].username!.trim().replace(/^@/, '')}`;
+  }
+
+  if (fallbackUsername) {
+    const clean = fallbackUsername.trim().replace(/^@/, '');
+    if (clean && clean !== 'Activa-Nutzer' && clean !== 'Activa user' && clean !== 'System') {
+      return clean.startsWith('@') ? clean : `@${clean}`;
+    }
   }
   
   return neutralFallback;

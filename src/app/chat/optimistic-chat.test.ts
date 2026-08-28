@@ -163,11 +163,65 @@ function testMultipleRapidMessagesSorting() {
   console.log('✅ testMultipleRapidMessagesSorting passed');
 }
 
+function testSystemMessageGroupingAndHeaderResolution() {
+  console.log('Running testSystemMessageGroupingAndHeaderResolution...');
+  const { resolvePublicUsername } = require('../../lib/utils');
+
+  const systemMsg: Message = {
+    id: 'sys_1',
+    text: '@busi ist beigetreten',
+    senderId: 'busi',
+    senderName: '@busi',
+    senderUsername: 'busi',
+    senderPhotoURL: 'system:join',
+    sentAt: new Date(1700000000000),
+  };
+
+  const userMsg: Message = {
+    id: 'user_1',
+    text: 'hallo',
+    senderId: 'busi',
+    senderName: '@busi',
+    senderUsername: 'busi',
+    senderPhotoURL: 'https://example.com/busi.jpg',
+    sentAt: new Date(1700000001000),
+  };
+
+  const messages = [systemMsg, userMsg];
+
+  // Test grouping condition logic
+  const prevMessage = messages[0];
+  const message = messages[1];
+
+  const isPrevSystem = Boolean(
+    prevMessage?.senderPhotoURL === "system:join" ||
+    prevMessage?.senderPhotoURL === "system:leave" ||
+    prevMessage?.senderPhotoURL === "system:kick" ||
+    prevMessage?.senderPhotoURL?.startsWith("system:")
+  );
+
+  const isFirstInGroup = !prevMessage || isPrevSystem || prevMessage.senderId !== message.senderId;
+  assert.strictEqual(isFirstInGroup, true, 'Message following a system message must be marked as first in group');
+
+  // Test username resolution fallback
+  const resolvedName = resolvePublicUsername({
+    uid: message.senderId,
+    participantDetails: null,
+    currentUserProfile: null,
+    fallbackUsername: message.senderUsername || message.senderName,
+    language: 'de',
+  });
+  assert.strictEqual(resolvedName, '@busi', 'Username must fall back to senderUsername/senderName when participantDetails is missing');
+
+  console.log('✅ testSystemMessageGroupingAndHeaderResolution passed');
+}
+
 try {
   testOptimisticMessageCreationAndLocalEcho();
   testStatusTransitionAndDeduplication();
   testFailedStatusAndRetry();
   testMultipleRapidMessagesSorting();
+  testSystemMessageGroupingAndHeaderResolution();
   console.log('🎉 ALL OPTIMISTIC CHAT TESTS PASSED SUCCESSFULLY! 🎉');
 } catch (err) {
   console.error('❌ Optimistic Chat Unit Tests failed:', err);
