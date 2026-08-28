@@ -5,6 +5,14 @@ import type { Place, GeoapifyFeature, UserPreferences } from '@/lib/types';
 import { calculateRelevanceScore } from '@/lib/ranking';
 import { debugLog } from '@/lib/debug';
 
+export const ALLOWED_PLACE_DETAIL_FEATURES = new Set([
+  'details',
+  'building',
+  'details.names',
+  'details.population',
+  'details.full_geometry',
+]);
+
 /**
  * Centralized defensive normalization rule for place names:
  * - String: trim and use it when non-empty

@@ -24,13 +24,7 @@ const ALLOWED_REVERSE_PARAMS = new Set(['lat', 'lon', 'limit']);
 const ALLOWED_AUTOCOMPLETE_PARAMS = new Set(['text', 'limit', 'lang', 'filter', 'bias']);
 const ALLOWED_DETAILS_PARAMS = new Set(['id', 'features', 'details']);
 
-export const ALLOWED_PLACE_DETAIL_FEATURES = new Set([
-  'details',
-  'building',
-  'details.names',
-  'details.population',
-  'details.full_geometry',
-]);
+import { ALLOWED_PLACE_DETAIL_FEATURES } from '@/lib/geoapify';
 
 function validateAndSanitizeParams(service: GeoapifyService, rawParams: Record<string, any>): Record<string, string> {
   const sanitized: Record<string, string> = {};

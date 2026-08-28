@@ -1,5 +1,5 @@
 import { calculateGeoapifyCredits, getBerlinDayKey, getCurrentYearMonth, IdempotencyConflictError } from './usage-tracker';
-import { ALLOWED_PLACE_DETAIL_FEATURES } from '@/app/api/geoapify/route';
+import { ALLOWED_PLACE_DETAIL_FEATURES } from './geoapify';
 
 async function runE2ETestSuite() {
   console.log('===============================================================');
