@@ -28,6 +28,7 @@
     "test:geoapify": "npx tsx src/lib/geoapify.test.ts",
     "test:feed": "npx tsx src/features/feed/__tests__/feed-engine.test.ts",
     "test:activity": "npx tsx src/features/activities/create/__tests__/activity-payload.test.ts",
+    "test:activities": "npx tsx src/features/activities/create/__tests__/activity-payload.test.ts && npx tsx functions/src/activities.test.ts",
     "test:place-details": "npx tsx src/features/places/details/__tests__/place-details-logic.test.ts",
     "test:profile-activity": "npx tsx src/components/profile/__tests__/profile-activity-card.test.ts",
     "test:backend": "npm --prefix functions run test",

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.kickParticipant = exports.secureRequestJoinActivity = exports.respondToJoinRequest = exports.notifyNearbyUsers = exports.onActivityUpdated = exports.onActivityCreated = void 0;
+exports.kickParticipant = exports.secureRequestJoinActivity = exports.respondToJoinRequest = exports.ALLOWED_GENDERS = exports.notifyNearbyUsers = exports.onActivityUpdated = exports.onActivityCreated = void 0;
+exports.normalizeAndValidateGenderRequirements = normalizeAndValidateGenderRequirements;
+exports.validateActivityEligibility = validateActivityEligibility;
 const firestore_1 = require("firebase-functions/v2/firestore");
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
@@ -448,6 +450,162 @@ exports.notifyNearbyUsers = (0, firestore_1.onDocumentCreated)({
     }
     return null;
 });
+exports.ALLOWED_GENDERS = ['female', 'male', 'diverse'];
+/**
+ * Normalizes and validates gender requirements array.
+ * Rejects invalid strings, removes duplicates, limits length to 3.
+ * Returns normalized array or undefined (for unrestricted).
+ */
+function normalizeAndValidateGenderRequirements(genders) {
+    if (!genders || !Array.isArray(genders) || genders.length === 0) {
+        return undefined;
+    }
+    const uniqueGenders = Array.from(new Set(genders));
+    if (uniqueGenders.length > 3) {
+        throw new https_1.HttpsError('invalid-argument', 'Invalid gender requirements: Too many entries (max 3).');
+    }
+    for (const g of uniqueGenders) {
+        if (typeof g !== 'string' || !exports.ALLOWED_GENDERS.includes(g)) {
+            throw new https_1.HttpsError('invalid-argument', `Invalid gender requirement value: "${g}". Must be one of female, male, diverse.`);
+        }
+    }
+    if (uniqueGenders.length === 3) {
+        return undefined;
+    }
+    return uniqueGenders;
+}
+/**
+ * Central server-side activity eligibility validator.
+ * Validates account status, requirements (gender, age, verification, photo), and participation state.
+ */
+function validateActivityEligibility(activity, userProfile, hostProfile) {
+    const uid = userProfile.uid;
+    // 1. Account status checks
+    const statusStr = typeof userProfile.accountStatus === 'string' ? userProfile.accountStatus.toLowerCase() : '';
+    if (userProfile.isBanned === true ||
+        userProfile.disabled === true ||
+        statusStr === 'banned' ||
+        statusStr === 'deleted' ||
+        statusStr === 'disabled') {
+        return { eligible: false, errorCode: 'ACCOUNT_NOT_ELIGIBLE', errorMessage: 'Dein Konto ist gesperrt oder deaktiviert.' };
+    }
+    if (statusStr === 'suspended' || userProfile.suspendedUntil) {
+        let suspendTime = null;
+        if (userProfile.suspendedUntil) {
+            if (typeof userProfile.suspendedUntil.toMillis === 'function') {
+                suspendTime = userProfile.suspendedUntil.toMillis();
+            }
+            else if (typeof userProfile.suspendedUntil === 'number') {
+                suspendTime = userProfile.suspendedUntil;
+            }
+            else if (typeof userProfile.suspendedUntil === 'string') {
+                const parsed = Date.parse(userProfile.suspendedUntil);
+                if (!isNaN(parsed))
+                    suspendTime = parsed;
+            }
+        }
+        // Fail-closed for suspended status: missing, invalid, or future timestamp blocks
+        if (statusStr === 'suspended') {
+            if (suspendTime === null || isNaN(suspendTime) || suspendTime > Date.now()) {
+                return { eligible: false, errorCode: 'ACCOUNT_NOT_ELIGIBLE', errorMessage: 'Dein Konto ist vorübergehend temporär gesperrt.' };
+            }
+        }
+        else if (suspendTime !== null && !isNaN(suspendTime) && suspendTime > Date.now()) {
+            return { eligible: false, errorCode: 'ACCOUNT_NOT_ELIGIBLE', errorMessage: 'Dein Konto ist vorübergehend temporär gesperrt.' };
+        }
+    }
+    // 2. Kicked & Already joined checks
+    if (uid && Array.isArray(activity.kickedUserIds) && activity.kickedUserIds.includes(uid)) {
+        return { eligible: false, errorCode: 'USER_KICKED', errorMessage: 'Du wurdest aus diesem Event entfernt.' };
+    }
+    if (uid && Array.isArray(activity.participantIds) && activity.participantIds.includes(uid)) {
+        return { eligible: false, errorCode: 'ALREADY_PARTICIPANT', errorMessage: 'Du nimmst bereits an diesem Event teil.' };
+    }
+    // 3. Blacklist / Block checks
+    if (uid && hostProfile?.blacklist) {
+        const hard = hostProfile.blacklist.hard || [];
+        const soft = hostProfile.blacklist.soft || [];
+        if (hard.includes(uid) || soft.includes(uid)) {
+            return { eligible: false, errorCode: 'BLOCKED_BY_HOST', errorMessage: 'Du kannst dieser Aktivität nicht beitreten.' };
+        }
+    }
+    if (activity.hostId && userProfile.blacklist) {
+        const hard = userProfile.blacklist.hard || [];
+        const soft = userProfile.blacklist.soft || [];
+        if (hard.includes(activity.hostId) || soft.includes(activity.hostId)) {
+            return { eligible: false, errorCode: 'HOST_BLOCKED_BY_USER', errorMessage: 'Du hast den Host dieser Aktivität blockiert.' };
+        }
+    }
+    // 4. Participant limit check
+    const participantIds = activity.participantIds || [];
+    if (activity.maxParticipants && participantIds.length >= activity.maxParticipants) {
+        return { eligible: false, errorCode: 'ACTIVITY_FULL', errorMessage: 'Diese Aktivität hat die maximale Teilnehmerzahl erreicht.' };
+    }
+    // 5. Requirements validation
+    if (activity.requirements) {
+        const req = activity.requirements;
+        // Gender requirement
+        if (req.gender && Array.isArray(req.gender) && req.gender.length > 0 && req.gender.length < 3) {
+            const userGender = userProfile.gender || '';
+            if (!req.gender.includes(userGender)) {
+                return {
+                    eligible: false,
+                    errorCode: 'GENDER_REQUIREMENT_NOT_MET',
+                    errorMessage: 'Diese Aktivität ist nicht für dein Geschlecht freigegeben.'
+                };
+            }
+        }
+        // Profile picture requirement
+        if (req.requireProfilePicture && (!userProfile.photoURL || typeof userProfile.photoURL !== 'string' || userProfile.photoURL.trim() === '')) {
+            return {
+                eligible: false,
+                errorCode: 'PROFILE_PICTURE_REQUIRED',
+                errorMessage: 'Ein Profilbild ist erforderlich, um dieser Aktivität beizutreten.'
+            };
+        }
+        // Verification requirement
+        if (req.requireVerification && userProfile.kycStatus !== 'verified') {
+            return {
+                eligible: false,
+                errorCode: 'VERIFICATION_REQUIRED',
+                errorMessage: 'Nur verifizierte Nutzer (KYC) können dieser Aktivität beitreten.'
+            };
+        }
+        // Minimum rating requirement
+        if (typeof req.minimumRating === 'number' && (userProfile.averageRating || 0) < req.minimumRating) {
+            return {
+                eligible: false,
+                errorCode: 'MINIMUM_RATING_NOT_MET',
+                errorMessage: `Mindestbewertung für diese Aktivität ist ${req.minimumRating} Sterne.`
+            };
+        }
+        // Age requirement
+        if (req.ageRange) {
+            if (typeof userProfile.age !== 'number' || isNaN(userProfile.age)) {
+                return {
+                    eligible: false,
+                    errorCode: 'AGE_REQUIREMENT_NOT_MET',
+                    errorMessage: 'Bitte hinterlege dein Alter in deinem Profil.'
+                };
+            }
+            if (typeof req.ageRange.min === 'number' && userProfile.age < req.ageRange.min) {
+                return {
+                    eligible: false,
+                    errorCode: 'AGE_REQUIREMENT_NOT_MET',
+                    errorMessage: `Mindestalter für diese Aktivität ist ${req.ageRange.min} Jahre.`
+                };
+            }
+            if (typeof req.ageRange.max === 'number' && userProfile.age > req.ageRange.max) {
+                return {
+                    eligible: false,
+                    errorCode: 'AGE_REQUIREMENT_NOT_MET',
+                    errorMessage: `Höchstalter für diese Aktivität ist ${req.ageRange.max} Jahre.`
+                };
+            }
+        }
+    }
+    return { eligible: true };
+}
 /**
  * HTTPS Callable: Beantwortet eine Beitrittsanfrage für eine Aktivität (durch den Host).
  */
@@ -537,6 +695,17 @@ exports.respondToJoinRequest = (0, https_1.onCall)(async (request) => {
                 return { success: true, alreadyParticipant: true };
             }
             if (action === 'accept') {
+                const userProfileData = { ...userProfile, uid: userIdToJoin };
+                const hostRef = db.collection('users').doc(hostId);
+                const hostSnap = await transaction.get(hostRef);
+                const hostData = hostSnap.exists ? hostSnap.data() : undefined;
+                const eligibility = validateActivityEligibility(activity, userProfileData, hostData);
+                if (!eligibility.eligible) {
+                    throw new https_1.HttpsError('failed-precondition', `${eligibility.errorCode}: ${eligibility.errorMessage}`, {
+                        errorCode: eligibility.errorCode,
+                        errorMessage: eligibility.errorMessage
+                    });
+                }
                 // Enforce capacity/maxParticipants limit
                 if (activity.maxParticipants && participantIds.length >= activity.maxParticipants) {
                     throw new https_1.HttpsError('resource-exhausted', 'This activity has reached its maximum participants limit.');
@@ -683,9 +852,7 @@ exports.secureRequestJoinActivity = (0, https_1.onCall)(async (request) => {
                 throw new https_1.HttpsError('not-found', 'Requester user profile not found.');
             }
             const requesterData = requesterSnap.data();
-            if (requesterData.isBanned === true) {
-                throw new https_1.HttpsError('permission-denied', 'Requester account is banned.');
-            }
+            requesterData.uid = requesterId;
             const hostId = activity.hostId;
             const hostRef = db.collection('users').doc(hostId);
             const hostSnap = await transaction.get(hostRef);
@@ -696,22 +863,12 @@ exports.secureRequestJoinActivity = (0, https_1.onCall)(async (request) => {
             if (hostData.isBanned === true) {
                 throw new https_1.HttpsError('permission-denied', 'Host account is banned.');
             }
-            if (activity.maxParticipants && participantIds.length >= activity.maxParticipants) {
-                throw new https_1.HttpsError('resource-exhausted', 'This activity has reached its maximum participants limit.');
-            }
-            // Check if the requester is blocked by the host
-            const hostBlacklist = hostData.blacklist || {};
-            const softBlocked = hostBlacklist.soft || [];
-            const hardBlocked = hostBlacklist.hard || [];
-            if (softBlocked.includes(requesterId) || hardBlocked.includes(requesterId)) {
-                throw new https_1.HttpsError('permission-denied', 'You cannot join this activity because you are blocked by the host.');
-            }
-            // Check if the host is blocked by the requester
-            const requesterBlacklist = requesterData.blacklist || {};
-            const requesterSoftBlocked = requesterBlacklist.soft || [];
-            const requesterHardBlocked = requesterBlacklist.hard || [];
-            if (requesterSoftBlocked.includes(hostId) || requesterHardBlocked.includes(hostId)) {
-                throw new https_1.HttpsError('permission-denied', 'You cannot join this activity because you have blocked the host.');
+            const eligibility = validateActivityEligibility(activity, requesterData, hostData);
+            if (!eligibility.eligible) {
+                throw new https_1.HttpsError('failed-precondition', `${eligibility.errorCode}: ${eligibility.errorMessage}`, {
+                    errorCode: eligibility.errorCode,
+                    errorMessage: eligibility.errorMessage
+                });
             }
             if (activity.isPaid === true) {
                 throw new https_1.HttpsError('failed-precondition', 'Paid activities cannot be request-joined directly.');

@@ -3497,6 +3497,288 @@ async function runTests() {
     console.log('✅ Suite J: Direct Message (DM) Security Rules Tests PASSED!');
   }
 
+  // ==========================================
+  // K. Women-Only & Host Requirement Security Rules Tests
+  // ==========================================
+  {
+    console.log('Running Suite K: Women-Only & Host Requirement Security Rules Tests...');
+    await testEnv.clearFirestore();
+
+    // Seed users
+    await seedDoc('users/maleHost', {
+      uid: 'maleHost',
+      displayName: 'Male Host',
+      username: 'malehost',
+      gender: 'male',
+      onboardingCompleted: true,
+      isBanned: false,
+      kycStatus: 'unverified'
+    });
+
+    await seedDoc('users/femaleUser', {
+      uid: 'femaleUser',
+      displayName: 'Female User',
+      username: 'femaleuser',
+      gender: 'female',
+      onboardingCompleted: true,
+      isBanned: false,
+      kycStatus: 'verified'
+    });
+
+    await seedDoc('users/maleUser', {
+      uid: 'maleUser',
+      displayName: 'Male User',
+      username: 'maleuser',
+      gender: 'male',
+      onboardingCompleted: true,
+      isBanned: false,
+      kycStatus: 'unverified'
+    });
+
+    const maleDb = testEnv.authenticatedContext('maleHost').firestore();
+    const femaleDb = testEnv.authenticatedContext('femaleUser').firestore();
+    const maleUserDb = testEnv.authenticatedContext('maleUser').firestore();
+
+    const getBaseActivityPayload = (hostUid: string, hostName: string, hostUsername: string) => ({
+      id: 'actTest',
+      title: 'Test Event',
+      placeName: 'Test Place',
+      activityDate: serverTimestamp(),
+      hostId: hostUid,
+      hostName: hostName,
+      hostUsername: hostUsername,
+      hostPhotoURL: null,
+      participantIds: [hostUid],
+      participantsPreview: [{ uid: hostUid, displayName: hostName, photoURL: null, username: hostUsername }],
+      createdAt: serverTimestamp(),
+      lastInteractionAt: serverTimestamp(),
+      isCustomActivity: false,
+      isTimeFlexible: false,
+      category: 'Sports',
+      description: 'Test Description',
+      status: 'active',
+      completionVotes: [],
+      isBoosted: false,
+      isPaid: false,
+      price: 0,
+      upvotes: 0,
+      downvotes: 0,
+      userVotes: {},
+      globalScore: 0,
+      reportCount: 0,
+      avgRating: 0,
+      reviewCount: 0,
+      stats: { impressions: 0, pushJoins: 0, referralJoins: 0 },
+      participantDetails: {
+        [hostUid]: { displayName: hostName, photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', hasReviewed: false, username: hostUsername }
+      },
+      joinMode: 'direct',
+      sourceType: 'activity'
+    });
+
+    const commitActivityCreation = async (db: any, actId: string, payload: any, hostUid: string, hostName: string, hostUsername: string) => {
+      const batch = writeBatch(db);
+      const activityRef = doc(db, `activities/${actId}`);
+      const chatRef = doc(db, `chats/${actId}`);
+      const participantRef = doc(db, `activities/${actId}/participants/${hostUid}`);
+
+      batch.set(activityRef, payload);
+      batch.set(chatRef, {
+        activityId: actId,
+        hostId: hostUid,
+        createdAt: serverTimestamp(),
+        lastActivityAt: serverTimestamp(),
+        participantIds: [hostUid],
+        lastMessage: null,
+        placeName: payload.placeName,
+        categories: [payload.category || 'Sports'],
+        participantDetails: {
+          [hostUid]: { displayName: hostName, photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', username: hostUsername }
+        }
+      });
+      batch.set(participantRef, {
+        uid: hostUid,
+        displayName: hostName,
+        photoURL: null,
+        joinedAt: serverTimestamp(),
+        role: 'host',
+        checkInStatus: 'pending',
+        hasReviewed: false,
+        username: hostUsername
+      });
+      return batch.commit();
+    };
+
+    // 1. Male host tries to create ['female'] event -> DENIED
+    const maleWomenOnlyPayload = {
+      ...getBaseActivityPayload('maleHost', 'Male Host', 'malehost'),
+      requirements: { gender: ['female'] }
+    };
+    await assertFails(commitActivityCreation(maleDb, 'act1_fail', maleWomenOnlyPayload, 'maleHost', 'Male Host', 'malehost'));
+
+    // 2. Female host tries to create ['female'] event -> ALLOWED
+    const femaleWomenOnlyPayload = {
+      ...getBaseActivityPayload('femaleUser', 'Female User', 'femaleuser'),
+      requirements: { gender: ['female'] }
+    };
+    await assertSucceeds(commitActivityCreation(femaleDb, 'act1', femaleWomenOnlyPayload, 'femaleUser', 'Female User', 'femaleuser'));
+
+    // 3. Fake/hacked gender array ['female', 'hacked', 'whatever'] -> DENIED (Strict Whitelist Check)
+    const invalidGenderPayload = {
+      ...getBaseActivityPayload('femaleUser', 'Female User', 'femaleuser'),
+      requirements: { gender: ['female', 'hacked', 'whatever'] }
+    };
+    await assertFails(commitActivityCreation(femaleDb, 'actInvalid', invalidGenderPayload, 'femaleUser', 'Female User', 'femaleuser'));
+
+    // 3b. Duplicate gender array ['female', 'female', 'female'] created by male host -> DENIED
+    const duplicateGenderPayload = {
+      ...getBaseActivityPayload('maleHost', 'Male Host', 'malehost'),
+      requirements: { gender: ['female', 'female', 'female'] }
+    };
+    await assertFails(commitActivityCreation(maleDb, 'actDupMale', duplicateGenderPayload, 'maleHost', 'Male Host', 'malehost'));
+
+    // 3c. Duplicate gender array ['female', 'female', 'female'] created by female host -> DENIED (Strict Uniqueness Schema)
+    await assertFails(commitActivityCreation(femaleDb, 'actDupFem', duplicateGenderPayload, 'femaleUser', 'Female User', 'femaleuser'));
+
+    // 3d. Duplicate gender array ['female', 'female'] created by female host -> DENIED
+    const dup2GenderPayload = {
+      ...getBaseActivityPayload('femaleUser', 'Female User', 'femaleuser'),
+      requirements: { gender: ['female', 'female'] }
+    };
+    await assertFails(commitActivityCreation(femaleDb, 'actDup2', dup2GenderPayload, 'femaleUser', 'Female User', 'femaleuser'));
+
+    // 3f. Men-Only activity creation ['male']
+    const maleOnlyPayload = {
+      ...getBaseActivityPayload('maleHost', 'Male Host', 'malehost'),
+      requirements: { gender: ['male'] }
+    };
+    await assertSucceeds(commitActivityCreation(maleDb, 'actMaleOnly', maleOnlyPayload, 'maleHost', 'Male Host', 'malehost'));
+    // Female host creating Men-Only activity -> DENIED
+    await assertFails(commitActivityCreation(femaleDb, 'actMaleOnlyFail', maleOnlyPayload, 'femaleUser', 'Female User', 'femaleuser'));
+
+    // 3g. Diverse-Only activity creation ['diverse']
+    await seedDoc('users/diverseHost', {
+      uid: 'diverseHost',
+      displayName: 'Diverse Host',
+      username: 'diversehost',
+      gender: 'diverse',
+      onboardingCompleted: true,
+      isBanned: false
+    });
+    const diverseDb = testEnv.authenticatedContext('diverseHost').firestore();
+    const diverseOnlyPayload = {
+      ...getBaseActivityPayload('diverseHost', 'Diverse Host', 'diversehost'),
+      requirements: { gender: ['diverse'] }
+    };
+    await assertSucceeds(commitActivityCreation(diverseDb, 'actDivOnly', diverseOnlyPayload, 'diverseHost', 'Diverse Host', 'diversehost'));
+    // Male host creating Diverse-Only activity -> DENIED
+    await assertFails(commitActivityCreation(maleDb, 'actDivOnlyFail', diverseOnlyPayload, 'maleHost', 'Male Host', 'malehost'));
+
+    // 3h. Strict requirement data type & range validations
+    // requireVerification as String -> DENIED
+    await assertFails(commitActivityCreation(maleDb, 'actReqKycStr', { ...getBaseActivityPayload('maleHost', 'Male Host', 'malehost'), requirements: { requireVerification: 'true' } }, 'maleHost', 'Male Host', 'malehost'));
+
+    // requireProfilePicture as Number -> DENIED
+    await assertFails(commitActivityCreation(maleDb, 'actReqPicNum', { ...getBaseActivityPayload('maleHost', 'Male Host', 'malehost'), requirements: { requireProfilePicture: 1 } }, 'maleHost', 'Male Host', 'malehost'));
+
+    // minimumRating out of range (> 5.0) -> DENIED
+    await assertFails(commitActivityCreation(maleDb, 'actMinRatingHigh', { ...getBaseActivityPayload('maleHost', 'Male Host', 'malehost'), requirements: { minimumRating: 6.0 } }, 'maleHost', 'Male Host', 'malehost'));
+
+    // minimumRating out of range (< 0.0) -> DENIED
+    await assertFails(commitActivityCreation(maleDb, 'actMinRatingLow', { ...getBaseActivityPayload('maleHost', 'Male Host', 'malehost'), requirements: { minimumRating: -1.0 } }, 'maleHost', 'Male Host', 'malehost'));
+
+    // ageRange.min > ageRange.max -> DENIED
+    await assertFails(commitActivityCreation(maleDb, 'actAgeRangeInv', { ...getBaseActivityPayload('maleHost', 'Male Host', 'malehost'), requirements: { ageRange: { min: 30, max: 20 } } }, 'maleHost', 'Male Host', 'malehost'));
+
+    // 3i. Fail-closed suspension checking
+    // Suspended user without suspendedUntil -> DENIED
+    await seedDoc('users/suspendedNoUntil', {
+      uid: 'suspendedNoUntil',
+      displayName: 'Suspended User',
+      username: 'suspendeduser',
+      onboardingCompleted: true,
+      isBanned: false,
+      accountStatus: 'suspended'
+    });
+    const suspendedNoUntilDb = testEnv.authenticatedContext('suspendedNoUntil').firestore();
+    await assertFails(commitActivityCreation(suspendedNoUntilDb, 'actSuspNoUntil', getBaseActivityPayload('suspendedNoUntil', 'Suspended User', 'suspendeduser'), 'suspendedNoUntil', 'Suspended User', 'suspendeduser'));
+
+    // 4. Male host tries to create requireVerification event without being verified -> DENIED
+    const unverifiedHostPayload = {
+      ...getBaseActivityPayload('maleHost', 'Male Host', 'malehost'),
+      requirements: { requireVerification: true }
+    };
+    await assertFails(commitActivityCreation(maleDb, 'actKyc', unverifiedHostPayload, 'maleHost', 'Male Host', 'malehost'));
+
+    // 5. Direct join: Male user tries to write directly to participantIds of Women-Only event -> DENIED
+    await assertFails(
+      updateDoc(doc(maleUserDb, 'activities/act1'), {
+        participantIds: ['femaleUser', 'maleUser'],
+        participantsPreview: [
+          { uid: 'femaleUser', displayName: 'Female User', photoURL: null, username: 'femaleuser' },
+          { uid: 'maleUser', displayName: 'Male User', photoURL: null, username: 'maleuser' }
+        ],
+        participantDetails: {
+          femaleUser: { displayName: 'Female User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', hasReviewed: false, username: 'femaleuser' },
+          maleUser: { displayName: 'Male User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', hasReviewed: false, username: 'maleuser' }
+        }
+      })
+    );
+
+    // 6. Direct join: Female user writes to Women-Only participantIds -> ALLOWED
+    await seedDoc('users/femaleUser2', {
+      uid: 'femaleUser2',
+      displayName: 'Female User 2',
+      username: 'femaleuser2',
+      gender: 'female',
+      onboardingCompleted: true,
+      isBanned: false
+    });
+    const femaleUser2Db = testEnv.authenticatedContext('femaleUser2').firestore();
+
+    await assertSucceeds(
+      updateDoc(doc(femaleUser2Db, 'activities/act1'), {
+        participantIds: ['femaleUser', 'femaleUser2'],
+        participantsPreview: [
+          { uid: 'femaleUser', displayName: 'Female User', photoURL: null, username: 'femaleuser' },
+          { uid: 'femaleUser2', displayName: 'Female User 2', photoURL: null, username: 'femaleuser2' }
+        ],
+        participantDetails: {
+          femaleUser: { displayName: 'Female User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', hasReviewed: false, username: 'femaleuser' },
+          femaleUser2: { displayName: 'Female User 2', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', hasReviewed: false, username: 'femaleuser2' }
+        }
+      })
+    );
+
+    // 7. Direct join: User with accountStatus = 'disabled' tries to join -> DENIED
+    await seedDoc('users/disabledUser', {
+      uid: 'disabledUser',
+      displayName: 'Disabled User',
+      username: 'disableduser',
+      gender: 'female',
+      onboardingCompleted: true,
+      isBanned: false,
+      accountStatus: 'disabled'
+    });
+    const disabledUserDb = testEnv.authenticatedContext('disabledUser').firestore();
+
+    await assertFails(
+      updateDoc(doc(disabledUserDb, 'activities/act1'), {
+        participantIds: ['femaleUser', 'disabledUser'],
+        participantsPreview: [
+          { uid: 'femaleUser', displayName: 'Female User', photoURL: null, username: 'femaleuser' },
+          { uid: 'disabledUser', displayName: 'Disabled User', photoURL: null, username: 'disableduser' }
+        ],
+        participantDetails: {
+          femaleUser: { displayName: 'Female User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', hasReviewed: false, username: 'femaleuser' },
+          disabledUser: { displayName: 'Disabled User', photoURL: null, isPremium: false, isSupporter: false, checkInStatus: 'pending', hasReviewed: false, username: 'disableduser' }
+        }
+      })
+    );
+
+    console.log('✅ Suite K: Women-Only & Host Requirement Security Rules Tests PASSED!');
+  }
+
   console.log('🎉 ALL SECURITY RULES TESTS PASSED SUCCESSFULLY! 🎉');
   
   // Cleanup

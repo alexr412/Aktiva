@@ -180,7 +180,7 @@ mockModule("firebase-functions/v2/firestore", mockFunctionsFirestore);
 
 // ─── IMPORTS UNDER TEST ──────────────────────────────────────────────────────
 
-const { respondToJoinRequest, secureRequestJoinActivity, kickParticipant } = require("./activities");
+const { respondToJoinRequest, secureRequestJoinActivity, kickParticipant, validateActivityEligibility, normalizeAndValidateGenderRequirements } = require("./activities");
 
 // ─── TEST CASES ──────────────────────────────────────────────────────────────
 
@@ -252,7 +252,7 @@ async function testRespondToJoinRequest() {
   mockDbState["activities"]["act1"].maxParticipants = 1; // already includes host1!
   await assert.rejects(
     respondToJoinRequest({ notificationId: "notif1", activityId: "act1", userIdToJoin: "joiner1", action: "accept" }, { uid: "host1" }),
-    (err: any) => err.name === "HttpsError" && err.code === "resource-exhausted"
+    (err: any) => err.name === "HttpsError" && (err.code === "resource-exhausted" || err.code === "failed-precondition")
   );
 
   // 8. Successful Accept
@@ -386,7 +386,7 @@ async function testSecureRequestJoinActivity() {
   mockDbState["users"]["joiner1"].isBanned = true;
   await assert.rejects(
     secureRequestJoinActivity({ activityId: "act1" }, { uid: "joiner1" }),
-    (err: any) => err.name === "HttpsError" && err.code === "permission-denied"
+    (err: any) => err.name === "HttpsError" && (err.code === "permission-denied" || err.code === "failed-precondition")
   );
 
   // 8. Successful Request
@@ -487,8 +487,236 @@ async function testKickParticipant() {
   console.log("✅ testKickParticipant passed successfully!");
 }
 
+async function testValidateActivityEligibility() {
+  console.log("Running testValidateActivityEligibility...");
+
+  // 1. Normalization tests
+  assert.strictEqual(normalizeAndValidateGenderRequirements(undefined), undefined);
+  assert.strictEqual(normalizeAndValidateGenderRequirements([]), undefined);
+  assert.deepStrictEqual(normalizeAndValidateGenderRequirements(["female"]), ["female"]);
+  assert.deepStrictEqual(normalizeAndValidateGenderRequirements(["female", "female"]), ["female"]);
+  assert.strictEqual(normalizeAndValidateGenderRequirements(["female", "male", "diverse"]), undefined);
+  assert.throws(
+    () => normalizeAndValidateGenderRequirements(["invalid_gender"]),
+    (err: any) => err.name === "HttpsError" && err.code === "invalid-argument"
+  );
+
+  // 2. Frau -> ['female'] -> Join allowed
+  const res1 = validateActivityEligibility(
+    { requirements: { gender: ["female"] }, hostId: "host1" },
+    { uid: "user_f", gender: "female" }
+  );
+  assert.strictEqual(res1.eligible, true);
+
+  // 3. Mann -> ['female'] -> Join blocked (GENDER_REQUIREMENT_NOT_MET)
+  const res2 = validateActivityEligibility(
+    { requirements: { gender: ["female"] }, hostId: "host1" },
+    { uid: "user_m", gender: "male" }
+  );
+  assert.strictEqual(res2.eligible, false);
+  assert.strictEqual(res2.errorCode, "GENDER_REQUIREMENT_NOT_MET");
+
+  // 4. Diverse -> ['female'] -> Join blocked (GENDER_REQUIREMENT_NOT_MET)
+  const res3 = validateActivityEligibility(
+    { requirements: { gender: ["female"] }, hostId: "host1" },
+    { uid: "user_d", gender: "diverse" }
+  );
+  assert.strictEqual(res3.eligible, false);
+  assert.strictEqual(res3.errorCode, "GENDER_REQUIREMENT_NOT_MET");
+
+  // 5. Mann -> ['male'] -> Join allowed
+  const res4 = validateActivityEligibility(
+    { requirements: { gender: ["male"] }, hostId: "host1" },
+    { uid: "user_m", gender: "male" }
+  );
+  assert.strictEqual(res4.eligible, true);
+
+  // 6. Diverse -> ['female', 'diverse'] -> Join allowed
+  const res5 = validateActivityEligibility(
+    { requirements: { gender: ["female", "diverse"] }, hostId: "host1" },
+    { uid: "user_d", gender: "diverse" }
+  );
+  assert.strictEqual(res5.eligible, true);
+
+  // 7. No requirements.gender -> All allowed
+  const res6 = validateActivityEligibility(
+    { requirements: {}, hostId: "host1" },
+    { uid: "user_m", gender: "male" }
+  );
+  assert.strictEqual(res6.eligible, true);
+
+  // 8. Age requirement test
+  const res7 = validateActivityEligibility(
+    { requirements: { ageRange: { min: 21, max: 50 } }, hostId: "host1" },
+    { uid: "user_young", age: 18 }
+  );
+  assert.strictEqual(res7.eligible, false);
+  assert.strictEqual(res7.errorCode, "AGE_REQUIREMENT_NOT_MET");
+
+  // 9. Profile picture requirement test
+  const res8 = validateActivityEligibility(
+    { requirements: { requireProfilePicture: true }, hostId: "host1" },
+    { uid: "user_no_pic", photoURL: null }
+  );
+  assert.strictEqual(res8.eligible, false);
+  assert.strictEqual(res8.errorCode, "PROFILE_PICTURE_REQUIRED");
+
+  // 10. Verification requirement test
+  const res9 = validateActivityEligibility(
+    { requirements: { requireVerification: true }, hostId: "host1" },
+    { uid: "user_unverified", kycStatus: "unverified" }
+  );
+  assert.strictEqual(res9.eligible, false);
+  assert.strictEqual(res9.errorCode, "VERIFICATION_REQUIRED");
+
+  // 11. Banned user & accountStatus tests
+  const res10 = validateActivityEligibility(
+    { hostId: "host1" },
+    { uid: "user_banned", isBanned: true }
+  );
+  assert.strictEqual(res10.eligible, false);
+  assert.strictEqual(res10.errorCode, "ACCOUNT_NOT_ELIGIBLE");
+
+  const res10b = validateActivityEligibility(
+    { hostId: "host1" },
+    { uid: "user_deleted", accountStatus: "deleted" }
+  );
+  assert.strictEqual(res10b.eligible, false);
+  assert.strictEqual(res10b.errorCode, "ACCOUNT_NOT_ELIGIBLE");
+
+  const res10c = validateActivityEligibility(
+    { hostId: "host1" },
+    { uid: "user_disabled", accountStatus: "disabled" }
+  );
+  assert.strictEqual(res10c.eligible, false);
+  assert.strictEqual(res10c.errorCode, "ACCOUNT_NOT_ELIGIBLE");
+
+  // Suspended in future vs expired suspension
+  const res10d = validateActivityEligibility(
+    { hostId: "host1" },
+    { uid: "user_suspended", accountStatus: "suspended", suspendedUntil: Date.now() + 3600000 }
+  );
+  assert.strictEqual(res10d.eligible, false);
+  assert.strictEqual(res10d.errorCode, "ACCOUNT_NOT_ELIGIBLE");
+
+  const res10e = validateActivityEligibility(
+    { hostId: "host1" },
+    { uid: "user_expired_suspension", accountStatus: "suspended", suspendedUntil: Date.now() - 3600000 }
+  );
+  assert.strictEqual(res10e.eligible, true);
+
+  // 12. gender: [] treated as unrestricted ("Alle")
+  const res11 = validateActivityEligibility(
+    { requirements: { gender: [] }, hostId: "host1" },
+    { uid: "user_m", gender: "male" }
+  );
+  assert.strictEqual(res11.eligible, true);
+
+  // 13. Host Male trying to fulfill Women-Only requirements -> fails for host
+  const res12 = validateActivityEligibility(
+    { requirements: { gender: ["female"] }, hostId: "host_male" },
+    { uid: "host_male", gender: "male" }
+  );
+  assert.strictEqual(res12.eligible, false);
+  assert.strictEqual(res12.errorCode, "GENDER_REQUIREMENT_NOT_MET");
+
+  // 15. Men-Only requirement ['male']
+  const resMaleHost = validateActivityEligibility(
+    { requirements: { gender: ["male"] }, hostId: "host_male" },
+    { uid: "host_male", gender: "male" }
+  );
+  assert.strictEqual(resMaleHost.eligible, true);
+
+  const resFemaleUserOnMaleEvent = validateActivityEligibility(
+    { requirements: { gender: ["male"] }, hostId: "host_male" },
+    { uid: "user_female", gender: "female" }
+  );
+  assert.strictEqual(resFemaleUserOnMaleEvent.eligible, false);
+  assert.strictEqual(resFemaleUserOnMaleEvent.errorCode, "GENDER_REQUIREMENT_NOT_MET");
+
+  // 16. Diverse-Only requirement ['diverse']
+  const resDiverseHost = validateActivityEligibility(
+    { requirements: { gender: ["diverse"] }, hostId: "host_diverse" },
+    { uid: "host_diverse", gender: "diverse" }
+  );
+  assert.strictEqual(resDiverseHost.eligible, true);
+
+  const resMaleUserOnDiverseEvent = validateActivityEligibility(
+    { requirements: { gender: ["diverse"] }, hostId: "host_diverse" },
+    { uid: "user_male", gender: "male" }
+  );
+  assert.strictEqual(resMaleUserOnDiverseEvent.eligible, false);
+  assert.strictEqual(resMaleUserOnDiverseEvent.errorCode, "GENDER_REQUIREMENT_NOT_MET");
+
+  // 17. Custom combo ['female', 'diverse']
+  const resFemaleOnCustom = validateActivityEligibility(
+    { requirements: { gender: ["female", "diverse"] }, hostId: "host1" },
+    { uid: "user_female", gender: "female" }
+  );
+  assert.strictEqual(resFemaleOnCustom.eligible, true);
+
+  const resMaleOnCustom = validateActivityEligibility(
+    { requirements: { gender: ["female", "diverse"] }, hostId: "host1" },
+    { uid: "user_male", gender: "male" }
+  );
+  assert.strictEqual(resMaleOnCustom.eligible, false);
+  assert.strictEqual(resMaleOnCustom.errorCode, "GENDER_REQUIREMENT_NOT_MET");
+
+  // 18. Suspended fail-closed checks
+  const resSuspendedMissingUntil = validateActivityEligibility(
+    { hostId: "host1" },
+    { uid: "user_suspended_no_until", accountStatus: "suspended" }
+  );
+  assert.strictEqual(resSuspendedMissingUntil.eligible, false);
+  assert.strictEqual(resSuspendedMissingUntil.errorCode, "ACCOUNT_NOT_ELIGIBLE");
+
+  const resSuspendedInvalidUntil = validateActivityEligibility(
+    { hostId: "host1" },
+    { uid: "user_suspended_bad_until", accountStatus: "suspended", suspendedUntil: "invalid-date" }
+  );
+  assert.strictEqual(resSuspendedInvalidUntil.eligible, false);
+  assert.strictEqual(resSuspendedInvalidUntil.errorCode, "ACCOUNT_NOT_ELIGIBLE");
+
+  console.log("✅ testValidateActivityEligibility passed successfully!");
+}
+
+async function testConcurrentJoinRequests() {
+  console.log("Running testConcurrentJoinRequests...");
+  resetMockDb();
+  mockDbState["activities"] = {
+    act1: { hostId: "host1", status: "active", participantIds: ["host1"], maxParticipants: 2 }
+  };
+  mockDbState["chats"] = {
+    act1: { participantIds: ["host1"] }
+  };
+  mockDbState["users"] = {
+    host1: { uid: "host1", username: "host1", displayName: "Host 1" },
+    joiner1: { uid: "joiner1", username: "joiner1", displayName: "Joiner 1", gender: "female" },
+    joiner2: { uid: "joiner2", username: "joiner2", displayName: "Joiner 2", gender: "female" }
+  };
+  mockDbState["notifications"] = {
+    notif1: { type: "join_request", activityId: "act1", senderId: "joiner1", recipientId: "host1", isRead: true },
+    notif2: { type: "join_request", activityId: "act1", senderId: "joiner2", recipientId: "host1", isRead: true }
+  };
+
+  // First accept fills remaining spot
+  const res1 = await respondToJoinRequest({ notificationId: "notif1", activityId: "act1", userIdToJoin: "joiner1", action: "accept" }, { uid: "host1" });
+  assert.strictEqual(res1.success, true);
+  assert.strictEqual(mockDbState["activities"]["act1"].participantIds.length, 2);
+
+  // Second accept on full capacity must fail with ACTIVITY_FULL (failed-precondition)
+  await assert.rejects(
+    respondToJoinRequest({ notificationId: "notif2", activityId: "act1", userIdToJoin: "joiner2", action: "accept" }, { uid: "host1" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition"
+  );
+
+  console.log("✅ testConcurrentJoinRequests passed successfully!");
+}
+
 async function runAllTests() {
   try {
+    await testValidateActivityEligibility();
+    await testConcurrentJoinRequests();
     await testRespondToJoinRequest();
     await testSecureRequestJoinActivity();
     await testKickParticipant();

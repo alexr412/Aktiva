@@ -578,6 +578,128 @@ export function CreateActivityDialog({
                 </div>
 
                 <div className="space-y-2 border-t pt-3">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-bold">{language === 'de' ? 'Geschlecht' : 'Gender'}</Label>
+                    <p className="text-[10px] text-muted-foreground">
+                      {language === 'de' ? 'Wer darf an diesem Treffen teilnehmen?' : 'Who is allowed to join this meetup?'}
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setAllowedGenders(['male', 'female', 'diverse'])}
+                      className={cn(
+                        "py-2 px-2.5 rounded-xl border text-xs font-bold transition-all text-center flex items-center justify-center gap-1",
+                        allowedGenders.length === 3
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-muted text-muted-foreground hover:border-muted-foreground/40"
+                      )}
+                    >
+                      <span>{language === 'de' ? 'Alle' : 'All'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAllowedGenders(['female'])}
+                      className={cn(
+                        "py-2 px-2.5 rounded-xl border text-xs font-bold transition-all text-center flex items-center justify-center gap-1",
+                        allowedGenders.length === 1 && allowedGenders.includes('female')
+                          ? "border-purple-500 bg-purple-500/10 text-purple-600 dark:text-purple-400 font-black"
+                          : "border-muted text-muted-foreground hover:border-muted-foreground/40"
+                      )}
+                    >
+                      <span>👩 {language === 'de' ? 'Nur Frauen' : 'Women Only'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAllowedGenders(['male'])}
+                      className={cn(
+                        "py-2 px-2.5 rounded-xl border text-xs font-bold transition-all text-center flex items-center justify-center gap-1",
+                        allowedGenders.length === 1 && allowedGenders.includes('male')
+                          ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-black"
+                          : "border-muted text-muted-foreground hover:border-muted-foreground/40"
+                      )}
+                    >
+                      <span>👨 {language === 'de' ? 'Nur Männer' : 'Men Only'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAllowedGenders(['diverse'])}
+                      className={cn(
+                        "py-2 px-2.5 rounded-xl border text-xs font-bold transition-all text-center flex items-center justify-center gap-1",
+                        allowedGenders.length === 1 && allowedGenders.includes('diverse')
+                          ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black"
+                          : "border-muted text-muted-foreground hover:border-muted-foreground/40"
+                      )}
+                    >
+                      <span>🌈 {language === 'de' ? 'Nur Diverse' : 'Diverse Only'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (allowedGenders.length !== 2) {
+                          setAllowedGenders(['female', 'diverse']);
+                        }
+                      }}
+                      className={cn(
+                        "py-2 px-2.5 rounded-xl border text-xs font-bold transition-all text-center flex items-center justify-center gap-1",
+                        allowedGenders.length === 2
+                          ? "border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-black"
+                          : "border-muted text-muted-foreground hover:border-muted-foreground/40"
+                      )}
+                    >
+                      <span>⚙️ {language === 'de' ? 'Individuell' : 'Custom'}</span>
+                    </button>
+                  </div>
+
+                  {allowedGenders.length === 2 && (
+                    <div className="flex items-center gap-2 pt-2">
+                      {[
+                        { id: 'female', label: language === 'de' ? 'Frauen' : 'Women' },
+                        { id: 'male', label: language === 'de' ? 'Männer' : 'Men' },
+                        { id: 'diverse', label: language === 'de' ? 'Diverse' : 'Diverse' },
+                      ].map((item) => {
+                        const isChecked = allowedGenders.includes(item.id);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              if (isChecked) {
+                                if (allowedGenders.length > 1) {
+                                  setAllowedGenders(allowedGenders.filter((g) => g !== item.id));
+                                }
+                              } else {
+                                setAllowedGenders([...allowedGenders, item.id]);
+                              }
+                            }}
+                            className={cn(
+                              "px-3 py-1 rounded-lg text-xs font-medium border transition-all",
+                              isChecked
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-muted/30 text-muted-foreground border-transparent hover:bg-muted/50"
+                            )}
+                          >
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {userProfile?.gender && allowedGenders.length < 3 && !allowedGenders.includes(userProfile.gender) && (
+                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold mt-2">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <span>{language === 'de' ? 'Hinweis: Du musst selbst Teil der gewählten Geschlechtergruppe sein, um die Aktivität zu erstellen.' : 'Notice: You must be part of the selected gender group yourself to create the activity.'}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2 border-t pt-3">
                   <Label className="text-xs font-bold text-muted-foreground">{language === 'de' ? 'Altersbeschränkung' : 'Age Restriction'}</Label>
                   <div className="flex items-center gap-2">
                     <Input

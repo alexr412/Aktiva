@@ -909,6 +909,28 @@ export default function Home() {
       });
     }
 
+    if (activeCategory.includes('women_only')) {
+      filteredList = filteredList.filter((item: any) => {
+        const genders = item.requirements?.gender;
+        return Array.isArray(genders) && genders.length === 1 && genders[0] === 'female';
+      });
+    } else if (activeCategory.includes('men_only')) {
+      filteredList = filteredList.filter((item: any) => {
+        const genders = item.requirements?.gender;
+        return Array.isArray(genders) && genders.length === 1 && genders[0] === 'male';
+      });
+    } else if (activeCategory.includes('diverse_only')) {
+      filteredList = filteredList.filter((item: any) => {
+        const genders = item.requirements?.gender;
+        return Array.isArray(genders) && genders.length === 1 && genders[0] === 'diverse';
+      });
+    } else if (activeCategory.includes('custom_gender')) {
+      filteredList = filteredList.filter((item: any) => {
+        const genders = item.requirements?.gender;
+        return Array.isArray(genders) && genders.length > 0 && genders.length < 3;
+      });
+    }
+
     return [...filteredList].sort((a, b) => {
       const timeA = a.activityDate?.toMillis ? a.activityDate.toMillis() : 0;
       const timeB = b.activityDate?.toMillis ? b.activityDate.toMillis() : 0;

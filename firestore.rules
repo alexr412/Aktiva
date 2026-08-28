@@ -20,27 +20,43 @@ service cloud.firestore {
     }
 
     function isAdmin() {
+      let uData = getUserData();
       return isSignedIn() && (
         ('isAdmin' in request.auth.token && request.auth.token.isAdmin == true) ||
-        (request.auth.uid != null && 'role' in getUserData() && (getUserData().role == 'admin' || getUserData().role == 'superadmin')) ||
-        (request.auth.uid != null && 'isAdmin' in getUserData() && getUserData().isAdmin == true)
+        uData.get('role', '') in ['admin', 'superadmin'] ||
+        uData.get('isAdmin', false) == true
       );
     }
 
-    // legacy and active ban / suspension check
+    // Helper function for fail-closed suspension checking:
+    // Missing, null, non-timestamp, or future suspendedUntil timestamp blocks access when status == 'suspended'
+    function isSuspendedFailClosed(uData) {
+      return uData.get('accountStatus', '') == 'suspended' && (
+        !('suspendedUntil' in uData) ||
+        uData.suspendedUntil == null ||
+        !(uData.suspendedUntil is timestamp) ||
+        uData.suspendedUntil > request.time
+      );
+    }
+
+    // legacy and active ban / suspension / accountStatus check
     function isBanned() {
+      let uData = getUserData();
+      let status = uData.get('accountStatus', 'active');
       return isSignedIn() && request.auth.uid != null && (
-        ('isBanned' in getUserData() && getUserData().isBanned == true) ||
-        ('accountStatus' in getUserData() && getUserData().accountStatus == 'banned') ||
-        ('accountStatus' in getUserData() && getUserData().accountStatus == 'suspended' &&
-         'suspendedUntil' in getUserData() && getUserData().suspendedUntil != null &&
-         getUserData().suspendedUntil > request.time)
+        uData.get('isBanned', false) == true ||
+        status in ['banned', 'deleted', 'disabled'] ||
+        isSuspendedFailClosed(uData)
       );
     }
 
     function isUserOnboardedAndActive(userId) {
       let uData = (isSignedIn() && userId == request.auth.uid) ? getUserData() : (userId != null && exists(/databases/$(database)/documents/users/$(userId)) ? get(/databases/$(database)/documents/users/$(userId)).data : {});
-      return uData.get('onboardingCompleted', false) == true && uData.get('isBanned', false) == false;
+      let status = uData.get('accountStatus', 'active');
+      let isStatusBlocked = status in ['banned', 'deleted', 'disabled'] || isSuspendedFailClosed(uData);
+      return uData.get('onboardingCompleted', false) == true &&
+             uData.get('isBanned', false) == false &&
+             !isStatusBlocked;
     }
 
     function getHostParticipantLimit(uid) {
@@ -54,27 +70,83 @@ service cloud.firestore {
       return isOrg ? 50 : (isPrem ? 12 : 4);
     }
 
+    function isValidRequirements(reqs, uData) {
+      return (reqs is map) && (
+        // 1. Gender Requirement Check (must be list of unique valid genders if present)
+        (!('gender' in reqs) || (
+          (reqs.gender is list) && (
+            reqs.gender.size() == 0 ||
+            (
+              reqs.gender.size() == 1 &&
+              reqs.gender[0] in ['female', 'male', 'diverse'] &&
+              uData.get('gender', '') == reqs.gender[0]
+            ) ||
+            (
+              reqs.gender.size() == 2 &&
+              reqs.gender[0] in ['female', 'male', 'diverse'] &&
+              reqs.gender[1] in ['female', 'male', 'diverse'] &&
+              reqs.gender[0] != reqs.gender[1] &&
+              uData.get('gender', '') in reqs.gender
+            ) ||
+            (
+              reqs.gender.size() == 3 &&
+              reqs.gender.hasAll(['female', 'male', 'diverse'])
+            )
+          )
+        )) &&
+
+        // 2. Profile Picture Requirement (must be bool if present)
+        (!('requireProfilePicture' in reqs) || (
+          (reqs.requireProfilePicture is bool) &&
+          (reqs.requireProfilePicture == false || uData.get('photoURL', '') != '')
+        )) &&
+
+        // 3. Verification Requirement (must be bool if present)
+        (!('requireVerification' in reqs) || (
+          (reqs.requireVerification is bool) &&
+          (reqs.requireVerification == false || uData.get('kycStatus', '') == 'verified')
+        )) &&
+
+        // 4. Age Range Requirement (must be map, min/max must be int, 0 <= min <= max <= 200)
+        (!('ageRange' in reqs) || (
+          (reqs.ageRange is map) &&
+          (!('min' in reqs.ageRange) || (
+            (reqs.ageRange.min is int) &&
+            reqs.ageRange.min >= 0 &&
+            uData.get('age', 0) >= reqs.ageRange.min
+          )) &&
+          (!('max' in reqs.ageRange) || (
+            (reqs.ageRange.max is int) &&
+            reqs.ageRange.max <= 200 &&
+            uData.get('age', 0) <= reqs.ageRange.max
+          )) &&
+          (!('min' in reqs.ageRange) || !('max' in reqs.ageRange) || (
+            reqs.ageRange.min <= reqs.ageRange.max
+          ))
+        )) &&
+
+        // 5. Minimum Rating Requirement (must be number between 0.0 and 5.0)
+        (!('minimumRating' in reqs) || (
+          (reqs.minimumRating is number) &&
+          reqs.minimumRating >= 0.0 &&
+          reqs.minimumRating <= 5.0 &&
+          uData.get('averageRating', 0.0) >= reqs.minimumRating
+        ))
+      );
+    }
+
     function isValidActivityCreate(activityId) {
       let uData = getUserData();
-      let userExists = uData.keys().size() > 0;
-      let username = uData.get('username', null);
-      let isOnboarded = uData.get('onboardingCompleted', false) == true;
-      let isBannedUser = uData.get('isBanned', false) == true;
-      let isOrg = uData.get('isOrganizer', false) == true;
-      let isPrem = uData.get('isPremium', false) == true && (
-        !uData.keys().hasAny(['premiumExpiresAt']) ||
-        uData.get('premiumExpiresAt', null) == null ||
-        uData.get('premiumExpiresAt', request.time) > request.time
-      );
-      let hostLimit = isOrg ? 50 : (isPrem ? 12 : 4);
 
       return (
+        // 0. Host Requirements Check (Short-circuit immediately if host does not fulfill requirements)
+        (!('requirements' in request.resource.data) || isValidRequirements(request.resource.data.requirements, uData)) &&
+
         // 1. Authentifizierung & Onboarding
         isSignedIn() && 
         request.resource.data.hostId == request.auth.uid && 
-        userExists &&
-        isOnboarded &&
-        !isBannedUser &&
+        uData.keys().size() > 0 &&
+        isUserOnboardedAndActive(request.auth.uid) &&
         
         // 2. Whitelist-Validierung
         request.resource.data.keys().hasOnly([
@@ -109,7 +181,7 @@ service cloud.firestore {
         request.resource.data.participantsPreview[0].uid == request.auth.uid &&
         request.resource.data.participantsPreview[0].keys().hasOnly(['uid', 'displayName', 'photoURL', 'username']) &&
         
-        request.resource.data.get('hostUsername', null) == username &&
+        request.resource.data.get('hostUsername', null) == uData.get('username', null) &&
         request.resource.data.participantsPreview[0].get('username', null) == request.resource.data.get('hostUsername', null) &&
         
         request.resource.data.participantDetails is map && request.resource.data.participantDetails.keys().hasOnly([request.auth.uid]) &&
@@ -123,7 +195,7 @@ service cloud.firestore {
         // 4. Zeitvalidierung
         request.resource.data.activityDate is timestamp && 
         request.resource.data.activityDate >= request.time - duration.value(5, 'm') &&
-        (!request.resource.data.keys().hasAny(['activityEndDate']) || (
+        (!('activityEndDate' in request.resource.data) || (
           request.resource.data.activityEndDate is timestamp && 
           request.resource.data.activityEndDate > request.resource.data.activityDate && 
           request.resource.data.activityEndDate <= request.resource.data.activityDate + duration.value(30, 'd')
@@ -131,20 +203,20 @@ service cloud.firestore {
         
         // 5. Kapazitäts- & Host-Validierung
         request.resource.data.hostId == request.auth.uid &&
-        (!request.resource.data.keys().hasAny(['maxParticipants']) || (
+        (!('maxParticipants' in request.resource.data) || (
           request.resource.data.maxParticipants is int && 
           request.resource.data.maxParticipants >= 2 && 
-          request.resource.data.maxParticipants <= hostLimit
+          request.resource.data.maxParticipants <= (uData.get('isOrganizer', false) == true ? 50 : (uData.get('isPremium', false) == true ? 12 : 4))
         )) &&
         
         // 6. Orts- und Koordinatenvalidierung
-        (!request.resource.data.keys().hasAny(['lat']) || (request.resource.data.lat is number && request.resource.data.lat >= -90.0 && request.resource.data.lat <= 90.0)) &&
-        (!request.resource.data.keys().hasAny(['lon']) || (request.resource.data.lon is number && request.resource.data.lon >= -180.0 && request.resource.data.lon <= 180.0)) &&
-        (!request.resource.data.keys().hasAny(['city']) || (request.resource.data.city is string && request.resource.data.city.size() <= 100)) &&
-        (!request.resource.data.keys().hasAny(['postalCode']) || (request.resource.data.postalCode is string && request.resource.data.postalCode.size() <= 20)) &&
-        (!request.resource.data.keys().hasAny(['placeAddress']) || (request.resource.data.placeAddress is string && request.resource.data.placeAddress.size() <= 200)) &&
-        (!request.resource.data.keys().hasAny(['joinMode']) || request.resource.data.joinMode in ['direct', 'request']) &&
-        (!request.resource.data.keys().hasAny(['placeCategories']) || (request.resource.data.placeCategories is list && request.resource.data.placeCategories.size() <= 20)) &&
+        (!('lat' in request.resource.data) || (request.resource.data.lat is number && request.resource.data.lat >= -90.0 && request.resource.data.lat <= 90.0)) &&
+        (!('lon' in request.resource.data) || (request.resource.data.lon is number && request.resource.data.lon >= -180.0 && request.resource.data.lon <= 180.0)) &&
+        (!('city' in request.resource.data) || (request.resource.data.city is string && request.resource.data.city.size() <= 100)) &&
+        (!('postalCode' in request.resource.data) || (request.resource.data.postalCode is string && request.resource.data.postalCode.size() <= 20)) &&
+        (!('placeAddress' in request.resource.data) || (request.resource.data.placeAddress is string && request.resource.data.placeAddress.size() <= 200)) &&
+        (!('joinMode' in request.resource.data) || request.resource.data.joinMode in ['direct', 'request']) &&
+        (!('placeCategories' in request.resource.data) || (request.resource.data.placeCategories is list && request.resource.data.placeCategories.size() <= 20)) &&
         
         (request.resource.data.get('placeId', 'custom') == 'custom' || (
           request.resource.data.placeId is string &&
@@ -158,14 +230,14 @@ service cloud.firestore {
           )
         )) &&
         
-        // 7. Boost- & Token-Deduction-Validierung
         request.resource.data.isBoosted is bool && (
-          (request.resource.data.isBoosted == false && request.resource.data.boostedAt == null) ||
+          (request.resource.data.isBoosted == false && request.resource.data.get('boostedAt', null) == null) ||
           (
             request.resource.data.isBoosted == true && 
-            request.resource.data.boostedAt == request.time &&
-            getUserData().get('tokens', 0) >= 1 &&
-            getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.tokens == getUserData().get('tokens', 0) - 1
+            request.resource.data.get('boostedAt', null) == request.time &&
+            uData.get('tokens', 0) >= 1 &&
+            existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+            getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.tokens == uData.get('tokens', 0) - 1
           )
         ) &&
         
@@ -178,7 +250,14 @@ service cloud.firestore {
     }
 
     function isValidActivityUpdateNormal() {
+      let uData = getUserData();
+      let isOrg = uData.get('isOrganizer', false) == true;
+      let hostLimit = isOrg ? 50 : (uData.get('isPremium', false) == true ? 12 : 4);
+
       return (
+        // 0. Host Requirements Check (Short-circuit immediately if host does not fulfill requirements)
+        (!('requirements' in request.resource.data) || isValidRequirements(request.resource.data.requirements, uData)) &&
+
         // 1. Host Authentifizierung & Onboarding
         isSignedIn() && 
         resource.data.hostId == request.auth.uid && 
@@ -193,8 +272,19 @@ service cloud.firestore {
         request.resource.data.get('price', 0) == resource.data.get('price', 0) &&
         request.resource.data.get('participantIds', []).size() == resource.data.get('participantIds', []).size() &&
         request.resource.data.get('participantIds', []).hasAll(resource.data.get('participantIds', [])) &&
-        request.resource.data.get('isBoosted', false) == resource.data.get('isBoosted', false) &&
-        request.resource.data.get('boostedAt', null) == resource.data.get('boostedAt', null) &&
+        
+        // Boost-Validierung
+        (
+          (request.resource.data.get('isBoosted', false) == resource.data.get('isBoosted', false) && request.resource.data.get('boostedAt', null) == resource.data.get('boostedAt', null)) ||
+          (
+            resource.data.get('isBoosted', false) == false &&
+            request.resource.data.get('isBoosted', false) == true &&
+            request.resource.data.boostedAt == request.time &&
+            uData.get('tokens', 0) >= 1 &&
+            existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+            getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.tokens == uData.get('tokens', 0) - 1
+          )
+        ) &&
         (
           request.resource.data.get('status', '') == resource.data.get('status', '') || (
             resource.data.get('isPaid', false) == false &&
@@ -217,54 +307,21 @@ service cloud.firestore {
           request.resource.data.get('isDateFlexible', false) == resource.data.get('isDateFlexible', false)
         )) &&
       
-        // Kapazität: Historische Limits bleiben erlaubt, wenn unverändert. Bei Erhöhung/Änderung darf hostLimit des aktuellen Tarifs nicht überschritten werden.
+        // Kapazität
         (request.resource.data.get('maxParticipants', 0) == resource.data.get('maxParticipants', 0) || (
           request.resource.data.maxParticipants is int &&
           request.resource.data.maxParticipants >= resource.data.get('maxParticipants', 0) &&
           request.resource.data.maxParticipants >= resource.data.participantIds.size() &&
-          request.resource.data.maxParticipants <= (
-            getUserData().get('isOrganizer', false) == true ? 50 : (
-              (getUserData().get('isPremium', false) == true && (
-                !('premiumExpiresAt' in getUserData()) ||
-                getUserData().premiumExpiresAt == null ||
-                parseTimestampMillis(getUserData().premiumExpiresAt) > request.time.toMillis()
-              )) ? 12 : 4
-            )
-          )
+          request.resource.data.maxParticipants <= hostLimit
         ))
-      );
-    }
-
-    function isValidActivityUpdateBoost() {
-      return (
-        // 1. Host Authentifizierung & Onboarding
-        isSignedIn() && 
-        resource.data.hostId == request.auth.uid && 
-        isUserOnboardedAndActive(request.auth.uid) &&
-                   
-        // 2. Keine Manipulation von System- oder Zahlungsfeldern
-        request.resource.data.get('hostId', '') == resource.data.get('hostId', '') &&
-        request.resource.data.get('hostUsername', null) == resource.data.get('hostUsername', null) &&
-        request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null) &&
-        request.resource.data.get('sourceType', '') == resource.data.get('sourceType', '') &&
-        request.resource.data.get('isPaid', false) == resource.data.get('isPaid', false) &&
-        request.resource.data.get('price', 0) == resource.data.get('price', 0) &&
-        request.resource.data.get('participantIds', []).size() == resource.data.get('participantIds', []).size() &&
-        request.resource.data.get('participantIds', []).hasAll(resource.data.get('participantIds', [])) &&
-        request.resource.data.get('status', '') == resource.data.get('status', '') &&
-        
-        resource.data.get('isBoosted', false) == false && 
-        request.resource.data.get('isBoosted', false) == true &&
-        request.resource.data.boostedAt == request.time &&
-        getUserData().get('tokens', 0) >= 1 &&
-        getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.tokens == getUserData().tokens - 1
       );
     }
 
     function isValidDirectJoin() {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       let userExists = exists(userPath);
-      let username = userExists ? get(userPath).data.get('username', null) : null;
+      let uData = userExists ? get(userPath).data : {};
+      let username = userExists ? uData.get('username', null) : null;
       return (
         isSignedIn() &&
         isUserOnboardedAndActive(request.auth.uid) &&
@@ -274,6 +331,9 @@ service cloud.firestore {
         (!('kickedUserIds' in resource.data) || !(request.auth.uid in resource.data.kickedUserIds)) &&
         
         (!('maxParticipants' in resource.data) || resource.data.get('participantIds', []).size() < resource.data.maxParticipants) &&
+        
+        // Exact requirements check (gender, photo, verification, ageRange, minimumRating)
+        (!('requirements' in resource.data) || isValidRequirements(resource.data.requirements, uData)) &&
         
         // Exact participantIds mutation (append caller only)
         request.resource.data.get('participantIds', []).size() == resource.data.get('participantIds', []).size() + 1 &&
@@ -692,22 +752,23 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    function isValidActivityUpdate() {
+      return resource != null && resource.data != null && (
+        ('hostId' in resource.data && resource.data.hostId == request.auth.uid) ?
+          isValidActivityUpdateNormal() :
+          (isParticipantAllowedUpdate() || isValidDirectLeave() || isValidDirectJoin())
+      );
+    }
+
     match /activities/{activityId} {
       allow read: if true;
-      allow create: if isValidActivityCreate(activityId);
-      allow update: if isSignedIn() && (
-        request.resource.data.get('participantIds', []) == resource.data.get('participantIds', []) ?
-          (
-            (resource.data.get('isBoosted', false) == false && request.resource.data.get('isBoosted', false) == true) ?
-              (isValidActivityUpdateBoost() || isAdmin()) :
-              (isValidActivityUpdateNormal() || isParticipantAllowedUpdate() || isAdmin())
-          ) :
-          (
-            (request.auth.uid in resource.data.participantIds) ?
-              (isValidDirectLeave() || isAdmin()) :
-              (isValidDirectJoin() || isAdmin())
-          )
-      );
+      allow write: if (resource == null ? isValidActivityCreate(activityId) : (
+        isSignedIn() && (
+          isAdmin() ||
+          (resource.data.get('hostId', '') == request.auth.uid && isValidActivityUpdateNormal()) ||
+          (resource.data.get('hostId', '') != request.auth.uid && (isParticipantAllowedUpdate() || isValidDirectLeave() || isValidDirectJoin()))
+        )
+      ));
       // Activity deletion is cloud function / admin sdk owned. Client delete restricted to isAdmin().
       allow delete: if isAdmin();
       
@@ -717,15 +778,15 @@ service cloud.firestore {
           isAdmin() || 
           (
             request.auth.uid == participantId &&
-            existsAfter(/databases/$(database)/documents/activities/$(activityId)) &&
-            activityAfterData(activityId).participantIds.hasAny([participantId]) &&
-            (
-              activityAfterData(activityId).isPaid == false ||
-              activityAfterData(activityId).hostId == request.auth.uid
-            ) &&
             request.resource.data.uid == request.auth.uid &&
             request.resource.data.checkInStatus == 'pending' &&
-            request.resource.data.hasReviewed == false
+            request.resource.data.hasReviewed == false &&
+            existsAfter(/databases/$(database)/documents/activities/$(activityId)) &&
+            getAfter(/databases/$(database)/documents/activities/$(activityId)).data.participantIds.hasAny([participantId]) &&
+            (
+              getAfter(/databases/$(database)/documents/activities/$(activityId)).data.isPaid == false ||
+              getAfter(/databases/$(database)/documents/activities/$(activityId)).data.hostId == request.auth.uid
+            )
           )
         );
         allow update: if isSignedIn() && (
@@ -828,7 +889,10 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.recipientId == request.auth.uid || isAdmin()
       );
-      allow write: if false;
+      allow update: if isSignedIn() && resource.data.recipientId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead', 'readAt']) &&
+        request.resource.data.isRead == true;
+      allow create, delete: if false;
     }
 
     match /reports/{reportId} {

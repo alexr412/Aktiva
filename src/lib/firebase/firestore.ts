@@ -588,6 +588,32 @@ export async function createActivity({
     }
   }
 
+  if (requirements) {
+    if (requirements.gender && Array.isArray(requirements.gender) && requirements.gender.length > 0 && requirements.gender.length < 3) {
+      const hostGender = userProfileData?.gender || '';
+      if (!requirements.gender.includes(hostGender)) {
+        throw new Error(userProfileLang === 'de' ? 'Du musst deine eigenen Geschlechter-Kriterien erfüllen, um dieses Treffen zu erstellen.' : 'You must meet your own gender requirement to create this meetup.');
+      }
+    }
+    if (requirements.requireProfilePicture && !userProfileData?.photoURL) {
+      throw new Error(userProfileLang === 'de' ? 'Du benötigst selbst ein Profilbild, um dieses Treffen zu erstellen.' : 'You need a profile picture to create this meetup.');
+    }
+    if (requirements.requireVerification && userProfileData?.kycStatus !== 'verified') {
+      throw new Error(userProfileLang === 'de' ? 'Du musst selbst verifiziert (KYC) sein, um dieses Treffen zu erstellen.' : 'You must be verified (KYC) to create this meetup.');
+    }
+    if (requirements.ageRange) {
+      if (typeof userProfileData?.age !== 'number') {
+        throw new Error(userProfileLang === 'de' ? 'Bitte hinterlege dein Alter in deinen Profileinstellungen.' : 'Please add your age in your profile settings.');
+      }
+      if (requirements.ageRange.min && userProfileData.age < requirements.ageRange.min) {
+        throw new Error(userProfileLang === 'de' ? `Du erfüllst das Mindestalter (${requirements.ageRange.min} Jahre) für dein Treffen nicht.` : `You do not meet the minimum age (${requirements.ageRange.min}) for your meetup.`);
+      }
+      if (requirements.ageRange.max && userProfileData.age > requirements.ageRange.max) {
+        throw new Error(userProfileLang === 'de' ? `Du überschreitest das Höchstalter (${requirements.ageRange.max} Jahre) für dein Treffen.` : `You exceed the maximum age (${requirements.ageRange.max}) for your meetup.`);
+      }
+    }
+  }
+
   const isUserPremium = isPremiumActive(userProfileData);
   const isUserSupporter = userProfileData?.isSupporter || false;
 

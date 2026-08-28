@@ -12,6 +12,7 @@ import {
   Check,
   Loader2,
   MessageSquare,
+  UserCircle,
   Compass,
   X,
   type LucideIcon,
@@ -47,6 +48,7 @@ export type CategoryTab = {
 };
 export const coreTabs: CategoryTab[] = [
     { id: "Active", label: "AKTIV", labelEn: "ACTIVE", query: ["has_activities"], icon: MessageSquare, isSystem: true, color: "#22c55e" },
+    { id: "WomenOnly", label: "Nur Frauen", labelEn: "Women Only", query: ["women_only"], icon: UserCircle, isSystem: true, color: "#a855f7" },
     { id: "Highlights", label: "Highlights", labelEn: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true, color: "#f59e0b" },
     { id: "Favorites", label: "Favoriten", labelEn: "Favorites", query: ["favorites"], icon: Bookmark, isSystem: true, color: "#f43f5e" },
     { id: "Community", label: "Community", labelEn: "Community", query: ["community"], icon: Users, isSystem: true, color: "#8b5cf6" },

@@ -137,6 +137,7 @@ export function ActivityInfoSheet({
   const genderLabels: Record<string, string> = {
     male: language === 'de' ? 'Männer' : 'Men',
     female: language === 'de' ? 'Frauen' : 'Women',
+    diverse: language === 'de' ? 'Diverse' : 'Diverse',
     other: language === 'de' ? 'Diverse' : 'Other',
   };
 

@@ -209,7 +209,27 @@ export default function ExplorePage() {
     const visibleCards = useMemo(() => {
         let filtered = allCards;
 
-        if (activeCategory[0] !== 'all' && activeCategory[0] !== 'favorites') { 
+        if (activeCategory.includes('women_only')) {
+             filtered = filtered.filter(activity => {
+                 const genders = activity.requirements?.gender;
+                 return Array.isArray(genders) && genders.length === 1 && genders[0] === 'female';
+             });
+        } else if (activeCategory.includes('men_only')) {
+             filtered = filtered.filter(activity => {
+                 const genders = activity.requirements?.gender;
+                 return Array.isArray(genders) && genders.length === 1 && genders[0] === 'male';
+             });
+        } else if (activeCategory.includes('diverse_only')) {
+             filtered = filtered.filter(activity => {
+                 const genders = activity.requirements?.gender;
+                 return Array.isArray(genders) && genders.length === 1 && genders[0] === 'diverse';
+             });
+        } else if (activeCategory.includes('custom_gender')) {
+             filtered = filtered.filter(activity => {
+                 const genders = activity.requirements?.gender;
+                 return Array.isArray(genders) && genders.length > 0 && genders.length < 3;
+             });
+        } else if (activeCategory[0] !== 'all' && activeCategory[0] !== 'favorites') { 
              filtered = filtered.filter(activity => {
                  if (!activity.categories) return false;
                  if (activeCategory.length > 1) {
