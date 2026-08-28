@@ -562,6 +562,11 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                                   Host
                                 </Badge>
                               )}
+                              {user?.uid === uid && (
+                                <span className="text-[10px] font-bold text-slate-400 dark:text-neutral-500 uppercase tracking-tighter">
+                                  {language === 'de' ? '(Du)' : '(You)'}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>

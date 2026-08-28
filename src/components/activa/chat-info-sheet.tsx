@@ -370,7 +370,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
                                    <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tight">{language === 'de' ? 'Creator' : 'Creator'}</span>
                                  )}
                                </div>
-                               {uid === user?.uid && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{language === 'de' ? 'Du' : 'You'}</span>}
+                               {uid === user?.uid && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{language === 'de' ? '(Du)' : '(You)'}</span>}
                            </div>
                        </Link>
                         <div className="flex items-center gap-2 pr-2">

@@ -390,6 +390,11 @@ export function ActivityInfoSheet({
                             Host
                           </span>
                         )}
+                        {uid === user?.uid && (
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                            {language === 'de' ? '(Du)' : '(You)'}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </li>
