@@ -136,7 +136,17 @@ export async function POST(req: NextRequest) {
 
     const url = new URL(targetEndpoint);
     for (const [k, v] of Object.entries(sanitizedParams)) {
-      url.searchParams.set(k, v);
+      if (k === 'categories') {
+        const catList = String(v)
+          .split(/[,&]+/)
+          .map(c => c.replace(/^categories=/, '').trim())
+          .filter(Boolean);
+        for (const cat of catList) {
+          url.searchParams.append('categories', cat);
+        }
+      } else {
+        url.searchParams.set(k, v);
+      }
     }
     url.searchParams.set('apiKey', GEOAPIFY_API_KEY || '');
 

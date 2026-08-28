@@ -520,9 +520,8 @@ export default function Home() {
         const { callGeoapifyGateway } = await import('@/lib/geoapify');
         const results = await Promise.all(
           categoryBuckets.map(cats => {
-            const catParam = buildGeoapifyCategoriesParam(cats);
             return callGeoapifyGateway('places', {
-              categories: catParam.replace('categories=', ''),
+              categories: cats,
               filter: `circle:${lng},${lat},${r}`,
               bias: `proximity:${lng},${lat}`,
               limit: '30',

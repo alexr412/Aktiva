@@ -35,21 +35,18 @@ const multiFetcher = async (keyObj: any) => {
     const catGroup1 = "catering,entertainment,tourism,adult.nightclub";
     const catGroup2 = "leisure,sport,commercial.shopping_mall,building.tourism";
 
-    const catParam1 = buildGeoapifyCategoriesParam(catGroup1);
-    const catParam2 = buildGeoapifyCategoriesParam(catGroup2);
-
     try {
       const { callGeoapifyGateway } = await import('@/lib/geoapify');
 
       const [data1, data2] = await Promise.all([
         callGeoapifyGateway('places', {
-          categories: catParam1.replace('categories=', ''),
+          categories: catGroup1,
           filter: `circle:${lng},${lat},${radiusMeters}`,
           bias: `proximity:${lng},${lat}`,
           limit: '45',
         }).catch(() => ({ features: [] })),
         callGeoapifyGateway('places', {
-          categories: catParam2.replace('categories=', ''),
+          categories: catGroup2,
           filter: `circle:${lng},${lat},${radiusMeters}`,
           bias: `proximity:${lng},${lat}`,
           limit: '45',
@@ -112,7 +109,7 @@ const multiFetcher = async (keyObj: any) => {
 
   const { callGeoapifyGateway } = await import('@/lib/geoapify');
   const data = await callGeoapifyGateway('places', {
-    categories: keyObj.catParam ? keyObj.catParam.replace('categories=', '') : '',
+    categories: keyObj.catParam || '',
     filter: `circle:${keyObj.lng},${keyObj.lat},${keyObj.radiusMeters}`,
     bias: `proximity:${keyObj.lng},${keyObj.lat}`,
     limit: '50',

@@ -198,10 +198,9 @@ export default function TestClient() {
     try {
       const { lat, lng } = await resolveCoordinates(testCity);
 
-      const catParam = buildGeoapifyCategoriesParam(sanitizedCategory);
       const { callGeoapifyGateway } = await import('@/lib/geoapify');
       const data = await callGeoapifyGateway('places', {
-        categories: catParam.replace('categories=', ''),
+        categories: sanitizedCategory,
         filter: `circle:${lng},${lat},5000`,
         limit: '60',
         conditions: 'named',
