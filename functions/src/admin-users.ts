@@ -961,7 +961,7 @@ export const adminBackfillUsers = onCall(async (request) => {
 // adminListUsageStats
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const adminListUsageStats = onCall(async (request) => {
+export const adminListUsageStats = onCall({ cors: true }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'User must be authenticated.');
   const db = admin.firestore();
   await verifyAdminCaller(db, request.auth.uid);
