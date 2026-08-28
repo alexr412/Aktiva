@@ -32,7 +32,7 @@ export function AppHeader({
 
   return (
     <header className={cn('global-viewport-header compact pb-3', className)}>
-      {/* Main Header Row - Identical height (h-11), padding, and alignment on all pages */}
+      {/* Main Header Row - Fixed h-11 height (44px) without padding/margin distortion */}
       <div className={cn('global-header-container h-11', containerClassName, hasSubHeader && 'mb-3.5')}>
         {/* Left Slot: Icon/Avatar + Title */}
         <div className="flex items-center gap-2.5 min-w-0 shrink">
@@ -41,7 +41,7 @@ export function AppHeader({
               {icon}
             </div>
           )}
-          <h1 className="text-[22px] font-black tracking-tight leading-none text-slate-900 dark:text-neutral-100 truncate">
+          <h1 className="text-[22px] font-black tracking-tight text-slate-900 dark:text-neutral-100 truncate">
             {title}
           </h1>
         </div>
