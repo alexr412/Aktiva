@@ -241,6 +241,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
   const handleKickParticipant = async (targetUid: string) => {
     if (!activity?.id || !targetUid) return;
     if (isKicking) return;
+    setParticipantToKick(null);
     setIsKicking(true);
     try {
       await removeParticipant(activity.id, targetUid);
@@ -264,7 +265,6 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
       });
     } finally {
       setIsKicking(false);
-      setParticipantToKick(null);
     }
   };
 

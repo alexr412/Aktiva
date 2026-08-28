@@ -236,21 +236,49 @@ export const onChatUpdated = onDocumentUpdated({
   // 2. Process leaves
   for (const uid of leftUsers) {
     const details = before.participantDetails?.[uid] || {};
-    const username = details.username || null;
-    const formattedName = username ? `@${username.replace(/^@/, '')}` : 'Activa-Nutzer';
+    let username = details.username || null;
 
-    // Determine message text (check if user still exists in activity participants to differentiate leave vs remove)
-    let text = `${formattedName} hat die Aktivität verlassen`;
+    let activityData: any = null;
     try {
       const activitySnap = await db.collection('activities').doc(chatId).get();
       if (activitySnap.exists) {
-        const activityParticipants = activitySnap.data()?.participantIds || [];
-        if (activityParticipants.includes(uid)) {
-          text = `${formattedName} hat den Chat verlassen`;
-        }
+        activityData = activitySnap.data();
       }
     } catch (err) {
       console.warn("Error checking activity participants in onChatUpdated:", err);
+    }
+
+    if (!username && activityData?.participantDetails?.[uid]?.username) {
+      username = activityData.participantDetails[uid].username;
+    }
+
+    if (!username) {
+      try {
+        const userSnap = await db.collection('users').doc(uid).get();
+        if (userSnap.exists) {
+          username = userSnap.data()?.username || userSnap.data()?.displayName || null;
+        }
+      } catch (e) {
+        console.warn("Failed to fetch user doc for username:", uid, e);
+      }
+    }
+
+    const formattedName = username ? `@${username.replace(/^@/, '')}` : 'Activa-Nutzer';
+
+    // Determine message text & system photoURL (check if user was kicked vs left activity vs left chat only)
+    let text = `${formattedName} hat die Aktivität verlassen`;
+    let systemPhotoURL = "system:leave";
+
+    if (activityData) {
+      const activityParticipants = activityData.participantIds || [];
+      const kickedUserIds = activityData.kickedUserIds || [];
+
+      if (kickedUserIds.includes(uid)) {
+        text = `${formattedName} wurde aus der Aktivität entfernt`;
+        systemPhotoURL = "system:kick";
+      } else if (activityParticipants.includes(uid)) {
+        text = `${formattedName} hat den Chat verlassen`;
+      }
     }
 
     const msgRef = messagesRef.doc();
@@ -259,7 +287,7 @@ export const onChatUpdated = onDocumentUpdated({
       senderId: uid,
       senderName: formattedName,
       senderUsername: username,
-      senderPhotoURL: "system:leave",
+      senderPhotoURL: systemPhotoURL,
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
       isPremium: details.isPremium || false,
       isSupporter: details.isSupporter || false,

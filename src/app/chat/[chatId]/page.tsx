@@ -110,23 +110,36 @@ const MessageBubble = ({
 }) => {
   const isSystemJoin = message.senderPhotoURL === "system:join";
   const isSystemLeave = message.senderPhotoURL === "system:leave";
-  const isSystemMessage = isSystemJoin || isSystemLeave;
+  const isSystemKick = message.senderPhotoURL === "system:kick";
+  const isSystemMessage = isSystemJoin || isSystemLeave || isSystemKick || Boolean(message.senderPhotoURL?.startsWith("system:"));
 
   if (isSystemMessage) {
-    const resolvedUsername = resolvePublicUsername({
+    const rawUsername = message.senderUsername 
+      ? `@${message.senderUsername.replace(/^@/, '')}` 
+      : (message.senderName && message.senderName !== 'Activa-Nutzer' && message.senderName !== 'System' 
+          ? message.senderName 
+          : null);
+    
+    const formattedName = rawUsername || resolvePublicUsername({
       uid: message.senderId,
       participantDetails,
       currentUserProfile,
       language: language === 'en' ? 'en' : 'de'
     });
-    const formattedName = resolvedUsername;
-    const systemText = isSystemJoin
-      ? (language === 'de' 
-          ? `${formattedName} ist der Aktivität beigetreten` 
-          : `${formattedName} joined the activity`)
-      : (language === 'de' 
-          ? `${formattedName} hat die Aktivität verlassen` 
-          : `${formattedName} left the activity`);
+
+    let systemText = message.text;
+
+    if (systemText && formattedName && formattedName !== 'Activa-Nutzer') {
+      systemText = systemText.replace(/Activa-Nutzer/g, formattedName);
+    }
+
+    if (!systemText || isSystemKick) {
+      systemText = isSystemJoin
+        ? (language === 'de' ? `${formattedName} ist der Aktivität beigetreten` : `${formattedName} joined the activity`)
+        : isSystemKick
+        ? (language === 'de' ? `${formattedName} wurde aus der Aktivität entfernt` : `${formattedName} was removed from the activity`)
+        : (language === 'de' ? `${formattedName} hat die Aktivität verlassen` : `${formattedName} left the activity`);
+    }
 
     return (
       <div className="w-full flex justify-center px-4 my-2.5 select-none">
@@ -473,6 +486,17 @@ export default function ChatRoomPage() {
 
       if (isLeavingThisChat && isPermissionDenied) {
         console.log(`Suppressed expected permission-denied error for ${listenerName} while leaving chat:`, targetChatId);
+        return;
+      }
+
+      if (isPermissionDenied) {
+        console.log(`Permission denied for ${listenerName} in chat:`, targetChatId);
+        toast({ 
+          title: language === 'de' ? "Zugriff verweigert" : "Access Denied", 
+          description: language === 'de' ? "Du hast keinen Zugriff mehr auf diesen Chat." : "You no longer have access to this chat.", 
+          variant: 'destructive'
+        });
+        router.replace('/chat');
         return;
       }
 

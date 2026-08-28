@@ -267,6 +267,7 @@ export function RoomInfoSheet({
     const actId = activity?.id || chat?.activityId || chat?.id;
     if (!actId || !targetUid) return;
     if (isKicking) return;
+    setParticipantToKick(null);
     setIsKicking(true);
     try {
       await removeParticipant(actId, targetUid);
@@ -283,7 +284,6 @@ export function RoomInfoSheet({
       });
     } finally {
       setIsKicking(false);
-      setParticipantToKick(null);
     }
   };
 

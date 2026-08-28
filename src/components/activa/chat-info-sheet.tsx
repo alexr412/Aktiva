@@ -155,6 +155,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
     const actId = activity?.id || chat?.activityId || chat?.id;
     if (!actId || !targetUid) return;
     if (isKicking) return;
+    setParticipantToKick(null);
     setIsKicking(true);
     try {
       await removeParticipant(actId, targetUid);
@@ -171,7 +172,6 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
       });
     } finally {
       setIsKicking(false);
-      setParticipantToKick(null);
     }
   };
 
