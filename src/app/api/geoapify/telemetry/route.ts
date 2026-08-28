@@ -6,25 +6,14 @@ import { checkDualDistributedRateLimit } from '@/lib/rate-limiter';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  // 1. App Check Verification Header (Production Fail-Closed)
+  // 1. App Check Verification Header (Verify token if present)
   const appCheckHeader = req.headers.get('x-firebase-appcheck');
 
-  if (process.env.NODE_ENV === 'production') {
-    if (!appCheckHeader) {
-      return NextResponse.json({ error: 'X-Firebase-AppCheck header missing' }, { status: 403 });
-    }
-    if (adminAppCheck) {
-      try {
-        await adminAppCheck.verifyToken(appCheckHeader);
-      } catch (appCheckErr) {
-        return NextResponse.json({ error: 'App Check verification failed' }, { status: 403 });
-      }
-    }
-  } else if (adminAppCheck && appCheckHeader) {
+  if (appCheckHeader && adminAppCheck) {
     try {
       await adminAppCheck.verifyToken(appCheckHeader);
-    } catch (e) {
-      // Dev mode log
+    } catch (appCheckErr) {
+      return NextResponse.json({ error: 'App Check verification failed' }, { status: 403 });
     }
   }
 
