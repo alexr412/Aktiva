@@ -145,14 +145,22 @@ function AdminUsageContent() {
   }, [debouncedSearch, selectedRole, selectedSort, selectedTimeframe, router]);
 
   const fetchUsageData = useCallback(async (isRefresh = false) => {
-    if (!functions) return;
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
 
     try {
-      const getUsageFn = httpsCallable(functions, 'adminListUsageStats');
-      const payload: any = {
+      let token: string | null = null;
+      if (typeof window !== 'undefined') {
+        try {
+          const { auth } = await import('@/lib/firebase/client');
+          token = await auth?.currentUser?.getIdToken() || null;
+        } catch (e) {
+          // Token read fallback
+        }
+      }
+
+      const payload = {
         search: debouncedSearch,
         role: selectedRole,
         sortBy: selectedSort,
@@ -160,11 +168,33 @@ function AdminUsageContent() {
         limit: 100,
       };
 
-      const res: any = await getUsageFn(payload);
-      if (res.data) {
-        setItems(res.data.items || []);
-        if (res.data.summary) {
-          setSummary(res.data.summary);
+      const res = await fetch('/api/admin/usage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items || []);
+        if (data.summary) {
+          setSummary(data.summary);
+        }
+        return;
+      }
+
+      // Fallback to Cloud Function if API route fails
+      if (functions) {
+        const getUsageFn = httpsCallable(functions, 'adminListUsageStats');
+        const fnRes: any = await getUsageFn(payload);
+        if (fnRes.data) {
+          setItems(fnRes.data.items || []);
+          if (fnRes.data.summary) {
+            setSummary(fnRes.data.summary);
+          }
         }
       }
     } catch (err: any) {
