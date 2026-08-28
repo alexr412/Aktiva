@@ -33,8 +33,6 @@ export async function POST(req: NextRequest) {
     }
   } else if (process.env.NODE_ENV === 'development') {
     uid = req.headers.get('x-dev-uid') || 'dev_admin_user';
-  } else {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }
 
   // 3. Distributed Telemetry Rate Limiting (UID: 20 req/min, Hashed IP: 40 req/min)

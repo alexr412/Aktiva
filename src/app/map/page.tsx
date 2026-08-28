@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import Link from 'next/link';
 import type { Place, Activity } from '@/lib/types';
 import type { SelectedMapEntity } from '@/components/map/map-types';
 import { useDiscoverPlaces } from '@/hooks/use-discover-places';
@@ -12,16 +11,14 @@ import { useLanguage } from '@/hooks/use-language';
 import { useFriendRadar } from '@/hooks/use-friend-radar';
 import { useFavorites } from '@/contexts/favorites-context';
 import { useLocation } from '@/contexts/location-context';
-import { isPremiumActive } from '@/lib/types';
 import { createActivity, joinActivity, votePlace } from '@/lib/firebase/firestore';
-import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { PlaceDetails } from '@/components/activa/place-details';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { DesktopNav } from '@/components/desktop-nav';
 import { AppHeader } from '@/components/app-header';
-import { ChevronDown, MapPin, Plus, Loader2 } from 'lucide-react';
+import { ChevronDown, MapPin, Plus, Loader2, MapPinned } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -40,7 +37,7 @@ const ActivaMap = dynamic(() => import('@/components/map/activa-map').then((mod)
 
 export default function MapPage() {
   const language = useLanguage();
-  const { user, userProfile } = useAuth();
+  const { user } = useAuth();
   const { checkIsFavorite, addFavorite, removeFavorite } = useFavorites();
   const { requestLocation, gateState, isLocating } = useLocation();
   const { enabled: radarEnabled, nearbyFriends } = useFriendRadar();
@@ -147,19 +144,12 @@ export default function MapPage() {
       {/* Viewport Header */}
       <AppHeader
         className="shrink-0 z-20"
-        icon={
-          <Link href="/profile" className="shrink-0">
-            <ProfileAvatar
-              className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
-              photoURL={userProfile?.photoURL}
-              displayName={userProfile?.displayName}
-              isPremium={isPremiumActive(userProfile)}
-              isCreator={userProfile?.isCreator}
-              isSupporter={userProfile?.isSupporter}
-            />
-          </Link>
+        title={
+          <span className="flex items-center gap-2">
+            {language === 'de' ? 'Karte' : 'Map'}
+            <MapPinned className="h-5 w-5 text-emerald-500 shrink-0" />
+          </span>
         }
-        title="Karte"
       >
         <div className="px-4 sm:px-6 flex items-center justify-start">
           <button

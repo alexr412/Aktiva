@@ -284,7 +284,10 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
   const hasAccess = isPremium || isOrganizer;
   const { toast } = useToast();
   const { gateState, position } = useLocation();
-  const effectiveLocation = position ? { lat: position.latitude, lng: position.longitude, accuracy: position.accuracy } : null;
+  const effectiveLocation = React.useMemo(() => {
+    if (!position) return null;
+    return { lat: position.latitude, lng: position.longitude, accuracy: position.accuracy };
+  }, [position?.latitude, position?.longitude, position?.accuracy]);
 
   // Local settings synced from Firestore
   const [enabled, setEnabled] = useState(false);
@@ -727,9 +730,19 @@ export function FriendRadarProvider({ children }: { children: React.ReactNode })
           console.error('updateRadarLocation failed before getNearbyFriends:', locErr);
           setIsUpdatingLocation(false);
           setPartialFailure(true);
+          const errCode = locErr.code || locErr.name || '';
+          const errMsg = locErr.message || '';
+          const isRateLimit =
+            errCode === 'resource-exhausted' ||
+            errCode === 'functions/resource-exhausted' ||
+            errMsg.includes('resource-exhausted') ||
+            errMsg.includes('Rate limit') ||
+            errMsg.includes('5 Minuten');
+
+          nextAllowedFetchMsRef.current = Date.now() + (isRateLimit ? FRIEND_RADAR_REFRESH_INTERVAL_MS : 60000);
           setError({
             message: locErr.message || 'Standort-Aktualisierung fehlgeschlagen.',
-            type: 'position'
+            type: isRateLimit ? 'rate-limit' : 'position'
           });
           // Abort getNearbyFriends if location write fails
           return;
