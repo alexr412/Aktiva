@@ -23,6 +23,7 @@ import { CategoryFilters } from '@/components/activa/category-filters';
 import { ProximityRadarView } from '@/components/activa/proximity-radar-view';
 import { MobileRadarCard } from '@/components/radar/mobile-radar-card';
 import { cn, formatLabel } from '@/lib/utils';
+import { AppHeader } from '@/components/app-header';
 import { calculateDistance } from '@/lib/geo-utils';
 import { PlaceDetails } from '@/components/activa/place-details';
 import { ActivityInfoSheet } from '@/components/activa/activity-info-sheet';
@@ -398,18 +399,14 @@ export default function ExplorePage() {
             
             <main className="flex-1 flex flex-col min-h-0 relative w-full overflow-hidden">
                 {/* Header */}
-                <header className="global-viewport-header">
-                    <div className="global-header-container">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <h1 className="truncate">{language === 'de' ? 'Aktivitäten' : 'Activities'}</h1>
-                            <Compass className="h-6 w-6 text-orange-500 shrink-0" />
-                        </div>
-                        <DesktopNav />
-                        <div className="flex items-center gap-3 shrink-0">
-                            <NotificationBell />
-                        </div>
-                    </div>
-                </header>
+                <AppHeader
+                    title={
+                        <span className="flex items-center gap-2">
+                            {language === 'de' ? 'Aktivitäten' : 'Activities'}
+                            <Compass className="h-5 w-5 text-orange-500 shrink-0" />
+                        </span>
+                    }
+                />
 
                 <div className="flex-1 flex flex-col min-h-0 relative px-4 lg:px-0">
                     {/* Mobile Filters Area */}

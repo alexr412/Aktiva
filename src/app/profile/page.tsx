@@ -27,6 +27,7 @@ import { uploadProfileImage } from '@/lib/firebase/storage';
 import { validateAvatarFile } from '@/lib/avatar-utils';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { DesktopNav } from '@/components/desktop-nav';
+import { AppHeader } from '@/components/app-header';
 import { PlaceCard } from '@/components/activa/place-card';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { PlaceDetails } from '@/components/activa/place-details';
@@ -733,23 +734,22 @@ export default function ProfilePage() {
                 {/* Zonen-Isolierung: Header Color Blocking */}
                 <div className="absolute top-0 left-0 right-0 h-[35vh] bg-gradient-to-b from-emerald-50/50 to-transparent dark:from-emerald-950/10 z-0" />
 
-                <header className="global-viewport-header">
-                    <div className="global-header-container">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <h1 className="truncate">{language === 'de' ? 'Profil' : 'Profile'}</h1>
-                            <User className="h-6 w-6 text-primary fill-current shrink-0" />
-                        </div>
-                        <DesktopNav />
-                        <div className="flex items-center gap-3 shrink-0">
-                            <NotificationBell />
-                            <Link href="/settings">
-                                <Button variant="ghost" size="icon" className="secondary-header-button">
-                                    <Settings className="h-5 w-5" />
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
-                </header>
+                <AppHeader
+                    containerClassName="max-w-6xl"
+                    title={
+                        <span className="flex items-center gap-2">
+                            {language === 'de' ? 'Profil' : 'Profile'}
+                            <User className="h-5 w-5 text-primary fill-current shrink-0" />
+                        </span>
+                    }
+                    actions={
+                        <Link href="/settings">
+                            <Button variant="ghost" size="icon" className="secondary-header-button">
+                                <Settings className="h-5 w-5" />
+                            </Button>
+                        </Link>
+                    }
+                />
 
                 {/* Main Shared Desktop Content Container */}
                 <div className="relative w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 z-10 pt-4 lg:pt-8 flex flex-col gap-8 lg:gap-10">

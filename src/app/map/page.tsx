@@ -20,6 +20,7 @@ import { PlaceDetails } from '@/components/activa/place-details';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { DesktopNav } from '@/components/desktop-nav';
+import { AppHeader } from '@/components/app-header';
 import { ChevronDown, MapPin, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -144,84 +145,35 @@ export default function MapPage() {
   return (
     <div className="flex flex-col h-[calc(100dvh-var(--bottom-nav-height,66px))] lg:h-dvh w-full bg-slate-50 dark:bg-neutral-950 relative overflow-hidden">
       {/* Viewport Header */}
-      <header className="global-viewport-header compact pb-2.5 lg:pb-3 shrink-0 z-20">
-        <div className="flex flex-col gap-4 lg:gap-4 max-w-[1536px] mx-auto w-full">
-          {/* Mobile Header Layout (<1024px) */}
-          <div className="lg:hidden flex flex-col gap-4">
-            <div className="global-header-container">
-              <div className="flex items-center gap-2.5 min-w-0 shrink">
-                <Link href="/profile" className="shrink-0">
-                  <ProfileAvatar
-                    className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
-                    photoURL={userProfile?.photoURL}
-                    displayName={userProfile?.displayName}
-                    isPremium={isPremiumActive(userProfile)}
-                    isCreator={userProfile?.isCreator}
-                    isSupporter={userProfile?.isSupporter}
-                  />
-                </Link>
-                <div className="flex flex-col min-w-0">
-                  <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-neutral-100 truncate">
-                    Karte
-                  </h1>
-                  <button
-                    onClick={() => setIsLocationSearchOpen(true)}
-                    className="flex items-center gap-1.5 hover:opacity-80 transition-opacity max-w-full"
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span className="text-[9px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest truncate">
-                      {cityName}
-                    </span>
-                    <ChevronDown className="h-2.5 w-2.5 text-neutral-400 shrink-0" />
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <NotificationBell />
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop Header Layout (>=1024px) */}
-          <div className="hidden lg:flex items-center justify-between gap-4 w-full px-4 sm:px-6">
-            <div className="flex items-center gap-3 shrink-0 min-w-0">
-              <Link href="/profile" className="shrink-0">
-                <ProfileAvatar
-                  className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
-                  photoURL={userProfile?.photoURL}
-                  displayName={userProfile?.displayName}
-                  isPremium={isPremiumActive(userProfile)}
-                  isCreator={userProfile?.isCreator}
-                  isSupporter={userProfile?.isSupporter}
-                />
-              </Link>
-              <div className="flex flex-col min-w-0">
-                <h1 className="text-xl font-black leading-tight text-slate-900 dark:text-neutral-100 truncate">
-                  Karte
-                </h1>
-                <button
-                  onClick={() => setIsLocationSearchOpen(true)}
-                  className="flex items-center gap-1.5 mt-0.5 self-start hover:opacity-80 transition-opacity max-w-full"
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <span className="text-[9px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest truncate">
-                    {cityName}
-                  </span>
-                  <ChevronDown className="h-2.5 w-2.5 text-neutral-400 shrink-0" />
-                </button>
-              </div>
-            </div>
-
-            {/* Center: Desktop Navigation */}
-            <DesktopNav />
-
-            {/* Right: Actions */}
-            <div className="flex items-center gap-3 shrink-0">
-              <NotificationBell />
-            </div>
-          </div>
+      <AppHeader
+        className="shrink-0 z-20"
+        icon={
+          <Link href="/profile" className="shrink-0">
+            <ProfileAvatar
+              className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
+              photoURL={userProfile?.photoURL}
+              displayName={userProfile?.displayName}
+              isPremium={isPremiumActive(userProfile)}
+              isCreator={userProfile?.isCreator}
+              isSupporter={userProfile?.isSupporter}
+            />
+          </Link>
+        }
+        title="Karte"
+      >
+        <div className="px-4 sm:px-6 flex items-center justify-start">
+          <button
+            onClick={() => setIsLocationSearchOpen(true)}
+            className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800 max-w-full min-w-0"
+          >
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest truncate">
+              {cityName}
+            </span>
+            <ChevronDown className="h-3 w-3 text-neutral-400 shrink-0" />
+          </button>
         </div>
-      </header>
+      </AppHeader>
 
       {/* Main Map Viewport */}
       <main className="flex-1 w-full relative overflow-hidden">

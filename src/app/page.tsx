@@ -1,6 +1,7 @@
 'use client';
 
 import { DesktopNav } from '@/components/desktop-nav';
+import { AppHeader } from '@/components/app-header';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -2132,110 +2133,54 @@ export default function Home() {
       <div className="flex flex-col h-full bg-transparent relative">
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
-        <header className="global-viewport-header compact pb-2.5 lg:pb-3">
-          <div className="flex flex-col gap-4 lg:gap-4 max-w-[1536px] mx-auto w-full">
-            {/* Mobile Header Layout (<1024px) */}
-            <div className="lg:hidden flex flex-col gap-4">
-              <div className="global-header-container">
-                <div className="flex items-center gap-2.5 min-w-0 shrink">
-                  <Link href="/profile" className="shrink-0">
-                    <ProfileAvatar
-                      className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
-                      photoURL={userProfile?.photoURL}
-                      displayName={userProfile?.displayName}
-                      isPremium={isPremiumActive(userProfile)}
-                      isCreator={userProfile?.isCreator}
-                      isSupporter={userProfile?.isSupporter}
-                    />
-                  </Link>
-                  <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-neutral-100 truncate">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <NotificationBell />
-                </div>
-              </div>
-
-              {/* Mobile Location Row */}
-              <div className="px-4 sm:px-6 flex items-center justify-start">
-                <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800 max-w-full min-w-0">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
-                  <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest truncate">{cityName}</span>
-                  {planningState.isPlanning && (
-                    <span
-                      role="button"
-                      aria-label="Manuellen Standort zurücksetzen"
-                      title="Standort zurücksetzen"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        requestLocation({ interactive: false });
-                      }}
-                      className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[11px] leading-none shrink-0"
-                    >
-                      ×
-                    </span>
-                  )}
-                  <ChevronDown className="h-3 w-3 text-neutral-400 shrink-0" />
-                </button>
-              </div>
+        <AppHeader
+          icon={
+            <Link href="/profile" className="shrink-0">
+              <ProfileAvatar
+                className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
+                photoURL={userProfile?.photoURL}
+                displayName={userProfile?.displayName}
+                isPremium={isPremiumActive(userProfile)}
+                isCreator={userProfile?.isCreator}
+                isSupporter={userProfile?.isSupporter}
+              />
+            </Link>
+          }
+          title={language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}
+        >
+          <div className="flex flex-col gap-3 max-w-[1536px] mx-auto w-full">
+            {/* Location Row */}
+            <div className="px-4 sm:px-6 flex items-center justify-start">
+              <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800 max-w-full min-w-0">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
+                <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest truncate">{cityName}</span>
+                {planningState.isPlanning && (
+                  <span
+                    role="button"
+                    aria-label="Manuellen Standort zurücksetzen"
+                    title="Standort zurücksetzen"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      requestLocation({ interactive: false });
+                    }}
+                    className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[11px] leading-none shrink-0"
+                  >
+                    ×
+                  </span>
+                )}
+                <ChevronDown className="h-3 w-3 text-neutral-400 shrink-0" />
+              </button>
             </div>
 
-            {/* Desktop Unified Header Row (>=1024px) */}
-            <div className="hidden lg:flex flex-col gap-3 px-4 sm:px-6 w-full">
-              <div className="flex items-center justify-between gap-4 w-full">
-                {/* Left: Avatar, Name & Location Dropdown Inline */}
-                <div className="flex items-center gap-3 shrink-0 min-w-0">
-                  <Link href="/profile" className="shrink-0">
-                    <ProfileAvatar
-                      className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
-                      photoURL={userProfile?.photoURL}
-                      displayName={userProfile?.displayName}
-                      isPremium={isPremiumActive(userProfile)}
-                      isCreator={userProfile?.isCreator}
-                      isSupporter={userProfile?.isSupporter}
-                    />
-                  </Link>
-                  <div className="flex flex-col min-w-0">
-                    <h1 className="text-xl font-black leading-tight truncate">{language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}</h1>
-                    <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 mt-0.5 self-start hover:opacity-80 transition-opacity max-w-full">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
-                      <span className="text-[9px] font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-widest truncate">{cityName}</span>
-                      {planningState.isPlanning && (
-                        <span
-                          role="button"
-                          aria-label="Manuellen Standort zurücksetzen"
-                          title="Standort zurücksetzen"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            requestLocation({ interactive: false });
-                          }}
-                          className="ml-1 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[10px] leading-none shrink-0"
-                        >
-                          ×
-                        </span>
-                      )}
-                      <ChevronDown className="h-2.5 w-2.5 text-neutral-400 shrink-0" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Center: Desktop Navigation */}
-                <DesktopNav />
-
-                {/* Right: Actions */}
-                <div className="flex items-center gap-3 shrink-0">
-                  <NotificationBell />
-                </div>
-              </div>
-
-              {/* Search & Radius row */}
-              <div className="flex items-center gap-3 w-full max-w-2xl mx-auto">
+            {/* Search & Radius Row */}
+            <div className="px-4 sm:px-6">
+              <div className="flex items-center gap-3 w-full max-w-2xl">
                 <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
                   {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
                   <Input 
                     type="search" 
-                    id="search-input-desktop"
+                    id="search-input"
                     aria-label={language === "de" ? "Aktivitätssuche" : "Activity search"}
                     placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} 
                     value={searchQuery} 
@@ -2261,6 +2206,7 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Category Filters */}
             <div className="px-4 sm:px-6">
               <CategoryFilters 
                 activeCategory={activeCategory} 
@@ -2270,43 +2216,8 @@ export default function Home() {
                 onOpenRoomsChange={setIsOpenRoomsMode}
               />
             </div>
-
-            {/* Mobile Search Row (<1024px) */}
-            <div className="lg:hidden px-4 sm:px-6">
-              <div className="flex items-center gap-2">
-                <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
-                  {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
-                  <Input 
-                    type="search" 
-                    id="search-input-mobile"
-                    aria-label={language === "de" ? "Aktivitätssuche" : "Activity search"}
-                    placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} 
-                    value={searchQuery} 
-                    onChange={handleSearchInput} 
-                    disabled={isSearching} 
-                    className="w-full pl-10 h-11 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400" 
-                  />
-                </form>
-                <div className="relative group shrink-0">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" className="group h-11 px-2.5 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className="h-3.5 w-3.5 opacity-30 transition-transform group-data-[state=open]:rotate-180" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Radius' : 'Radius'}</span><span className="text-sm font-black">{maxDistance === null ? '∞' : `${maxDistance} km`}</span></div>
-                        <input type="range" min="1" max="100" value={maxDistance || 100} onChange={(e) => setMaxDistance(parseInt(e.target.value) === 100 ? null : parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
-                        <div className="grid grid-cols-4 gap-2">{[5, 10, 25, null].map((r) => <button key={r === null ? 'all' : r} onClick={() => setMaxDistance(r)} className={cn("py-2 rounded-xl text-[10px] font-black transition-all", maxDistance === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>{r === null ? 'Alle' : `${r}k`}</button>)}</div>
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-            </div>
-
-            {/* Second filter row removed per desktop feed cleanup spec */}
           </div>
-        </header>
+        </AppHeader>
         <main className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
           <div className="max-w-[1536px] mx-auto w-full pt-2">
             <div className="px-3 sm:px-6 mb-3 sm:mb-4">

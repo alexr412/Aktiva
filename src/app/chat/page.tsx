@@ -22,6 +22,7 @@ import { DesktopNav } from '@/components/desktop-nav';
 import { Input } from '@/components/ui/input';
 import { cn, formatLabel } from '@/lib/utils';
 import { getPrimaryIconData, getRoomVisualCategory } from '@/lib/tag-config';
+import { AppHeader } from '@/components/app-header';
 
 const ChatListItemSkeleton = () => (
   <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] p-5 mb-3 shadow-xs flex items-center gap-5 border border-slate-100/50 dark:border-neutral-800">
@@ -243,27 +244,26 @@ export default function ChatPage() {
   return (
     <>
       <div className="flex h-full w-full flex-col bg-[#fcfcfb] dark:bg-neutral-950 overflow-hidden">
-        <header className="global-viewport-header compact pb-3">
-          <div className="global-header-container mb-3.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-[22px] font-black tracking-tight text-slate-900 dark:text-neutral-100 truncate">Chats</h1>
+        <AppHeader
+          containerClassName="max-w-5xl"
+          title={
+            <span className="flex items-center gap-2">
+              Chats
               <MessageCircle className="h-5 w-5 text-violet-400 fill-current opacity-30 shrink-0" />
-            </div>
-            <DesktopNav />
-            <div className="flex items-center gap-3 shrink-0">
-              <NotificationBell />
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="secondary-header-button" 
-                aria-label={language === 'de' ? 'Freund hinzufügen' : 'Add friend'}
-                onClick={() => setShowAddFriendDialog(true)}
-              >
-                <UserPlus className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-
+            </span>
+          }
+          actions={
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="secondary-header-button" 
+              aria-label={language === 'de' ? 'Freund hinzufügen' : 'Add friend'}
+              onClick={() => setShowAddFriendDialog(true)}
+            >
+              <UserPlus className="h-5 w-5" />
+            </Button>
+          }
+        >
           <div className="px-4 sm:px-6 max-w-5xl mx-auto w-full space-y-3">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
@@ -297,7 +297,7 @@ export default function ChatPage() {
               ))}
             </div>
           </div>
-        </header>
+        </AppHeader>
         
         <div className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
           {renderContent()}
