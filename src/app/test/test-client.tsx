@@ -179,11 +179,8 @@ export default function TestClient() {
   };
 
   const resolveCoordinates = async (cityName: string) => {
-    const geoUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(cityName)}&limit=1&apiKey=${GEOAPIFY_API_KEY}`;
-    const response = await fetch(geoUrl);
-    if (!response.ok) throw new Error("Geocoding service unavailable");
-    
-    const data = await response.json();
+    const { callGeoapifyGateway } = await import('@/lib/geoapify');
+    const data = await callGeoapifyGateway('geocoding', { text: cityName, limit: '1' });
     if (data.features && data.features.length > 0) {
       const { lat, lon } = data.features[0].properties;
       setCoordinates({ lat, lng: lon });
@@ -202,12 +199,13 @@ export default function TestClient() {
       const { lat, lng } = await resolveCoordinates(testCity);
 
       const catParam = buildGeoapifyCategoriesParam(sanitizedCategory);
-      const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${lng},${lat},5000&limit=100&conditions=named&exclude=${GLOBAL_EXCLUDE_STRING}&apiKey=${GEOAPIFY_API_KEY}`;
-      
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
-      
-      const data = await response.json();
+      const { callGeoapifyGateway } = await import('@/lib/geoapify');
+      const data = await callGeoapifyGateway('places', {
+        categories: catParam.replace('categories=', ''),
+        filter: `circle:${lng},${lat},5000`,
+        limit: '60',
+        conditions: 'named',
+      });
       const rawFeatures = data.features || [];
       
       const combinedSoftVetoList = [...BASE_SOFT_VETO];

@@ -803,26 +803,19 @@ export async function fetchNearbyPlaces(
   limit: number,
   offset: number
 ): Promise<Place[]> {
-  // Use broad parent-level categories to maximize data pool for local ranking.
-  // Specific sub-categories are not used here — the veto/whitelist system + relevance scorer
-  // handle prioritization after the fetch.
   let targetCategories: string[] = categories.length === 0 || categories.includes('all')
     ? ["entertainment", "leisure", "sport", "tourism", "catering", "heritage", "adult.nightclub"]
     : categories.slice(0, 10);
-  const fetchLimit = Math.max(limit, 150);
-  const fetchUrl = buildGeoapifyPlacesUrl({
-    lat,
-    lon,
-    radiusMeters,
-    categories: targetCategories,
-    limit: fetchLimit,
-    offset,
-    conditions: 'named',
-    apiKey: GEOAPIFY_API_KEY,
-  });
+  const fetchLimit = Math.max(limit, 45);
 
   try {
-    const data = await safeFetchGeoapify(fetchUrl, { categories: targetCategories, radius: radiusMeters, offset });
+    const data = await callGeoapifyGateway('places', {
+      categories: targetCategories.join(','),
+      filter: `circle:${lon},${lat},${radiusMeters}`,
+      bias: `proximity:${lon},${lat}`,
+      limit: String(fetchLimit),
+      offset: String(offset),
+    });
     if (!data.features) return [];
     const rawFeatures = data.features || [];
     const itemsToFilter = rawFeatures.map((f: any) => ({
@@ -859,41 +852,37 @@ export async function fetchNearbyPlaces(
 }
 
 export async function searchTextPlaces(text: string, lat: number, lon: number): Promise<Place[]> {
-  // Wir nutzen die Geocoding API für die Namenssuche, da diese toleranter gegenüber Schreibweisen ist
-  const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(text)}&filter=circle:${lon},${lat},50000&bias=proximity:${lon},${lat}&format=json&apiKey=${GEOAPIFY_API_KEY}`;
-
   try {
-    const response = await fetch(url);
-    if (!response.ok) return [];
-    const data = await response.json();
+    const data = await callGeoapifyGateway('geocoding', {
+      text,
+      filter: `circle:${lon},${lat},50000`,
+      bias: `proximity:${lon},${lat}`,
+    });
 
     if (!data.results) return [];
 
-    // Wir holen uns für die Top-Ergebnisse die Place-Details, um die vollständigen Kategorien für das Ranking zu haben
     const placesWithDetails = await Promise.all(data.results.slice(0, 10).map(async (item: any) => {
       const categories = Array.isArray(item.categories) ? item.categories : (item.category ? [item.category] : []);
       const placeId = item.place_id;
 
       if (placeId) {
         try {
-          const detailsUrl = `https://api.geoapify.com/v2/place-details?id=${placeId}&apiKey=${GEOAPIFY_API_KEY}`;
-          const detailsRes = await fetch(detailsUrl);
-          if (detailsRes.ok) {
-            const detailsData = await detailsRes.json();
-            const detailedCategories = detailsData.features?.[0]?.properties?.categories || categories;
-            return {
-              id: placeId,
-              name: normalizePlaceName(item.name, item.formatted, "Unbekannter Ort"),
-              address: item.formatted,
-              categories: detailedCategories,
-              lat: item.lat,
-              lon: item.lon,
+          const detailsData = await callGeoapifyGateway('place_details', { id: placeId });
+          const detailedCategories = detailsData.features?.[0]?.properties?.categories || categories;
+          return {
+            id: placeId,
+            name: normalizePlaceName(item.name, item.formatted, "Unbekannter Ort"),
+            address: item.formatted,
+            categories: detailedCategories,
+            lat: item.lat,
+            lon: item.lon,
               distance: item.distance || 0,
               relevanceScore: calculateRelevanceScore(detailedCategories)
             } as Place;
+          } catch (e) {
+            // detail enrichment fallback
           }
-        } catch (e) { }
-      }
+        }
 
       return {
         id: placeId || Math.random().toString(),
@@ -914,12 +903,93 @@ export async function searchTextPlaces(text: string, lat: number, lon: number): 
   }
 }
 
+let pendingCacheHits = 0;
+let pendingCacheMisses = 0;
+let telemetryTimer: any = null;
+
+export function recordCacheHitBatch() {
+  pendingCacheHits++;
+  scheduleTelemetryFlush();
+}
+
+export function recordCacheMissBatch() {
+  pendingCacheMisses++;
+  scheduleTelemetryFlush();
+}
+
+function scheduleTelemetryFlush() {
+  if (telemetryTimer) return;
+  telemetryTimer = setTimeout(async () => {
+    telemetryTimer = null;
+    const hits = pendingCacheHits;
+    const misses = pendingCacheMisses;
+    pendingCacheHits = 0;
+    pendingCacheMisses = 0;
+
+    if (!hits && !misses) return;
+
+    try {
+      let token: string | null = null;
+      if (typeof window !== 'undefined') {
+        const { auth } = await import('@/lib/firebase/client');
+        token = await auth?.currentUser?.getIdToken() || null;
+      }
+
+      await fetch('/api/geoapify/telemetry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ cacheHits: hits, cacheMisses: misses }),
+      });
+    } catch (e) {
+      // Telemetry error silently ignored
+    }
+  }, 5000);
+}
+
+export async function callGeoapifyGateway(service: string, params: Record<string, any>): Promise<any> {
+  recordCacheMissBatch();
+  const usageEventId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+  let token: string | null = null;
+  if (typeof window !== 'undefined') {
+    try {
+      const { auth } = await import('@/lib/firebase/client');
+      token = await auth?.currentUser?.getIdToken() || null;
+    } catch (e) {
+      // client auth token read failure
+    }
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch('/api/geoapify', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      service,
+      params,
+      usageEventId,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Geoapify Gateway Error (${res.status})`);
+  }
+
+  return await res.json();
+}
+
 export async function reverseGeocode(lat: number, lon: number): Promise<Place | null> {
-  const url = `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${GEOAPIFY_API_KEY}`;
   try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const data = await response.json();
+    const data = await callGeoapifyGateway('reverse_geocoding', { lat: String(lat), lon: String(lon), limit: '1' });
     if (data.features && data.features.length > 0) {
       const props = data.features[0].properties;
       return {
@@ -930,7 +1000,7 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place | 
         lat: props.lat,
         lon: props.lon,
         openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null,
-        _rawProperties: props // Store raw properties for detail extraction
+        _rawProperties: props
       } as Place;
     }
   } catch (error) {
@@ -940,11 +1010,8 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place | 
 }
 
 export async function reverseGeocodeCity(lat: number, lon: number): Promise<string | null> {
-  const url = `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${GEOAPIFY_API_KEY}`;
   try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const data = await response.json();
+    const data = await callGeoapifyGateway('reverse_geocoding', { lat: String(lat), lon: String(lon), limit: '1' });
     if (data.features && data.features.length > 0) {
       const properties = data.features[0].properties || {};
       const resolvedName =
@@ -994,11 +1061,8 @@ export function formatOnboardingLocationDisplay(location: {
 
 export async function geocodeAddress(text: string): Promise<Place | null> {
   if (!text) return null;
-  const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(text)}&limit=1&apiKey=${GEOAPIFY_API_KEY}`;
   try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const data = await response.json();
+    const data = await callGeoapifyGateway('geocoding', { text, limit: '1' });
     if (data.features && data.features.length > 0) {
       const props = data.features[0].properties;
       return {
@@ -1020,11 +1084,8 @@ export async function geocodeAddress(text: string): Promise<Place | null> {
 
 export async function autocompletePlaces(text: string): Promise<Place[]> {
   if (!text || text.length < 3) return [];
-  const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(text)}&limit=5&apiKey=${GEOAPIFY_API_KEY}`;
   try {
-    const response = await fetch(url);
-    if (!response.ok) return [];
-    const data = await response.json();
+    const data = await callGeoapifyGateway('autocomplete', { text, limit: '5' });
     if (data.features) {
       return data.features.map((f: any) => ({
         id: f.properties.place_id,

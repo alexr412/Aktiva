@@ -510,18 +510,22 @@ export default function Home() {
           return { features, _fromCache: true };
         }
 
-        const base = `https://api.geoapify.com/v2/places?filter=circle:${lng},${lat},${r}&bias=proximity:${lng},${lat}&limit=30&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
-
         const categoryBuckets = [
           "entertainment.zoo,entertainment.cinema,entertainment.water_park,sport.swimming_pool,entertainment.miniature_golf,entertainment.bowling_alley,entertainment.aquarium,entertainment.escape_game,entertainment.activity_park,entertainment.activity_park.trampoline,entertainment.amusement_arcade",
           "entertainment,leisure,adult.nightclub,sport,tourism",
           "catering,heritage",
         ];
 
+        const { callGeoapifyGateway } = await import('@/lib/geoapify');
         const results = await Promise.all(
           categoryBuckets.map(cats => {
             const catParam = buildGeoapifyCategoriesParam(cats);
-            return fetcher(`${base}&${catParam}`).catch(() => ({ features: [] }));
+            return callGeoapifyGateway('places', {
+              categories: catParam.replace('categories=', ''),
+              filter: `circle:${lng},${lat},${r}`,
+              bias: `proximity:${lng},${lat}`,
+              limit: '30',
+            }).catch(() => ({ features: [] }));
           })
         );
 
@@ -564,8 +568,15 @@ export default function Home() {
 
         result = { features: merged };
       } else if (type === 'geocoding') {
-        const { url } = key;
-        const res = await fetcher(url);
+        const { callGeoapifyGateway } = await import('@/lib/geoapify');
+        const rMeters = (maxDistance || 10) * 1000;
+        const fallbackRadius = (activeCategory.length > 0) ? Math.min(rMeters * 5, 100000) : rMeters;
+        const filterStr = userLocation ? `circle:${userLocation.lng},${userLocation.lat},${fallbackRadius}` : '';
+        const biasStr = userLocation ? `proximity:${userLocation.lng},${userLocation.lat}` : '';
+        const res = await callGeoapifyGateway('geocoding', {
+          text: debouncedSearchQuery,
+          ...(filterStr ? { filter: filterStr, bias: biasStr } : {}),
+        });
         const results = res.results || [];
 
         const detailedFeatures = await Promise.all(results.slice(0, 8).map(async (item: any) => {
@@ -575,10 +586,9 @@ export default function Home() {
               categories = placeDetailsCache.get(item.place_id)!;
             } else {
               try {
-                const detailsUrl = `https://api.geoapify.com/v2/place-details?id=${item.place_id}&apiKey=${GEOAPIFY_API_KEY}`;
-                const dRes = await fetch(detailsUrl);
-                if (dRes.ok) {
-                  const dData = await dRes.json();
+                const { callGeoapifyGateway } = await import('@/lib/geoapify');
+                const dData = await callGeoapifyGateway('place_details', { id: item.place_id });
+                if (dData.features && dData.features.length > 0) {
                   categories = dData.features?.[0]?.properties?.categories || categories;
                   placeDetailsCache.set(item.place_id, categories);
                 }
@@ -678,9 +688,7 @@ export default function Home() {
 
     if (shouldFilterByName && debouncedSearchQuery) {
       if (pageIndex > 0) return null;
-      const fallbackRadius = (activeCategory.length > 0) ? Math.min(radiusMeters * 5, 100000) : radiusMeters;
-      const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(debouncedSearchQuery)}&filter=circle:${userLocation.lng},${userLocation.lat},${fallbackRadius}&bias=proximity:${userLocation.lng},${userLocation.lat}&format=json&apiKey=${GEOAPIFY_API_KEY}`;
-      return { type: 'geocoding', url, pageIndex };
+      return { type: 'geocoding', pageIndex };
     }
 
     const rawCategories: string[] = activeCategory.length > 0
@@ -706,8 +714,7 @@ export default function Home() {
       const queryLimit = pageIndex === 0 ? 50 : 25;
       const offset = pageIndex === 0 ? 0 : 50 + (pageIndex - 1) * 25;
       const catParam = buildGeoapifyCategoriesParam(categoriesToFetch);
-      const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=${queryLimit}&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
-      return { type: 'geoapify', url, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters, categories: categoriesToFetch };
+      return { type: 'geoapify', catParam, queryLimit, offset, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters, categories: categoriesToFetch };
     }
 
     if (pageIndex === 0) {
@@ -723,8 +730,7 @@ export default function Home() {
     const allCategories = "entertainment,leisure,sport,tourism,catering,adult.nightclub";
     const offset = 90 + (pageIndex - 1) * 50;
     const catParam = buildGeoapifyCategoriesParam(allCategories);
-    const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
-    return { type: 'geoapify', url, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters };
+    return { type: 'geoapify', catParam, offset, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters };
   }
 
   const { data, size, setSize, isValidating, error, mutate } = useSWRInfinite(getKey, multiFetcher, {

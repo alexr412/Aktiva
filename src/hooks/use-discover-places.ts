@@ -28,6 +28,7 @@ const multiFetcher = async (keyObj: any) => {
       if (process.env.NODE_ENV === 'development') {
         console.log(`[GEOAPIFY CACHE HIT] Loaded ${cachedPlaces.length} places from IndexedDB for tile`);
       }
+      import('@/lib/geoapify').then(({ recordCacheHitBatch }) => recordCacheHitBatch());
       return [{ features: cachedPlaces, _fromCache: true }];
     }
 
@@ -37,13 +38,23 @@ const multiFetcher = async (keyObj: any) => {
     const catParam1 = buildGeoapifyCategoriesParam(catGroup1);
     const catParam2 = buildGeoapifyCategoriesParam(catGroup2);
 
-    const url1 = `https://api.geoapify.com/v2/places?${catParam1}&filter=circle:${lng},${lat},${radiusMeters}&bias=proximity:${lng},${lat}&limit=45&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
-    const url2 = `https://api.geoapify.com/v2/places?${catParam2}&filter=circle:${lng},${lat},${radiusMeters}&bias=proximity:${lng},${lat}&limit=45&offset=0&apiKey=${GEOAPIFY_API_KEY}`;
-
     try {
-      const [res1, res2] = await Promise.all([fetch(url1), fetch(url2)]);
-      const data1 = res1.ok ? await res1.json() : { features: [] };
-      const data2 = res2.ok ? await res2.json() : { features: [] };
+      const { callGeoapifyGateway } = await import('@/lib/geoapify');
+
+      const [data1, data2] = await Promise.all([
+        callGeoapifyGateway('places', {
+          categories: catParam1.replace('categories=', ''),
+          filter: `circle:${lng},${lat},${radiusMeters}`,
+          bias: `proximity:${lng},${lat}`,
+          limit: '45',
+        }).catch(() => ({ features: [] })),
+        callGeoapifyGateway('places', {
+          categories: catParam2.replace('categories=', ''),
+          filter: `circle:${lng},${lat},${radiusMeters}`,
+          bias: `proximity:${lng},${lat}`,
+          limit: '45',
+        }).catch(() => ({ features: [] })),
+      ]);
 
       const combinedFeatures = [...(data1.features || []), ...(data2.features || [])];
 
@@ -93,26 +104,20 @@ const multiFetcher = async (keyObj: any) => {
       });
 
       if (matchingPlaces.length >= 3) {
+        import('@/lib/geoapify').then(({ recordCacheHitBatch }) => recordCacheHitBatch());
         return [{ features: matchingPlaces, _fromCache: true }];
       }
     }
   }
 
-  const res = await fetch(keyObj.url);
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    const safeUrl = sanitizeUrlForLogging(keyObj.url);
-    if (process.env.NODE_ENV === 'development') {
-      console.error('[GEOAPIFY ERROR]', {
-        status: res.status,
-        statusText: res.statusText,
-        url: safeUrl,
-        body,
-      });
-    }
-    throw new Error(`Geoapify API error (${res.status}): ${body}`);
-  }
-  const data = await res.json();
+  const { callGeoapifyGateway } = await import('@/lib/geoapify');
+  const data = await callGeoapifyGateway('places', {
+    categories: keyObj.catParam ? keyObj.catParam.replace('categories=', '') : '',
+    filter: `circle:${keyObj.lng},${keyObj.lat},${keyObj.radiusMeters}`,
+    bias: `proximity:${keyObj.lng},${keyObj.lat}`,
+    limit: '50',
+    offset: String(keyObj.offset || 0),
+  });
 
   if (data?.features && Array.isArray(data.features) && keyObj.lat && keyObj.lng) {
     const placesToCache: Place[] = data.features.map((f: any, idx: number) => {
@@ -269,14 +274,14 @@ export function useDiscoverPlaces() {
         lng: userLocation.lng,
         radiusMeters,
         pageIndex,
+        uid: userProfile?.uid,
       };
     }
 
     const allCategories = "entertainment,leisure,sport,tourism,catering,adult.nightclub";
     const offset = 90 + (pageIndex - 1) * 50;
     const catParam = buildGeoapifyCategoriesParam(allCategories);
-    const url = `https://api.geoapify.com/v2/places?${catParam}&filter=circle:${userLocation.lng},${userLocation.lat},${radiusMeters}&bias=proximity:${userLocation.lng},${userLocation.lat}&limit=50&offset=${offset}&apiKey=${GEOAPIFY_API_KEY}`;
-    return { type: 'geoapify', url, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters };
+    return { type: 'geoapify', catParam, offset, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters, uid: userProfile?.uid };
   };
 
   const { data, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {

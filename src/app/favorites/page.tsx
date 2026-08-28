@@ -298,10 +298,9 @@ export default function FavoritesPage() {
             // Fetch from Geoapify Place Details API
             setLoadingPlaces(prev => ({ ...prev, [placeId]: true }));
             try {
-                const res = await fetch(`https://api.geoapify.com/v2/place-details?id=${placeId}&apiKey=${GEOAPIFY_API_KEY}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.features && data.features.length > 0) {
+                const { callGeoapifyGateway } = await import('@/lib/geoapify');
+                const data = await callGeoapifyGateway('place_details', { id: placeId });
+                if (data.features && data.features.length > 0) {
                         const props = data.features[0].properties;
                         const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
                         const fetchedPlace: Place = {
@@ -315,7 +314,6 @@ export default function FavoritesPage() {
                         };
                         setCachedDetails(prev => ({ ...prev, [placeId]: fetchedPlace }));
                     }
-                }
             } catch (err) {
                 console.error("Error fetching place details in collection:", err);
             } finally {

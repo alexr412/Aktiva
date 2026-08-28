@@ -966,51 +966,77 @@ export const adminListUsageStats = onCall({ cors: true }, async (request) => {
   const db = admin.firestore();
   await verifyAdminCaller(db, request.auth.uid);
 
-  const { search, role, sortBy = 'totalTokens', timeframe = 'this_month', limit = 50 } = request.data || {};
+  const { search, role, sortBy = 'geoapifyCredits', timeframe = 'this_month', limit = 50 } = request.data || {};
   const queryLimit = Math.min(Math.max(1, Number(limit) || 50), 100);
 
-  const now = new Date();
-  const currentYM = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+  // Compute Europe/Berlin Date Key (e.g. 2026-08-28)
+  const berlinDayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
 
-  // Fetch usage records
-  let usageRef = db.collection('user_usage');
-  let usageSnap = await usageRef.limit(100).get();
+  // 1. Fetch Daily Global Aggregates (usage_daily/YYYY-MM-DD)
+  const dailyDoc = await db.collection('usage_daily').doc(berlinDayKey).get();
+  const dailyData = dailyDoc.exists ? (dailyDoc.data() || {}) : {};
 
+  const dailyCreditLimit = Number(process.env.GEOAPIFY_DAILY_CREDIT_LIMIT) || 3000;
+  const creditsToday = dailyData.credits || 0;
+  const requestsToday = dailyData.requests || 0;
+  const cacheHitsToday = dailyData.cacheHits || 0;
+  const cacheMissesToday = dailyData.cacheMisses || 0;
+  const successCountToday = dailyData.successCount || 0;
+  const errorCountToday = dailyData.errorCount || 0;
+
+  const cacheAvoidanceRate = (cacheHitsToday + cacheMissesToday) > 0
+    ? Number(((cacheHitsToday / (cacheHitsToday + cacheMissesToday)) * 100).toFixed(1))
+    : 0;
+
+  const errorRate = (successCountToday + errorCountToday) > 0
+    ? Number(((errorCountToday / (successCountToday + errorCountToday)) * 100).toFixed(1))
+    : 0;
+
+  // 2. Fetch User Usage Rankings
+  const usageSnap = await db.collection('user_usage').limit(100).get();
   let usageDocs = usageSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-  // Backfill fallback: If no usage docs exist yet, generate rich preview entries from actual user collection
-  if (usageDocs.length === 0) {
+  // Seed Fallback: Only in Development/Test Environments
+  if (usageDocs.length === 0 && process.env.NODE_ENV !== 'production') {
     const usersSnap = await db.collection('users').limit(15).get();
     let seedIndex = 0;
+    const nowYM = berlinDayKey.slice(0, 7).replace('-', '_');
+
     usageDocs = usersSnap.docs.map(doc => {
       const u = doc.data() || {};
       seedIndex++;
       const promptTok = Math.floor(1200 + (seedIndex * 3400) + (doc.id.length * 150));
       const compTok = Math.floor(400 + (seedIndex * 1100));
-      const reqCount = Math.floor(5 + seedIndex * 8);
-      const cost = Number(((promptTok / 1000) * 0.00015 + (compTok / 1000) * 0.0006).toFixed(4));
+      const geoapifyReqs = Math.floor(12 + seedIndex * 9);
+      const credits = Math.floor(18 + seedIndex * 14);
+      const reqCount = Math.floor(5 + seedIndex * 8) + geoapifyReqs;
+
       return {
-        id: `${currentYM}_${doc.id}`,
+        id: `${nowYM}_${doc.id}`,
         uid: doc.id,
-        yearMonth: currentYM,
+        yearMonth: nowYM,
         displayName: u.displayName || u.username || 'Activa User',
         username: u.username || null,
         email: u.email || null,
         photoURL: u.photoURL || null,
         role: u.role || (u.isAdmin ? 'admin' : (u.isSupporter ? 'supporter' : 'user')),
         isPremium: u.isPremium ?? false,
+        geoapifyCredits: credits,
+        geoapifyRequests: geoapifyReqs,
+        cacheHits: Math.floor(45 + seedIndex * 30),
+        cacheMisses: geoapifyReqs,
         promptTokens: promptTok,
         completionTokens: compTok,
         totalTokens: promptTok + compTok,
         requestCount: reqCount,
-        estimatedCostUsd: cost,
+        estimatedCostUsd: Number((credits * 0.0005).toFixed(4)),
         lastUsedAt: Date.now() - (seedIndex * 3600000 * 3),
-        feature: seedIndex % 2 === 0 ? 'intent_parsing' : 'activity_generator'
+        feature: seedIndex % 3 === 0 ? 'geoapify_places' : (seedIndex % 2 === 0 ? 'intent_parsing' : 'activity_generator')
       };
     });
   }
 
-  // Filter by Search Query (Name / Email / UID)
+  // Filter by Search Query
   if (search && typeof search === 'string' && search.trim()) {
     const clean = search.trim().toLowerCase();
     usageDocs = usageDocs.filter((item: any) =>
@@ -1034,33 +1060,47 @@ export const adminListUsageStats = onCall({ cors: true }, async (request) => {
   // Sort Results
   usageDocs.sort((a: any, b: any) => {
     if (sortBy === 'requestCount') return (b.requestCount || 0) - (a.requestCount || 0);
-    if (sortBy === 'estimatedCostUsd') return (b.estimatedCostUsd || 0) - (a.estimatedCostUsd || 0);
+    if (sortBy === 'cacheHits') return (b.cacheHits || 0) - (a.cacheHits || 0);
+    if (sortBy === 'totalTokens') return (b.totalTokens || 0) - (a.totalTokens || 0);
     if (sortBy === 'recent') return (b.lastUsedAt || 0) - (a.lastUsedAt || 0);
-    // Default: totalTokens desc
-    return (b.totalTokens || 0) - (a.totalTokens || 0);
+    // Default: geoapifyCredits desc
+    return (b.geoapifyCredits || 0) - (a.geoapifyCredits || 0);
   });
 
   const slicedItems = usageDocs.slice(0, queryLimit);
 
   // Compute Aggregates
+  const totalGeoapifyCredits = usageDocs.reduce((acc: number, cur: any) => acc + (cur.geoapifyCredits || 0), 0);
   const totalTokens = usageDocs.reduce((acc: number, cur: any) => acc + (cur.totalTokens || 0), 0);
-  const totalPromptTokens = usageDocs.reduce((acc: number, cur: any) => acc + (cur.promptTokens || 0), 0);
-  const totalCompletionTokens = usageDocs.reduce((acc: number, cur: any) => acc + (cur.completionTokens || 0), 0);
   const totalRequests = usageDocs.reduce((acc: number, cur: any) => acc + (cur.requestCount || 0), 0);
-  const totalCostUsd = Number(usageDocs.reduce((acc: number, cur: any) => acc + (cur.estimatedCostUsd || 0), 0).toFixed(4));
   const activeUsersCount = usageDocs.length;
 
   return {
     items: slicedItems,
     summary: {
+      berlinDayKey,
+      creditsToday,
+      dailyCreditLimit,
+      dailyLimitPercentage: Math.min(100, Math.round((creditsToday / dailyCreditLimit) * 100)),
+      requestsToday,
+      cacheHitsToday,
+      cacheMissesToday,
+      cacheAvoidanceRate,
+      errorRate,
+      totalGeoapifyCredits,
       totalTokens,
-      totalPromptTokens,
-      totalCompletionTokens,
       totalRequests,
-      totalCostUsd,
       activeUsersCount,
+      services: dailyData.services || {
+        places: { requests: 0, credits: 0 },
+        geocoding: { requests: 0, credits: 0 },
+        reverse_geocoding: { requests: 0, credits: 0 },
+        autocomplete: { requests: 0, credits: 0 },
+        place_details: { requests: 0, credits: 0 },
+      }
     }
   };
 });
+
 
 
