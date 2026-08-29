@@ -859,6 +859,9 @@ export interface Refund {
   processedAt?: Timestamp;
 }
 
+export const ACTIVE_REPORT_STATUSES = ['open', 'pending', 'moderation_review'] as const;
+export type ActiveReportStatus = (typeof ACTIVE_REPORT_STATUSES)[number];
+
 export interface Report {
   id?: string;
   activityId?: string;
@@ -869,6 +872,7 @@ export interface Report {
   status: 'pending' | 'resolved' | 'resolved_deleted' | 'rejected' | 'open' | 'moderation_review';
   createdAt: Timestamp;
   resolvedAt?: Timestamp;
+  moderatorAction?: string;
 }
 
 export interface CreatorApplication {

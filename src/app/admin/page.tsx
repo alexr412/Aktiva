@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -105,15 +106,19 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleResolveMod = async (reportId: string, activityId: string, action: 'keep' | 'blacklist') => {
-    const confirmationText = action === 'keep' 
-      ? "Möchtest du diese Aktivität freigeben und als geprüft markieren?" 
-      : "Möchtest du diese Aktivität auf die Blacklist setzen? Der Status wird permanent geändert.";
+  const handleResolveMod = async (task: any, action: 'keep' | 'blacklist') => {
+    const isUserReport = task.entityType === 'user' || (!task.entityType && !task.activityId && task.reportedEntityId);
+    const targetId = task.reportedEntityId || task.activityId || '';
+
+    const confirmationText = isUserReport
+      ? (action === 'keep' ? "Möchtest du diese Nutzer-Meldung als geprüft markieren?" : "Möchtest du diese Nutzer-Meldung verarbeiten und schließen?")
+      : (action === 'keep' ? "Möchtest du diese Aktivität freigeben und als geprüft markieren?" : "Möchtest du diese Aktivität auf die Blacklist setzen? Der Status wird permanent geändert.");
+    
     if (!window.confirm(confirmationText)) return;
-    setActionLoading(reportId);
+    setActionLoading(task.id);
     try {
-      await resolveModerationTask(reportId, activityId, action);
-      toast({ title: action === 'keep' ? "Aktivität freigegeben" : "Aktivität auf Blacklist gesetzt" });
+      await resolveModerationTask(task.id, targetId, action);
+      toast({ title: action === 'keep' ? "Meldung freigegeben" : "Meldung abgeschlossen" });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Fehler", description: err.message });
     } finally {
@@ -301,46 +306,58 @@ export default function AdminDashboardPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 gap-4">
-                {reportsList.map((task) => (
-                  <Card key={task.id} className="border-none shadow-md rounded-3xl bg-white dark:bg-neutral-900 overflow-hidden">
-                    <CardContent className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50 dark:bg-orange-950/30">
-                            Automated Trigger
-                          </Badge>
-                          <span className="text-xs font-mono text-slate-400">ID: {task.id}</span>
-                        </div>
-                        <h4 className="font-black text-base text-slate-900 dark:text-neutral-100">
-                          Grund: {task.reason || 'Sicherheits-Meldung'}
-                        </h4>
-                        <p className="text-xs font-mono text-slate-500 dark:text-neutral-400">
-                          Ziel-ID: {task.reportedEntityId || task.activityId || 'Unbekannt'} • Reporter: {task.reporterId}
-                        </p>
-                      </div>
+                {reportsList.map((task) => {
+                  const isUserReport = task.entityType === 'user' || (!task.entityType && !task.activityId && task.reportedEntityId);
+                  const targetId = task.reportedEntityId || task.activityId || 'Unbekannt';
 
-                      <div className="flex flex-wrap gap-2 shrink-0">
-                        <Button 
-                          onClick={() => handleResolveMod(task.id!, task.reportedEntityId! || task.activityId!, 'keep')}
-                          disabled={actionLoading === task.id}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs h-10 px-4"
-                        >
-                          {actionLoading === task.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ShieldCheck className="h-4 w-4 mr-1.5" />}
-                          Keep (Freigeben)
-                        </Button>
-                        <Button 
-                          onClick={() => handleResolveMod(task.id!, task.reportedEntityId! || task.activityId!, 'blacklist')}
-                          disabled={actionLoading === task.id}
-                          variant="destructive"
-                          className="rounded-xl font-bold text-xs h-10 px-4"
-                        >
-                          {actionLoading === task.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Ban className="h-4 w-4 mr-1.5" />}
-                          Blacklist
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                  return (
+                    <Card key={task.id} className="border-none shadow-md rounded-3xl bg-white dark:bg-neutral-900 overflow-hidden">
+                      <CardContent className="p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="outline" className={isUserReport ? "text-purple-600 border-purple-200 bg-purple-50 dark:bg-purple-950/30" : "text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/30"}>
+                              {isUserReport ? 'Nutzer-Meldung' : 'Aktivitäts-Meldung'}
+                            </Badge>
+                            <span className="text-xs font-mono text-slate-400">ID: {task.id}</span>
+                          </div>
+                          <h4 className="font-black text-base text-slate-900 dark:text-neutral-100">
+                            Grund: {task.reason || 'Sicherheits-Meldung'}
+                          </h4>
+                          <div className="flex items-center gap-2 flex-wrap text-xs font-mono text-slate-500 dark:text-neutral-400">
+                            <span>Ziel-ID: {targetId} • Reporter: {task.reporterId}</span>
+                            {isUserReport && targetId !== 'Unbekannt' && (
+                              <Button variant="ghost" size="sm" asChild className="h-6 text-[11px] font-bold text-purple-600 dark:text-purple-400 p-0 hover:bg-transparent">
+                                <Link href={`/users/${targetId}`} target="_blank">
+                                  [Profil ansehen]
+                                </Link>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 shrink-0">
+                          <Button 
+                            onClick={() => handleResolveMod(task, 'keep')}
+                            disabled={actionLoading === task.id}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs h-10 px-4"
+                          >
+                            {actionLoading === task.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ShieldCheck className="h-4 w-4 mr-1.5" />}
+                            {isUserReport ? 'Freigeben' : 'Keep (Freigeben)'}
+                          </Button>
+                          <Button 
+                            onClick={() => handleResolveMod(task, 'blacklist')}
+                            disabled={actionLoading === task.id}
+                            variant="destructive"
+                            className="rounded-xl font-bold text-xs h-10 px-4"
+                          >
+                            {actionLoading === task.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Ban className="h-4 w-4 mr-1.5" />}
+                            {isUserReport ? 'Schließen' : 'Blacklist'}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
 

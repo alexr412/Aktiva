@@ -1946,7 +1946,7 @@ export async function submitReportAndHide(
     reportedEntityId,
     entityType,
     reason,
-    status: 'pending',
+    status: 'open',
     createdAt: serverTimestamp(),
   });
 
@@ -2150,28 +2150,50 @@ export async function approveCreator(applicationId: string, userId: string) {
   await batch.commit();
 }
 
+export async function updateReportStatus(
+  reportId: string,
+  status: 'resolved' | 'resolved_deleted' | 'rejected',
+  moderatorAction?: string
+) {
+  if (!db) throw new Error('Firestore is not initialized.');
+  const reportRef = doc(db, 'reports', reportId);
+  await updateDoc(reportRef, {
+    status,
+    resolvedAt: serverTimestamp(),
+    ...(moderatorAction ? { moderatorAction } : {})
+  });
+}
+
 /**
  * MODUL 18: Admin Moderation Resolver.
- * Erlaubt das Freischalten (Keep) oder Blacklisten einer Aktivität.
+ * Erlaubt das Freischalten (Keep) oder Blacklisten einer Aktivität/Meldung.
  */
-export async function resolveModerationTask(reportId: string, activityId: string, action: 'keep' | 'blacklist') {
+export async function resolveModerationTask(reportId: string, entityId: string, action: 'keep' | 'blacklist') {
   if (!db) throw new Error('Firestore is not initialized.');
   const batch = writeBatch(db);
-  const activityRef = doc(db, 'activities', activityId);
   const reportRef = doc(db, 'reports', reportId);
+  
+  if (entityId) {
+    const reportSnap = await getDoc(reportRef);
+    const reportData = reportSnap.exists() ? reportSnap.data() : null;
+    const isUserReport = reportData?.entityType === 'user';
 
-  if (action === 'keep') {
-    batch.update(activityRef, { isVerified: true });
-  } else {
-    const actSnap = await getDoc(activityRef);
-    if (actSnap.exists()) {
-        const actData = actSnap.data();
-        if (actData.placeId && actData.placeId !== 'custom' && (actData.status === 'active' || actData.status === 'open')) {
+    if (!isUserReport) {
+      const activityRef = doc(db, 'activities', entityId);
+      const actSnap = await getDoc(activityRef);
+      if (actSnap.exists()) {
+        if (action === 'keep') {
+          batch.update(activityRef, { isVerified: true });
+        } else {
+          const actData = actSnap.data();
+          if (actData.placeId && actData.placeId !== 'custom' && (actData.status === 'active' || actData.status === 'open')) {
             const placeRef = doc(db, 'places', actData.placeId);
-            batch.set(placeRef, { activityCount: increment(-1), lastActivityId: activityId }, { merge: true });
+            batch.set(placeRef, { activityCount: increment(-1), lastActivityId: entityId }, { merge: true });
+          }
+          batch.update(activityRef, { status: 'blacklisted' });
         }
+      }
     }
-    batch.update(activityRef, { status: 'blacklisted' });
   }
 
   batch.update(reportRef, {

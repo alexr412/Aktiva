@@ -3,17 +3,19 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase/client';
-import { collection, query, where, onSnapshot, writeBatch, doc, increment, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, writeBatch, doc, increment, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, CheckCircle2, Trash2, Loader2, ShieldCheck, Ban, ArrowLeft, Filter, Sparkles } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Trash2, Loader2, ShieldCheck, Ban, ArrowLeft, Filter, Sparkles, User, Activity, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { AdminSummaryBar } from '@/components/admin/AdminSummaryBar';
+import { ACTIVE_REPORT_STATUSES } from '@/lib/types';
+import { updateReportStatus } from '@/lib/firebase/firestore';
 
 function AdminReportsContent() {
   const { userProfile, loading: authLoading } = useAuth();
@@ -50,6 +52,8 @@ function AdminReportsContent() {
     let q;
     if (statusFilter === 'all') {
       q = query(collection(db, 'reports'));
+    } else if (statusFilter === 'open') {
+      q = query(collection(db, 'reports'), where('status', 'in', ACTIVE_REPORT_STATUSES));
     } else {
       q = query(collection(db, 'reports'), where('status', '==', statusFilter));
     }
@@ -64,47 +68,61 @@ function AdminReportsContent() {
     return () => unsubscribe();
   }, [userProfile, authLoading, isAllowed, statusFilter]);
 
-  const handleResolveDelete = async (reportId: string, activityId: string) => {
+  const handleResolveReport = async (report: any) => {
     if (!db) return;
-    if (!window.confirm("Bist du sicher, dass du diese Aktivität permanent löschen und die Meldung als gelöst markieren möchtest?")) {
-      return;
-    }
-    setActionLoading(reportId);
-    try {
-      const batch = writeBatch(db);
-      batch.delete(doc(db, 'activities', activityId));
-      batch.update(doc(db, 'reports', reportId), { 
-        status: 'resolved_deleted', 
-        resolvedAt: serverTimestamp() 
-      });
-      await batch.commit();
-      toast({ title: "Aktivität gelöscht", description: "Report wurde als gelöst markiert." });
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Fehler", description: err.message });
-    } finally {
-      setActionLoading(null);
+    const isUserReport = report.entityType === 'user' || (!report.entityType && !report.activityId && report.reportedEntityId);
+    const targetId = report.reportedEntityId || report.activityId;
+
+    if (isUserReport) {
+      if (!window.confirm("Möchtest du diese Nutzer-Meldung als gelöst markieren?")) return;
+      setActionLoading(report.id);
+      try {
+        await updateReportStatus(report.id, 'resolved');
+        toast({ title: "Nutzer-Meldung gelöst", description: "Report wurde als gelöst markiert." });
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "Fehler", description: err.message });
+      } finally {
+        setActionLoading(null);
+      }
+    } else {
+      if (!window.confirm("Bist du sicher, dass du diese Aktivität permanent löschen und die Meldung als gelöst markieren möchtest?")) return;
+      setActionLoading(report.id);
+      try {
+        if (targetId) {
+          await deleteDoc(doc(db, 'activities', targetId));
+        }
+        await updateReportStatus(report.id, 'resolved_deleted');
+        toast({ title: "Aktivität gelöscht", description: "Report wurde als gelöst markiert." });
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "Fehler", description: err.message });
+      } finally {
+        setActionLoading(null);
+      }
     }
   };
 
-  const handleRejectReport = async (reportId: string, activityId: string) => {
+  const handleRejectReport = async (report: any) => {
     if (!db) return;
-    if (!window.confirm("Bist du sicher, dass du diese Meldung abweisen möchtest? Die Aktivität bleibt bestehen.")) {
-      return;
-    }
-    setActionLoading(reportId);
+    if (!window.confirm("Bist du sicher, dass du diese Meldung abweisen möchtest?")) return;
+    setActionLoading(report.id);
     try {
-      const batch = writeBatch(db);
-      if (activityId) {
-        batch.update(doc(db, 'activities', activityId), { 
+      const isUserReport = report.entityType === 'user' || (!report.entityType && !report.activityId && report.reportedEntityId);
+      const targetId = report.reportedEntityId || report.activityId;
+
+      if (!isUserReport && targetId) {
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'activities', targetId), { 
           reportCount: increment(-1) 
         });
+        batch.update(doc(db, 'reports', report.id), { 
+          status: 'rejected', 
+          resolvedAt: serverTimestamp() 
+        });
+        await batch.commit();
+      } else {
+        await updateReportStatus(report.id, 'rejected');
       }
-      batch.update(doc(db, 'reports', reportId), { 
-        status: 'rejected', 
-        resolvedAt: serverTimestamp() 
-      });
-      await batch.commit();
-      toast({ title: "Meldung abgewiesen", description: "Aktivität bleibt bestehen." });
+      toast({ title: "Meldung abgewiesen" });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Fehler", description: err.message });
     } finally {
@@ -121,8 +139,8 @@ function AdminReportsContent() {
   });
 
   // Calculate summary stats
-  const openCount = reports.filter(r => r.status === 'open' || r.status === 'moderation_review').length;
-  const criticalCount = reports.filter(r => r.status === 'moderation_review' || r.reason?.toLowerCase().includes('safety')).length;
+  const openCount = reports.filter(r => (ACTIVE_REPORT_STATUSES as readonly string[]).includes(r.status)).length;
+  const criticalCount = reports.filter(r => r.status === 'moderation_review' || r.reason?.toLowerCase().includes('safety') || r.reason?.toLowerCase().includes('gefährdung')).length;
 
   const startOfTodayMillis = new Date().setHours(0,0,0,0);
   const todayCount = reports.filter(r => {
@@ -168,7 +186,7 @@ function AdminReportsContent() {
           {[
             { id: 'open', label: 'Offen & Review' },
             { id: 'all', label: 'Alle Status' },
-            { id: 'resolved_deleted', label: 'Gelöscht' },
+            { id: 'resolved_deleted', label: 'Gelöscht / Gelöst' },
             { id: 'rejected', label: 'Abgewiesen' },
           ].map(st => (
             <button
@@ -225,69 +243,93 @@ function AdminReportsContent() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-6">
-          {filteredReports.map((report) => (
-            <Card key={report.id} className="overflow-hidden border-none shadow-md bg-white dark:bg-neutral-900 rounded-3xl transition-all">
-              <CardHeader className="bg-red-50/40 dark:bg-red-950/20 pb-4 border-b border-red-100 dark:border-red-900/30">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Sicherheits-Meldung</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-400">
-                    {report.createdAt?.toDate ? format(report.createdAt.toDate(), 'Pp', { locale: de }) : 'Unbekannt'}
-                  </span>
-                </div>
-                <CardTitle className="text-lg font-black text-slate-900 dark:text-white">
-                  Grund: {report.reason || 'Kein Grund angegeben'}
-                </CardTitle>
-                <CardDescription className="font-mono text-xs text-slate-500 dark:text-neutral-400 mt-0.5">
-                  Report-ID: {report.id} • Reporter-ID: {report.reporterId || 'System'}
-                </CardDescription>
-              </CardHeader>
+          {filteredReports.map((report) => {
+            const isUserReport = report.entityType === 'user' || (!report.entityType && !report.activityId && report.reportedEntityId);
+            const targetId = report.reportedEntityId || report.activityId || 'Keine ID';
 
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div className="space-y-2">
+            return (
+              <Card key={report.id} className="overflow-hidden border-none shadow-md bg-white dark:bg-neutral-900 rounded-3xl transition-all">
+                <CardHeader className="bg-red-50/40 dark:bg-red-950/20 pb-4 border-b border-red-100 dark:border-red-900/30">
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Ziel-Entität:</span>
-                      <span className="font-mono text-xs bg-slate-100 dark:bg-neutral-800 px-2.5 py-1 rounded-xl text-slate-700 dark:text-neutral-300">
-                        {report.activityId || report.reportedEntityId || 'Keine ID'}
-                      </span>
+                      {isUserReport ? (
+                        <Badge className="bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 gap-1 text-[10px] font-black uppercase tracking-wider">
+                          <User className="h-3 w-3" />
+                          Nutzer-Meldung
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 gap-1 text-[10px] font-black uppercase tracking-wider">
+                          <Activity className="h-3 w-3" />
+                          Aktivitäts-Meldung
+                        </Badge>
+                      )}
                     </div>
-                    <p className="text-xs text-slate-400 font-medium italic">
-                      Status: <strong className="uppercase text-slate-700 dark:text-neutral-300">{report.status}</strong>
-                    </p>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {report.createdAt?.toDate ? format(report.createdAt.toDate(), 'Pp', { locale: de }) : 'Unbekannt'}
+                    </span>
                   </div>
+                  <CardTitle className="text-lg font-black text-slate-900 dark:text-white">
+                    Grund: {report.reason || 'Kein Grund angegeben'}
+                  </CardTitle>
+                  <CardDescription className="font-mono text-xs text-slate-500 dark:text-neutral-400 mt-0.5">
+                    Report-ID: {report.id} • Reporter-ID: {report.reporterId || 'System'}
+                  </CardDescription>
+                </CardHeader>
 
-                  <div className="flex flex-wrap gap-2 shrink-0">
-                    {report.status !== 'rejected' && (
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => handleRejectReport(report.id, report.activityId || report.reportedEntityId)}
-                        disabled={actionLoading === report.id}
-                        className="rounded-xl font-bold text-xs hover:bg-slate-100 text-slate-500 h-10 px-4"
-                      >
-                        {actionLoading === report.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-                        Abweisen
-                      </Button>
-                    )}
+                <CardContent className="p-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                          {isUserReport ? 'Gemeldeter Nutzer:' : 'Gemeldete Aktivität:'}
+                        </span>
+                        <span className="font-mono text-xs bg-slate-100 dark:bg-neutral-800 px-2.5 py-1 rounded-xl text-slate-700 dark:text-neutral-300">
+                          {targetId}
+                        </span>
+                        {isUserReport && targetId !== 'Keine ID' && (
+                          <Button variant="ghost" size="sm" asChild className="h-7 text-xs font-bold text-purple-600 dark:text-purple-400 gap-1">
+                            <Link href={`/users/${targetId}`} target="_blank">
+                              <ExternalLink className="h-3 w-3" />
+                              Profil ansehen
+                            </Link>
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400 font-medium italic">
+                        Status: <strong className="uppercase text-slate-700 dark:text-neutral-300">{report.status}</strong>
+                      </p>
+                    </div>
 
-                    {report.status !== 'resolved_deleted' && (
-                      <Button 
-                        variant="destructive" 
-                        onClick={() => handleResolveDelete(report.id, report.activityId || report.reportedEntityId)}
-                        disabled={actionLoading === report.id}
-                        className="rounded-xl font-bold text-xs gap-1.5 shadow-sm h-10 px-4"
-                      >
-                        {actionLoading === report.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        Löschen & Schließen
-                      </Button>
-                    )}
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      {report.status !== 'rejected' && (
+                        <Button 
+                          variant="ghost" 
+                          onClick={() => handleRejectReport(report)}
+                          disabled={actionLoading === report.id}
+                          className="rounded-xl font-bold text-xs hover:bg-slate-100 text-slate-500 h-10 px-4"
+                        >
+                          {actionLoading === report.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                          Abweisen
+                        </Button>
+                      )}
+
+                      {!report.status?.startsWith('resolved') && (
+                        <Button 
+                          variant="destructive" 
+                          onClick={() => handleResolveReport(report)}
+                          disabled={actionLoading === report.id}
+                          className="rounded-xl font-bold text-xs gap-1.5 shadow-sm h-10 px-4"
+                        >
+                          {actionLoading === report.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isUserReport ? <CheckCircle2 className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                          {isUserReport ? 'Als gelöst markieren' : 'Löschen & Schließen'}
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
@@ -298,8 +340,7 @@ export default function AdminReportsPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-12 font-bold text-slate-400">
-        <Loader2 className="w-5 h-5 animate-spin mr-2 text-purple-600" />
-        Lade Moderationsseite...
+        Lade Moderationsverwaltung...
       </div>
     }>
       <AdminReportsContent />

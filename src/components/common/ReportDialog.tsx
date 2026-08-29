@@ -63,6 +63,15 @@ export function ReportDialog({ open, onOpenChange, entityId, entityType, entityN
     },
   ];
 
+  const handleClose = (newOpen: boolean) => {
+    if (!newOpen) {
+      setReason('');
+      setDetails('');
+      setIsSubmitting(false);
+    }
+    onOpenChange(newOpen);
+  };
+
   const handleSubmit = async () => {
     if (!user) {
       toast({
@@ -93,10 +102,8 @@ export function ReportDialog({ open, onOpenChange, entityId, entityType, entityN
           : `Thank you. The ${entityType} has been reported and will be hidden from your view.`,
       });
       
-      setReason('');
-      setDetails('');
+      handleClose(false);
       router.refresh();
-      onOpenChange(false);
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -113,7 +120,7 @@ export function ReportDialog({ open, onOpenChange, entityId, entityType, entityN
     : (isDe ? 'Aktivität melden' : 'Report Activity');
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[480px] border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-2xl rounded-3xl p-6">
         <DialogHeader className="space-y-2">
           <div className="flex items-center gap-3">

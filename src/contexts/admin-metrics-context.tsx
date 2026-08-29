@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase/client';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import type { Report, Refund, CreatorApplication } from '@/lib/types';
+import { ACTIVE_REPORT_STATUSES } from '@/lib/types';
 
 export interface PayoutRequest {
   id: string;
@@ -73,8 +74,8 @@ export function AdminMetricsProvider({ children }: { children: React.ReactNode }
       }
     };
 
-    // 1. Reports Subscription (open & moderation_review)
-    const qReports = query(collection(db, 'reports'), where('status', 'in', ['open', 'moderation_review']));
+    // 1. Reports Subscription (open, pending & moderation_review)
+    const qReports = query(collection(db, 'reports'), where('status', 'in', ACTIVE_REPORT_STATUSES));
     const unsubReports = onSnapshot(qReports, (snap) => {
       setReportsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as Report)));
       checkLoaded();

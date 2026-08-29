@@ -1265,14 +1265,13 @@ async function runTests() {
     const bobDb = testEnv.authenticatedContext('bob').firestore();
     const adminDb = testEnv.authenticatedContext('adminUser').firestore();
 
-    // 1. Report creation
-    // Alice can create report with her own UID as reporterId
+    // Alice can create report with her own UID as reporterId and status 'open'
     await assertSucceeds(setDoc(doc(aliceDb, 'reports/newRep1'), {
       reporterId: 'alice',
       reportedEntityId: 'act123',
       entityType: 'activity',
       reason: 'inappropriate',
-      status: 'pending',
+      status: 'open',
       createdAt: serverTimestamp()
     }));
 
