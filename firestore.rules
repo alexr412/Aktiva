@@ -581,6 +581,16 @@ service cloud.firestore {
           'bannedAt', 'bannedBy', 'banReasonPublic', 'banNoteInternal',
           'displayNameLower', 'emailLower'
         ]) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['appTutorialEligible']) || (
+          resource.data.get('onboardingCompleted', false) == false &&
+          request.resource.data.get('onboardingCompleted', false) == true &&
+          request.resource.data.get('appTutorialEligible', false) == true
+        )) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['appTutorialVersion']) || (
+          request.resource.data.get('appTutorialVersion', 0) is int &&
+          request.resource.data.get('appTutorialVersion', 0) == 1 &&
+          resource.data.get('appTutorialVersion', 0) < 1
+        )) &&
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['tokens']) || (
           request.resource.data.get('tokens', 0) is int &&
           resource.data.get('tokens', 0) is int &&
@@ -750,6 +760,16 @@ service cloud.firestore {
     match /admin_audit_logs/{logId} {
       allow read: if isAdmin();
       allow write: if false;
+    }
+
+    match /support_tickets/{ticketId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if false;
+      allow delete: if false;
+      allow update: if isAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+        request.resource.data.status in ['open', 'in_progress', 'resolved', 'closed'] &&
+        request.resource.data.updatedAt is timestamp;
     }
 
     function isValidActivityUpdate() {

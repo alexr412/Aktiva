@@ -3,7 +3,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "test": "npx tsx src/notifications.test.ts && npx tsx src/admin-users.test.ts && npx tsx src/payments.test.ts && npx tsx src/activities.test.ts && npx tsx src/users.test.ts && npx tsx src/chats.test.ts"
+    "test": "npx tsx src/notifications.test.ts && npx tsx src/admin-users.test.ts && npx tsx src/payments.test.ts && npx tsx src/activities.test.ts && npx tsx src/users.test.ts && npx tsx src/chats.test.ts && npx tsx src/support.test.ts && npx tsx src/radar.test.ts"
   },
   "engines": {
     "node": "22"

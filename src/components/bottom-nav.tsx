@@ -25,10 +25,12 @@ export function BottomNav() {
         {MAIN_NAV_ITEMS.map((item) => {
           const isActive = getIsActiveNav(item.href, pathname);
           const label = language === 'de' ? item.labelDe : item.labelEn;
+          const tutorialId = item.href === '/' ? 'nav-feed' : item.href === '/explore' ? 'nav-explore' : item.href === '/map' ? 'nav-map' : item.href === '/chat' ? 'nav-chat' : item.href === '/profile' ? 'nav-profile' : undefined;
           return (
             <Link
               key={item.href}
               href={item.href}
+              data-tutorial-id={tutorialId}
               className={cn(
                 "flex h-full flex-col items-center justify-center gap-0.5 transition-[color,opacity] duration-200 relative px-0.5 min-w-0 w-full",
                 isActive ? "text-primary scale-100" : "text-slate-500 dark:text-neutral-400 opacity-60 hover:opacity-100"

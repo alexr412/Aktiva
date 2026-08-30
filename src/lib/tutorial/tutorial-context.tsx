@@ -1,0 +1,165 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/hooks/use-language';
+import { updateUserProfile } from '@/lib/firebase/firestore';
+import { CURRENT_APP_TUTORIAL_VERSION, TUTORIAL_STEPS } from './tutorial-config';
+
+interface AppTutorialContextType {
+  isActive: boolean;
+  currentStepIndex: number;
+  isReplay: boolean;
+  nextStep: () => void;
+  prevStep: () => void;
+  skipTutorial: () => void;
+  onDialogOpen: (open: boolean) => void;
+  startReplay: () => void;
+}
+
+const AppTutorialContext = createContext<AppTutorialContextType | null>(null);
+
+export function AppTutorialProvider({ children }: { children: React.ReactNode }) {
+  const { user, userProfile, loading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const language = useLanguage();
+
+  const [isActive, setIsActive] = useState(false);
+  const [currentStepIndex, setCurrentStepIndex] = useState(1);
+  const [isReplay, setIsReplay] = useState(false);
+
+  const isWritingCompletionRef = useRef(false);
+  const hasAutoStartedRef = useRef(false);
+
+  // Helper to remove 'tutorial=replay' from URL using URLSearchParams preserving other query params and hash
+  const clearReplayQueryParam = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('tutorial')) {
+      url.searchParams.delete('tutorial');
+      const newUrl = `${url.pathname}${url.search}${url.hash}`;
+      window.history.replaceState(null, '', newUrl);
+    }
+  }, []);
+
+  // 1. Replay Query Param Detection from /settings/help -> /?tutorial=replay
+  useEffect(() => {
+    if (searchParams && searchParams.get('tutorial') === 'replay') {
+      setIsReplay(true);
+      setCurrentStepIndex(1);
+      setIsActive(true);
+      isWritingCompletionRef.current = false;
+      clearReplayQueryParam();
+    }
+  }, [searchParams, clearReplayQueryParam]);
+
+  // 2. Auto-Start Eligibility Evaluation for new onboarded users
+  useEffect(() => {
+    if (authLoading || !user || !userProfile || isActive || hasAutoStartedRef.current || isReplay) {
+      return;
+    }
+
+    const isEligible =
+      userProfile.onboardingCompleted === true &&
+      userProfile.appTutorialEligible === true &&
+      (userProfile.appTutorialVersion ?? 0) === 0;
+
+    if (isEligible) {
+      hasAutoStartedRef.current = true;
+      setCurrentStepIndex(1);
+      setIsActive(true);
+      isWritingCompletionRef.current = false;
+    }
+  }, [authLoading, user, userProfile, isActive, isReplay]);
+
+  // Complete tutorial action (saves appTutorialVersion = 1 if not replay)
+  const completeTutorial = useCallback(async () => {
+    setIsActive(false);
+
+    if (isReplay || !user?.uid) {
+      return;
+    }
+
+    if (isWritingCompletionRef.current) return;
+    isWritingCompletionRef.current = true;
+
+    try {
+      await updateUserProfile(user.uid, {
+        appTutorialVersion: CURRENT_APP_TUTORIAL_VERSION,
+      });
+    } catch (err: any) {
+      console.error('Failed to save appTutorialVersion completion:', err);
+      isWritingCompletionRef.current = false;
+      toast({
+        variant: 'destructive',
+        title: language === 'de' ? 'Fehler' : 'Error',
+        description: language === 'de'
+          ? 'Tutorial-Status konnte nicht gespeichert werden.'
+          : 'Tutorial status could not be saved.',
+      });
+    }
+  }, [isReplay, user, language, toast]);
+
+  const skipTutorial = useCallback(() => {
+    completeTutorial();
+  }, [completeTutorial]);
+
+  const nextStep = useCallback(() => {
+    if (currentStepIndex < TUTORIAL_STEPS.length) {
+      setCurrentStepIndex((prev) => prev + 1);
+    } else {
+      completeTutorial();
+    }
+  }, [currentStepIndex, completeTutorial]);
+
+  const prevStep = useCallback(() => {
+    if (currentStepIndex > 1) {
+      setCurrentStepIndex((prev) => prev - 1);
+    }
+  }, [currentStepIndex]);
+
+  // Step 6 Dialog Open Event Handler
+  const onDialogOpen = useCallback(
+    (open: boolean) => {
+      if (isActive && currentStepIndex === 6 && open === true) {
+        completeTutorial();
+      }
+    },
+    [isActive, currentStepIndex, completeTutorial]
+  );
+
+  const startReplay = useCallback(() => {
+    setIsReplay(true);
+    setCurrentStepIndex(1);
+    setIsActive(true);
+    isWritingCompletionRef.current = false;
+  }, []);
+
+  return (
+    <AppTutorialContext.Provider
+      value={{
+        isActive,
+        currentStepIndex,
+        isReplay,
+        nextStep,
+        prevStep,
+        skipTutorial,
+        onDialogOpen,
+        startReplay,
+      }}
+    >
+      {children}
+    </AppTutorialContext.Provider>
+  );
+}
+
+export function useAppTutorial() {
+  const ctx = useContext(AppTutorialContext);
+  if (!ctx) {
+    throw new Error('useAppTutorial must be used within an AppTutorialProvider');
+  }
+  return ctx;
+}

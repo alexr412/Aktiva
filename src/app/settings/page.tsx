@@ -826,14 +826,13 @@ export default function SettingsPage() {
                     <div className="space-y-4">
                         <h2 className="flex items-center gap-3">
                             <Bug className="h-5 w-5 text-primary" />
-                            <span>{language === 'de' ? 'Support' : 'Support'}</span>
-
+                            <span>{language === 'de' ? 'Hilfe & Support' : 'Help & Support'}</span>
                         </h2>
                         <div className="space-y-2">
-                             <button onClick={() => window.location.href = 'mailto:support@app.com?subject=Bug%20Report'} className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
+                             <button onClick={() => router.push('/settings/help')} className="flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-muted">
                                 <div>
-                                    <p className="font-medium">{language === 'de' ? 'Fehler melden' : 'Report a Bug'}</p>
-                                    <p className="text-sm text-muted-foreground">{language === 'de' ? 'Hilf uns die App zu verbessern.' : 'Help us improve the application.'}</p>
+                                    <p className="font-medium">{language === 'de' ? 'Hilfe & Support Center' : 'Help & Support Center'}</p>
+                                    <p className="text-sm text-muted-foreground">{language === 'de' ? 'FAQ, App-Tutorial & Supportanfragen.' : 'FAQ, App Tutorial & Support Requests.'}</p>
                                 </div>
                                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
                             </button>

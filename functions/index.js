@@ -280,6 +280,10 @@ lazyExport('deleteNotification', './lib/notifications');
 // RevenueCat Integration (Lazy Loaded)
 lazyExport('revenueCatWebhook', './lib/revenuecat');
 
+// Support Ticket Submission (Lazy Loaded)
+lazyExport('submitSupportTicket', './lib/support');
+
+
 
 
 

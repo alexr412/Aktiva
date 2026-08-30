@@ -3778,6 +3778,148 @@ async function runTests() {
     console.log('✅ Suite K: Women-Only & Host Requirement Security Rules Tests PASSED!');
   }
 
+  // ==========================================
+  // L. Tutorial Fields & Support Tickets Security Rules Tests
+  // ==========================================
+  {
+    console.log('\nRunning Suite L: Tutorial Fields & Support Tickets Security Rules tests...');
+
+    // 1. Tutorial Eligibility & Version Rules
+    await seedDoc('users/tutUser1', {
+      uid: 'tutUser1',
+      displayName: 'Tutorial User',
+      email: 'tut1@example.com',
+      role: 'user',
+      isBanned: false,
+      onboardingCompleted: false
+    });
+
+    const tutUser1Db = testEnv.authenticatedContext('tutUser1').firestore();
+
+    // Onboarding finish transition: onboardingCompleted: false -> true with appTutorialEligible: true -> SUCCEEDS
+    await assertSucceeds(
+      updateDoc(doc(tutUser1Db, 'users/tutUser1'), {
+        onboardingCompleted: true,
+        appTutorialEligible: true
+      })
+    );
+
+    // Subsequent update trying to modify appTutorialEligible -> FAILS
+    await assertFails(
+      updateDoc(doc(tutUser1Db, 'users/tutUser1'), {
+        appTutorialEligible: false
+      })
+    );
+
+    // appTutorialVersion 0 -> 1 -> SUCCEEDS
+    await assertSucceeds(
+      updateDoc(doc(tutUser1Db, 'users/tutUser1'), {
+        appTutorialVersion: 1
+      })
+    );
+
+    // appTutorialVersion -> 99 -> FAILS
+    await assertFails(
+      updateDoc(doc(tutUser1Db, 'users/tutUser1'), {
+        appTutorialVersion: 99
+      })
+    );
+
+    // appTutorialVersion -> -1 -> FAILS
+    await assertFails(
+      updateDoc(doc(tutUser1Db, 'users/tutUser1'), {
+        appTutorialVersion: -1
+      })
+    );
+
+    // Resetting appTutorialVersion 1 -> 0 -> FAILS
+    await assertFails(
+      updateDoc(doc(tutUser1Db, 'users/tutUser1'), {
+        appTutorialVersion: 0
+      })
+    );
+
+    // 2. Support Tickets Rules
+    await seedDoc('support_tickets/ticket1', {
+      ticketId: 'ticket1',
+      userId: 'tutUser1',
+      category: 'bug',
+      subject: 'Map bug',
+      message: 'Details about map issue',
+      status: 'open',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    await seedDoc('users/adminUser1', {
+      uid: 'adminUser1',
+      displayName: 'Admin User',
+      email: 'admin@example.com',
+      role: 'admin',
+      isBanned: false,
+      onboardingCompleted: true
+    });
+
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+    const bobDb = testEnv.authenticatedContext('bob').firestore();
+    const adminDb = testEnv.authenticatedContext('adminUser1').firestore();
+
+    // Unauthenticated read -> FAILS
+    await assertFails(getDoc(doc(guestDb, 'support_tickets/ticket1')));
+
+    // Owner read -> SUCCEEDS
+    await assertSucceeds(getDoc(doc(tutUser1Db, 'support_tickets/ticket1')));
+
+    // Foreign user read -> FAILS
+    await assertFails(getDoc(doc(bobDb, 'support_tickets/ticket1')));
+
+    // Client direct create -> FAILS
+    await assertFails(
+      setDoc(doc(tutUser1Db, 'support_tickets/ticket2'), {
+        userId: 'tutUser1',
+        category: 'bug',
+        subject: 'Fake ticket',
+        message: 'Direct client create',
+        status: 'open'
+      })
+    );
+
+    // Client direct update -> FAILS
+    await assertFails(
+      updateDoc(doc(tutUser1Db, 'support_tickets/ticket1'), {
+        status: 'resolved'
+      })
+    );
+
+    // Client direct delete -> FAILS
+    await assertFails(deleteDoc(doc(tutUser1Db, 'support_tickets/ticket1')));
+
+    // Admin valid status update -> SUCCEEDS
+    await assertSucceeds(
+      updateDoc(doc(adminDb, 'support_tickets/ticket1'), {
+        status: 'in_progress',
+        updatedAt: serverTimestamp()
+      })
+    );
+
+    // Admin invalid status update -> FAILS
+    await assertFails(
+      updateDoc(doc(adminDb, 'support_tickets/ticket1'), {
+        status: 'invalid_status_value',
+        updatedAt: serverTimestamp()
+      })
+    );
+
+    // Admin update illegal key -> FAILS
+    await assertFails(
+      updateDoc(doc(adminDb, 'support_tickets/ticket1'), {
+        illegalKey: 'hacked'
+      })
+    );
+
+    console.log('✅ Suite L: Tutorial Fields & Support Tickets Security Rules Tests PASSED!');
+  }
+
   console.log('🎉 ALL SECURITY RULES TESTS PASSED SUCCESSFULLY! 🎉');
   
   // Cleanup

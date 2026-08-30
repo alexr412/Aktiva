@@ -38,11 +38,13 @@ export function DesktopNavRail({ className }: { className?: string }) {
         {MAIN_NAV_ITEMS.map((item) => {
           const isActive = getIsActiveNav(item.href, pathname);
           const label = language === 'de' ? item.labelDe : item.labelEn;
+          const tutorialId = item.href === '/' ? 'nav-feed' : item.href === '/explore' ? 'nav-explore' : item.href === '/map' ? 'nav-map' : item.href === '/chat' ? 'nav-chat' : item.href === '/profile' ? 'nav-profile' : undefined;
 
           return (
             <Link
               key={item.href}
               href={item.href}
+              data-tutorial-id={tutorialId}
               title={label}
               aria-label={label}
               className={cn(

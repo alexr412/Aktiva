@@ -584,6 +584,7 @@ function OnboardingContent() {
         interests: data.interests || [],
         tinderInterests: data.tinderInterests || [],
         onboardingCompleted: true,
+        appTutorialEligible: true,
         photoURL: data.photoURL !== undefined ? data.photoURL : (userProfile?.photoURL || null),
         categoryAffinities: data.affinities || {}
       };

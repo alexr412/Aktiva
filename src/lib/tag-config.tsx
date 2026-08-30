@@ -790,19 +790,83 @@ const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => strin
   'error.connection_problem': {
     de: 'Verbindungsproblem. Bitte versuche es später noch einmal.',
     en: 'Connection problem. Please try again later.'
+  },
+  'tutorial.feed.title': {
+    de: 'Feed',
+    en: 'Feed'
+  },
+  'tutorial.feed.description': {
+    de: 'Aktivitäten und Orte in der Nähe finden.',
+    en: 'Find activities and places nearby.'
+  },
+  'tutorial.explore.title': {
+    de: 'Entdecken',
+    en: 'Explore'
+  },
+  'tutorial.explore.description': {
+    de: 'Inhalte gezielt filtern und entdecken.',
+    en: 'Filter and discover content specifically.'
+  },
+  'tutorial.map.title': {
+    de: 'Karte',
+    en: 'Map'
+  },
+  'tutorial.map.description': {
+    de: 'Aktivitäten und Orte geografisch anzeigen.',
+    en: 'View activities and places on the map.'
+  },
+  'tutorial.chat.title': {
+    de: 'Chats',
+    en: 'Chats'
+  },
+  'tutorial.chat.description': {
+    de: 'Treffen mit Gruppen organisieren.',
+    en: 'Organize group meetups.'
+  },
+  'tutorial.profile.title': {
+    de: 'Profil',
+    en: 'Profile'
+  },
+  'tutorial.profile.description': {
+    de: 'Profil, eigene Aktivitäten und Einstellungen verwalten.',
+    en: 'Manage your profile, activities and settings.'
+  },
+  'tutorial.create.title': {
+    de: 'Aktivität erstellen',
+    en: 'Create Activity'
+  },
+  'tutorial.create.description': {
+    de: 'Tippe auf +, um etwas zu erstellen.',
+    en: 'Tap + to create something.'
+  },
+  'tutorial.next': {
+    de: 'Weiter',
+    en: 'Next'
+  },
+  'tutorial.back': {
+    de: 'Zurück',
+    en: 'Back'
+  },
+  'tutorial.skip': {
+    de: 'Überspringen',
+    en: 'Skip'
+  },
+  'tutorial.progress': {
+    de: (current: number, total: number) => `${current} von ${total}`,
+    en: (current: number, total: number) => `${current} of ${total}`
   }
 };
 
 export const translateAppString = (
   key: string,
   language: 'de' | 'en' = 'de',
-  arg?: string | number
+  ...args: (string | number)[]
 ): string => {
   const trans = APP_TRANSLATIONS[key];
   if (!trans) return key;
   const valueObj = trans[language] || trans['de'];
   if (typeof valueObj === 'function') {
-    return valueObj(arg as any);
+    return valueObj(...(args as [any, ...any[]]));
   }
   return valueObj;
 };

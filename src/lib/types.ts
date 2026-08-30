@@ -564,6 +564,8 @@ export interface UserProfile {
   legalVersion?: string;
   legalLocale?: string;
   onboardingCompleted: boolean;
+  appTutorialEligible?: boolean;
+  appTutorialVersion?: number;
   username?: string | null;
   usernameLowercase?: string | null;
   usernameLastChangedAt?: Timestamp;

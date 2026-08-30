@@ -47,6 +47,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlaceCardSkeleton, FeaturedPlaceCardSkeleton, ActivityCardSkeleton, FeaturedActivityCardSkeleton } from '@/components/activa/card-skeletons';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
+import { AppTutorialProvider, useAppTutorial } from '@/lib/tutorial/tutorial-context';
+import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useFriendRadar } from '@/hooks/use-friend-radar';
@@ -150,7 +152,7 @@ const PREMIUM_FILTERS = [
 
 const placeDetailsCache = new Map<string, string[]>();
 
-export default function Home() {
+function HomeContent() {
   const ENABLE_NEW_RANKING_PIPELINE = true;
   const sessionEpochRef = useRef(Date.now());
   const language = useLanguage();
@@ -2238,6 +2240,7 @@ export default function Home() {
 
 <div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500">
   <Button
+    data-tutorial-id="nav-create"
     variant="ghost"
     size="icon"
     className="
@@ -2304,6 +2307,26 @@ export default function Home() {
         isOpen={isPremiumUpsellOpen}
         onClose={() => setIsPremiumUpsellOpen(false)}
       />
+      <FeedTutorialDialogListener activityModalPlace={activityModalPlace} />
     </>
+  );
+}
+
+function FeedTutorialDialogListener({ activityModalPlace }: { activityModalPlace: any }) {
+  const { onDialogOpen } = useAppTutorial();
+  useEffect(() => {
+    if (activityModalPlace) {
+      onDialogOpen(true);
+    }
+  }, [activityModalPlace, onDialogOpen]);
+  return null;
+}
+
+export default function Home() {
+  return (
+    <AppTutorialProvider>
+      <HomeContent />
+      <TutorialOverlay />
+    </AppTutorialProvider>
   );
 }
