@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { CURRENT_APP_TUTORIAL_VERSION } from './tutorial-config';
+import { CURRENT_APP_TUTORIAL_VERSION, TUTORIAL_STEPS } from './tutorial-config';
 
 console.log('🧪 Running Tutorial Logic & Security Rule Sync Tests...');
 
@@ -58,5 +58,20 @@ console.log('✅ PASS: URLSearchParams removes tutorial=replay preserving ref=12
 const testUrl2 = 'https://app.com/?tutorial=replay';
 assert.equal(cleanReplayUrl(testUrl2), '/', 'Query cleaning removes solo tutorial=replay leaving root /');
 console.log('✅ PASS: URLSearchParams removes solo tutorial=replay leaving /');
+
+// 4. Dual Target Mapping & Fallback Test
+assert.equal(TUTORIAL_STEPS[0].targetId, 'nav-feed');
+assert.equal(TUTORIAL_STEPS[0].headerTargetId, 'header-feed');
+assert.equal(TUTORIAL_STEPS[1].targetId, 'nav-explore');
+assert.equal(TUTORIAL_STEPS[1].headerTargetId, 'header-explore');
+assert.equal(TUTORIAL_STEPS[2].targetId, 'nav-map');
+assert.equal(TUTORIAL_STEPS[2].headerTargetId, 'header-map');
+assert.equal(TUTORIAL_STEPS[3].targetId, 'nav-chat');
+assert.equal(TUTORIAL_STEPS[3].headerTargetId, 'header-chat');
+assert.equal(TUTORIAL_STEPS[4].targetId, 'nav-profile');
+assert.equal(TUTORIAL_STEPS[4].headerTargetId, 'header-profile');
+assert.equal(TUTORIAL_STEPS[5].targetId, 'nav-create');
+assert.equal(TUTORIAL_STEPS[5].headerTargetId, undefined);
+console.log('✅ PASS: TUTORIAL_STEPS 1-5 configure dual Nav + Header targets, Step 6 configures single nav-create target');
 
 console.log('🎉 All Tutorial Logic Tests Passed!');

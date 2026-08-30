@@ -3,56 +3,68 @@
 import { useState, useEffect, useCallback } from 'react';
 
 export interface TargetRect {
+  id: string;
   top: number;
   left: number;
   width: number;
   height: number;
 }
 
-interface TutorialSpotlightProps {
-  targetId: string;
-  onRectChange?: (rect: TargetRect | null) => void;
+export function useTargetRect(targetId: string): TargetRect | null {
+  const rects = useTargetRects([targetId]);
+  return rects[0] || null;
 }
 
-export function useTargetRect(targetId: string): TargetRect | null {
-  const [rect, setRect] = useState<TargetRect | null>(null);
+export function useTargetRects(targetIds: (string | undefined)[]): TargetRect[] {
+  const validIdsKey = targetIds.filter(Boolean).join(',');
+  const [rects, setRects] = useState<TargetRect[]>([]);
 
-  const updateRect = useCallback(() => {
-    const element = document.querySelector(`[data-tutorial-id="${targetId}"]`);
-    if (!element) {
-      setRect(null);
-      return;
+  const updateRects = useCallback(() => {
+    const validIds = validIdsKey.split(',').filter(Boolean);
+    const result: TargetRect[] = [];
+
+    for (const id of validIds) {
+      const element = document.querySelector(`[data-tutorial-id="${id}"]`);
+      if (element) {
+        const r = element.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          result.push({
+            id,
+            top: r.top,
+            left: r.left,
+            width: r.width,
+            height: r.height,
+          });
+        }
+      }
     }
 
-    const r = element.getBoundingClientRect();
-    if (r.width === 0 || r.height === 0) {
-      setRect(null);
-      return;
-    }
-
-    setRect({
-      top: r.top,
-      left: r.left,
-      width: r.width,
-      height: r.height,
-    });
-  }, [targetId]);
+    setRects(result);
+  }, [validIdsKey]);
 
   useEffect(() => {
-    updateRect();
+    updateRects();
 
-    const element = document.querySelector(`[data-tutorial-id="${targetId}"]`);
+    const validIds = validIdsKey.split(',').filter(Boolean);
+    const elements: Element[] = [];
     let resizeObserver: ResizeObserver | null = null;
 
-    if (element && typeof ResizeObserver !== 'undefined') {
+    if (typeof ResizeObserver !== 'undefined') {
       resizeObserver = new ResizeObserver(() => {
-        updateRect();
+        updateRects();
       });
-      resizeObserver.observe(element);
+    }
+
+    for (const id of validIds) {
+      const element = document.querySelector(`[data-tutorial-id="${id}"]`);
+      if (element) {
+        elements.push(element);
+        resizeObserver?.observe(element);
+      }
     }
 
     const handleWindowEvents = () => {
-      updateRect();
+      updateRects();
     };
 
     window.addEventListener('resize', handleWindowEvents, { passive: true });
@@ -60,15 +72,15 @@ export function useTargetRect(targetId: string): TargetRect | null {
     window.addEventListener('scroll', handleWindowEvents, { passive: true });
 
     return () => {
-      if (resizeObserver && element) {
-        resizeObserver.unobserve(element);
+      if (resizeObserver) {
+        elements.forEach((el) => resizeObserver?.unobserve(el));
         resizeObserver.disconnect();
       }
       window.removeEventListener('resize', handleWindowEvents);
       window.removeEventListener('orientationchange', handleWindowEvents);
       window.removeEventListener('scroll', handleWindowEvents);
     };
-  }, [targetId, updateRect]);
+  }, [validIdsKey, updateRects]);
 
-  return rect;
+  return rects;
 }

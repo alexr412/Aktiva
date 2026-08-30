@@ -735,6 +735,7 @@ export default function ProfilePage() {
                 <div className="absolute top-0 left-0 right-0 h-[35vh] bg-gradient-to-b from-emerald-50/50 to-transparent dark:from-emerald-950/10 z-0" />
 
                 <AppHeader
+                    headerTutorialId="header-profile"
                     containerClassName="max-w-6xl"
                     title={
                         <span className="flex items-center gap-2">

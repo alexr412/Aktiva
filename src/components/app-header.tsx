@@ -18,6 +18,7 @@ export interface AppHeaderProps {
   className?: string;
   /** Container max-width class override (defaults to max-w-[1536px]) */
   containerClassName?: string;
+  headerTutorialId?: string;
 }
 
 export function AppHeader({
@@ -27,6 +28,7 @@ export function AppHeader({
   children,
   className,
   containerClassName = 'max-w-[1536px]',
+  headerTutorialId,
 }: AppHeaderProps) {
   const hasSubHeader = Boolean(children);
 
@@ -35,7 +37,7 @@ export function AppHeader({
       {/* Main Header Row - Fixed h-11 height (44px) without padding/margin distortion */}
       <div className={cn('global-header-container h-11', containerClassName, hasSubHeader && 'mb-3.5')}>
         {/* Left Slot: Icon/Avatar + Title */}
-        <div className="flex items-center gap-2.5 min-w-0 shrink">
+        <div data-tutorial-id={headerTutorialId} className="flex items-center gap-2.5 min-w-0 shrink">
           {icon && (
             <div className="w-9 h-9 flex items-center justify-center shrink-0">
               {icon}

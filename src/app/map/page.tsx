@@ -143,6 +143,7 @@ export default function MapPage() {
     <div className="flex flex-col h-[calc(100dvh-var(--bottom-nav-height,66px))] lg:h-dvh w-full bg-slate-50 dark:bg-neutral-950 relative overflow-hidden">
       {/* Viewport Header */}
       <AppHeader
+        headerTutorialId="header-map"
         className="shrink-0 z-20"
         title={
           <span className="flex items-center gap-2">

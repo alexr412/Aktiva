@@ -245,6 +245,7 @@ export default function ChatPage() {
     <>
       <div className="flex h-full w-full flex-col bg-[#fcfcfb] dark:bg-neutral-950 overflow-hidden">
         <AppHeader
+          headerTutorialId="header-chat"
           containerClassName="max-w-5xl"
           title={
             <span className="flex items-center gap-2">

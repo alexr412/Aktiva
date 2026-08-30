@@ -400,6 +400,7 @@ export default function ExplorePage() {
             <main className="flex-1 flex flex-col min-h-0 relative w-full overflow-hidden">
                 {/* Header */}
                 <AppHeader
+                    headerTutorialId="header-explore"
                     title={
                         <span className="flex items-center gap-2">
                             {language === 'de' ? 'Aktivitäten' : 'Activities'}

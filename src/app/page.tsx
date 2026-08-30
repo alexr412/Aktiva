@@ -2135,6 +2135,7 @@ function HomeContent() {
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
         <AppHeader
+          headerTutorialId="header-feed"
           icon={
             <Link href="/profile" className="shrink-0">
               <ProfileAvatar

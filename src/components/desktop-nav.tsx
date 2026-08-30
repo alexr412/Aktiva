@@ -23,11 +23,13 @@ export function DesktopNav({ className }: { className?: string }) {
       {MAIN_NAV_ITEMS.map((item) => {
         const isActive = getIsActiveNav(item.href, pathname);
         const label = language === 'de' ? item.labelDe : item.labelEn;
+        const headerTutorialId = item.href === '/' ? 'header-feed' : item.href === '/explore' ? 'header-explore' : item.href === '/map' ? 'header-map' : item.href === '/chat' ? 'header-chat' : item.href === '/profile' ? 'header-profile' : undefined;
 
         return (
           <Link
             key={item.href}
             href={item.href}
+            data-tutorial-id={headerTutorialId}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
               "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 relative whitespace-nowrap",
