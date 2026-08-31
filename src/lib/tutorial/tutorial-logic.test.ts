@@ -59,8 +59,8 @@ const testUrl2 = 'https://app.com/?tutorial=replay';
 assert.equal(cleanReplayUrl(testUrl2), '/', 'Query cleaning removes solo tutorial=replay leaving root /');
 console.log('✅ PASS: URLSearchParams removes solo tutorial=replay leaving /');
 
-// 4. 13-Step Structure & Route Mapping Assertions
-assert.equal(TUTORIAL_STEPS.length, 13, 'Tutorial must have exactly 13 steps');
+// 4. 14-Step Structure & Route Mapping Assertions
+assert.equal(TUTORIAL_STEPS.length, 14, 'Tutorial must have exactly 14 steps');
 assert.equal(TUTORIAL_STEPS[0].targetId, 'header-profile-identity');
 assert.equal(TUTORIAL_STEPS[1].targetId, 'header-location');
 assert.equal(TUTORIAL_STEPS[2].targetId, 'feed-intro');
@@ -78,8 +78,10 @@ assert.equal(TUTORIAL_STEPS[11].targetId, 'nav-chat');
 assert.equal(TUTORIAL_STEPS[11].route, '/chat');
 assert.equal(TUTORIAL_STEPS[12].targetId, 'nav-profile');
 assert.equal(TUTORIAL_STEPS[12].route, '/profile');
+assert.equal(TUTORIAL_STEPS[13].targetId, 'nav-profile');
+assert.equal(TUTORIAL_STEPS[13].titleKey, 'tutorial.step14.title');
 
-console.log('✅ PASS: TUTORIAL_STEPS 1-13 structure and route mapping verified');
+console.log('✅ PASS: TUTORIAL_STEPS 1-14 structure and route mapping verified');
 
 // 5. Desktop vs Mobile Position Calculation Test
 function getCardStyleTest(targetRect: { top: number; left: number; width: number; height: number } | null, viewportWidth: number, viewportHeight: number): { top?: number | string; left?: number | string } {

@@ -232,12 +232,8 @@ export async function searchCachedPlaces(
           }
         }
 
-        if (
-          maxDistanceKm !== undefined &&
-          maxDistanceKm !== null &&
-          placeCopy.distance !== undefined &&
-          placeCopy.distance > maxDistanceKm
-        ) {
+        const effectiveMaxKm = maxDistanceKm !== undefined && maxDistanceKm !== null ? maxDistanceKm : 100;
+        if (placeCopy.distance !== undefined && placeCopy.distance > effectiveMaxKm) {
           continue;
         }
 

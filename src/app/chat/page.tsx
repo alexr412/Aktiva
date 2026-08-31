@@ -15,7 +15,7 @@ import { useChatSync } from '@/contexts/chat-sync-context';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Users, UserPlus, Search, MessageCircle, User, Building } from 'lucide-react';
+import { Users, UserPlus, Search, MessageCircle, User, Building, X } from 'lucide-react';
 import { AddFriendDialog } from '@/components/friends/AddFriendDialog';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { DesktopNav } from '@/components/desktop-nav';
@@ -266,14 +266,26 @@ export default function ChatPage() {
           }
         >
           <div className="px-4 sm:px-6 max-w-5xl mx-auto w-full space-y-3">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-neutral-400" />
+            <div className="relative flex items-center bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md border border-slate-200/80 dark:border-neutral-800 rounded-2xl shadow-xs hover:shadow-sm focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/10 transition-all duration-200 h-11 px-3.5 group">
+              <Search className="h-4 w-4 text-neutral-400 group-focus-within:text-emerald-500 transition-colors shrink-0 mr-2.5 pointer-events-none" />
               <Input 
+                type="search"
+                aria-label={language === 'de' ? "Chats durchsuchen" : "Search chats"}
                 placeholder={language === 'de' ? "Chats durchsuchen..." : "Search chats..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 w-full rounded-[16px] border-none bg-neutral-100/60 pl-11 font-bold text-xs text-neutral-600 focus-visible:ring-offset-0 focus-visible:ring-emerald-500/20 dark:bg-neutral-900/50 dark:text-neutral-100 placeholder:text-neutral-400"
+                className="w-full h-full border-0 bg-transparent shadow-none font-bold text-xs text-slate-900 dark:text-neutral-100 placeholder:text-neutral-400 focus-visible:ring-0 focus-visible:ring-offset-0 p-0"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  aria-label={language === 'de' ? "Suche löschen" : "Clear search"}
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors rounded-full shrink-0 ml-1.5"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">

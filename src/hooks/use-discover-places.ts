@@ -341,9 +341,8 @@ export function useDiscoverPlaces() {
       return nameStr.toLowerCase().includes(q) || addrStr.toLowerCase().includes(q);
     });
 
-    if (maxDistance !== null) {
-      filtered = filtered.filter((place) => place.distance === undefined || place.distance === null || place.distance <= maxDistance);
-    }
+    const effectiveMaxDistance = maxDistance !== null ? maxDistance : 100;
+    filtered = filtered.filter((place) => place.distance === undefined || place.distance === null || place.distance <= effectiveMaxDistance);
 
     const uniqueMap = new Map<string, Place>();
     filtered.forEach((p, idx) => {

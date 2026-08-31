@@ -106,4 +106,12 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     titleKey: 'tutorial.step13.title',
     descriptionKey: 'tutorial.step13.description',
   },
+  {
+    id: 14,
+    route: '/profile',
+    targetId: 'nav-profile',
+    headerTargetId: 'header-profile',
+    titleKey: 'tutorial.step14.title',
+    descriptionKey: 'tutorial.step14.description',
+  },
 ];

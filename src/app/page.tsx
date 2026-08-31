@@ -2,6 +2,7 @@
 
 import { DesktopNav } from '@/components/desktop-nav';
 import { AppHeader } from '@/components/app-header';
+import { DesktopSearchBar } from '@/components/search/DesktopSearchBar';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -893,11 +894,10 @@ function HomeContent() {
         }
         return { ...item, distance };
       });
-      if (maxDistance !== null) {
-        filteredList = filteredList.filter((item: any) => {
-          return item.distance !== undefined && item.distance !== null && item.distance <= maxDistance;
-        });
-      }
+      const effectiveMaxDistance = maxDistance !== null ? maxDistance : 100;
+      filteredList = filteredList.filter((item: any) => {
+        return item.distance !== undefined && item.distance !== null && item.distance <= effectiveMaxDistance;
+      });
     }
 
     if (debouncedSearchQuery) {
@@ -959,7 +959,8 @@ function HomeContent() {
       if (item.lat && (item.lon || (item as any).lng)) {
         const itemLon = item.lon || (item as any).lng;
         const distance = calculateDistance(userLocation.lat, userLocation.lng, item.lat, itemLon);
-        if (maxDistance !== null && distance > maxDistance) return false;
+        const effectiveMaxDistance = maxDistance !== null ? maxDistance : 100;
+        if (distance > effectiveMaxDistance) return false;
       } else {
         return false;
       }
@@ -1044,8 +1045,9 @@ function HomeContent() {
       return name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
     });
 
-    if ((isHighlightsCategory || isAktivCategory) && maxDistance !== null) {
-      filtered = filtered.filter(place => place.distance !== undefined && place.distance !== null && place.distance <= maxDistance);
+    if (isHighlightsCategory || isAktivCategory) {
+      const effectiveMaxDistance = maxDistance !== null ? maxDistance : 100;
+      filtered = filtered.filter(place => place.distance !== undefined && place.distance !== null && place.distance <= effectiveMaxDistance);
     }
 
     const uniqueMap = new Map<string, Place>();
@@ -2151,62 +2153,93 @@ function HomeContent() {
           }
           title={language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}
         >
-          <div className="flex flex-col gap-3 max-w-[1536px] mx-auto w-full">
-            {/* Location Row */}
-            <div className="px-4 sm:px-6 flex items-center justify-start">
-              <button data-tutorial-id="header-location" onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800 max-w-full min-w-0">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
-                <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest truncate">{cityName}</span>
-                {planningState.isPlanning && (
-                  <span
-                    role="button"
-                    aria-label="Manuellen Standort zurücksetzen"
-                    title="Standort zurücksetzen"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      requestLocation({ interactive: false });
-                    }}
-                    className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[11px] leading-none shrink-0"
-                  >
-                    ×
-                  </span>
-                )}
-                <ChevronDown className="h-3 w-3 text-neutral-400 shrink-0" />
-              </button>
-            </div>
+          <div className="flex flex-col gap-2.5 md:gap-2 max-w-[1536px] mx-auto w-full">
+            {/* Mobile Layout (< 768px): Exact existing stacked layout */}
+            <div className="md:hidden flex flex-col gap-3">
+              {/* Location Row */}
+              <div className="px-4 sm:px-6 flex items-center justify-start">
+                <button data-tutorial-id="header-location" onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800 max-w-full min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
+                  <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest truncate">{cityName}</span>
+                  {planningState.isPlanning && (
+                    <span
+                      role="button"
+                      aria-label="Manuellen Standort zurücksetzen"
+                      title="Standort zurücksetzen"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        requestLocation({ interactive: false });
+                      }}
+                      className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[11px] leading-none shrink-0"
+                    >
+                      ×
+                    </span>
+                  )}
+                  <ChevronDown className="h-3 w-3 text-neutral-400 shrink-0" />
+                </button>
+              </div>
 
-            {/* Search & Radius Row */}
-            <div className="px-4 sm:px-6">
-              <div className="flex items-center gap-3 w-full max-w-2xl">
-                <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
-                  {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
-                  <Input 
-                    type="search" 
-                    id="search-input"
-                    aria-label={language === "de" ? "Aktivitätssuche" : "Activity search"}
-                    placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} 
-                    value={searchQuery} 
-                    onChange={handleSearchInput} 
-                    disabled={isSearching} 
-                    className="w-full pl-9 h-11 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400" 
-                  />
-                </form>
-                <div className="relative group shrink-0">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" className="group h-11 px-3 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className="h-3.5 w-3.5 opacity-30 transition-transform group-data-[state=open]:rotate-180" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Radius' : 'Radius'}</span><span className="text-sm font-black">{maxDistance === null ? '∞' : `${maxDistance} km`}</span></div>
-                        <input type="range" min="1" max="100" value={maxDistance || 100} onChange={(e) => setMaxDistance(parseInt(e.target.value) === 100 ? null : parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
-                        <div className="grid grid-cols-4 gap-2">{[5, 10, 25, null].map((r) => <button key={r === null ? 'all' : r} onClick={() => setMaxDistance(r)} className={cn("py-2 rounded-xl text-[10px] font-black transition-all", maxDistance === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>{r === null ? 'Alle' : `${r}k`}</button>)}</div>
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+              {/* Search & Radius Row */}
+              <div className="px-4 sm:px-6">
+                <div className="flex items-center gap-3 w-full max-w-2xl">
+                  <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
+                    {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
+                    <Input 
+                      type="search" 
+                      id="search-input"
+                      aria-label={language === "de" ? "Aktivitätssuche" : "Activity search"}
+                      placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} 
+                      value={searchQuery} 
+                      onChange={handleSearchInput} 
+                      disabled={isSearching} 
+                      className="w-full pl-9 pr-9 h-11 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400" 
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        aria-label={language === "de" ? "Suche löschen" : "Clear search"}
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors rounded-full"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </form>
+                  <div className="relative group shrink-0">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" className="group h-11 px-3 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className="h-3.5 w-3.5 opacity-30 transition-transform group-data-[state=open]:rotate-180" /></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Radius' : 'Radius'}</span><span className="text-sm font-black">{maxDistance === null ? '∞' : `${maxDistance} km`}</span></div>
+                          <input type="range" min="1" max="100" value={maxDistance || 100} onChange={(e) => setMaxDistance(parseInt(e.target.value) === 100 ? null : parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                          <div className="grid grid-cols-4 gap-2">{[5, 10, 25, null].map((r) => <button key={r === null ? 'all' : r} onClick={() => setMaxDistance(r)} className={cn("py-2 rounded-xl text-[10px] font-black transition-all", maxDistance === r ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>{r === null ? 'Alle' : `${r}k`}</button>)}</div>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {/* Desktop Layout (>= 768px): Unified Desktop Search Bar */}
+            <div className="hidden md:block px-4 sm:px-6">
+              <DesktopSearchBar
+                cityName={cityName}
+                isPlanningLocation={planningState.isPlanning}
+                onOpenLocationDialog={() => setIsLocationSearchOpen(true)}
+                onResetPlanningLocation={() => requestLocation({ interactive: false })}
+                searchQuery={searchQuery}
+                onSearchQueryChange={handleSearchInput}
+                onClearSearch={() => setSearchQuery('')}
+                onSearchSubmit={handleSearchSubmit}
+                isSearching={isSearching}
+                maxDistance={maxDistance}
+                onMaxDistanceChange={setMaxDistance}
+                language={language}
+              />
             </div>
 
             {/* Category Filters */}

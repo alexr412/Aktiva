@@ -895,6 +895,14 @@ const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => strin
     de: 'Hier verwaltest du dein Profil, deine Aktivitäten, Favoriten und Einstellungen.',
     en: 'Manage your profile, hosted activities, saved spots, and settings.'
   },
+  'tutorial.step14.title': {
+    de: 'Regeln & Sicherheit',
+    en: 'Rules & Safety'
+  },
+  'tutorial.step14.description': {
+    de: 'Bleib stets respektvoll und freundlich. Beleidigungen sind nicht erlaubt – passe bei Treffen mit anderen immer auf deine Sicherheit auf!',
+    en: 'Be respectful and friendly at all times. Insults are not tolerated – stay safe when meeting others in person!'
+  },
   'tutorial.next': {
     de: 'Weiter',
     en: 'Next'
