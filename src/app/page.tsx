@@ -2324,10 +2324,5 @@ function FeedTutorialDialogListener({ activityModalPlace }: { activityModalPlace
 }
 
 export default function Home() {
-  return (
-    <AppTutorialProvider>
-      <HomeContent />
-      <TutorialOverlay />
-    </AppTutorialProvider>
-  );
+  return <HomeContent />;
 }

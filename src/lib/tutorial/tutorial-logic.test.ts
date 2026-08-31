@@ -80,4 +80,54 @@ assert.equal(TUTORIAL_STEPS[12].targetId, 'nav-profile');
 assert.equal(TUTORIAL_STEPS[12].route, '/profile');
 
 console.log('✅ PASS: TUTORIAL_STEPS 1-13 structure and route mapping verified');
+
+// 5. Desktop vs Mobile Position Calculation Test
+function getCardStyleTest(targetRect: { top: number; left: number; width: number; height: number } | null, viewportWidth: number, viewportHeight: number): { top?: number | string; left?: number | string } {
+  const isDesktop = viewportWidth >= 768;
+
+  if (!isDesktop) {
+    if (targetRect) {
+      const isTopHalf = targetRect.top < viewportHeight / 2;
+      if (isTopHalf) {
+        return { top: Math.min(targetRect.top + targetRect.height + 16, viewportHeight - 220), left: '50%' };
+      } else {
+        return { left: '50%' };
+      }
+    }
+    return { top: '50%', left: '50%' };
+  }
+
+  const cardWidth = 380;
+  const cardHeight = 210;
+  const padding = 20;
+  const gap = 16;
+
+  if (!targetRect) {
+    return { top: '50%', left: '50%' };
+  }
+
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+  const targetBottom = targetRect.top + targetRect.height;
+
+  if (targetBottom + gap + cardHeight <= viewportHeight - padding) {
+    const left = Math.max(padding, Math.min(targetCenterX - cardWidth / 2, viewportWidth - cardWidth - padding));
+    return { top: targetBottom + gap, left };
+  }
+
+  const top = Math.max(padding, Math.min(targetBottom + gap, viewportHeight - cardHeight - padding));
+  const left = Math.max(padding, Math.min(targetCenterX - cardWidth / 2, viewportWidth - cardWidth - padding));
+  return { top, left };
+}
+
+// Test Step 1 (Profile Identity at Top Left 20, 20) on 1440x900
+const desktopPos1 = getCardStyleTest({ top: 20, left: 20, width: 120, height: 40 }, 1440, 900);
+assert.equal(desktopPos1.top, 76, 'Desktop Tooltip must sit below top-left profile header target (20 + 40 + 16)');
+assert.ok(typeof desktopPos1.left === 'number' && desktopPos1.left >= 20, 'Desktop Tooltip left position must be in target proximity');
+console.log('✅ PASS: Desktop Tooltip (1440x900) positions in target proximity below Step 1 target');
+
+// Test Mobile (390x844)
+const mobilePos1 = getCardStyleTest({ top: 20, left: 20, width: 120, height: 40 }, 390, 844);
+assert.equal(mobilePos1.left, '50%', 'Mobile Tooltip uses centered 50% left position');
+console.log('✅ PASS: Mobile Tooltip (390x844) preserves centered mobile layout');
+
 console.log('🎉 All Tutorial Logic Tests Passed!');

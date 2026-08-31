@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -21,9 +21,18 @@ interface AppTutorialContextType {
 
 const AppTutorialContext = createContext<AppTutorialContextType | null>(null);
 
+function SearchParamReplayListener({ onReplayDetected }: { onReplayDetected: () => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams && searchParams.get('tutorial') === 'replay') {
+      onReplayDetected();
+    }
+  }, [searchParams, onReplayDetected]);
+  return null;
+}
+
 export function AppTutorialProvider({ children }: { children: React.ReactNode }) {
   const { user, userProfile, loading: authLoading } = useAuth();
-  const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
@@ -47,20 +56,25 @@ export function AppTutorialProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  // 1. Replay Query Param Detection from /settings/help -> /?tutorial=replay
-  useEffect(() => {
-    if (searchParams && searchParams.get('tutorial') === 'replay') {
-      setIsReplay(true);
-      setCurrentStepIndex(1);
-      setIsActive(true);
-      isWritingCompletionRef.current = false;
-      clearReplayQueryParam();
-    }
-  }, [searchParams, clearReplayQueryParam]);
+  const handleReplayDetected = useCallback(() => {
+    setIsReplay(true);
+    setCurrentStepIndex(1);
+    setIsActive(true);
+    isWritingCompletionRef.current = false;
+    clearReplayQueryParam();
+  }, [clearReplayQueryParam]);
+
+  const isDisallowedRoute =
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/reset-password') ||
+    pathname.startsWith('/onboarding') ||
+    ['/imprint', '/terms', '/privacy', '/licenses', '/cancellation', '/accessibility'].includes(pathname);
 
   // 2. Auto-Start Eligibility Evaluation for new onboarded users
   useEffect(() => {
-    if (authLoading || !user || !userProfile || isActive || hasAutoStartedRef.current || isReplay) {
+    if (authLoading || !user || !userProfile || isActive || hasAutoStartedRef.current || isReplay || isDisallowedRoute) {
       return;
     }
 
@@ -75,7 +89,7 @@ export function AppTutorialProvider({ children }: { children: React.ReactNode })
       setIsActive(true);
       isWritingCompletionRef.current = false;
     }
-  }, [authLoading, user, userProfile, isActive, isReplay]);
+  }, [authLoading, user, userProfile, isActive, isReplay, isDisallowedRoute]);
 
   // 3. Automatic Route Navigation Controller
   useEffect(() => {
@@ -170,6 +184,9 @@ export function AppTutorialProvider({ children }: { children: React.ReactNode })
         startReplay,
       }}
     >
+      <Suspense fallback={null}>
+        <SearchParamReplayListener onReplayDetected={handleReplayDetected} />
+      </Suspense>
       {children}
     </AppTutorialContext.Provider>
   );

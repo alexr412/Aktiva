@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { usePathname } from 'next/navigation';
 import { TUTORIAL_STEPS } from '@/lib/tutorial/tutorial-config';
 import { useTargetRects } from './TutorialSpotlight';
 import { TutorialTooltipCard } from './TutorialTooltipCard';
@@ -16,12 +17,27 @@ export function TutorialOverlay() {
     skipTutorial,
   } = useAppTutorial();
 
+  const pathname = usePathname();
+
   const currentStep = TUTORIAL_STEPS[currentStepIndex - 1];
   const targetIds = currentStep ? [currentStep.targetId, currentStep.headerTargetId] : [];
   const targetRects = useTargetRects(targetIds);
 
   const primaryRect = targetRects.find((r) => r.id === currentStep?.targetId) || targetRects[0] || null;
   const isStep9 = currentStepIndex === 9;
+  const isRouteMatching = !currentStep?.route || pathname === currentStep.route;
+
+  // Track target waiting grace period to avoid flickering during page transitions
+  const [isTargetGracePeriod, setIsTargetGracePeriod] = useState(true);
+
+  useEffect(() => {
+    setIsTargetGracePeriod(true);
+    const timer = setTimeout(() => {
+      setIsTargetGracePeriod(false);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [currentStepIndex, pathname]);
 
   // Keyboard navigation and Focus Trap handler
   useEffect(() => {
@@ -38,7 +54,6 @@ export function TutorialOverlay() {
         e.preventDefault();
         prevStep();
       } else if (e.key === 'Tab') {
-        // Custom focus trap for Tooltip + Step 9 target
         const cardElement = document.querySelector('[data-tutorial-tooltip-card]');
         const targetElement = isStep9 ? document.querySelector(`[data-tutorial-id="nav-create"]`) : null;
 
@@ -75,14 +90,22 @@ export function TutorialOverlay() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isActive, currentStepIndex, isStep9, nextStep, prevStep, skipTutorial]);
 
-  if (!isActive || !currentStep) {
+  const isDisallowedRoute =
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/reset-password') ||
+    pathname.startsWith('/onboarding') ||
+    ['/imprint', '/terms', '/privacy', '/licenses', '/cancellation', '/accessibility'].includes(pathname);
+
+  if (!isActive || !currentStep || isDisallowedRoute) {
     return null;
   }
 
   // Segmented Shield calculation for Step 9 vs other steps
   const renderInteractionShield = () => {
     if (!isStep9 || !primaryRect) {
-      // Full screen shield for explanatory steps (blocks background interaction even with dual highlights!)
+      // Full screen shield for explanatory steps
       return (
         <div
           className="fixed inset-0 z-[9998] pointer-events-auto bg-transparent"
@@ -181,6 +204,9 @@ export function TutorialOverlay() {
     );
   };
 
+  // If currently navigating to another route, render clean backdrop shield while route & target mount
+  const showCard = isRouteMatching && (!isTargetGracePeriod || targetRects.length > 0);
+
   const content = (
     <div
       role="dialog"
@@ -191,15 +217,17 @@ export function TutorialOverlay() {
     >
       {renderSvgSpotlight()}
       {renderInteractionShield()}
-      <TutorialTooltipCard
-        step={currentStep}
-        stepIndex={currentStepIndex}
-        totalSteps={TUTORIAL_STEPS.length}
-        targetRect={primaryRect}
-        onNext={nextStep}
-        onPrev={prevStep}
-        onSkip={skipTutorial}
-      />
+      {showCard && (
+        <TutorialTooltipCard
+          step={currentStep}
+          stepIndex={currentStepIndex}
+          totalSteps={TUTORIAL_STEPS.length}
+          targetRect={primaryRect}
+          onNext={nextStep}
+          onPrev={prevStep}
+          onSkip={skipTutorial}
+        />
+      )}
     </div>
   );
 

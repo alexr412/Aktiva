@@ -19,6 +19,8 @@ import { NotificationProvider } from '@/contexts/notification-context';
 import { InAppNotificationContainer } from '@/components/notifications/InAppNotificationContainer';
 import { FriendRadarProvider } from '@/hooks/use-friend-radar';
 import { AppSplashScreen } from '@/components/common/AppSplashScreen';
+import { AppTutorialProvider } from '@/lib/tutorial/tutorial-context';
+import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
 
 export const metadata: Metadata = {
   title: 'Activa',
@@ -114,16 +116,19 @@ export default function RootLayout({
                       <ChatSyncProvider>
                         <NotificationProvider>
                           <InAppNotificationContainer />
-                          <div className="relative flex h-dvh w-full flex-col bg-background overflow-hidden">
-                            <PlanningModeBanner />
-                            <main className="flex-1 min-h-0 w-full relative flex flex-col overflow-hidden">
-                              {children}
-                            </main>
-                            <BottomNav />
-                            <AdminQuickNavigator />
-                          </div>
-                          <Toaster />
-                          <StatusBorder />
+                          <AppTutorialProvider>
+                            <TutorialOverlay />
+                            <div className="relative flex h-dvh w-full flex-col bg-background overflow-hidden">
+                              <PlanningModeBanner />
+                              <main className="flex-1 min-h-0 w-full relative flex flex-col overflow-hidden">
+                                {children}
+                              </main>
+                              <BottomNav />
+                              <AdminQuickNavigator />
+                            </div>
+                            <Toaster />
+                            <StatusBorder />
+                          </AppTutorialProvider>
                         </NotificationProvider>
                       </ChatSyncProvider>
                     </FavoritesProvider>
