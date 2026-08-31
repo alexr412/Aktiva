@@ -153,6 +153,7 @@ export function CategoryFilters({
     <>
       <div 
         ref={containerRef}
+        data-tutorial-id="feed-filters"
         className={cn(
         vertical 
           ? "flex flex-col gap-2 w-full items-stretch"
@@ -184,9 +185,11 @@ export function CategoryFilters({
 
         {displayedTabs.map((tab) => {
           const isActive = activeTabId === tab.id && !isOpenRoomsMode;
+          const tabTutorialId = tab.id === 'Active' ? 'feed-tab-active' : tab.id === 'Community' ? 'feed-tab-community' : tab.id === 'Favorites' ? 'feed-tab-favorites' : undefined;
           return (
             <Button
               key={tab.id}
+              data-tutorial-id={tabTutorialId}
               onClick={() => {
                 if (isOpenRoomsMode) {
                   onOpenRoomsChange?.(false);

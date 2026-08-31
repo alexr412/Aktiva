@@ -21,7 +21,7 @@ export function TutorialOverlay() {
   const targetRects = useTargetRects(targetIds);
 
   const primaryRect = targetRects.find((r) => r.id === currentStep?.targetId) || targetRects[0] || null;
-  const isStep6 = currentStepIndex === 6;
+  const isStep9 = currentStepIndex === 9;
 
   // Keyboard navigation and Focus Trap handler
   useEffect(() => {
@@ -38,9 +38,9 @@ export function TutorialOverlay() {
         e.preventDefault();
         prevStep();
       } else if (e.key === 'Tab') {
-        // Custom focus trap for Tooltip + Step 6 target
+        // Custom focus trap for Tooltip + Step 9 target
         const cardElement = document.querySelector('[data-tutorial-tooltip-card]');
-        const targetElement = isStep6 ? document.querySelector(`[data-tutorial-id="nav-create"]`) : null;
+        const targetElement = isStep9 ? document.querySelector(`[data-tutorial-id="nav-create"]`) : null;
 
         const focusables: HTMLElement[] = [];
         if (cardElement) {
@@ -73,16 +73,16 @@ export function TutorialOverlay() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isActive, currentStepIndex, isStep6, nextStep, prevStep, skipTutorial]);
+  }, [isActive, currentStepIndex, isStep9, nextStep, prevStep, skipTutorial]);
 
   if (!isActive || !currentStep) {
     return null;
   }
 
-  // Segmented Shield calculation for Step 6 vs Steps 1-5
+  // Segmented Shield calculation for Step 9 vs other steps
   const renderInteractionShield = () => {
-    if (!isStep6 || !primaryRect) {
-      // Full screen shield for Steps 1-5 (blocks background interaction even with dual highlights!)
+    if (!isStep9 || !primaryRect) {
+      // Full screen shield for explanatory steps (blocks background interaction even with dual highlights!)
       return (
         <div
           className="fixed inset-0 z-[9998] pointer-events-auto bg-transparent"
@@ -91,7 +91,7 @@ export function TutorialOverlay() {
       );
     }
 
-    // Segmented Shield for Step 6: 4 blocks surrounding nav-create bounding box
+    // Segmented Shield for Step 9: 4 blocks surrounding nav-create bounding box
     const padding = 6;
     const tTop = Math.max(0, primaryRect.top - padding);
     const tLeft = Math.max(0, primaryRect.left - padding);

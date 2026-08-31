@@ -791,57 +791,117 @@ const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => strin
     de: 'Verbindungsproblem. Bitte versuche es später noch einmal.',
     en: 'Connection problem. Please try again later.'
   },
-  'tutorial.feed.title': {
-    de: 'Feed',
-    en: 'Feed'
+  'tutorial.step1.title': {
+    de: 'Dein Profil',
+    en: 'Your Profile'
   },
-  'tutorial.feed.description': {
-    de: 'Aktivitäten und Orte in der Nähe finden.',
-    en: 'Find activities and places nearby.'
+  'tutorial.step1.description': {
+    de: 'Hier siehst du deinen Namen und deinen Profilbereich.',
+    en: 'Here you can see your name and profile section.'
   },
-  'tutorial.explore.title': {
+  'tutorial.step2.title': {
+    de: 'Aktueller Standort',
+    en: 'Current Location'
+  },
+  'tutorial.step2.description': {
+    de: 'Hier siehst du, für welchen Ort dir gerade Aktivitäten und Spots angezeigt werden.',
+    en: 'Here you can see the location currently selected for activities and spots.'
+  },
+  'tutorial.step3.title': {
+    de: 'Dein Feed',
+    en: 'Your Feed'
+  },
+  'tutorial.step3.description': {
+    de: 'Das ist der Kern von Activa. Hier siehst du, was in deiner Umgebung gerade los ist.',
+    en: 'This is the core of Activa. Here you can see what is happening around you.'
+  },
+  'tutorial.step4.title': {
+    de: 'Aktivitäten an Orten',
+    en: 'Activities at Places'
+  },
+  'tutorial.step4.description': {
+    de: 'Unter Aktiv findest du aktuelle Räume und Aktivitäten an bestehenden Orten in deiner Nähe.',
+    en: 'Under Active you will find current rooms and activities at existing spots nearby.'
+  },
+  'tutorial.step5.title': {
+    de: 'Community-Aktivitäten',
+    en: 'Community Activities'
+  },
+  'tutorial.step5.description': {
+    de: 'Unter Community findest du Aktivitäten, die andere Nutzer selbst erstellt haben.',
+    en: 'Under Community you will find meetups created directly by other users.'
+  },
+  'tutorial.step6.title': {
+    de: 'Deine Favoriten',
+    en: 'Your Favorites'
+  },
+  'tutorial.step6.description': {
+    de: 'Hier findest du Aktivitäten und Orte wieder, die du gespeichert hast.',
+    en: 'Here you can quickly find activities and spots you have saved.'
+  },
+  'tutorial.step7.title': {
+    de: 'Filter & Umkreis',
+    en: 'Filters & Radius'
+  },
+  'tutorial.step7.description': {
+    de: 'Mit den Filtern und dem Umkreis bestimmst du, was dir im Feed angezeigt wird.',
+    en: 'Use filters and radius to customize what appears in your feed.'
+  },
+  'tutorial.step8.title': {
+    de: 'Aktivität an einem Ort',
+    en: 'Activity at a Spot'
+  },
+  'tutorial.step8.description': {
+    de: 'Mit dem + an einem Ort kannst du direkt dort eine Aktivität erstellen.',
+    en: 'Use the + button on a spot to host an activity right there.'
+  },
+  'tutorial.step9.title': {
+    de: 'Eigene Aktivität erstellen',
+    en: 'Create Custom Activity'
+  },
+  'tutorial.step9.description': {
+    de: 'Mit dem + unten kannst du eine eigene Aktivität unabhängig von einem vorgeschlagenen Ort erstellen.',
+    en: 'Tap the + button below to create your own custom activity anytime.'
+  },
+  'tutorial.step10.title': {
     de: 'Entdecken',
     en: 'Explore'
   },
-  'tutorial.explore.description': {
-    de: 'Inhalte gezielt filtern und entdecken.',
-    en: 'Filter and discover content specifically.'
+  'tutorial.step10.description': {
+    de: 'Swipe durch Aktivitäten und Orte und finde schnell, was dich interessiert.',
+    en: 'Swipe through activities and spots to quickly find what interests you.'
   },
-  'tutorial.map.title': {
+  'tutorial.step11.title': {
     de: 'Karte',
     en: 'Map'
   },
-  'tutorial.map.description': {
-    de: 'Aktivitäten und Orte geografisch anzeigen.',
-    en: 'View activities and places on the map.'
+  'tutorial.step11.description': {
+    de: 'Auf der Karte siehst du Aktivitäten und Orte direkt in deiner Umgebung.',
+    en: 'View activities and spots geographically around you on the map.'
   },
-  'tutorial.chat.title': {
+  'tutorial.step12.title': {
     de: 'Chats',
     en: 'Chats'
   },
-  'tutorial.chat.description': {
-    de: 'Treffen mit Gruppen organisieren.',
-    en: 'Organize group meetups.'
+  'tutorial.step12.description': {
+    de: 'Hier schreibst du mit den Teilnehmern deiner Aktivitäten und planst eure Treffen.',
+    en: 'Chat with participants of your activities and organize meetups.'
   },
-  'tutorial.profile.title': {
+  'tutorial.step13.title': {
     de: 'Profil',
     en: 'Profile'
   },
-  'tutorial.profile.description': {
-    de: 'Profil, eigene Aktivitäten und Einstellungen verwalten.',
-    en: 'Manage your profile, activities and settings.'
-  },
-  'tutorial.create.title': {
-    de: 'Aktivität erstellen',
-    en: 'Create Activity'
-  },
-  'tutorial.create.description': {
-    de: 'Tippe auf +, um etwas zu erstellen.',
-    en: 'Tap + to create something.'
+  'tutorial.step13.description': {
+    de: 'Hier verwaltest du dein Profil, deine Aktivitäten, Favoriten und Einstellungen.',
+    en: 'Manage your profile, hosted activities, saved spots, and settings.'
   },
   'tutorial.next': {
     de: 'Weiter',
     en: 'Next'
+  },
+  'tutorial.finish': {
+    de: 'Fertig',
+    en: 'Finish'
   },
   'tutorial.back': {
     de: 'Zurück',

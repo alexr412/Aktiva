@@ -263,6 +263,7 @@ export function PlaceCard({
 
                         <Button
                             size="icon"
+                            data-tutorial-id="spot-card-create"
                             onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
                             className={cn(
                                 "rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-[color,background-color,transform,box-shadow] duration-200 active:scale-95 flex items-center justify-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",

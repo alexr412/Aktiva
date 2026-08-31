@@ -59,19 +59,25 @@ const testUrl2 = 'https://app.com/?tutorial=replay';
 assert.equal(cleanReplayUrl(testUrl2), '/', 'Query cleaning removes solo tutorial=replay leaving root /');
 console.log('✅ PASS: URLSearchParams removes solo tutorial=replay leaving /');
 
-// 4. Dual Target Mapping & Fallback Test
-assert.equal(TUTORIAL_STEPS[0].targetId, 'nav-feed');
-assert.equal(TUTORIAL_STEPS[0].headerTargetId, 'header-feed');
-assert.equal(TUTORIAL_STEPS[1].targetId, 'nav-explore');
-assert.equal(TUTORIAL_STEPS[1].headerTargetId, 'header-explore');
-assert.equal(TUTORIAL_STEPS[2].targetId, 'nav-map');
-assert.equal(TUTORIAL_STEPS[2].headerTargetId, 'header-map');
-assert.equal(TUTORIAL_STEPS[3].targetId, 'nav-chat');
-assert.equal(TUTORIAL_STEPS[3].headerTargetId, 'header-chat');
-assert.equal(TUTORIAL_STEPS[4].targetId, 'nav-profile');
-assert.equal(TUTORIAL_STEPS[4].headerTargetId, 'header-profile');
-assert.equal(TUTORIAL_STEPS[5].targetId, 'nav-create');
-assert.equal(TUTORIAL_STEPS[5].headerTargetId, undefined);
-console.log('✅ PASS: TUTORIAL_STEPS 1-5 configure dual Nav + Header targets, Step 6 configures single nav-create target');
+// 4. 13-Step Structure & Route Mapping Assertions
+assert.equal(TUTORIAL_STEPS.length, 13, 'Tutorial must have exactly 13 steps');
+assert.equal(TUTORIAL_STEPS[0].targetId, 'header-profile-identity');
+assert.equal(TUTORIAL_STEPS[1].targetId, 'header-location');
+assert.equal(TUTORIAL_STEPS[2].targetId, 'feed-main');
+assert.equal(TUTORIAL_STEPS[3].targetId, 'feed-tab-active');
+assert.equal(TUTORIAL_STEPS[4].targetId, 'feed-tab-community');
+assert.equal(TUTORIAL_STEPS[5].targetId, 'feed-tab-favorites');
+assert.equal(TUTORIAL_STEPS[6].targetId, 'feed-filters');
+assert.equal(TUTORIAL_STEPS[7].targetId, 'spot-card-create');
+assert.equal(TUTORIAL_STEPS[8].targetId, 'nav-create');
+assert.equal(TUTORIAL_STEPS[9].targetId, 'nav-explore');
+assert.equal(TUTORIAL_STEPS[9].route, '/explore');
+assert.equal(TUTORIAL_STEPS[10].targetId, 'nav-map');
+assert.equal(TUTORIAL_STEPS[10].route, '/map');
+assert.equal(TUTORIAL_STEPS[11].targetId, 'nav-chat');
+assert.equal(TUTORIAL_STEPS[11].route, '/chat');
+assert.equal(TUTORIAL_STEPS[12].targetId, 'nav-profile');
+assert.equal(TUTORIAL_STEPS[12].route, '/profile');
 
+console.log('✅ PASS: TUTORIAL_STEPS 1-13 structure and route mapping verified');
 console.log('🎉 All Tutorial Logic Tests Passed!');

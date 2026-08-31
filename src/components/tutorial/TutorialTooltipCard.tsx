@@ -33,6 +33,7 @@ export function TutorialTooltipCard({
   const description = translateAppString(step.descriptionKey, language);
   const progressText = translateAppString('tutorial.progress', language, stepIndex, totalSteps);
   const nextLabel = translateAppString('tutorial.next', language);
+  const finishLabel = translateAppString('tutorial.finish', language);
   const backLabel = translateAppString('tutorial.back', language);
   const skipLabel = translateAppString('tutorial.skip', language);
 
@@ -109,17 +110,15 @@ export function TutorialTooltipCard({
           </Button>
         )}
 
-        {stepIndex < totalSteps && (
-          <Button
-            type="button"
-            size="sm"
-            onClick={onNext}
-            className="h-9 px-4 text-xs font-bold rounded-xl shadow-sm"
-          >
-            {nextLabel}
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
-        )}
+        <Button
+          type="button"
+          size="sm"
+          onClick={onNext}
+          className="h-9 px-4 text-xs font-bold rounded-xl shadow-sm"
+        >
+          {stepIndex === totalSteps ? finishLabel : nextLabel}
+          {stepIndex < totalSteps && <ChevronRight className="w-4 h-4 ml-1" />}
+        </Button>
       </div>
     </div>
   );

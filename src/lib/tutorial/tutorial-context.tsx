@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
@@ -24,6 +24,8 @@ const AppTutorialContext = createContext<AppTutorialContextType | null>(null);
 export function AppTutorialProvider({ children }: { children: React.ReactNode }) {
   const { user, userProfile, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const { toast } = useToast();
   const language = useLanguage();
 
@@ -75,6 +77,15 @@ export function AppTutorialProvider({ children }: { children: React.ReactNode })
     }
   }, [authLoading, user, userProfile, isActive, isReplay]);
 
+  // 3. Automatic Route Navigation Controller
+  useEffect(() => {
+    if (!isActive) return;
+    const stepConfig = TUTORIAL_STEPS[currentStepIndex - 1];
+    if (stepConfig?.route && pathname !== stepConfig.route) {
+      router.push(stepConfig.route);
+    }
+  }, [isActive, currentStepIndex, pathname, router]);
+
   // Complete tutorial action (saves appTutorialVersion = 1 if not replay)
   const completeTutorial = useCallback(async () => {
     setIsActive(false);
@@ -121,14 +132,22 @@ export function AppTutorialProvider({ children }: { children: React.ReactNode })
     }
   }, [currentStepIndex]);
 
-  // Step 6 Dialog Open Event Handler
+  const step9DialogWasOpenedRef = useRef(false);
+
+  // Step 9 Dialog Open Event Handler (Advances tutorial to Step 10 only after dialog is closed open === false)
   const onDialogOpen = useCallback(
     (open: boolean) => {
-      if (isActive && currentStepIndex === 6 && open === true) {
-        completeTutorial();
+      if (!isActive || currentStepIndex !== 9) return;
+
+      if (open === true) {
+        step9DialogWasOpenedRef.current = true;
+      } else if (open === false && step9DialogWasOpenedRef.current) {
+        step9DialogWasOpenedRef.current = false;
+        setCurrentStepIndex(10);
+        router.push('/explore');
       }
     },
-    [isActive, currentStepIndex, completeTutorial]
+    [isActive, currentStepIndex, router]
   );
 
   const startReplay = useCallback(() => {

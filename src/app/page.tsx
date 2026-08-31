@@ -2137,7 +2137,7 @@ function HomeContent() {
         <AppHeader
           headerTutorialId="header-feed"
           icon={
-            <Link href="/profile" className="shrink-0">
+            <Link href="/profile" data-tutorial-id="header-profile-identity" className="shrink-0">
               <ProfileAvatar
                 className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
                 photoURL={userProfile?.photoURL}
@@ -2153,7 +2153,7 @@ function HomeContent() {
           <div className="flex flex-col gap-3 max-w-[1536px] mx-auto w-full">
             {/* Location Row */}
             <div className="px-4 sm:px-6 flex items-center justify-start">
-              <button onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800 max-w-full min-w-0">
+              <button data-tutorial-id="header-location" onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800 max-w-full min-w-0">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
                 <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest truncate">{cityName}</span>
                 {planningState.isPlanning && (
@@ -2232,7 +2232,7 @@ function HomeContent() {
                   loading={isInitialFeedLoading && !hasUsableFeedData}
                 />
               </div>
-            <div ref={discoverFeedRef} id="discover-feed" className="scroll-mt-24">
+            <div ref={discoverFeedRef} id="discover-feed" data-tutorial-id="feed-main" className="scroll-mt-24">
               {renderContent()}
             </div>
           </div>
