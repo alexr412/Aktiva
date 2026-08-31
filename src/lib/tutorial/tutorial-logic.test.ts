@@ -63,7 +63,7 @@ console.log('✅ PASS: URLSearchParams removes solo tutorial=replay leaving /');
 assert.equal(TUTORIAL_STEPS.length, 13, 'Tutorial must have exactly 13 steps');
 assert.equal(TUTORIAL_STEPS[0].targetId, 'header-profile-identity');
 assert.equal(TUTORIAL_STEPS[1].targetId, 'header-location');
-assert.equal(TUTORIAL_STEPS[2].targetId, 'feed-main');
+assert.equal(TUTORIAL_STEPS[2].targetId, 'feed-intro');
 assert.equal(TUTORIAL_STEPS[3].targetId, 'feed-tab-active');
 assert.equal(TUTORIAL_STEPS[4].targetId, 'feed-tab-community');
 assert.equal(TUTORIAL_STEPS[5].targetId, 'feed-tab-favorites');
@@ -108,25 +108,33 @@ function getCardStyleTest(targetRect: { top: number; left: number; width: number
 
   const targetCenterX = targetRect.left + targetRect.width / 2;
   const targetBottom = targetRect.top + targetRect.height;
+  const targetRight = targetRect.left + targetRect.width;
+
+  let preferredLeft = targetCenterX - cardWidth / 2;
+  if (targetRect.left < 220) {
+    preferredLeft = targetRect.left;
+  } else if (targetRect.left > viewportWidth - 450) {
+    preferredLeft = targetRight - cardWidth;
+  }
+
+  const clampLeft = Math.max(padding, Math.min(preferredLeft, viewportWidth - cardWidth - padding));
 
   if (targetBottom + gap + cardHeight <= viewportHeight - padding) {
-    const left = Math.max(padding, Math.min(targetCenterX - cardWidth / 2, viewportWidth - cardWidth - padding));
-    return { top: targetBottom + gap, left };
+    return { top: targetBottom + gap, left: clampLeft };
   }
 
   const top = Math.max(padding, Math.min(targetBottom + gap, viewportHeight - cardHeight - padding));
-  const left = Math.max(padding, Math.min(targetCenterX - cardWidth / 2, viewportWidth - cardWidth - padding));
-  return { top, left };
+  return { top, left: clampLeft };
 }
 
-// Test Step 1 (Profile Identity at Top Left 20, 20) on 1440x900
-const desktopPos1 = getCardStyleTest({ top: 20, left: 20, width: 120, height: 40 }, 1440, 900);
-assert.equal(desktopPos1.top, 76, 'Desktop Tooltip must sit below top-left profile header target (20 + 40 + 16)');
-assert.ok(typeof desktopPos1.left === 'number' && desktopPos1.left >= 20, 'Desktop Tooltip left position must be in target proximity');
+// Test Step 1 (Profile Identity at Top Left 16, 12) on 1440x900
+const desktopPos1 = getCardStyleTest({ top: 12, left: 16, width: 220, height: 44 }, 1440, 900);
+assert.equal(desktopPos1.top, 72, 'Desktop Tooltip must sit below top-left profile header target (12 + 44 + 16)');
+assert.equal(desktopPos1.left, 20, 'Desktop Tooltip left position must align with left edge target (clamped to padding 20)');
 console.log('✅ PASS: Desktop Tooltip (1440x900) positions in target proximity below Step 1 target');
 
 // Test Mobile (390x844)
-const mobilePos1 = getCardStyleTest({ top: 20, left: 20, width: 120, height: 40 }, 390, 844);
+const mobilePos1 = getCardStyleTest({ top: 12, left: 16, width: 220, height: 44 }, 390, 844);
 assert.equal(mobilePos1.left, '50%', 'Mobile Tooltip uses centered 50% left position');
 console.log('✅ PASS: Mobile Tooltip (390x844) preserves centered mobile layout');
 

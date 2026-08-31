@@ -27,7 +27,7 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
   {
     id: 3,
     route: '/',
-    targetId: 'feed-main',
+    targetId: 'feed-intro',
     headerTargetId: 'nav-feed',
     titleKey: 'tutorial.step3.title',
     descriptionKey: 'tutorial.step3.description',

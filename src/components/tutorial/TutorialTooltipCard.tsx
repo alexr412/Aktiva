@@ -44,7 +44,7 @@ function getCardStyle(targetRect: TargetRect | null): React.CSSProperties {
     return cardStyle;
   }
 
-  // Desktop contextual positioning
+  // Desktop contextual positioning (380px compact coachmark)
   const cardWidth = 380;
   const cardHeight = 210;
   const padding = 20;
@@ -65,24 +65,32 @@ function getCardStyle(targetRect: TargetRect | null): React.CSSProperties {
   const targetTop = targetRect.top;
   const targetRight = targetRect.left + targetRect.width;
 
-  // Priority 1: Below target
+  // Compute horizontal alignment relative to target & screen edges
+  let preferredLeft = targetCenterX - cardWidth / 2;
+  if (targetRect.left < 220) {
+    preferredLeft = targetRect.left;
+  } else if (targetRect.left > window.innerWidth - 450) {
+    preferredLeft = targetRight - cardWidth;
+  }
+
+  const clampLeft = Math.max(padding, Math.min(preferredLeft, window.innerWidth - cardWidth - padding));
+
+  // Priority 1: Below target (ideal for header items, identity, location, tabs, filters)
   if (targetBottom + gap + cardHeight <= window.innerHeight - padding) {
-    const left = Math.max(padding, Math.min(targetCenterX - cardWidth / 2, window.innerWidth - cardWidth - padding));
     return {
       position: 'fixed',
       top: targetBottom + gap,
-      left,
+      left: clampLeft,
       zIndex: 99999,
     };
   }
 
   // Priority 2: Above target
   if (targetTop - gap - cardHeight >= padding) {
-    const left = Math.max(padding, Math.min(targetCenterX - cardWidth / 2, window.innerWidth - cardWidth - padding));
     return {
       position: 'fixed',
       top: targetTop - gap - cardHeight,
-      left,
+      left: clampLeft,
       zIndex: 99999,
     };
   }
@@ -111,11 +119,10 @@ function getCardStyle(targetRect: TargetRect | null): React.CSSProperties {
 
   // Fallback: Clamp within viewport
   const top = Math.max(padding, Math.min(targetBottom + gap, window.innerHeight - cardHeight - padding));
-  const left = Math.max(padding, Math.min(targetCenterX - cardWidth / 2, window.innerWidth - cardWidth - padding));
   return {
     position: 'fixed',
     top,
-    left,
+    left: clampLeft,
     zIndex: 99999,
   };
 }

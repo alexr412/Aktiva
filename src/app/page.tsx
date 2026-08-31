@@ -2135,9 +2135,10 @@ function HomeContent() {
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
         <AppHeader
+          headerIdentityTutorialId="header-profile-identity"
           headerTutorialId="header-feed"
           icon={
-            <Link href="/profile" data-tutorial-id="header-profile-identity" className="shrink-0">
+            <Link href="/profile" className="shrink-0">
               <ProfileAvatar
                 className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
                 photoURL={userProfile?.photoURL}
@@ -2222,7 +2223,7 @@ function HomeContent() {
         </AppHeader>
         <main className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
           <div className="max-w-[1536px] mx-auto w-full pt-2">
-            <div className="px-3 sm:px-6 mb-3 sm:mb-4">
+            <div className="px-3 sm:px-6 mb-3 sm:mb-4" data-tutorial-id="feed-intro">
                 <ActivaPulseHero 
                   cityName={isLocationLoading ? null : resolvedCityName}
                   openRoomsCount={openRoomsCount}
