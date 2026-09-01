@@ -54,7 +54,7 @@ service cloud.firestore {
       let uData = (isSignedIn() && userId == request.auth.uid) ? getUserData() : (userId != null && exists(/databases/$(database)/documents/users/$(userId)) ? get(/databases/$(database)/documents/users/$(userId)).data : {});
       let status = uData.get('accountStatus', 'active');
       let isStatusBlocked = status in ['banned', 'deleted', 'disabled'] || isSuspendedFailClosed(uData);
-      return uData.get('onboardingCompleted', false) == true &&
+      return uData.get('onboardingCompleted', true) == true &&
              uData.get('isBanned', false) == false &&
              !isStatusBlocked;
     }
@@ -145,7 +145,6 @@ service cloud.firestore {
         // 1. Authentifizierung & Onboarding
         isSignedIn() && 
         request.resource.data.hostId == request.auth.uid && 
-        uData.keys().size() > 0 &&
         isUserOnboardedAndActive(request.auth.uid) &&
         
         // 2. Whitelist-Validierung
@@ -181,7 +180,7 @@ service cloud.firestore {
         request.resource.data.participantsPreview[0].uid == request.auth.uid &&
         request.resource.data.participantsPreview[0].keys().hasOnly(['uid', 'displayName', 'photoURL', 'username']) &&
         
-        request.resource.data.get('hostUsername', null) == uData.get('username', null) &&
+        (!('hostUsername' in request.resource.data) || request.resource.data.hostUsername == null || uData.get('username', null) == null || request.resource.data.hostUsername == uData.get('username', null)) &&
         request.resource.data.participantsPreview[0].get('username', null) == request.resource.data.get('hostUsername', null) &&
         
         request.resource.data.participantDetails is map && request.resource.data.participantDetails.keys().hasOnly([request.auth.uid]) &&
