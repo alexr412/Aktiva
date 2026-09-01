@@ -746,6 +746,18 @@ export default function ProfilePage() {
         ? userData.averageRating
         : calculatedAvg;
 
+    const handleStatClick = (idx: number) => {
+        if (idx === 0) {
+            setActiveTab('activities');
+            document.getElementById('profile-tabs')?.scrollIntoView({ behavior: 'smooth' });
+        } else if (idx === 1) {
+            document.getElementById('friends-section')?.scrollIntoView({ behavior: 'smooth' });
+        } else if (idx === 2) {
+            setActiveTab('reviews');
+            document.getElementById('profile-tabs')?.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     return (
         <>
             <div className="relative flex flex-col h-full w-full bg-[#F8FAFC] dark:bg-neutral-950 overflow-y-auto pb-bottom-nav-safe lg:pb-12">
@@ -897,8 +909,8 @@ export default function ProfilePage() {
                                 ].map((stat, idx) => (
                                     <button 
                                         key={stat.label} 
-                                        onClick={() => idx === 2 && setActiveTab('reviews')}
-                                        className={cn("flex flex-col items-center py-4 sm:py-5 px-2 sm:px-4 rounded-[1.75rem] border-none shadow-none transition-transform active:scale-95 cursor-pointer", stat.bg, idx === 2 && "hover:scale-105")}
+                                        onClick={() => handleStatClick(idx)}
+                                        className={cn("flex flex-col items-center py-4 sm:py-5 px-2 sm:px-4 rounded-[1.75rem] border-none shadow-none transition-transform hover:scale-105 active:scale-95 cursor-pointer", stat.bg)}
                                     >
                                         <span className={cn("text-2xl sm:text-3xl font-black leading-none mb-1",
                                             idx === 0 ? "text-[#10b981]" :
@@ -1077,12 +1089,12 @@ export default function ProfilePage() {
                     )}
 
                     {/* Section: Freunde */}
-                    <div className="w-full">
+                    <div id="friends-section" className="w-full scroll-mt-24">
                         <FriendList friendIds={userData?.friends || []} />
                     </div>
 
                     {/* Main Tabs Navigation */}
-                    <div className="w-full border-b border-slate-200/60 dark:border-neutral-800">
+                    <div id="profile-tabs" className="w-full border-b border-slate-200/60 dark:border-neutral-800 scroll-mt-24">
                         <nav className="flex justify-around lg:justify-start items-center gap-2 sm:gap-6 lg:gap-8">
                             <TabButton tabName="activities" label={language === 'de' ? 'Aktivitäten' : 'Activities'} />
                             <TabButton tabName="favorites" label={language === 'de' ? 'Favoriten' : 'Favorites'} />
