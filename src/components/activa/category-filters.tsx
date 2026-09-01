@@ -14,6 +14,7 @@ import {
   MessageSquare,
   UserCircle,
   Compass,
+  Calendar,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -73,6 +74,7 @@ type CategoryFiltersProps = {
   vertical?: boolean;
   isOpenRoomsMode?: boolean;
   onOpenRoomsChange?: (enabled: boolean) => void;
+  hasJoinedSpots?: boolean;
 };
 
 export function CategoryFilters({ 
@@ -81,7 +83,8 @@ export function CategoryFilters({
   onCategoryChange, 
   vertical = false,
   isOpenRoomsMode = false,
-  onOpenRoomsChange
+  onOpenRoomsChange,
+  hasJoinedSpots = false
 }: CategoryFiltersProps) {
   const { user, userProfile } = useAuth();
   const language = useLanguage();
@@ -136,7 +139,18 @@ export function CategoryFilters({
 
   const genderTab = getGenderTab(userProfile?.gender);
 
+  const mySpotsTab: CategoryTab = {
+    id: "MySpots",
+    label: "Meine Spots",
+    labelEn: "My Spots",
+    query: ["my_spots"],
+    icon: Calendar,
+    isSystem: true,
+    color: "#3b82f6",
+  };
+
   const effectiveCoreTabs: CategoryTab[] = [
+    ...(hasJoinedSpots ? [mySpotsTab] : []),
     { id: "Active", label: "AKTIV", labelEn: "ACTIVE", query: ["has_activities"], icon: MessageSquare, isSystem: true, color: "#22c55e" },
     genderTab,
     { id: "Highlights", label: "Highlights", labelEn: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true, color: "#f59e0b" },

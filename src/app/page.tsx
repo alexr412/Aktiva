@@ -416,6 +416,27 @@ function HomeContent() {
   const isFavoritesCategory = activeTabId === "Favorites";
   const isHighlightsCategory = activeTabId === "Highlights";
   const isAktivCategory = activeTabId === "Active";
+  const isMySpotsCategory = activeTabId === "MySpots";
+
+  const userJoinedActivities = useMemo(() => {
+    if (!user?.uid || !communityActivities) return [];
+    return communityActivities.filter((item: Activity) => {
+      if (!item) return false;
+      if (item.status === 'cancelled' || item.status === 'completed' || item.status === 'blacklisted') return false;
+      const isHost = item.hostId === user.uid;
+      const isParticipant = Array.isArray(item.participantIds) && item.participantIds.includes(user.uid);
+      return isHost || isParticipant;
+    });
+  }, [user?.uid, communityActivities]);
+
+  const hasJoinedSpots = userJoinedActivities.length > 0;
+
+  useEffect(() => {
+    if (isMySpotsCategory && !hasJoinedSpots) {
+      setActiveTabId("");
+      setActiveCategory([]);
+    }
+  }, [isMySpotsCategory, hasJoinedSpots]);
 
   useEffect(() => {
     setIsCommunityLoading(true);
@@ -940,6 +961,25 @@ function HomeContent() {
     });
   }, [communityActivities, userProfile, userLocation, maxDistance, debouncedSearchQuery]);
 
+  const visibleMySpotsActivities = useMemo(() => {
+    let list = userJoinedActivities;
+    if (debouncedSearchQuery) {
+      const queryLower = debouncedSearchQuery.toLowerCase();
+      list = list.filter((item: any) => {
+        const titleMatch = item.title && item.title.toLowerCase().includes(queryLower);
+        const descMatch = item.description && item.description.toLowerCase().includes(queryLower);
+        const placeMatch = item.placeName && item.placeName.toLowerCase().includes(queryLower);
+        const categoryMatch = item.category && item.category.toLowerCase().includes(queryLower);
+        return titleMatch || descMatch || placeMatch || categoryMatch;
+      });
+    }
+    return [...list].sort((a, b) => {
+      const timeA = a.activityDate?.toMillis ? a.activityDate.toMillis() : 0;
+      const timeB = b.activityDate?.toMillis ? b.activityDate.toMillis() : 0;
+      return timeA - timeB;
+    });
+  }, [userJoinedActivities, debouncedSearchQuery]);
+
   const openRooms = useMemo(() => {
     if (!userLocation) return [];
     
@@ -1083,31 +1123,35 @@ function HomeContent() {
   // Derive explicit active-mode values
   const activeFeedError = isFavoritesCategory
     ? null
-    : (isCommunityCategory ? communityError : error);
+    : ((isCommunityCategory || isMySpotsCategory) ? communityError : error);
 
   const activeFeedIsValidating = isFavoritesCategory
     ? false
-    : (isCommunityCategory ? isCommunityLoading : isValidating);
+    : ((isCommunityCategory || isMySpotsCategory) ? isCommunityLoading : isValidating);
 
   const activeFeedIsFetchingNextPage = isFavoritesCategory
     ? false
-    : (isCommunityCategory ? false : Boolean(size > 0 && displayData && typeof displayData[size - 1] === "undefined"));
+    : ((isCommunityCategory || isMySpotsCategory) ? false : Boolean(size > 0 && displayData && typeof displayData[size - 1] === "undefined"));
 
   const activeFeedIsInitialLoading = isFavoritesCategory
     ? false
-    : (isCommunityCategory 
+    : ((isCommunityCategory || isMySpotsCategory) 
         ? isCommunityLoading && communityActivities.length === 0
         : (!displayData && !error));
 
   const activeFeedHasUsableData = isFavoritesCategory
     ? favorites.length > 0
-    : (isCommunityCategory
-        ? communityActivities.length > 0
-        : !!(displayData && displayData.length > 0 && (displayData[0]?.features?.length > 0 || displayData[0]?.length > 0)));
+    : (isMySpotsCategory
+        ? userJoinedActivities.length > 0
+        : (isCommunityCategory
+            ? communityActivities.length > 0
+            : !!(displayData && displayData.length > 0 && (displayData[0]?.features?.length > 0 || displayData[0]?.length > 0))));
 
   const activeVisibleItemCount = isFavoritesCategory
     ? favorites.length
-    : (isCommunityCategory ? visibleCommunityActivities.length : visiblePlaces.length);
+    : (isMySpotsCategory
+        ? visibleMySpotsActivities.length
+        : (isCommunityCategory ? visibleCommunityActivities.length : visiblePlaces.length));
 
   const isLoadingInitialData = activeFeedIsInitialLoading;
   const hasUsableFeedData = activeFeedHasUsableData;
@@ -1118,7 +1162,7 @@ function HomeContent() {
   const activeError = activeFeedError;
 
   const isReachingEnd = useMemo(() => {
-    if (isCommunityCategory) return true;
+    if (isCommunityCategory || isMySpotsCategory) return true;
     if (activeFeedError) return true;
     if (isEmpty) return true;
     if (!displayData || displayData.length === 0) return false;
@@ -1129,12 +1173,12 @@ function HomeContent() {
       return Boolean(lastPage && lastPage.length < fbLimit);
     }
     return Boolean(lastPage && lastPage.features?.length < expectedLimit);
-  }, [displayData, isEmpty, activeFeedError, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
+  }, [displayData, isEmpty, activeFeedError, isCommunityCategory, isMySpotsCategory, isAktivCategory, isHighlightsCategory]);
 
   const handleActiveFeedRetry = useCallback(async () => {
     if (activeFeedIsValidating) return;
 
-    if (isCommunityCategory) {
+    if (isCommunityCategory || isMySpotsCategory) {
       setCommunityRetryTrigger(prev => prev + 1);
     } else if (isFavoritesCategory) {
       // no-op
@@ -1145,7 +1189,7 @@ function HomeContent() {
         console.error("Retry mutation failed:", err);
       }
     }
-  }, [isCommunityCategory, isFavoritesCategory, activeFeedIsValidating, mutate]);
+  }, [isCommunityCategory, isMySpotsCategory, isFavoritesCategory, activeFeedIsValidating, mutate]);
 
   // Live Vote-Daten: onSnapshot-Listener für alle sichtbaren Spot-IDs.
   // Wenn ein Vote eingeht (auch von anderen Usern/Admins), wird votesMap live aktualisiert
@@ -1319,7 +1363,7 @@ function HomeContent() {
       const target = entries[0];
       if (target.isIntersecting && !isLoadingMore.current) {
         isLoadingMore.current = true;
-        if (!isFavoritesCategory && !isCommunityCategory && !isAktivCategory && !isHighlightsCategory) {
+        if (!isFavoritesCategory && !isCommunityCategory && !isMySpotsCategory && !isAktivCategory && !isHighlightsCategory) {
           const totalFetched = displayData ? displayData.flat().length : 0;
           if (visibleCount < totalFetched) {
             setVisibleCount(prev => prev + PLACES_PER_PAGE);
@@ -1334,7 +1378,7 @@ function HomeContent() {
       }
     }, options);
     if (node) observer.current.observe(node);
-  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, displayData, visibleCount, isFavoritesCategory, isCommunityCategory, isAktivCategory, isHighlightsCategory]);
+  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, displayData, visibleCount, isFavoritesCategory, isCommunityCategory, isMySpotsCategory, isAktivCategory, isHighlightsCategory]);
 
 
 
@@ -1786,6 +1830,9 @@ function HomeContent() {
         if (feedState === 'empty_search') {
           return translateAppString('empty.no_search_matches', language);
         }
+        if (isMySpotsCategory) {
+          return language === 'de' ? 'Du nimmst zurzeit an keinen Spots teil.' : 'You are currently not participating in any spots.';
+        }
         if (isCommunityCategory) {
           return translateAppString('empty.no_activities', language);
         }
@@ -1865,7 +1912,7 @@ function HomeContent() {
     };
 
     if (feedState === 'initial_loading') {
-      if (isCommunityCategory) {
+      if (isCommunityCategory || isMySpotsCategory) {
         return (
           <div 
             className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-6" 
@@ -1988,8 +2035,9 @@ function HomeContent() {
           );
         }
 
-        if (isCommunityCategory) {
-          const visibleSlice = visibleCommunityActivities.slice(0, visibleCount);
+        if (isCommunityCategory || isMySpotsCategory) {
+          const activitiesList = isMySpotsCategory ? visibleMySpotsActivities : visibleCommunityActivities;
+          const visibleSlice = activitiesList.slice(0, visibleCount);
           const featuredActivity = visibleSlice[0] ?? null;
           const standardActivities = visibleSlice.slice(1);
           
@@ -2250,6 +2298,7 @@ function HomeContent() {
                 onCategoryChange={handleCategoryChange} 
                 isOpenRoomsMode={isOpenRoomsMode}
                 onOpenRoomsChange={setIsOpenRoomsMode}
+                hasJoinedSpots={hasJoinedSpots}
               />
             </div>
           </div>
