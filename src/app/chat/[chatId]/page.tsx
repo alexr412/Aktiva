@@ -56,7 +56,7 @@ const DateSeparator = ({ date, language }: { date: Date, language: string }) => 
         <span className="w-full border-t border-slate-200 dark:border-neutral-800" />
       </div>
       <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black">
-        <span className="bg-slate-50 dark:bg-black/95 px-3 text-slate-400">
+        <span className="bg-slate-50 dark:bg-neutral-950 px-3 text-slate-400">
           {formatDate(date)}
         </span>
       </div>
@@ -1143,7 +1143,7 @@ export default function ChatRoomPage() {
 
   return (
     <>
-      <div className="flex h-full w-full bg-slate-50 dark:bg-black/95 overflow-hidden">
+      <div className="flex h-full w-full bg-slate-50 dark:bg-neutral-950 overflow-hidden">
         {/* Desktop Vertical Nav Rail */}
         <DesktopNavRail />
 

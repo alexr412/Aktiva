@@ -25,6 +25,20 @@
           code: ['monospace'],
         },
         colors: {
+          neutral: {
+            50: '#fafafa',
+            100: '#f5f5f5',
+            200: '#e5e5e5',
+            300: '#d4d4d4',
+            400: '#a3a3a3',
+            500: '#737373',
+            600: '#525252',
+            700: '#404040',
+            800: 'hsl(220 10% 23.5%)',
+            850: 'hsl(220 10% 20%)',
+            900: 'hsl(220 10% 16.5%)',
+            950: 'hsl(220 10% 13%)',
+          },
           background: 'hsl(var(--background))',
           foreground: 'hsl(var(--foreground))',
           card: {

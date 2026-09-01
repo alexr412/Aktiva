@@ -36,22 +36,22 @@
   }
 
   .dark {
-    --background: 0 0% 7%;
+    --background: 220 10% 13%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 9%;
+    --card: 220 10% 16.5%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 9%;
+    --popover: 220 10% 16.5%;
     --popover-foreground: 0 0% 98%;
-    --secondary: 0 0% 12%;
+    --secondary: 220 10% 20%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 12%;
+    --muted: 220 10% 20%;
     --muted-foreground: 0 0% 63.9%;
     --accent: 160 84% 15%;
     --accent-foreground: 158 94% 96%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
+    --border: 220 10% 23.5%;
+    --input: 220 10% 23.5%;
     /* Default dark primary fallback */
     --primary: 150 60% 45%;
     --primary-foreground: 0 0% 100%;
@@ -79,7 +79,7 @@
     scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
   }
   .dark html, html.dark, .dark body {
-    scrollbar-color: rgba(115, 115, 115, 0.45) #0b0b0b;
+    scrollbar-color: rgba(115, 115, 115, 0.45) #1d2025;
   }
   body {
     @apply bg-background text-foreground relative overflow-x-hidden;
@@ -100,7 +100,7 @@
 
   .dark ::-webkit-scrollbar-track,
   html.dark ::-webkit-scrollbar-track {
-    background: #0b0b0b;
+    background: #1d2025;
   }
 
   ::-webkit-scrollbar-thumb {
