@@ -46,9 +46,20 @@ export type CategoryTab = {
   color: string;
   isSystem?: boolean;
 };
+
+export function getGenderTab(gender?: string): CategoryTab {
+  if (gender === 'male') {
+    return { id: "GenderOnly", label: "Nur Männer", labelEn: "Men Only", query: ["men_only"], icon: UserCircle, isSystem: true, color: "#3b82f6" };
+  }
+  if (gender === 'diverse') {
+    return { id: "GenderOnly", label: "Nur Diverse", labelEn: "Diverse Only", query: ["diverse_only"], icon: UserCircle, isSystem: true, color: "#a855f7" };
+  }
+  return { id: "GenderOnly", label: "Nur Frauen", labelEn: "Women Only", query: ["women_only"], icon: UserCircle, isSystem: true, color: "#a855f7" };
+}
+
 export const coreTabs: CategoryTab[] = [
     { id: "Active", label: "AKTIV", labelEn: "ACTIVE", query: ["has_activities"], icon: MessageSquare, isSystem: true, color: "#22c55e" },
-    { id: "WomenOnly", label: "Nur Frauen", labelEn: "Women Only", query: ["women_only"], icon: UserCircle, isSystem: true, color: "#a855f7" },
+    { id: "GenderOnly", label: "Nur Frauen", labelEn: "Women Only", query: ["women_only"], icon: UserCircle, isSystem: true, color: "#a855f7" },
     { id: "Highlights", label: "Highlights", labelEn: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true, color: "#f59e0b" },
     { id: "Favorites", label: "Favoriten", labelEn: "Favorites", query: ["favorites"], icon: Bookmark, isSystem: true, color: "#f43f5e" },
     { id: "Community", label: "Community", labelEn: "Community", query: ["community"], icon: Users, isSystem: true, color: "#8b5cf6" },
@@ -122,8 +133,18 @@ export function CategoryFilters({
     return () => clearTimeout(timer);
   }, [activeTabId, isOpenRoomsMode, vertical]);
 
+  const genderTab = getGenderTab(userProfile?.gender);
+
+  const effectiveCoreTabs: CategoryTab[] = [
+    { id: "Active", label: "AKTIV", labelEn: "ACTIVE", query: ["has_activities"], icon: MessageSquare, isSystem: true, color: "#22c55e" },
+    genderTab,
+    { id: "Highlights", label: "Highlights", labelEn: "Highlights", query: ["tourism.attraction"], icon: Sparkles, isSystem: true, color: "#f59e0b" },
+    { id: "Favorites", label: "Favoriten", labelEn: "Favorites", query: ["favorites"], icon: Bookmark, isSystem: true, color: "#f43f5e" },
+    { id: "Community", label: "Community", labelEn: "Community", query: ["community"], icon: Users, isSystem: true, color: "#8b5cf6" },
+  ];
+
   const displayedTabs = [
-    ...coreTabs,
+    ...effectiveCoreTabs,
     ...availableTabs.filter(tab => localActiveTabs.includes(tab.id))
   ];
 
@@ -184,7 +205,7 @@ export function CategoryFilters({
         )}
 
         {displayedTabs.map((tab) => {
-          const isActive = activeTabId === tab.id && !isOpenRoomsMode;
+          const isActive = (activeTabId === tab.id || (tab.id === 'GenderOnly' && (activeTabId === 'WomenOnly' || activeTabId === 'MenOnly' || activeTabId === 'GenderOnly'))) && !isOpenRoomsMode;
           const tabTutorialId = tab.id === 'Active' ? 'feed-tab-active' : tab.id === 'Community' ? 'feed-tab-community' : tab.id === 'Favorites' ? 'feed-tab-favorites' : undefined;
           return (
             <Button
