@@ -3,7 +3,10 @@ import {
   calculateDistanceKm,
   calculateDistance,
   extractCoordinates,
-  formatDistance
+  formatDistance,
+  formatAddressToCityZip,
+  isStreetAddress,
+  formatActivityLocationDisplay,
 } from './geo-utils';
 
 console.log('--- RUNNING AKTIVA GEO UTILS & DISTANCE TESTS ---');
@@ -241,6 +244,28 @@ function testPlaceDetailsLogic() {
   console.log('✅ Integration Test 6 passed');
 }
 
+function testAddressFormatting() {
+  console.log('\n--- RUNNING ADDRESS FORMATTING TESTS ---');
+
+  // Test 1: Full German street address with zip & city
+  const res1 = formatAddressToCityZip('Stapenhorststraße 42b, 33615 Bielefeld, Germany');
+  assert.strictEqual(res1, '33615 Bielefeld', 'Should extract 33615 Bielefeld from street address string');
+
+  // Test 2: Geoapify property object
+  const res2 = formatAddressToCityZip({ postcode: '33615', city: 'Bielefeld' });
+  assert.strictEqual(res2, '33615 Bielefeld', 'Should format object with postcode and city');
+
+  // Test 3: isStreetAddress helper
+  assert.strictEqual(isStreetAddress('Stapenhorststraße 42b'), true);
+  assert.strictEqual(isStreetAddress('Fitness First'), false);
+
+  // Test 4: formatActivityLocationDisplay for custom activity
+  const customAct = { isCustomActivity: true, placeAddress: 'Stapenhorststraße 42b, 33615 Bielefeld, Germany', placeName: 'Stapenhorststraße 42b' };
+  assert.strictEqual(formatActivityLocationDisplay(customAct), '33615 Bielefeld', 'Custom activity should format address as city/zip');
+
+  console.log('✅ Address formatting tests passed');
+}
+
 // Run all test functions
 testHaversineCalculation();
 testInvalidCoordinates();
@@ -253,5 +278,6 @@ testFormatDistanceOver1Km();
 testSpecialNumericValues();
 testIdenticalFormatterOutput();
 testPlaceDetailsLogic();
+testAddressFormatting();
 
 console.log('\n🎉 ALL GEO UTILS AND DISTANCE TESTS PASSED SUCCESSFULLY!');

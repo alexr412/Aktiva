@@ -4,6 +4,7 @@ import { GEOAPIFY_API_KEY } from '@/lib/config';
 import type { Place, GeoapifyFeature, UserPreferences } from '@/lib/types';
 import { calculateRelevanceScore } from '@/lib/ranking';
 import { debugLog } from '@/lib/debug';
+import { formatAddressToCityZip } from '@/lib/geo-utils';
 
 export const ALLOWED_PLACE_DETAIL_FEATURES = new Set([
   'details',
@@ -1000,10 +1001,14 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place | 
     const data = await callGeoapifyGateway('reverse_geocoding', { lat: String(lat), lon: String(lon), limit: '1' });
     if (data.features && data.features.length > 0) {
       const props = data.features[0].properties;
+      const isPoi = Boolean(props.name && typeof props.name === 'string' && props.name.trim());
+      const cityZip = formatAddressToCityZip(props) || "Unbekannter Ort";
+      const resolvedName = isPoi ? props.name.trim() : cityZip;
+      const resolvedAddress = isPoi ? (props.address_line2 || props.formatted || cityZip) : cityZip;
       return {
         id: props.place_id,
-        name: normalizePlaceName(props.name, props.address_line1, "Unbekannter Ort"),
-        address: props.address_line2,
+        name: resolvedName,
+        address: resolvedAddress,
         categories: props.categories || [],
         lat: props.lat,
         lon: props.lon,
@@ -1073,10 +1078,14 @@ export async function geocodeAddress(text: string): Promise<Place | null> {
     const data = await callGeoapifyGateway('geocoding', { text, limit: '1' });
     if (data.features && data.features.length > 0) {
       const props = data.features[0].properties;
+      const isPoi = Boolean(props.name && typeof props.name === 'string' && props.name.trim());
+      const cityZip = formatAddressToCityZip(props) || "Unbekannter Ort";
+      const resolvedName = isPoi ? props.name.trim() : cityZip;
+      const resolvedAddress = isPoi ? (props.address_line2 || props.formatted || cityZip) : cityZip;
       return {
         id: props.place_id,
-        name: normalizePlaceName(props.name, props.address_line1, "Unbekannter Ort"),
-        address: props.address_line2,
+        name: resolvedName,
+        address: resolvedAddress,
         categories: props.categories || [],
         lat: props.lat,
         lon: props.lon,
@@ -1095,16 +1104,23 @@ export async function autocompletePlaces(text: string): Promise<Place[]> {
   try {
     const data = await callGeoapifyGateway('autocomplete', { text, limit: '5' });
     if (data.features) {
-      return data.features.map((f: any) => ({
-        id: f.properties.place_id,
-        name: normalizePlaceName(f.properties.name, f.properties.address_line1, "Unbekannter Ort"),
-        address: f.properties.address_line2,
-        categories: f.properties.categories || [],
-        lat: f.properties.lat,
-        lon: f.properties.lon,
-        openingHours: f.properties.opening_hours || f.properties.datasource?.raw?.opening_hours || null,
-        _rawProperties: f.properties
-      } as Place));
+      return data.features.map((f: any) => {
+        const props = f.properties;
+        const isPoi = Boolean(props.name && typeof props.name === 'string' && props.name.trim());
+        const cityZip = formatAddressToCityZip(props) || "Unbekannter Ort";
+        const resolvedName = isPoi ? props.name.trim() : cityZip;
+        const resolvedAddress = isPoi ? (props.address_line2 || props.formatted || cityZip) : cityZip;
+        return {
+          id: props.place_id,
+          name: resolvedName,
+          address: resolvedAddress,
+          categories: props.categories || [],
+          lat: props.lat,
+          lon: props.lon,
+          openingHours: props.opening_hours || props.datasource?.raw?.opening_hours || null,
+          _rawProperties: props
+        } as Place;
+      });
     }
   } catch (error) {
     console.error("Autocomplete failed:", error);

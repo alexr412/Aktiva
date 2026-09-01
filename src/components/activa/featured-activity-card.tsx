@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { trackActivityView } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
-import { formatDistance } from '@/lib/geo-utils';
+import { formatDistance, formatActivityLocationDisplay } from '@/lib/geo-utils';
 import { getPrimaryIconData, translateAppString } from '@/lib/tag-config';
 import { CategoryCardDecoration } from './category-card-decoration';
 import { tryAcquireActivityActionLock, releaseActivityActionLock, setActivityActionStatus } from '@/lib/activity-action-state';
@@ -214,7 +214,7 @@ export function FeaturedActivityCard({ activity, user, onJoin, hasRequested }: F
                             </h3>
                             {activity.placeAddress && (
                                 <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5 truncate">
-                                    {activity.placeAddress}
+                                    {formatActivityLocationDisplay(activity)}
                                 </p>
                             )}
                             <div className="flex items-center gap-1.5 mt-0.5 text-neutral-400 dark:text-neutral-500 font-bold text-[9px] md:text-[10px]">

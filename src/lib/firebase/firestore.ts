@@ -24,7 +24,7 @@ import {
   documentId,
   onSnapshot,
 } from 'firebase/firestore';
-import { calculateDistance, buildApproximateLocationData } from '../geo-utils';
+import { calculateDistance, buildApproximateLocationData, formatAddressToCityZip } from '../geo-utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory, CommunicationPreferences, NotificationPreferences, Review } from '@/lib/types';
@@ -657,17 +657,17 @@ export async function createActivity({
 
   if (isPlaceBasedActivity) {
     derivedPlaceName = place?.name || customLocationName || "Aktivität";
-    derivedPlaceAddress = place?.address || "";
+    derivedPlaceAddress = formatAddressToCityZip(place?.address || place?.name) || place?.address || "";
   } else {
-    const approx = buildApproximateLocationData(selectedPlace);
+    const approx = buildApproximateLocationData(selectedPlace || place);
     derivedPlaceName = approx.label;
     derivedPlaceAddress = approx.label;
     cityVal = approx.city || "";
     postalCodeVal = approx.postalCode || "";
-    latVal = selectedPlace?.lat;
-    lonVal = selectedPlace?.lon;
+    latVal = selectedPlace?.lat || place?.lat;
+    lonVal = selectedPlace?.lon || place?.lon;
 
-    console.log("[COMMUNITY_LOCATION_DEBUG] rawLocation:", selectedPlace);
+    console.log("[COMMUNITY_LOCATION_DEBUG] rawLocation:", selectedPlace || place);
     console.log("[COMMUNITY_LOCATION_DEBUG] approximateLocationLabel:", approx.label);
     console.log("[COMMUNITY_LOCATION_DEBUG] lat:", latVal);
     console.log("[COMMUNITY_LOCATION_DEBUG] lon:", lonVal);

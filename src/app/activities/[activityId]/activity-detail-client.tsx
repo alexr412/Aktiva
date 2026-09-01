@@ -19,6 +19,7 @@ import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
 import { translateAppString } from '@/lib/tag-config';
 import { UserBadge } from '@/components/common/UserBadge';
+import { formatActivityLocationDisplay } from '@/lib/geo-utils';
 import { TicketQR } from '@/components/ticket-qr';
 import {
   AlertDialog,
@@ -444,7 +445,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
             {activity.placeAddress && (
               <div className="text-slate-450 dark:text-neutral-400 font-bold mb-4 flex items-center gap-1.5 text-xs">
                 {!(activity.title && activity.placeName) && <MapPin className="h-4 w-4 text-primary shrink-0" />}
-                <span className={cn(activity.title && activity.placeName && "pl-5.5")}>{activity.placeAddress}</span>
+                <span className={cn(activity.title && activity.placeName && "pl-5.5")}>{formatActivityLocationDisplay(activity)}</span>
               </div>
             )}
 
@@ -662,7 +663,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                 </div>
                 {activity.placeAddress && (
                   <div className="text-xs text-slate-500 dark:text-neutral-400">
-                    {activity.placeAddress}
+                    {formatActivityLocationDisplay(activity)}
                   </div>
                 )}
                 <Button 

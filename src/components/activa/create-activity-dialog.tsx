@@ -253,7 +253,9 @@ export function CreateActivityDialog({
                         </div>
                         <div className="truncate">
                           <p className="text-sm font-bold text-foreground truncate">{selectedLocation.name}</p>
-                          <p className="text-xs font-medium text-muted-foreground truncate">{selectedLocation.address}</p>
+                          {selectedLocation.address && selectedLocation.address !== selectedLocation.name && (
+                            <p className="text-xs font-medium text-muted-foreground truncate">{selectedLocation.address}</p>
+                          )}
                         </div>
                       </div>
                       <Button
@@ -312,7 +314,9 @@ export function CreateActivityDialog({
                               <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                               <div className="truncate">
                                 <span className="font-bold block truncate">{res.name}</span>
-                                <span className="text-[10px] text-muted-foreground block truncate">{res.address}</span>
+                                {res.address && res.address !== res.name && (
+                                  <span className="text-[10px] text-muted-foreground block truncate">{res.address}</span>
+                                )}
                               </div>
                             </button>
                           ))}

@@ -10,6 +10,7 @@ import { cn, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay
 import { getPrimaryIconData } from '@/lib/tag-config';
 import type { Activity } from '@/lib/types';
 import { useAddressLongPress } from '@/hooks/use-address-long-press';
+import { formatActivityLocationDisplay } from '@/lib/geo-utils';
 
 import {
   Sheet,
@@ -171,7 +172,7 @@ export function ActivityInfoSheet({
             </h2>
             {activity.placeAddress && (
               <ActivityAddressLink
-                address={activity.placeAddress}
+                address={formatActivityLocationDisplay(activity)}
                 placeName={activity.placeName}
                 language={language}
               />

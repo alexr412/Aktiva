@@ -18,7 +18,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { getPrimaryIconData, translateTag, translateAppString } from '@/lib/tag-config';
 import { formatTags } from '@/lib/tag-parser';
 import { useToast } from '@/hooks/use-toast';
-import { formatDistance } from '@/lib/geo-utils';
+import { formatDistance, formatActivityLocationDisplay } from '@/lib/geo-utils';
 import { tryAcquireActivityActionLock, releaseActivityActionLock, setActivityActionStatus } from '@/lib/activity-action-state';
 import Link from 'next/link';
 
@@ -235,7 +235,7 @@ export function ActivityListItem({ activity, user, onJoin, hasRequested }: Activ
                     </div>
                     {activity.placeAddress && (
                         <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5 truncate">
-                            {activity.placeAddress}
+                            {formatActivityLocationDisplay(activity)}
                         </p>
                     )}
                     

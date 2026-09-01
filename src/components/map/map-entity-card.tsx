@@ -11,6 +11,7 @@ import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatDistanceBucketText, normalizePrecisionMeters } from '@/lib/radar-types';
 import { cn } from '@/lib/utils';
 import { useAddressLongPress } from '@/hooks/use-address-long-press';
+import { formatActivityLocationDisplay } from '@/lib/geo-utils';
 
 export interface MapEntityCardProps {
   entity: SelectedMapEntity;
@@ -197,7 +198,7 @@ export function MapEntityCard({
     const title = activity.title || activity.name || activity.placeName || (isDe ? 'Aktivität' : 'Activity');
     const category = activity.category || (isDe ? 'Community' : 'Community');
     const dateTimeStr = formatActivityDateTime(activity.activityDate, activity.isTimeFlexible, language);
-    const locationName = activity.placeName || activity.locationLabel || activity.address || (isDe ? 'Ort' : 'Location');
+    const locationName = formatActivityLocationDisplay(activity) || (isDe ? 'Ort' : 'Location');
     const hostName = activity.hostUsername || activity.hostName || 'host';
 
     const count = activity.participantIds?.length ?? (activity.participantsPreview?.length || 1);

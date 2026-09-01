@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
-import { formatDistance } from '@/lib/geo-utils';
+import { formatDistance, formatActivityLocationDisplay } from '@/lib/geo-utils';
 import { leaveActivity, removeParticipant } from '@/lib/firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import { format, isToday } from 'date-fns';
@@ -363,7 +363,7 @@ export function RoomInfoSheet({
                   {place?.name || activity?.placeName || chat?.placeName}
                 </div>
                 <div className="text-xs font-medium text-slate-500 dark:text-neutral-400 mt-1 leading-normal">
-                  {activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.placeAddress || '') : (place?.address || activity?.placeAddress || '')}
+                  {activity ? formatActivityLocationDisplay(activity) : (place?.address || chat?.placeName || '')}
                 </div>
                 <div className="flex gap-2.5 mt-4">
                   <Button

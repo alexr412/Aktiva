@@ -8,6 +8,7 @@ import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { useLanguage } from '@/hooks/use-language';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { cn, toDateObject } from '@/lib/utils';
+import { formatActivityLocationDisplay } from '@/lib/geo-utils';
 import type { Activity } from '@/lib/types';
 
 interface ProfileActivityCardProps {
@@ -98,7 +99,7 @@ export function ProfileActivityCard({ activity, user, onJoin, compact = false }:
           {activity.placeAddress && (
             <div className={cn("font-bold text-slate-400 truncate min-w-0", compact ? "text-[9px] sm:text-xs mt-0.5" : "text-xs mt-0.5 flex items-center gap-1")}>
               {!compact && <span className="text-slate-350 dark:text-neutral-700">•</span>}
-              <span className="truncate">{activity.placeAddress}</span>
+              <span className="truncate">{formatActivityLocationDisplay(activity)}</span>
             </div>
           )}
           {!compact && activity.description && (

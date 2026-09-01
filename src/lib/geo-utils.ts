@@ -134,6 +134,43 @@ export function buildApproximateLocationData(input: any): ApproximateLocationDat
     return { label: "Unbekannter Ort" };
   }
 
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    if (!trimmed) return { label: "Unbekannter Ort" };
+
+    const matchZipCity = trimmed.match(/\b(\d{4,5})\s+([A-Za-zÄÖÜäöüß\s\-]+?)(?:,|\s+Germany|\s+Deutschland|$)/i);
+    if (matchZipCity) {
+      const cityClean = matchZipCity[2].trim();
+      if (cityClean.toLowerCase() !== 'germany' && cityClean.toLowerCase() !== 'deutschland') {
+        return {
+          label: `${matchZipCity[1]} ${cityClean}`,
+          postalCode: matchZipCity[1],
+          city: cityClean
+        };
+      }
+    }
+
+    const parts = trimmed.split(',').map((s: string) => s.trim());
+    if (parts.length >= 2) {
+      let candidate = parts[parts.length - 2];
+      if ((candidate.toLowerCase() === 'germany' || candidate.toLowerCase() === 'deutschland') && parts.length >= 3) {
+        candidate = parts[parts.length - 3];
+      }
+      const match = candidate.match(/^(\d{4,5})\s+(.+)$/);
+      if (match) {
+        return {
+          label: `${match[1]} ${match[2].trim()}`,
+          postalCode: match[1],
+          city: match[2].trim()
+        };
+      }
+      if (candidate && !/^\d+$/.test(candidate) && candidate.toLowerCase() !== 'germany' && candidate.toLowerCase() !== 'deutschland') {
+        return { label: candidate, city: candidate };
+      }
+    }
+    return { label: trimmed };
+  }
+
   const postalCode = 
     input.postalCode || 
     input.postcode || 
@@ -141,7 +178,8 @@ export function buildApproximateLocationData(input: any): ApproximateLocationDat
     input.properties?.postcode || 
     input.properties?.postalCode || 
     input._rawProperties?.postcode || 
-    input._rawProperties?.postal_code;
+    input._rawProperties?.postal_code ||
+    input._rawProperties?.postalCode;
     
   let city =
     input.city ||
@@ -157,36 +195,31 @@ export function buildApproximateLocationData(input: any): ApproximateLocationDat
     input._rawProperties?.village ||
     input._rawProperties?.municipality;
 
-  // Fallback: try parsing from address if city/postcode is missing
-  if (!postalCode && !city && input.address) {
-    const parts = input.address.split(',').map((s: string) => s.trim());
-    if (parts.length >= 2) {
-      const candidate = parts[parts.length - 2];
-      const match = candidate.match(/^(\d{4,5})\s+(.+)$/);
-      if (match) {
-        return {
-          label: candidate,
-          postalCode: match[1],
-          city: match[2]
-        };
+  // Fallback: try parsing from address string properties if city/postcode is missing
+  if (!postalCode || !city) {
+    const addrStr = input.address || input.formatted || input.address_line2 || input.label || "";
+    if (addrStr && typeof addrStr === 'string') {
+      const matchZipCity = addrStr.match(/\b(\d{4,5})\s+([A-Za-zÄÖÜäöüß\s\-]+?)(?:,|\s+Germany|\s+Deutschland|$)/i);
+      if (matchZipCity) {
+        const pcMatch = matchZipCity[1];
+        const cityMatch = matchZipCity[2].trim();
+        if (!postalCode && pcMatch) input.postalCode = pcMatch;
+        if (!city && cityMatch) city = cityMatch;
       }
-      city = candidate;
-    } else if (parts.length === 1) {
-      city = parts[0];
     }
   }
 
-  const cityStr = city ? String(city) : undefined;
-  const pcStr = postalCode ? String(postalCode) : undefined;
+  const cityStr = city ? String(city).trim() : undefined;
+  const pcStr = postalCode ? String(postalCode).trim() : undefined;
 
-  if (pcStr && cityStr) {
+  if (pcStr && cityStr && cityStr.toLowerCase() !== 'germany' && cityStr.toLowerCase() !== 'deutschland') {
     return {
       label: `${pcStr} ${cityStr}`,
       city: cityStr,
       postalCode: pcStr
     };
   }
-  if (cityStr) {
+  if (cityStr && cityStr.toLowerCase() !== 'germany' && cityStr.toLowerCase() !== 'deutschland') {
     return {
       label: cityStr,
       city: cityStr
@@ -198,5 +231,38 @@ export function buildApproximateLocationData(input: any): ApproximateLocationDat
       postalCode: pcStr
     };
   }
+
   return { label: "Unbekannter Ort" };
 }
+
+export function formatAddressToCityZip(input: any): string {
+  if (!input) return "";
+  const approx = buildApproximateLocationData(input);
+  return approx.label !== "Unbekannter Ort" ? approx.label : (typeof input === 'string' ? input : "");
+}
+
+export function isStreetAddress(text: string): boolean {
+  if (!text) return false;
+  const hasStreetWord = /(?:straße|strasse|str\.|weg|allee|platz|damm|gasse|ring|ufer)/i.test(text);
+  const hasHouseNumber = /\b\d+[a-z]?\b/i.test(text);
+  return hasStreetWord && hasHouseNumber || /\b\d{5}\b/.test(text);
+}
+
+export function formatActivityLocationDisplay(activity: any): string {
+  if (!activity) return "";
+  const rawAddr = activity.placeAddress || activity.address || activity.locationLabel || "";
+  const isCustom = activity.isCustomActivity || activity.isUserEvent || !activity.placeId || activity.placeId === 'custom';
+  
+  if (isCustom) {
+    const formattedCityZip = formatAddressToCityZip(rawAddr || activity.placeName);
+    if (formattedCityZip) return formattedCityZip;
+    if (activity.placeName && !isStreetAddress(activity.placeName)) return activity.placeName;
+    return rawAddr || "";
+  }
+  
+  if (rawAddr) {
+    return formatAddressToCityZip(rawAddr) || rawAddr;
+  }
+  return activity.placeName || "";
+}
+
