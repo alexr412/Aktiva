@@ -217,16 +217,10 @@ service cloud.firestore {
         (!('joinMode' in request.resource.data) || request.resource.data.joinMode in ['direct', 'request']) &&
         (!('placeCategories' in request.resource.data) || (request.resource.data.placeCategories is list && request.resource.data.placeCategories.size() <= 20)) &&
         
-        (request.resource.data.get('placeId', 'custom') == 'custom' || (
+        (!('placeId' in request.resource.data) || request.resource.data.placeId == 'custom' || (
           request.resource.data.placeId is string &&
-          existsAfter(/databases/$(database)/documents/places/$(request.resource.data.placeId)) && 
-          getAfter(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.get('isDeleted', false) == false && 
-          getAfter(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.get('isBlacklisted', false) == false &&
-          getAfter(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.get('activityCount', 0) == (
-            exists(/databases/$(database)/documents/places/$(request.resource.data.placeId)) ?
-              get(/databases/$(database)/documents/places/$(request.resource.data.placeId)).data.get('activityCount', 0) + 1 :
-              1
-          )
+          request.resource.data.placeId.size() > 0 &&
+          request.resource.data.placeId.size() <= 200
         )) &&
         
         request.resource.data.isBoosted is bool && (
