@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { submitHostRating } from '@/lib/firebase/firestore';
 import type { Activity } from '@/lib/types';
@@ -33,6 +33,26 @@ export function HostRatingDialog({ open, onOpenChange, activity, currentUser, on
   const { toast } = useToast();
   const [rating, setRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Safety effect: ensure document.body pointer-events is cleaned up when closed or unmounted
+  useEffect(() => {
+    if (!open) {
+      const timer = setTimeout(() => {
+        if (typeof document !== 'undefined' && document.body.style.pointerEvents === 'none') {
+          document.body.style.pointerEvents = '';
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof document !== 'undefined' && document.body.style.pointerEvents === 'none') {
+        document.body.style.pointerEvents = '';
+      }
+    };
+  }, []);
 
   const hostDetails = (activity.participantDetails || {})[activity.hostId];
 

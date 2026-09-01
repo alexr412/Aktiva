@@ -48,10 +48,11 @@ export type CategoryTab = {
 };
 
 export function getGenderTab(gender?: string): CategoryTab {
-  if (gender === 'male') {
+  const g = (gender || '').toLowerCase().trim();
+  if (g === 'male' || g === 'männlich' || g === 'maennlich' || g === 'man' || g === 'm') {
     return { id: "GenderOnly", label: "Nur Männer", labelEn: "Men Only", query: ["men_only"], icon: UserCircle, isSystem: true, color: "#3b82f6" };
   }
-  if (gender === 'diverse') {
+  if (g === 'diverse' || g === 'divers' || g === 'non-binary' || g === 'other') {
     return { id: "GenderOnly", label: "Nur Diverse", labelEn: "Diverse Only", query: ["diverse_only"], icon: UserCircle, isSystem: true, color: "#a855f7" };
   }
   return { id: "GenderOnly", label: "Nur Frauen", labelEn: "Women Only", query: ["women_only"], icon: UserCircle, isSystem: true, color: "#a855f7" };

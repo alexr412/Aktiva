@@ -353,6 +353,18 @@ export default function ChatRoomPage() {
   const [showCleanupDialog, setShowCleanupDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(true);
+
+  // Safeguard: ensure pointer-events: none on body is never left stuck after dialogs close
+  useEffect(() => {
+    if (!showMultiReviewDialog && !showCleanupDialog) {
+      const timer = setTimeout(() => {
+        if (typeof document !== 'undefined' && document.body.style.pointerEvents === 'none') {
+          document.body.style.pointerEvents = '';
+        }
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [showMultiReviewDialog, showCleanupDialog]);
   
   const [otherUser, setOtherUser] = useState<Partial<UserProfile> & { uid?: string; isPremium?: boolean; isSupporter?: boolean; isCreator?: boolean } | null>(null);
   const [isDirectMessage, setIsDirectMessage] = useState(false);
@@ -1528,7 +1540,7 @@ export default function ChatRoomPage() {
                 setHasReviewed(true);
                 setTimeout(() => {
                     setShowCleanupDialog(true);
-                }, 200);
+                }, 500);
             }}
         />
       )}

@@ -58,24 +58,39 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, hideCloseButton, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {children}
-      {!hideCloseButton && (
-        <SheetPrimitive.Close className="absolute right-6 top-6 rounded-full p-2.5 bg-slate-100/80 dark:bg-neutral-800/80 backdrop-blur-md text-slate-900 dark:text-neutral-100 hover:bg-slate-200 dark:hover:bg-neutral-700 border border-slate-200/50 dark:border-neutral-700/50 transition-all z-[100] shadow-md focus:outline-none active:scale-95">
-          <X className="h-5 w-5 stroke-[2.5]" />
-          <span className="sr-only">Schließen</span>
-        </SheetPrimitive.Close>
-      )}
-    </SheetPrimitive.Content>
-  </SheetPortal>
-))
+>(({ side = "right", className, children, hideCloseButton, ...props }, ref) => {
+  React.useEffect(() => {
+    return () => {
+      setTimeout(() => {
+        if (typeof document !== 'undefined' && document.body.style.pointerEvents === 'none') {
+          const openPortals = document.querySelectorAll('[data-radix-portal]');
+          if (openPortals.length <= 1) {
+            document.body.style.pointerEvents = '';
+          }
+        }
+      }, 350);
+    };
+  }, []);
+
+  return (
+    <SheetPortal>
+      <SheetOverlay />
+      <SheetPrimitive.Content
+        ref={ref}
+        className={cn(sheetVariants({ side }), className)}
+        {...props}
+      >
+        {children}
+        {!hideCloseButton && (
+          <SheetPrimitive.Close className="absolute right-6 top-6 rounded-full p-2.5 bg-slate-100/80 dark:bg-neutral-800/80 backdrop-blur-md text-slate-900 dark:text-neutral-100 hover:bg-slate-200 dark:hover:bg-neutral-700 border border-slate-200/50 dark:border-neutral-700/50 transition-all z-[100] shadow-md focus:outline-none active:scale-95">
+            <X className="h-5 w-5 stroke-[2.5]" />
+            <span className="sr-only">Schließen</span>
+          </SheetPrimitive.Close>
+        )}
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  );
+})
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({

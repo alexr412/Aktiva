@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/use-language';
 
@@ -42,6 +42,26 @@ export function ReviewDialog({ open, onOpenChange, activity, currentUser, onRevi
   const [text, setText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmitTime, setLastSubmitTime] = useState<number>(0);
+
+  // Safety effect: ensure document.body pointer-events is cleaned up when closed or unmounted
+  useEffect(() => {
+    if (!open) {
+      const timer = setTimeout(() => {
+        if (typeof document !== 'undefined' && document.body.style.pointerEvents === 'none') {
+          document.body.style.pointerEvents = '';
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof document !== 'undefined' && document.body.style.pointerEvents === 'none') {
+        document.body.style.pointerEvents = '';
+      }
+    };
+  }, []);
 
   const otherParticipants = activity.participantIds
     .filter(id => id !== currentUser.uid)
