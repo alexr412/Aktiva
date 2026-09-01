@@ -1703,17 +1703,40 @@ export const submitHostRating = async (activityId: string, hostId: string, revie
   });
 };
 
-export async function getReviewsForTarget(targetId: string, limitCount: number = 20): Promise<Review[]> {
+export async function getReviewsForTarget(targetId: string, limitCount: number = 50): Promise<Review[]> {
   if (!db) return [];
   try {
-    const q = query(
+    const qTarget = query(
       collection(db, 'reviews'),
-      where('targetId', '==', targetId),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
+      where('targetId', '==', targetId)
     );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Review));
+    const qHost = query(
+      collection(db, 'reviews'),
+      where('hostId', '==', targetId)
+    );
+
+    const [snapTarget, snapHost] = await Promise.all([
+      getDocs(qTarget).catch(() => ({ docs: [] })),
+      getDocs(qHost).catch(() => ({ docs: [] }))
+    ]);
+
+    const map = new Map<string, Review>();
+    
+    [...(snapTarget.docs || []), ...(snapHost.docs || [])].forEach(d => {
+      if (d.exists && d.exists() && !map.has(d.id)) {
+        map.set(d.id, { id: d.id, ...d.data() } as Review);
+      }
+    });
+
+    const reviews = Array.from(map.values());
+    
+    reviews.sort((a, b) => {
+      const tA = a.createdAt?.toMillis?.() || (a.createdAt as any)?.seconds * 1000 || 0;
+      const tB = b.createdAt?.toMillis?.() || (b.createdAt as any)?.seconds * 1000 || 0;
+      return tB - tA;
+    });
+
+    return reviews.slice(0, limitCount);
   } catch (error) {
     console.error("Error fetching reviews for target:", error);
     return [];

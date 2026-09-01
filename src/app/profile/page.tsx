@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { useLanguage } from '@/hooks/use-language';
 import { signOut } from '@/lib/firebase/auth';
-import { fetchUserActivities, joinActivity, getPublicProfileClient, acceptFriendRequest, declineFriendRequest, createActivity, updatePresetAvatar, removeUserAvatar, votePlace } from '@/lib/firebase/firestore';
+import { fetchUserActivities, joinActivity, getPublicProfileClient, acceptFriendRequest, declineFriendRequest, createActivity, updatePresetAvatar, removeUserAvatar, votePlace, getReviewsForTarget } from '@/lib/firebase/firestore';
 import { DEFAULT_AVATARS } from '@/lib/avatar-options';
 import type { Activity, UserProfile, Place, Review, ActivityCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -471,19 +471,11 @@ export default function ProfilePage() {
     }, [user, authLoading, router, toast, userProfile]);
 
     const loadReviews = async () => {
-        if (!user || !db) return;
+        if (!user) return;
         setIsLoadingReviews(true);
         setIsReviewsModalOpen(true);
         try {
-            const q = query(
-                collection(db, 'reviews'),
-                where('targetId', '==', user.uid),
-                where('targetType', '==', 'user'),
-                orderBy('createdAt', 'desc'),
-                limit(20)
-            );
-            const snap = await getDocs(q);
-            const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() } as Review));
+            const reviews = await getReviewsForTarget(user.uid);
             setRecentReviews(reviews);
         } catch (error) {
             console.error("Failed to load reviews:", error);
@@ -493,19 +485,12 @@ export default function ProfilePage() {
     };
 
     useEffect(() => {
-        if (activeTab === 'reviews' && recentReviews.length === 0 && user && db) {
+        if (activeTab === 'reviews' && recentReviews.length === 0 && user) {
             setIsLoadingReviews(true);
-            const q = query(
-                collection(db, 'reviews'),
-                where('targetId', '==', user.uid),
-                where('targetType', '==', 'user'),
-                orderBy('createdAt', 'desc'),
-                limit(20)
-            );
-            getDocs(q).then((snap) => {
-                const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() } as Review));
-                setRecentReviews(reviews);
-            }).catch(console.error).finally(() => setIsLoadingReviews(false));
+            getReviewsForTarget(user.uid)
+                .then((reviews) => setRecentReviews(reviews))
+                .catch(console.error)
+                .finally(() => setIsLoadingReviews(false));
         }
     }, [activeTab, user, recentReviews.length]);
 
