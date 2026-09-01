@@ -8,6 +8,7 @@ import {
     ThumbsUp,
     ThumbsDown,
     Sparkles,
+    Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, isToday, isTomorrow } from 'date-fns';
@@ -133,6 +134,14 @@ export function PlaceCard({
                     <div className="absolute top-2.5 right-4 z-20 pointer-events-none select-none h-5 bg-amber-400 text-white text-[8px] font-black px-2 rounded-2xl shadow-lg flex items-center gap-1 border border-white/20">
                         <Sparkles className="h-2.5 w-2.5" />
                         {place.relevanceScore.toFixed(1)}
+                    </div>
+                )}
+
+                {/* Direct Rating Badge - Top Right */}
+                {((place.rating && place.rating > 0) || ((place as any).averageRating && (place as any).averageRating > 0)) && (
+                    <div className="absolute top-2.5 right-2.5 z-20 pointer-events-none select-none h-5 bg-black/60 backdrop-blur-md text-amber-400 text-[9px] font-black px-2 rounded-full shadow-md flex items-center gap-1 border border-white/10">
+                        <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                        <span>{((place.rating || (place as any).averageRating) as number).toFixed(1)}</span>
                     </div>
                 )}
 

@@ -15,9 +15,12 @@ import {
   acceptFriendRequest,
   declineFriendRequest,
   getOrCreateDirectChat,
+  getReviewsForTarget,
 } from '@/lib/firebase/firestore';
-import type { Activity, UserProfile, PublicUserProfile } from '@/lib/types';
+import type { Activity, UserProfile, PublicUserProfile, Review } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
@@ -61,6 +64,23 @@ export default function UserProfilePage() {
     const [isCreatingChat, setIsCreatingChat] = useState(false);
     const [isBlockedOrUnavailable, setIsBlockedOrUnavailable] = useState(false);
     const [friendshipStatus, setFriendshipStatus] = useState<'loading' | 'is_self' | 'friends' | 'request_sent' | 'request_received' | 'not_friends'>('loading');
+
+    const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
+    const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+    const [userReviews, setUserReviews] = useState<Review[]>([]);
+
+    const handleOpenReviews = async () => {
+        setIsReviewsModalOpen(true);
+        setIsLoadingReviews(true);
+        try {
+            const reviews = await getReviewsForTarget(userId);
+            setUserReviews(reviews);
+        } catch (err) {
+            console.error("Failed to load user reviews:", err);
+        } finally {
+            setIsLoadingReviews(false);
+        }
+    };
 
     useEffect(() => {
         if (authLoading) return;
@@ -458,11 +478,14 @@ export default function UserProfilePage() {
 
                             {/* Rating */}
                             {userData.ratingCount && userData.ratingCount > 0 ? (
-                                <div className="flex items-center justify-center gap-1 mt-2 sm:mt-3 bg-amber-50 dark:bg-amber-950/30 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-amber-100 dark:border-amber-900/50">
-                                    <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-500 fill-amber-500" />
+                                <button 
+                                    onClick={handleOpenReviews}
+                                    className="flex items-center justify-center gap-1 mt-2 sm:mt-3 bg-amber-50 dark:bg-amber-950/30 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-amber-100 dark:border-amber-900/50 hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+                                >
+                                    <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-500 fill-amber-500 group-hover:scale-110 transition-transform" />
                                     <span className="font-black text-amber-700 dark:text-amber-400 text-xs sm:text-sm">{userData.averageRating?.toFixed(1)}</span>
                                     <span className="text-[9px] sm:text-[10px] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase">({userData.ratingCount})</span>
-                                </div>
+                                </button>
                             ) : null}
                         </div>
 
@@ -597,6 +620,59 @@ export default function UserProfilePage() {
                     </Tabs>
                 </div>
             </div>
+
+            {/* Community Feedback Modal */}
+            <Dialog open={isReviewsModalOpen} onOpenChange={setIsReviewsModalOpen}>
+                <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-6 bg-amber-50 dark:bg-amber-950/20">
+                        <DialogTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-400">
+                            <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
+                            {language === 'de' ? 'Community Feedback' : 'Community Feedback'}
+                        </DialogTitle>
+                        <DialogDescription className="text-amber-800/70 dark:text-amber-400/70 font-medium">
+                            {language === 'de' ? `Das sagen andere Teilnehmer über ${(userData as any)?.displayName || userData?.username || 'diesen Nutzer'}.` : `What other participants say about ${(userData as any)?.displayName || userData?.username || 'this user'}.`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="max-h-[60vh] overflow-y-auto p-6 space-y-4">
+                        {isLoadingReviews ? (
+                            <div className="flex flex-col items-center py-10 gap-2">
+                                <Loader2 className="animate-spin text-primary h-6 w-6" />
+                                <p className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Lade Feedback...' : 'Loading feedback...'}</p>
+                            </div>
+                        ) : userReviews.length > 0 ? (
+                            userReviews.map((review) => (
+                                <div key={review.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-neutral-800/80 border border-slate-100 dark:border-neutral-800 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex gap-0.5">
+                                            {Array.from({ length: 5 }).map((_, i) => (
+                                                <Star key={i} className={cn("h-3.5 w-3.5", i < review.rating ? "text-amber-500 fill-amber-500" : "text-slate-200 dark:text-neutral-700")} />
+                                            ))}
+                                        </div>
+                                        {review.createdAt && (
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                                {format(review.createdAt.toDate ? review.createdAt.toDate() : new Date(review.createdAt as any), 'dd.MM.yyyy')}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {review.comment ? (
+                                        <p className="text-sm font-medium text-slate-700 dark:text-neutral-200 leading-relaxed">"{review.comment}"</p>
+                                    ) : (
+                                        <p className="text-xs italic text-slate-400">{language === 'de' ? 'Kein Textkommentar hinterlassen.' : 'No comment left.'}</p>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-10 space-y-2">
+                                <MessageSquare className="h-10 w-10 text-slate-300 dark:text-neutral-700 mx-auto" />
+                                <p className="text-sm font-bold text-slate-500 dark:text-neutral-400">{language === 'de' ? 'Noch keine geschriebenen Bewertungen vorhanden.' : 'No written reviews available yet.'}</p>
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter className="p-4 bg-slate-50 dark:bg-neutral-800/50">
+                        <Button onClick={() => setIsReviewsModalOpen(false)} className="w-full rounded-xl font-black h-12">{language === 'de' ? 'Schließen' : 'Close'}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

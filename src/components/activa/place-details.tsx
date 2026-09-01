@@ -27,12 +27,14 @@ import {
     Share2,
     ThumbsUp,
     ThumbsDown,
+    MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Place, Activity } from '@/lib/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import type { Place, Activity, Review } from '@/lib/types';
 import { ActivityInfoSheet } from './activity-info-sheet';
 import { useFavorites } from '@/contexts/favorites-context';
 import { SaveToCollectionModal } from '@/components/premium/save-to-collection-modal';
@@ -41,6 +43,7 @@ import { cn } from '@/lib/utils';
 import { getPrimaryIconData, translateTag } from '@/lib/tag-config';
 import { formatOpeningHours } from '@/lib/tag-parser';
 import { trackInteraction } from '@/lib/telemetry';
+import { getReviewsForTarget } from '@/lib/firebase/firestore';
 
 import { usePlaceActivities } from '@/features/places/details/use-place-activities';
 import { usePlaceVoting } from '@/features/places/details/use-place-voting';
@@ -114,6 +117,28 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     const [copied, setCopied] = useState(false);
     const [isSaveToCollectionOpen, setIsSaveToCollectionOpen] = useState(false);
     const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+    
+    const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
+    const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+    const [placeReviews, setPlaceReviews] = useState<Review[]>([]);
+
+    const handleOpenReviewsModal = async () => {
+        setIsReviewsModalOpen(true);
+        setIsLoadingReviews(true);
+        try {
+            const fetched = await getReviewsForTarget(place.id);
+            if (fetched.length === 0 && activities.length > 0 && activities[0].id) {
+                const activityReviews = await getReviewsForTarget(activities[0].id);
+                setPlaceReviews(activityReviews);
+            } else {
+                setPlaceReviews(fetched);
+            }
+        } catch (err) {
+            console.error("Failed to load place reviews:", err);
+        } finally {
+            setIsLoadingReviews(false);
+        }
+    };
 
     const handleCopyAddress = (e?: React.MouseEvent) => {
         if (e) {
@@ -550,9 +575,12 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
 
                     {/* 4. Rating and Distance Statistics */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 my-4">
-                        <div className="bg-[#fff7ed] dark:bg-amber-950/20 p-3 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-center border border-amber-100/50 dark:border-amber-900/30">
+                        <button 
+                            onClick={handleOpenReviewsModal}
+                            className="bg-[#fff7ed] dark:bg-amber-950/20 p-3 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-center border border-amber-100/50 dark:border-amber-900/30 hover:scale-105 active:scale-95 transition-all cursor-pointer group shadow-xs"
+                        >
                             <div className="flex items-center gap-1">
-                                <Star className="w-3.5 h-3.5 text-[#f59e0b] fill-[#f59e0b]" />
+                                <Star className="w-3.5 h-3.5 text-[#f59e0b] fill-[#f59e0b] group-hover:scale-110 transition-transform" />
                                 <span className={cn(
                                     "font-black text-[#854d0e] dark:text-amber-400 text-sm",
                                     placeMeta.avgRating > 0 ? "text-[14px]" : "text-[10px]"
@@ -560,8 +588,8 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     {placeMeta.avgRating > 0 ? placeMeta.avgRating.toFixed(1) : (language === 'de' ? 'Noch keine' : 'No ratings')}
                                 </span>
                             </div>
-                            <span className="text-[10px] font-bold text-amber-900/80 dark:text-amber-400/80">Community</span>
-                        </div>
+                            <span className="text-[10px] font-bold text-amber-900/80 dark:text-amber-400/80 underline decoration-amber-400/40 underline-offset-2">Community</span>
+                        </button>
                         <div className="bg-[#f0f9ff] dark:bg-blue-950/20 p-3 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-center border border-blue-100/50 dark:border-blue-900/30">
                              <span className="text-sm font-black text-[#0369a1] dark:text-blue-400">
                                 {formattedDistance || '---'}
@@ -645,6 +673,59 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                 onJoin={handleJoin}
                 isJoining={joiningActivityId === selectedInfoActivity?.id}
             />
+
+            {/* Community Reviews Modal */}
+            <Dialog open={isReviewsModalOpen} onOpenChange={setIsReviewsModalOpen}>
+                <DialogContent className="sm:max-w-md bg-white dark:bg-neutral-900 rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-6 bg-amber-50 dark:bg-amber-950/20">
+                        <DialogTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-400">
+                            <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
+                            {language === 'de' ? 'Community Bewertungen' : 'Community Reviews'}
+                        </DialogTitle>
+                        <DialogDescription className="text-amber-800/70 dark:text-amber-400/70 font-medium">
+                            {language === 'de' ? `Erfahrungen & Feedback zu ${place.name}` : `Experiences & feedback for ${place.name}`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="max-h-[60vh] overflow-y-auto p-6 space-y-4">
+                        {isLoadingReviews ? (
+                            <div className="flex flex-col items-center py-10 gap-2">
+                                <Loader2 className="animate-spin text-primary h-6 w-6" />
+                                <p className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Lade Bewertungen...' : 'Loading reviews...'}</p>
+                            </div>
+                        ) : placeReviews.length > 0 ? (
+                            placeReviews.map((review) => (
+                                <div key={review.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-neutral-800/80 border border-slate-100 dark:border-neutral-800 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex gap-0.5">
+                                            {Array.from({ length: 5 }).map((_, i) => (
+                                                <Star key={i} className={cn("h-3.5 w-3.5", i < review.rating ? "text-amber-500 fill-amber-500" : "text-slate-200 dark:text-neutral-700")} />
+                                            ))}
+                                        </div>
+                                        {review.createdAt && (
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                                {format(review.createdAt.toDate ? review.createdAt.toDate() : new Date(review.createdAt as any), 'dd.MM.yyyy')}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {review.comment ? (
+                                        <p className="text-sm font-medium text-slate-700 dark:text-neutral-200 leading-relaxed">"{review.comment}"</p>
+                                    ) : (
+                                        <p className="text-xs italic text-slate-400">{language === 'de' ? 'Kein Textkommentar hinterlassen.' : 'No comment left.'}</p>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-10 space-y-2">
+                                <MessageSquare className="h-10 w-10 text-slate-300 dark:text-neutral-700 mx-auto" />
+                                <p className="text-sm font-bold text-slate-500 dark:text-neutral-400">{language === 'de' ? 'Noch keine Bewertungen für diesen Ort.' : 'No reviews for this place yet.'}</p>
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter className="p-4 bg-slate-50 dark:bg-neutral-800/50">
+                        <Button onClick={() => setIsReviewsModalOpen(false)} className="w-full rounded-xl font-black h-12">{language === 'de' ? 'Schließen' : 'Close'}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

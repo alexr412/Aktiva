@@ -8,6 +8,7 @@ import {
     ThumbsUp,
     ThumbsDown,
     Sparkles,
+    Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getPrimaryIconData, translateTag, getCleanTags, translateAppString } from '@/lib/tag-config';
@@ -145,6 +146,13 @@ export function FeaturedPlaceCard({
                                 )}
                             </div>
                         </div>
+
+                        {((place.rating && place.rating > 0) || ((place as any).averageRating && (place as any).averageRating > 0)) && (
+                            <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-900/50 shrink-0">
+                                <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
+                                <span className="font-black text-amber-700 dark:text-amber-400 text-xs">{((place.rating || (place as any).averageRating) as number).toFixed(1)}</span>
+                            </div>
+                        )}
 
                         {place.distance !== undefined && (
                             <div className="h-4.5 shrink-0 bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 text-[8px] font-black px-2 rounded-full whitespace-nowrap flex items-center justify-center border border-slate-200/20">

@@ -480,7 +480,7 @@ export default function ProfilePage() {
                 where('targetId', '==', user.uid),
                 where('targetType', '==', 'user'),
                 orderBy('createdAt', 'desc'),
-                limit(10)
+                limit(20)
             );
             const snap = await getDocs(q);
             const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() } as Review));
@@ -491,6 +491,23 @@ export default function ProfilePage() {
             setIsLoadingReviews(false);
         }
     };
+
+    useEffect(() => {
+        if (activeTab === 'reviews' && recentReviews.length === 0 && user && db) {
+            setIsLoadingReviews(true);
+            const q = query(
+                collection(db, 'reviews'),
+                where('targetId', '==', user.uid),
+                where('targetType', '==', 'user'),
+                orderBy('createdAt', 'desc'),
+                limit(20)
+            );
+            getDocs(q).then((snap) => {
+                const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() } as Review));
+                setRecentReviews(reviews);
+            }).catch(console.error).finally(() => setIsLoadingReviews(false));
+        }
+    }, [activeTab, user, recentReviews.length]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -877,14 +894,18 @@ export default function ProfilePage() {
                                     { label: language === 'de' ? 'Friends' : 'Friends', val: userData?.friends?.length || 0, bg: 'bg-cyan-500/15' },
                                     { label: language === 'de' ? 'Reviews' : 'Reviews', val: userData?.ratingCount || 0, bg: 'bg-amber-500/15' }
                                 ].map((stat, idx) => (
-                                    <div key={stat.label} className={cn("flex flex-col items-center py-4 sm:py-5 px-2 sm:px-4 rounded-[1.75rem] border-none shadow-none", stat.bg)}>
+                                    <button 
+                                        key={stat.label} 
+                                        onClick={() => idx === 2 && setActiveTab('reviews')}
+                                        className={cn("flex flex-col items-center py-4 sm:py-5 px-2 sm:px-4 rounded-[1.75rem] border-none shadow-none transition-transform active:scale-95 cursor-pointer", stat.bg, idx === 2 && "hover:scale-105")}
+                                    >
                                         <span className={cn("text-2xl sm:text-3xl font-black leading-none mb-1",
                                             idx === 0 ? "text-[#10b981]" :
                                                 idx === 1 ? "text-cyan-600" :
                                                     "text-amber-600"
                                         )}>{stat.val}</span>
                                         <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</span>
-                                    </div>
+                                    </button>
                                 ))}
                             </div>
 
@@ -1179,8 +1200,40 @@ export default function ProfilePage() {
                             </div>
                         )}
                         {activeTab === 'reviews' && (
-                            <div className="text-center p-12 bg-white dark:bg-neutral-900 rounded-[2rem] border border-[#E5E7EB]/50 dark:border-neutral-800 shadow-sm max-w-xl mx-auto">
-                                <p className="text-slate-400 font-bold text-sm tracking-tight">{language === 'de' ? 'Reviews Coming Soon' : 'Reviews Coming Soon'}</p>
+                            <div className="space-y-4 max-w-xl mx-auto">
+                                {isLoadingReviews ? (
+                                    <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-neutral-900 rounded-[2rem] border border-[#E5E7EB]/50 dark:border-neutral-800 shadow-sm">
+                                        <Loader2 className="animate-spin text-primary h-6 w-6 mb-2" />
+                                        <p className="text-xs font-black uppercase text-slate-400">{language === 'de' ? 'Lade Bewertungen...' : 'Loading reviews...'}</p>
+                                    </div>
+                                ) : recentReviews.length > 0 ? (
+                                    recentReviews.map((review) => (
+                                        <div key={review.id} className="p-5 rounded-[1.5rem] bg-white dark:bg-neutral-900 border border-[#E5E7EB]/50 dark:border-neutral-800 shadow-sm space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex gap-0.5">
+                                                    {Array.from({ length: 5 }).map((_, i) => (
+                                                        <Star key={i} className={cn("h-4 w-4", i < review.rating ? "text-amber-500 fill-amber-500" : "text-slate-200 dark:text-neutral-700")} />
+                                                    ))}
+                                                </div>
+                                                {review.createdAt && (
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                                        {format(review.createdAt.toDate ? review.createdAt.toDate() : new Date(review.createdAt as any), 'dd.MM.yyyy')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {review.comment ? (
+                                                <p className="text-sm font-medium text-slate-700 dark:text-neutral-200 leading-relaxed">"{review.comment}"</p>
+                                            ) : (
+                                                <p className="text-xs italic text-slate-400">{language === 'de' ? 'Kein Textkommentar hinterlassen.' : 'No comment left.'}</p>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center p-12 bg-white dark:bg-neutral-900 rounded-[2rem] border border-[#E5E7EB]/50 dark:border-neutral-800 shadow-sm">
+                                        <MessageSquare className="h-10 w-10 text-slate-300 dark:text-neutral-700 mx-auto mb-2" />
+                                        <p className="text-slate-400 font-bold text-sm tracking-tight">{language === 'de' ? 'Noch keine Bewertungen erhalten.' : 'No reviews received yet.'}</p>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

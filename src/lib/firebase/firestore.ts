@@ -27,7 +27,7 @@ import {
 import { calculateDistance, buildApproximateLocationData } from '../geo-utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
-import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory, CommunicationPreferences, NotificationPreferences } from '@/lib/types';
+import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory, CommunicationPreferences, NotificationPreferences, Review } from '@/lib/types';
 import { getParticipantLimit, getMaxOpenRoomsLimit, isPremiumActive } from '@/lib/types';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
 import { formatFirstName } from '@/lib/utils';
@@ -1702,6 +1702,23 @@ export const submitHostRating = async (activityId: string, hostId: string, revie
     });
   });
 };
+
+export async function getReviewsForTarget(targetId: string, limitCount: number = 20): Promise<Review[]> {
+  if (!db) return [];
+  try {
+    const q = query(
+      collection(db, 'reviews'),
+      where('targetId', '==', targetId),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as Review));
+  } catch (error) {
+    console.error("Error fetching reviews for target:", error);
+    return [];
+  }
+}
 
 export const verifyTicket = async (activityId: string, scannedUserId: string) => {
   if (!db) throw new Error('Firestore not initialized.');
