@@ -719,9 +719,7 @@ export async function createActivity({
         isPremium: isUserPremium,
         isSupporter: isUserSupporter,
         checkInStatus: 'pending',
-        hasReviewed: false,
-        averageRating: userProfileData?.averageRating || 0,
-        ratingCount: userProfileData?.ratingCount || 0
+        hasReviewed: false
       },
     },
     placeAddress: derivedPlaceAddress,

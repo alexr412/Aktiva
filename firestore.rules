@@ -184,7 +184,7 @@ service cloud.firestore {
         request.resource.data.participantsPreview[0].get('username', null) == request.resource.data.get('hostUsername', null) &&
         
         request.resource.data.participantDetails is map && request.resource.data.participantDetails.keys().hasOnly([request.auth.uid]) &&
-        request.resource.data.participantDetails[request.auth.uid].keys().hasOnly(['displayName', 'photoURL', 'isPremium', 'isSupporter', 'checkInStatus', 'hasReviewed', 'username']) &&
+        request.resource.data.participantDetails[request.auth.uid].keys().hasOnly(['displayName', 'photoURL', 'isPremium', 'isSupporter', 'checkInStatus', 'hasReviewed', 'username', 'averageRating', 'ratingCount']) &&
         request.resource.data.participantDetails[request.auth.uid].get('checkInStatus', 'pending') == 'pending' &&
         request.resource.data.participantDetails[request.auth.uid].get('hasReviewed', false) == false &&
         request.resource.data.participantDetails[request.auth.uid].get('username', null) == request.resource.data.get('hostUsername', null) &&
