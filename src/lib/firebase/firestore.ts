@@ -24,7 +24,7 @@ import {
   documentId,
   onSnapshot,
 } from 'firebase/firestore';
-import { calculateDistance, buildApproximateLocationData, formatAddressToCityZip } from '../geo-utils';
+import { calculateDistance, buildApproximateLocationData, formatAddressToCityZip, isStreetAddress } from '../geo-utils';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory, CommunicationPreferences, NotificationPreferences, Review } from '@/lib/types';
@@ -519,8 +519,9 @@ export async function createActivity({
     throw new Error('Diese Nachricht enthält nicht erlaubte Inhalte.');
   }
 
-  const isPlaceBasedActivity = Boolean(place?.id);
-  const placeIdValue = isPlaceBasedActivity ? place!.id : "custom";
+  const effectivePlace = place || selectedPlace;
+  const isPlaceBasedActivity = Boolean(effectivePlace?.id && effectivePlace?.name && !isStreetAddress(effectivePlace.name));
+  const placeIdValue = isPlaceBasedActivity ? effectivePlace!.id : "custom";
   
   const userRef = doc(db, 'users', user.uid);
   const placeRef = isPlaceBasedActivity ? doc(db, 'places', placeIdValue) : null;
@@ -652,32 +653,31 @@ export async function createActivity({
   let derivedPlaceAddress = "";
   let cityVal = "";
   let postalCodeVal = "";
-  let latVal = place?.lat;
-  let lonVal = place?.lon;
+  let latVal = effectivePlace?.lat;
+  let lonVal = effectivePlace?.lon;
 
-  if (isPlaceBasedActivity) {
-    derivedPlaceName = place?.name || customLocationName || "Aktivität";
-    derivedPlaceAddress = formatAddressToCityZip(place?.address || place?.name) || place?.address || "";
-  } else {
-    const approx = buildApproximateLocationData(selectedPlace || place);
-    derivedPlaceName = approx.label;
-    derivedPlaceAddress = approx.label;
+  if (isPlaceBasedActivity && effectivePlace) {
+    derivedPlaceName = effectivePlace.name || customLocationName || "Aktivität";
+    derivedPlaceAddress = formatAddressToCityZip(effectivePlace.address || effectivePlace.name) || effectivePlace.address || "";
+  } else if (effectivePlace) {
+    const approx = buildApproximateLocationData(effectivePlace);
+    derivedPlaceName = approx.label !== "Unbekannter Ort" ? approx.label : (customLocationName || title || "Aktivität");
+    derivedPlaceAddress = approx.label !== "Unbekannter Ort" ? approx.label : "";
     cityVal = approx.city || "";
     postalCodeVal = approx.postalCode || "";
-    latVal = selectedPlace?.lat || place?.lat;
-    lonVal = selectedPlace?.lon || place?.lon;
-
-    console.log("[COMMUNITY_LOCATION_DEBUG] rawLocation:", selectedPlace || place);
-    console.log("[COMMUNITY_LOCATION_DEBUG] approximateLocationLabel:", approx.label);
-    console.log("[COMMUNITY_LOCATION_DEBUG] lat:", latVal);
-    console.log("[COMMUNITY_LOCATION_DEBUG] lon:", lonVal);
-    console.log("[COMMUNITY_LOCATION_DEBUG] city:", cityVal);
-    console.log("[COMMUNITY_LOCATION_DEBUG] postalCode:", postalCodeVal);
+    latVal = effectivePlace.lat;
+    lonVal = effectivePlace.lon;
   }
 
+  const rawTitle = (title || customLocationName || effectivePlace?.name || "Aktivität").trim();
+  const finalTitle = (rawTitle.length > 0 ? rawTitle : "Aktivität").slice(0, 100);
+
+  const rawPlaceName = (derivedPlaceName || "Aktivität").trim();
+  const finalPlaceName = (rawPlaceName.length > 0 ? rawPlaceName : "Aktivität").slice(0, 100);
+
   const activityData: any = {
-    title: (title || (isPlaceBasedActivity ? place?.name : null) || customLocationName || "Aktivität").slice(0, 100),
-    placeName: derivedPlaceName.slice(0, 100),
+    title: finalTitle,
+    placeName: finalPlaceName,
     activityDate: Timestamp.fromDate(adjustedStartDate),
     hostId: user.uid,
     hostName: displayNameToUse,
@@ -719,7 +719,9 @@ export async function createActivity({
         isPremium: isUserPremium,
         isSupporter: isUserSupporter,
         checkInStatus: 'pending',
-        hasReviewed: false
+        hasReviewed: false,
+        averageRating: userProfileData?.averageRating || 0,
+        ratingCount: userProfileData?.ratingCount || 0
       },
     },
     placeAddress: derivedPlaceAddress,
@@ -736,11 +738,11 @@ export async function createActivity({
   const resolvedCreationSource = creationSourceParam || (isPlaceBasedActivity ? 'place_activity' : 'community');
 
   let extractedPlaceCategories: string[] | undefined;
-  if (isPlaceBasedActivity && place) {
-    if (Array.isArray(place.categories) && place.categories.length > 0) {
-      extractedPlaceCategories = place.categories.filter((c: string) => c !== 'user_event');
-    } else if (place.category) {
-      extractedPlaceCategories = [place.category];
+  if (isPlaceBasedActivity && effectivePlace) {
+    if (Array.isArray(effectivePlace.categories) && effectivePlace.categories.length > 0) {
+      extractedPlaceCategories = effectivePlace.categories.filter((c: string) => c !== 'user_event');
+    } else if (effectivePlace.category) {
+      extractedPlaceCategories = [effectivePlace.category];
     }
   }
 
@@ -763,7 +765,7 @@ export async function createActivity({
   }
   
   const allowedKeys = [
-    'id', 'title', 'placeName', 'activityDate', 'activityEndDate', 'hostId', 'hostName', 'hostPhotoURL',
+    'id', 'title', 'placeName', 'activityDate', 'activityEndDate', 'hostId', 'hostName', 'hostUsername', 'hostPhotoURL',
     'participantIds', 'participantsPreview', 'createdAt', 'lastInteractionAt', 'isCustomActivity',
     'isTimeFlexible', 'category', 'description', 'status', 'completionVotes', 'isBoosted', 'boostedAt',
     'isPaid', 'price', 'upvotes', 'downvotes', 'userVotes', 'globalScore', 'reportCount', 'avgRating',
@@ -796,7 +798,7 @@ export async function createActivity({
     lastActivityAt: serverTimestamp(),
     participantIds: [user.uid],
     lastMessage: null,
-    placeName: place?.name || customLocationName || "Aktivität",
+    placeName: effectivePlace?.name || customLocationName || finalPlaceName || "Aktivität",
     categories: activityData.categories,
     hostId: user.uid,
     isUserEvent: !isPlaceBasedActivity,
@@ -1166,7 +1168,9 @@ export async function joinActivity(
           isPremium: userProfileData?.isPremium || false,
           isSupporter: userProfileData?.isSupporter || false,
           checkInStatus: 'pending',
-          hasReviewed: false
+          hasReviewed: false,
+          averageRating: userProfileData?.averageRating || 0,
+          ratingCount: userProfileData?.ratingCount || 0
         },
       };
 

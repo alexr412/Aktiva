@@ -48,6 +48,8 @@ export interface ParticipantDetailEntry {
   checkInStatus?: CheckInStatus;
   checkInTime?: Timestamp;
   hasReviewed?: boolean;
+  averageRating?: number;
+  ratingCount?: number;
 }
 
 export interface ParticipantPreviewEntry {

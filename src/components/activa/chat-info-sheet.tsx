@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -56,6 +56,45 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
   const language = useLanguage();
   const router = useRouter();
   const { toast } = useToast();
+
+  const [memberRatings, setMemberRatings] = useState<Record<string, { averageRating?: number; ratingCount?: number }>>({});
+
+  useEffect(() => {
+    if (!open || !chat) return;
+    const details = chat.participantDetails || {};
+    const missingUids = Object.keys(details).filter(uid => {
+      const p = details[uid];
+      return p && (p.averageRating === undefined && p.ratingCount === undefined);
+    });
+
+    if (missingUids.length === 0) return;
+
+    const loadRatings = async () => {
+      try {
+        const { db } = await import('@/lib/firebase/client');
+        const { doc, getDoc } = await import('firebase/firestore');
+        if (!db) return;
+        const newRatings: Record<string, { averageRating?: number; ratingCount?: number }> = {};
+        await Promise.all(
+          missingUids.map(async (uid) => {
+            const snap = await getDoc(doc(db, 'users', uid));
+            if (snap.exists()) {
+              const data = snap.data();
+              newRatings[uid] = {
+                averageRating: data.averageRating,
+                ratingCount: data.ratingCount,
+              };
+            }
+          })
+        );
+        setMemberRatings(prev => ({ ...prev, ...newRatings }));
+      } catch (err) {
+        console.error("Error loading member ratings:", err);
+      }
+    };
+
+    loadRatings();
+  }, [open, chat]);
 
   const renderDate = () => {
       if (!activity) return null;
@@ -345,7 +384,10 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
               </div>
               
               <ul className="space-y-2">
-                {Object.entries(chat.participantDetails).map(([uid, p]) => (
+                {Object.entries(chat.participantDetails).map(([uid, p]) => {
+                  const rating = p.averageRating ?? memberRatings[uid]?.averageRating;
+                  const count = p.ratingCount ?? memberRatings[uid]?.ratingCount;
+                  return (
                    <li key={uid}>
                      <div className="flex items-center justify-between p-1 rounded-2xl hover:bg-slate-50 dark:hover:bg-neutral-800/50 transition-all group">
                        <Link
@@ -362,13 +404,24 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
                                isSupporter={p.isSupporter}
                            />
                            <div className="flex-1 flex flex-col min-w-0">
-                               <div className="flex items-center gap-2">
+                               <div className="flex items-center gap-2 flex-wrap">
                                  <span className="font-bold text-slate-900 dark:text-neutral-100 truncate">
                                      {formatFirstName(p.displayName, 'User')}
                                  </span>
                                  {uid === chat.hostId && (
                                    <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-tight">{language === 'de' ? 'Creator' : 'Creator'}</span>
                                  )}
+                                 {((rating !== undefined && rating > 0) || (count !== undefined && count > 0)) && (
+                                    <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full border border-amber-200/50 dark:border-amber-900/40 shrink-0">
+                                      <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                                      <span className="font-black text-amber-700 dark:text-amber-400 text-[10px]">
+                                        {rating ? rating.toFixed(1) : '5.0'}
+                                      </span>
+                                      <span className="text-[9px] font-bold text-amber-600/70 dark:text-amber-500/70">
+                                        ({count || 0})
+                                      </span>
+                                    </div>
+                                  )}
                                </div>
                                {uid === user?.uid && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{language === 'de' ? '(Du)' : '(You)'}</span>}
                            </div>
@@ -397,7 +450,8 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
                        </div>
                      </div>
                    </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
           </div>

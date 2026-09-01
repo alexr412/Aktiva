@@ -553,7 +553,7 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 flex-wrap">
                               <span className="text-xs font-bold text-slate-850 dark:text-neutral-200">
                                 {formatFirstName(displayName, 'User')}
                               </span>
@@ -567,6 +567,17 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                                 <span className="text-[10px] font-bold text-slate-400 dark:text-neutral-500 uppercase tracking-tighter">
                                   {language === 'de' ? '(Du)' : '(You)'}
                                 </span>
+                              )}
+                              {((details?.averageRating !== undefined && details.averageRating > 0) || (details?.ratingCount !== undefined && details.ratingCount > 0)) && (
+                                <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full border border-amber-200/50 dark:border-amber-900/40 shrink-0">
+                                  <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                                  <span className="font-black text-amber-700 dark:text-amber-400 text-[10px]">
+                                    {details.averageRating?.toFixed(1) || '5.0'}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-amber-600/70 dark:text-amber-500/70">
+                                    ({details.ratingCount || 0})
+                                  </span>
+                                </div>
                               )}
                             </div>
                           </div>

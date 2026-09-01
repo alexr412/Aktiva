@@ -76,6 +76,45 @@ export function ActivityInfoSheet({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  const [memberRatings, setMemberRatings] = useState<Record<string, { averageRating?: number; ratingCount?: number }>>({});
+
+  useEffect(() => {
+    if (!open || !activity) return;
+    const details = activity.participantDetails || {};
+    const missingUids = Object.keys(details).filter(uid => {
+      const p = details[uid];
+      return p && (p.averageRating === undefined && p.ratingCount === undefined);
+    });
+
+    if (missingUids.length === 0) return;
+
+    const loadRatings = async () => {
+      try {
+        const { db } = await import('@/lib/firebase/client');
+        const { doc, getDoc } = await import('firebase/firestore');
+        if (!db) return;
+        const newRatings: Record<string, { averageRating?: number; ratingCount?: number }> = {};
+        await Promise.all(
+          missingUids.map(async (uid) => {
+            const snap = await getDoc(doc(db, 'users', uid));
+            if (snap.exists()) {
+              const data = snap.data();
+              newRatings[uid] = {
+                averageRating: data.averageRating,
+                ratingCount: data.ratingCount,
+              };
+            }
+          })
+        );
+        setMemberRatings(prev => ({ ...prev, ...newRatings }));
+      } catch (err) {
+        console.error("Error loading member ratings:", err);
+      }
+    };
+
+    loadRatings();
+  }, [open, activity]);
+
   if (!activity) return null;
 
   const isJoining = externalIsJoining || internalIsJoining;
@@ -372,35 +411,50 @@ export function ActivityInfoSheet({
 
             <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800/80">
               <ul className="space-y-3">
-                {Object.entries(activity.participantDetails || {}).map(([uid, p]) => (
-                  <li key={uid} className="flex items-center gap-3">
-                    <ProfileAvatar 
-                      className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-sm"
-                      photoURL={p.photoURL}
-                      displayName={p.displayName}
-                      isPremium={p.isPremium}
-                      isCreator={p.isCreator}
-                      isSupporter={p.isSupporter}
-                    />
-                    <div className="flex-1 min-w-0 flex flex-col">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-slate-800 dark:text-neutral-200 truncate">
-                          {formatFirstName(p.displayName, 'User')}
-                        </span>
-                        {uid === activity.hostId && (
-                          <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tight">
-                            Host
+                {Object.entries(activity.participantDetails || {}).map(([uid, p]) => {
+                  const rating = p.averageRating ?? memberRatings[uid]?.averageRating;
+                  const count = p.ratingCount ?? memberRatings[uid]?.ratingCount;
+                  return (
+                    <li key={uid} className="flex items-center gap-3">
+                      <ProfileAvatar 
+                        className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-sm"
+                        photoURL={p.photoURL}
+                        displayName={p.displayName}
+                        isPremium={p.isPremium}
+                        isCreator={p.isCreator}
+                        isSupporter={p.isSupporter}
+                      />
+                      <div className="flex-1 min-w-0 flex flex-col">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-slate-800 dark:text-neutral-200 truncate">
+                            {formatFirstName(p.displayName, 'User')}
                           </span>
-                        )}
-                        {uid === user?.uid && (
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                            {language === 'de' ? '(Du)' : '(You)'}
-                          </span>
-                        )}
+                          {uid === activity.hostId && (
+                            <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-tight">
+                              Host
+                            </span>
+                          )}
+                          {uid === user?.uid && (
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                              {language === 'de' ? '(Du)' : '(You)'}
+                            </span>
+                          )}
+                          {((rating !== undefined && rating > 0) || (count !== undefined && count > 0)) && (
+                            <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full border border-amber-200/50 dark:border-amber-900/40 shrink-0">
+                              <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                              <span className="font-black text-amber-700 dark:text-amber-400 text-[10px]">
+                                {rating ? rating.toFixed(1) : '5.0'}
+                              </span>
+                              <span className="text-[9px] font-bold text-amber-600/70 dark:text-amber-500/70">
+                                ({count || 0})
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>
