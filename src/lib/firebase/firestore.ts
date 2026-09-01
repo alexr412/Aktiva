@@ -827,28 +827,30 @@ export async function createActivity({
   if (isPlaceBasedActivity && placeRef) {
     const placeExists = placeSnap && placeSnap.exists();
     
-    // We MUST save the full place data here so the ACTIVE tab can query the places collection directly!
-    const placeUpdate: any = { 
-      activityCount: increment(1),
-      updatedAt: serverTimestamp(),
-      lastActivityId: activityRef.id
-    };
-    
     if (!placeExists) {
-      if (place) {
-        if (place.name) placeUpdate.name = place.name;
-        if (place.address) placeUpdate.address = place.address;
-        if (place.categories) {
-          placeUpdate.categories = (Array.isArray(place.categories) ? place.categories : [place.categories])
+      const placeCreateData: any = {
+        activityCount: 1,
+        updatedAt: serverTimestamp(),
+        lastActivityId: activityRef.id
+      };
+      if (effectivePlace) {
+        if (effectivePlace.name) placeCreateData.name = effectivePlace.name;
+        if (effectivePlace.address) placeCreateData.address = effectivePlace.address;
+        if (effectivePlace.categories) {
+          placeCreateData.categories = (Array.isArray(effectivePlace.categories) ? effectivePlace.categories : [effectivePlace.categories])
             .filter((c: string) => c !== 'user_event');
         }
-        if (place.lat) placeUpdate.lat = place.lat;
-        if (place.lon) placeUpdate.lon = place.lon;
-        if (place.openingHours) placeUpdate.openingHours = place.openingHours;
+        if (effectivePlace.lat) placeCreateData.lat = effectivePlace.lat;
+        if (effectivePlace.lon) placeCreateData.lon = effectivePlace.lon;
+        if (effectivePlace.openingHours) placeCreateData.openingHours = effectivePlace.openingHours;
       }
-      batch.set(placeRef, placeUpdate);
+      batch.set(placeRef, placeCreateData);
     } else {
-      batch.update(placeRef, placeUpdate);
+      batch.update(placeRef, {
+        activityCount: increment(1),
+        updatedAt: serverTimestamp(),
+        lastActivityId: activityRef.id
+      });
     }
   }
 
