@@ -531,6 +531,12 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
             <ul className="space-y-3">
               {renderedParticipantIds.map((uid) => {
                 const details = activity.participantDetails?.[uid];
+                const isSelf = user?.uid === uid;
+                const rawRating = isSelf ? (userProfile?.averageRating ?? details?.averageRating) : details?.averageRating;
+                const rawCount = isSelf ? (userProfile?.ratingCount ?? details?.ratingCount) : details?.ratingCount;
+                const ratingVal = rawRating && rawRating > 0 ? rawRating : 5.0;
+                const countVal = rawCount || 0;
+
                 const participantUsername = details?.username || (uid === activity.hostId ? activity.hostUsername : null) || null;
                 const displayName = participantUsername ? `@${participantUsername.replace(/^@/, '')}` : (language === 'de' ? 'Activa-Nutzer' : 'Activa user');
                 const photoURL = details?.photoURL || (uid === activity.hostId ? activity.hostPhotoURL : null);
@@ -563,22 +569,20 @@ export default function ActivityDetailClient({ activityId }: ActivityDetailClien
                                   Host
                                 </Badge>
                               )}
-                              {user?.uid === uid && (
+                              {isSelf && (
                                 <span className="text-[10px] font-bold text-slate-400 dark:text-neutral-500 uppercase tracking-tighter">
                                   {language === 'de' ? '(Du)' : '(You)'}
                                 </span>
                               )}
-                              {((details?.averageRating !== undefined && details.averageRating > 0) || (details?.ratingCount !== undefined && details.ratingCount > 0)) && (
-                                <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full border border-amber-200/50 dark:border-amber-900/40 shrink-0">
-                                  <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
-                                  <span className="font-black text-amber-700 dark:text-amber-400 text-[10px]">
-                                    {details.averageRating?.toFixed(1) || '5.0'}
-                                  </span>
-                                  <span className="text-[9px] font-bold text-amber-600/70 dark:text-amber-500/70">
-                                    ({details.ratingCount || 0})
-                                  </span>
-                                </div>
-                              )}
+                              <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full border border-amber-200/50 dark:border-amber-900/40 shrink-0">
+                                <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                                <span className="font-black text-amber-700 dark:text-amber-400 text-[10px]">
+                                  {ratingVal.toFixed(1)}
+                                </span>
+                                <span className="text-[9px] font-bold text-amber-600/70 dark:text-amber-500/70">
+                                  ({countVal})
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>

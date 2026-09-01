@@ -412,8 +412,13 @@ export function ActivityInfoSheet({
             <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800/80">
               <ul className="space-y-3">
                 {Object.entries(activity.participantDetails || {}).map(([uid, p]) => {
-                  const rating = p.averageRating ?? memberRatings[uid]?.averageRating;
-                  const count = p.ratingCount ?? memberRatings[uid]?.ratingCount;
+                  const isSelf = uid === user?.uid;
+                  const rawRating = isSelf ? (userProfile?.averageRating ?? p.averageRating ?? memberRatings[uid]?.averageRating) : (p.averageRating ?? memberRatings[uid]?.averageRating);
+                  const rawCount = isSelf ? (userProfile?.ratingCount ?? p.ratingCount ?? memberRatings[uid]?.ratingCount) : (p.ratingCount ?? memberRatings[uid]?.ratingCount);
+                  
+                  const ratingVal = rawRating && rawRating > 0 ? rawRating : 5.0;
+                  const countVal = rawCount || 0;
+
                   return (
                     <li key={uid} className="flex items-center gap-3">
                       <ProfileAvatar 
@@ -434,22 +439,20 @@ export function ActivityInfoSheet({
                               Host
                             </span>
                           )}
-                          {uid === user?.uid && (
+                          {isSelf && (
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                               {language === 'de' ? '(Du)' : '(You)'}
                             </span>
                           )}
-                          {((rating !== undefined && rating > 0) || (count !== undefined && count > 0)) && (
-                            <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full border border-amber-200/50 dark:border-amber-900/40 shrink-0">
-                              <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
-                              <span className="font-black text-amber-700 dark:text-amber-400 text-[10px]">
-                                {rating ? rating.toFixed(1) : '5.0'}
-                              </span>
-                              <span className="text-[9px] font-bold text-amber-600/70 dark:text-amber-500/70">
-                                ({count || 0})
-                              </span>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-0.5 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full border border-amber-200/50 dark:border-amber-900/40 shrink-0">
+                            <Star className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                            <span className="font-black text-amber-700 dark:text-amber-400 text-[10px]">
+                              {ratingVal.toFixed(1)}
+                            </span>
+                            <span className="text-[9px] font-bold text-amber-600/70 dark:text-amber-500/70">
+                              ({countVal})
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </li>
