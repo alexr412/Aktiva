@@ -689,7 +689,7 @@ function HomeContent() {
           (Array.isArray(previousPageData) && previousPageData.length === 0)) return null;
     }
 
-    if (isCommunityCategory) {
+    if (isCommunityCategory || isMySpotsCategory) {
       return null;
     }
 
