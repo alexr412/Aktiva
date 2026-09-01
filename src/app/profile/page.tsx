@@ -485,6 +485,14 @@ export default function ProfilePage() {
     };
 
     useEffect(() => {
+        if (user) {
+            getReviewsForTarget(user.uid)
+                .then((reviews) => setRecentReviews(reviews))
+                .catch(console.error);
+        }
+    }, [user]);
+
+    useEffect(() => {
         if (activeTab === 'reviews' && recentReviews.length === 0 && user) {
             setIsLoadingReviews(true);
             getReviewsForTarget(user.uid)
@@ -730,6 +738,14 @@ export default function ProfilePage() {
         return d === null || d >= startOfToday;
     });
 
+    const effectiveRatingCount = Math.max(userData?.ratingCount || 0, recentReviews.length);
+    const calculatedAvg = recentReviews.length > 0
+        ? recentReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / recentReviews.length
+        : 0;
+    const effectiveAverageRating = (userData?.averageRating && userData.averageRating > 0)
+        ? userData.averageRating
+        : calculatedAvg;
+
     return (
         <>
             <div className="relative flex flex-col h-full w-full bg-[#F8FAFC] dark:bg-neutral-950 overflow-y-auto pb-bottom-nav-safe lg:pb-12">
@@ -832,18 +848,18 @@ export default function ProfilePage() {
                                     </div>
 
                                     {/* Rating */}
-                                    {(userData?.ratingCount && userData.ratingCount > 0) ? (
+                                    {effectiveRatingCount > 0 ? (
                                         <button
                                             onClick={loadReviews}
                                             className="flex items-center justify-center gap-1 mt-3 group active:opacity-70 transition-opacity"
                                         >
                                             <div className="flex gap-0.5">
                                                 {[1, 2, 3, 4, 5].map(i => (
-                                                    <Star key={i} className={cn("h-3.5 w-3.5", i <= (userData.averageRating || 0) ? "text-[#f59e0b] fill-[#f59e0b]" : "text-slate-200 fill-slate-100")} />
+                                                    <Star key={i} className={cn("h-3.5 w-3.5", i <= Math.round(effectiveAverageRating) ? "text-[#f59e0b] fill-[#f59e0b]" : "text-slate-200 fill-slate-100")} />
                                                 ))}
                                             </div>
-                                            <span className="text-base font-black text-slate-900 dark:text-neutral-100">{userData.averageRating?.toFixed(1) || '0.0'}</span>
-                                            <span className="text-xs font-bold text-slate-400">({userData.ratingCount})</span>
+                                            <span className="text-base font-black text-slate-900 dark:text-neutral-100">{effectiveAverageRating.toFixed(1)}</span>
+                                            <span className="text-xs font-bold text-slate-400">({effectiveRatingCount})</span>
                                         </button>
                                     ) : null}
                                 </div>
@@ -877,7 +893,7 @@ export default function ProfilePage() {
                                 {[
                                     { label: language === 'de' ? 'Active' : 'Active', val: currentActivities.length, bg: 'bg-emerald-500/15' },
                                     { label: language === 'de' ? 'Friends' : 'Friends', val: userData?.friends?.length || 0, bg: 'bg-cyan-500/15' },
-                                    { label: language === 'de' ? 'Reviews' : 'Reviews', val: userData?.ratingCount || 0, bg: 'bg-amber-500/15' }
+                                    { label: language === 'de' ? 'Reviews' : 'Reviews', val: effectiveRatingCount, bg: 'bg-amber-500/15' }
                                 ].map((stat, idx) => (
                                     <button 
                                         key={stat.label} 

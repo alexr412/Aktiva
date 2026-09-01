@@ -137,13 +137,15 @@ export default function UserProfilePage() {
         const loadData = async () => {
             setLoading(true);
             try {
-                const [profile, userActivities] = await Promise.all([
+                const [profile, userActivities, reviews] = await Promise.all([
                     getPublicProfileClient(userId),
-                    fetchUserActivities(userId)
+                    fetchUserActivities(userId),
+                    getReviewsForTarget(userId)
                 ]);
 
                 if (profile) {
                     setUserData(profile as PublicUserProfile);
+                    setUserReviews(reviews);
                     
                     const mappedActivities = (userActivities as Activity[]).map(act => ({
                         ...act,
@@ -477,16 +479,28 @@ export default function UserProfilePage() {
                             </div>
 
                             {/* Rating */}
-                            {userData.ratingCount && userData.ratingCount > 0 ? (
-                                <button 
-                                    onClick={handleOpenReviews}
-                                    className="flex items-center justify-center gap-1 mt-2 sm:mt-3 bg-amber-50 dark:bg-amber-950/30 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-amber-100 dark:border-amber-900/50 hover:scale-105 active:scale-95 transition-all cursor-pointer group"
-                                >
-                                    <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-500 fill-amber-500 group-hover:scale-110 transition-transform" />
-                                    <span className="font-black text-amber-700 dark:text-amber-400 text-xs sm:text-sm">{userData.averageRating?.toFixed(1)}</span>
-                                    <span className="text-[9px] sm:text-[10px] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase">({userData.ratingCount})</span>
-                                </button>
-                            ) : null}
+                            {(() => {
+                                const effectiveRatingCount = Math.max(userData.ratingCount || 0, userReviews.length);
+                                const calculatedAvg = userReviews.length > 0
+                                    ? userReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / userReviews.length
+                                    : 0;
+                                const effectiveAverageRating = (userData.averageRating && userData.averageRating > 0)
+                                    ? userData.averageRating
+                                    : calculatedAvg;
+
+                                if (effectiveRatingCount <= 0) return null;
+
+                                return (
+                                    <button 
+                                        onClick={handleOpenReviews}
+                                        className="flex items-center justify-center gap-1 mt-2 sm:mt-3 bg-amber-50 dark:bg-amber-950/30 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-amber-100 dark:border-amber-900/50 hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+                                    >
+                                        <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-500 fill-amber-500 group-hover:scale-110 transition-transform" />
+                                        <span className="font-black text-amber-700 dark:text-amber-400 text-xs sm:text-sm">{effectiveAverageRating.toFixed(1)}</span>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-amber-600/70 dark:text-amber-500/70 uppercase">({effectiveRatingCount})</span>
+                                    </button>
+                                );
+                            })()}
                         </div>
 
                         {/* Bio & Interests Column */}
