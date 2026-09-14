@@ -1,3 +1,4 @@
+process.env.FUNCTIONS_EMULATOR = "true";
 const assert = require("assert");
 
 // ─── ROBUST WINDOWS CACHE MOCK HELPER ────────────────────────────────────────
@@ -454,7 +455,7 @@ async function testSecureJoinPaidActivity() {
   // Test Case A: unauthenticated request
   resetMockDb();
   await assert.rejects(
-    (secureJoinPaidActivity as any)({ activityId: "act1", transactionToken: "pi_test_act1" }, null),
+    (secureJoinPaidActivity as any)({ activityId: "act1", transactionToken: "txn_sandbox_act1" }, null),
     (err: any) => err.name === "HttpsError" && err.code === "unauthenticated"
   );
 
@@ -464,9 +465,15 @@ async function testSecureJoinPaidActivity() {
     (err: any) => err.name === "HttpsError" && err.code === "invalid-argument"
   );
 
+  // Test Case Non-Sandbox Fail-Closed Rejection:
+  await assert.rejects(
+    (secureJoinPaidActivity as any)({ activityId: "act1", transactionToken: "pi_live_stripe_123" }, { uid: "user1" }),
+    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition" && err.message.includes("Nicht-Sandbox-Zahlungsbeitritte sind in Phase 1.2 vorübergehend deaktiviert")
+  );
+
   // Test Case C: activity not found
   await assert.rejects(
-    (secureJoinPaidActivity as any)({ activityId: "missing_act", transactionToken: "pi_test_missing_act" }, { uid: "user1" }),
+    (secureJoinPaidActivity as any)({ activityId: "missing_act", transactionToken: "txn_sandbox_missing_act" }, { uid: "user1" }),
     (err: any) => err.name === "HttpsError" && err.code === "not-found" && err.message.includes("Aktivität nicht gefunden")
   );
 
@@ -476,11 +483,11 @@ async function testSecureJoinPaidActivity() {
     completed_act: { status: "completed", isPaid: true, hostId: "host1", participantIds: [] }
   };
   await assert.rejects(
-    (secureJoinPaidActivity as any)({ activityId: "cancelled_act", transactionToken: "pi_test_cancelled_act" }, { uid: "user1" }),
+    (secureJoinPaidActivity as any)({ activityId: "cancelled_act", transactionToken: "txn_sandbox_cancelled_act" }, { uid: "user1" }),
     (err: any) => err.name === "HttpsError" && err.code === "failed-precondition" && err.message.includes("nicht mehr aktiv")
   );
   await assert.rejects(
-    (secureJoinPaidActivity as any)({ activityId: "completed_act", transactionToken: "pi_test_completed_act" }, { uid: "user1" }),
+    (secureJoinPaidActivity as any)({ activityId: "completed_act", transactionToken: "txn_sandbox_completed_act" }, { uid: "user1" }),
     (err: any) => err.name === "HttpsError" && err.code === "failed-precondition" && err.message.includes("nicht mehr aktiv")
   );
 
@@ -489,7 +496,7 @@ async function testSecureJoinPaidActivity() {
     free_act: { status: "active", isPaid: false, hostId: "host1", participantIds: [] }
   };
   await assert.rejects(
-    (secureJoinPaidActivity as any)({ activityId: "free_act", transactionToken: "pi_test_free_act" }, { uid: "user1" }),
+    (secureJoinPaidActivity as any)({ activityId: "free_act", transactionToken: "txn_sandbox_free_act" }, { uid: "user1" }),
     (err: any) => err.name === "HttpsError" && err.code === "failed-precondition" && err.message.includes("keine Zahlung")
   );
 
@@ -498,7 +505,7 @@ async function testSecureJoinPaidActivity() {
     full_act: { status: "active", isPaid: true, hostId: "host1", participantIds: ["user_other"], maxParticipants: 1 }
   };
   await assert.rejects(
-    (secureJoinPaidActivity as any)({ activityId: "full_act", transactionToken: "pi_test_full_act" }, { uid: "user1" }),
+    (secureJoinPaidActivity as any)({ activityId: "full_act", transactionToken: "txn_sandbox_full_act" }, { uid: "user1" }),
     (err: any) => err.name === "HttpsError" && err.code === "resource-exhausted"
   );
 
@@ -507,17 +514,17 @@ async function testSecureJoinPaidActivity() {
     paid_act: { status: "active", isPaid: true, price: 10.0, hostId: "host1", participantIds: [] }
   };
   mockDbState["processed_payments"] = {
-    pi_test_dup_token: { status: "completed" }
+    txn_sandbox_dup_token: { status: "completed" }
   };
-  const dupResult = await (secureJoinPaidActivity as any)({ activityId: "paid_act", transactionToken: "pi_test_dup_token" }, { uid: "user1" });
+  const dupResult = await (secureJoinPaidActivity as any)({ activityId: "paid_act", transactionToken: "txn_sandbox_dup_token" }, { uid: "user1" });
   assert.deepStrictEqual(dupResult, { success: true, duplicated: true });
 
   // Test Case H: Already participant (idempotent success)
   mockDbState["activities"] = {
     paid_act: { status: "active", isPaid: true, price: 10.0, hostId: "host1", participantIds: ["user1"] }
   };
-  delete mockDbState["processed_payments"]["pi_test_dup_token"];
-  const alreadyParticipantResult = await (secureJoinPaidActivity as any)({ activityId: "paid_act", transactionToken: "pi_test_already_participant" }, { uid: "user1" });
+  delete mockDbState["processed_payments"]["txn_sandbox_dup_token"];
+  const alreadyParticipantResult = await (secureJoinPaidActivity as any)({ activityId: "paid_act", transactionToken: "txn_sandbox_already_participant" }, { uid: "user1" });
   assert.deepStrictEqual(alreadyParticipantResult, { success: true, message: "Bereits Teilnehmer." });
 
   // Test Case I: Valid join moves participant and host escrow
@@ -534,7 +541,7 @@ async function testSecureJoinPaidActivity() {
   };
 
   const validResult = await (secureJoinPaidActivity as any)(
-    { activityId: "paid_act", transactionToken: "pi_test_valid", referralId: "referrer1" },
+    { activityId: "paid_act", transactionToken: "txn_sandbox_valid", referralId: "referrer1" },
     { uid: "user1" }
   );
   assert.deepStrictEqual(validResult, { success: true });
@@ -559,7 +566,7 @@ async function testSecureJoinPaidActivity() {
   assert.strictEqual(updatedReferrer.successfulReferrals, 3);
 
   // Check idempotency record created
-  assert.ok(mockDbState["processed_payments"]["pi_test_valid"]);
+  assert.ok(mockDbState["processed_payments"]["txn_sandbox_valid"]);
 
   // Check ledger entry written
   const ledgerEntries = Object.values(mockDbState["financial_ledger"] || {});
@@ -581,7 +588,7 @@ async function testSecureJoinPaidActivity() {
   };
 
   await assert.rejects(
-    (secureJoinPaidActivity as any)({ activityId: "paid_act", transactionToken: "pi_test_dlq_token" }, { uid: "user1" }),
+    (secureJoinPaidActivity as any)({ activityId: "paid_act", transactionToken: "txn_sandbox_dlq_token" }, { uid: "user1" }),
     (err: any) => err.name === "HttpsError" && err.code === "internal" && err.message.includes("Transaktionsfehler")
   );
 
@@ -590,36 +597,10 @@ async function testSecureJoinPaidActivity() {
   const dlqEntries = Object.values(mockDbState["failed_operations"] || {});
   assert.strictEqual(dlqEntries.length, 1);
   const dlqEntry = dlqEntries[0] as any;
-  assert.strictEqual(dlqEntry.operationId, "pi_test_dlq_token");
+  assert.strictEqual(dlqEntry.operationId, "txn_sandbox_dlq_token");
   assert.strictEqual(dlqEntry.userId, "user1");
   assert.strictEqual(dlqEntry.source, "secureJoinPaidActivity");
   assert.strictEqual(dlqEntry.errorMessage, "Simulated Firestore Failure");
-
-  // Test Case K: Wrong metadata, currency, amount, and failed payment
-  resetMockDb();
-  mockDbState["activities"] = {
-    paid_act: { status: "active", isPaid: true, price: 15.0, hostId: "host1", participantIds: [] }
-  };
-  
-  await assert.rejects(
-    (secureJoinPaidActivity as any)({ activityId: "paid_act", transactionToken: "pi_failed" }, { uid: "user1" }),
-    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition" && err.message.includes("Zahlung nicht erfolgreich")
-  );
-  
-  await assert.rejects(
-    (secureJoinPaidActivity as any)({ activityId: "paid_act", transactionToken: "pi_wrong_currency" }, { uid: "user1" }),
-    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition" && err.message.includes("Zahlungswährung")
-  );
-  
-  await assert.rejects(
-    (secureJoinPaidActivity as any)({ activityId: "paid_act", transactionToken: "pi_wrong_amount" }, { uid: "user1" }),
-    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition" && err.message.includes("Zahlungsbetrag")
-  );
-  
-  await assert.rejects(
-    (secureJoinPaidActivity as any)({ activityId: "paid_act", transactionToken: "pi_wrong_metadata" }, { uid: "user1" }),
-    (err: any) => err.name === "HttpsError" && err.code === "failed-precondition" && err.message.includes("Aktivitäts-ID")
-  );
 
   console.log("✅ testSecureJoinPaidActivity passed");
 }

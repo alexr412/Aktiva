@@ -15,25 +15,25 @@ service firebase.storage {
     }
 
     match /kyc/{userId}/{fileName} {
-      function isAdmin() {
-        return request.auth != null && (
-          request.auth.token.get('isAdmin', false) == true ||
-          request.auth.token.get('role', '') == 'admin' ||
-          (request.auth.uid != null &&
-           firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-           firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('role', '') == 'admin')
-        );
+      function canReviewKyc() {
+        return request.auth != null &&
+          firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+          (firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+           firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       }
 
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin())
-                  && fileName in ['identity_document.jpg', 'identity_document.jpeg', 'identity_document.png', 'identity_document.webp', 'identity_document.pdf'];
+      function filenameIsAllowed() {
+        return fileName in ['identity_document.jpg', 'identity_document.jpeg', 'identity_document.png', 'identity_document.webp', 'identity_document.pdf'];
+      }
+
+      allow read: if request.auth != null && filenameIsAllowed() && (request.auth.uid == userId || canReviewKyc());
       allow create: if request.auth != null && request.auth.uid == userId
                     && resource == null
                     && request.resource.size < 10 * 1024 * 1024
                     && request.resource.contentType.matches('image/(jpeg|png|webp)|application/pdf')
-                    && fileName in ['identity_document.jpg', 'identity_document.jpeg', 'identity_document.png', 'identity_document.webp', 'identity_document.pdf'];
+                    && filenameIsAllowed();
       allow update: if false;
-      allow delete: if request.auth != null && isAdmin();
+      allow delete: if request.auth != null && canReviewKyc();
     }
   }
 }

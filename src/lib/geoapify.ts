@@ -944,12 +944,13 @@ function scheduleTelemetryFlush() {
         token = await auth?.currentUser?.getIdToken() || null;
       }
 
-      await fetch('/api/geoapify/telemetry', {
+      const { fetchWithAppCheck } = await import('@/lib/api-client');
+      await fetchWithAppCheck('/api/geoapify/telemetry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
+        idToken: token || undefined,
         body: JSON.stringify({ cacheHits: hits, cacheMisses: misses }),
       });
     } catch (e) {
@@ -958,9 +959,11 @@ function scheduleTelemetryFlush() {
   }, 5000);
 }
 
+import { generateUUIDv4 } from '@/lib/uuid';
+
 export async function callGeoapifyGateway(service: string, params: Record<string, any>): Promise<any> {
   recordCacheMissBatch();
-  const usageEventId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const usageEventId = generateUUIDv4();
 
   let token: string | null = null;
   if (typeof window !== 'undefined') {
@@ -972,16 +975,13 @@ export async function callGeoapifyGateway(service: string, params: Record<string
     }
   }
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const res = await fetch('/api/geoapify', {
+  const { fetchWithAppCheck } = await import('@/lib/api-client');
+  const res = await fetchWithAppCheck('/api/geoapify', {
     method: 'POST',
-    headers,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    idToken: token || undefined,
     body: JSON.stringify({
       service,
       params,

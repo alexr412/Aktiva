@@ -28,6 +28,7 @@ import { calculateDistance } from '@/lib/geo-utils';
 import { PlaceDetails } from '@/components/activa/place-details';
 import { ActivityInfoSheet } from '@/components/activa/activity-info-sheet';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
+import type { CallableActivityPayload } from '@/features/activities/create/activity-payload';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { getPrimaryIconData, ACTIVITY_EXPIRY_THRESHOLD_MS } from '@/lib/tag-config';
 import { usePlanningMode } from '@/contexts/planning-mode-context';
@@ -166,38 +167,10 @@ export default function ExplorePage() {
         }
     }, [user, activeCategory, userLocation, userProfile, language, toast]);
     
-    const handleCreateActivity = async (
-        startDate: Date, 
-        endDate: Date | undefined, 
-        isTimeFlexible: boolean, 
-        customLocationName?: string, 
-        maxParticipants?: number, 
-        isBoosted?: boolean,
-        isPaid?: boolean,
-        price?: number,
-        category?: ActivityCategory,
-        description?: string,
-        requirements?: any,
-        joinMode?: 'direct' | 'request'
-    ): Promise<boolean> => {
+    const handleCreateActivity = async (submission: CallableActivityPayload): Promise<boolean> => {
         if (!user || !activityModalPlace) return false;
         try {
-            await createActivity({
-                place: activityModalPlace === 'custom' ? undefined : activityModalPlace as Place,
-                customLocationName,
-                startDate,
-                endDate,
-                user,
-                isTimeFlexible,
-                maxParticipants,
-                isBoosted,
-                isPaid,
-                price,
-                category: category || (language === 'de' ? 'Sonstiges' : 'Other') as ActivityCategory,
-                description,
-                requirements,
-                joinMode
-            });
+            await createActivity(submission);
             toast({ title: language === 'de' ? "Aktivität erstellt!" : "Activity created!", description: language === 'de' ? "Viel Spaß!" : "Have fun!" });
             setActivityModalPlace(null);
             return true;

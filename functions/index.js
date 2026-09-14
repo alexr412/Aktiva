@@ -12,97 +12,9 @@ admin.initializeApp();
 
 const getFirestore = admin.firestore;
 
-// Cloud Function trigger for nearby/friend notifications is now exported below from TypeScript.
-
-/**
- * Kern-Logik für das Performance-Reporting (Wiederverwendbar)
- */
-async function aggregateAndSendReports() {
-  const db = getFirestore();
-  const oneWeekAgo = admin.firestore.Timestamp.fromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
-
-  const activitiesSnap = await db.collection("activities")
-    .where("status", "==", "completed")
-    .where("createdAt", ">=", oneWeekAgo)
-    .get();
-
-  if (activitiesSnap.empty) return { processed: 0 };
-
-  const hostStats = {};
-  activitiesSnap.forEach(doc => {
-    const data = doc.data();
-    const hostId = data.creatorId;
-    if (!hostId) return;
-
-    if (!hostStats[hostId]) {
-      hostStats[hostId] = { impressions: 0, pushJoins: 0, count: 0 };
-    }
-    hostStats[hostId].impressions += (data.stats?.impressions || 0);
-    hostStats[hostId].pushJoins += (data.stats?.pushJoins || 0);
-    hostStats[hostId].count += 1;
-  });
-
-  const messaging = admin.messaging();
-  let sentCount = 0;
-
-  for (const [hostId, stats] of Object.entries(hostStats)) {
-    const userDoc = await db.collection("users").doc(hostId).get();
-    const user = userDoc.data();
-
-    if (user && user.fcmToken) {
-      const message = {
-        token: user.fcmToken,
-        notification: {
-          title: "Dein Wochenbericht ist da 📊",
-          body: `Deine ${stats.count} Aktivitäten erreichten ${stats.impressions} Aufrufe und generierten ${stats.pushJoins} direkte Push-Beitritte.`,
-        },
-        data: { click_action: "FLUTTER_NOTIFICATION_CLICK" }
-      };
-
-      try {
-        await messaging.send(message);
-        sentCount++;
-      } catch (err) {
-        console.error(`Failed to send report to host ${hostId}:`, err);
-      }
-    }
-  }
-
-  return { processed: activitiesSnap.size, sent: sentCount };
-}
-
-/**
- * Scheduled Function: Jeden Sonntag um 20:00 Uhr
- */
-exports.weeklyHostReport = onSchedule("every sunday 20:00", async (event) => {
-  console.log("Starting scheduled weekly report...");
-  const result = await aggregateAndSendReports();
-  console.log(`Weekly report finished. Processed ${result.processed} activities, sent ${result.sent} notifications.`);
-});
-
-function hasAdminAccess(data) {
-  return data?.role === "admin" || data?.isAdmin === true;
-}
-
-/**
- * HTTPS Callable: Manueller Trigger für Admin-Diagnostic
- */
-exports.triggerWeeklyReportManual = onCall(async (request) => {
-  // RBAC: Nur Admins dürfen manuell triggern
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "User must be authenticated.");
-  }
-  const callerUid = request.auth.uid;
-  const callerDoc = await getFirestore().collection("users").doc(callerUid).get();
-  if (!callerDoc.exists) {
-    throw new HttpsError("permission-denied", "Caller profile not found.");
-  }
-  if (!hasAdminAccess(callerDoc.data())) {
-    throw new HttpsError("permission-denied", "Unauthorized access.");
-  }
-
-  return await aggregateAndSendReports();
-});
+// Weekly Host Performance Reports (Lazy Loaded from TypeScript)
+lazyExport('weeklyHostReport', './lib/reports');
+lazyExport('triggerWeeklyReportManual', './lib/reports');
 
 /**
  * MODUL 20: Automatisiertes Hygiene-System.
@@ -244,6 +156,8 @@ lazyExport('notifyNearbyUsers', './lib/activities');
 lazyExport('respondToJoinRequest', './lib/activities');
 lazyExport('secureRequestJoinActivity', './lib/activities');
 lazyExport('kickParticipant', './lib/activities');
+lazyExport('secureCreateActivity', './lib/activities');
+lazyExport('secureBoostEntity', './lib/activities');
 
 // Telemetry Aggregation & Data Retention (Lazy Loaded)
 lazyExport('telemetryAggregationWorker', './lib/aggregation');

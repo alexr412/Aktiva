@@ -9,6 +9,7 @@ import { signOut } from '@/lib/firebase/auth';
 import { fetchUserActivities, joinActivity, getPublicProfileClient, acceptFriendRequest, declineFriendRequest, createActivity, updatePresetAvatar, removeUserAvatar, votePlace, getReviewsForTarget } from '@/lib/firebase/firestore';
 import { DEFAULT_AVATARS } from '@/lib/avatar-options';
 import type { Activity, UserProfile, Place, Review, ActivityCategory } from '@/lib/types';
+import type { CallableActivityPayload } from '@/features/activities/create/activity-payload';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, onSnapshot, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
@@ -641,23 +642,11 @@ export default function ProfilePage() {
         setActivityModalPlace(place);
     };
 
-    const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory, description?: string, requirements?: any, joinMode?: 'direct' | 'request'): Promise<boolean> => {
+    const handleCreateActivity = async (submission: CallableActivityPayload): Promise<boolean> => {
         if (!user || !activityModalPlace) return false;
 
         try {
-            const newActivityRef = await createActivity({
-                place: activityModalPlace,
-                startDate,
-                endDate,
-                user,
-                isTimeFlexible,
-                maxParticipants,
-                isBoosted,
-                category: 'Sonstiges',
-                description,
-                requirements,
-                joinMode
-            });
+            const newActivityRef = await createActivity(submission);
             toast({ title: language === 'de' ? 'Aktivität erstellt!' : 'Activity created!' });
             setActivityModalPlace(null);
             router.push(`/chat/${newActivityRef.id}`);

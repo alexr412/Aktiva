@@ -6,7 +6,7 @@ import { ref, uploadBytes, deleteObject, getBytes } from 'firebase/storage';
 
 const PROJECT_ID = 'activa-444220';
 
-async function runTests() {
+export async function runFirestoreRulesTests() {
   const hostEnv = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
   const [host, portStr] = hostEnv.split(':');
   const port = parseInt(portStr || '8080', 10);
@@ -205,8 +205,8 @@ async function runTests() {
     await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { referredBy: 'someone' }));
 
     // 2.1 Tokens: Owner token decrement tests
-    console.log('Testing B.2.1: token decrement allowed...');
-    await assertSucceeds(updateDoc(doc(aliceDb, 'users/alice'), { tokens: 4 })); // decrement by 1 (allowed)
+    console.log('Testing B.2.1: token update by client denied...');
+    await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { tokens: 4 })); // direct client token update denied
     console.log('Testing B.2.1b: token increment fails...');
     await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { tokens: 6 })); // increment by 1 (denied)
     console.log('Testing B.2.1c: token decrement by 2 fails...');
@@ -220,9 +220,9 @@ async function runTests() {
     console.log('Testing B.3: non-owner updates fail...');
     await assertFails(updateDoc(doc(bobDb, 'users/alice'), { displayName: 'Bob Hack' }));
 
-    // 4. Allow: admin update (permitted by isAdmin() and rules update condition)
-    console.log('Testing B.4: admin update succeeds...');
-    await assertSucceeds(updateDoc(doc(adminDb, 'users/alice'), { kycStatus: 'verified' }));
+    // 4. Deny: direct admin client update of system fields (must fail in hardened architecture)
+    console.log('Testing B.4: direct admin client update of kycStatus fails...');
+    await assertFails(updateDoc(doc(adminDb, 'users/alice'), { kycStatus: 'verified' }));
   }
 
   // ==========================================
@@ -442,20 +442,20 @@ async function runTests() {
     // 1. refunds
     // Client creation denied
     await assertFails(setDoc(doc(aliceDb, 'refunds/ref1'), { amount: 100 }));
-    // Admin update allowed, client update denied (read is allowed for own UID)
+    // Admin update denied, client update denied (read is allowed for own UID)
     await seedDoc('refunds/ref1', { userId: 'alice', amount: 100 });
     await assertSucceeds(getDoc(doc(aliceDb, 'refunds/ref1')));
     await assertFails(updateDoc(doc(aliceDb, 'refunds/ref1'), { amount: 200 }));
-    await assertSucceeds(updateDoc(doc(adminDb, 'refunds/ref1'), { status: 'processed' }));
+    await assertFails(updateDoc(doc(adminDb, 'refunds/ref1'), { status: 'processed' }));
 
     // 2. payoutRequests
     // Client creation denied
     await assertFails(setDoc(doc(aliceDb, 'payoutRequests/pay1'), { amount: 50 }));
-    // Client read allowed, state update denied. Admin update allowed
+    // Client read allowed, state update denied. Admin client update denied
     await seedDoc('payoutRequests/pay1', { userId: 'alice', amount: 50, status: 'pending' });
     await assertSucceeds(getDoc(doc(aliceDb, 'payoutRequests/pay1')));
     await assertFails(updateDoc(doc(aliceDb, 'payoutRequests/pay1'), { status: 'approved' }));
-    await assertSucceeds(updateDoc(doc(adminDb, 'payoutRequests/pay1'), { status: 'approved' }));
+    await assertFails(updateDoc(doc(adminDb, 'payoutRequests/pay1'), { status: 'approved' }));
 
     // 3. financial_ledger
     // All client writes (create/update/delete) denied even for admins
@@ -485,11 +485,11 @@ async function runTests() {
     // Seed a place
     await seedDoc('places/place1', { name: 'Musterplatz', activityCount: 2 });
 
-    // 1. Allow: authenticated user increments activityCount by exactly 1
-    await assertSucceeds(updateDoc(doc(aliceDb, 'places/place1'), { activityCount: 3 }));
+    // 1. Deny: direct client activityCount update on places is Cloud Functions owned
+    await assertFails(updateDoc(doc(aliceDb, 'places/place1'), { activityCount: 3 }));
 
-    // 2. Allow: authenticated user decrements activityCount by exactly 1
-    await assertSucceeds(updateDoc(doc(aliceDb, 'places/place1'), { activityCount: 1 }));
+    // 2. Deny: direct client activityCount update on places is Cloud Functions owned
+    await assertFails(updateDoc(doc(aliceDb, 'places/place1'), { activityCount: 1 }));
 
     // 3. Deny: authenticated user increments/decrements by more than 1
     await assertFails(updateDoc(doc(aliceDb, 'places/place1'), { activityCount: 4 }));
@@ -598,7 +598,8 @@ async function runTests() {
         hasReviewed: false
       });
 
-      await assertSucceeds(batch.commit());
+      // Phase 1.2: Direct client creation of activities is blocked; batch commit fails
+      await assertFails(batch.commit());
     }
 
     // 2. Deny: Batch creation where participant is a different user
@@ -1242,8 +1243,8 @@ async function runTests() {
     await assertFails(setDoc(doc(aliceDb, 'users/alice/tokenTransactions/newTx'), { userId: 'alice', amount: 1, type: 'earn_ad_watch' }));
     await assertFails(setDoc(doc(aliceDb, 'users/alice/pointsLedger/newPt'), { points: 10, type: 'event_created' }));
 
-    // 8. Existing safe token decrements remain allowed (e.g. decrementing by 1 for boost)
-    await assertSucceeds(updateDoc(doc(aliceDb, 'users/alice'), { tokens: 9 }));
+    // 8. Direct client token updates are locked (Cloud Functions owned)
+    await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { tokens: 9 }));
   }
 
   // ==========================================
@@ -1338,9 +1339,9 @@ async function runTests() {
     // Bob cannot read Alice's application
     await assertFails(getDoc(doc(bobDb, 'creator_applications/appAlice')));
 
-    // Admin can read and update application
+    // Admin can read, client update denied
     await assertSucceeds(getDoc(doc(adminDb, 'creator_applications/appAlice')));
-    await assertSucceeds(updateDoc(doc(adminDb, 'creator_applications/appAlice'), { status: 'approved' }));
+    await assertFails(updateDoc(doc(adminDb, 'creator_applications/appAlice'), { status: 'approved' }));
   }
 
   // ==========================================
@@ -1808,7 +1809,8 @@ async function runTests() {
         hasReviewed: false
       });
 
-      await assertSucceeds(batch.commit());
+      // Phase 1.2: Direct client activity creation is now blocked (Cloud Functions owned)
+      await assertFails(batch.commit());
     }
 
     // 2. Negative: Guest cannot create activity
@@ -1927,75 +1929,276 @@ async function runTests() {
     }
 
     // 14. Place-related Tests
-    // Seed place
-    await seedDoc('places/place1', { name: 'Musterplatz', activityCount: 0, isDeleted: false, isBlacklisted: false });
-    await seedDoc('places/placeDeleted', { name: 'Deleted Place', activityCount: 0, isDeleted: true, isBlacklisted: false });
+    // ── SECURITY HARDENING PHASE 1.1: ACTIVITY/PLACE ATOMIC CONSISTENCY TESTS ──
 
-    // Positive: Valid place creation with exactly activityCount +1 in batch succeeds
+    // Seed dedicated, isolated places
+    await seedDoc('places/place_pos_exist', { name: 'Existing Place', activityCount: 5, isDeleted: false, isBlacklisted: false });
+    await seedDoc('places/place_neg_noupdate', { name: 'No Update Place', activityCount: 2, isDeleted: false, isBlacklisted: false });
+    await seedDoc('places/place_neg_plus2', { name: 'Plus2 Place', activityCount: 10, isDeleted: false, isBlacklisted: false });
+    await seedDoc('places/place_neg_noinc', { name: 'No Inc Place', activityCount: 5, isDeleted: false, isBlacklisted: false });
+    await seedDoc('places/place_neg_wrong_lastact', { name: 'Wrong LastAct Place', activityCount: 3, isDeleted: false, isBlacklisted: false });
+    await seedDoc('places/place_neg_nolastact', { name: 'No LastAct Place', activityCount: 3, isDeleted: false, isBlacklisted: false });
+    await seedDoc('places/place_neg_deleted', { name: 'Deleted Place', activityCount: 1, isDeleted: true, isBlacklisted: false });
+    await seedDoc('places/place_neg_blacklisted', { name: 'Blacklisted Place', activityCount: 1, isDeleted: false, isBlacklisted: true });
+
+    // 1. Positive: bestehender Ort -> activityCount exakt +1 und korrekte lastActivityId
     {
       const batch = writeBatch(aliceDb);
-      const actId = 'act_place_ok';
-      const payload = { ...getValidActivity('alice'), placeId: 'place1', isCustomActivity: false };
-      
-      batch.set(doc(aliceDb, `activities/${actId}`), payload);
-      batch.set(doc(aliceDb, `chats/${actId}`), {
-        activityId: actId,
-        hostId: 'alice',
-        participantIds: ['alice']
-      });
-      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
-      batch.set(doc(aliceDb, 'places/place1'), { 
-        activityCount: 1,
-        lastActivityId: actId
-      }, { merge: true });
-
-      await assertSucceeds(batch.commit());
-    }
-
-    // Negative: Creation on deleted place blocked
-    {
-      const batch = writeBatch(aliceDb);
-      const actId = 'act_place_deleted';
-      const payload = { ...getValidActivity('alice'), placeId: 'placeDeleted', isCustomActivity: false };
-      
-      batch.set(doc(aliceDb, `activities/${actId}`), payload);
-      batch.set(doc(aliceDb, 'places/placeDeleted'), { 
-        activityCount: 1,
-        lastActivityId: actId
-      }, { merge: true });
-
-      await assertFails(batch.commit());
-    }
-
-    // Negative: Place activityCount NOT incremented in batch blocked
-    {
-      const batch = writeBatch(aliceDb);
-      const actId = 'act_place_no_inc';
-      const payload = { ...getValidActivity('alice'), placeId: 'place1', isCustomActivity: false };
-      
+      const actId = 'act_pos_exist';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_pos_exist', isCustomActivity: false };
       batch.set(doc(aliceDb, `activities/${actId}`), payload);
       batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
       batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
-
+      batch.set(doc(aliceDb, 'places/place_pos_exist'), { activityCount: 6, lastActivityId: actId }, { merge: true });
       await assertFails(batch.commit());
     }
 
-    // Negative: Place activityCount incremented by +2 blocked
+    // 2. Direct client creation of new place blocked
     {
       const batch = writeBatch(aliceDb);
-      const actId = 'act_place_wrong_inc';
-      const payload = { ...getValidActivity('alice'), placeId: 'place1', isCustomActivity: false };
-      
+      const actId = 'act_pos_new';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_pos_new', isCustomActivity: false };
       batch.set(doc(aliceDb, `activities/${actId}`), payload);
       batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
       batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
-      batch.set(doc(aliceDb, 'places/place1'), { 
-        activityCount: 3, // Initial was 0, act_place_ok set it to 1. Expected 2, but we write 3.
-        lastActivityId: actId
-      }, { merge: true });
-
+      batch.set(doc(aliceDb, 'places/place_pos_new'), { name: 'Brand New Place', activityCount: 1, lastActivityId: actId, isDeleted: false, isBlacklisted: false });
       await assertFails(batch.commit());
     }
+
+    // 3. Direct client creation of custom activity blocked
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_pos_custom';
+      const payload = { ...getValidActivity('alice'), placeId: 'custom', isCustomActivity: true };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      await assertFails(batch.commit());
+    }
+
+    // 4. Negative: bestehender Ort wird im Batch gar nicht aktualisiert
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_noupdate';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_noupdate', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      await assertFails(batch.commit());
+    }
+
+    // 5. Negative: activityCount wird um +2 verändert
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_plus2';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_plus2', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      batch.set(doc(aliceDb, 'places/place_neg_plus2'), { activityCount: 12, lastActivityId: actId }, { merge: true });
+      await assertFails(batch.commit());
+    }
+
+    // 6. Negative: activityCount wird nicht erhöht
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_noinc';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_noinc', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      batch.set(doc(aliceDb, 'places/place_neg_noinc'), { activityCount: 5, lastActivityId: actId }, { merge: true });
+      await assertFails(batch.commit());
+    }
+
+    // 7. Negative: falsche lastActivityId
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_wrong_lastact';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_wrong_lastact', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      batch.set(doc(aliceDb, 'places/place_neg_wrong_lastact'), { activityCount: 4, lastActivityId: 'wrong_id' }, { merge: true });
+      await assertFails(batch.commit());
+    }
+
+    // 8. Negative: fehlende lastActivityId
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_nolastact';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_nolastact', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      batch.set(doc(aliceDb, 'places/place_neg_nolastact'), { activityCount: 4 }, { merge: true });
+      await assertFails(batch.commit());
+    }
+
+    // 9. Negative: neuer Ort mit activityCount != 1
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_new_count2';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_new_count2', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      batch.set(doc(aliceDb, 'places/place_neg_new_count2'), { name: 'Bad New Place', activityCount: 2, lastActivityId: actId });
+      await assertFails(batch.commit());
+    }
+
+    // 10. Negative: gelöschter Ort
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_deleted';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_deleted', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      batch.set(doc(aliceDb, 'places/place_neg_deleted'), { activityCount: 2, lastActivityId: actId }, { merge: true });
+      await assertFails(batch.commit());
+    }
+
+    // 11. Negative: geblacklisteter Ort
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_blacklisted';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_blacklisted', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      batch.set(doc(aliceDb, 'places/place_neg_blacklisted'), { activityCount: 2, lastActivityId: actId }, { merge: true });
+      await assertFails(batch.commit());
+    }
+
+    // 12. Negative: nicht existierender Ort ohne Anlage im Batch
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_nonexistent';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_nonexistent', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      await assertFails(batch.commit());
+    }
+
+    // ── ISCUSTOMACTIVITY BYPASS SAFEGUARD TESTS ──
+
+    // 13. Negative: echte placeId + isCustomActivity:true + kein Place-Update -> assertFails
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_bypass_noupdate';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_noupdate', isCustomActivity: true };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      await assertFails(batch.commit());
+    }
+
+    // 14. Negative: gelöschter echter Place + isCustomActivity:true -> assertFails
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_bypass_deleted';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_deleted', isCustomActivity: true };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      batch.set(doc(aliceDb, 'places/place_neg_deleted'), { activityCount: 2, lastActivityId: actId }, { merge: true });
+      await assertFails(batch.commit());
+    }
+
+    // 15. Negative: geblacklisteter echter Place + isCustomActivity:true -> assertFails
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_neg_bypass_blacklisted';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_blacklisted', isCustomActivity: true };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      batch.set(doc(aliceDb, 'places/place_neg_blacklisted'), { activityCount: 2, lastActivityId: actId }, { merge: true });
+      await assertFails(batch.commit());
+    }
+
+    // ── HARDENED PLACE & CUSTOM ACTIVITY ATOMIC CONSISTENCY TESTS ──
+
+    // Seed dedicated places for hardening tests
+    await seedDoc('places/place_normal_meta', { name: 'Normal Meta Place', activityCount: 1, isDeleted: false, isBlacklisted: false });
+    await seedDoc('places/place_standalone_inc', { name: 'Standalone Inc Place', activityCount: 5, isDeleted: false, isBlacklisted: false });
+    await seedDoc('places/place_standalone_lastact', { name: 'Standalone LastAct Place', activityCount: 5, isDeleted: false, isBlacklisted: false });
+    await seedDoc('activities/pre_existing_act', getValidActivity('alice'));
+
+    // 16. Direkter Client-Write isDeleted false -> true schlägt fehl
+    await assertFails(updateDoc(doc(aliceDb, 'places/place_normal_meta'), { isDeleted: true }));
+
+    // 17. Direkter Client-Write isDeleted true -> false schlägt fehl
+    await assertFails(updateDoc(doc(aliceDb, 'places/place_neg_deleted'), { isDeleted: false }));
+
+    // 18. Direkte Veränderung von isBlacklisted schlägt fehl
+    await assertFails(updateDoc(doc(aliceDb, 'places/place_normal_meta'), { isBlacklisted: true }));
+
+    // 19. Activity-Batch versucht gelöschten Place auf isDeleted: false zu setzen -> schlägt fehl
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_try_reactivate_deleted';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_deleted', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      batch.set(doc(aliceDb, 'places/place_neg_deleted'), { isDeleted: false, activityCount: 2, lastActivityId: actId }, { merge: true });
+      await assertFails(batch.commit());
+    }
+
+    // 20. Activity-Batch versucht geblacklisteten Place auf isBlacklisted: false zu setzen -> schlägt fehl
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_try_reactivate_blacklisted';
+      const payload = { ...getValidActivity('alice'), placeId: 'place_neg_blacklisted', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      batch.set(doc(aliceDb, 'places/place_neg_blacklisted'), { isBlacklisted: false, activityCount: 2, lastActivityId: actId }, { merge: true });
+      await assertFails(batch.commit());
+    }
+
+    // 21. lastActivityId ohne activityCount-Änderung -> schlägt fehl
+    await assertFails(updateDoc(doc(aliceDb, 'places/place_standalone_lastact'), { lastActivityId: 'some_act_id' }));
+
+    // 25. custom placeId mit isCustomActivity:false -> schlägt fehl
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_custom_id_false_flag';
+      const payload = { ...getValidActivity('alice'), placeId: 'custom', isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      await assertFails(batch.commit());
+    }
+
+    // 26. missing placeId mit isCustomActivity:false -> schlägt fehl
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_missing_placeid_false_flag';
+      const payload = { ...getValidActivity('alice'), isCustomActivity: false };
+      delete (payload as any).placeId;
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      await assertFails(batch.commit());
+    }
+
+    // 27. null placeId mit isCustomActivity:false -> schlägt fehl
+    {
+      const batch = writeBatch(aliceDb);
+      const actId = 'act_null_placeid_false_flag';
+      const payload = { ...getValidActivity('alice'), placeId: null, isCustomActivity: false };
+      batch.set(doc(aliceDb, `activities/${actId}`), payload);
+      batch.set(doc(aliceDb, `chats/${actId}`), { activityId: actId, hostId: 'alice', participantIds: ['alice'] });
+      batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
+      await assertFails(batch.commit());
+    }
+
+    // 28. Positive: erlaubtes normales Place-Metadatenupdate ohne System-/Zählerfelder funktioniert
+    await assertSucceeds(updateDoc(doc(aliceDb, 'places/place_normal_meta'), { website: 'https://example.com' }));
 
     // 15. Boost & Tokens Tests
     // Positive: Valid creation with boost and exactly 1 token deduction succeeds
@@ -2009,7 +2212,7 @@ async function runTests() {
       batch.set(doc(aliceDb, `activities/${actId}/participants/alice`), { uid: 'alice', checkInStatus: 'pending', hasReviewed: false });
       batch.update(doc(aliceDb, 'users/alice'), { tokens: 4 }); // Deduct 1 from 5
 
-      await assertSucceeds(batch.commit());
+      await assertFails(batch.commit());
     }
 
     // Negative: Boost isBoosted: true without token deduction blocked
@@ -2042,7 +2245,7 @@ async function runTests() {
     // 16. Boost Match Block /boosts/{boostId} Whitelist
     // Positive: Valid boost document succeeds
     {
-      await assertSucceeds(setDoc(doc(aliceDb, 'boosts/boost1'), {
+      await assertFails(setDoc(doc(aliceDb, 'boosts/boost1'), {
         userId: 'alice',
         entityId: 'act_normal',
         entityType: 'activity',
@@ -2083,7 +2286,7 @@ async function runTests() {
         boostedAt: serverTimestamp()
       });
       batch.update(doc(aliceDb, 'users/alice'), { tokens: 3 }); // From 4 to 3
-      await assertSucceeds(batch.commit());
+      await assertFails(batch.commit());
     }
 
     // 18. Host Update Constraints after participants join
@@ -2241,7 +2444,7 @@ async function runTests() {
         isBlacklisted: false
       });
 
-      await assertSucceeds(batch.commit());
+      await assertFails(batch.commit());
     }
 
     // 2. createActivity mit vorhandenem Place success
@@ -2300,7 +2503,7 @@ async function runTests() {
         updatedAt: serverTimestamp()
       });
 
-      await assertSucceeds(batch.commit());
+      await assertFails(batch.commit());
     }
 
     // 3. createActivity blockiert, wenn Place isDeleted true
@@ -2421,7 +2624,7 @@ async function runTests() {
       await assertFails(batch.commit());
     }
 
-    // 5. joinActivity success
+    // 3. joinActivity success
     console.log('Running test 5: joinActivity success');
     {
       await seedDoc('activities/act_joinable', getValidActivityPayload(hostId));
@@ -2784,7 +2987,7 @@ async function runTests() {
         hasReviewed: false
       });
 
-      await assertSucceeds(batch.commit());
+      await assertFails(batch.commit());
     }
 
     // 14. Public Identity Revamp: valid legacy creation without optional username
@@ -2823,7 +3026,7 @@ async function runTests() {
         hasReviewed: false
       });
 
-      await assertSucceeds(batch.commit());
+      await assertFails(batch.commit());
     }
 
     // 15. Public Identity Revamp: malformed username rejected (non-string type)
@@ -3017,7 +3220,7 @@ async function runTests() {
         updatedAt: serverTimestamp()
       });
 
-      await assertSucceeds(batch.commit());
+      await assertFails(batch.commit());
     }
 
     // 20. Public Identity Revamp: community activity creation if it uses a different payload
@@ -3074,7 +3277,7 @@ async function runTests() {
         hasReviewed: false
       });
 
-      await assertSucceeds(batch.commit());
+      await assertFails(batch.commit());
     }
 
     // ─── NEW PREMIUM & SECURITY SYSTEM TESTS ──────────────────────────────────
@@ -3216,14 +3419,14 @@ async function runTests() {
     // Free user creating activity with 5 participants must FAIL
     await assertFails(createActivityBatch(freeDb, 'free_host', 'Free Host', 'freehost', false, 'act_free_5', 5));
 
-    // Free user creating activity with 4 participants must SUCCEED
-    await assertSucceeds(createActivityBatch(freeDb, 'free_host', 'Free Host', 'freehost', false, 'act_free_4', 4));
+    // Direct client activity creation must FAIL under Phase 1.2 rules
+    await assertFails(createActivityBatch(freeDb, 'free_host', 'Free Host', 'freehost', false, 'act_free_4', 4));
 
-    // Premium user creating activity with 12 participants must SUCCEED
-    await assertSucceeds(createActivityBatch(premDb, 'prem_host', 'Prem Host', 'premhost', true, 'act_prem_12', 12));
+    // Premium user creating activity directly must FAIL under Phase 1.2 rules
+    await assertFails(createActivityBatch(premDb, 'prem_host', 'Prem Host', 'premhost', true, 'act_prem_12', 12));
 
-    // Organizer user creating activity with 50 participants must SUCCEED
-    await assertSucceeds(createActivityBatch(orgDb, 'org_host', 'Org Host', 'orghost', false, 'act_org_50', 50));
+    // Organizer user creating activity directly must FAIL under Phase 1.2 rules
+    await assertFails(createActivityBatch(orgDb, 'org_host', 'Org Host', 'orghost', false, 'act_org_50', 50));
 
     // Test C: Boost level canonical string type
     const bUserDb = testEnv.authenticatedContext('free_host').firestore();
@@ -3239,21 +3442,16 @@ async function runTests() {
       multiplier: 2
     }));
 
-    // Boost with string boostLevel 'standard' must SUCCEED
-    try {
-      await assertSucceeds(setDoc(doc(bUserDb, 'boosts/b_str_unique_99'), {
-        userId: 'free_host',
-        entityId: 'act_free_4',
-        entityType: 'activity',
-        createdAt: serverTimestamp(),
-        expiresAt: Timestamp.fromDate(new Date(Date.now() + 86400000)),
-        boostLevel: 'standard', // String succeeds
-        multiplier: 2
-      }));
-    } catch (err: any) {
-      console.error('CRITICAL B_STR ERROR DETAILS:', err);
-      throw err;
-    }
+    // Direct client boost creation must FAIL under Phase 1.2 rules
+    await assertFails(setDoc(doc(bUserDb, 'boosts/b_str_unique_99'), {
+      userId: 'free_host',
+      entityId: 'act_free_4',
+      entityType: 'activity',
+      createdAt: serverTimestamp(),
+      expiresAt: Timestamp.fromDate(new Date(Date.now() + 86400000)),
+      boostLevel: 'standard',
+      multiplier: 2
+    }));
 
     // Test D: Capacity updates after plan loss vs historical limit preservation
     // Seed historical activity with maxParticipants = 12 hosted by free_host
@@ -3472,8 +3670,8 @@ async function runTests() {
     };
     await assertFails(setDoc(doc(aliceDb, `chats/${selfDmId}`), selfDmPayload));
 
-    // 6. Existing Activity Chat type still works
-    console.log('Testing J.6: Existing Activity Chat creation still works...');
+    // 6. Direct Client Activity Chat creation rejected under Phase 1.2 rules
+    console.log('Testing J.6: Direct Client Activity Chat creation rejected...');
     await seedDoc('activities/actGroup1', {
       id: 'actGroup1',
       hostId: 'alice',
@@ -3482,7 +3680,7 @@ async function runTests() {
       status: 'active'
     });
 
-    await assertSucceeds(setDoc(doc(aliceDb, 'chats/actGroup1'), {
+    await assertFails(setDoc(doc(aliceDb, 'chats/actGroup1'), {
       activityId: 'actGroup1',
       hostId: 'alice',
       createdAt: serverTimestamp(),
@@ -3551,7 +3749,7 @@ async function runTests() {
       participantsPreview: [{ uid: hostUid, displayName: hostName, photoURL: null, username: hostUsername }],
       createdAt: serverTimestamp(),
       lastInteractionAt: serverTimestamp(),
-      isCustomActivity: false,
+      isCustomActivity: true,
       isTimeFlexible: false,
       category: 'Sports',
       description: 'Test Description',
@@ -3615,12 +3813,13 @@ async function runTests() {
     };
     await assertFails(commitActivityCreation(maleDb, 'act1_fail', maleWomenOnlyPayload, 'maleHost', 'Male Host', 'malehost'));
 
-    // 2. Female host tries to create ['female'] event -> ALLOWED
+    // 2. Female host tries to create ['female'] event -> DENIED via client, so we seed via admin for join tests
     const femaleWomenOnlyPayload = {
       ...getBaseActivityPayload('femaleUser', 'Female User', 'femaleuser'),
       requirements: { gender: ['female'] }
     };
-    await assertSucceeds(commitActivityCreation(femaleDb, 'act1', femaleWomenOnlyPayload, 'femaleUser', 'Female User', 'femaleuser'));
+    await assertFails(commitActivityCreation(femaleDb, 'act1', femaleWomenOnlyPayload, 'femaleUser', 'Female User', 'femaleuser'));
+    await seedDoc('activities/act1', femaleWomenOnlyPayload);
 
     // 3. Fake/hacked gender array ['female', 'hacked', 'whatever'] -> DENIED (Strict Whitelist Check)
     const invalidGenderPayload = {
@@ -3651,7 +3850,7 @@ async function runTests() {
       ...getBaseActivityPayload('maleHost', 'Male Host', 'malehost'),
       requirements: { gender: ['male'] }
     };
-    await assertSucceeds(commitActivityCreation(maleDb, 'actMaleOnly', maleOnlyPayload, 'maleHost', 'Male Host', 'malehost'));
+    await assertFails(commitActivityCreation(maleDb, 'actMaleOnly', maleOnlyPayload, 'maleHost', 'Male Host', 'malehost'));
     // Female host creating Men-Only activity -> DENIED
     await assertFails(commitActivityCreation(femaleDb, 'actMaleOnlyFail', maleOnlyPayload, 'femaleUser', 'Female User', 'femaleuser'));
 
@@ -3669,7 +3868,7 @@ async function runTests() {
       ...getBaseActivityPayload('diverseHost', 'Diverse Host', 'diversehost'),
       requirements: { gender: ['diverse'] }
     };
-    await assertSucceeds(commitActivityCreation(diverseDb, 'actDivOnly', diverseOnlyPayload, 'diverseHost', 'Diverse Host', 'diversehost'));
+    await assertFails(commitActivityCreation(diverseDb, 'actDivOnly', diverseOnlyPayload, 'diverseHost', 'Diverse Host', 'diversehost'));
     // Male host creating Diverse-Only activity -> DENIED
     await assertFails(commitActivityCreation(maleDb, 'actDivOnlyFail', diverseOnlyPayload, 'maleHost', 'Male Host', 'malehost'));
 
@@ -3920,13 +4119,329 @@ async function runTests() {
     console.log('✅ Suite L: Tutorial Fields & Support Tickets Security Rules Tests PASSED!');
   }
 
+  // ==========================================
+  // N. Hardened Security Architecture & Role Isolation Tests
+  // ==========================================
+  {
+    console.log('Running Suite N: Hardened Security Architecture & Role Isolation Tests...');
+    await testEnv.clearFirestore();
+
+    // Seed profiles
+    await seedDoc('users/user1', { uid: 'user1', role: 'user', isBanned: false });
+    await seedDoc('users/supporter1', { uid: 'supporter1', role: 'supporter', isBanned: false });
+    await seedDoc('users/mod1', { uid: 'mod1', role: 'moderator', isBanned: false });
+    await seedDoc('users/fin1', { uid: 'fin1', role: 'finance', isBanned: false });
+    await seedDoc('users/admin1', { uid: 'admin1', role: 'admin', isBanned: false });
+    await seedDoc('users/super1', { uid: 'super1', role: 'superadmin', isBanned: false });
+    await seedDoc('users/stale_admin', { uid: 'stale_admin', role: 'user', isBanned: false });
+
+    // Seed resources
+    await seedDoc('reports/rep_open_1', {
+      reporterId: 'user1',
+      reportedEntityId: 'act100',
+      entityType: 'activity',
+      reason: 'spam',
+      status: 'open',
+      createdAt: serverTimestamp()
+    });
+    await seedDoc('payoutRequests/pay100', { userId: 'user1', amount: 500, status: 'pending' });
+    await seedDoc('refunds/ref100', { userId: 'user1', amount: 300, status: 'pending' });
+    await seedDoc('creator_applications/app100', { userId: 'user1', status: 'pending' });
+
+    const userDb = testEnv.authenticatedContext('user1').firestore();
+    const suppDb = testEnv.authenticatedContext('supporter1').firestore();
+    const modDb = testEnv.authenticatedContext('mod1').firestore();
+    const finDb = testEnv.authenticatedContext('fin1').firestore();
+    const adminDb = testEnv.authenticatedContext('admin1').firestore();
+    const superDb = testEnv.authenticatedContext('super1').firestore();
+    const staleAdminDb = testEnv.authenticatedContext('stale_admin', { role: 'admin' }).firestore();
+    const noDocDb = testEnv.authenticatedContext('no_doc_uid').firestore();
+
+    // N.1 Supporter without admin rights
+    await assertFails(getDoc(doc(suppDb, 'reports/rep_open_1')));
+    await assertFails(getDoc(doc(suppDb, 'payoutRequests/pay100')));
+    await assertFails(getDoc(doc(suppDb, 'refunds/ref100')));
+
+    // N.2 Moderator: Reports allowed, Financial data forbidden
+    await assertSucceeds(getDoc(doc(modDb, 'reports/rep_open_1')));
+    await assertFails(getDoc(doc(modDb, 'payoutRequests/pay100')));
+    await assertFails(getDoc(doc(modDb, 'refunds/ref100')));
+    await assertFails(getDoc(doc(modDb, 'financial_ledger/led100')));
+
+    // ── ISOLATED REPORT STATUS WORKFLOW & CONSTRAINT TESTS ──
+
+    // 1. Positive: open -> moderation_review (no resolvedAt timestamp expected)
+    await seedDoc('reports/rep_flow_review', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'open', createdAt: serverTimestamp() });
+    await assertSucceeds(updateDoc(doc(modDb, 'reports/rep_flow_review'), {
+      status: 'moderation_review',
+      resolutionNote: 'Under review',
+      reviewerId: 'mod1'
+    }));
+
+    // 2. Positive: open -> resolved (requires reviewerId and resolvedAt == request.time)
+    await seedDoc('reports/rep_flow_resolve', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'open', createdAt: serverTimestamp() });
+    await assertSucceeds(updateDoc(doc(modDb, 'reports/rep_flow_resolve'), {
+      status: 'resolved',
+      resolutionNote: 'Issue resolved',
+      reviewerId: 'mod1',
+      resolvedAt: serverTimestamp()
+    }));
+
+    // 3. Positive: pending -> dismissed (requires reviewerId and resolvedAt == request.time)
+    await seedDoc('reports/rep_flow_dismiss', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'pending', createdAt: serverTimestamp() });
+    await assertSucceeds(updateDoc(doc(modDb, 'reports/rep_flow_dismiss'), {
+      status: 'dismissed',
+      resolutionNote: 'Invalid report',
+      reviewerId: 'mod1',
+      resolvedAt: serverTimestamp()
+    }));
+
+    // 4. Positive: moderation_review -> resolved (requires reviewerId and resolvedAt == request.time)
+    await seedDoc('reports/rep_flow_mod_resolve', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'moderation_review', createdAt: serverTimestamp() });
+    await assertSucceeds(updateDoc(doc(modDb, 'reports/rep_flow_mod_resolve'), {
+      status: 'resolved',
+      resolutionNote: 'Resolved after review',
+      reviewerId: 'mod1',
+      resolvedAt: serverTimestamp()
+    }));
+
+    // 5. Terminal status: resolved/dismissed docs CANNOT be updated
+    await seedDoc('reports/rep_term_resolved', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'resolved', reviewerId: 'mod1', resolvedAt: serverTimestamp(), createdAt: serverTimestamp() });
+    await assertFails(updateDoc(doc(modDb, 'reports/rep_term_resolved'), { status: 'open' }));
+
+    await seedDoc('reports/rep_term_dismissed', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'dismissed', reviewerId: 'mod1', resolvedAt: serverTimestamp(), createdAt: serverTimestamp() });
+    await assertFails(updateDoc(doc(modDb, 'reports/rep_term_dismissed'), { status: 'moderation_review' }));
+
+    // 6. Negative: Wrong reviewerId (reviewerId != auth.uid)
+    await seedDoc('reports/rep_neg_reviewer', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'open', createdAt: serverTimestamp() });
+    await assertFails(updateDoc(doc(modDb, 'reports/rep_neg_reviewer'), {
+      status: 'resolved',
+      resolutionNote: 'Reviewed',
+      reviewerId: 'other_mod',
+      resolvedAt: serverTimestamp()
+    }));
+
+    // 7. Negative: Missing reviewerId
+    await seedDoc('reports/rep_neg_noreviewer', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'open', createdAt: serverTimestamp() });
+    await assertFails(updateDoc(doc(modDb, 'reports/rep_neg_noreviewer'), {
+      status: 'resolved',
+      resolutionNote: 'Reviewed',
+      resolvedAt: serverTimestamp()
+    }));
+
+    // 8. Negative: resolutionNote exceeds 1000 characters
+    await seedDoc('reports/rep_neg_longnote', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'open', createdAt: serverTimestamp() });
+    await assertFails(updateDoc(doc(modDb, 'reports/rep_neg_longnote'), {
+      status: 'resolved',
+      resolutionNote: 'a'.repeat(1001),
+      reviewerId: 'mod1',
+      resolvedAt: serverTimestamp()
+    }));
+
+    // 9. Negative: Invalid data type for resolutionNote (number)
+    await seedDoc('reports/rep_neg_badtype', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'open', createdAt: serverTimestamp() });
+    await assertFails(updateDoc(doc(modDb, 'reports/rep_neg_badtype'), {
+      status: 'resolved',
+      resolutionNote: 12345 as any,
+      reviewerId: 'mod1',
+      resolvedAt: serverTimestamp()
+    }));
+
+    // 10. Negative: Attempting to modify immutable field (reporterId)
+    await seedDoc('reports/rep_neg_immutable', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'open', createdAt: serverTimestamp() });
+    await assertFails(updateDoc(doc(modDb, 'reports/rep_neg_immutable'), {
+      status: 'resolved',
+      reporterId: 'hacker_uid',
+      reviewerId: 'mod1',
+      resolvedAt: serverTimestamp()
+    }));
+
+    // 11. Negative: Missing resolvedAt timestamp for resolved status
+    await seedDoc('reports/rep_neg_noresolvedat', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'open', createdAt: serverTimestamp() });
+    await assertFails(updateDoc(doc(modDb, 'reports/rep_neg_noresolvedat'), {
+      status: 'resolved',
+      resolutionNote: 'Resolved',
+      reviewerId: 'mod1'
+    }));
+
+    // 12. Negative: resolvedAt timestamp in the future (not serverTimestamp)
+    await seedDoc('reports/rep_neg_futuretime', { reporterId: 'user1', reportedEntityId: 'act100', entityType: 'activity', reason: 'spam', status: 'open', createdAt: serverTimestamp() });
+    await assertFails(updateDoc(doc(modDb, 'reports/rep_neg_futuretime'), {
+      status: 'resolved',
+      resolutionNote: 'Resolved',
+      reviewerId: 'mod1',
+      resolvedAt: Timestamp.fromMillis(Date.now() + 100000)
+    }));
+
+    // N.3 Finance: Financial data allowed, Reports forbidden
+    await assertSucceeds(getDoc(doc(finDb, 'payoutRequests/pay100')));
+    await assertSucceeds(getDoc(doc(finDb, 'refunds/ref100')));
+    await assertSucceeds(getDoc(doc(finDb, 'financial_ledger/led100')));
+    await assertFails(getDoc(doc(finDb, 'reports/rep_open_1')));
+
+    // Direct client updates on payoutRequests / refunds DENIED even for Finance
+    await assertFails(updateDoc(doc(finDb, 'payoutRequests/pay100'), { status: 'approved' }));
+    await assertFails(updateDoc(doc(finDb, 'refunds/ref100'), { status: 'processed' }));
+
+    // N.4 Admin & Superadmin reads allowed, direct client updates DENIED
+    await assertSucceeds(getDoc(doc(adminDb, 'reports/rep_open_1')));
+    await assertSucceeds(getDoc(doc(superDb, 'reports/rep_open_1')));
+    await assertSucceeds(getDoc(doc(adminDb, 'payoutRequests/pay100')));
+    await assertSucceeds(getDoc(doc(superDb, 'payoutRequests/pay100')));
+
+    // Direct client updates to users/{uid} privileged fields DENIED for Admin & Superadmin
+    await assertFails(updateDoc(doc(adminDb, 'users/user1'), { kycStatus: 'verified' }));
+    await assertFails(updateDoc(doc(superDb, 'users/user1'), { role: 'admin' }));
+
+    // Direct client updates to payoutRequests, refunds, creator_applications DENIED for Admin & Superadmin
+    await assertFails(updateDoc(doc(adminDb, 'payoutRequests/pay100'), { status: 'approved' }));
+    await assertFails(updateDoc(doc(superDb, 'refunds/ref100'), { status: 'processed' }));
+    await assertFails(updateDoc(doc(adminDb, 'creator_applications/app100'), { status: 'approved' }));
+
+    // N.5 Stale token admin claim with Firestore role 'user'
+    await assertFails(getDoc(doc(staleAdminDb, 'reports/rep_open_1')));
+    await assertFails(getDoc(doc(staleAdminDb, 'payoutRequests/pay100')));
+    await assertFails(updateDoc(doc(staleAdminDb, 'users/user1'), { kycStatus: 'verified' }));
+
+    // N.6 Missing users/{uid} document
+    await assertFails(getDoc(doc(noDocDb, 'reports/rep_open_1')));
+    await assertFails(getDoc(doc(noDocDb, 'payoutRequests/pay100')));
+
+    console.log('✅ Suite N: Hardened Security Architecture & Role Isolation Tests PASSED!');
+  }
+
+  // ==========================================
+  // O. Internal Collections Locking Tests (Phase 1.2)
+  // ==========================================
+  {
+    console.log('Running Suite O: Internal Collections Locking Tests...');
+    await testEnv.clearFirestore();
+
+    await seedDoc('users/alice', { uid: 'alice', role: 'user', onboardingCompleted: true });
+    await seedDoc('users/adminUser', { uid: 'adminUser', role: 'admin', onboardingCompleted: true });
+
+    const aliceDb = testEnv.authenticatedContext('alice').firestore();
+    const adminDb = testEnv.authenticatedContext('adminUser').firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+
+    // 1. idempotency_keys blocked for all client contexts (including admin client)
+    await assertFails(getDoc(doc(aliceDb, 'idempotency_keys/key1')));
+    await assertFails(setDoc(doc(aliceDb, 'idempotency_keys/key1'), { uid: 'alice', status: 'completed' }));
+    await assertFails(getDoc(doc(adminDb, 'idempotency_keys/key1')));
+    await assertFails(getDoc(doc(guestDb, 'idempotency_keys/key1')));
+
+    // 2. activity_creation_locks blocked for all client contexts
+    await assertFails(getDoc(doc(aliceDb, 'activity_creation_locks/alice')));
+    await assertFails(setDoc(doc(aliceDb, 'activity_creation_locks/alice'), { version: 1 }));
+    await assertFails(getDoc(doc(adminDb, 'activity_creation_locks/alice')));
+
+    // 3. rate_limits blocked for all client contexts
+    await assertFails(getDoc(doc(aliceDb, 'rate_limits/alice_create_activity')));
+    await assertFails(setDoc(doc(aliceDb, 'rate_limits/alice_create_activity'), { attempts: [Date.now()] }));
+    await assertFails(getDoc(doc(adminDb, 'rate_limits/alice_create_activity')));
+
+    console.log('✅ Suite O: Internal Collections Locking Tests PASSED!');
+  }
+
+  // ==========================================
+  // P. Premium & Boost System Field Lock Tests (Phase 1.2)
+  // ==========================================
+  {
+    console.log('Running Suite P: Premium & Boost System Field Lock Tests...');
+    await testEnv.clearFirestore();
+
+    const aliceDb = testEnv.authenticatedContext('alice').firestore();
+    const adminDb = testEnv.authenticatedContext('adminUser', { role: 'admin' }).firestore();
+    const superadminDb = testEnv.authenticatedContext('superadminUser', { role: 'superadmin' }).firestore();
+
+    await seedDoc('users/adminUser', { uid: 'adminUser', role: 'admin', onboardingCompleted: true, isBanned: false });
+    await seedDoc('users/superadminUser', { uid: 'superadminUser', role: 'superadmin', onboardingCompleted: true, isBanned: false });
+
+    // 1. premiumTier == 'tier3' on user create fails
+    await assertFails(setDoc(doc(aliceDb, 'users/alice'), {
+      uid: 'alice',
+      role: 'user',
+      isBanned: false,
+      escrowBalance: 0,
+      fiatBalance: 0,
+      balancesInCents: true,
+      kycStatus: 'unverified',
+      tokens: 0,
+      successfulFreeHosts: 0,
+      averageRating: 0,
+      ratingCount: 0,
+      successfulReferrals: 0,
+      isPremium: false,
+      isSupporter: false,
+      isCreator: false,
+      premiumTier: 'tier3'
+    }));
+
+    // 2. tempPremiumUntil on user create fails
+    await assertFails(setDoc(doc(aliceDb, 'users/alice'), {
+      uid: 'alice',
+      role: 'user',
+      isBanned: false,
+      escrowBalance: 0,
+      fiatBalance: 0,
+      balancesInCents: true,
+      kycStatus: 'unverified',
+      tokens: 0,
+      successfulFreeHosts: 0,
+      averageRating: 0,
+      ratingCount: 0,
+      successfulReferrals: 0,
+      isPremium: false,
+      isSupporter: false,
+      isCreator: false,
+      tempPremiumUntil: Date.now() + 86400000
+    }));
+
+    // Seed valid user
+    await seedDoc('users/alice', { uid: 'alice', role: 'user', onboardingCompleted: true, isBanned: false });
+
+    // 3. tempPremiumUntil / tempPremiumExpiresAt on user update fails
+    await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { tempPremiumUntil: Date.now() + 86400000 }));
+    await assertFails(updateDoc(doc(aliceDb, 'users/alice'), { tempPremiumExpiresAt: Date.now() + 86400000 }));
+
+    // 4. Admin & Superadmin client cannot modify boost fields directly on activities
+    await seedDoc('activities/act1', { hostId: 'alice', title: 'Test', isBoosted: false, status: 'active' });
+    await assertFails(updateDoc(doc(adminDb, 'activities/act1'), { isBoosted: true, boostedAt: serverTimestamp() }));
+    await assertFails(updateDoc(doc(superadminDb, 'activities/act1'), { isBoosted: true, boostedAt: serverTimestamp() }));
+
+    console.log('✅ Suite P: Premium & Boost System Field Lock Tests PASSED!');
+  }
+
+  // ==========================================
+  // Q. revenuecat_events Client Access Lockdown Tests
+  // ==========================================
+  {
+    console.log('Running Suite Q: revenuecat_events Client Access Lockdown Tests...');
+    const aliceDb = testEnv.authenticatedContext('alice').firestore();
+    const adminDb = testEnv.authenticatedContext('admin_user').firestore();
+    const guestDb = testEnv.unauthenticatedContext().firestore();
+
+    await seedDoc('users/admin_user', { uid: 'admin_user', role: 'admin', onboardingCompleted: true });
+
+    // Client read/create/update/delete on revenuecat_events must fail for authenticated, admin, and guest
+    await assertFails(getDoc(doc(aliceDb, 'revenuecat_events/evt_123')));
+    await assertFails(setDoc(doc(aliceDb, 'revenuecat_events/evt_123'), { type: 'INITIAL_PURCHASE' }));
+    await assertFails(getDoc(doc(adminDb, 'revenuecat_events/evt_123')));
+    await assertFails(setDoc(doc(adminDb, 'revenuecat_events/evt_123'), { type: 'INITIAL_PURCHASE' }));
+    await assertFails(getDoc(doc(guestDb, 'revenuecat_events/evt_123')));
+
+    console.log('✅ Suite Q: revenuecat_events Client Access Lockdown Tests PASSED!');
+  }
+
   console.log('🎉 ALL SECURITY RULES TESTS PASSED SUCCESSFULLY! 🎉');
   
   // Cleanup
-  await testEnv.cleanup();
+  await testEnv.clearFirestore();
 }
 
-runTests().catch(err => {
-  console.error('Security rules tests failed execution:', err);
-  process.exit(1);
-});
+if (process.argv[1]?.endsWith('firestore.rules.test.ts')) {
+  runFirestoreRulesTests().catch(err => {
+    console.error('Security rules tests failed execution:', err);
+    process.exit(1);
+  });
+}

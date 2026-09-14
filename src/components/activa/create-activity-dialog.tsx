@@ -54,31 +54,13 @@ import { de, enUS } from 'date-fns/locale';
 const MAX_FREE_PARTICIPANTS = 4;
 const REQUIRED_FREE_HOSTS = 5;
 
+import type { CallableActivityPayload } from '@/features/activities/create/activity-payload';
+
 interface CreateActivityDialogProps {
   place: Place | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateActivity: (
-    startDate: Date,
-    endDate: Date | undefined,
-    isTimeFlexible: boolean,
-    customLocationName?: string,
-    maxParticipants?: number,
-    isBoosted?: boolean,
-    isPaid?: boolean,
-    price?: number,
-    category?: ActivityCategory,
-    description?: string,
-    requirements?: {
-      ageRange?: { min?: number; max?: number };
-      gender?: string[];
-      requireProfilePicture?: boolean;
-      requireVerification?: boolean;
-      minimumRating?: number;
-    },
-    joinMode?: 'direct' | 'request',
-    selectedPlace?: Place | null
-  ) => Promise<boolean>;
+  onCreateActivity: (submission: CallableActivityPayload) => Promise<boolean>;
   initialTitle?: string;
   initialCategory?: string;
 }
@@ -663,9 +645,9 @@ export function CreateActivityDialog({
                   {allowedGenders.length === 2 && (
                     <div className="flex items-center gap-2 pt-2">
                       {[
-                        { id: 'female', label: language === 'de' ? 'Frauen' : 'Women' },
-                        { id: 'male', label: language === 'de' ? 'Männer' : 'Men' },
-                        { id: 'diverse', label: language === 'de' ? 'Diverse' : 'Diverse' },
+                        { id: 'female' as const, label: language === 'de' ? 'Frauen' : 'Women' },
+                        { id: 'male' as const, label: language === 'de' ? 'Männer' : 'Men' },
+                        { id: 'diverse' as const, label: language === 'de' ? 'Diverse' : 'Diverse' },
                       ].map((item) => {
                         const isChecked = allowedGenders.includes(item.id);
                         return (
@@ -695,7 +677,7 @@ export function CreateActivityDialog({
                     </div>
                   )}
 
-                  {userProfile?.gender && allowedGenders.length < 3 && !allowedGenders.includes(userProfile.gender) && (
+                  {userProfile?.gender && allowedGenders.length < 3 && !allowedGenders.includes(userProfile.gender as any) && (
                     <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold mt-2">
                       <AlertTriangle className="h-4 w-4 shrink-0" />
                       <span>{language === 'de' ? 'Hinweis: Du musst selbst Teil der gewählten Geschlechtergruppe sein, um die Aktivität zu erstellen.' : 'Notice: You must be part of the selected gender group yourself to create the activity.'}</span>

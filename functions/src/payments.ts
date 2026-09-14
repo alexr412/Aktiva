@@ -3,6 +3,7 @@ import { onDocumentUpdated, onDocumentCreated } from "firebase-functions/v2/fire
 import * as admin from "firebase-admin";
 import { FieldValue } from 'firebase-admin/firestore';
 import * as StripeModule from "stripe";
+import { validateActivityEligibility } from "./activities";
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -202,8 +203,9 @@ export const secureJoinPaidActivity = onCall(async (request) => {
   const { activityId, transactionToken, referralId } = request.data;
   const uid = request.auth.uid;
 
-  if (!activityId || !transactionToken) {
-    throw new HttpsError("invalid-argument", "Pflichtfelder (activityId, transactionToken) fehlen.");
+  if (!activityId || typeof activityId !== "string" || !activityId.trim() ||
+      !transactionToken || typeof transactionToken !== "string" || !transactionToken.trim()) {
+    throw new HttpsError("invalid-argument", "Pflichtfelder (activityId, transactionToken) fehlen oder sind ungültig.");
   }
 
   const isSandbox = transactionToken.startsWith("txn_sandbox_");
@@ -217,55 +219,7 @@ export const secureJoinPaidActivity = onCall(async (request) => {
   let stripeCurrency = "eur";
 
   if (!isSandbox) {
-    const isPI = transactionToken.startsWith("pi_");
-    const isCS = transactionToken.startsWith("cs_");
-
-    if (!isPI && !isCS) {
-      throw new HttpsError("invalid-argument", "Ungültige Zahlungs-ID.");
-    }
-
-    try {
-      const stripe = getStripe();
-      if (isPI) {
-        const pi = await stripe.paymentIntents.retrieve(transactionToken);
-        if (pi.status !== "succeeded") {
-          throw new HttpsError("failed-precondition", `Zahlung nicht erfolgreich (Status: ${pi.status}).`);
-        }
-        if (pi.currency.toLowerCase() !== "eur") {
-          throw new HttpsError("failed-precondition", "Zahlungswährung muss EUR sein.");
-        }
-        stripeAmount = pi.amount;
-        stripeCurrency = pi.currency;
-
-        if (pi.metadata?.activityId && pi.metadata.activityId !== activityId) {
-          throw new HttpsError("failed-precondition", "Aktivitäts-ID der Zahlung stimmt nicht überein.");
-        }
-        if (pi.metadata?.userId && pi.metadata.userId !== uid) {
-          throw new HttpsError("failed-precondition", "Nutzer-ID der Zahlung stimmt nicht überein.");
-        }
-      } else {
-        const session = await stripe.checkout.sessions.retrieve(transactionToken);
-        if (session.payment_status !== "paid") {
-          throw new HttpsError("failed-precondition", `Zahlung nicht erfolgreich (Status: ${session.payment_status}).`);
-        }
-        if (session.currency?.toLowerCase() !== "eur") {
-          throw new HttpsError("failed-precondition", "Zahlungswährung muss EUR sein.");
-        }
-        stripeAmount = session.amount_total || 0;
-        stripeCurrency = session.currency;
-
-        if (session.metadata?.activityId && session.metadata.activityId !== activityId) {
-          throw new HttpsError("failed-precondition", "Aktivitäts-ID der Zahlung stimmt nicht überein.");
-        }
-        if (session.metadata?.userId && session.metadata.userId !== uid) {
-          throw new HttpsError("failed-precondition", "Nutzer-ID der Zahlung stimmt nicht überein.");
-        }
-      }
-    } catch (e: any) {
-      if (e instanceof HttpsError) throw e;
-      console.error("[Stripe verification failed]:", e);
-      throw new HttpsError("internal", "Zahlungsverifikation fehlgeschlagen.");
-    }
+    throw new HttpsError("failed-precondition", "Nicht-Sandbox-Zahlungsbeitritte sind in Phase 1.2 vorübergehend deaktiviert.");
   }
 
   const db = admin.firestore();
@@ -283,7 +237,7 @@ export const secureJoinPaidActivity = onCall(async (request) => {
       const refundRef = db.collection("refund_requests").doc(transactionToken);
       const refundSnap = await transaction.get(refundRef);
       if (refundSnap.exists) {
-        throw new Error("validation:payment_refunded");
+        return { success: false, duplicated: true, refunded: true, message: "Rückerstattung ist bereits in Bearbeitung." };
       }
 
       const activityRef = db.collection("activities").doc(activityId);
@@ -327,7 +281,7 @@ export const secureJoinPaidActivity = onCall(async (request) => {
       }
 
       // Capacity check
-      if (activityData.maxParticipants && activityData.participantIds.length >= activityData.maxParticipants) {
+      if (activityData.maxParticipants && activityData.participantIds && activityData.participantIds.length >= activityData.maxParticipants) {
         throw new Error("validation:activity_full");
       }
 
@@ -347,6 +301,13 @@ export const secureJoinPaidActivity = onCall(async (request) => {
 
       const userData = userDoc.data() || {};
       const hostData = hostDoc.data() || {};
+      userData.uid = uid;
+
+      // Full activity eligibility evaluation (requirements, status, blocklists, capacity)
+      const eligibility = validateActivityEligibility(activityData, userData, hostData);
+      if (!eligibility.eligible) {
+        throw new Error(`validation:${(eligibility.errorCode || 'not_eligible').toLowerCase()}`);
+      }
 
       // ── Host blocked / user blocked / hidden checks ────────────────────────
       if (hostData.isBanned) {
@@ -491,7 +452,7 @@ export const secureJoinPaidActivity = onCall(async (request) => {
       source: "secureJoinPaidActivity",
       errorMessage: error instanceof Error ? error.message : String(error),
       errorStack: error instanceof Error ? error.stack : undefined,
-      inputPayload: { activityId, transactionToken, referralId },
+      inputPayload: { activityId, transactionToken, referralId: referralId ?? null },
     });
 
     if (isValidationError) {
@@ -499,7 +460,10 @@ export const secureJoinPaidActivity = onCall(async (request) => {
       let code: any = "failed-precondition";
       let msg = "Beitritt nicht möglich.";
 
-      if (reason === "activity_full") {
+      if (reason === "gender_requirement_not_met") {
+        code = "failed-precondition";
+        msg = "Beitritt nicht möglich (GENDER_REQUIREMENT_NOT_MET).";
+      } else if (reason === "activity_full") {
         code = "resource-exhausted";
         msg = "Die Aktivität ist bereits voll.";
       } else if (reason === "activity_inactive") {
@@ -522,7 +486,7 @@ export const secureJoinPaidActivity = onCall(async (request) => {
         msg = "Diese Aktivität ist für dich nicht verfügbar.";
       }
 
-      throw new HttpsError(code, msg);
+      throw new HttpsError(code, msg, { errorCode: reason.toUpperCase(), reason: `validation:${reason}` });
     }
 
     if (error instanceof HttpsError) throw error;

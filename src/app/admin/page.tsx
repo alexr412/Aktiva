@@ -36,13 +36,14 @@ import {
 } from "lucide-react";
 import { formatFirstName } from '@/lib/utils';
 
+import { canViewAdminDashboard } from "@/lib/permissions";
+
 export default function AdminDashboardPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
-  const isDev = process.env.NODE_ENV === 'development';
-  const isAllowed = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
+  const isAllowed = canViewAdminDashboard(userProfile?.role);
 
   const {
     openReportsCount,

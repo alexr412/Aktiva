@@ -256,6 +256,7 @@ export interface Activity {
   kickedUserIds?: string[];
   isBoosted?: boolean;
   boostedAt?: Timestamp | null;
+  boostExpiresAt?: Timestamp | null;
   isPaid?: boolean;
   price?: number;
   upvotes?: number;

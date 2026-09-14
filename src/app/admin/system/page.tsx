@@ -30,6 +30,8 @@ import {
   Server,
 } from 'lucide-react';
 
+import { canManageSystem } from "@/lib/permissions";
+
 export default function AdminSystemPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -37,7 +39,7 @@ export default function AdminSystemPage() {
   const [isCleanupChatsOpen, setIsCleanupChatsOpen] = useState(false);
 
   const isDev = process.env.NODE_ENV === 'development';
-  const isAllowed = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
+  const isAllowed = canManageSystem(userProfile?.role);
 
   const handleCleanupGhosts = async () => {
     if (!window.confirm("Bist du sicher, dass du alle verwaisten Einträge (Geister-User) in der Datenbank bereinigen möchtest? Dies scannt und aktualisiert mehrere Collections.")) return;

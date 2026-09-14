@@ -25,6 +25,8 @@ import {
   Lock,
 } from 'lucide-react';
 
+import { canViewAdminDashboard } from '@/lib/permissions';
+
 export default function QuickNavigatorPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -34,11 +36,7 @@ export default function QuickNavigatorPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const isDev = process.env.NODE_ENV === 'development';
-  const isNavigatorActive =
-    isDev ||
-    userProfile?.role === 'admin' ||
-    userProfile?.role === 'superadmin' ||
-    userProfile?.role === 'supporter';
+  const isNavigatorActive = canViewAdminDashboard(userProfile?.role);
 
   const filteredItems = useMemo(() => {
     return ALL_QUICK_NAV_ITEMS.filter((item) => {

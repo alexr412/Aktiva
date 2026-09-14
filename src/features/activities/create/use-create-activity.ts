@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Place, ActivityCategory } from '@/lib/types';
 import { isPremiumActive, getParticipantLimit } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -10,36 +10,23 @@ import { reverseGeocode, autocompletePlaces } from '@/lib/geoapify';
 import { startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek } from 'date-fns';
 import {
   buildActivityPayload,
+  buildCallableActivityPayload,
+  computeActivityPayloadFingerprint,
   isCreateActivityDisabled,
   computeOpeningHoursWarning,
+  type CallableActivityPayload,
+  type AllowedGender,
 } from './activity-payload';
+
+import { generateUUIDv4 } from '@/lib/uuid';
+export { generateUUIDv4 };
 
 const REQUIRED_FREE_HOSTS = 5;
 
 export interface UseCreateActivityOptions {
   initialPlace: Place | null;
   open: boolean;
-  onCreateActivity: (
-    startDate: Date,
-    endDate: Date | undefined,
-    isTimeFlexible: boolean,
-    customLocationName?: string,
-    maxParticipants?: number,
-    isBoosted?: boolean,
-    isPaid?: boolean,
-    price?: number,
-    category?: ActivityCategory,
-    description?: string,
-    requirements?: {
-      ageRange?: { min?: number; max?: number };
-      gender?: string[];
-      requireProfilePicture?: boolean;
-      requireVerification?: boolean;
-      minimumRating?: number;
-    },
-    joinMode?: 'direct' | 'request',
-    selectedPlace?: Place | null
-  ) => Promise<boolean>;
+  onCreateActivity: (submission: CallableActivityPayload) => Promise<boolean>;
   initialTitle?: string;
   initialCategory?: string;
 }
@@ -52,6 +39,8 @@ export function useCreateActivity(options: UseCreateActivityOptions) {
   const { gateState, position } = useLocation();
 
   const [isCreating, setIsCreating] = useState(false);
+  const operationIdRef = useRef<string | null>(null);
+  const payloadFingerprintRef = useRef<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<Place | null>(initialPlace);
   const [activityTitle, setActivityTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -87,7 +76,7 @@ export function useCreateActivity(options: UseCreateActivityOptions) {
   const [requireVerification, setRequireVerification] = useState(false);
   const [minAge, setMinAge] = useState<number | ''>('');
   const [maxAge, setMaxAge] = useState<number | ''>('');
-  const [allowedGenders, setAllowedGenders] = useState<string[]>(['male', 'female', 'diverse']);
+  const [allowedGenders, setAllowedGenders] = useState<AllowedGender[]>(['male', 'female', 'diverse']);
   const [minimumRating, setMinimumRating] = useState<number | ''>('');
   const [joinMode, setJoinMode] = useState<'direct' | 'request'>('request');
 
@@ -137,6 +126,9 @@ export function useCreateActivity(options: UseCreateActivityOptions) {
       setAllowedGenders(['male', 'female', 'diverse']);
       setMinimumRating('');
       setJoinMode('request');
+    } else {
+      operationIdRef.current = null;
+      payloadFingerprintRef.current = null;
     }
   }, [initialPlace, open, initialTitle, initialCategory, language]);
 
@@ -196,8 +188,6 @@ export function useCreateActivity(options: UseCreateActivityOptions) {
       isDateFlexible,
       maxParticipants,
       isBoosted,
-      isPaid,
-      price,
       isSpecificPlaceMode,
       minAge,
       maxAge,
@@ -211,24 +201,47 @@ export function useCreateActivity(options: UseCreateActivityOptions) {
 
     if (!payload) return;
 
+    const isPlaceBased = Boolean(payload.selectedLocation?.id && payload.selectedLocation?.name && !payload.selectedLocation.id.startsWith('custom'));
+    const placeIdVal = isPlaceBased ? payload.selectedLocation.id : undefined;
+
+    const rawBusinessPayload = buildCallableActivityPayload({
+      operationId: 'temp',
+      startDate: payload.startDate,
+      endDate: payload.endDate,
+      title: payload.title,
+      description: payload.description,
+      category: payload.category,
+      placeId: placeIdVal,
+      customLocationName: !isPlaceBased ? payload.title : undefined,
+      place: payload.selectedLocation,
+      isTimeFlexible: payload.timeIsFlexible,
+      maxParticipants: payload.maxParticipants,
+      requirements: payload.requirements,
+      joinMode: payload.joinMode,
+      isBoosted: payload.isBoosted,
+    });
+
+    const currentFingerprint = await computeActivityPayloadFingerprint(rawBusinessPayload);
+
+    if (payloadFingerprintRef.current === currentFingerprint && operationIdRef.current) {
+      // Reuse existing operationId for retries of exact same payload
+    } else {
+      operationIdRef.current = generateUUIDv4();
+      payloadFingerprintRef.current = currentFingerprint;
+    }
+
     setIsCreating(true);
-    const success = await onCreateActivity(
-      payload.startDate,
-      payload.endDate,
-      payload.timeIsFlexible,
-      payload.title,
-      payload.maxParticipants,
-      payload.isBoosted,
-      payload.isPaid,
-      payload.price,
-      payload.category,
-      payload.description,
-      payload.requirements,
-      payload.joinMode,
-      payload.selectedLocation
-    );
+    const finalCallablePayload: CallableActivityPayload = {
+      ...rawBusinessPayload,
+      operationId: operationIdRef.current,
+    };
+
+    const success = await onCreateActivity(finalCallablePayload);
     if (!success) {
       setIsCreating(false);
+    } else {
+      operationIdRef.current = null;
+      payloadFingerprintRef.current = null;
     }
   };
 

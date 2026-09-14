@@ -470,8 +470,14 @@ async function testGetOrganizerAnalytics() {
 
   // Seed user, place, and telemetry events
   mockDbState["users"] = {
-    "host_1": { uid: "host_1", isOrganizer: true },
-    "other_user": { uid: "other_user" },
+    "host_1": { uid: "host_1", role: "creator", isOrganizer: true },
+    "other_user": { uid: "other_user", role: "user" },
+    "creator_user": { uid: "creator_user", role: "creator" },
+    "supporter_user": { uid: "supporter_user", role: "supporter" },
+    "mod_user": { uid: "mod_user", role: "moderator" },
+    "fin_user": { uid: "fin_user", role: "finance" },
+    "admin_user": { uid: "admin_user", role: "admin" },
+    "super_user": { uid: "super_user", role: "superadmin" },
   };
 
   const now = Date.now();
@@ -508,25 +514,60 @@ async function testGetOrganizerAnalytics() {
     (err: any) => err.code === "invalid-argument"
   );
 
-  // 3. Unauthorized caller (not host)
+  // 3. Unauthorized callers (foreign user, creator, supporter) -> permission-denied
+  const deniedUids = ["other_user", "creator_user", "supporter_user"];
+  for (const deniedUid of deniedUids) {
+    await assert.rejects(
+      async () => { await getOrganizerAnalytics({ data: { entityId: "place_100", entityType: "place" }, auth: { uid: deniedUid } }); },
+      (err: any) => err.code === "permission-denied"
+    );
+  }
+
+  // 4. Moderator caller on foreign analytics -> DENIED (permission-denied)
   await assert.rejects(
-    async () => { await getOrganizerAnalytics({ data: { entityId: "place_100", entityType: "place" }, auth: { uid: "other_user" } }); },
+    async () => { await getOrganizerAnalytics({ data: { entityId: "place_100", entityType: "place" }, auth: { uid: "mod_user" } }); },
     (err: any) => err.code === "permission-denied"
   );
 
-  // 4. Authorized host place call
+  // 5. Finance caller on foreign analytics -> DENIED (permission-denied)
+  await assert.rejects(
+    async () => { await getOrganizerAnalytics({ data: { entityId: "place_100", entityType: "place" }, auth: { uid: "fin_user" } }); },
+    (err: any) => err.code === "permission-denied"
+  );
+
+  // 6. Missing users/{uid} document -> DENIED (permission-denied)
+  await assert.rejects(
+    async () => { await getOrganizerAnalytics({ data: { entityId: "place_100", entityType: "place" }, auth: { uid: "nonexistent_user_uid" } }); },
+    (err: any) => err.code === "permission-denied"
+  );
+
+  // 7. Authorized owner place call -> SUCCESS
   const placeStats = await getOrganizerAnalytics({
     data: { entityId: "place_100", entityType: "place" },
     auth: { uid: "host_1" }
   });
   assert.deepStrictEqual(placeStats, { opens: 2, saves: 1, shares: 1, directions: 1 });
 
-  // 5. Authorized host activity call
+  // 8. Authorized host activity call -> SUCCESS
   const activityStats = await getOrganizerAnalytics({
     data: { entityId: "act_100", entityType: "activity" },
     auth: { uid: "host_1" }
   });
   assert.deepStrictEqual(activityStats, { opens: 0, saves: 0, shares: 0, directions: 0 });
+
+  // 9. Admin bypass on foreign place analytics -> SUCCESS
+  const adminPlaceStats = await getOrganizerAnalytics({
+    data: { entityId: "place_100", entityType: "place" },
+    auth: { uid: "admin_user" }
+  });
+  assert.deepStrictEqual(adminPlaceStats, { opens: 2, saves: 1, shares: 1, directions: 1 });
+
+  // 10. Superadmin bypass on foreign place analytics -> SUCCESS
+  const superPlaceStats = await getOrganizerAnalytics({
+    data: { entityId: "place_100", entityType: "place" },
+    auth: { uid: "super_user" }
+  });
+  assert.deepStrictEqual(superPlaceStats, { opens: 2, saves: 1, shares: 1, directions: 1 });
 
   console.log("✅ testGetOrganizerAnalytics passed successfully!");
 }

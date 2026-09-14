@@ -5,6 +5,7 @@ import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { isReservedUsername, isValidUsername } from './reserved-usernames';
 import { createNotificationAndDispatch } from './notifications';
+import { canManageSystem, canViewAdminDashboard, canManageUsers } from './permissions';
 
 /**
  * MODUL 23: Production-Grade Fan-Out System.
@@ -407,7 +408,7 @@ export const cleanupEmptyChats = onCall(async (request) => {
   }
 
   const callerData = callerDoc.data();
-  const isAdmin = callerData?.role === 'admin' || callerData?.isAdmin === true;
+  const isAdmin = canManageSystem(callerData?.role);
   if (!isAdmin) {
     throw new HttpsError('permission-denied', 'Unauthorized access.');
   }
@@ -1945,7 +1946,7 @@ export const getOrganizerAnalytics = onCall(async (request) => {
   // Admin bypass
   const callerSnap = await db.collection('users').doc(uid).get();
   const callerData = callerSnap.data() || {};
-  if (callerData.role === 'admin') {
+  if (canManageUsers(callerData.role)) {
     isAuthorized = true;
   } else {
     // Explicit ownership check per entityType

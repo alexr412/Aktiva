@@ -14,6 +14,7 @@ import { de } from 'date-fns/locale';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { AdminSummaryBar } from '@/components/admin/AdminSummaryBar';
+import { canManagePayments } from '@/lib/permissions';
 
 function AdminPayoutsContent() {
   const { userProfile, loading: authLoading } = useAuth();
@@ -28,8 +29,7 @@ function AdminPayoutsContent() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const isDev = process.env.NODE_ENV === 'development';
-  const isAllowed = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
+  const isAllowed = canManagePayments(userProfile?.role);
 
   // Sync filter to URL query params
   useEffect(() => {

@@ -27,6 +27,9 @@ interface ActivityData {
 }
 
 async function generateVector(text: string): Promise<number[]> {
+  if (process.env.FUNCTIONS_EMULATOR === 'true' || process.env.FIREBASE_EMULATOR_HUB || process.env.NODE_ENV === 'test') {
+    return new Array(768).fill(0.01);
+  }
   try {
     const embeddingResponse = await getAi().embed({
       embedder: embeddingModel,

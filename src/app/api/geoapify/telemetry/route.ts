@@ -5,16 +5,13 @@ import { checkDualDistributedRateLimit } from '@/lib/rate-limiter';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: NextRequest) {
-  // 1. App Check Verification Header (Verify token if present)
-  const appCheckHeader = req.headers.get('x-firebase-appcheck');
+import { verifyNextRequestAppCheck } from '@/lib/firebase/admin-app-check';
 
-  if (appCheckHeader && adminAppCheck) {
-    try {
-      await adminAppCheck.verifyToken(appCheckHeader);
-    } catch (appCheckErr) {
-      return NextResponse.json({ error: 'App Check verification failed' }, { status: 403 });
-    }
+export async function POST(req: NextRequest) {
+  // 1. App Check Verification Header
+  const appCheckRes = await verifyNextRequestAppCheck(req, { routeId: 'API_GEOAPIFY_TELEMETRY' });
+  if (!appCheckRes.valid && appCheckRes.errorResponse) {
+    return appCheckRes.errorResponse;
   }
 
   // 2. Authentication
@@ -31,8 +28,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
       }
     }
-  } else if (process.env.NODE_ENV === 'development') {
-    uid = req.headers.get('x-dev-uid') || 'dev_admin_user';
   }
 
   // 3. Distributed Telemetry Rate Limiting (UID: 20 req/min, Hashed IP: 40 req/min)

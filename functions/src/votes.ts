@@ -1,5 +1,6 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
+import { canManageUsers } from "./permissions";
 
 const getDb = () => admin.firestore();
 const SMOOTHING_FACTOR = 5;
@@ -55,7 +56,7 @@ export const secureVotePlace = onCall(async (request) => {
   if (userData.isBanned === true) {
     throw new HttpsError("permission-denied", "Banned users are not allowed to vote.");
   }
-  const isAdmin = userData.role === 'admin' || userData.isAdmin === true;
+  const isAdmin = canManageUsers(userData.role);
   const weight = isAdmin ? 50 : 1;
 
   // 4. Sanitize placeData (whitelist only safe fields)
@@ -214,7 +215,7 @@ export const secureVoteActivity = onCall(async (request) => {
   if (userData.isBanned === true) {
     throw new HttpsError("permission-denied", "Banned users are not allowed to vote.");
   }
-  const isAdmin = userData.role === 'admin' || userData.isAdmin === true;
+  const isAdmin = canManageUsers(userData.role);
   const weight = isAdmin ? 50 : 1;
 
   // 4. Run transaction

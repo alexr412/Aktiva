@@ -28,36 +28,13 @@ import { calculateDistance, buildApproximateLocationData, formatAddressToCityZip
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { User } from 'firebase/auth';
 import type { Place, UserProfile, PublicUserProfile, Activity, Chat, ActivityCategory, CommunicationPreferences, NotificationPreferences, Review } from '@/lib/types';
+import { generateUUIDv4 } from '@/lib/uuid';
+import { buildCallableActivityPayload, type CallableActivityPayload } from '@/features/activities/create/activity-payload';
 import { getParticipantLimit, getMaxOpenRoomsLimit, isPremiumActive } from '@/lib/types';
 import { validateChatMessage } from '@/lib/moderation/blacklist';
 import { formatFirstName } from '@/lib/utils';
 
-type CreateActivityPayload = {
-  title?: string;
-  place?: Place;
-  customLocationName?: string;
-  startDate: Date;
-  endDate?: Date;
-  user: User;
-  isTimeFlexible?: boolean;
-  maxParticipants?: number;
-  isBoosted?: boolean;
-  isPaid?: boolean;
-  price?: number;
-  category: ActivityCategory;
-  description?: string;
-  requirements?: {
-    ageRange?: { min?: number; max?: number };
-    gender?: string[];
-    requireProfilePicture?: boolean;
-    requireVerification?: boolean;
-    minimumRating?: number;
-  };
-  joinMode?: 'direct' | 'request';
-  creationSource?: 'community' | 'place_activity';
-  city?: string;
-  postalCode?: string;
-};
+
 
 const MAX_FREE_PARTICIPANTS = 4;
 const SMOOTHING_FACTOR = 5;
@@ -484,486 +461,31 @@ export function normalizeActivityDocument(data: Partial<Activity> & Record<strin
 
   if (activity.isCustomActivity || activity.isUserEvent) {
     activity.name = String(activity.title || "Aktivität");
-    activity.title = String(activity.title || "Aktivität");
+        activity.title = String(activity.title || "Aktivität");
     activity.locationLabel = activity.placeName || activity.placeAddress;
     activity.address = activity.placeAddress || activity.placeName;
     activity.postalCode = activity.postalCode ? String(activity.postalCode) : undefined;
   }
-
   return activity;
 }
 
-export async function createActivity({
-  title,
-  place,
-  customLocationName,
-  startDate,
-  endDate,
-  user,
-  isTimeFlexible,
-  maxParticipants,
-  isBoosted = false,
-  isPaid = false,
-  price = 0,
-  category,
-  description,
-  requirements,
-  joinMode = 'request',
-  creationSource: creationSourceParam,
-}: CreateActivityPayload, selectedPlace?: Place | null) {
-  if (!db) {
-    throw new Error('Firestore is not initialized.');
+export async function createActivity(payload: CallableActivityPayload) {
+  if (!db || !functions) {
+    throw new Error('Firebase client is not initialized.');
   }
 
-  if (description && !validateChatMessage(description)) {
+  if (payload.description && !validateChatMessage(payload.description)) {
     throw new Error('Diese Nachricht enthält nicht erlaubte Inhalte.');
   }
 
-  const effectivePlace = place || selectedPlace;
-  const isPlaceBasedActivity = Boolean(effectivePlace?.id && effectivePlace?.name && !isStreetAddress(effectivePlace.name));
-  const placeIdValue = isPlaceBasedActivity ? effectivePlace!.id : "custom";
-  
-  const userRef = doc(db, 'users', user.uid);
-  const placeRef = isPlaceBasedActivity ? doc(db, 'places', placeIdValue) : null;
-  const activeHostedRoomsQuery = query(
-    collection(db, 'activities'),
-    where('hostId', '==', user.uid),
-    where('status', 'in', ['open', 'active'])
-  );
-
-  const [userSnap, placeSnap, activeHostedRoomsSnap] = await Promise.all([
-    getDoc(userRef),
-    placeRef ? getDoc(placeRef) : Promise.resolve(null),
-    getDocs(activeHostedRoomsQuery)
-  ]);
-
-  if (!userSnap.exists()) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error("[CREATE_ACTIVITY_PREFLIGHT] user profile missing");
-    }
-    throw new Error("Profil noch nicht vollständig. Schließe zuerst dein Onboarding ab, bevor du Aktivitäten erstellen kannst.");
-  }
-
-  const userProfileData = userSnap.data() as UserProfile | undefined;
-
-  if (userProfileData?.onboardingCompleted !== true) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error("[CREATE_ACTIVITY_PREFLIGHT] onboarding incomplete", userProfileData);
-    }
-    throw new Error("Profil noch nicht vollständig. Schließe zuerst dein Onboarding ab, bevor du Aktivitäten erstellen kannst.");
-  }
-
-  if (userProfileData?.isBanned === true) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error("[CREATE_ACTIVITY_PREFLIGHT] user is banned");
-    }
-    throw new Error("Dein Konto ist gesperrt.");
-  }
-
-  const userProfileLang = userProfileData?.language || 'de';
-  const maxOpenRoomsLimit = getMaxOpenRoomsLimit(userProfileData);
-  if (activeHostedRoomsSnap.size >= maxOpenRoomsLimit) {
-    throw new Error(
-      userProfileLang === 'de'
-        ? `Du hast dein Limit von ${maxOpenRoomsLimit} gleichzeitig offenen Räumen erreicht. Beende oder schließe ein bestehendes Treffen, um ein neues zu erstellen.`
-        : `You have reached your limit of ${maxOpenRoomsLimit} concurrent open rooms. Close or finish an existing event to create a new one.`
-    );
-  }
-  
-  const usernameToUse = userProfileData?.username || null;
-  const usernameFormatted = usernameToUse ? `@${usernameToUse.replace(/^@/, '')}` : (userProfileLang === 'de' ? 'Activa-Nutzer' : 'Activa user');
-  const displayNameToUse = usernameFormatted;
-  const photoURLToUse = userProfileData?.photoURL ?? null;
-  
-  if (isBoosted && (userProfileData?.tokens || 0) < 1) {
-    throw new Error('Insufficient tokens to boost activity.');
-  }
-
-  if (isPaid) {
-    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    if (!isLocal) {
-      throw new Error('Bezahlte Aktivitäten sind in dieser Version deaktiviert.');
-    }
-    if ((userProfileData?.successfulFreeHosts || 0) < 5) {
-      throw new Error('Proof of Community nicht erfüllt. Bezahlte Aktivitäten sind gesperrt.');
-    }
-  }
-
-  if (requirements) {
-    if (requirements.gender && Array.isArray(requirements.gender) && requirements.gender.length > 0 && requirements.gender.length < 3) {
-      const hostGender = userProfileData?.gender || '';
-      if (!requirements.gender.includes(hostGender)) {
-        throw new Error(userProfileLang === 'de' ? 'Du musst deine eigenen Geschlechter-Kriterien erfüllen, um dieses Treffen zu erstellen.' : 'You must meet your own gender requirement to create this meetup.');
-      }
-    }
-    if (requirements.requireProfilePicture && !userProfileData?.photoURL) {
-      throw new Error(userProfileLang === 'de' ? 'Du benötigst selbst ein Profilbild, um dieses Treffen zu erstellen.' : 'You need a profile picture to create this meetup.');
-    }
-    if (requirements.requireVerification && userProfileData?.kycStatus !== 'verified') {
-      throw new Error(userProfileLang === 'de' ? 'Du musst selbst verifiziert (KYC) sein, um dieses Treffen zu erstellen.' : 'You must be verified (KYC) to create this meetup.');
-    }
-    if (requirements.ageRange) {
-      if (typeof userProfileData?.age !== 'number') {
-        throw new Error(userProfileLang === 'de' ? 'Bitte hinterlege dein Alter in deinen Profileinstellungen.' : 'Please add your age in your profile settings.');
-      }
-      if (requirements.ageRange.min && userProfileData.age < requirements.ageRange.min) {
-        throw new Error(userProfileLang === 'de' ? `Du erfüllst das Mindestalter (${requirements.ageRange.min} Jahre) für dein Treffen nicht.` : `You do not meet the minimum age (${requirements.ageRange.min}) for your meetup.`);
-      }
-      if (requirements.ageRange.max && userProfileData.age > requirements.ageRange.max) {
-        throw new Error(userProfileLang === 'de' ? `Du überschreitest das Höchstalter (${requirements.ageRange.max} Jahre) für dein Treffen.` : `You exceed the maximum age (${requirements.ageRange.max}) for your meetup.`);
-      }
-    }
-  }
-
-  const isUserPremium = isPremiumActive(userProfileData);
-  const isUserSupporter = userProfileData?.isSupporter || false;
-
-  const maxAllowedLimit = getParticipantLimit(userProfileData);
-  let finalMaxParticipants = maxParticipants;
-  if (!finalMaxParticipants || finalMaxParticipants > maxAllowedLimit) {
-    finalMaxParticipants = maxAllowedLimit;
-  }
-
-  if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) {
-    throw new Error("Bitte wähle ein gültiges Datum für die Aktivität aus.");
-  }
-
-  const now = new Date();
-  const fiveMinsAgo = new Date(now.getTime() - 5 * 60 * 1000);
-  let adjustedStartDate = new Date(startDate);
-  if (adjustedStartDate < fiveMinsAgo) {
-    adjustedStartDate = now;
-  }
-
-  let adjustedEndDate = endDate ? new Date(endDate) : undefined;
-  if (adjustedEndDate) {
-    if (Number.isNaN(adjustedEndDate.getTime())) {
-      adjustedEndDate = undefined;
-    } else if (adjustedEndDate <= adjustedStartDate) {
-      adjustedEndDate = new Date(adjustedStartDate.getTime() + 2 * 60 * 60 * 1000);
-    }
-  }
-
-  const batch = writeBatch(db);
-  const activityRef = doc(collection(db, 'activities'));
-  
-  const finalCategory = category || 'Sonstiges';
-
-  let derivedPlaceName = title || customLocationName || "Aktivität";
-  let derivedPlaceAddress = "";
-  let cityVal = "";
-  let postalCodeVal = "";
-  let latVal = effectivePlace?.lat;
-  let lonVal = effectivePlace?.lon;
-
-  if (isPlaceBasedActivity && effectivePlace) {
-    derivedPlaceName = effectivePlace.name || customLocationName || "Aktivität";
-    derivedPlaceAddress = formatAddressToCityZip(effectivePlace.address || effectivePlace.name) || effectivePlace.address || "";
-  } else if (effectivePlace) {
-    const approx = buildApproximateLocationData(effectivePlace);
-    derivedPlaceName = approx.label !== "Unbekannter Ort" ? approx.label : (customLocationName || title || "Aktivität");
-    derivedPlaceAddress = approx.label !== "Unbekannter Ort" ? approx.label : "";
-    cityVal = approx.city || "";
-    postalCodeVal = approx.postalCode || "";
-    latVal = effectivePlace.lat;
-    lonVal = effectivePlace.lon;
-  }
-
-  const rawTitle = (title || customLocationName || effectivePlace?.name || "Aktivität").trim();
-  const finalTitle = (rawTitle.length > 0 ? rawTitle : "Aktivität").slice(0, 100);
-
-  const rawPlaceName = (derivedPlaceName || "Aktivität").trim();
-  const finalPlaceName = (rawPlaceName.length > 0 ? rawPlaceName : "Aktivität").slice(0, 100);
-
-  const activityData: any = {
-    title: finalTitle,
-    placeName: finalPlaceName,
-    activityDate: Timestamp.fromDate(adjustedStartDate),
-    hostId: user.uid,
-    hostName: displayNameToUse,
-    hostUsername: usernameToUse,
-    hostPhotoURL: photoURLToUse,
-    participantIds: [user.uid],
-    participantsPreview: [
-      { uid: user.uid, displayName: displayNameToUse, username: usernameToUse, photoURL: photoURLToUse }
-    ],
-    createdAt: serverTimestamp() as Timestamp,
-    isCustomActivity: !isPlaceBasedActivity,
-    isTimeFlexible: !!isTimeFlexible,
-    category: finalCategory,
-    description: description || null,
-    lastInteractionAt: serverTimestamp() as Timestamp,
-    status: 'active' as const,
-    completionVotes: [],
-    isBoosted: isBoosted,
-    boostedAt: isBoosted ? serverTimestamp() : null,
-    isPaid: isPaid,
-    price: isPaid ? price : 0,
-    upvotes: 0,
-    downvotes: 0,
-    userVotes: {},
-    globalScore: 0,
-    reportCount: 0,
-    avgRating: 0,
-    reviewCount: 0,
-    stats: {
-      impressions: 0,
-      pushJoins: 0,
-      referralJoins: 0
-    },
-    participantDetails: {
-      [user.uid]: {
-        displayName: displayNameToUse,
-        username: usernameToUse,
-        photoURL: photoURLToUse,
-        isPremium: isUserPremium,
-        isSupporter: isUserSupporter,
-        checkInStatus: 'pending',
-        hasReviewed: false
-      },
-    },
-    placeAddress: derivedPlaceAddress,
-    ...(latVal && { lat: latVal }),
-    ...(lonVal && { lon: lonVal }),
-    ...(cityVal && { city: cityVal }),
-    ...(postalCodeVal && { postalCode: postalCodeVal }),
-    ...(adjustedEndDate && { activityEndDate: Timestamp.fromDate(adjustedEndDate) }),
-    ...(finalMaxParticipants && finalMaxParticipants > 0 && { maxParticipants: finalMaxParticipants }),
-    ...(requirements && { requirements }),
-    joinMode: joinMode,
-  };
-
-  const resolvedCreationSource = creationSourceParam || (isPlaceBasedActivity ? 'place_activity' : 'community');
-
-  let extractedPlaceCategories: string[] | undefined;
-  if (isPlaceBasedActivity && effectivePlace) {
-    if (Array.isArray(effectivePlace.categories) && effectivePlace.categories.length > 0) {
-      extractedPlaceCategories = effectivePlace.categories.filter((c: string) => c !== 'user_event');
-    } else if (effectivePlace.category) {
-      extractedPlaceCategories = [effectivePlace.category];
-    }
-  }
-
-  if (isPlaceBasedActivity) {
-    activityData.placeId = placeIdValue;
-    activityData.categories = [finalCategory];
-    if (extractedPlaceCategories && extractedPlaceCategories.length > 0) {
-      activityData.placeCategories = extractedPlaceCategories;
-    }
-    activityData.isUserEvent = false;
-    activityData.sourceType = "activity";
-    activityData.creationSource = resolvedCreationSource;
-  } else {
-    // Free Community Event
-    activityData.categories = ["user_event", finalCategory];
-    activityData.isUserEvent = true;
-    activityData.sourceType = "activity";
-    activityData.creationSource = resolvedCreationSource;
-    activityData.normalizedCategory = "community";
-  }
-  
-  const allowedKeys = [
-    'id', 'title', 'placeName', 'activityDate', 'activityEndDate', 'hostId', 'hostName', 'hostUsername', 'hostPhotoURL',
-    'participantIds', 'participantsPreview', 'createdAt', 'lastInteractionAt', 'isCustomActivity',
-    'isTimeFlexible', 'category', 'description', 'status', 'completionVotes', 'isBoosted', 'boostedAt',
-    'isPaid', 'price', 'upvotes', 'downvotes', 'userVotes', 'globalScore', 'reportCount', 'avgRating',
-    'reviewCount', 'stats', 'participantDetails', 'placeAddress', 'lat', 'lon', 'maxParticipants',
-    'requirements', 'joinMode', 'placeId', 'categories', 'placeCategories', 'isUserEvent', 'sourceType', 'creationSource',
-    'normalizedCategory', 'isDateFlexible', 'city', 'postalCode'
-  ];
-  const payloadKeys = Object.keys(activityData);
-  const invalidKeys = payloadKeys.filter(k => !allowedKeys.includes(k));
-  if (invalidKeys.length > 0 && process.env.NODE_ENV === 'development') {
-    console.error("[CREATE_ACTIVITY_PREFLIGHT] invalid activity keys", invalidKeys);
-  }
-  
-  batch.set(activityRef, activityData);
-
-  const pRef = doc(db, 'activities', activityRef.id, 'participants', user.uid);
-  batch.set(pRef, {
-    uid: user.uid,
-    displayName: displayNameToUse,
-    photoURL: photoURLToUse,
-    checkInStatus: 'pending',
-    joinedAt: serverTimestamp(),
-    hasReviewed: false
-  });
-
-  const chatRef = doc(db, 'chats', activityRef.id);
-  const chatData: any = {
-    activityId: activityRef.id,
-    createdAt: serverTimestamp(),
-    lastActivityAt: serverTimestamp(),
-    participantIds: [user.uid],
-    lastMessage: null,
-    placeName: effectivePlace?.name || customLocationName || finalPlaceName || "Aktivität",
-    categories: activityData.categories,
-    hostId: user.uid,
-    isUserEvent: !isPlaceBasedActivity,
-    creationSource: resolvedCreationSource,
-    participantDetails: {
-      [user.uid]: {
-        displayName: displayNameToUse,
-        photoURL: photoURLToUse,
-        isPremium: isUserPremium,
-        isSupporter: isUserSupporter,
-        checkInStatus: 'pending'
-      },
-    },
-    unreadCount: {
-      [user.uid]: 0
-    }
-  };
-  if (isPlaceBasedActivity) {
-    chatData.placeId = placeIdValue;
-    if (extractedPlaceCategories && extractedPlaceCategories.length > 0) {
-      chatData.placeCategories = extractedPlaceCategories;
-    }
-  }
-  batch.set(chatRef, chatData);
-
-  if (isPlaceBasedActivity && placeRef) {
-    const placeExists = placeSnap && placeSnap.exists();
-    
-    if (!placeExists) {
-      const placeCreateData: any = {
-        activityCount: 1,
-        updatedAt: serverTimestamp(),
-        lastActivityId: activityRef.id
-      };
-      if (effectivePlace) {
-        if (effectivePlace.name) placeCreateData.name = effectivePlace.name;
-        if (effectivePlace.address) placeCreateData.address = effectivePlace.address;
-        if (effectivePlace.categories) {
-          placeCreateData.categories = (Array.isArray(effectivePlace.categories) ? effectivePlace.categories : [effectivePlace.categories])
-            .filter((c: string) => c !== 'user_event');
-        }
-        if (effectivePlace.lat) placeCreateData.lat = effectivePlace.lat;
-        if (effectivePlace.lon) placeCreateData.lon = effectivePlace.lon;
-        if (effectivePlace.openingHours) placeCreateData.openingHours = effectivePlace.openingHours;
-      }
-      batch.set(placeRef, placeCreateData);
-    } else {
-      batch.update(placeRef, {
-        activityCount: increment(1),
-        updatedAt: serverTimestamp(),
-        lastActivityId: activityRef.id
-      });
-    }
-  }
-
-  if (isBoosted) {
-    batch.update(userRef, {
-      tokens: increment(-1)
-    });
-  }
-
-  if (process.env.NODE_ENV === 'development') {
-    const now = new Date();
-    const fiveMinsAgo = new Date(now.getTime() - 5 * 60 * 1000);
-
-    const allowedActivityKeys = [
-      'id', 'title', 'placeName', 'activityDate', 'activityEndDate', 'hostId', 'hostName', 'hostPhotoURL',
-      'participantIds', 'participantsPreview', 'createdAt', 'lastInteractionAt', 'isCustomActivity',
-      'isTimeFlexible', 'category', 'description', 'status', 'completionVotes', 'isBoosted', 'boostedAt',
-      'isPaid', 'price', 'upvotes', 'downvotes', 'userVotes', 'globalScore', 'reportCount', 'avgRating',
-      'reviewCount', 'stats', 'participantDetails', 'placeAddress', 'lat', 'lon', 'maxParticipants',
-      'requirements', 'joinMode', 'placeId', 'categories', 'placeCategories', 'isUserEvent', 'sourceType', 'creationSource',
-      'normalizedCategory', 'isDateFlexible', 'city', 'postalCode'
-    ];
-
-    const activityRuleChecks = {
-      isSignedIn: !!user?.uid,
-      hostIdMatchesAuth: activityData.hostId === user.uid,
-      isUserOnboardedAndActive: userProfileData?.onboardingCompleted === true && !userProfileData?.isBanned,
-      allowedKeysOnly: Object.keys(activityData).every(k => allowedActivityKeys.includes(k)),
-      titleValid: typeof activityData.title === 'string' && activityData.title.length > 0 && activityData.title.length <= 100,
-      placeNameValid: typeof activityData.placeName === 'string' && activityData.placeName.length > 0 && activityData.placeName.length <= 100,
-      hostNameValid: typeof activityData.hostName === 'string' && activityData.hostName.length > 0,
-      statusValid: ['active', 'open'].includes(activityData.status),
-      completionVotesValid: Array.isArray(activityData.completionVotes) && activityData.completionVotes.length === 0,
-      upvotesZero: activityData.upvotes === 0,
-      downvotesZero: activityData.downvotes === 0,
-      userVotesEmpty: typeof activityData.userVotes === 'object' && activityData.userVotes !== null && Object.keys(activityData.userVotes).length === 0,
-      globalScoreZero: activityData.globalScore === 0,
-      reportCountZero: activityData.reportCount === 0,
-      avgRatingZero: activityData.avgRating === 0,
-      reviewCountZero: activityData.reviewCount === 0,
-      statsValid: activityData.stats?.impressions === 0 && activityData.stats?.pushJoins === 0 && activityData.stats?.referralJoins === 0,
-      sourceTypeValid: activityData.sourceType === 'activity',
-      participantIdsValid: Array.isArray(activityData.participantIds) && activityData.participantIds.length === 1 && activityData.participantIds[0] === user.uid,
-      participantsPreviewValid: Array.isArray(activityData.participantsPreview) && activityData.participantsPreview.length === 1 && activityData.participantsPreview[0].uid === user.uid && Object.keys(activityData.participantsPreview[0]).every(k => ['uid', 'displayName', 'photoURL'].includes(k)),
-      participantDetailsValid: typeof activityData.participantDetails === 'object' && activityData.participantDetails !== null && Object.keys(activityData.participantDetails).length === 1 && Object.keys(activityData.participantDetails)[0] === user.uid && Object.keys(activityData.participantDetails[user.uid]).every(k => ['displayName', 'photoURL', 'isPremium', 'isSupporter', 'checkInStatus', 'hasReviewed'].includes(k)),
-      isPaidFalse: activityData.isPaid === false,
-      priceZero: activityData.price === 0,
-      activityDateValid: adjustedStartDate >= fiveMinsAgo,
-      activityEndDateValid: !activityData.activityEndDate || (adjustedEndDate && adjustedEndDate > adjustedStartDate && adjustedEndDate.getTime() <= adjustedStartDate.getTime() + 30 * 24 * 60 * 60 * 1000),
-      maxParticipantsValid: !activityData.maxParticipants || (typeof activityData.maxParticipants === 'number' && activityData.maxParticipants >= 2 && activityData.maxParticipants <= 100),
-      latValid: activityData.lat === undefined || (typeof activityData.lat === 'number' && activityData.lat >= -90 && activityData.lat <= 90),
-      lonValid: activityData.lon === undefined || (typeof activityData.lon === 'number' && activityData.lon >= -180 && activityData.lon <= 180),
-      isBoostedValid: typeof activityData.isBoosted === 'boolean' && ((activityData.isBoosted === false && activityData.boostedAt === null) || (activityData.isBoosted === true && (userProfileData?.tokens || 0) >= 1))
-    };
-
-    const participantData = {
-      uid: user.uid,
-      displayName: displayNameToUse,
-      photoURL: photoURLToUse,
-      checkInStatus: 'pending',
-      joinedAt: 'serverTimestamp',
-      hasReviewed: false
-    };
-
-    const participantRuleChecks = {
-      docIdIsAuthUid: pRef.id === user.uid,
-      uidMatchesAuth: participantData.uid === user.uid,
-      checkInStatusPending: participantData.checkInStatus === 'pending',
-      hasReviewedFalse: participantData.hasReviewed === false
-    };
-
-    const chatData = {
-      activityId: activityRef.id,
-      hostId: user.uid,
-      participantIds: [user.uid]
-    };
-
-    const chatRuleChecks = {
-      docIdMatchesActivityId: chatRef.id === activityRef.id,
-      activityIdValid: chatData.activityId === activityRef.id,
-      hostIdMatchesAuth: chatData.hostId === user.uid,
-      participantIdsValid: Array.isArray(chatData.participantIds) && chatData.participantIds.length === 1 && chatData.participantIds[0] === user.uid
-    };
-
-    console.log('[CREATE_ACTIVITY_PREFLIGHT] Activity Rule Checks:');
-    console.table(activityRuleChecks);
-    console.log('[CREATE_ACTIVITY_PREFLIGHT] Participant Rule Checks:');
-    console.table(participantRuleChecks);
-    console.log('[CREATE_ACTIVITY_PREFLIGHT] Chat Rule Checks:');
-    console.table(chatRuleChecks);
-
-    const failedActivity = Object.entries(activityRuleChecks).filter(([, passed]) => passed !== true);
-    const failedParticipant = Object.entries(participantRuleChecks).filter(([, passed]) => passed !== true);
-    const failedChat = Object.entries(chatRuleChecks).filter(([, passed]) => passed !== true);
-
-    if (failedActivity.length > 0) {
-      console.error("[CREATE_ACTIVITY_PREFLIGHT] Failed Activity Check Names:", failedActivity.map(([name]) => name));
-      console.table(failedActivity.map(([name, value]) => ({ check: name, passed: value })));
-    }
-    if (failedParticipant.length > 0) {
-      console.error("[CREATE_ACTIVITY_PREFLIGHT] Failed Participant Check Names:", failedParticipant.map(([name]) => name));
-      console.table(failedParticipant.map(([name, value]) => ({ check: name, passed: value })));
-    }
-    if (failedChat.length > 0) {
-      console.error("[CREATE_ACTIVITY_PREFLIGHT] Failed Chat Check Names:", failedChat.map(([name]) => name));
-      console.table(failedChat.map(([name, value]) => ({ check: name, passed: value })));
-    }
-  }
-
   try {
-    await batch.commit();
-    return activityRef;
+    const secureCreateFn = httpsCallable<CallableActivityPayload, { success: boolean; activityId: string }>(functions, 'secureCreateActivity');
+    const response = await secureCreateFn(payload);
+    const activityId = response.data.activityId;
+    return doc(db, 'activities', activityId);
   } catch (error: any) {
-    console.error('!!! Critical Error creating activity and chat: ', error);
-    throw new Error(error.message || 'Could not create activity. Please try again later.');
+    console.error('Error in secureCreateActivity:', error);
+    throw new Error(error.message || 'Aktivität konnte nicht erstellt werden. Bitte versuche es später erneut.');
   }
 }
 
@@ -1282,23 +804,53 @@ export async function declineJoinRequest(notificationId: string, activityId: str
   });
 }
 
-export async function joinPaidActivity(activityId: string, user: User, transactionToken: string, source?: string | null, referralId?: string | null): Promise<void> {
+export interface SecureJoinPaidActivityResponse {
+  success: boolean;
+  duplicated?: boolean;
+  refunded?: boolean;
+  message?: string;
+  error?: string;
+  errorMessage?: string;
+  errorCode?: string;
+}
+
+export async function joinPaidActivity(
+  activityId: string,
+  user: User,
+  transactionToken: string,
+  source?: string | null,
+  referralId?: string | null
+): Promise<void> {
   if (!db) throw new Error('Firestore is not initialized.');
-  
+  if (!activityId || typeof activityId !== 'string' || !activityId.trim()) {
+    throw new Error('Ungültige Aktivitäts-ID.');
+  }
+  if (!transactionToken || typeof transactionToken !== 'string' || !transactionToken.trim()) {
+    throw new Error('Ungültiges Transaktionstoken.');
+  }
+
   try {
     const { getFunctions, httpsCallable } = await import('firebase/functions');
     const functions = getFunctions(app || undefined, 'us-central1');
-    const secureJoin = httpsCallable(functions, 'secureJoinPaidActivity');
-    
-    await secureJoin({
+    const secureJoin = httpsCallable<
+      { activityId: string; transactionToken: string; source?: string | null; referralId?: string | null },
+      SecureJoinPaidActivityResponse
+    >(functions, 'secureJoinPaidActivity');
+
+    const response = await secureJoin({
       activityId,
       transactionToken,
       source,
-      referralId
+      referralId,
     });
+
+    if (response.data?.success !== true) {
+      const errMsg = response.data?.message || response.data?.errorMessage || response.data?.error || 'Zahlungsverifikation fehlgeschlagen.';
+      throw new Error(errMsg);
+    }
   } catch (e: any) {
-    console.error("Join Paid Activity via Cloud Function failed: ", e);
-    throw new Error(e.message || "Zahlungsverifikation fehlgeschlagen.");
+    console.error('Join Paid Activity via Cloud Function failed: ', e);
+    throw new Error(e.message || 'Zahlungsverifikation fehlgeschlagen.');
   }
 }
 
@@ -2046,62 +1598,25 @@ export async function boostEntity(
   userId: string,
   entityId: string,
   durationHours: 6 | 12 | 24,
-  type: 'activity' | 'place'
+  type: 'activity' | 'place',
+  operationId?: string
 ): Promise<void> {
-  if (!db) throw new Error('Firestore is not initialized.');
+  if (!functions) throw new Error('Firebase functions is not initialized.');
 
-  const userRef = doc(db, 'users', userId);
-  const boostRef = doc(collection(db, 'boosts'));
-  const entityRef = doc(db, type === 'activity' ? 'activities' : 'places', entityId);
+  const opId = operationId || generateUUIDv4();
 
-  await runTransaction(db, async (transaction) => {
-    const userSnap = await transaction.get(userRef);
-    if (!userSnap.exists()) throw new Error('Nutzerprofil existiert nicht.');
-    const userData = userSnap.data() as UserProfile;
-    const tokens = userData.tokens || 0;
-
-    if (tokens < 1) throw new Error('Ungenügend Token vorhanden.');
-
-    const entitySnap = await transaction.get(entityRef);
-    if (entitySnap.exists()) {
-      const entityData = entitySnap.data() as any;
-      if (entityData.isBoosted && entityData.boostExpiresAt) {
-        const expiresMillis = typeof entityData.boostExpiresAt.toMillis === 'function'
-          ? entityData.boostExpiresAt.toMillis()
-          : typeof entityData.boostExpiresAt.toDate === 'function'
-            ? entityData.boostExpiresAt.toDate().getTime()
-            : new Date(entityData.boostExpiresAt).getTime();
-        if (expiresMillis > Date.now()) {
-          throw new Error('Bereits aktiv geboostet.');
-        }
-      }
-    }
-
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
-
-    // Write boost record
-    transaction.set(boostRef, {
-      userId,
-      entityId,
+  try {
+    const secureBoostFn = httpsCallable<any, { success: boolean; entityId: string; boostedUntil: string }>(functions, 'secureBoostEntity');
+    await secureBoostFn({
+      operationId: opId,
       entityType: type,
-      createdAt: serverTimestamp(),
-      expiresAt: Timestamp.fromDate(expiresAt),
-      boostLevel: 'standard',
-      multiplier: 1.06
+      entityId,
+      durationHours
     });
-
-    // Deduct token
-    transaction.update(userRef, {
-      tokens: increment(-1)
-    });
-
-    // Update entity
-    transaction.update(entityRef, {
-      isBoosted: true,
-      boostExpiresAt: Timestamp.fromDate(expiresAt)
-    });
-  });
+  } catch (err: any) {
+    console.error('Error calling secureBoostEntity:', err);
+    throw new Error(err.message || 'Boost konnte nicht durchgeführt werden.');
+  }
 }
 
 

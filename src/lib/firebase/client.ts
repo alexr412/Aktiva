@@ -1,16 +1,33 @@
 'use client';
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import 'firebase/app-check';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import firebaseConfig, { isFirebaseConfigured } from './config';
+import { initializeAppCheckIfEnabled } from './app-check';
 
 // Initialize Firebase only if the config is available
 const app: FirebaseApp | null = isFirebaseConfigured() && !getApps().length
   ? initializeApp(firebaseConfig)
   : (getApps().length > 0 ? getApp() : null);
+
+export let appCheckInitError: Error | null = null;
+
+// Synchronously trigger App Check initialization if app exists in browser context BEFORE exporting services
+if (app && typeof window !== 'undefined') {
+  try {
+    initializeAppCheckIfEnabled(app);
+  } catch (err) {
+    appCheckInitError = err instanceof Error ? err : new Error(String(err));
+    console.error('[Firebase Client] App Check initialization error:', err);
+    if (process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_ENABLED === 'true') {
+      throw appCheckInitError;
+    }
+  }
+}
 
 export const auth = app ? getAuth(app) : null;
 export const db = app ? getFirestore(app) : null;

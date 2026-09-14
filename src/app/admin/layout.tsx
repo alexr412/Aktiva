@@ -11,6 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AdminMetricsProvider, useAdminMetrics } from "@/contexts/admin-metrics-context";
 import { AdminGlobalSearch } from "@/components/admin/AdminGlobalSearch";
+import {
+  canViewAdminDashboard,
+  canManageUsers,
+  canViewUsageMetrics,
+  canModerateContent,
+  canManagePayments,
+  canManageSystem
+} from "@/lib/permissions";
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { userProfile, loading } = useAuth();
@@ -20,8 +28,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
   const { openReportsCount, pendingPayoutsCount, pendingRefundsCount } = useAdminMetrics();
 
-  const isDev = process.env.NODE_ENV === 'development';
-  const isAllowed = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
+  const role = userProfile?.role;
+  const isAllowed = canViewAdminDashboard(role);
 
   useEffect(() => {
     if (!loading) {
@@ -57,15 +65,16 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     return null;
   }
 
+  // Filter Nav Items according to user permissions
   const navItems = [
-    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/users", label: "Nutzer", icon: Users },
-    { href: "/admin/usage", label: "Verbrauch", icon: Zap },
-    { href: "/admin/reports", label: "Moderation", icon: AlertTriangle, badge: openReportsCount },
-    { href: "/admin/payouts", label: "Auszahlungen", icon: Wallet, badge: pendingPayoutsCount },
-    { href: "/admin/refunds", label: "Rückzahlungen", icon: RotateCcw, badge: pendingRefundsCount },
-    { href: "/admin/system", label: "System", icon: Cpu },
-  ];
+    { href: "/admin", label: "Dashboard", icon: LayoutDashboard, show: canViewAdminDashboard(role) },
+    { href: "/admin/users", label: "Nutzer", icon: Users, show: canManageUsers(role) },
+    { href: "/admin/usage", label: "Verbrauch", icon: Zap, show: canViewUsageMetrics(role) },
+    { href: "/admin/reports", label: "Moderation", icon: AlertTriangle, badge: openReportsCount, show: canModerateContent(role) },
+    { href: "/admin/payouts", label: "Auszahlungen", icon: Wallet, badge: pendingPayoutsCount, show: canManagePayments(role) },
+    { href: "/admin/refunds", label: "Rückzahlungen", icon: RotateCcw, badge: pendingRefundsCount, show: canManagePayments(role) },
+    { href: "/admin/system", label: "System", icon: Cpu, show: canManageSystem(role) },
+  ].filter(item => item.show);
 
   return (
     <div className="flex h-full flex-col bg-slate-50 dark:bg-neutral-950 overflow-hidden">
@@ -85,7 +94,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                     Admin Control Center
                   </span>
                   <Badge className="bg-purple-600 text-white text-[9px] font-black uppercase tracking-wider px-2 py-0.5 border-none">
-                    {isDev ? 'DEV MODE' : 'ADMIN'}
+                    {(role || 'ADMIN').toUpperCase()}
                   </Badge>
                 </div>
                 <p className="text-[11px] text-slate-400 font-medium hidden sm:block">

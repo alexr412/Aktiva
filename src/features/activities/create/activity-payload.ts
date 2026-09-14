@@ -2,6 +2,8 @@ import type { Place, ActivityCategory } from '@/lib/types';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 
+export type AllowedGender = 'male' | 'female' | 'diverse';
+
 export interface BuildActivityPayloadOptions {
   selectedLocation: Place | null;
   activityTitle: string;
@@ -14,12 +16,10 @@ export interface BuildActivityPayloadOptions {
   isDateFlexible: boolean;
   maxParticipants: number;
   isBoosted: boolean;
-  isPaid: boolean;
-  price: number;
   isSpecificPlaceMode: boolean;
   minAge: number | '';
   maxAge: number | '';
-  allowedGenders: string[];
+  allowedGenders: AllowedGender[];
   requireProfilePicture: boolean;
   requireVerification: boolean;
   minimumRating: number | '';
@@ -34,13 +34,11 @@ export interface ActivityPayloadResult {
   title: string;
   maxParticipants: number;
   isBoosted: boolean;
-  isPaid: boolean;
-  price: number;
   category: ActivityCategory;
   description: string;
   requirements?: {
     ageRange?: { min?: number; max?: number };
-    gender?: string[];
+    gender?: AllowedGender[];
     requireProfilePicture?: boolean;
     requireVerification?: boolean;
     minimumRating?: number;
@@ -62,8 +60,6 @@ export function buildActivityPayload(options: BuildActivityPayloadOptions): Acti
     isDateFlexible,
     maxParticipants,
     isBoosted,
-    isPaid,
-    price,
     isSpecificPlaceMode,
     minAge,
     maxAge,
@@ -143,8 +139,6 @@ export function buildActivityPayload(options: BuildActivityPayloadOptions): Acti
     title: finalTitle,
     maxParticipants,
     isBoosted,
-    isPaid,
-    price,
     category: derivedCategory,
     description,
     requirements: finalRequirements,
@@ -225,4 +219,131 @@ export function computeOpeningHoursWarning(
   }
 
   return null;
+}
+
+export function canonicalizeJson(val: unknown): string {
+  if (val === undefined) return '';
+  if (val === null || typeof val !== 'object') {
+    return JSON.stringify(val);
+  }
+  if (Array.isArray(val)) {
+    return '[' + val.map((item) => canonicalizeJson(item)).join(',') + ']';
+  }
+  const obj = val as Record<string, unknown>;
+  const keys = Object.keys(obj)
+    .filter((k) => k !== 'operationId' && obj[k] !== undefined)
+    .sort();
+  const entries = keys.map((key) => JSON.stringify(key) + ':' + canonicalizeJson(obj[key]));
+  return '{' + entries.join(',') + '}';
+}
+
+export async function computeActivityPayloadFingerprint(payload: CallableActivityPayload | Record<string, unknown>): Promise<string> {
+  const canonicalStr = canonicalizeJson(payload);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(canonicalStr);
+  let hashBuffer: ArrayBuffer;
+
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.subtle) {
+    hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data);
+  } else if (typeof window !== 'undefined' && window.crypto?.subtle) {
+    hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+  } else {
+    try {
+      const nodeCrypto = require('crypto');
+      if (nodeCrypto.webcrypto?.subtle) {
+        hashBuffer = await nodeCrypto.webcrypto.subtle.digest('SHA-256', data);
+      } else {
+        return nodeCrypto.createHash('sha256').update(canonicalStr).digest('hex');
+      }
+    } catch {
+      throw new Error('Crypto SHA-256 unavailable in current runtime.');
+    }
+  }
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export interface CallablePlacePayload {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lon: number;
+  categories?: string[];
+  openingHours?: string;
+}
+
+export interface CallableActivityRequirements {
+  ageRange?: { min?: number; max?: number };
+  gender?: AllowedGender[];
+  requireProfilePicture?: boolean;
+  requireVerification?: boolean;
+  minimumRating?: number;
+}
+
+export interface CallableActivityPayload {
+  operationId: string;
+  startDate: string;
+  endDate?: string;
+  title?: string;
+  description?: string;
+  category?: ActivityCategory;
+  placeId?: string;
+  customLocationName?: string;
+  place?: CallablePlacePayload;
+  isTimeFlexible?: boolean;
+  maxParticipants?: number;
+  requirements?: CallableActivityRequirements;
+  joinMode?: 'direct' | 'request';
+  isBoosted?: boolean;
+}
+
+export function buildCallableActivityPayload(input: {
+  operationId: string;
+  startDate: Date | string;
+  endDate?: Date | string;
+  title?: string;
+  description?: string;
+  category?: ActivityCategory;
+  placeId?: string;
+  customLocationName?: string;
+  place?: Place | null;
+  isTimeFlexible?: boolean;
+  maxParticipants?: number;
+  requirements?: CallableActivityRequirements;
+  joinMode?: 'direct' | 'request';
+  isBoosted?: boolean;
+}): CallableActivityPayload {
+  const startDateIso = input.startDate instanceof Date ? input.startDate.toISOString() : new Date(input.startDate).toISOString();
+  const endDateIso = input.endDate ? (input.endDate instanceof Date ? input.endDate.toISOString() : new Date(input.endDate).toISOString()) : undefined;
+
+  const payload: CallableActivityPayload = {
+    operationId: input.operationId,
+    startDate: startDateIso,
+  };
+
+  if (input.title) payload.title = input.title;
+  if (input.description) payload.description = input.description;
+  if (input.category) payload.category = input.category;
+  if (input.placeId && input.placeId !== 'custom') payload.placeId = input.placeId;
+  if (input.customLocationName) payload.customLocationName = input.customLocationName;
+  if (input.place) {
+    payload.place = {
+      id: input.place.id,
+      name: input.place.name,
+      address: input.place.address,
+      lat: input.place.lat,
+      lon: input.place.lon,
+      ...(input.place.categories ? { categories: input.place.categories } : {}),
+      ...(input.place.openingHours ? { openingHours: input.place.openingHours } : {}),
+    };
+  }
+  if (endDateIso) payload.endDate = endDateIso;
+  if (input.isTimeFlexible !== undefined) payload.isTimeFlexible = input.isTimeFlexible;
+  if (input.maxParticipants !== undefined) payload.maxParticipants = input.maxParticipants;
+  if (input.requirements) payload.requirements = input.requirements;
+  if (input.joinMode) payload.joinMode = input.joinMode;
+  if (input.isBoosted) payload.isBoosted = true;
+
+  return payload;
 }

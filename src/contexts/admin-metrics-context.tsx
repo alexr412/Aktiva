@@ -6,6 +6,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import type { Report, Refund, CreatorApplication } from '@/lib/types';
 import { ACTIVE_REPORT_STATUSES } from '@/lib/types';
+import { canModerateContent, canManagePayments, canApproveCreators } from '@/lib/permissions';
 
 export interface PayoutRequest {
   id: string;
@@ -51,8 +52,7 @@ export const useAdminMetrics = () => useContext(AdminMetricsContext);
 
 export function AdminMetricsProvider({ children }: { children: React.ReactNode }) {
   const { userProfile, loading: authLoading } = useAuth();
-  const isDev = process.env.NODE_ENV === 'development';
-  const isAllowed = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
+  const role = userProfile?.role;
 
   const [reportsList, setReportsList] = useState<Report[]>([]);
   const [payoutsList, setPayoutsList] = useState<PayoutRequest[]>([]);
@@ -61,66 +61,82 @@ export function AdminMetricsProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (authLoading || !isAllowed || !db) {
+    if (authLoading || !db) {
       setLoading(false);
       return;
     }
 
-    let loadedCount = 0;
-    const checkLoaded = () => {
-      loadedCount++;
-      if (loadedCount >= 4) {
-        setLoading(false);
-      }
-    };
+    const allowReports = canModerateContent(role);
+    const allowPayments = canManagePayments(role);
+    const allowCreators = canApproveCreators(role);
 
-    // 1. Reports Subscription (open, pending & moderation_review)
-    const qReports = query(collection(db, 'reports'), where('status', 'in', ACTIVE_REPORT_STATUSES));
-    const unsubReports = onSnapshot(qReports, (snap) => {
-      setReportsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as Report)));
-      checkLoaded();
-    }, (err) => {
-      console.warn('AdminMetrics: Reports snapshot error:', err);
-      checkLoaded();
-    });
+    // If user has no permissions for any metric collection, stop loading immediately
+    if (!allowReports && !allowPayments && !allowCreators) {
+      setReportsList([]);
+      setPayoutsList([]);
+      setRefundsList([]);
+      setCreatorAppsList([]);
+      setLoading(false);
+      return;
+    }
 
-    // 2. Payout Requests Subscription (pending)
-    const qPayouts = query(collection(db, 'payoutRequests'), where('status', '==', 'pending'));
-    const unsubPayouts = onSnapshot(qPayouts, (snap) => {
-      setPayoutsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayoutRequest)));
-      checkLoaded();
-    }, (err) => {
-      console.warn('AdminMetrics: Payouts snapshot error:', err);
-      checkLoaded();
-    });
+    const unsubs: Array<() => void> = [];
 
-    // 3. Refunds Subscription (pending)
-    const qRefunds = query(collection(db, 'refunds'), where('status', '==', 'pending'));
-    const unsubRefunds = onSnapshot(qRefunds, (snap) => {
-      setRefundsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as Refund)));
-      checkLoaded();
-    }, (err) => {
-      console.warn('AdminMetrics: Refunds snapshot error:', err);
-      checkLoaded();
-    });
+    // 1. Reports Subscription (Only if role canModerateContent)
+    if (allowReports) {
+      const qReports = query(collection(db, 'reports'), where('status', 'in', ACTIVE_REPORT_STATUSES));
+      const unsubReports = onSnapshot(qReports, (snap) => {
+        setReportsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as Report)));
+      }, (err) => {
+        console.warn('AdminMetrics: Reports snapshot error:', err);
+      });
+      unsubs.push(unsubReports);
+    } else {
+      setReportsList([]);
+    }
 
-    // 4. Creator Applications Subscription (pending)
-    const qApps = query(collection(db, 'creator_applications'), where('status', '==', 'pending'));
-    const unsubApps = onSnapshot(qApps, (snap) => {
-      setCreatorAppsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as CreatorApplication)));
-      checkLoaded();
-    }, (err) => {
-      console.warn('AdminMetrics: Creator apps snapshot error:', err);
-      checkLoaded();
-    });
+    // 2. Payout Requests Subscription (Only if role canManagePayments)
+    if (allowPayments) {
+      const qPayouts = query(collection(db, 'payoutRequests'), where('status', '==', 'pending'));
+      const unsubPayouts = onSnapshot(qPayouts, (snap) => {
+        setPayoutsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as PayoutRequest)));
+      }, (err) => {
+        console.warn('AdminMetrics: Payouts snapshot error:', err);
+      });
+      unsubs.push(unsubPayouts);
+
+      // 3. Refunds Subscription (Only if role canManagePayments)
+      const qRefunds = query(collection(db, 'refunds'), where('status', '==', 'pending'));
+      const unsubRefunds = onSnapshot(qRefunds, (snap) => {
+        setRefundsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as Refund)));
+      }, (err) => {
+        console.warn('AdminMetrics: Refunds snapshot error:', err);
+      });
+      unsubs.push(unsubRefunds);
+    } else {
+      setPayoutsList([]);
+      setRefundsList([]);
+    }
+
+    // 4. Creator Applications Subscription (Only if role canApproveCreators)
+    if (allowCreators) {
+      const qApps = query(collection(db, 'creator_applications'), where('status', '==', 'pending'));
+      const unsubApps = onSnapshot(qApps, (snap) => {
+        setCreatorAppsList(snap.docs.map(d => ({ id: d.id, ...d.data() } as CreatorApplication)));
+      }, (err) => {
+        console.warn('AdminMetrics: Creator apps snapshot error:', err);
+      });
+      unsubs.push(unsubApps);
+    } else {
+      setCreatorAppsList([]);
+    }
+
+    setLoading(false);
 
     return () => {
-      unsubReports();
-      unsubPayouts();
-      unsubRefunds();
-      unsubApps();
+      unsubs.forEach(unsub => unsub());
     };
-  }, [authLoading, isAllowed]);
+  }, [authLoading, role]);
 
   const openReportsCount = reportsList.length;
   const criticalReportsCount = reportsList.filter(

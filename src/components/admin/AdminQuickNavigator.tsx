@@ -31,6 +31,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 
+import { canViewAdminDashboard } from '@/lib/permissions';
+
 export function AdminQuickNavigator() {
   const router = useRouter();
   const pathname = usePathname();
@@ -44,8 +46,8 @@ export function AdminQuickNavigator() {
   const isSwitchEnabled = process.env.NEXT_PUBLIC_ENABLE_ADMIN_NAVIGATOR === 'true';
 
   // SECURITY GATE:
-  // Visible to logged-in users with role === 'admin' || 'superadmin' || 'supporter' or dev mode.
-  const isNavigatorActive = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
+  // Visible to users with administrative dashboard access.
+  const isNavigatorActive = canViewAdminDashboard(userProfile?.role);
 
   const filteredItems = useMemo(() => {
     return ALL_QUICK_NAV_ITEMS.filter((item) => {

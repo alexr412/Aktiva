@@ -19,13 +19,20 @@ service cloud.firestore {
              {};
     }
 
+    function currentUserRole() {
+      return getUserData().get('role', 'user');
+    }
+
     function isAdmin() {
-      let uData = getUserData();
-      return isSignedIn() && (
-        ('isAdmin' in request.auth.token && request.auth.token.isAdmin == true) ||
-        uData.get('role', '') in ['admin', 'superadmin'] ||
-        uData.get('isAdmin', false) == true
-      );
+      return isSignedIn() && currentUserRole() in ['admin', 'superadmin'];
+    }
+
+    function canModerate() {
+      return isSignedIn() && currentUserRole() in ['moderator', 'admin', 'superadmin'];
+    }
+
+    function canManagePayments() {
+      return isSignedIn() && currentUserRole() in ['finance', 'admin', 'superadmin'];
     }
 
     // Helper function for fail-closed suspension checking:
@@ -135,6 +142,26 @@ service cloud.firestore {
       );
     }
 
+    function isValidPlaceAtomicUpdate(activityId, placeId) {
+      let placePath = /databases/$(database)/documents/places/$(placeId);
+      return existsAfter(placePath) &&
+        getAfter(placePath).data.get('lastActivityId', '') == activityId &&
+        getAfter(placePath).data.get('isDeleted', false) != true &&
+        getAfter(placePath).data.get('isBlacklisted', false) != true &&
+        (
+          (
+            exists(placePath) &&
+            get(placePath).data.get('isDeleted', false) != true &&
+            get(placePath).data.get('isBlacklisted', false) != true &&
+            getAfter(placePath).data.get('activityCount', 0) == get(placePath).data.get('activityCount', 0) + 1
+          ) ||
+          (
+            !exists(placePath) &&
+            getAfter(placePath).data.get('activityCount', 0) == 1
+          )
+        );
+    }
+
     function isValidActivityCreate(activityId) {
       let uData = getUserData();
 
@@ -217,11 +244,20 @@ service cloud.firestore {
         (!('joinMode' in request.resource.data) || request.resource.data.joinMode in ['direct', 'request']) &&
         (!('placeCategories' in request.resource.data) || (request.resource.data.placeCategories is list && request.resource.data.placeCategories.size() <= 20)) &&
         
-        (!('placeId' in request.resource.data) || request.resource.data.placeId == 'custom' || (
-          request.resource.data.placeId is string &&
-          request.resource.data.placeId.size() > 0 &&
-          request.resource.data.placeId.size() <= 200
-        )) &&
+        (
+          (
+            (!('placeId' in request.resource.data) || request.resource.data.placeId == null || request.resource.data.placeId == 'custom') &&
+            request.resource.data.get('isCustomActivity', false) == true
+          ) ||
+          (
+            request.resource.data.placeId is string &&
+            request.resource.data.placeId.size() > 0 &&
+            request.resource.data.placeId.size() <= 200 &&
+            request.resource.data.placeId != 'custom' &&
+            request.resource.data.get('isCustomActivity', false) == false &&
+            isValidPlaceAtomicUpdate(activityId, request.resource.data.placeId)
+          )
+        ) &&
         
         request.resource.data.isBoosted is bool && (
           (request.resource.data.isBoosted == false && request.resource.data.get('boostedAt', null) == null) ||
@@ -235,10 +271,8 @@ service cloud.firestore {
         ) &&
         
         // 8. Chat- & Participant-Konsistenz
-        existsAfter(/databases/$(database)/documents/chats/$(activityId)) && 
-        getAfter(/databases/$(database)/documents/chats/$(activityId)).data.activityId == activityId && 
-        getAfter(/databases/$(database)/documents/chats/$(activityId)).data.hostId == request.auth.uid &&
-        existsAfter(/databases/$(database)/documents/activities/$(activityId)/participants/$(request.auth.uid))
+        (exists(/databases/$(database)/documents/chats/$(activityId)) || existsAfter(/databases/$(database)/documents/chats/$(activityId))) &&
+        (exists(/databases/$(database)/documents/activities/$(activityId)/participants/$(request.auth.uid)) || existsAfter(/databases/$(database)/documents/activities/$(activityId)/participants/$(request.auth.uid)))
       );
     }
 
@@ -274,8 +308,8 @@ service cloud.firestore {
             request.resource.data.get('isBoosted', false) == true &&
             request.resource.data.boostedAt == request.time &&
             uData.get('tokens', 0) >= 1 &&
-            existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-            getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.tokens == uData.get('tokens', 0) - 1
+            (exists(/databases/$(database)/documents/users/$(request.auth.uid)) || existsAfter(/databases/$(database)/documents/users/$(request.auth.uid))) &&
+            (exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data : getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data).tokens == uData.get('tokens', 0) - 1
           )
         ) &&
         (
@@ -436,8 +470,9 @@ service cloud.firestore {
       let uid = request.auth.uid;
       
       let isActivityChat = 'activityId' in resource.data && resource.data.activityId == chatId;
-      let isParticipantInActivity = existsAfter(/databases/$(database)/documents/activities/$(chatId)) &&
-                                     getAfter(/databases/$(database)/documents/activities/$(chatId)).data.participantIds.hasAny([uid]);
+      let actPath = /databases/$(database)/documents/activities/$(chatId);
+      let actData = existsAfter(actPath) ? getAfter(actPath).data : (exists(actPath) ? get(actPath).data : {});
+      let isParticipantInActivity = actData.get('participantIds', []).hasAny([uid]);
       
       let username = getUserData().get('username', null);
 
@@ -500,7 +535,13 @@ service cloud.firestore {
     }
 
     function activityAfterData(activityId) {
-      return activityAfter(activityId).data;
+      let actPath = /databases/$(database)/documents/activities/$(activityId);
+      return existsAfter(actPath) ? getAfter(actPath).data : (exists(actPath) ? get(actPath).data : {});
+    }
+
+    function activityExistsAny(activityId) {
+      let actPath = /databases/$(database)/documents/activities/$(activityId);
+      return exists(actPath) || existsAfter(actPath);
     }
 
     function isChatActive(chatId) {
@@ -562,7 +603,7 @@ service cloud.firestore {
       return resource != null && resource.data != null &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'role', 'isAdmin', 'isBanned', 'isPremium', 'isSupporter', 'isCreator',
-          'isOrganizer', 'premiumTier', 'balancesInCents', 'kycStatus', 'premiumSource',
+          'isOrganizer', 'premiumTier', 'tempPremiumUntil', 'tempPremiumExpiresAt', 'balancesInCents', 'kycStatus', 'premiumSource',
           'premiumCampaignId', 'escrowBalance', 'fiatBalance', 'referralCode',
           'referredBy', 'username', 'usernameLowercase', 'successfulFreeHosts',
           'ratingCount', 'averageRating', 'successfulReferrals', 'pointsBalance',
@@ -572,7 +613,7 @@ service cloud.firestore {
           'premiumExpiresAt', 'usernameLastChangedAt', 'accountStatus',
           'suspendedUntil', 'suspendedBy', 'suspensionReasonPublic', 'suspensionNoteInternal',
           'bannedAt', 'bannedBy', 'banReasonPublic', 'banNoteInternal',
-          'displayNameLower', 'emailLower'
+          'displayNameLower', 'emailLower', 'tokens'
         ]) &&
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['appTutorialEligible']) || (
           resource.data.get('onboardingCompleted', false) == false &&
@@ -583,11 +624,6 @@ service cloud.firestore {
           request.resource.data.get('appTutorialVersion', 0) is int &&
           request.resource.data.get('appTutorialVersion', 0) == 1 &&
           resource.data.get('appTutorialVersion', 0) < 1
-        )) &&
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['tokens']) || (
-          request.resource.data.get('tokens', 0) is int &&
-          resource.data.get('tokens', 0) is int &&
-          request.resource.data.get('tokens', 0) == resource.data.get('tokens', 0) - 1
         ));
     }
 
@@ -647,7 +683,8 @@ service cloud.firestore {
     // --- COLLECTION RULES ---
 
     match /users/{userId} {
-      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow read: if (isSignedIn() && (isOwner(userId) || isAdmin())) ||
+                     (request.auth == null && resource != null && !('tokens' in resource.data) && !('email' in resource.data));
       allow create: if isOwner(userId) && 
         request.resource.data.role == 'user' && 
         request.resource.data.isBanned == false &&
@@ -656,6 +693,9 @@ service cloud.firestore {
         request.resource.data.balancesInCents == true &&
         request.resource.data.kycStatus == 'unverified' &&
         (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false) &&
+        (!('premiumTier' in request.resource.data) || request.resource.data.premiumTier == 'free') &&
+        (!('tempPremiumUntil' in request.resource.data)) &&
+        (!('tempPremiumExpiresAt' in request.resource.data)) &&
         request.resource.data.tokens == 0 &&
         request.resource.data.successfulFreeHosts == 0 &&
         request.resource.data.averageRating == 0 &&
@@ -684,9 +724,8 @@ service cloud.firestore {
       
       // Removed social update bypass completely.
       // System fields list in hasNoSystemFieldChanges now strictly covers friends, friendRequestsSent, and friendRequestsReceived.
-      allow update: if (isOwner(userId) && hasNoSystemFieldChanges() && validateOwnerUpdate()) || 
-                       isAdmin();
-      allow delete: if isAdmin();
+      allow update: if isSignedIn() && resource != null && resource.data != null && isOwner(userId) && hasNoSystemFieldChanges() && validateOwnerUpdate();
+      allow delete: if false;
 
       match /push_tokens/{tokenId} {
         allow read, write: if isSignedIn() && (isOwner(userId) || isAdmin());
@@ -775,13 +814,16 @@ service cloud.firestore {
 
     match /activities/{activityId} {
       allow read: if true;
-      allow write: if (resource == null ? isValidActivityCreate(activityId) : (
-        isSignedIn() && (
+      allow create: if false; // Cloud Functions secureCreateActivity owned
+      allow update: if isSignedIn() && resource != null && resource.data != null &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isBoosted', 'boostedAt', 'boostExpiresAt']) && (
           isAdmin() ||
-          (resource.data.get('hostId', '') == request.auth.uid && isValidActivityUpdateNormal()) ||
-          (resource.data.get('hostId', '') != request.auth.uid && (isParticipantAllowedUpdate() || isValidDirectLeave() || isValidDirectJoin()))
-        )
-      ));
+          (
+            resource.data.get('hostId', '') == request.auth.uid ?
+              isValidActivityUpdateNormal() :
+              (isParticipantAllowedUpdate() || isValidDirectLeave() || isValidDirectJoin())
+          )
+        );
       // Activity deletion is cloud function / admin sdk owned. Client delete restricted to isAdmin().
       allow delete: if isAdmin();
       
@@ -794,11 +836,11 @@ service cloud.firestore {
             request.resource.data.uid == request.auth.uid &&
             request.resource.data.checkInStatus == 'pending' &&
             request.resource.data.hasReviewed == false &&
-            existsAfter(/databases/$(database)/documents/activities/$(activityId)) &&
-            getAfter(/databases/$(database)/documents/activities/$(activityId)).data.participantIds.hasAny([participantId]) &&
+            activityExistsAny(activityId) &&
+            activityAfterData(activityId).participantIds.hasAny([participantId]) &&
             (
-              getAfter(/databases/$(database)/documents/activities/$(activityId)).data.isPaid == false ||
-              getAfter(/databases/$(database)/documents/activities/$(activityId)).data.hostId == request.auth.uid
+              activityAfterData(activityId).isPaid == false ||
+              activityAfterData(activityId).hostId == request.auth.uid
             )
           )
         );
@@ -825,33 +867,22 @@ service cloud.firestore {
         resource == null || resource.data.participantIds.hasAny([request.auth.uid]) || isAdmin()
       );
       allow create: if isSignedIn() && (
-        // Case 1: Activity-based chat
-        (
-          request.resource.data.hostId == request.auth.uid &&
-          request.resource.data.participantIds.size() == 1 &&
-          request.resource.data.participantIds[0] == request.auth.uid &&
-          request.resource.data.activityId == chatId &&
-          existsAfter(/databases/$(database)/documents/activities/$(chatId)) &&
-          activityAfterData(chatId).hostId == request.auth.uid
-        ) ||
         // Case 2: Direct message chat
-        (
-          request.resource.data.get('type', '') == 'direct' &&
-          !('activityId' in request.resource.data) &&
-          !('hostId' in request.resource.data) &&
-          !('lastMessage' in request.resource.data) &&
-          !('unreadCount' in request.resource.data) &&
-          request.resource.data.participantIds.size() == 2 &&
-          request.resource.data.participantIds[0] != request.resource.data.participantIds[1] &&
-          request.auth.uid in request.resource.data.participantIds &&
-          request.resource.data.keys().hasOnly(['type', 'participantIds', 'createdAt', 'lastActivityAt', 'participantDetails']) &&
-          request.resource.data.createdAt == request.time &&
-          request.resource.data.lastActivityAt == request.time &&
-          isValidDirectChat(request.resource.data.participantIds, request.resource.data.participantDetails)
-        )
+        request.resource.data.get('type', '') == 'direct' &&
+        !('activityId' in request.resource.data) &&
+        !('hostId' in request.resource.data) &&
+        !('lastMessage' in request.resource.data) &&
+        !('unreadCount' in request.resource.data) &&
+        request.resource.data.participantIds.size() == 2 &&
+        request.resource.data.participantIds[0] != request.resource.data.participantIds[1] &&
+        request.auth.uid in request.resource.data.participantIds &&
+        request.resource.data.keys().hasOnly(['type', 'participantIds', 'createdAt', 'lastActivityAt', 'participantDetails']) &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.lastActivityAt == request.time &&
+        isValidDirectChat(request.resource.data.participantIds, request.resource.data.participantDetails)
       );
       // Chat update uses granular, secure helpers.
-      allow update: if isSignedIn() && (
+      allow update: if isSignedIn() && resource != null && resource.data != null && (
         isValidChatMessageMetadataUpdate(chatId) ||
         isValidChatDirectJoin(chatId) ||
         isValidChatOwnCleanup(chatId) || 
@@ -909,7 +940,7 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow read: if isAdmin();
+      allow read: if canModerate();
       allow create: if isSignedIn() &&
         request.resource.data.reporterId == request.auth.uid &&
         (request.resource.data.status == 'pending' || request.resource.data.status == 'open') &&
@@ -917,92 +948,98 @@ service cloud.firestore {
           request.resource.data.keys().hasOnly(['reporterId', 'reportedEntityId', 'entityType', 'reason', 'status', 'createdAt']) ||
           request.resource.data.keys().hasOnly(['reporterId', 'activityId', 'reason', 'status', 'createdAt'])
         );
-      allow update: if isAdmin();
+      allow update: if canModerate() &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['reporterId', 'reportedEntityId', 'activityId', 'entityType', 'reason', 'createdAt']) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolutionNote', 'resolvedAt', 'reviewerId']) &&
+        request.resource.data.reviewerId is string &&
+        request.resource.data.reviewerId == request.auth.uid &&
+        (!('resolutionNote' in request.resource.data) || (request.resource.data.resolutionNote is string && request.resource.data.resolutionNote.size() <= 1000)) &&
+        (
+          (
+            resource.data.status in ['open', 'pending'] &&
+            request.resource.data.status == 'moderation_review' &&
+            !('resolvedAt' in request.resource.data)
+          ) ||
+          (
+            resource.data.status in ['open', 'pending', 'moderation_review'] &&
+            request.resource.data.status in ['resolved', 'dismissed'] &&
+            request.resource.data.resolvedAt is timestamp &&
+            request.resource.data.resolvedAt == request.time
+          )
+        );
       allow delete: if isAdmin();
     }
 
     match /creator_applications/{appId} {
       allow create: if false;
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow update: if false; // Cloud Functions owned (adminSetOrganizerStatus)
+      allow delete: if false;
     }
 
     match /boosts/{boostId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() &&
-        request.resource.data.userId == request.auth.uid &&
-        request.resource.data.keys().hasOnly(['userId', 'entityId', 'entityType', 'createdAt', 'expiresAt', 'boostLevel', 'multiplier']) &&
-        request.resource.data.userId is string &&
-        request.resource.data.entityId is string &&
-        request.resource.data.entityType in ['activity', 'place'] &&
-        request.resource.data.createdAt is timestamp &&
-        request.resource.data.expiresAt is timestamp &&
-        request.resource.data.expiresAt > request.time &&
-        (request.resource.data.boostLevel == 'standard' || request.resource.data.boostLevel == 'high') &&
-        request.resource.data.multiplier is number;
+      allow create: if false; // Cloud Functions secureBoostEntity owned
       allow update, delete: if isAdmin();
+    }
+
+    match /idempotency_keys/{keyId} {
+      allow read, write: if false;
+    }
+
+    match /activity_creation_locks/{lockId} {
+      allow read, write: if false;
+    }
+
+    match /rate_limits/{limitId} {
+      allow read, write: if false;
     }
 
     match /places/{placeId} {
       // Places require authenticated/onboarded read.
       allow read: if isSignedIn() && isUserOnboardedAndActive(request.auth.uid);
 
-      allow create: if isSignedIn() && 
-        !request.resource.data.keys().hasAny([
-          'upvotes', 'downvotes', 'weightedUpvotes', 'weightedDownvotes',
-          'weightedCommunityScore', 'communityScore', 'globalScore',
-          'userVotes', 'userVoteWeights', 'voteBoostScore'
-        ]) &&
-        request.resource.data.get('activityCount', 0) == 1 &&
-        request.resource.data.get('lastActivityId', '') is string;
+      allow create: if false; // Cloud Functions secureCreateActivity owned
 
-      allow update: if isSignedIn() && 
+      allow update: if isSignedIn() && resource != null &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'upvotes', 'downvotes', 'weightedUpvotes', 'weightedDownvotes',
           'weightedCommunityScore', 'communityScore', 'globalScore',
-          'userVotes', 'userVoteWeights', 'voteBoostScore'
+          'userVotes', 'userVoteWeights', 'voteBoostScore',
+          'isDeleted', 'isBlacklisted', 'activityCount', 'lastActivityId',
+          'isBoosted', 'boostedAt', 'boostExpiresAt'
         ]) &&
+        resource.data.get('isDeleted', false) != true &&
+        resource.data.get('isBlacklisted', false) != true &&
         (
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['activityCount']) ||
-          (
-            request.resource.data.activityCount is int &&
-            request.resource.data.activityCount == resource.data.get('activityCount', 0) + 1 &&
-            'lastActivityId' in request.resource.data &&
-            request.resource.data.lastActivityId is string
-          )
-        ) &&
-        // Do not allow arbitrary overwrites of existing name/address/lat/lon/categories on update without increments (creating activity)
-        (
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['name', 'address', 'categories', 'lat', 'lon', 'openingHours']) ||
-          request.resource.data.diff(resource.data).affectedKeys().hasAny(['activityCount'])
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['name', 'address', 'categories', 'lat', 'lon', 'openingHours'])
         );
     }
 
     match /payoutRequests/{requestId} {
       allow create: if false; // Cloud Functions owned
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow read: if canManagePayments() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow update: if false; // Cloud Functions owned
+      allow delete: if false;
     }
 
     match /refunds/{refundId} {
       allow create: if false; // Cloud Functions owned
-      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow read: if canManagePayments() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow update: if false; // Cloud Functions owned
+      allow delete: if false;
     }
 
     match /financial_ledger/{entryId} {
       allow create: if false; // Cloud Functions owned
-      allow read: if isAdmin();
+      allow read: if canManagePayments();
       allow update: if false;
       allow delete: if false;
     }
 
     match /processed_payments/{docId} {
       allow create: if false;
-      allow read: if isAdmin();
+      allow read: if canManagePayments();
       allow update: if false;
       allow delete: if false;
     }
@@ -1024,8 +1061,8 @@ service cloud.firestore {
     match /kycRequests/{requestId} {
       allow create: if isSignedIn();
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow update: if false; // Cloud Functions owned
+      allow delete: if false;
     }
 
     match /telemetry_events/{eventId} {
@@ -1051,6 +1088,10 @@ service cloud.firestore {
     match /user_usage/{usageId} {
       allow read: if isAdmin();
       allow write: if false;
+    }
+
+    match /revenuecat_events/{eventId} {
+      allow read, write: if false; // Server-owned Cloud Functions collection only
     }
   }
 }

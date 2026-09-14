@@ -31,10 +31,16 @@
     "test:activities": "npx tsx src/features/activities/create/__tests__/activity-payload.test.ts && npx tsx functions/src/activities.test.ts",
     "test:place-details": "npx tsx src/features/places/details/__tests__/place-details-logic.test.ts",
     "test:profile-activity": "npx tsx src/components/profile/__tests__/profile-activity-card.test.ts",
+    "test:permissions": "npx tsx src/lib/permissions.test.ts && npx tsx src/lib/permissions-parity.test.ts",
+    "test:admin-api": "npx tsx src/app/api/admin/usage/route.test.ts",
+    "test:app-check": "npx tsx src/lib/firebase/app-check.test.ts && npx tsx src/lib/api-client.test.ts && npx tsx src/lib/firebase/admin-app-check.test.ts && npx tsx src/app/api/admin/usage/route.test.ts && npx tsx src/app/api/routes-app-check.test.ts",
+    "test:security": "npm run test:permissions && npm run test:admin-api",
     "test:backend": "npm --prefix functions run test",
-    "test:rules": "npx firebase-tools emulators:exec --only firestore,storage \"npx tsx firestore.rules.test.ts\"",
+    "test:integration:guard": "node scripts/run-integration-isolated.mjs --self-test",
+    "test:integration": "npm --prefix functions run build && node scripts/run-integration-isolated.mjs",
+    "test:rules": "npx firebase-tools emulators:exec --only firestore,storage \"npx tsx run-rules-tests.ts\"",
     "emulators": "npx firebase-tools emulators:start --only auth,firestore,functions,storage",
-    "test:all": "npm run test:ranking && npm run test:duplicate && npm run test:moderation && npm run test:reserved && npm run test:premium && npm run test:map && npm run test:radar-client && npm run test:radar-backend && npm run test:location && npm run test:communication && npm run test:referral && npm run test:reset-password && npm run test:address && npm run test:optimistic-chat && npm run test:notifications && npm run test:geoapify && npm run test:feed && npm run test:activity && npm run test:place-details && npm run test:profile-activity && npm run test:backend"
+    "test:all": "npm run test:ranking && npm run test:duplicate && npm run test:moderation && npm run test:reserved && npm run test:premium && npm run test:map && npm run test:radar-client && npm run test:radar-backend && npm run test:location && npm run test:communication && npm run test:referral && npm run test:reset-password && npm run test:address && npm run test:optimistic-chat && npm run test:notifications && npm run test:geoapify && npm run test:feed && npm run test:activity && npm run test:place-details && npm run test:profile-activity && npm run test:permissions && npm run test:app-check && npm run test:security && npm run test:backend && npm run test:rules && npm run test:integration"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.28.0",
@@ -87,7 +93,8 @@
     "swr": "^2.2.5",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "zod-to-json-schema": "3.24.6"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",
@@ -95,6 +102,7 @@
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
     "firebase-admin": "^13.10.0",
+    "firebase-tools": "15.29.0",
     "genkit-cli": "^1.28.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",

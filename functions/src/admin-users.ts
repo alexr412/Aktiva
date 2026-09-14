@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { canManageUsers, VALID_USER_ROLES, UserRole } from './permissions';
 
 // Role hierarchy rank mapping: user (0) < moderator (1) < admin (2) < superadmin (3)
 export function getRoleRank(role?: string): number {
@@ -25,7 +26,7 @@ export async function verifyAdminCaller(db: admin.firestore.Firestore, callerUid
   const callerData = callerDoc.data() || {};
   const callerRole = callerData.role;
 
-  if (callerRole !== 'admin' && callerRole !== 'superadmin' && callerData.isAdmin !== true) {
+  if (!canManageUsers(callerRole)) {
     throw new HttpsError('permission-denied', 'Administrative privileges required.');
   }
 
@@ -34,25 +35,32 @@ export async function verifyAdminCaller(db: admin.firestore.Firestore, callerUid
 }
 
 /**
- * Validates role escalation permissions.
- * Admins CANNOT manage/assign 'admin' or 'superadmin' roles, nor alter existing 'admin' or 'superadmin' target users.
+ * Validates role hierarchy rules for role modification.
  */
-export function checkRoleModificationPermission(callerRole: 'admin' | 'superadmin', targetRole?: string, newRole?: string) {
+export function checkRoleModificationPermission(
+  callerRole: 'admin' | 'superadmin',
+  oldRole?: string,
+  newRole?: string
+) {
   const callerRank = getRoleRank(callerRole);
-  const targetRank = getRoleRank(targetRole);
-  const newRoleRank = newRole ? getRoleRank(newRole) : 0;
+  const targetRank = getRoleRank(oldRole);
+  const newRank = newRole !== undefined ? getRoleRank(newRole) : 0;
 
   if (callerRole === 'admin') {
     if (targetRank >= 2) {
       throw new HttpsError('permission-denied', 'Admins cannot modify Admin or Superadmin accounts.');
     }
-    if (newRoleRank >= 2) {
+    if (newRole !== undefined && newRank >= 2) {
       throw new HttpsError('permission-denied', 'Admins cannot promote users to Admin or Superadmin.');
     }
   }
 
-  if (callerRank < targetRank) {
-    throw new HttpsError('permission-denied', 'Cannot modify a user with a higher privilege level.');
+  if (callerRole !== 'superadmin' && callerRank <= targetRank) {
+    throw new HttpsError('permission-denied', 'Cannot modify users of equal or higher rank.');
+  }
+
+  if (newRole !== undefined && callerRank < newRank) {
+    throw new HttpsError('permission-denied', 'Cannot grant a rank higher than your own.');
   }
 }
 
@@ -69,9 +77,11 @@ export async function logAdminAudit(
     after?: any;
     reason?: string;
     metadata?: any;
-  }
+  },
+  transaction?: admin.firestore.Transaction
 ) {
-  await db.collection('admin_audit_logs').add({
+  const auditRef = db.collection('admin_audit_logs').doc();
+  const auditData = {
     actorUid: data.actorUid,
     targetUid: data.targetUid,
     action: data.action,
@@ -80,7 +90,13 @@ export async function logAdminAudit(
     reason: data.reason ?? null,
     metadata: data.metadata ?? null,
     createdAt: FieldValue.serverTimestamp(),
-  });
+  };
+
+  if (transaction) {
+    transaction.set(auditRef, auditData);
+  } else {
+    await auditRef.set(auditData);
+  }
 }
 
 /**
@@ -100,10 +116,78 @@ export async function assertNotLastSuperadmin(
   if (isTargetSuperadmin && superadminSnap.size <= 1) {
     throw new HttpsError(
       'failed-precondition',
-      `Cannot ${actionType} the last remaining Superadmin in the system.`
+      `Cannot ${actionType} the last remaining superadmin in the system.`
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. adminSetUserRole (Service Transaction Execution & Callable)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function executeAdminSetUserRoleTx(
+  db: admin.firestore.Firestore,
+  transaction: admin.firestore.Transaction,
+  callerUid: string,
+  callerRole: 'admin' | 'superadmin',
+  targetUid: string,
+  newRole: string
+) {
+  if (!targetUid || typeof targetUid !== 'string') {
+    throw new HttpsError('invalid-argument', 'Target UID is required.');
+  }
+  if (callerUid === targetUid) {
+    throw new HttpsError('permission-denied', 'Users cannot modify their own role.');
+  }
+  if (!VALID_USER_ROLES.includes(newRole as UserRole)) {
+    throw new HttpsError('invalid-argument', 'Invalid role value.');
+  }
+
+  const targetRef = db.collection('users').doc(targetUid);
+  const targetSnap = await transaction.get(targetRef);
+
+  if (!targetSnap.exists) {
+    throw new HttpsError('not-found', 'Target user profile not found.');
+  }
+
+  const targetData = targetSnap.data() || {};
+  const oldRole = targetData.role || 'user';
+
+  checkRoleModificationPermission(callerRole, oldRole, newRole);
+
+  if (oldRole === 'superadmin' && newRole !== 'superadmin') {
+    await assertNotLastSuperadmin(transaction, db, targetUid, 'demote');
+  }
+
+  const isNewAdmin = newRole === 'admin' || newRole === 'superadmin';
+  transaction.update(targetRef, {
+    role: newRole,
+    isAdmin: isNewAdmin,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  logAdminAudit(db, {
+    actorUid: callerUid,
+    targetUid,
+    action: 'USER_ROLE_CHANGED',
+    before: { role: oldRole, isAdmin: targetData.isAdmin ?? false },
+    after: { role: newRole, isAdmin: isNewAdmin },
+  }, transaction);
+}
+
+export const adminSetUserRole = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  const db = admin.firestore();
+  const { callerUid, callerRole } = await verifyAdminCaller(db, request.auth.uid);
+
+  const { targetUid, role: newRole } = request.data || {};
+
+  await db.runTransaction(async (transaction) => {
+    await executeAdminSetUserRoleTx(db, transaction, callerUid, callerRole, targetUid, newRole);
+  });
+
+  return { success: true, targetUid, role: newRole };
+});
 
 export function normalizeUserProfile(uid: string, raw: any, nowMs: number = Date.now()) {
   const roleVal = raw.role || (raw.isAdmin ? 'admin' : (raw.isSupporter ? 'supporter' : 'user'));
@@ -386,53 +470,6 @@ export const adminGetUserDetail = onCall(async (request) => {
   }
 
   return { profile, authUser, stats };
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. adminSetUserRole
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const adminSetUserRole = onCall(async (request) => {
-  if (!request.auth) throw new HttpsError('unauthenticated', 'User must be authenticated.');
-  const db = admin.firestore();
-  const { callerUid, callerRole } = await verifyAdminCaller(db, request.auth.uid);
-
-  const { targetUid, role: newRole } = request.data || {};
-  if (!targetUid || typeof targetUid !== 'string') throw new HttpsError('invalid-argument', 'Target UID is required.');
-  if (!['user', 'moderator', 'admin', 'superadmin'].includes(newRole)) {
-    throw new HttpsError('invalid-argument', 'Invalid role value.');
-  }
-
-  await db.runTransaction(async (transaction) => {
-    const targetRef = db.collection('users').doc(targetUid);
-    const targetSnap = await transaction.get(targetRef);
-
-    if (!targetSnap.exists) throw new HttpsError('not-found', 'Target user profile not found.');
-
-    const targetData = targetSnap.data() || {};
-    const oldRole = targetData.role || 'user';
-
-    checkRoleModificationPermission(callerRole, oldRole, newRole);
-
-    if (oldRole === 'superadmin' && newRole !== 'superadmin') {
-      await assertNotLastSuperadmin(transaction, db, targetUid, 'demote');
-    }
-
-    transaction.update(targetRef, {
-      role: newRole,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    await logAdminAudit(db, {
-      actorUid: callerUid,
-      targetUid,
-      action: 'USER_ROLE_CHANGED',
-      before: { role: oldRole },
-      after: { role: newRole },
-    });
-  });
-
-  return { success: true, targetUid, role: newRole };
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

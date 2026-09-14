@@ -1,8 +1,9 @@
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 /**
- * Shared Firestore-backed rate limiter helper.
+ * Shared Firestore-backed atomic rate limiter helper using transactions.
  */
 export async function enforceRateLimit(
   userId: string,
@@ -11,29 +12,35 @@ export async function enforceRateLimit(
   windowSeconds: number
 ): Promise<void> {
   const db = admin.firestore();
-  const now = Date.now();
   const rateLimitRef = db.collection('rate_limits').doc(`${userId}_${action}`);
-  const snap = await rateLimitRef.get();
 
-  if (snap.exists) {
-    const data = snap.data();
-    const attempts: number[] = (data?.attempts || []).filter(
-      (ts: number) => now - ts < windowSeconds * 1000
-    );
+  await db.runTransaction(async (transaction) => {
+    const now = Date.now();
+    const snap = await transaction.get(rateLimitRef);
 
-    if (attempts.length >= maxAttempts) {
-      throw new HttpsError(
-        'resource-exhausted',
-        `Rate limit exceeded for ${action}. Please try again later.`
+    if (snap.exists) {
+      const data = snap.data();
+      const attempts: number[] = (data?.attempts || []).filter(
+        (ts: number) => now - ts < windowSeconds * 1000
       );
-    }
 
-    attempts.push(now);
-    await rateLimitRef.set({ attempts, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-  } else {
-    await rateLimitRef.set({
-      attempts: [now],
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  }
+      if (attempts.length >= maxAttempts) {
+        throw new HttpsError(
+          'resource-exhausted',
+          `Rate limit exceeded for ${action}. Please try again later.`
+        );
+      }
+
+      attempts.push(now);
+      transaction.set(rateLimitRef, {
+        attempts,
+        updatedAt: FieldValue.serverTimestamp()
+      });
+    } else {
+      transaction.set(rateLimitRef, {
+        attempts: [now],
+        updatedAt: FieldValue.serverTimestamp()
+      });
+    }
+  });
 }

@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import {
   buildActivityPayload,
+  buildCallableActivityPayload,
+  computeActivityPayloadFingerprint,
   isCreateActivityDisabled,
   computeOpeningHoursWarning,
   BuildActivityPayloadOptions,
 } from '../activity-payload';
+import { createActivitySchema } from '../../../../../functions/src/activities';
 import type { Place } from '@/lib/types';
 
 const mockPlace: Place = {
@@ -18,7 +21,7 @@ const mockPlace: Place = {
   openingHours: 'Mo-Fr 10:00-22:00',
 };
 
-function runActivityPayloadTests() {
+async function runActivityPayloadTests() {
   console.log('--- RUNNING ACTIVITY PAYLOAD & VALIDATION TESTS ---');
 
   // Test 1: Disabled state validation
@@ -90,8 +93,6 @@ function runActivityPayloadTests() {
     isDateFlexible: false,
     maxParticipants: 4,
     isBoosted: false,
-    isPaid: false,
-    price: 0,
     isSpecificPlaceMode: false,
     minAge: 20,
     maxAge: 40,
@@ -139,6 +140,53 @@ function runActivityPayloadTests() {
   const warningInside = computeOpeningHoursWarning(mockPlace, mondayDate, '14:00', false, 'de');
   assert.equal(warningInside, null, 'Should return null for time inside 10:00-22:00');
   console.log('✅ testOpeningHoursWarning passed');
+
+  // Test 5: Client-Server Schema Contract (Strict Validation & No isPaid/price)
+  console.log('Running testClientPayloadVsServerSchemaContract...');
+  const callablePayload = buildCallableActivityPayload({
+    operationId: '00000000-0000-4000-8000-000000000001',
+    startDate: new Date('2026-09-05T18:00:00.000Z'),
+    title: 'Contract Test Activity',
+    description: 'Testing client payload against server schema',
+    category: 'Sport',
+    placeId: 'place_123',
+    isTimeFlexible: false,
+    maxParticipants: 4,
+    joinMode: 'request',
+    isBoosted: false,
+  });
+
+  assert.equal('isPaid' in callablePayload, false, 'isPaid must NOT be sent by client payload builder');
+  assert.equal('price' in callablePayload, false, 'price must NOT be sent by client payload builder');
+
+  const parseResult = createActivitySchema.safeParse(callablePayload);
+  assert.equal(parseResult.success, true, `Client payload must be valid under strict createActivitySchema. Errors: ${JSON.stringify((parseResult as any).error?.issues)}`);
+  console.log('✅ testClientPayloadVsServerSchemaContract passed');
+
+  // Test 6: SHA-256 Fingerprint calculation & canonical JSON
+  console.log('Running testSha256Fingerprint...');
+  const obj1 = {
+    operationId: 'op1',
+    title: 'Fingerprint Test',
+    category: 'Sport',
+    nested: { b: 2, a: 1 },
+    undefField: undefined,
+  };
+  const obj2 = {
+    operationId: 'op2_diff',
+    nested: { a: 1, b: 2 },
+    category: 'Sport',
+    title: 'Fingerprint Test',
+  };
+
+  const hash1 = await computeActivityPayloadFingerprint(obj1);
+  const hash2 = await computeActivityPayloadFingerprint(obj2);
+
+  assert.equal(typeof hash1, 'string');
+  assert.equal(hash1.length, 64, 'Fingerprint must be 64 characters long');
+  assert.equal(/^[a-f0-9]{64}$/.test(hash1), true, 'Fingerprint must be 64-char lowercase hex SHA-256');
+  assert.equal(hash1, hash2, 'Fingerprints must match regardless of key order, operationId, or undefined values');
+  console.log('✅ testSha256Fingerprint passed! Sample 64-char SHA-256 hash:', hash1);
 
   console.log('🎉 ALL ACTIVITY PAYLOAD TESTS PASSED SUCCESSFULLY! 🎉');
 }

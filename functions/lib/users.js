@@ -11,6 +11,7 @@ const admin = require("firebase-admin");
 const firestore_2 = require("firebase-admin/firestore");
 const reserved_usernames_1 = require("./reserved-usernames");
 const notifications_1 = require("./notifications");
+const permissions_1 = require("./permissions");
 /**
  * MODUL 23: Production-Grade Fan-Out System.
  * Synchronisiert Profiländerungen (Name, Photo) sicher über alle Aktivitäten und Chats.
@@ -374,7 +375,7 @@ exports.cleanupEmptyChats = (0, https_1.onCall)(async (request) => {
         throw new https_1.HttpsError('permission-denied', 'Caller profile not found.');
     }
     const callerData = callerDoc.data();
-    const isAdmin = callerData?.role === 'admin' || callerData?.isAdmin === true;
+    const isAdmin = (0, permissions_1.canManageSystem)(callerData?.role);
     if (!isAdmin) {
         throw new https_1.HttpsError('permission-denied', 'Unauthorized access.');
     }
@@ -1733,7 +1734,7 @@ exports.getOrganizerAnalytics = (0, https_1.onCall)(async (request) => {
     // Admin bypass
     const callerSnap = await db.collection('users').doc(uid).get();
     const callerData = callerSnap.data() || {};
-    if (callerData.role === 'admin') {
+    if ((0, permissions_1.canManageUsers)(callerData.role)) {
         isAuthorized = true;
     }
     else {

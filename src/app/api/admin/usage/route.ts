@@ -3,6 +3,7 @@ import { adminAuth, adminDb } from '@/lib/firebase/admin-server';
 import { db as serverDb } from '@/lib/firebase/server';
 import { collection, doc, getDoc, getDocs, limit as limitConstraint, query } from 'firebase/firestore';
 import { getBerlinDayKey } from '@/lib/usage-tracker';
+import { canViewUsageMetrics } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,74 +27,6 @@ function parseFirestoreRestFields(fields: any): Record<string, any> {
     result[key] = parseRestValue(val);
   }
   return result;
-}
-
-async function checkIsAdmin(uid: string, decodedToken?: any, idToken?: string): Promise<boolean> {
-  if (!uid) return false;
-
-  // 1. Check JWT Claims
-  if (decodedToken) {
-    const role = decodedToken.role || decodedToken.user_role;
-    if (
-      role === 'admin' ||
-      role === 'superadmin' ||
-      role === 'supporter' ||
-      decodedToken.isAdmin === true ||
-      decodedToken.admin === true ||
-      decodedToken.superadmin === true
-    ) {
-      return true;
-    }
-  }
-
-  // 2. Try Admin SDK
-  if (adminDb) {
-    try {
-      const userDoc = await adminDb.collection('users').doc(uid).get();
-      if (userDoc.exists) {
-        const u = userDoc.data() || {};
-        if (u.role === 'admin' || u.role === 'superadmin' || u.role === 'supporter' || u.isAdmin === true) return true;
-      }
-    } catch (e) {
-      console.warn('[Admin Usage API] Admin SDK user check failed, trying REST API/Web SDK fallback:', e);
-    }
-  }
-
-  // 3. Fallback: Firestore REST API using the user's ID Token (authenticated request)
-  if (idToken) {
-    try {
-      const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.GCP_PROJECT || 'activa-444220';
-      const restUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
-      const restRes = await fetch(restUrl, {
-        headers: { 'Authorization': `Bearer ${idToken}` }
-      });
-      if (restRes.ok) {
-        const docData = await restRes.json();
-        const fields = parseFirestoreRestFields(docData.fields);
-        if (fields.role === 'admin' || fields.role === 'superadmin' || fields.role === 'supporter' || fields.isAdmin === true) {
-          return true;
-        }
-      }
-    } catch (e) {
-      console.warn('[Admin Usage API] Firestore REST API user check failed:', e);
-    }
-  }
-
-  // 4. Fallback to Web SDK
-  if (serverDb) {
-    try {
-      const docRef = doc(serverDb, 'users', uid);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        const u = snap.data() || {};
-        if (u.role === 'admin' || u.role === 'superadmin' || u.role === 'supporter' || u.isAdmin === true) return true;
-      }
-    } catch (e) {
-      console.warn('[Admin Usage API] Web SDK user check failed:', e);
-    }
-  }
-
-  return false;
 }
 
 async function fetchDailyStats(berlinDayKey: string, idToken?: string): Promise<any> {
@@ -183,53 +116,14 @@ async function fetchUserUsageRecords(idToken?: string): Promise<any[]> {
   return [];
 }
 
+import { authenticateAndAuthorizeAdminRequest } from './auth-helper';
+
 export async function POST(req: NextRequest) {
-  // 1. Verify Authentication & Extract UID
-  let uid = '';
-  let idToken = '';
-  let decodedToken: any = null;
-  const authHeader = req.headers.get('authorization') || '';
-
-  if (authHeader.startsWith('Bearer ')) {
-    idToken = authHeader.substring(7);
-    if (adminAuth) {
-      try {
-        decodedToken = await adminAuth.verifyIdToken(idToken);
-        uid = decodedToken.uid;
-      } catch (authErr) {
-        try {
-          const parts = idToken.split('.');
-          if (parts.length === 3) {
-            decodedToken = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
-            uid = decodedToken.user_id || decodedToken.sub || decodedToken.uid || '';
-          }
-        } catch (e) {}
-      }
-    } else {
-      // Decode JWT payload safely if adminAuth instance failed
-      try {
-        const parts = idToken.split('.');
-        if (parts.length === 3) {
-          decodedToken = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
-          uid = decodedToken.user_id || decodedToken.sub || decodedToken.uid || '';
-        }
-      } catch (e) {}
-    }
-  } else if (process.env.NODE_ENV === 'development') {
-    uid = req.headers.get('x-dev-uid') || 'dev_admin_user';
+  const authResult = await authenticateAndAuthorizeAdminRequest(req);
+  if (authResult.errorResponse) {
+    return authResult.errorResponse;
   }
-
-  if (!uid && process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-  }
-
-  // 2. Verify Admin Privileges (Fail-Safe)
-  if (process.env.NODE_ENV === 'production') {
-    const isAdmin = await checkIsAdmin(uid, decodedToken, idToken);
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Administrative privileges required' }, { status: 403 });
-    }
-  }
+  const idToken = authResult.idToken;
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -238,7 +132,7 @@ export async function POST(req: NextRequest) {
 
     const berlinDayKey = getBerlinDayKey();
 
-    // 3. Fetch Daily Global Aggregates (usage_daily/YYYY-MM-DD)
+    // 6. Fetch Daily Global Aggregates
     const dailyData = await fetchDailyStats(berlinDayKey, idToken);
 
     const dailyCreditLimit = Number(process.env.GEOAPIFY_DAILY_CREDIT_LIMIT) || 3000;
@@ -257,7 +151,7 @@ export async function POST(req: NextRequest) {
       ? Number(((errorCountToday / (successCountToday + errorCountToday)) * 100).toFixed(1))
       : 0;
 
-    // 4. Fetch User Usage Rankings
+    // 7. Fetch User Usage Rankings
     let usageDocs = await fetchUserUsageRecords(idToken);
 
     // Filter by Search Query
@@ -324,6 +218,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('[Admin Usage API] Unexpected exception:', error);
-    return NextResponse.json({ error: error.message || 'Failed to fetch usage stats' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch usage stats' }, { status: 500 });
   }
 }

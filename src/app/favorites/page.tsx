@@ -12,6 +12,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
+import type { CallableActivityPayload } from '@/features/activities/create/activity-payload';
 import { createActivity, votePlace } from '@/lib/firebase/firestore';
 import { PlaceDetails } from '@/components/activa/place-details';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -342,7 +343,7 @@ export default function FavoritesPage() {
         setActivityModalPlace(place);
     };
 
-    const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory, description?: string, requirements?: any, joinMode?: 'direct' | 'request'): Promise<boolean> => {
+    const handleCreateActivity = async (submission: CallableActivityPayload): Promise<boolean> => {
         if (!user || !activityModalPlace) {
             toast({
                 title: language === 'de' ? 'Fehler' : 'Error',
@@ -353,18 +354,7 @@ export default function FavoritesPage() {
         }
 
         try {
-            const newActivityRef = await createActivity({
-                place: activityModalPlace,
-                startDate,
-                endDate,
-                user,
-                isTimeFlexible,
-                maxParticipants,
-                category: category || (language === 'de' ? 'Sonstiges' : 'Other') as ActivityCategory,
-                description,
-                requirements,
-                joinMode
-            });
+            const newActivityRef = await createActivity(submission);
             toast({
                 title: language === 'de' ? 'Aktivität erstellt!' : 'Activity Created!',
                 description: language === 'de' ? `Deine Aktivität bei ${activityModalPlace.name} wurde geplant.` : `Your activity at ${activityModalPlace.name} is set.`,

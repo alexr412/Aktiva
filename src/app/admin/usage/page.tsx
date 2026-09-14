@@ -170,12 +170,13 @@ function AdminUsageContent() {
         limit: 100,
       };
 
-      const res = await fetch('/api/admin/usage', {
+      const { fetchWithAppCheck } = await import('@/lib/api-client');
+      const res = await fetchWithAppCheck('/api/admin/usage', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
+        idToken: token || undefined,
         body: JSON.stringify(payload),
       });
 

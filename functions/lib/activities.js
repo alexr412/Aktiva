@@ -1,14 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.kickParticipant = exports.secureRequestJoinActivity = exports.respondToJoinRequest = exports.ALLOWED_GENDERS = exports.notifyNearbyUsers = exports.onActivityUpdated = exports.onActivityCreated = void 0;
+exports.secureBoostEntity = exports.secureCreateActivity = exports.boostEntitySchema = exports.createActivitySchema = exports.kickParticipant = exports.secureRequestJoinActivity = exports.respondToJoinRequest = exports.ALLOWED_GENDERS = exports.notifyNearbyUsers = exports.onActivityUpdated = exports.onActivityCreated = void 0;
 exports.normalizeAndValidateGenderRequirements = normalizeAndValidateGenderRequirements;
 exports.validateActivityEligibility = validateActivityEligibility;
+exports.computeCanonicalPayloadHash = computeCanonicalPayloadHash;
+exports.checkUserEligibilityForActivityCreation = checkUserEligibilityForActivityCreation;
+exports.parseAndNormalizeIso8601Date = parseAndNormalizeIso8601Date;
 const firestore_1 = require("firebase-functions/v2/firestore");
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const firestore_2 = require("firebase-admin/firestore");
+const crypto = require("crypto");
+const zod_1 = require("zod");
+const params_1 = require("firebase-functions/params");
 const notifications_1 = require("./notifications");
 const users_1 = require("./users");
+const limits_policy_1 = require("./limits-policy");
+const rate_limit_1 = require("./rate-limit");
+const activity_requirements_policy_1 = require("./activity-requirements-policy");
+const GEOAPIFY_API_KEY = (0, params_1.defineSecret)('GEOAPIFY_API_KEY');
 /**
  * Triggers when an activity is created. Awards +10 points to the host (daily cap of 2).
  */
@@ -543,65 +553,32 @@ function validateActivityEligibility(activity, userProfile, hostProfile) {
     }
     // 5. Requirements validation
     if (activity.requirements) {
-        const req = activity.requirements;
-        // Gender requirement
-        if (req.gender && Array.isArray(req.gender) && req.gender.length > 0 && req.gender.length < 3) {
-            const userGender = userProfile.gender || '';
-            if (!req.gender.includes(userGender)) {
-                return {
-                    eligible: false,
-                    errorCode: 'GENDER_REQUIREMENT_NOT_MET',
-                    errorMessage: 'Diese Aktivität ist nicht für dein Geschlecht freigegeben.'
-                };
-            }
+        try {
+            (0, activity_requirements_policy_1.validateUserRequirements)(userProfile, activity.requirements);
         }
-        // Profile picture requirement
-        if (req.requireProfilePicture && (!userProfile.photoURL || typeof userProfile.photoURL !== 'string' || userProfile.photoURL.trim() === '')) {
+        catch (err) {
+            const msg = err?.message || '';
+            let errorCode = 'REQUIREMENT_NOT_MET';
+            if (msg.includes('Geschlecht')) {
+                errorCode = 'GENDER_REQUIREMENT_NOT_MET';
+            }
+            else if (msg.includes('Profilbild')) {
+                errorCode = 'PROFILE_PICTURE_REQUIRED';
+            }
+            else if (msg.includes('Identität') || msg.includes('verifiziert')) {
+                errorCode = 'VERIFICATION_REQUIRED';
+            }
+            else if (msg.includes('Bewertung')) {
+                errorCode = 'MINIMUM_RATING_NOT_MET';
+            }
+            else if (msg.includes('Alter') || msg.includes('Mindestalter') || msg.includes('Maximalalter') || msg.includes('Geburtsdatum')) {
+                errorCode = 'AGE_REQUIREMENT_NOT_MET';
+            }
             return {
                 eligible: false,
-                errorCode: 'PROFILE_PICTURE_REQUIRED',
-                errorMessage: 'Ein Profilbild ist erforderlich, um dieser Aktivität beizutreten.'
+                errorCode,
+                errorMessage: msg || 'Aktivitätsanforderungen nicht erfüllt.'
             };
-        }
-        // Verification requirement
-        if (req.requireVerification && userProfile.kycStatus !== 'verified') {
-            return {
-                eligible: false,
-                errorCode: 'VERIFICATION_REQUIRED',
-                errorMessage: 'Nur verifizierte Nutzer (KYC) können dieser Aktivität beitreten.'
-            };
-        }
-        // Minimum rating requirement
-        if (typeof req.minimumRating === 'number' && (userProfile.averageRating || 0) < req.minimumRating) {
-            return {
-                eligible: false,
-                errorCode: 'MINIMUM_RATING_NOT_MET',
-                errorMessage: `Mindestbewertung für diese Aktivität ist ${req.minimumRating} Sterne.`
-            };
-        }
-        // Age requirement
-        if (req.ageRange) {
-            if (typeof userProfile.age !== 'number' || isNaN(userProfile.age)) {
-                return {
-                    eligible: false,
-                    errorCode: 'AGE_REQUIREMENT_NOT_MET',
-                    errorMessage: 'Bitte hinterlege dein Alter in deinem Profil.'
-                };
-            }
-            if (typeof req.ageRange.min === 'number' && userProfile.age < req.ageRange.min) {
-                return {
-                    eligible: false,
-                    errorCode: 'AGE_REQUIREMENT_NOT_MET',
-                    errorMessage: `Mindestalter für diese Aktivität ist ${req.ageRange.min} Jahre.`
-                };
-            }
-            if (typeof req.ageRange.max === 'number' && userProfile.age > req.ageRange.max) {
-                return {
-                    eligible: false,
-                    errorCode: 'AGE_REQUIREMENT_NOT_MET',
-                    errorMessage: `Höchstalter für diese Aktivität ist ${req.ageRange.max} Jahre.`
-                };
-            }
         }
     }
     return { eligible: true };
@@ -1010,6 +987,632 @@ exports.kickParticipant = (0, https_1.onCall)(async (request) => {
             throw error;
         }
         throw new https_1.HttpsError('internal', error.message || 'Internal error removing participant.');
+    }
+});
+/* ============================================================================
+ * SECURITY HARDENING PHASE 1.2: SERVER-OWNED ACTIVITY & BOOST CREATION
+ * ============================================================================ */
+const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+exports.createActivitySchema = zod_1.z.object({
+    operationId: zod_1.z.string().regex(UUID_V4_REGEX, 'Invalid UUID v4 operationId format.'),
+    title: zod_1.z.string().min(1).max(100).optional(),
+    description: zod_1.z.string().max(2000).optional(),
+    category: zod_1.z.enum(['Sport', 'Tech', 'Party', 'Kultur', 'Outdoor', 'Gaming', 'Networking', 'Sonstiges', 'Other']).optional(),
+    placeId: zod_1.z.string().max(200).refine(val => !val.includes('/'), 'placeId cannot contain slashes.').optional(),
+    customLocationName: zod_1.z.string().max(100).optional(),
+    place: zod_1.z.object({
+        id: zod_1.z.string().max(200).optional(),
+        name: zod_1.z.string().max(100).optional(),
+        address: zod_1.z.string().max(200).optional(),
+        lat: zod_1.z.number().min(-90).max(90).optional(),
+        lon: zod_1.z.number().min(-180).max(180).optional(),
+        categories: zod_1.z.array(zod_1.z.string()).optional(),
+        openingHours: zod_1.z.string().max(200).optional()
+    }).strict().optional(),
+    startDate: zod_1.z.string().refine(val => !isNaN(Date.parse(val)), 'Invalid startDate ISO format.'),
+    endDate: zod_1.z.string().refine(val => !isNaN(Date.parse(val)), 'Invalid endDate ISO format.').optional(),
+    isTimeFlexible: zod_1.z.boolean().optional(),
+    maxParticipants: zod_1.z.number().int().min(2).max(50).optional(),
+    requirements: zod_1.z.object({
+        gender: zod_1.z.array(zod_1.z.enum(['male', 'female', 'diverse'])).refine(arr => new Set(arr).size === arr.length, 'Duplicates not allowed in gender list.').optional(),
+        requireProfilePicture: zod_1.z.boolean().optional(),
+        requireVerification: zod_1.z.boolean().optional(),
+        ageRange: zod_1.z.object({
+            min: zod_1.z.number().int().min(0).max(200).optional(),
+            max: zod_1.z.number().int().min(0).max(200).optional()
+        }).strict().refine(obj => {
+            if (obj.min !== undefined && obj.max !== undefined)
+                return obj.min <= obj.max;
+            return true;
+        }, 'ageRange min must be <= max.').optional(),
+        minimumRating: zod_1.z.number().min(0.0).max(5.0).optional()
+    }).strict().optional(),
+    joinMode: zod_1.z.enum(['direct', 'request']).optional(),
+    isBoosted: zod_1.z.boolean().optional()
+}).strict();
+exports.boostEntitySchema = zod_1.z.object({
+    operationId: zod_1.z.string().regex(UUID_V4_REGEX, 'Invalid UUID v4 operationId format.'),
+    entityType: zod_1.z.enum(['activity', 'place']),
+    entityId: zod_1.z.string().min(1).max(200).refine(val => !val.includes('/'), 'entityId cannot contain slashes.'),
+    durationHours: zod_1.z.number().refine(val => [6, 12, 24].includes(val), 'durationHours must be 6, 12, or 24.')
+}).strict();
+function computeCanonicalPayloadHash(data) {
+    const isRealPlace = !!(data.placeId && data.placeId !== 'custom');
+    const cleanAndSort = (obj, isTopLevel = false) => {
+        if (obj === null || obj === undefined)
+            return undefined;
+        if (typeof obj !== 'object')
+            return obj;
+        if (obj instanceof Date)
+            return obj.toISOString();
+        if (Array.isArray(obj))
+            return obj.map((item) => cleanAndSort(item, false));
+        const sortedKeys = Object.keys(obj).filter(k => k !== 'operationId' && obj[k] !== undefined).sort();
+        const result = {};
+        for (const key of sortedKeys) {
+            if (isTopLevel && isRealPlace && key === 'place')
+                continue;
+            const val = cleanAndSort(obj[key], false);
+            if (val !== undefined) {
+                result[key] = val;
+            }
+        }
+        return result;
+    };
+    const canonicalObj = cleanAndSort(data, true);
+    const jsonString = JSON.stringify(canonicalObj);
+    return crypto.createHash('sha256').update(jsonString).digest('hex');
+}
+async function resolvePlaceViaGeoapify(placeId) {
+    if (process.env.FUNCTIONS_EMULATOR === 'true' || process.env.FIREBASE_EMULATOR_HUB || process.env.NODE_ENV === 'test') {
+        if (placeId.startsWith('geoapify_valid_') || placeId.startsWith('place_geoapify_')) {
+            return {
+                name: 'Verifizierter Geoapify Ort',
+                address: 'Musterstraße 123, 10115 Berlin',
+                lat: 52.520008,
+                lon: 13.404954,
+                categories: ['catering.restaurant'],
+            };
+        }
+        throw new https_1.HttpsError('invalid-argument', 'Gefälschte oder unaufgefundene Place-ID.');
+    }
+    const apiKey = GEOAPIFY_API_KEY.value();
+    if (!apiKey) {
+        throw new https_1.HttpsError('unavailable', 'Geoapify API key is not configured on the server.');
+    }
+    try {
+        const url = `https://api.geoapify.com/v2/place-details?id=${encodeURIComponent(placeId)}&apiKey=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new https_1.HttpsError('invalid-argument', 'Place ID could not be verified by provider.');
+        }
+        const data = await res.json();
+        const feature = data?.features?.[0];
+        if (!feature || !feature.properties) {
+            throw new https_1.HttpsError('invalid-argument', 'Invalid place data returned by provider.');
+        }
+        const props = feature.properties;
+        const name = props.name || props.address_line1 || 'Ort';
+        const address = props.formatted || props.address_line2 || name;
+        const lat = typeof props.lat === 'number' ? props.lat : feature.geometry?.coordinates?.[1];
+        const lon = typeof props.lon === 'number' ? props.lon : feature.geometry?.coordinates?.[0];
+        if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+            throw new https_1.HttpsError('invalid-argument', 'Provider place coordinates out of valid range.');
+        }
+        return {
+            name: String(name).slice(0, 100),
+            address: String(address).slice(0, 200),
+            lat,
+            lon,
+            categories: Array.isArray(props.categories) ? props.categories : [],
+            openingHours: props.opening_hours ? String(props.opening_hours).slice(0, 200) : undefined
+        };
+    }
+    catch (err) {
+        if (err instanceof https_1.HttpsError)
+            throw err;
+        throw new https_1.HttpsError('unavailable', 'Failed to resolve place details with provider.');
+    }
+}
+function checkUserEligibilityForActivityCreation(userProfile) {
+    if (!userProfile) {
+        return { eligible: false, errorMessage: 'Nutzerprofil existiert nicht.' };
+    }
+    if (userProfile.onboardingCompleted !== true) {
+        return { eligible: false, errorMessage: 'Bitte schließe zuerst dein Onboarding ab.' };
+    }
+    if (userProfile.isBanned === true || userProfile.disabled === true) {
+        return { eligible: false, errorMessage: 'Dein Konto ist gesperrt oder deaktiviert.' };
+    }
+    const statusStr = typeof userProfile.accountStatus === 'string' ? userProfile.accountStatus.toLowerCase() : '';
+    if (['banned', 'deleted', 'disabled'].includes(statusStr)) {
+        return { eligible: false, errorMessage: 'Dein Konto ist gesperrt oder deaktiviert.' };
+    }
+    if (statusStr === 'suspended' || userProfile.suspendedUntil) {
+        const suspendTime = (0, limits_policy_1.parseTimestampMillis)(userProfile.suspendedUntil);
+        if (suspendTime === null || isNaN(suspendTime) || suspendTime > Date.now()) {
+            return { eligible: false, errorMessage: 'Dein Konto ist vorübergehend gesperrt.' };
+        }
+    }
+    return { eligible: true };
+}
+function parseAndNormalizeIso8601Date(dateStr, fieldName) {
+    if (typeof dateStr !== 'string' || !dateStr.trim()) {
+        throw new https_1.HttpsError('invalid-argument', `${fieldName} must be a valid non-empty ISO-8601 string.`);
+    }
+    const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/i;
+    if (!isoRegex.test(dateStr)) {
+        throw new https_1.HttpsError('invalid-argument', `${fieldName} must be a valid ISO-8601 string with explicit timezone offset.`);
+    }
+    const ms = Date.parse(dateStr);
+    if (isNaN(ms)) {
+        throw new https_1.HttpsError('invalid-argument', `${fieldName} is not a valid date.`);
+    }
+    const datePart = dateStr.split('T')[0];
+    const [yearStr, monthStr, dayStr] = datePart.split('-').map(Number);
+    const testDate = new Date(Date.UTC(yearStr, monthStr - 1, dayStr));
+    if (testDate.getUTCFullYear() !== yearStr ||
+        testDate.getUTCMonth() !== monthStr - 1 ||
+        testDate.getUTCDate() !== dayStr) {
+        throw new https_1.HttpsError('invalid-argument', `${fieldName} contains an invalid calendar day.`);
+    }
+    return { iso: new Date(ms).toISOString(), ms };
+}
+/**
+ * HTTPS Callable: Atomarer, serverseitig geschützter Activity-Erstellungsflow (Phase 1.2).
+ */
+exports.secureCreateActivity = (0, https_1.onCall)({ secrets: [GEOAPIFY_API_KEY], enforceAppCheck: false }, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'Authentifizierung erforderlich.');
+    }
+    const callerUid = request.auth.uid;
+    const rawData = request.data || {};
+    // 1. Zod Schema Validation
+    const parseResult = exports.createActivitySchema.safeParse(rawData);
+    if (!parseResult.success) {
+        throw new https_1.HttpsError('invalid-argument', `Ungültige Eingabedaten: ${parseResult.error.issues.map(e => e.message).join(', ')}`);
+    }
+    const input = parseResult.data;
+    const isCustom = !input.placeId || input.placeId === 'custom';
+    const effectivePlaceId = isCustom ? 'custom' : input.placeId;
+    // Invariants Check
+    if (isCustom && (!input.title || !input.title.trim()) && (!input.customLocationName || !input.customLocationName.trim())) {
+        throw new https_1.HttpsError('invalid-argument', 'Titel oder Ortname erforderlich für benutzerdefinierte Aktivitäten.');
+    }
+    if (!isCustom && (!input.placeId || !input.placeId.trim())) {
+        throw new https_1.HttpsError('invalid-argument', 'Place ID erforderlich für ortsbasierte Aktivitäten.');
+    }
+    // Additional Date Checks
+    const normalizedStart = parseAndNormalizeIso8601Date(input.startDate, 'startDate');
+    input.startDate = normalizedStart.iso;
+    const startDateMs = normalizedStart.ms;
+    const fiveMinsAgo = Date.now() - 5 * 60 * 1000;
+    if (startDateMs < fiveMinsAgo) {
+        throw new https_1.HttpsError('invalid-argument', 'Startdatum darf nicht in der Vergangenheit liegen.');
+    }
+    let endDateMs;
+    if (input.endDate) {
+        const normalizedEnd = parseAndNormalizeIso8601Date(input.endDate, 'endDate');
+        input.endDate = normalizedEnd.iso;
+        endDateMs = normalizedEnd.ms;
+        if (endDateMs <= startDateMs) {
+            throw new https_1.HttpsError('invalid-argument', 'Enddatum muss nach dem Startdatum liegen.');
+        }
+        if (endDateMs > startDateMs + 30 * 24 * 60 * 60 * 1000) {
+            throw new https_1.HttpsError('invalid-argument', 'Aktivitätsdauer darf maximal 30 Tage betragen.');
+        }
+    }
+    // 2. Compute Canonical Payload Hash
+    const payloadHash = computeCanonicalPayloadHash(input);
+    const db = admin.firestore();
+    // 3. Fast Pre-Transaction Idempotency Lookup (Optimization)
+    const idempotencyRef = db.collection('idempotency_keys').doc(`${callerUid}_create_activity_${input.operationId}`);
+    const fastIdempotencySnap = await idempotencyRef.get();
+    if (fastIdempotencySnap.exists) {
+        const data = fastIdempotencySnap.data();
+        if (data?.status === 'completed') {
+            if (data.payloadHash === payloadHash) {
+                return { success: true, activityId: data.activityId, idempotencyReplayed: true };
+            }
+            else {
+                throw new https_1.HttpsError('failed-precondition', 'Idempotency operation ID payload mismatch.');
+            }
+        }
+    }
+    // 4. Fast Pre-check for Cost Avoidance (User Eligibility & Place existence)
+    const userRef = db.collection('users').doc(callerUid);
+    const fastUserSnap = await userRef.get();
+    if (!fastUserSnap.exists) {
+        throw new https_1.HttpsError('permission-denied', 'Nutzerprofil nicht gefunden.');
+    }
+    const fastUserData = fastUserSnap.data();
+    const eligibility = checkUserEligibilityForActivityCreation(fastUserData);
+    if (!eligibility.eligible) {
+        throw new https_1.HttpsError('permission-denied', eligibility.errorMessage || 'Nutzer nicht berechtigt.');
+    }
+    let fastPlaceSnap = null;
+    if (!isCustom) {
+        const placeRef = db.collection('places').doc(effectivePlaceId);
+        fastPlaceSnap = await placeRef.get();
+    }
+    // 5. Provider Lookup if place-based & does NOT exist in Firestore yet
+    let resolvedProviderPlace = null;
+    if (!isCustom && (!fastPlaceSnap || !fastPlaceSnap.exists)) {
+        await (0, rate_limit_1.enforceRateLimit)(callerUid, 'provider_lookup', 10, 60);
+        resolvedProviderPlace = await resolvePlaceViaGeoapify(effectivePlaceId);
+    }
+    // 6. Main Firestore Transaction (Read-Before-Write)
+    const newActivityRef = db.collection('activities').doc();
+    const newActivityId = newActivityRef.id;
+    try {
+        const result = await db.runTransaction(async (transaction) => {
+            // READS (ALL FIRST)
+            const txnIdempotencySnap = await transaction.get(idempotencyRef);
+            const rateLimitRef = db.collection('rate_limits').doc(`${callerUid}_create_activity`);
+            const txnRateLimitSnap = await transaction.get(rateLimitRef);
+            const txnUserSnap = await transaction.get(userRef);
+            const lockRef = db.collection('activity_creation_locks').doc(callerUid);
+            const txnLockSnap = await transaction.get(lockRef);
+            let txnPlaceSnap = null;
+            const placeRef = !isCustom ? db.collection('places').doc(effectivePlaceId) : null;
+            if (placeRef) {
+                txnPlaceSnap = await transaction.get(placeRef);
+            }
+            const activeRoomsQuery = db.collection('activities')
+                .where('hostId', '==', callerUid)
+                .where('status', 'in', ['active', 'open']);
+            const activeRoomsSnap = await transaction.get(activeRoomsQuery);
+            // EVALUATIONS
+            if (txnIdempotencySnap.exists) {
+                const idData = txnIdempotencySnap.data();
+                if (idData?.status === 'completed') {
+                    if (idData.payloadHash === payloadHash) {
+                        return { success: true, activityId: idData.activityId, idempotencyReplayed: true };
+                    }
+                    else {
+                        throw new https_1.HttpsError('failed-precondition', 'Idempotency operation ID payload mismatch.');
+                    }
+                }
+            }
+            const now = Date.now();
+            const existingAttempts = (txnRateLimitSnap.exists ? (txnRateLimitSnap.data()?.attempts || []) : []).filter((ts) => now - ts < 60 * 1000);
+            if (existingAttempts.length >= 5) {
+                throw new https_1.HttpsError('resource-exhausted', 'Erstellungslimit erreicht. Maximal 5 Aktivitäten pro 60 Sekunden.');
+            }
+            if (!txnUserSnap.exists) {
+                throw new https_1.HttpsError('permission-denied', 'Nutzerprofil nicht gefunden.');
+            }
+            const userData = txnUserSnap.data();
+            const userElig = checkUserEligibilityForActivityCreation(userData);
+            if (!userElig.eligible) {
+                throw new https_1.HttpsError('permission-denied', userElig.errorMessage || 'Nutzer nicht berechtigt.');
+            }
+            // Server-Owned Participant Limit Check
+            const hostLimit = (0, limits_policy_1.getParticipantLimit)(userData, now);
+            const finalMaxParticipants = input.maxParticipants ?? hostLimit;
+            if (finalMaxParticipants < 2 || finalMaxParticipants > hostLimit) {
+                throw new https_1.HttpsError('failed-precondition', `Teilnehmerzahl (${finalMaxParticipants}) liegt außerhalb deines Tariflimits (${hostLimit}).`);
+            }
+            // Host Requirements Check (via activity-requirements-policy)
+            (0, activity_requirements_policy_1.validateUserRequirements)(userData, input.requirements, now);
+            const maxRoomsLimit = (0, limits_policy_1.getMaxOpenRoomsLimit)(userData, now);
+            if (activeRoomsSnap.size >= maxRoomsLimit) {
+                throw new https_1.HttpsError('resource-exhausted', `Du hast dein Limit von ${maxRoomsLimit} gleichzeitig offenen Räumen erreicht.`);
+            }
+            const isBoosted = input.isBoosted === true;
+            if (isBoosted) {
+                const tokens = userData.tokens || 0;
+                if (tokens < 1) {
+                    throw new https_1.HttpsError('failed-precondition', 'Unzureichendes Token-Guthaben für den Boost.');
+                }
+            }
+            let finalPlaceName = input.customLocationName || 'Custom Location';
+            let finalPlaceAddress = '';
+            let finalLat = input.place?.lat;
+            let finalLon = input.place?.lon;
+            let finalCategories = [input.category || 'Sonstiges'];
+            let isNewPlaceToCreate = false;
+            if (!isCustom && placeRef) {
+                if (txnPlaceSnap && txnPlaceSnap.exists) {
+                    const placeData = txnPlaceSnap.data();
+                    if (placeData.isDeleted === true || placeData.isBlacklisted === true) {
+                        throw new https_1.HttpsError('failed-precondition', 'Dieser Ort ist nicht mehr verfügbar.');
+                    }
+                    const pTitle = placeData.title || placeData.name;
+                    const pAddr = placeData.address;
+                    if (!pTitle || !pAddr || placeData.lat == null || placeData.lon == null) {
+                        throw new https_1.HttpsError('failed-precondition', 'Der ausgewählte Ort ist unvollständig.');
+                    }
+                    finalPlaceName = pTitle;
+                    finalPlaceAddress = pAddr;
+                    finalLat = placeData.lat;
+                    finalLon = placeData.lon;
+                    finalCategories = placeData.categories || finalCategories;
+                }
+                else if (resolvedProviderPlace) {
+                    finalPlaceName = resolvedProviderPlace.name;
+                    finalPlaceAddress = resolvedProviderPlace.address;
+                    finalLat = resolvedProviderPlace.lat;
+                    finalLon = resolvedProviderPlace.lon;
+                    finalCategories = resolvedProviderPlace.categories && resolvedProviderPlace.categories.length > 0 ? resolvedProviderPlace.categories : finalCategories;
+                    isNewPlaceToCreate = true;
+                }
+                else {
+                    throw new https_1.HttpsError('invalid-argument', 'Ort konnte nicht aufgelöst werden.');
+                }
+            }
+            // WRITES (ALL AFTER ALL READS)
+            const creationSource = isCustom ? 'community' : 'place_activity';
+            const activityData = {
+                id: newActivityId,
+                title: input.title || (isCustom ? (input.customLocationName || 'Aktivität') : finalPlaceName),
+                description: input.description || '',
+                category: input.category || 'Sonstiges',
+                placeName: finalPlaceName,
+                placeAddress: finalPlaceAddress,
+                lat: typeof finalLat === 'number' ? finalLat : null,
+                lon: typeof finalLon === 'number' ? finalLon : null,
+                hostId: callerUid,
+                hostName: userData.displayName || 'Gastgeber',
+                hostPhotoURL: userData.photoURL || null,
+                participantIds: [callerUid],
+                participantsPreview: [{
+                        uid: callerUid,
+                        displayName: userData.displayName || 'Gastgeber',
+                        photoURL: userData.photoURL || null
+                    }],
+                participantDetails: {
+                    [callerUid]: {
+                        displayName: userData.displayName || 'Gastgeber',
+                        photoURL: userData.photoURL || null,
+                        isPremium: (0, limits_policy_1.isPremiumActive)(userData, now),
+                        isSupporter: userData.isSupporter === true,
+                        checkInStatus: 'pending',
+                        hasReviewed: false
+                    }
+                },
+                status: 'active',
+                completionVotes: [],
+                isBoosted: isBoosted,
+                boostedAt: isBoosted ? firestore_2.FieldValue.serverTimestamp() : null,
+                boostExpiresAt: isBoosted ? firestore_2.Timestamp.fromDate(new Date(now + 24 * 60 * 60 * 1000)) : null,
+                isPaid: false,
+                price: 0,
+                upvotes: 0,
+                downvotes: 0,
+                userVotes: {},
+                globalScore: 0,
+                reportCount: 0,
+                avgRating: 0,
+                reviewCount: 0,
+                stats: { impressions: 0, pushJoins: 0, referralJoins: 0 },
+                sourceType: 'activity',
+                creationSource: creationSource,
+                isCustomActivity: isCustom,
+                activityDate: firestore_2.Timestamp.fromDate(new Date(startDateMs)),
+                activityEndDate: endDateMs ? firestore_2.Timestamp.fromDate(new Date(endDateMs)) : null,
+                isTimeFlexible: input.isTimeFlexible ?? true,
+                maxParticipants: finalMaxParticipants,
+                requirements: input.requirements || {},
+                joinMode: input.joinMode || 'request',
+                createdAt: firestore_2.FieldValue.serverTimestamp(),
+                lastInteractionAt: firestore_2.FieldValue.serverTimestamp()
+            };
+            if (!isCustom && input.placeId) {
+                activityData.placeId = input.placeId;
+            }
+            transaction.set(newActivityRef, activityData);
+            const pSubRef = newActivityRef.collection('participants').doc(callerUid);
+            transaction.set(pSubRef, {
+                uid: callerUid,
+                displayName: userData.displayName || 'Gastgeber',
+                photoURL: userData.photoURL || null,
+                checkInStatus: 'pending',
+                joinedAt: firestore_2.FieldValue.serverTimestamp(),
+                hasReviewed: false
+            });
+            const chatRef = db.collection('chats').doc(newActivityId);
+            transaction.set(chatRef, {
+                activityId: newActivityId,
+                hostId: callerUid,
+                participantIds: [callerUid],
+                createdAt: firestore_2.FieldValue.serverTimestamp(),
+                lastActivityAt: firestore_2.FieldValue.serverTimestamp()
+            });
+            if (!isCustom && placeRef) {
+                if (isNewPlaceToCreate && resolvedProviderPlace) {
+                    transaction.set(placeRef, {
+                        id: effectivePlaceId,
+                        title: resolvedProviderPlace.name,
+                        name: resolvedProviderPlace.name,
+                        address: resolvedProviderPlace.address,
+                        lat: resolvedProviderPlace.lat,
+                        lon: resolvedProviderPlace.lon,
+                        categories: resolvedProviderPlace.categories || [],
+                        activityCount: 1,
+                        lastActivityId: newActivityId,
+                        createdAt: firestore_2.FieldValue.serverTimestamp(),
+                        updatedAt: firestore_2.FieldValue.serverTimestamp()
+                    });
+                }
+                else {
+                    transaction.update(placeRef, {
+                        activityCount: firestore_2.FieldValue.increment(1),
+                        lastActivityId: newActivityId,
+                        updatedAt: firestore_2.FieldValue.serverTimestamp()
+                    });
+                }
+            }
+            if (isBoosted) {
+                transaction.update(userRef, {
+                    tokens: firestore_2.FieldValue.increment(-1)
+                });
+            }
+            transaction.set(idempotencyRef, {
+                uid: callerUid,
+                operationId: input.operationId,
+                activityId: newActivityId,
+                payloadHash: payloadHash,
+                status: 'completed',
+                createdAt: firestore_2.FieldValue.serverTimestamp(),
+                expiresAt: firestore_2.Timestamp.fromDate(new Date(now + 24 * 60 * 60 * 1000)),
+                operationType: 'create_activity'
+            });
+            existingAttempts.push(now);
+            transaction.set(rateLimitRef, {
+                attempts: existingAttempts,
+                updatedAt: firestore_2.FieldValue.serverTimestamp()
+            });
+            transaction.set(lockRef, {
+                version: firestore_2.FieldValue.increment(1),
+                lastCreationAt: firestore_2.FieldValue.serverTimestamp()
+            }, { merge: true });
+            return { success: true, activityId: newActivityId };
+        });
+        return result;
+    }
+    catch (error) {
+        if (error instanceof https_1.HttpsError)
+            throw error;
+        console.error('Error in secureCreateActivity:', error);
+        throw new https_1.HttpsError('internal', error.message || 'Error creating activity.');
+    }
+});
+/**
+ * HTTPS Callable: Atomarer, serverseitig geschützter Boost-Flow für Aktivitäten & Orte.
+ */
+exports.secureBoostEntity = (0, https_1.onCall)({ enforceAppCheck: false }, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'Authentifizierung erforderlich.');
+    }
+    const callerUid = request.auth.uid;
+    const parseResult = exports.boostEntitySchema.safeParse(request.data || {});
+    if (!parseResult.success) {
+        throw new https_1.HttpsError('invalid-argument', `Ungültige Eingabedaten: ${parseResult.error.issues.map(e => e.message).join(', ')}`);
+    }
+    const { operationId, entityType, entityId, durationHours } = parseResult.data;
+    const boostPayloadHash = crypto.createHash('sha256').update(JSON.stringify({ entityType, entityId, durationHours })).digest('hex');
+    const db = admin.firestore();
+    const idempotencyRef = db.collection('idempotency_keys').doc(`${callerUid}_boost_${operationId}`);
+    const fastSnap = await idempotencyRef.get();
+    if (fastSnap.exists && fastSnap.data()?.status === 'completed') {
+        const data = fastSnap.data();
+        if (!data.payloadHash ||
+            !data.entityId ||
+            !data.entityType ||
+            !data.boostedUntil ||
+            data.payloadHash !== boostPayloadHash ||
+            data.entityId !== entityId ||
+            data.entityType !== entityType) {
+            throw new https_1.HttpsError('failed-precondition', 'Idempotency operation ID payload mismatch.');
+        }
+        return {
+            success: true,
+            entityId: data.entityId,
+            boostedUntil: data.boostedUntil,
+            idempotencyReplayed: true
+        };
+    }
+    try {
+        const result = await db.runTransaction(async (transaction) => {
+            // READS (ALL FIRST)
+            const txnIdempotencySnap = await transaction.get(idempotencyRef);
+            const userRef = db.collection('users').doc(callerUid);
+            const userSnap = await transaction.get(userRef);
+            const entityCollection = entityType === 'activity' ? 'activities' : 'places';
+            const entityRef = db.collection(entityCollection).doc(entityId);
+            const entitySnap = await transaction.get(entityRef);
+            if (txnIdempotencySnap.exists && txnIdempotencySnap.data()?.status === 'completed') {
+                const idData = txnIdempotencySnap.data();
+                if (!idData.payloadHash ||
+                    !idData.entityId ||
+                    !idData.entityType ||
+                    !idData.boostedUntil ||
+                    idData.payloadHash !== boostPayloadHash ||
+                    idData.entityId !== entityId ||
+                    idData.entityType !== entityType) {
+                    throw new https_1.HttpsError('failed-precondition', 'Idempotency operation ID payload mismatch.');
+                }
+                return {
+                    success: true,
+                    entityId: idData.entityId,
+                    boostedUntil: idData.boostedUntil,
+                    idempotencyReplayed: true
+                };
+            }
+            if (!userSnap.exists) {
+                throw new https_1.HttpsError('permission-denied', 'Nutzerprofil nicht gefunden.');
+            }
+            const userData = userSnap.data();
+            const userElig = checkUserEligibilityForActivityCreation(userData);
+            if (!userElig.eligible) {
+                throw new https_1.HttpsError('permission-denied', userElig.errorMessage || 'Nutzer nicht berechtigt.');
+            }
+            if (!entitySnap.exists) {
+                throw new https_1.HttpsError('not-found', `${entityType === 'activity' ? 'Aktivität' : 'Ort'} nicht gefunden.`);
+            }
+            const entityData = entitySnap.data();
+            if (entityData.isDeleted === true || entityData.isBlacklisted === true) {
+                throw new https_1.HttpsError('failed-precondition', 'Entity ist nicht mehr verfügbar.');
+            }
+            if (entityType === 'activity') {
+                if (entityData.hostId !== callerUid) {
+                    throw new https_1.HttpsError('permission-denied', 'Nur der Gastgeber kann diese Aktivität meisen/boosten.');
+                }
+                if (!['active', 'open'].includes(entityData.status)) {
+                    throw new https_1.HttpsError('failed-precondition', 'Beendete oder abgesagte Aktivitäten können nicht geboostet werden.');
+                }
+            }
+            const now = Date.now();
+            const currentBoostExpiry = (0, limits_policy_1.parseTimestampMillis)(entityData.boostExpiresAt || entityData.boostedUntil);
+            if (entityData.isBoosted === true) {
+                if (currentBoostExpiry === null || isNaN(currentBoostExpiry) || currentBoostExpiry > now) {
+                    throw new https_1.HttpsError('failed-precondition', 'Ein aktiver Boost ist bereits vorhanden.');
+                }
+            }
+            const tokens = userData.tokens || 0;
+            if (tokens < 1) {
+                throw new https_1.HttpsError('failed-precondition', 'Unzureichendes Token-Guthaben.');
+            }
+            const durationHoursNum = Number(durationHours);
+            const boostedUntilDate = new Date(now + durationHoursNum * 60 * 60 * 1000);
+            const boostedUntilIso = boostedUntilDate.toISOString();
+            // WRITES (ALL AFTER ALL READS)
+            transaction.update(userRef, {
+                tokens: firestore_2.FieldValue.increment(-1)
+            });
+            transaction.update(entityRef, {
+                isBoosted: true,
+                boostedAt: firestore_2.FieldValue.serverTimestamp(),
+                boostExpiresAt: firestore_2.Timestamp.fromDate(boostedUntilDate),
+                updatedAt: firestore_2.FieldValue.serverTimestamp()
+            });
+            transaction.set(idempotencyRef, {
+                uid: callerUid,
+                operationId,
+                entityId,
+                entityType,
+                durationHours,
+                payloadHash: boostPayloadHash,
+                boostedUntil: boostedUntilIso,
+                status: 'completed',
+                createdAt: firestore_2.FieldValue.serverTimestamp(),
+                expiresAt: firestore_2.Timestamp.fromDate(new Date(now + 7 * 24 * 60 * 60 * 1000)),
+                operationType: 'boost_entity'
+            });
+            return {
+                success: true,
+                entityId,
+                boostedUntil: boostedUntilIso
+            };
+        });
+        return result;
+    }
+    catch (error) {
+        if (error instanceof https_1.HttpsError)
+            throw error;
+        console.error('Error in secureBoostEntity:', error);
+        throw new https_1.HttpsError('internal', error.message || 'Error boosting entity.');
     }
 });
 //# sourceMappingURL=activities.js.map

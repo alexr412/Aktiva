@@ -367,7 +367,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     let activeRole = dbProfile.role || 'user';
     const isDev = process.env.NODE_ENV === 'development';
-    const isEligibleForSimulation = isDev && (dbProfile.role === 'admin' || dbProfile.role === 'supporter');
+    const isEligibleForSimulation = isDev && (dbProfile.role === 'admin' || dbProfile.role === 'superadmin');
     if (isEligibleForSimulation && simulatedRole) {
       activeRole = simulatedRole;
     }

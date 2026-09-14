@@ -15,6 +15,7 @@ import { createActivity, joinActivity, votePlace } from '@/lib/firebase/firestor
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { PlaceDetails } from '@/components/activa/place-details';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
+import type { CallableActivityPayload } from '@/features/activities/create/activity-payload';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { DesktopNav } from '@/components/desktop-nav';
 import { AppHeader } from '@/components/app-header';
@@ -88,38 +89,10 @@ export default function MapPage() {
     }
   };
 
-  const handleCreateActivity = async (
-    startDate: Date,
-    endDate: Date | undefined,
-    isTimeFlexible: boolean,
-    customLocationName?: string,
-    maxParticipants?: number,
-    isBoosted?: boolean,
-    isPaid?: boolean,
-    price?: number,
-    category?: any,
-    description?: string,
-    requirements?: any,
-    joinMode?: 'direct' | 'request'
-  ): Promise<boolean> => {
+  const handleCreateActivity = async (submission: CallableActivityPayload): Promise<boolean> => {
     if (!user) return false;
-    const payload = {
-      startDate,
-      endDate,
-      isTimeFlexible,
-      customLocationName,
-      maxParticipants,
-      isBoosted,
-      isPaid,
-      price,
-      category: category || 'social',
-      description,
-      requirements,
-      joinMode: joinMode || 'direct',
-      user,
-    };
     try {
-      await createActivity(payload, typeof activityModalPlace === 'object' ? activityModalPlace : undefined);
+      await createActivity(submission);
       setActivityModalPlace(null);
       return true;
     } catch (e) {

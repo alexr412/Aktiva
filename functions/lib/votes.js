@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.secureVoteActivity = exports.secureVotePlace = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
+const permissions_1 = require("./permissions");
 const getDb = () => admin.firestore();
 const SMOOTHING_FACTOR = 5;
 // Whitelisted fields for place metadata snapshot — no vote/score/admin fields allowed
@@ -53,7 +54,7 @@ exports.secureVotePlace = (0, https_1.onCall)(async (request) => {
     if (userData.isBanned === true) {
         throw new https_1.HttpsError("permission-denied", "Banned users are not allowed to vote.");
     }
-    const isAdmin = userData.role === 'admin' || userData.isAdmin === true;
+    const isAdmin = (0, permissions_1.canManageUsers)(userData.role);
     const weight = isAdmin ? 50 : 1;
     // 4. Sanitize placeData (whitelist only safe fields)
     const safePlaceData = sanitizePlaceData(rawPlaceData);
@@ -210,7 +211,7 @@ exports.secureVoteActivity = (0, https_1.onCall)(async (request) => {
     if (userData.isBanned === true) {
         throw new https_1.HttpsError("permission-denied", "Banned users are not allowed to vote.");
     }
-    const isAdmin = userData.role === 'admin' || userData.isAdmin === true;
+    const isAdmin = (0, permissions_1.canManageUsers)(userData.role);
     const weight = isAdmin ? 50 : 1;
     // 4. Run transaction
     const activityRef = db.collection('activities').doc(activityId);

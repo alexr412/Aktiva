@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { AdminSummaryBar } from '@/components/admin/AdminSummaryBar';
 import { ACTIVE_REPORT_STATUSES } from '@/lib/types';
 import { updateReportStatus } from '@/lib/firebase/firestore';
+import { canModerateContent } from "@/lib/permissions";
 
 function AdminReportsContent() {
   const { userProfile, loading: authLoading } = useAuth();
@@ -32,8 +33,7 @@ function AdminReportsContent() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const isDev = process.env.NODE_ENV === 'development';
-  const isAllowed = isDev || userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.role === 'supporter';
+  const isAllowed = canModerateContent(userProfile?.role);
 
   // Sync filters to URL query params
   useEffect(() => {

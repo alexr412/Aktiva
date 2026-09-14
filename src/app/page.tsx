@@ -30,6 +30,7 @@ import { FeaturedPlaceCard } from '@/components/activa/featured-place-card';
 import { FeaturedActivityCard } from '@/components/activa/featured-activity-card';
 import { SpotActionSheet } from '@/components/activa/spot-action-sheet';
 import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
+import type { CallableActivityPayload } from '@/features/activities/create/activity-payload';
 import { hasPremiumFeature, isPremiumActive } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -1462,13 +1463,23 @@ function HomeContent() {
       // Guard: Don't search for extremely short strings (API spam prevention)
       if (query.length < 2) return;
 
-      setIsSearching(true);
-
       try {
-        const response = await fetch('/api/parse-intent', {
+        setIsSearching(true);
+        const { fetchWithAppCheck } = await import('@/lib/api-client');
+        const { auth } = await import('@/lib/firebase/client');
+        let idToken: string | undefined = undefined;
+        if (auth?.currentUser) {
+          try {
+            idToken = await auth.currentUser.getIdToken();
+          } catch (tokenErr) {
+            throw new Error(`Authentication token retrieval failed: ${tokenErr instanceof Error ? tokenErr.message : String(tokenErr)}`);
+          }
+        }
+        const response = await fetchWithAppCheck('/api/parse-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query }),
+          idToken,
           signal,
         });
 
@@ -1567,14 +1578,10 @@ function HomeContent() {
     setScrollTriggerId((prev) => prev + 1);
   }, [openRoomsCount, handleOpenCustomActivityModal]);
 
-  const handleCreateActivity = async (startDate: Date, endDate: Date | undefined, isTimeFlexible: boolean, customLocationName?: string, maxParticipants?: number, isBoosted?: boolean, isPaid?: boolean, price?: number, category?: ActivityCategory, description?: string, requirements?: any, joinMode?: 'direct' | 'request', selectedPlace?: Place | null): Promise<boolean> => {
+  const handleCreateActivity = async (submission: CallableActivityPayload): Promise<boolean> => {
     if (!user) return false;
     try {
-      const isCustom = activityModalPlace === 'custom';
-      const payload = isCustom
-        ? { customLocationName: customLocationName!, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price, category: category!, description, requirements, joinMode }
-        : { place: activityModalPlace as Place, startDate, endDate, user, isTimeFlexible, maxParticipants, isBoosted, isPaid, price, category: category!, description, requirements, joinMode };
-      const newActivityRef = await createActivity(payload, isCustom ? selectedPlace : undefined);
+      const newActivityRef = await createActivity(submission);
       setActivityModalPlace(null);
       router.push(`/chat/${newActivityRef.id}`);
       return true;
