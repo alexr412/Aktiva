@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { parseAndNormalizeIso8601Date } from './activities';
+import { parseAndNormalizeIso8601Date, validateActivityCreationDates } from './activities';
 import { HttpsError } from 'firebase-functions/v2/https';
 
 console.log('Running date-normalization.test.ts...');
@@ -42,5 +42,19 @@ assert.throws(
   () => parseAndNormalizeIso8601Date('2026-02-29T12:00:00Z', 'startDate'),
   (err: any) => err instanceof HttpsError && err.code === 'invalid-argument' && err.message.includes('invalid calendar day')
 );
+
+const now = Date.parse('2026-10-05T12:00:00+02:00');
+const todayStart = Date.parse('2026-10-05T00:00:00+02:00');
+const todayEnd = Date.parse('2026-10-05T23:59:59.999+02:00');
+assert.doesNotThrow(() => validateActivityCreationDates(todayStart, todayEnd, true, now));
+assert.throws(() => validateActivityCreationDates(todayStart - 86400000, todayEnd - 86400000, true, now), /Vergangenheit/);
+assert.throws(() => validateActivityCreationDates(todayStart, todayEnd, false, now), /Vergangenheit/);
+assert.throws(() => validateActivityCreationDates(todayStart, undefined, true, now), /Vergangenheit/);
+assert.doesNotThrow(() => validateActivityCreationDates(now - 5 * 60000, undefined, false, now));
+assert.throws(() => validateActivityCreationDates(now - 5 * 60000 - 1, undefined, false, now), /Vergangenheit/);
+assert.doesNotThrow(() => validateActivityCreationDates(now + 3600000, undefined, false, now));
+assert.throws(() => validateActivityCreationDates(todayStart, todayStart, true, now), /nach dem Startdatum/);
+assert.throws(() => validateActivityCreationDates(todayStart, todayStart - 1, true, now), /nach dem Startdatum/);
+assert.throws(() => validateActivityCreationDates(todayStart, todayStart + 31 * 86400000, true, now), /maximal 30 Tage/);
 
 console.log('✅ date-normalization.test.ts PASSED!');

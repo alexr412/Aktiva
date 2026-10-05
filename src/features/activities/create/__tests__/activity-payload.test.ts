@@ -7,7 +7,7 @@ import {
   computeOpeningHoursWarning,
   BuildActivityPayloadOptions,
 } from '../activity-payload';
-import { createActivitySchema } from '../../../../../functions/src/activities';
+import { createActivitySchema, validateActivityCreationDates } from '../../../../../functions/src/activities';
 import type { Place } from '@/lib/types';
 
 const mockPlace: Place = {
@@ -130,6 +130,54 @@ async function runActivityPayloadTests() {
   assert.equal(payloadSpecific.category, 'Sport', 'Category should auto-override to Sport');
   assert.equal(payloadSpecific.title, 'Kletterhalle Boulderwelt', 'Title should take place name in specific place mode');
   console.log('✅ testCategoryAutoOverride passed');
+
+  // All-day creation uses the local day's boundaries, including UTC date changes
+  // and both daylight-saving transitions; fixed times still reject past starts.
+  const originalTimezone = process.env.TZ;
+  try {
+    for (const [timezone, day, expectedStart, expectedEnd] of [
+      ['Europe/Berlin', '2026-10-05', '2026-10-04T22:00:00.000Z', '2026-10-05T21:59:59.999Z'],
+      ['Europe/Berlin', '2026-03-29', '2026-03-28T23:00:00.000Z', '2026-03-29T21:59:59.999Z'],
+      ['Europe/Berlin', '2026-10-25', '2026-10-24T22:00:00.000Z', '2026-10-25T22:59:59.999Z'],
+      ['Pacific/Kiritimati', '2026-10-05', '2026-10-04T10:00:00.000Z', '2026-10-05T09:59:59.999Z'],
+      ['Pacific/Honolulu', '2026-10-05', '2026-10-05T10:00:00.000Z', '2026-10-06T09:59:59.999Z'],
+    ]) {
+      process.env.TZ = timezone;
+      const selectedDate = new Date(`${day}T00:00:00`);
+      const allDay = buildActivityPayload({ ...options, selectedDate, isTimeFlexible: true })!;
+      assert.equal(allDay.startDate.toISOString(), expectedStart, timezone);
+      assert.equal(allDay.endDate?.toISOString(), expectedEnd, timezone);
+      const start = allDay.startDate.getTime();
+      const end = allDay.endDate!.getTime();
+      const noon = new Date(`${day}T12:00:00`).getTime();
+      assert.doesNotThrow(() => validateActivityCreationDates(start, end, true, noon));
+      assert.doesNotThrow(() => validateActivityCreationDates(start, end, true, end));
+      assert.throws(() => validateActivityCreationDates(start, end, true, end + 1), /Vergangenheit/);
+      assert.throws(() => validateActivityCreationDates(start, end, false, noon), /Vergangenheit/);
+      const callable = buildCallableActivityPayload({
+        operationId: '00000000-0000-4000-8000-000000000001',
+        startDate: allDay.startDate, endDate: allDay.endDate, isTimeFlexible: true,
+      });
+      assert.equal(createActivitySchema.safeParse(callable).success, true);
+      assert.equal(callable.endDate, expectedEnd);
+    }
+
+    process.env.TZ = 'Europe/Berlin';
+    const range = buildActivityPayload({ ...options, isDateFlexible: true, selectedRange: {
+      from: new Date('2026-10-05T00:00:00'), to: new Date('2026-10-07T00:00:00'),
+    } })!;
+    assert.equal(range.endDate?.toISOString(), '2026-10-07T21:59:59.999Z');
+    assert.doesNotThrow(() => validateActivityCreationDates(range.startDate.getTime(), range.endDate!.getTime(), true, Date.parse('2026-10-06T12:00:00+02:00')));
+    const incompleteRange = buildActivityPayload({ ...options, isDateFlexible: true, selectedRange: {
+      from: new Date('2026-10-05T00:00:00'),
+    } })!;
+    assert.equal(incompleteRange.endDate?.toISOString(), '2026-10-05T21:59:59.999Z');
+    assert.equal(payload.endDate, undefined, 'Fixed single-day times keep their existing payload');
+  } finally {
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
+  }
+  console.log('✅ all-day creation across time zones and daylight-saving transitions passed');
 
   // Test 4: Opening Hours Warning
   console.log('Running testOpeningHoursWarning...');

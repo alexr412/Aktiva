@@ -102,8 +102,8 @@ export function buildActivityPayload(options: BuildActivityPayloadOptions): Acti
   }
 
   let endDate: Date | undefined = undefined;
-  if (rawEndDate) {
-    endDate = new Date(rawEndDate);
+  if (rawEndDate || timeIsFlexible) {
+    endDate = new Date(rawEndDate || startDate);
     endDate.setHours(23, 59, 59, 999);
   }
 

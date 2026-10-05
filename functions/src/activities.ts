@@ -1344,6 +1344,31 @@ export function parseAndNormalizeIso8601Date(dateStr: unknown, fieldName: string
   return { iso: new Date(ms).toISOString(), ms };
 }
 
+export function validateActivityCreationDates(
+  startDateMs: number,
+  endDateMs: number | undefined,
+  isTimeFlexible: boolean,
+  now = Date.now(),
+): void {
+  if (endDateMs !== undefined) {
+    if (endDateMs <= startDateMs) {
+      throw new HttpsError('invalid-argument', 'Enddatum muss nach dem Startdatum liegen.');
+    }
+    if (endDateMs > startDateMs + 30 * 24 * 60 * 60 * 1000) {
+      throw new HttpsError('invalid-argument', 'Aktivitätsdauer darf maximal 30 Tage betragen.');
+    }
+  }
+
+  // A flexible day/range remains available until its explicit local end, even
+  // though its midnight start is already past. Fixed times keep the 5-minute grace.
+  const isPast = isTimeFlexible && endDateMs !== undefined
+    ? endDateMs < now
+    : startDateMs < now - 5 * 60 * 1000;
+  if (isPast) {
+    throw new HttpsError('invalid-argument', 'Startdatum darf nicht in der Vergangenheit liegen.');
+  }
+}
+
 /**
  * HTTPS Callable: Atomarer, serverseitig geschützter Activity-Erstellungsflow (Phase 1.2).
  */
@@ -1377,22 +1402,13 @@ export const secureCreateActivity = onCall({ secrets: [GEOAPIFY_API_KEY], enforc
   const normalizedStart = parseAndNormalizeIso8601Date(input.startDate, 'startDate');
   input.startDate = normalizedStart.iso;
   const startDateMs = normalizedStart.ms;
-  const fiveMinsAgo = Date.now() - 5 * 60 * 1000;
-  if (startDateMs < fiveMinsAgo) {
-    throw new HttpsError('invalid-argument', 'Startdatum darf nicht in der Vergangenheit liegen.');
-  }
   let endDateMs: number | undefined;
   if (input.endDate) {
     const normalizedEnd = parseAndNormalizeIso8601Date(input.endDate, 'endDate');
     input.endDate = normalizedEnd.iso;
     endDateMs = normalizedEnd.ms;
-    if (endDateMs <= startDateMs) {
-      throw new HttpsError('invalid-argument', 'Enddatum muss nach dem Startdatum liegen.');
-    }
-    if (endDateMs > startDateMs + 30 * 24 * 60 * 60 * 1000) {
-      throw new HttpsError('invalid-argument', 'Aktivitätsdauer darf maximal 30 Tage betragen.');
-    }
   }
+  validateActivityCreationDates(startDateMs, endDateMs, input.isTimeFlexible === true);
 
   // 2. Compute Canonical Payload Hash
   const payloadHash = computeCanonicalPayloadHash(input);
