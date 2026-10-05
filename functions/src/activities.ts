@@ -1238,7 +1238,7 @@ export function computeCanonicalPayloadHash(data: Record<string, any>): string {
   return crypto.createHash('sha256').update(jsonString).digest('hex');
 }
 
-async function resolvePlaceViaGeoapify(placeId: string): Promise<{ name: string; address: string; lat: number; lon: number; categories?: string[]; openingHours?: string }> {
+export async function resolvePlaceViaGeoapify(placeId: string): Promise<{ name: string; address: string; lat: number; lon: number; categories?: string[]; openingHours?: string }> {
   if (process.env.FUNCTIONS_EMULATOR === 'true' || process.env.FIREBASE_EMULATOR_HUB || process.env.NODE_ENV === 'test') {
     if (placeId.startsWith('geoapify_valid_') || placeId.startsWith('place_geoapify_')) {
       return {
@@ -1252,7 +1252,7 @@ async function resolvePlaceViaGeoapify(placeId: string): Promise<{ name: string;
     throw new HttpsError('invalid-argument', 'Gefälschte oder unaufgefundene Place-ID.');
   }
 
-  const apiKey = GEOAPIFY_API_KEY.value();
+  const apiKey = GEOAPIFY_API_KEY.value()?.trim();
   if (!apiKey) {
     throw new HttpsError('unavailable', 'Geoapify API key is not configured on the server.');
   }
@@ -1261,7 +1261,13 @@ async function resolvePlaceViaGeoapify(placeId: string): Promise<{ name: string;
     const url = `https://api.geoapify.com/v2/place-details?id=${encodeURIComponent(placeId)}&apiKey=${encodeURIComponent(apiKey)}`;
     const res = await fetch(url);
     if (!res.ok) {
-      throw new HttpsError('invalid-argument', 'Place ID could not be verified by provider.');
+      if (res.status === 401 || res.status === 403) {
+        throw new HttpsError('failed-precondition', 'Die Ortsprüfung ist aktuell nicht korrekt konfiguriert.');
+      }
+      if (res.status === 429 || res.status >= 500) {
+        throw new HttpsError('unavailable', 'Der Ortsanbieter ist gerade nicht verfügbar. Bitte versuche es später erneut.');
+      }
+      throw new HttpsError('invalid-argument', 'Dieser Ort konnte beim Ortsanbieter nicht gefunden werden.');
     }
     const data = await res.json();
     const feature = data?.features?.[0];
