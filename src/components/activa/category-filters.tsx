@@ -16,6 +16,8 @@ import {
   Compass,
   Calendar,
   X,
+  Eye,
+  EyeOff,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -75,6 +77,9 @@ type CategoryFiltersProps = {
   isOpenRoomsMode?: boolean;
   onOpenRoomsChange?: (enabled: boolean) => void;
   hasJoinedSpots?: boolean;
+  hiddenCategoryIds?: readonly string[];
+  onToggleCategoryVisibility?: (tabId: string) => void;
+  visibilityReady?: boolean;
 };
 
 export function CategoryFilters({ 
@@ -84,7 +89,10 @@ export function CategoryFilters({
   vertical = false,
   isOpenRoomsMode = false,
   onOpenRoomsChange,
-  hasJoinedSpots = false
+  hasJoinedSpots = false,
+  hiddenCategoryIds = [],
+  onToggleCategoryVisibility,
+  visibilityReady = true,
 }: CategoryFiltersProps) {
   const { user, userProfile } = useAuth();
   const language = useLanguage();
@@ -120,7 +128,7 @@ export function CategoryFilters({
     const timer = setTimeout(() => {
       const container = containerRef.current;
       if (!container) return;
-      const activeBtn = container.querySelector('[aria-pressed="true"]') as HTMLElement;
+      const activeBtn = container.querySelector('[data-category-select][aria-pressed="true"]') as HTMLElement;
       if (activeBtn) {
         const containerWidth = container.clientWidth;
         const buttonWidth = activeBtn.clientWidth;
@@ -158,7 +166,7 @@ export function CategoryFilters({
     { id: "Community", label: "Community", labelEn: "Community", query: ["community"], icon: Users, isSystem: true, color: "#8b5cf6" },
   ];
 
-  const displayedTabs = [
+  const displayedTabs: CategoryTab[] = [
     ...effectiveCoreTabs,
     ...availableTabs.filter(tab => localActiveTabs.includes(tab.id))
   ];
@@ -197,6 +205,7 @@ export function CategoryFilters({
       )}>
         {isOpenRoomsMode && (
           <Button
+            data-category-select
             onClick={() => onOpenRoomsChange?.(false)}
             aria-pressed={true}
             aria-label={language === 'de' ? 'Offene Räume verlassen' : 'Exit open rooms'}
@@ -222,9 +231,16 @@ export function CategoryFilters({
         {displayedTabs.map((tab) => {
           const isActive = (activeTabId === tab.id || (tab.id === 'GenderOnly' && (activeTabId === 'WomenOnly' || activeTabId === 'MenOnly' || activeTabId === 'GenderOnly'))) && !isOpenRoomsMode;
           const tabTutorialId = tab.id === 'Active' ? 'feed-tab-active' : tab.id === 'Community' ? 'feed-tab-community' : tab.id === 'Favorites' ? 'feed-tab-favorites' : undefined;
+          const canToggleVisibility = !tab.isSystem && !!onToggleCategoryVisibility;
+          const isHidden = hiddenCategoryIds.includes(tab.id);
+          const label = language === 'de' ? tab.label : (tab.labelEn || tab.label);
+          const visibilityLabel = language === 'de'
+            ? `${label} im Feed ${isHidden ? 'einblenden' : 'ausblenden'}`
+            : `${isHidden ? 'Show' : 'Hide'} ${label} in feed`;
           return (
+            <div key={tab.id} className={cn('flex shrink-0', vertical && 'w-full')}>
             <Button
-              key={tab.id}
+              data-category-select
               data-tutorial-id={tabTutorialId}
               onClick={() => {
                 if (isOpenRoomsMode) {
@@ -243,7 +259,9 @@ export function CategoryFilters({
                   : "flex-shrink-0 flex items-center justify-center rounded-full h-11 font-black border transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-200 px-5 text-[11px] uppercase tracking-wider active:scale-[0.985]",
                 isActive 
                     ? "shadow-sm" 
-                    : "bg-slate-100/40 border-slate-200/40 text-slate-600 dark:bg-neutral-800/40 dark:border-neutral-800/60 dark:text-neutral-400 hover:border-slate-300 dark:hover:border-neutral-700"
+                    : "bg-slate-100/40 border-slate-200/40 text-slate-600 dark:bg-neutral-800/40 dark:border-neutral-800/60 dark:text-neutral-400 hover:border-slate-300 dark:hover:border-neutral-700",
+                canToggleVisibility && 'rounded-r-none border-r-0 pr-3',
+                canToggleVisibility && isHidden && 'opacity-50'
               )}
               style={isActive ? { 
                   backgroundColor: `${tab.color}1c`,
@@ -254,6 +272,27 @@ export function CategoryFilters({
               <tab.icon className="h-3.5 w-3.5 mr-2 shrink-0" style={{ color: tab.color }} />
               <span className="whitespace-nowrap truncate">{formatLabel(language === 'de' ? tab.label : (tab.labelEn || tab.label))}</span>
             </Button>
+            {canToggleVisibility && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={!visibilityReady}
+                aria-label={visibilityLabel}
+                title={visibilityLabel}
+                aria-pressed={!isHidden}
+                onClick={() => onToggleCategoryVisibility?.(tab.id)}
+                className={cn(
+                  'h-11 w-11 shrink-0 rounded-l-none rounded-r-full border border-slate-200/40 bg-slate-100/40 text-slate-500 dark:border-neutral-800/60 dark:bg-neutral-800/40 dark:text-neutral-400',
+                  vertical && 'h-12 rounded-r-xl',
+                  isHidden && 'text-slate-400 dark:text-neutral-500'
+                )}
+                style={isActive ? { backgroundColor: `${tab.color}1c`, borderColor: tab.color, color: tab.color } : undefined}
+              >
+                {isHidden ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+              </Button>
+            )}
+            </div>
           );
         })}
         

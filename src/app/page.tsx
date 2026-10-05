@@ -8,7 +8,9 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { CategoryFilters } from '@/components/activa/category-filters';
+import { CategoryFilters, availableTabs } from '@/components/activa/category-filters';
+import { useFeedCategoryVisibility } from '@/hooks/use-feed-category-visibility';
+import { isFeedCategoryHidden } from '@/lib/feed-category-visibility';
 import { ActivaPulseHero } from '@/components/activa/activa-pulse-hero';
 import { translateAppString, ACTIVITY_EXPIRY_THRESHOLD_MS, isActivityRoomOpen } from '@/lib/tag-config';
 import { PlaceDetails } from '@/components/activa/place-details';
@@ -108,6 +110,7 @@ const CardSkeleton = () => (
 );
 
 const PLACES_PER_PAGE = 10;
+const FEED_CATEGORY_IDS = availableTabs.map(tab => tab.id);
 const QUARANTINE_THRESHOLD = 3;
 const ACTIVITY_CATEGORIES: (ActivityCategory | 'Alle')[] = ['Alle', 'Sport', 'Tech', 'Party', 'Kultur', 'Outdoor', 'Gaming', 'Networking', 'Sonstiges'];
 
@@ -306,6 +309,10 @@ function HomeContent() {
 
   const { toast } = useToast();
   const { user, userProfile, loading: authLoading } = useAuth();
+  const { hiddenIds: hiddenCategoryIds, ready: categoryVisibilityReady, toggle: toggleCategoryVisibility, showAll: showAllCategories } = useFeedCategoryVisibility(user?.uid, FEED_CATEGORY_IDS);
+  const hiddenCategoryQueries = useMemo(() => availableTabs
+    .filter(tab => hiddenCategoryIds.includes(tab.id))
+    .flatMap(tab => tab.query), [hiddenCategoryIds]);
 
   useEffect(() => {
     const isUserPremium = hasPremiumFeature(userProfile, 'advanced_filters');
@@ -1035,7 +1042,8 @@ function HomeContent() {
     });
   }, [openRooms, userLocation, currentTime]);
 
-  const visiblePlaces = useMemo(() => {
+  const { items: visiblePlaces, hasHiddenMatches: hasHiddenPlaceMatches } = useMemo(() => {
+    if (!categoryVisibilityReady) return { items: [], hasHiddenMatches: false };
     let filtered = places.filter(place => {
       if (userProfile?.hiddenEntityIds?.includes(place.id)) return false;
       if (!debouncedSearchQuery || !shouldFilterByName) return true;
@@ -1053,6 +1061,9 @@ function HomeContent() {
       filtered = filtered.filter(place => place.distance !== undefined && place.distance !== null && place.distance <= effectiveMaxDistance);
     }
 
+    const hasHiddenMatches = filtered.some(place => isFeedCategoryHidden(place.categories || [], hiddenCategoryQueries));
+    filtered = filtered.filter(place => !isFeedCategoryHidden(place.categories || [], hiddenCategoryQueries));
+
     const uniqueMap = new Map<string, Place>();
     filtered.forEach((place, index) => {
       const id = place.id ||
@@ -1065,20 +1076,26 @@ function HomeContent() {
     });
     const uniqueFiltered = Array.from(uniqueMap.values());
 
-    return sortFeedPlaces(uniqueFiltered, sortBy);
-  }, [places, userProfile, debouncedSearchQuery, shouldFilterByName, isHighlightsCategory, isAktivCategory, maxDistance, sortBy]);
+    return { items: sortFeedPlaces(uniqueFiltered, sortBy), hasHiddenMatches };
+  }, [places, userProfile, debouncedSearchQuery, shouldFilterByName, isHighlightsCategory, isAktivCategory, maxDistance, sortBy, categoryVisibilityReady, hiddenCategoryQueries]);
 
   const finalFeedPlaces = useMemo<Place[]>(() => {
+    if (!categoryVisibilityReady) return [];
     if (isFavoritesCategory) {
-      if (sortBy === 'recommended') return favorites;
-      const favoritesWithDistance = favorites.map(place => ({
+      const visibleFavorites = favorites.filter(place => !isFeedCategoryHidden(place.categories || [], hiddenCategoryQueries));
+      if (sortBy === 'recommended') return visibleFavorites;
+      const favoritesWithDistance = visibleFavorites.map(place => ({
         ...place,
         distance: getDiscoveryDistanceKm(place, userLocation, true),
       }));
       return sortFeedPlaces(favoritesWithDistance, sortBy);
     }
     return visiblePlaces.slice(0, visibleCount);
-  }, [isFavoritesCategory, favorites, visiblePlaces, visibleCount, sortBy, userLocation]);
+  }, [isFavoritesCategory, favorites, visiblePlaces, visibleCount, sortBy, userLocation, categoryVisibilityReady, hiddenCategoryQueries]);
+
+  const hasHiddenCategoryMatches = isFavoritesCategory
+    ? favorites.some(place => isFeedCategoryHidden(place.categories || [], hiddenCategoryQueries))
+    : hasHiddenPlaceMatches;
 
   // Derive explicit active-mode values
   const activeFeedError = isFavoritesCategory
@@ -1093,22 +1110,22 @@ function HomeContent() {
     ? false
     : ((isCommunityCategory || isMySpotsCategory) ? false : Boolean(size > 0 && displayData && typeof displayData[size - 1] === "undefined"));
 
-  const activeFeedIsInitialLoading = isFavoritesCategory
+  const activeFeedIsInitialLoading = !categoryVisibilityReady || (isFavoritesCategory
     ? false
     : ((isCommunityCategory || isMySpotsCategory) 
         ? isCommunityLoading && communityActivities.length === 0
-        : (!displayData && !error));
+        : (!displayData && !error)));
 
-  const activeFeedHasUsableData = isFavoritesCategory
+  const activeFeedHasUsableData = categoryVisibilityReady && (isFavoritesCategory
     ? favorites.length > 0
     : (isMySpotsCategory
         ? userJoinedActivities.length > 0
         : (isCommunityCategory
             ? communityActivities.length > 0
-            : !!(displayData && displayData.length > 0 && (displayData[0]?.features?.length > 0 || displayData[0]?.length > 0))));
+            : !!(displayData && displayData.length > 0 && (displayData[0]?.features?.length > 0 || displayData[0]?.length > 0)))));
 
   const activeVisibleItemCount = isFavoritesCategory
-    ? favorites.length
+    ? finalFeedPlaces.length
     : (isMySpotsCategory
         ? visibleMySpotsActivities.length
         : (isCommunityCategory ? visibleCommunityActivities.length : visiblePlaces.length));
@@ -1124,7 +1141,7 @@ function HomeContent() {
   const isReachingEnd = useMemo(() => {
     if (isCommunityCategory || isMySpotsCategory) return true;
     if (activeFeedError) return true;
-    if (isEmpty) return true;
+    if (isEmpty && hiddenCategoryQueries.length === 0) return true;
     if (!displayData || displayData.length === 0) return false;
     const lastPage = displayData[displayData.length - 1];
     if (lastPage?._fromCache) return true;
@@ -1136,7 +1153,7 @@ function HomeContent() {
       return Boolean(lastPage && lastPage.length < fbLimit);
     }
     return Boolean(lastPage && lastPage.features?.length < expectedLimit);
-  }, [displayData, isEmpty, activeFeedError, activeCategory, isCommunityCategory, isMySpotsCategory, isAktivCategory, isHighlightsCategory]);
+  }, [displayData, isEmpty, activeFeedError, activeCategory, isCommunityCategory, isMySpotsCategory, isAktivCategory, isHighlightsCategory, hiddenCategoryQueries]);
 
   const handleActiveFeedRetry = useCallback(async () => {
     if (activeFeedIsValidating) return;
@@ -1764,14 +1781,14 @@ function HomeContent() {
       feedState = 'initial_loading';
     } else if (hasTerminalActiveError && !activeFeedHasUsableData) {
       feedState = 'complete_loading_failure';
-    } else if (activeFeedHasUsableData) {
+    } else if (activeFeedHasUsableData && activeVisibleItemCount > 0) {
       feedState = 'success_with_results';
     } else if (hasStructuredLocationFailure && !activeFeedHasUsableData) {
       feedState = 'location_unavailable';
     } else if (activeVisibleItemCount === 0) {
       if (debouncedSearchQuery) {
         feedState = 'empty_search';
-      } else if (activePremiumFilters.length > 0) {
+      } else if (activePremiumFilters.length > 0 || hasHiddenCategoryMatches) {
         feedState = 'empty_filters';
       } else if (maxDistance !== null) {
         feedState = 'empty_radius';
@@ -1783,8 +1800,10 @@ function HomeContent() {
     }
 
     const EmptySearchState = () => {
-      let actionType: 'clear_search' | 'reset_filters' | 'increase_radius' | 'retry' | 'none' = 'none';
-      if (debouncedSearchQuery) {
+      let actionType: 'show_categories' | 'clear_search' | 'reset_filters' | 'increase_radius' | 'retry' | 'none' = 'none';
+      if (hasHiddenCategoryMatches && !isCommunityCategory && !isMySpotsCategory) {
+        actionType = 'show_categories';
+      } else if (debouncedSearchQuery) {
         actionType = 'clear_search';
       } else if (activePremiumFilters.length > 0) {
         actionType = 'reset_filters';
@@ -1808,6 +1827,9 @@ function HomeContent() {
       };
 
       const getEmptyDesc = () => {
+        if (actionType === 'show_categories') {
+          return language === 'de' ? 'Einige Kategorien sind ausgeblendet. Schalte sie über die Augen an den Kategoriebuttons wieder ein.' : 'Some categories are hidden. Use the eyes on the category buttons to show them again.';
+        }
         if (actionType === 'clear_search') {
           return language === 'de' ? 'Entferne den Suchbegriff, um alle Ergebnisse zu sehen.' : 'Remove the search query to see all results.';
         }
@@ -1831,6 +1853,18 @@ function HomeContent() {
           <p className="text-neutral-500 dark:text-neutral-400 text-xs font-semibold max-w-xs mb-6 leading-normal">
             {getEmptyDesc()}
           </p>
+          {actionType === 'show_categories' && (
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button onClick={showAllCategories} variant="outline" className="h-9 px-4 rounded-xl font-bold text-xs">
+                {language === 'de' ? 'Kategorien wieder einblenden' : 'Show hidden categories'}
+              </Button>
+              {!isFavoritesCategory && !isReachingEnd && !hiddenCategoryIds.includes(activeTabId) && (
+                <Button onClick={() => { setSize(prev => prev + 1); setVisibleCount(PLACES_PER_PAGE); }} disabled={activeFeedIsValidating} variant="outline" className="h-9 px-4 rounded-xl font-bold text-xs">
+                  {language === 'de' ? 'Weitere Spots laden' : 'Load more spots'}
+                </Button>
+              )}
+            </div>
+          )}
           
           {actionType === 'clear_search' && (
             <Button 
@@ -2267,6 +2301,9 @@ function HomeContent() {
                 isOpenRoomsMode={isOpenRoomsMode}
                 onOpenRoomsChange={setIsOpenRoomsMode}
                 hasJoinedSpots={hasJoinedSpots}
+                hiddenCategoryIds={hiddenCategoryIds}
+                visibilityReady={categoryVisibilityReady}
+                onToggleCategoryVisibility={toggleCategoryVisibility}
               />
             </div>
           </div>
