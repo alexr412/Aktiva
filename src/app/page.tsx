@@ -2295,6 +2295,7 @@ function HomeContent() {
             {/* Category Filters */}
             <div className="px-4 sm:px-6">
               <CategoryFilters 
+                presentation="panel"
                 activeCategory={activeCategory} 
                 activeTabId={activeTabId} 
                 onCategoryChange={handleCategoryChange} 
@@ -2304,6 +2305,7 @@ function HomeContent() {
                 hiddenCategoryIds={hiddenCategoryIds}
                 visibilityReady={categoryVisibilityReady}
                 onToggleCategoryVisibility={toggleCategoryVisibility}
+                onShowAllCategories={showAllCategories}
               />
             </div>
           </div>

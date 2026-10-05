@@ -36,6 +36,7 @@ import { availableTabs } from './category-filters-data';
 import { cn, formatLabel } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { translateAppString } from '@/lib/tag-config';
+import { FeedFiltersPanel } from './feed-filters-panel';
 
 // Re-export für Onboarding und andere Konsumenten
 export { availableTabs };
@@ -74,11 +75,13 @@ type CategoryFiltersProps = {
   activeTabId: string;
   onCategoryChange: (categoryId: string[], tabId: string) => void;
   vertical?: boolean;
+  presentation?: 'chips' | 'panel';
   isOpenRoomsMode?: boolean;
   onOpenRoomsChange?: (enabled: boolean) => void;
   hasJoinedSpots?: boolean;
   hiddenCategoryIds?: readonly string[];
   onToggleCategoryVisibility?: (tabId: string) => void;
+  onShowAllCategories?: () => void;
   visibilityReady?: boolean;
 };
 
@@ -87,11 +90,13 @@ export function CategoryFilters({
   activeTabId, 
   onCategoryChange, 
   vertical = false,
+  presentation = 'chips',
   isOpenRoomsMode = false,
   onOpenRoomsChange,
   hasJoinedSpots = false,
   hiddenCategoryIds = [],
   onToggleCategoryVisibility,
+  onShowAllCategories,
   visibilityReady = true,
 }: CategoryFiltersProps) {
   const { user, userProfile } = useAuth();
@@ -192,6 +197,23 @@ export function CategoryFilters({
       toast({ variant: 'destructive', title: language === 'de' ? 'Fehler' : 'Error', description: language === 'de' ? 'Änderungen konnten nicht gespeichert werden.' : 'Changes could not be saved.' });
     } finally { setIsSaving(false); }
   };
+
+  if (presentation === 'panel') {
+    return (
+      <FeedFiltersPanel
+        systemTabs={effectiveCoreTabs}
+        activeCategory={activeCategory}
+        activeTabId={activeTabId}
+        onCategoryChange={onCategoryChange}
+        isOpenRoomsMode={isOpenRoomsMode}
+        onOpenRoomsChange={onOpenRoomsChange}
+        hiddenCategoryIds={hiddenCategoryIds}
+        onToggleCategoryVisibility={onToggleCategoryVisibility}
+        onShowAllCategories={onShowAllCategories}
+        visibilityReady={visibilityReady}
+      />
+    );
+  }
 
   return (
     <>

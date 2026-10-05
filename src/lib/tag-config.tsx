@@ -820,32 +820,32 @@ const APP_TRANSLATIONS: Record<string, { de: string | ((...args: any[]) => strin
     en: 'Activities at Places'
   },
   'tutorial.step4.description': {
-    de: 'Unter Aktiv findest du aktuelle Räume und Aktivitäten an bestehenden Orten in deiner Nähe.',
-    en: 'Under Active you will find current rooms and activities at existing spots nearby.'
+    de: 'Öffne Filter und wähle Aktiv. Dort findest du aktuelle Räume und Aktivitäten an bestehenden Orten in deiner Nähe.',
+    en: 'Open Filters and select Active to find current rooms and activities at existing spots nearby.'
   },
   'tutorial.step5.title': {
     de: 'Community-Aktivitäten',
     en: 'Community Activities'
   },
   'tutorial.step5.description': {
-    de: 'Unter Community findest du Aktivitäten, die andere Nutzer selbst erstellt haben.',
-    en: 'Under Community you will find meetups created directly by other users.'
+    de: 'Öffne Filter und wähle Community. Dort findest du Aktivitäten, die andere Nutzer selbst erstellt haben.',
+    en: 'Open Filters and select Community to find meetups created directly by other users.'
   },
   'tutorial.step6.title': {
     de: 'Deine Favoriten',
     en: 'Your Favorites'
   },
   'tutorial.step6.description': {
-    de: 'Hier findest du Aktivitäten und Orte wieder, die du gespeichert hast.',
-    en: 'Here you can quickly find activities and spots you have saved.'
+    de: 'Öffne Filter und wähle Favoriten. Dort findest du Aktivitäten und Orte wieder, die du gespeichert hast.',
+    en: 'Open Filters and select Favorites to find activities and spots you have saved.'
   },
   'tutorial.step7.title': {
     de: 'Filter & Umkreis',
     en: 'Filters & Radius'
   },
   'tutorial.step7.description': {
-    de: 'Mit den Filtern und dem Umkreis bestimmst du, was dir im Feed angezeigt wird.',
-    en: 'Use filters and radius to customize what appears in your feed.'
+    de: 'Im Filterpanel wählst du eine Ansicht und blendest Kategorien mit dem Auge ein oder aus. Den Umkreis stellst du neben der Suche ein.',
+    en: 'Choose a view in the filter panel and use the eye to show or hide categories. Adjust the radius next to search.'
   },
   'tutorial.step8.title': {
     de: 'Aktivität an einem Ort',
