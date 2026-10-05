@@ -6,7 +6,7 @@
     "test": "npx tsx src/limits-parity.test.ts && npx tsx src/notifications.test.ts && npx tsx src/admin-users.test.ts && npx tsx src/payments.test.ts && npx tsx src/activities.test.ts && npx tsx src/users.test.ts && npx tsx src/chats.test.ts && npx tsx src/support.test.ts && npx tsx src/radar.test.ts && npx tsx src/date-normalization.test.ts && npx tsx src/requirements-join.test.ts && npx tsx src/revenuecat.test.ts && npx tsx src/reports.test.ts && npx tsx src/app-check-policy-inventory.test.ts"
   },
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.30.1",

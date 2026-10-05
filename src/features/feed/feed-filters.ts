@@ -1,14 +1,14 @@
 import type { Place, UserProfile } from '@/lib/types';
 import { hasPremiumFeature } from '@/lib/types';
 
-export function isOpenNow(openingHours: string | null | undefined): boolean {
+export function isOpenNow(openingHours: string | null | undefined, now = new Date()): boolean {
   if (!openingHours) return false;
   if (openingHours.toLowerCase().includes('24/7')) return true;
 
   try {
-    const now = new Date();
     const dayNames = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
-    const currentDay = dayNames[now.getDay()];
+    const currentDay = now.getDay();
+    const previousDay = (currentDay + 6) % 7;
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
     const parts = openingHours.toLowerCase().split(';');
@@ -16,44 +16,33 @@ export function isOpenNow(openingHours: string | null | undefined): boolean {
       const trimmed = part.trim();
       if (!trimmed) continue;
 
-      const dayRangeRegex = /([a-z]{2})\s*-\s*([a-z]{2})/;
-      const singleDayRegex = /\b([a-z]{2})\b/g;
-
-      const timeMatch = trimmed.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
-      if (!timeMatch) continue;
-
-      const startMin = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
-      const endMin = parseInt(timeMatch[3], 10) * 60 + parseInt(timeMatch[4], 10);
-
-      let daysMatch = false;
-      const dayRange = trimmed.match(dayRangeRegex);
-      if (dayRange) {
-        const startDayIdx = dayNames.indexOf(dayRange[1]);
-        const endDayIdx = dayNames.indexOf(dayRange[2]);
-        if (startDayIdx !== -1 && endDayIdx !== -1) {
-          const todayIdx = now.getDay();
-          if (startDayIdx <= endDayIdx) {
-            daysMatch = todayIdx >= startDayIdx && todayIdx <= endDayIdx;
-          } else {
-            daysMatch = todayIdx >= startDayIdx || todayIdx <= endDayIdx;
-          }
-        }
-      } else {
-        const singleDays = Array.from(trimmed.matchAll(singleDayRegex)).map(m => m[1]);
-        if (singleDays.length > 0) {
-          daysMatch = singleDays.includes(currentDay);
-        } else {
-          daysMatch = true;
+      const days = new Set<number>();
+      const dayPattern = /\b(su|mo|tu|we|th|fr|sa)\b(?:\s*-\s*\b(su|mo|tu|we|th|fr|sa)\b)?/g;
+      for (const match of trimmed.matchAll(dayPattern)) {
+        const startDay = dayNames.indexOf(match[1]);
+        const endDay = match[2] ? dayNames.indexOf(match[2]) : startDay;
+        for (let day = startDay; ; day = (day + 1) % 7) {
+          days.add(day);
+          if (day === endDay) break;
         }
       }
-
-      if (daysMatch) {
+      const appliesOn = (day: number) => days.size === 0 || days.has(day);
+      // Every comma-separated interval matters. Overnight intervals belong to
+      // the day they start on, so their early-morning part uses yesterday.
+      for (const timeMatch of trimmed.matchAll(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g)) {
+        const startHour = Number(timeMatch[1]);
+        const startMinute = Number(timeMatch[2]);
+        const endHour = Number(timeMatch[3]);
+        const endMinute = Number(timeMatch[4]);
+        if (startHour > 23 || endHour > 24 || startMinute > 59 || endMinute > 59 || (endHour === 24 && endMinute !== 0)) continue;
+        const startMin = startHour * 60 + startMinute;
+        const endMin = endHour * 60 + endMinute;
         if (endMin < startMin) {
-          if (currentMinutes >= startMin || currentMinutes <= endMin) {
+          if ((appliesOn(currentDay) && currentMinutes >= startMin) || (appliesOn(previousDay) && currentMinutes < endMin)) {
             return true;
           }
         } else {
-          if (currentMinutes >= startMin && currentMinutes <= endMin) {
+          if (appliesOn(currentDay) && currentMinutes >= startMin && currentMinutes < endMin) {
             return true;
           }
         }

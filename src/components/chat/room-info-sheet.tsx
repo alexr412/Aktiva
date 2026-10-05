@@ -12,6 +12,7 @@ import { de, enUS } from 'date-fns/locale';
 import { cn, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay } from '@/lib/utils';
 import { getPrimaryIconData, getRoomVisualCategory } from '@/lib/tag-config';
 import { MemberFriendActionButton } from './member-friend-action-button';
+import { hasRoomActivityEnded } from './room-activity-state';
 import { UserBadge } from '@/components/common/UserBadge';
 import Link from 'next/link';
 
@@ -80,11 +81,8 @@ export function RoomInfoSheet({
 
   const isHost = activity?.hostId === currentUserId || chat.hostId === currentUserId;
 
-  const isPast = activity?.activityDate?.toDate
-    ? activity.activityDate.toDate().getTime() < Date.now()
-    : false;
   const isCancelled = activity?.status === 'cancelled';
-  const isCompleted = activity?.status === 'completed' || isPast;
+  const isCompleted = hasRoomActivityEnded(activity);
 
   // Primary style icon
   const visualCategoryData = getRoomVisualCategory({ activity, place, chat });
@@ -100,24 +98,13 @@ export function RoomInfoSheet({
       };
     }
 
-    const now = new Date();
     const dateObj = typeof activity.activityDate?.toDate === 'function'
       ? activity.activityDate.toDate()
       : activity.activityDate instanceof Date
       ? activity.activityDate
       : null;
 
-    const endDateObj = typeof activity.activityEndDate?.toDate === 'function'
-      ? activity.activityEndDate.toDate()
-      : activity.activityEndDate instanceof Date
-      ? activity.activityEndDate
-      : null;
-
-    if (
-      activity.status === 'completed' ||
-      (endDateObj && endDateObj < now) ||
-      (!activity.isTimeFlexible && dateObj && dateObj < now && !isToday(dateObj))
-    ) {
+    if (isCompleted) {
       return {
         text: language === 'de' ? 'Beendet' : 'Completed',
         bg: 'bg-slate-100 text-slate-700 dark:bg-neutral-800 dark:text-neutral-300 border border-slate-200 dark:border-neutral-700',
