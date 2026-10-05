@@ -15,6 +15,8 @@ import { PlaceDetails } from '@/components/activa/place-details';
 import { PlaceCard } from '@/components/activa/place-card';
 import { AdCard } from '@/components/activa/ad-card';
 import { deriveFeedDisplayItems } from '@/lib/feed-ads';
+import { FeedSortSelect } from '@/components/activa/feed-sort-select';
+import { sortFeedPlaces, type FeedSortMode } from '@/lib/feed-sort';
 
 type DiscoverFeedState =
   | 'initial_loading'
@@ -201,7 +203,7 @@ function HomeContent() {
     weightedDownvotes: number;
   }>>({});
   const [isVotingPlace, setIsVotingPlace] = useState<Record<string, boolean>>({});
-  const [sortBy, setSortBy] = useState("recommended");
+  const [sortBy, setSortBy] = useState<FeedSortMode>('recommended');
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
   const [maxDistance, setMaxDistance] = useState<number | null>(10);
@@ -785,7 +787,7 @@ function HomeContent() {
         const props = f.properties || {};
         const lat = f.geometry?.coordinates?.[1] ?? props.lat;
         const lon = f.geometry?.coordinates?.[0] ?? props.lon ?? props.lng;
-        const distKm = getDiscoveryDistanceKm(f, userLocation, page._fromCache) ?? 0;
+        const distKm = getDiscoveryDistanceKm(f, userLocation, page._fromCache);
 
         return {
           tags: Array.isArray(props.categories) ? props.categories : [props.categories],
@@ -809,7 +811,7 @@ function HomeContent() {
           if (!isNaN(parsedRating)) rating = Math.max(0, Math.min(5, parsedRating));
         }
         const cats = Array.isArray(props.categories) ? props.categories : [props.categories];
-        const distance = item.distance || 0;
+        const distance = item.distance;
         return {
           id: props.place_id || props.id,
           name: props.name || props.address_line1 || (language === "de" ? "Unbekannter Ort" : "Unknown Place"),
@@ -1063,23 +1065,20 @@ function HomeContent() {
     });
     const uniqueFiltered = Array.from(uniqueMap.values());
 
-    return [...uniqueFiltered].sort((a, b) => {
-      if (sortBy === 'recommended') {
-        return (b.relevanceScore || 0) - (a.relevanceScore || 0);
-      }
-      if (sortBy === 'rating') {
-        return (b.rating || 0) - (a.rating || 0);
-      }
-      return 0;
-    });
+    return sortFeedPlaces(uniqueFiltered, sortBy);
   }, [places, userProfile, debouncedSearchQuery, shouldFilterByName, isHighlightsCategory, isAktivCategory, maxDistance, sortBy]);
 
   const finalFeedPlaces = useMemo<Place[]>(() => {
     if (isFavoritesCategory) {
-      return favorites;
+      if (sortBy === 'recommended') return favorites;
+      const favoritesWithDistance = favorites.map(place => ({
+        ...place,
+        distance: getDiscoveryDistanceKm(place, userLocation, true),
+      }));
+      return sortFeedPlaces(favoritesWithDistance, sortBy);
     }
     return visiblePlaces.slice(0, visibleCount);
-  }, [isFavoritesCategory, favorites, visiblePlaces, visibleCount]);
+  }, [isFavoritesCategory, favorites, visiblePlaces, visibleCount, sortBy, userLocation]);
 
   // Derive explicit active-mode values
   const activeFeedError = isFavoritesCategory
@@ -1396,7 +1395,6 @@ function HomeContent() {
     setShouldFilterByName(false);
     setActiveCategory(categoryId);
     setActiveTabId(tabId);
-    setSortBy('recommended');
     setActivityCategoryFilter('Alle');
     setVisibleCount(PLACES_PER_PAGE);
   };
@@ -2286,6 +2284,14 @@ function HomeContent() {
                 />
               </div>
             <div ref={discoverFeedRef} id="discover-feed" data-tutorial-id="feed-main" className="scroll-mt-24">
+              {!isOpenRoomsMode && !isCommunityCategory && !isMySpotsCategory && (
+                <div className="px-3 sm:px-6 pt-3 sm:pt-6">
+                  <FeedSortSelect value={sortBy} language={language} onChange={value => {
+                    setSortBy(value);
+                    setVisibleCount(PLACES_PER_PAGE);
+                  }} />
+                </div>
+              )}
               {renderContent()}
             </div>
           </div>
