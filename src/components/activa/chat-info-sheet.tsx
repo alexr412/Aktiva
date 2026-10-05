@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -58,10 +58,14 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
   const { toast } = useToast();
 
   const [memberRatings, setMemberRatings] = useState<Record<string, { averageRating?: number; ratingCount?: number }>>({});
+  const participantDetails = useMemo(() => ({
+    ...activity?.participantDetails,
+    ...chat?.participantDetails,
+  }), [activity?.participantDetails, chat?.participantDetails]);
 
   useEffect(() => {
     if (!open || !chat) return;
-    const details = chat.participantDetails || {};
+    const details = participantDetails;
     const missingUids = Object.keys(details).filter(uid => {
       const p = details[uid];
       return p && (p.averageRating === undefined && p.ratingCount === undefined);
@@ -94,7 +98,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
     };
 
     loadRatings();
-  }, [open, chat]);
+  }, [open, chat, participantDetails]);
 
   const renderDate = () => {
       if (!activity) return null;
@@ -106,6 +110,9 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
 
 
   if (!chat || !user || !activity) return null;
+  const chatTitle = activity.isCustomActivity || activity.isUserEvent
+    ? activity.title || chat.placeName || activity.placeName
+    : chat.placeName || activity.placeName || activity.title;
 
   const isOnlyParticipant = chat.participantIds.length === 1;
   const isHost = activity.hostId === user.uid;
@@ -220,7 +227,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
         {/* Versteckter Header für Accessibility (Radix Warning Fix) */}
         <SheetHeader className="sr-only">
           <SheetTitle>{language === 'de' ? 'Chat Info' : 'Chat Info'}</SheetTitle>
-          <SheetDescription>{language === 'de' ? `Chat Einstellungen und Löschoptionen für ${activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.title || chat.placeName) : chat.placeName}` : `Chat settings and deletion options for ${activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.title || chat.placeName) : chat.placeName}`}</SheetDescription>
+          <SheetDescription>{language === 'de' ? `Chat Einstellungen und Löschoptionen für ${chatTitle}` : `Chat settings and deletion options for ${chatTitle}`}</SheetDescription>
         </SheetHeader>
 
         <ScrollArea className="flex-1">
@@ -231,7 +238,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
               </div>
               
               <h2 className="text-xl font-black text-slate-900 dark:text-neutral-100 mb-3 leading-snug">
-                {activity && (activity.isCustomActivity || activity.isUserEvent) ? (activity.title || chat.placeName) : chat.placeName}
+                {chatTitle}
               </h2>
               
               <div className="flex flex-wrap justify-center gap-2">
@@ -384,7 +391,7 @@ export function ChatInfoSheet({ chat, activity, open, onOpenChange, onBeforeLeav
               </div>
               
               <ul className="space-y-2">
-                {Object.entries(chat.participantDetails).map(([uid, p]) => {
+                {Object.entries(participantDetails).filter(([uid, p]) => p && chat.participantIds.includes(uid)).map(([uid, p]) => {
                   const isSelf = uid === user?.uid;
                   const rawRating = isSelf ? (userProfile?.averageRating ?? p.averageRating ?? memberRatings[uid]?.averageRating) : (p.averageRating ?? memberRatings[uid]?.averageRating);
                   const rawCount = isSelf ? (userProfile?.ratingCount ?? p.ratingCount ?? memberRatings[uid]?.ratingCount) : (p.ratingCount ?? memberRatings[uid]?.ratingCount);

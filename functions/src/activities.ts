@@ -1651,6 +1651,7 @@ export const secureCreateActivity = onCall({ secrets: [GEOAPIFY_API_KEY], enforc
         activityId: newActivityId,
         hostId: callerUid,
         participantIds: [callerUid],
+        participantDetails: activityData.participantDetails,
         createdAt: FieldValue.serverTimestamp(),
         lastActivityAt: FieldValue.serverTimestamp()
       });
