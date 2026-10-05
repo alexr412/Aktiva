@@ -70,8 +70,8 @@ import { useLocation } from '@/contexts/location-context';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
-import { GEOAPIFY_API_KEY } from '@/lib/config';
-import { GLOBAL_EXCLUDE_STRING, applyFilters, buildGeoapifyCategoriesParam, sanitizeUrlForLogging } from '@/lib/geoapify';
+import { applyFilters } from '@/lib/geoapify';
+import { fetchPlaceBuckets, getDiscoveryDistanceKm } from '@/lib/place-discovery';
 import { calculateRelevance, rankPlacesPipeline } from '@/lib/ranking';
 import { Slider } from '@/components/ui/slider';
 import { cn, formatFirstName } from '@/lib/utils';
@@ -108,32 +108,6 @@ const CardSkeleton = () => (
 const PLACES_PER_PAGE = 10;
 const QUARANTINE_THRESHOLD = 3;
 const ACTIVITY_CATEGORIES: (ActivityCategory | 'Alle')[] = ['Alle', 'Sport', 'Tech', 'Party', 'Kultur', 'Outdoor', 'Gaming', 'Networking', 'Sonstiges'];
-
-const fetcher = async (url: string) => {
-  const res = await fetch(url);
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    const safeUrl = sanitizeUrlForLogging(url);
-    if (process.env.NODE_ENV === 'development') {
-      console.error('[GEOAPIFY ERROR]', {
-        status: res.status,
-        statusText: res.statusText,
-        url: safeUrl,
-        body,
-      });
-    } else {
-      console.error('[GEOAPIFY ERROR]', {
-        status: res.status,
-        statusText: res.statusText,
-      });
-    }
-    const error = new Error(`Geoapify API error (${res.status}): ${body}`);
-    (error as any).status = res.status;
-    (error as any).body = body;
-    throw error;
-  }
-  return res.json();
-};
 
 const DISTANCE_FILTERS = [
   { label: 'Alle', labelEn: 'All', value: null },
@@ -469,9 +443,9 @@ function HomeContent() {
     try {
       let result: any = null;
       if (type === 'geoapify') {
-        const { url, lat, lng, radiusMeters, categories } = key;
+        const { lat, lng, radiusMeters, categories, queryLimit = 50, offset = 0 } = key;
         debugLog('feed', 'multiFetcher type=geoapify', { categories, lat, lng });
-        if (lat && lng && radiusMeters) {
+        if (offset === 0 && radiusMeters) {
           const cachedPlaces = await getCachedTilePlaces(lat, lng, radiusMeters);
           debugLog('feed', 'getCachedTilePlaces total count:', cachedPlaces ? cachedPlaces.length : 0);
           if (cachedPlaces && cachedPlaces.length > 0) {
@@ -498,7 +472,14 @@ function HomeContent() {
           }
         }
         debugLog('feed', 'Fetching fresh from Geoapify for category tab:', categories);
-        result = await fetcher(url);
+        const { callGeoapifyGateway } = await import('@/lib/geoapify');
+        result = await callGeoapifyGateway('places', {
+          categories: categories.join(','),
+          filter: `circle:${lng},${lat},${radiusMeters}`,
+          bias: `proximity:${lng},${lat}`,
+          limit: String(queryLimit),
+          offset: String(offset),
+        });
         if (result?.features && Array.isArray(result.features) && lat && lng && radiusMeters) {
           const placesToCache: Place[] = result.features.map((f: any, idx: number) => {
             const props = f.properties || f;
@@ -543,29 +524,14 @@ function HomeContent() {
         ];
 
         const { callGeoapifyGateway } = await import('@/lib/geoapify');
-        const results = await Promise.all(
-          categoryBuckets.map(cats => {
-            return callGeoapifyGateway('places', {
+        const { features: merged } = await fetchPlaceBuckets(categoryBuckets, cats =>
+            callGeoapifyGateway('places', {
               categories: cats,
               filter: `circle:${lng},${lat},${r}`,
               bias: `proximity:${lng},${lat}`,
               limit: '30',
-            }).catch(() => ({ features: [] }));
-          })
+            })
         );
-
-        const seenIds = new Set<string>();
-        const merged: any[] = [];
-        for (const res of results) {
-          const features = res?.features || [];
-          for (const f of features) {
-            const pid = f.properties?.place_id;
-            if (pid && !seenIds.has(pid)) {
-              seenIds.add(pid);
-              merged.push(f);
-            }
-          }
-        }
 
         // Gefundene Orte im lokalen Cache speichern
         if (merged.length > 0) {
@@ -669,7 +635,7 @@ function HomeContent() {
       }
       return result;
     } catch (error: any) {
-      console.error("🔥 FIRESTORE QUERY ERROR:", error.message, "Key:", key);
+      console.error('[FEED QUERY ERROR]', { type, message: error.message });
       if (type === 'geoapify' || type === 'multi_fetch_discovery' || type === 'geocoding') {
         monitoring.logRequest(Date.now() - startTime, false);
       }
@@ -738,8 +704,8 @@ function HomeContent() {
     if (activeCategory.length > 0) {
       const queryLimit = pageIndex === 0 ? 50 : 25;
       const offset = pageIndex === 0 ? 0 : 50 + (pageIndex - 1) * 25;
-      const catParam = buildGeoapifyCategoriesParam(categoriesToFetch);
-      return { type: 'geoapify', catParam, queryLimit, offset, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters, categories: categoriesToFetch };
+      if (offset > GEOAPIFY_MAX_OFFSET) return null;
+      return { type: 'geoapify', queryLimit, offset, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters, categories: categoriesToFetch };
     }
 
     if (pageIndex === 0) {
@@ -754,8 +720,8 @@ function HomeContent() {
 
     const allCategories = "entertainment,leisure,sport,tourism,catering,adult.nightclub";
     const offset = 90 + (pageIndex - 1) * 50;
-    const catParam = buildGeoapifyCategoriesParam(allCategories);
-    return { type: 'geoapify', catParam, offset, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters };
+    if (offset > GEOAPIFY_MAX_OFFSET) return null;
+    return { type: 'geoapify', categories: allCategories.split(','), offset, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters };
   }
 
   const { data, size, setSize, isValidating, error, mutate } = useSWRInfinite(getKey, multiFetcher, {
@@ -819,13 +785,7 @@ function HomeContent() {
         const props = f.properties || {};
         const lat = f.geometry?.coordinates?.[1] ?? props.lat;
         const lon = f.geometry?.coordinates?.[0] ?? props.lon ?? props.lng;
-        let distKm = 0;
-        if (props.distance !== undefined && props.distance !== null) {
-          const rawDist = props.distance;
-          distKm = rawDist > 100 ? rawDist / 1000 : rawDist;
-        } else if (userLocation && lat && lon) {
-          distKm = calculateDistance(userLocation.lat, userLocation.lng, lat, lon);
-        }
+        const distKm = getDiscoveryDistanceKm(f, userLocation, page._fromCache) ?? 0;
 
         return {
           tags: Array.isArray(props.categories) ? props.categories : [props.categories],
@@ -1168,13 +1128,16 @@ function HomeContent() {
     if (isEmpty) return true;
     if (!displayData || displayData.length === 0) return false;
     const lastPage = displayData[displayData.length - 1];
-    const expectedLimit = (displayData.length - 1) === 0 ? 50 : 50;
+    if (lastPage?._fromCache) return true;
+    const expectedLimit = activeCategory.length > 0
+      ? (displayData.length === 1 ? 50 : 25)
+      : (displayData.length === 1 ? 0 : 50);
     if (isAktivCategory || isHighlightsCategory) {
       let fbLimit = (displayData.length - 1) === 0 ? 50 : 10;
       return Boolean(lastPage && lastPage.length < fbLimit);
     }
     return Boolean(lastPage && lastPage.features?.length < expectedLimit);
-  }, [displayData, isEmpty, activeFeedError, isCommunityCategory, isMySpotsCategory, isAktivCategory, isHighlightsCategory]);
+  }, [displayData, isEmpty, activeFeedError, activeCategory, isCommunityCategory, isMySpotsCategory, isAktivCategory, isHighlightsCategory]);
 
   const handleActiveFeedRetry = useCallback(async () => {
     if (activeFeedIsValidating) return;

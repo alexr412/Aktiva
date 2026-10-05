@@ -706,8 +706,7 @@ export function buildProximityBias(lon: number, lat: number): string {
 
 /**
  * Serializes categories for Geoapify Places API URL.
- * Geoapify /v2/places requires repeated `categories=cat1&categories=cat2` query parameters
- * for multiple categories. Single comma-separated strings (e.g. `categories=cat1,cat2`) cause HTTP 400 Bad Request.
+ * Multiple categories share one comma-separated query parameter.
  */
 export function buildGeoapifyCategoriesParam(categories: string[] | string): string {
   const catArray = Array.isArray(categories)
@@ -717,7 +716,7 @@ export function buildGeoapifyCategoriesParam(categories: string[] | string): str
         .filter(Boolean);
 
   if (catArray.length === 0) return '';
-  return catArray.map(cat => `categories=${encodeURIComponent(cat)}`).join('&');
+  return `categories=${encodeURIComponent(catArray.join(','))}`;
 }
 
 /**
@@ -978,6 +977,8 @@ export async function callGeoapifyGateway(service: string, params: Record<string
   const { fetchWithAppCheck } = await import('@/lib/api-client');
   const res = await fetchWithAppCheck('/api/geoapify', {
     method: 'POST',
+    // The gateway also verifies tokens, rate limits and records usage server-side.
+    timeoutMs: 45000,
     headers: {
       'Content-Type': 'application/json',
     },
@@ -993,7 +994,12 @@ export async function callGeoapifyGateway(service: string, params: Record<string
     throw new Error(`Geoapify Gateway Error (${res.status})`);
   }
 
-  return await res.json();
+  const data = await res.json();
+  // Geocoding defaults to GeoJSON; text search consumers also use JSON results.
+  if (service === 'geocoding' && !data.results && Array.isArray(data.features)) {
+    data.results = data.features.map((feature: any) => feature.properties);
+  }
+  return data;
 }
 
 export async function reverseGeocode(lat: number, lon: number): Promise<Place | null> {

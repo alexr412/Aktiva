@@ -7,8 +7,7 @@ import { useLocation } from '@/contexts/location-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useFavorites } from '@/contexts/favorites-context';
 import { subscribeCommunityActivities } from '@/lib/firebase/firestore';
-import { buildGeoapifyCategoriesParam, sanitizeUrlForLogging } from '@/lib/geoapify';
-import { GEOAPIFY_API_KEY } from '@/lib/config';
+import { fetchPlaceBuckets, getDiscoveryDistanceKm } from '@/lib/place-discovery';
 import {
   getCachedTilePlaces,
   saveTilePlaces,
@@ -29,64 +28,52 @@ const multiFetcher = async (keyObj: any) => {
         console.log(`[GEOAPIFY CACHE HIT] Loaded ${cachedPlaces.length} places from IndexedDB for tile`);
       }
       import('@/lib/geoapify').then(({ recordCacheHitBatch }) => recordCacheHitBatch());
-      return [{ features: cachedPlaces, _fromCache: true }];
+      return { features: cachedPlaces, _fromCache: true };
     }
 
     const catGroup1 = "catering,entertainment,tourism,adult.nightclub";
     const catGroup2 = "leisure,sport,commercial.shopping_mall,building.tourism";
 
-    try {
-      const { callGeoapifyGateway } = await import('@/lib/geoapify');
+    const { callGeoapifyGateway } = await import('@/lib/geoapify');
 
-      const [data1, data2] = await Promise.all([
-        callGeoapifyGateway('places', {
-          categories: catGroup1,
-          filter: `circle:${lng},${lat},${radiusMeters}`,
-          bias: `proximity:${lng},${lat}`,
-          limit: '45',
-        }).catch(() => ({ features: [] })),
-        callGeoapifyGateway('places', {
-          categories: catGroup2,
-          filter: `circle:${lng},${lat},${radiusMeters}`,
-          bias: `proximity:${lng},${lat}`,
-          limit: '45',
-        }).catch(() => ({ features: [] })),
-      ]);
+    const { features: combinedFeatures } = await fetchPlaceBuckets([catGroup1, catGroup2], categories =>
+      callGeoapifyGateway('places', {
+        categories,
+        filter: `circle:${lng},${lat},${radiusMeters}`,
+        bias: `proximity:${lng},${lat}`,
+        limit: '45',
+      })
+    );
 
-      const combinedFeatures = [...(data1.features || []), ...(data2.features || [])];
+    // Nach erfolgreichem Laden: Orte asynchron im lokalen Cache speichern
+    if (combinedFeatures.length > 0) {
+      const placesToCache: Place[] = combinedFeatures.map((f: any, idx: number) => {
+        const props = f.properties || f;
+        const fLat = f.geometry?.coordinates?.[1] ?? props.lat;
+        const fLon = f.geometry?.coordinates?.[0] ?? props.lon ?? props.lng;
+        const id = props.place_id || props.id || `place_${idx}_${fLat}_${fLon}`;
+        const name = props.name || props.formatted || 'Unbenannter Ort';
+        return {
+          id,
+          name,
+          address: props.address_line2 || props.formatted || props.street || '',
+          categories: props.categories || [],
+          lat: fLat,
+          lon: fLon,
+          distance: props.distance ? props.distance / 1000 : undefined,
+          rating: props.rating || 4.5,
+          relevanceScore: props.relevanceScore || 80,
+        } as Place;
+      });
 
-      // Nach erfolgreichem Laden: Orte asynchron im lokalen Cache speichern
-      if (combinedFeatures.length > 0) {
-        const placesToCache: Place[] = combinedFeatures.map((f: any, idx: number) => {
-          const props = f.properties || f;
-          const fLat = f.geometry?.coordinates?.[1] ?? props.lat;
-          const fLon = f.geometry?.coordinates?.[0] ?? props.lon ?? props.lng;
-          const id = props.place_id || props.id || `place_${idx}_${fLat}_${fLon}`;
-          const name = props.name || props.formatted || 'Unbenannter Ort';
-          return {
-            id,
-            name,
-            address: props.address_line2 || props.formatted || props.street || '',
-            categories: props.categories || [],
-            lat: fLat,
-            lon: fLon,
-            distance: props.distance ? props.distance / 1000 : undefined,
-            rating: props.rating || 4.5,
-            relevanceScore: props.relevanceScore || 80,
-          } as Place;
-        });
-
-        void saveTilePlaces(lat, lng, radiusMeters, placesToCache);
-      }
-
-      return [{ features: combinedFeatures }];
-    } catch (e) {
-      return [{ features: [] }];
+      void saveTilePlaces(lat, lng, radiusMeters, placesToCache);
     }
+
+    return { features: combinedFeatures };
   }
 
   // Für Kategorie- oder Paginierungs-Anfragen: Prüfen, ob passende Orte im Cache liegen
-  if (keyObj.lat && keyObj.lng && keyObj.radiusMeters) {
+  if (!keyObj.offset && keyObj.radiusMeters) {
     const cachedPlaces = await getCachedTilePlaces(keyObj.lat, keyObj.lng, keyObj.radiusMeters);
     if (cachedPlaces && cachedPlaces.length > 0) {
       const activeCats = Array.isArray(keyObj.categories) ? keyObj.categories : (typeof keyObj.categories === 'string' ? keyObj.categories.split(',') : []);
@@ -102,14 +89,14 @@ const multiFetcher = async (keyObj: any) => {
 
       if (matchingPlaces.length >= 3) {
         import('@/lib/geoapify').then(({ recordCacheHitBatch }) => recordCacheHitBatch());
-        return [{ features: matchingPlaces, _fromCache: true }];
+        return { features: matchingPlaces, _fromCache: true };
       }
     }
   }
 
   const { callGeoapifyGateway } = await import('@/lib/geoapify');
   const data = await callGeoapifyGateway('places', {
-    categories: keyObj.catParam || '',
+    categories: keyObj.categories || '',
     filter: `circle:${keyObj.lng},${keyObj.lat},${keyObj.radiusMeters}`,
     bias: `proximity:${keyObj.lng},${keyObj.lat}`,
     limit: '50',
@@ -259,7 +246,7 @@ export function useDiscoverPlaces() {
     if (!userLocation) return null;
 
     if (previousPageData) {
-      const firstPage = Array.isArray(previousPageData) ? previousPageData[0] : previousPageData;
+      const firstPage = previousPageData;
       if (firstPage?._fromCache) return null; // Keine Paginierung, wenn Seite 0 bereits aus dem Cache kam!
       if (!firstPage?.features || firstPage.features.length === 0) return null;
     }
@@ -277,8 +264,8 @@ export function useDiscoverPlaces() {
 
     const allCategories = "entertainment,leisure,sport,tourism,catering,adult.nightclub";
     const offset = 90 + (pageIndex - 1) * 50;
-    const catParam = buildGeoapifyCategoriesParam(allCategories);
-    return { type: 'geoapify', catParam, offset, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters, uid: userProfile?.uid };
+    if (offset > 500) return null;
+    return { type: 'geoapify', categories: allCategories, offset, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters, uid: userProfile?.uid };
   };
 
   const { data, isValidating, error } = useSWRInfinite(getKey, multiFetcher, {
@@ -289,25 +276,13 @@ export function useDiscoverPlaces() {
   // Extract raw parsed Places from SWR
   const rawPlaces = useMemo<Place[]>(() => {
     if (!data) return [];
-    const allFeatures: any[] = [];
-    data.forEach((page: any) => {
-      if (Array.isArray(page?.features)) {
-        allFeatures.push(...page.features);
-      } else if (Array.isArray(page)) {
-        allFeatures.push(...page);
-      }
-    });
-
-    return allFeatures.map((f: any, idx: number) => {
+    return data.flatMap((page: any) => (page.features || []).map((f: any, idx: number) => {
       const props = f.properties || f;
       const lat = f.geometry?.coordinates?.[1] ?? props.lat;
       const lon = f.geometry?.coordinates?.[0] ?? props.lon ?? props.lng;
       const id = props.place_id || props.id || `place_${idx}_${lat}_${lon}`;
       const name = props.name || props.formatted || 'Unbenannter Ort';
-      const rawDist = props.distance ?? f.distance;
-      const distance = rawDist !== undefined && rawDist !== null
-        ? (rawDist > 100 ? rawDist / 1000 : rawDist)
-        : undefined;
+      const distance = getDiscoveryDistanceKm(f, userLocation, page._fromCache);
 
       return {
         id,
@@ -320,8 +295,8 @@ export function useDiscoverPlaces() {
         rating: props.rating || f.rating || 4.5,
         relevanceScore: props.relevanceScore || f.relevanceScore || 80,
       } as Place;
-    });
-  }, [data]);
+    }));
+  }, [data, userLocation]);
 
   // Apply hidden entity filtering, name search, and distance constraints
   const visiblePlaces = useMemo<Place[]>(() => {
@@ -372,7 +347,7 @@ export function useDiscoverPlaces() {
     setSearchQuery,
     activeCategory,
     setActiveCategory,
-    isLoading: (!data && !error && searchResults.length === 0) || isCommunityLoading || isSearchingNetwork,
+    isLoading: (!!userLocation && !data && !error && searchResults.length === 0) || isCommunityLoading || isSearchingNetwork,
     error,
   };
 }

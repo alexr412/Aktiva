@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminAppCheck } from '@/lib/firebase/admin-server';
 import { GEOAPIFY_API_KEY } from '@/lib/config';
 import { checkDualDistributedRateLimit } from '@/lib/rate-limiter';
+import { buildGeoapifyRequestUrl } from './request-url';
 import {
   recordGeoapifyServerTransaction,
   IdempotencyConflictError,
@@ -19,7 +20,7 @@ const ALLOWED_SERVICES: GeoapifyService[] = [
 ];
 
 const ALLOWED_PLACES_PARAMS = new Set(['categories', 'filter', 'bias', 'limit', 'offset', 'lang', 'conditions']);
-const ALLOWED_GEOCODING_PARAMS = new Set(['text', 'street', 'city', 'postcode', 'country', 'format', 'limit']);
+const ALLOWED_GEOCODING_PARAMS = new Set(['text', 'street', 'city', 'postcode', 'country', 'format', 'limit', 'filter', 'bias', 'lang']);
 const ALLOWED_REVERSE_PARAMS = new Set(['lat', 'lon', 'limit']);
 const ALLOWED_AUTOCOMPLETE_PARAMS = new Set(['text', 'limit', 'lang', 'filter', 'bias']);
 const ALLOWED_DETAILS_PARAMS = new Set(['id', 'features', 'details']);
@@ -129,21 +130,7 @@ export async function POST(req: NextRequest) {
     else if (service === 'autocomplete') targetEndpoint = 'https://api.geoapify.com/v1/geocode/autocomplete';
     else if (service === 'place_details') targetEndpoint = 'https://api.geoapify.com/v2/place-details';
 
-    const url = new URL(targetEndpoint);
-    for (const [k, v] of Object.entries(sanitizedParams)) {
-      if (k === 'categories') {
-        const catList = String(v)
-          .split(/[,&]+/)
-          .map(c => c.replace(/^categories=/, '').trim())
-          .filter(Boolean);
-        for (const cat of catList) {
-          url.searchParams.append('categories', cat);
-        }
-      } else {
-        url.searchParams.set(k, v);
-      }
-    }
-    url.searchParams.set('apiKey', GEOAPIFY_API_KEY || '');
+    const url = buildGeoapifyRequestUrl(targetEndpoint, sanitizedParams, GEOAPIFY_API_KEY || '');
 
     // 8. Execute Geoapify Fetch
     const res = await fetch(url.toString(), {

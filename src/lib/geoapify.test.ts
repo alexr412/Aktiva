@@ -27,21 +27,20 @@ test('2. Correct lon,lat order in circle filter and bias', () => {
   assert.ok(bias.indexOf(`${lon},${lat}`) > 0);
 });
 
-test('3. Categories serialization (repeated parameters, no single comma-joined string)', () => {
+test('3. Categories serialization uses one comma-separated parameter', () => {
   const arrayCats = ['catering', 'heritage'];
   const stringCats = 'entertainment.zoo,entertainment.cinema,entertainment.water_park';
 
   const serializedArray = buildGeoapifyCategoriesParam(arrayCats);
   const serializedString = buildGeoapifyCategoriesParam(stringCats);
 
-  assert.strictEqual(serializedArray, 'categories=catering&categories=heritage');
+  assert.strictEqual(serializedArray, 'categories=catering%2Cheritage');
   assert.strictEqual(
     serializedString,
-    'categories=entertainment.zoo&categories=entertainment.cinema&categories=entertainment.water_park'
+    'categories=entertainment.zoo%2Centertainment.cinema%2Centertainment.water_park'
   );
-  // Ensure no comma remains in the categories param string
-  assert.strictEqual(serializedArray.includes('%2C'), false);
-  assert.strictEqual(serializedString.includes('%2C'), false);
+  assert.strictEqual(new URLSearchParams(serializedArray).getAll('categories').length, 1);
+  assert.strictEqual(new URLSearchParams(serializedString).get('categories'), stringCats);
 });
 
 test('4. Radius parameter in URL', () => {
@@ -147,7 +146,7 @@ test('10. Successful request remains fully functional', async () => {
   }
 });
 
-test('11. Regression test: multi-bucket categories generate valid repeated query parameters', () => {
+test('11. Regression test: multi-bucket URLs preserve every category', () => {
   const bucket1 =
     'entertainment.zoo,entertainment.cinema,entertainment.water_park,sport.swimming_pool,entertainment.miniature_golf,entertainment.bowling_alley,entertainment.aquarium,entertainment.escape_game,entertainment.activity_park,entertainment.activity_park.trampoline,entertainment.amusement_arcade';
   const bucket2 = 'entertainment,leisure,adult.nightclub,sport,tourism';
@@ -157,11 +156,7 @@ test('11. Regression test: multi-bucket categories generate valid repeated query
   const url2 = buildGeoapifyPlacesUrl({ lat: 52.026, lon: 8.522, radiusMeters: 25000, categories: bucket2 });
   const url3 = buildGeoapifyPlacesUrl({ lat: 52.026, lon: 8.522, radiusMeters: 25000, categories: bucket3 });
 
-  // Ensure no comma separator in categories query strings
-  assert.strictEqual(url1.includes('categories=entertainment.zoo%2C'), false);
-  assert.strictEqual(url1.includes('categories=entertainment.zoo,'), false);
-  assert.ok(url1.includes('categories=entertainment.zoo&categories=entertainment.cinema'));
-
-  assert.ok(url2.includes('categories=entertainment&categories=leisure'));
-  assert.ok(url3.includes('categories=catering&categories=heritage'));
+  for (const [url, bucket] of [[url1, bucket1], [url2, bucket2], [url3, bucket3]]) {
+    assert.deepStrictEqual(new URL(url).searchParams.getAll('categories'), [bucket]);
+  }
 });
