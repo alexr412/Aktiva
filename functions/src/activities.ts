@@ -1580,6 +1580,7 @@ export const secureCreateActivity = onCall({ secrets: [GEOAPIFY_API_KEY], enforc
         description: input.description || '',
         category: input.category || 'Sonstiges',
         placeName: finalPlaceName,
+        placeCategories: isCustom ? [] : finalCategories,
         placeAddress: finalPlaceAddress,
         lat: typeof finalLat === 'number' ? finalLat : null,
         lon: typeof finalLon === 'number' ? finalLon : null,
@@ -1649,6 +1650,11 @@ export const secureCreateActivity = onCall({ secrets: [GEOAPIFY_API_KEY], enforc
       const chatRef = db.collection('chats').doc(newActivityId);
       transaction.set(chatRef, {
         activityId: newActivityId,
+        placeName: activityData.title || finalPlaceName,
+        placeId: isCustom ? 'custom' : effectivePlaceId,
+        placeCategories: isCustom ? [] : finalCategories,
+        categories: isCustom ? [activityData.category] : finalCategories,
+        creationSource,
         hostId: callerUid,
         participantIds: [callerUid],
         participantDetails: activityData.participantDetails,

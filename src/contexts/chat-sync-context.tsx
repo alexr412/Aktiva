@@ -3,8 +3,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase/client';
-import type { Chat } from '@/lib/types';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import type { Activity, Chat } from '@/lib/types';
+import { collection, doc, getDoc, query, where, onSnapshot } from 'firebase/firestore';
+import { hydrateActivityChatMetadata } from '@/lib/chat-activity-metadata';
 import { getCachedChats, upsertCachedChats, deleteCachedChat, clearCachedMessagesForChat, deleteCachedActivity } from '@/lib/db/indexed-db';
 
 interface ChatSyncContextType {
@@ -45,6 +46,25 @@ export function ChatSyncProvider({ children }: { children: React.ReactNode }) {
 
     setRemoteLoading(true);
     let active = true;
+    const activityMetadata = new Map<string, Promise<Partial<Activity> | null>>();
+    const hydrateChat = (chat: Chat) => hydrateActivityChatMetadata(chat, (activityId) => {
+      let pending = activityMetadata.get(activityId);
+      if (!pending) {
+        pending = getDoc(doc(db!, 'activities', activityId))
+          .then(async snapshot => {
+            if (!snapshot.exists()) return null;
+            const activity = snapshot.data() as Partial<Activity>;
+            if (activity.placeId && activity.placeId !== 'custom' && !activity.placeCategories?.length) {
+              const place = await getDoc(doc(db!, 'places', activity.placeId)).catch(() => null);
+              if (place?.exists()) return { ...activity, placeCategories: place.data().categories || [] };
+            }
+            return activity;
+          })
+          .catch(() => null);
+        activityMetadata.set(activityId, pending);
+      }
+      return pending;
+    });
 
     // Visibility filter helper
     const shouldDisplayChat = (chat: Chat) => {
@@ -65,7 +85,8 @@ export function ChatSyncProvider({ children }: { children: React.ReactNode }) {
         const cached = await getCachedChats(user!.uid);
         if (active) {
           // Filter cached chats using the visibility rules to prevent flashing hidden/blocked chats
-          const visibleCached = cached.filter(shouldDisplayChat);
+          const visibleCached = await Promise.all(cached.filter(shouldDisplayChat).map(hydrateChat));
+          if (!active) return;
           const total = visibleCached.reduce((sum, chat) => sum + (chat.unreadCount?.[user!.uid] || 0), 0);
           setChats(visibleCached);
           setUnreadTotal(total);
@@ -123,7 +144,8 @@ export function ChatSyncProvider({ children }: { children: React.ReactNode }) {
           }
 
           // Apply visibility filtering to display set
-          const visibleChats = userChats.filter(shouldDisplayChat);
+          const visibleChats = await Promise.all(userChats.filter(shouldDisplayChat).map(hydrateChat));
+          if (!active) return;
 
           // Update IndexedDB cache with the updated list of visible chats
           if (visibleChats.length > 0) {

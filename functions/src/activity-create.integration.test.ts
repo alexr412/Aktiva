@@ -132,6 +132,7 @@ async function runIntegrationTests() {
     const chatSnap = await db.collection('chats').doc(actId1).get();
     assert.strictEqual(chatSnap.exists, true, 'Test 1: Chat doc must exist in Firestore');
     assert.deepStrictEqual(chatSnap.data()?.participantDetails, actSnap.data()?.participantDetails, 'Test 1: Chat must contain the host details used by the chat UI');
+    assert.strictEqual(chatSnap.data()?.placeName, actSnap.data()?.title, 'Test 1: Chat list must contain the activity name');
 
     const partSnap = await db.collection('activities').doc(actId1).collection('participants').doc(testUid).get();
     assert.strictEqual(partSnap.exists, true, 'Test 1: Initial host participant doc must exist');
@@ -182,6 +183,8 @@ async function runIntegrationTests() {
     assert.strictEqual(placeSnap.data()?.lastActivityId, actId2);
     const placeChatSnap = await db.collection('chats').doc(actId2).get();
     assert.ok(placeChatSnap.data()?.participantDetails?.[testUid], 'Test 4: Place-based chat must contain the host details');
+    assert.strictEqual(placeChatSnap.data()?.placeId, placeSnap.id, 'Test 4: Chat must reference the verified place');
+    assert.deepStrictEqual(placeChatSnap.data()?.placeCategories, placeSnap.data()?.categories, 'Test 4: Chat must contain the verified icon categories');
 
     console.log('✅ Test 4: Verified Provider Place Creation PASSED');
 

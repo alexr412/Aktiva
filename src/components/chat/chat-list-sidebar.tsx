@@ -109,7 +109,7 @@ export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProp
             isCreator?: boolean;
             isSupporter?: boolean;
           } | undefined;
-          let chatName = chat.placeName;
+          let chatName = chat.placeName || (language === 'de' ? 'Aktivität' : 'Activity');
           let avatarUrl: string | undefined;
 
           if (isDM && user) {
@@ -164,7 +164,7 @@ export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProp
                       {!isDM && primaryStyle?.icon === Building ? (
                         <span className="text-base font-black text-white drop-shadow-xs">{chatName?.charAt(0).toUpperCase()}</span>
                       ) : (
-                        <CategoryIcon className={cn("h-6 w-6 drop-shadow-xs", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
+                        <CategoryIcon className={cn("h-6 w-6 object-contain drop-shadow-xs", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
                       )}
                     </AvatarFallback>
                   )}

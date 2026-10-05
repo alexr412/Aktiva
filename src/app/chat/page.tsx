@@ -122,7 +122,7 @@ export default function ChatPage() {
             isCreator?: boolean;
             isSupporter?: boolean;
           } | undefined;
-          let chatName = chat.placeName;
+          let chatName = chat.placeName || (language === 'de' ? 'Aktivität' : 'Activity');
           let avatarUrl: string | undefined;
           let avatarFallback = chat.placeName?.charAt(0).toUpperCase() || 'C';
 
@@ -178,7 +178,7 @@ export default function ChatPage() {
                       {!isDM && primaryStyle?.icon === Building ? (
                         <span className="text-xl font-black text-white drop-shadow-xs">{chatName?.charAt(0).toUpperCase()}</span>
                       ) : (
-                        <CategoryIcon className={cn("h-7.5 w-7.5 drop-shadow-md", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
+                        <CategoryIcon className={cn("h-8 w-8 object-contain drop-shadow-md", !isDM && primaryStyle ? "text-white" : "")} style={isDM ? { color: displayColor } : undefined} />
                       )}
                     </AvatarFallback>
                   )}

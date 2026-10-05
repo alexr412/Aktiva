@@ -1207,7 +1207,7 @@ export default function ChatRoomPage() {
                         const PrimaryIcon = primaryStyle.icon;
                         return (
                           <div className={cn("h-10 w-10 sm:h-11 sm:w-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md transition-transform group-hover:scale-105", primaryStyle.gradientClass || "bg-primary/10")}>
-                            <PrimaryIcon className="text-white h-5.5 w-5.5 drop-shadow-xs" />
+                            <PrimaryIcon className="text-white h-6 w-6 object-contain drop-shadow-xs" />
                           </div>
                         );
                       })()
