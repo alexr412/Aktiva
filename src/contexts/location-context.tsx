@@ -51,6 +51,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasGrantedHintState, setHasGrantedHintState] = useState(false);
 
+  const positionRef = useRef<LocationPosition | null>(null);
+  const permissionStatusRef = useRef<PermissionStatus | null>(null);
+
   const requestInFlightRef = useRef(false);
   const activeRequestIdRef = useRef<number | null>(null);
   const requestCounterRef = useRef(0);
@@ -78,8 +81,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       return true;
     }
     if (gateState === 'error') {
-      const isGranted = hasGrantedHintState || hasGrantedHint();
-      return !isGranted && !position;
+      return !position;
     }
     return false;
   }, [gateState, position, hasGrantedHintState, hasGrantedHint]);
@@ -105,6 +107,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
             Number.isFinite(parsed.latitude) &&
             Number.isFinite(parsed.longitude)
           ) {
+            positionRef.current = parsed;
             setPosition(parsed);
           }
         }
@@ -247,6 +250,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           updatedAt: Date.now(),
         };
 
+        positionRef.current = newPos;
         setPosition(newPos);
         setGateState('granted');
         setHasGrantedHintState(true);
@@ -269,14 +273,21 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         setIsLocating(false);
         debugLog('location', `GPS TRACE requestId=${requestId} error code=${error.code}`);
 
-        const isPreviouslyGranted =
-          hasGrantedHintState ||
-          (typeof window !== 'undefined' && localStorage.getItem('activa_location_permission_granted') === 'true');
+        const hasKnownPosition = positionRef.current !== null;
 
         switch (error.code) {
           case 1:
+            if (permissionStatusRef.current?.state === 'granted') {
+              setGateState(hasKnownPosition ? 'granted' : 'error');
+              setErrorMessage(
+                'Dein Browser erlaubt den Standortzugriff, aber dein Gerät konnte keinen Standort liefern. Prüfe die Standortdienste deines Geräts und versuche es erneut.'
+              );
+              break;
+            }
             setGateState('denied');
             setHasGrantedHintState(false);
+            positionRef.current = null;
+            setPosition(null);
             try {
               localStorage.removeItem('activa_location_permission_granted');
               localStorage.removeItem('activa_last_known_position');
@@ -287,41 +298,44 @@ export function LocationProvider({ children }: { children: ReactNode }) {
             break;
 
           case 2:
-            if (!isPreviouslyGranted) {
+            if (!hasKnownPosition) {
               setGateState('error');
               setErrorMessage(
                 'Dein Standort ist momentan nicht verfügbar. Prüfe, ob die Ortungsdienste deines Geräts aktiviert sind.'
               );
             } else {
+              setGateState('granted');
               debugWarn('location', 'LOCATION TRACE Background GPS position unavailable; maintaining granted state.');
             }
             break;
 
           case 3:
-            if (!isPreviouslyGranted) {
+            if (!hasKnownPosition) {
               setGateState('error');
               setErrorMessage(
                 'Die Standortermittlung hat zu lange gedauert. Versuche es erneut.'
               );
             } else {
+              setGateState('granted');
               debugWarn('location', 'LOCATION TRACE Background GPS timeout; maintaining granted state.');
             }
             break;
 
           default:
-            if (!isPreviouslyGranted) {
+            if (!hasKnownPosition) {
               setGateState('error');
               setErrorMessage(
                 'Dein Standort konnte nicht ermittelt werden.'
               );
             } else {
+              setGateState('granted');
               debugWarn('location', 'LOCATION TRACE Background GPS unknown error; maintaining granted state.');
             }
         }
       },
       gpsOptions
     );
-  }, [setGateState, resolveCityName, hasGrantedHintState]);
+  }, [setGateState, resolveCityName]);
 
   // Startup permission check and automatic background GPS fetch if granted
   useEffect(() => {
@@ -352,6 +366,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
         try {
           const status = await navigator.permissions.query({ name: 'geolocation' });
           if (!isMounted) return;
+          permissionStatusRef.current = status;
 
           const handleStatusChange = (newStatusState: PermissionState) => {
             if (!isMounted) return;
@@ -364,6 +379,11 @@ export function LocationProvider({ children }: { children: ReactNode }) {
               setGateState('granted');
               requestLocation({ interactive: false });
             } else if (newStatusState === 'denied') {
+              activeRequestIdRef.current = null;
+              requestInFlightRef.current = false;
+              setIsLocating(false);
+              positionRef.current = null;
+              setPosition(null);
               setGateState('denied');
               setHasGrantedHintState(false);
               try {
@@ -371,6 +391,11 @@ export function LocationProvider({ children }: { children: ReactNode }) {
                 localStorage.removeItem('activa_last_known_position');
               } catch (e) {}
             } else {
+              activeRequestIdRef.current = null;
+              requestInFlightRef.current = false;
+              setIsLocating(false);
+              positionRef.current = null;
+              setPosition(null);
               if (isGrantedHint) {
                 try {
                   localStorage.removeItem('activa_location_permission_granted');
@@ -416,6 +441,9 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMounted = false;
+      activeRequestIdRef.current = null;
+      requestInFlightRef.current = false;
+      permissionStatusRef.current = null;
       listenerCleanups.forEach(cleanup => cleanup());
     };
   }, [setGateState, requestLocation]);

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { MapPin, Lock, Loader2, RefreshCw, Navigation, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLocation } from '@/contexts/location-context';
-import { detectDevice } from '@/lib/device-detection';
+import { getLocationPermissionInstructions } from '@/lib/device-detection';
 import { debugLog } from '@/lib/debug';
 
 export function LocationGate({ children }: { children?: ReactNode }) {
@@ -40,8 +40,9 @@ export function LocationGate({ children }: { children?: ReactNode }) {
   ) : false;
   const isPublicRoute = publicRoutes.includes(pathname) || isPublicInviteRoute;
 
-  const device = detectDevice();
+  const instructions = getLocationPermissionInstructions();
   const isDenied = gateState === 'denied';
+  const isError = gateState === 'error';
   const isRequesting = gateState === 'requesting';
 
   const handleLocationRetry = (event: React.MouseEvent<HTMLButtonElement>): void => {
@@ -80,12 +81,14 @@ export function LocationGate({ children }: { children?: ReactNode }) {
             <div className="p-6 md:p-8 text-center space-y-6">
               <div className="space-y-2">
                 <h1 className="text-2xl font-black text-slate-900 dark:text-neutral-100 tracking-tight leading-tight">
-                  {isDenied ? 'Standortzugriff erforderlich' : 'Activa benötigt deinen Standort'}
+                  {isDenied ? 'Standortzugriff erforderlich' : isError ? 'Standort momentan nicht verfügbar' : 'Activa benötigt deinen Standort'}
                 </h1>
                 <p className="text-slate-500 dark:text-neutral-400 font-medium text-sm leading-relaxed">
                   {isDenied
                     ? 'Der Standortzugriff ist deaktiviert. Aktiviere ihn in den Browser- oder Geräteeinstellungen und prüfe den Standort anschließend erneut.'
-                    : 'Activa zeigt dir Aktivitäten, Orte und Menschen in deiner Nähe. Dafür benötigen wir deinen aktuellen Standort.'}
+                    : isError
+                      ? 'Der Standort konnte nicht ermittelt werden. Prüfe die Standortdienste deines Geräts und versuche es erneut.'
+                      : 'Activa zeigt dir Aktivitäten, Orte und Menschen in deiner Nähe. Dafür benötigen wir deinen aktuellen Standort.'}
                 </p>
               </div>
 
@@ -94,28 +97,11 @@ export function LocationGate({ children }: { children?: ReactNode }) {
                 <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-left text-xs font-semibold text-amber-900 dark:text-amber-200 space-y-2">
                   <div className="flex items-center gap-2 font-black uppercase tracking-wider text-[10px] text-amber-700 dark:text-amber-300">
                     <ShieldAlert className="h-4 w-4 shrink-0" />
-                    {device.isIOS ? 'Anleitung für iPhone (Safari / Chrome):' : 'Anleitung für Android:'}
+                    {instructions.platformTitle}
                   </div>
                   <ol className="list-decimal list-inside space-y-1.5 text-slate-700 dark:text-amber-100 text-[11px] leading-relaxed">
-                    {device.isIOS ? (
-                      <>
-                        <li>Öffne die iPhone-Einstellungen.</li>
-                        <li>Öffne Datenschutz & Sicherheit.</li>
-                        <li>Öffne Ortungsdienste.</li>
-                        <li>Wähle Safari Websites oder Chrome.</li>
-                        <li>Stelle den Zugriff auf „Beim Verwenden der App“.</li>
-                        <li>Kehre zu Activa zurück.</li>
-                        <li>Tippe auf „Standort prüfen“.</li>
-                      </>
-                    ) : (
-                      <>
-                        <li>Aktiviere die Standortdienste des Geräts.</li>
-                        <li>Öffne die Website-Einstellungen des Browsers.</li>
-                        <li>Stelle den Standortzugriff für Activa auf „Zulassen“.</li>
-                        <li>Kehre zu Activa zurück.</li>
-                        <li>Tippe auf „Standort prüfen“.</li>
-                      </>
-                    )}
+                    {instructions.steps.slice(0, -1).map(step => <li key={step}>{step}</li>)}
+                    <li>Kehre zu Activa zurück und tippe auf „Standort prüfen“.</li>
                   </ol>
                 </div>
               )}
