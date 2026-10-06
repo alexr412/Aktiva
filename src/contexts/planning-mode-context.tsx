@@ -44,8 +44,8 @@ export const PlanningModeProvider = ({ children }: { children: ReactNode }) => {
     const enrichedDestination: Destination = {
       ...destination,
       city: destination.city || destination.name,
-      latitude: destination.latitude || destination.lat,
-      longitude: destination.longitude || destination.lng,
+      latitude: destination.latitude ?? destination.lat,
+      longitude: destination.longitude ?? destination.lng,
       isManualLocation: true
     };
     updateState({ isPlanning: true, destination: enrichedDestination });

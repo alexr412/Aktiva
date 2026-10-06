@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import useSWRInfinite from 'swr/infinite';
 import type { Place, Activity } from '@/lib/types';
 import { useLocation } from '@/contexts/location-context';
+import { usePlanningMode } from '@/contexts/planning-mode-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useFavorites } from '@/contexts/favorites-context';
 import { subscribeCommunityActivities } from '@/lib/firebase/firestore';
@@ -130,10 +131,15 @@ const multiFetcher = async (keyObj: any) => {
 
 export function useDiscoverPlaces() {
   const { position, cityName: resolvedCityName } = useLocation();
+  const { planningState } = usePlanningMode();
+  const manualDestination = planningState.isPlanning ? planningState.destination : null;
   const { userProfile } = useAuth();
   const { favorites } = useFavorites();
 
   const userLocation = useMemo(() => {
+    if (manualDestination && Number.isFinite(manualDestination.lat) && Number.isFinite(manualDestination.lng)) {
+      return { lat: manualDestination.lat, lng: manualDestination.lng, rawLat: manualDestination.lat, rawLng: manualDestination.lng };
+    }
     if (!position) return null;
     const roundedLat = Math.round(position.latitude * 100) / 100;
     const roundedLng = Math.round(position.longitude * 100) / 100;
@@ -143,9 +149,9 @@ export function useDiscoverPlaces() {
       rawLat: position.latitude,
       rawLng: position.longitude,
     };
-  }, [position?.latitude, position?.longitude]);
+  }, [position?.latitude, position?.longitude, manualDestination]);
 
-  const cityName = resolvedCityName || 'Aktueller Standort';
+  const cityName = manualDestination?.city || manualDestination?.name || resolvedCityName || 'Aktueller Standort';
 
   const [activeCategory, setActiveCategory] = useState<string[]>([]);
   const [maxDistance, setMaxDistance] = useState<number | null>(10);

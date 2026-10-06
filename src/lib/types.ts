@@ -582,6 +582,7 @@ export interface UserProfile {
   emailVerifiedAt?: Timestamp | null;
   verificationEmailLastSentAt?: Timestamp | null;
   hiddenEntityIds?: string[];
+  feedPreferences?: { sortBy?: 'recommended' | 'distance'; hiddenCategoryIds?: string[] };
   activeTabs?: string[];
   isPremium?: boolean;
   isSupporter?: boolean;

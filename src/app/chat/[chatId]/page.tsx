@@ -1,5 +1,7 @@
 'use client';
 
+import { formatActivityInvitation } from '@/lib/activity-invitation';
+
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
@@ -1199,6 +1201,13 @@ export default function ChatRoomPage() {
                     className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-85 active:scale-[0.99] transition-all cursor-pointer group select-none text-left"
                     role="button"
                     tabIndex={0}
+                    aria-label={language === 'de' ? 'Rauminfo öffnen' : 'Open room info'}
+                    onKeyDown={event => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setShowRoomInfo(true);
+                      }
+                    }}
                   >
                     {activity ? (
                       (() => {
@@ -1251,12 +1260,7 @@ export default function ChatRoomPage() {
                         const refCode = userProfile?.referralCode || '';
                         const shareUrl = `${window.location.origin}/activities/${activity.id}/invite${refCode ? `?ref=${refCode}` : ''}`;
                         const shareTitle = activity.title || chat.placeName || 'Aktiva';
-                        const dateStr = activity.activityDate && typeof activity.activityDate.toDate === 'function'
-                          ? activity.activityDate.toDate().toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })
-                          : '';
-                        const shareText = language === 'de'
-                          ? `Komm dazu: ${shareTitle} in ${activity.placeName || ''} am ${dateStr}. Noch ${spotsLeft} Plätze frei.`
-                          : `Join us: ${shareTitle} at ${activity.placeName || ''} on ${dateStr}. ${spotsLeft} spots left.`;
+                        const shareText = formatActivityInvitation(activity, shareTitle, spotsLeft, language);
 
                         if (typeof navigator !== 'undefined' && navigator.share) {
                           try {

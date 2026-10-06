@@ -109,8 +109,8 @@ export default function RootLayout({
           <AuthProvider>
             <AppSplashScreen />
             <LocationProvider>
-              <AppBootstrapGate>
-                <PlanningModeProvider>
+              <PlanningModeProvider>
+                <AppBootstrapGate>
                   <FriendRadarProvider>
                     <FavoritesProvider>
                       <ChatSyncProvider>
@@ -133,9 +133,9 @@ export default function RootLayout({
                       </ChatSyncProvider>
                     </FavoritesProvider>
                   </FriendRadarProvider>
-                </PlanningModeProvider>
-              </AppBootstrapGate>
-              <LocationGate />
+                </AppBootstrapGate>
+                <LocationGate />
+              </PlanningModeProvider>
             </LocationProvider>
           </AuthProvider>
         </ThemeProvider>

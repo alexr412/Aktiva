@@ -11,6 +11,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
 import { useChatSync } from '@/contexts/chat-sync-context';
+import { matchesChatSearch } from '@/lib/chat-search';
+import { ChatSyncStatus } from '@/components/chat/chat-sync-status';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -52,7 +54,7 @@ const EmptyState = ({ language }: { language: string }) => (
 
 export default function ChatPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
-  const { chats, loading: syncLoading } = useChatSync();
+  const { chats, loading: syncLoading, error: syncError, remoteLoading } = useChatSync();
   const language = useLanguage();
   const [showAddFriendDialog, setShowAddFriendDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,8 +88,7 @@ export default function ChatPage() {
   }, [user]);
 
   const filteredChats = chats.filter(chat => {
-    const chatName = chat.placeName?.toLowerCase() || "";
-    if (searchQuery && !chatName.includes(searchQuery.toLowerCase())) return false;
+    if (!matchesChatSearch(chat, user?.uid, searchQuery)) return false;
     if (filter === 'unread') {
       const unreadCount = user ? (chat.unreadCount?.[user.uid] || 0) : 0;
       return unreadCount > 0;
@@ -106,7 +107,11 @@ export default function ChatPage() {
       );
     }
 
+    if (syncError && chats.length === 0) return null;
+    if (remoteLoading && chats.length === 0) return <p role="status" className="p-6 text-sm text-neutral-500">{language === 'de' ? 'Chats werden geladen …' : 'Loading chats …'}</p>;
+
     if (filteredChats.length === 0) {
+      if (searchQuery.trim() || filter !== 'all') return <p role="status" className="p-8 text-center text-neutral-500">{language === 'de' ? 'Keine passenden Chats gefunden. Ändere die Suche oder den Filter.' : 'No matching chats. Change your search or filter.'}</p>;
       return <EmptyState language={language} />;
     }
 
@@ -313,6 +318,7 @@ export default function ChatPage() {
         </AppHeader>
         
         <div className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
+          <ChatSyncStatus language={language} />
           {renderContent()}
         </div>
       </div>

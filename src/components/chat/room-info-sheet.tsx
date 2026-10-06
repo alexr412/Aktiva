@@ -1,5 +1,7 @@
 'use client';
 
+import { formatActivityInvitation } from '@/lib/activity-invitation';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -167,13 +169,8 @@ export function RoomInfoSheet({
     const refCode = userProfile?.referralCode || '';
     const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/activities/${activity.id}/invite${refCode ? `?ref=${refCode}` : ''}` : '';
     const shareTitle = activity.title || chat.placeName || 'Activa';
-    const dateStr = activity.activityDate && typeof activity.activityDate.toDate === 'function'
-      ? activity.activityDate.toDate().toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })
-      : '';
     const spotsLeft = (activity.maxParticipants || 0) - (chat.participantIds?.length || 0);
-    const shareText = language === 'de'
-      ? `Komm dazu: ${shareTitle} in ${activity.placeName || ''} am ${dateStr}. Noch ${spotsLeft} Plätze frei.`
-      : `Join us: ${shareTitle} at ${activity.placeName || ''} on ${dateStr}. ${spotsLeft} spots left.`;
+    const shareText = formatActivityInvitation(activity, shareTitle, spotsLeft, language);
 
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {

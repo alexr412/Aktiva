@@ -12,6 +12,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
 import { useChatSync } from '@/contexts/chat-sync-context';
+import { matchesChatSearch } from '@/lib/chat-search';
+import { ChatSyncStatus } from '@/components/chat/chat-sync-status';
 import { MAIN_NAV_ITEMS, getIsActiveNav } from '@/lib/navigation-config';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -42,7 +44,7 @@ interface ChatListSidebarProps {
 
 export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProps) {
   const { user, userProfile, loading: authLoading } = useAuth();
-  const { chats, loading: syncLoading } = useChatSync();
+  const { chats, loading: syncLoading, error: syncError, remoteLoading } = useChatSync();
   const language = useLanguage();
   const pathname = usePathname();
   const [showAddFriendDialog, setShowAddFriendDialog] = useState(false);
@@ -64,8 +66,7 @@ export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProp
   }, [user]);
 
   const filteredChats = chats.filter(chat => {
-    const chatName = chat.placeName?.toLowerCase() || "";
-    if (searchQuery && !chatName.includes(searchQuery.toLowerCase())) return false;
+    if (!matchesChatSearch(chat, user?.uid, searchQuery)) return false;
     if (filter === 'unread') {
       const unreadCount = user ? (chat.unreadCount?.[user.uid] || 0) : 0;
       return unreadCount > 0;
@@ -83,6 +84,9 @@ export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProp
         </div>
       );
     }
+
+    if (syncError && chats.length === 0) return null;
+    if (remoteLoading && chats.length === 0) return <p role="status" className="p-6 text-sm text-neutral-500">{language === 'de' ? 'Chats werden geladen …' : 'Loading chats …'}</p>;
 
     if (filteredChats.length === 0) {
       return (
@@ -263,6 +267,7 @@ export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProp
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
+              aria-label={language === 'de' ? 'Chats durchsuchen' : 'Search chats'}
               placeholder={language === 'de' ? "Chats durchsuchen..." : "Search chats..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -295,6 +300,7 @@ export function ChatListSidebar({ activeChatId, className }: ChatListSidebarProp
       </header>
 
       <div className="flex-1 min-h-0 w-full overflow-y-auto">
+        <ChatSyncStatus language={language} />
         {renderContent()}
       </div>
 

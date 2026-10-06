@@ -1,6 +1,10 @@
 'use client';
 
-import React, { ReactNode, useRef, useEffect } from 'react';
+import React, { ReactNode, useRef, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { usePlanningMode } from '@/contexts/planning-mode-context';
+import { LocationSearchDialog } from './LocationSearchDialog';
+import { needsLocationForRoute } from '@/lib/location-gate-routes';
 import { usePathname } from 'next/navigation';
 import { MapPin, Lock, Loader2, RefreshCw, Navigation, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +22,8 @@ export function LocationGate({ children }: { children?: ReactNode }) {
   renderCountRef.current++;
 
   const pathname = usePathname();
+  const { planningState } = usePlanningMode();
+  const [manualSearchOpen, setManualSearchOpen] = useState(false);
   const { gateState, needsLocationGate, errorMessage, requestLocation } = useLocation();
 
   debugLog(
@@ -51,7 +57,9 @@ export function LocationGate({ children }: { children?: ReactNode }) {
     requestLocation({ interactive: true });
   };
 
-  const shouldShowGate = !isPublicRoute && needsLocationGate;
+  const destination = planningState.isPlanning ? planningState.destination : null;
+  const hasManualLocation = !!destination && Number.isFinite(destination.lat) && Number.isFinite(destination.lng);
+  const shouldShowGate = !isPublicRoute && needsLocationForRoute(pathname) && needsLocationGate && !hasManualLocation;
 
   return (
     <>
@@ -59,7 +67,7 @@ export function LocationGate({ children }: { children?: ReactNode }) {
       {children}
 
       {/* Root Fixed Overlay: rendered purely based on gateState without Remount or CSS entry animations */}
-      {shouldShowGate && (
+      {shouldShowGate && !manualSearchOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
           <div className="w-full max-w-md overflow-hidden bg-white dark:bg-neutral-900 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-neutral-800 my-auto">
             {/* Header Header */}
@@ -81,14 +89,14 @@ export function LocationGate({ children }: { children?: ReactNode }) {
             <div className="p-6 md:p-8 text-center space-y-6">
               <div className="space-y-2">
                 <h1 className="text-2xl font-black text-slate-900 dark:text-neutral-100 tracking-tight leading-tight">
-                  {isDenied ? 'Standortzugriff erforderlich' : isError ? 'Standort momentan nicht verfügbar' : 'Activa benötigt deinen Standort'}
+                  {isDenied ? 'Wähle deinen Standort' : isError ? 'Standort momentan nicht verfügbar' : 'Wo möchtest du etwas entdecken?'}
                 </h1>
                 <p className="text-slate-500 dark:text-neutral-400 font-medium text-sm leading-relaxed">
                   {isDenied
-                    ? 'Der Standortzugriff ist deaktiviert. Aktiviere ihn in den Browser- oder Geräteeinstellungen und prüfe den Standort anschließend erneut.'
+                    ? 'Wähle eine Stadt manuell oder aktiviere den Standortzugriff in deinen Browser- oder Geräteeinstellungen.'
                     : isError
                       ? 'Der Standort konnte nicht ermittelt werden. Prüfe die Standortdienste deines Geräts und versuche es erneut.'
-                      : 'Activa zeigt dir Aktivitäten, Orte und Menschen in deiner Nähe. Dafür benötigen wir deinen aktuellen Standort.'}
+                      : 'Nutze deinen aktuellen Standort oder wähle eine Stadt. Chats und dein Profil kannst du auch ohne Standort nutzen.'}
                 </p>
               </div>
 
@@ -144,11 +152,19 @@ export function LocationGate({ children }: { children?: ReactNode }) {
                     </>
                   )}
                 </Button>
+                <Button type="button" variant="outline" className="w-full mt-3 h-12 rounded-2xl" onClick={() => setManualSearchOpen(true)}>
+                  <MapPin className="h-4 w-4 mr-2" /> Stadt manuell wählen
+                </Button>
+                <div className="mt-4 flex justify-center gap-6 text-sm text-primary">
+                  <Link href="/chat">Zu den Chats</Link>
+                  <Link href="/profile">Zum Profil</Link>
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
+      <LocationSearchDialog open={manualSearchOpen} onOpenChange={setManualSearchOpen} />
     </>
   );
 }

@@ -498,17 +498,18 @@ function LoginPageContent() {
                   <FormLabel className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
                     {language === 'de' ? 'E-Mail' : 'Email'}
                   </FormLabel>
-                  <FormControl>
-                    <div className="relative group">
+                  <div className="relative group">
                       <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-primary transition-colors z-10" />
-                      <Input 
+                      <FormControl>
+                        <Input
                         placeholder={language === 'de' ? 'E-Mail-Adresse' : 'Email address'} 
+                        type="email"
                         autoComplete="username"
                         {...field} 
                         className="h-14 sm:h-16 pl-16 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-base lg:text-sm tracking-wider shadow-none" 
-                      />
-                    </div>
-                  </FormControl>
+                        />
+                      </FormControl>
+                  </div>
                   <FormMessage className="text-[10px] font-bold text-rose-500 px-1 break-words max-w-full" />
                 </FormItem>
               )}
@@ -532,16 +533,17 @@ function LoginPageContent() {
                       {language === 'de' ? 'Passwort vergessen?' : 'Forgot Password?'}
                     </button>
                   </div>
-                  <FormControl>
-                    <div className="relative group">
+                  <div className="relative group">
                       <Lock className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-primary transition-colors z-10" />
-                      <Input 
+                      <FormControl>
+                        <Input
                         type={showPassword ? "text" : "password"} 
                         placeholder="••••••••" 
                         autoComplete="current-password"
                         {...field} 
                         className="h-14 sm:h-16 pl-16 pr-14 rounded-full border-none bg-zinc-100/80 dark:bg-neutral-900/50 focus-visible:ring-1 focus-visible:ring-primary/20 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 transition-all text-base lg:text-sm shadow-none" 
-                      />
+                        />
+                      </FormControl>
                       <button 
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
@@ -550,8 +552,7 @@ function LoginPageContent() {
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
-                    </div>
-                  </FormControl>
+                  </div>
                   <FormMessage className="text-[10px] font-bold text-rose-500 px-1 break-words max-w-full" />
                 </FormItem>
               )}

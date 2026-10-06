@@ -18,7 +18,7 @@ import { PlaceCard } from '@/components/activa/place-card';
 import { AdCard } from '@/components/activa/ad-card';
 import { deriveFeedDisplayItems } from '@/lib/feed-ads';
 import { FeedSortSelect } from '@/components/activa/feed-sort-select';
-import { sortFeedPlaces, type FeedSortMode } from '@/lib/feed-sort';
+import { sortFeedPlaces } from '@/lib/feed-sort';
 
 type DiscoverFeedState =
   | 'initial_loading'
@@ -170,7 +170,12 @@ function HomeContent() {
     }
   }, [scrollTriggerId, isOpenRoomsMode]);
   const { gateState, isLocating, position, cityName: resolvedCityName, isResolvingCity, requestLocation } = useLocation();
+  const { planningState, exitPlanningMode } = usePlanningMode();
+  const manualDestination = planningState.isPlanning ? planningState.destination : null;
   const userLocation = useMemo(() => {
+    if (manualDestination && Number.isFinite(manualDestination.lat) && Number.isFinite(manualDestination.lng)) {
+      return { lat: manualDestination.lat, lng: manualDestination.lng, rawLat: manualDestination.lat, rawLng: manualDestination.lng };
+    }
     if (!position) return null;
     const roundedLat = Math.round(position.latitude * 100) / 100;
     const roundedLng = Math.round(position.longitude * 100) / 100;
@@ -180,10 +185,10 @@ function HomeContent() {
       rawLat: position.latitude,
       rawLng: position.longitude,
     };
-  }, [position?.latitude, position?.longitude]);
+  }, [position?.latitude, position?.longitude, manualDestination]);
   const defaultLocationLabel = language === 'de' ? "Aktueller Standort" : "Current location";
-  const cityName = resolvedCityName || defaultLocationLabel;
-  const isLocationLoading = gateState === 'requesting' || gateState === 'checking' || isLocating;
+  const cityName = manualDestination?.city || manualDestination?.name || resolvedCityName || defaultLocationLabel;
+  const isLocationLoading = !manualDestination && (gateState === 'requesting' || gateState === 'checking' || isLocating);
 
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
@@ -206,7 +211,6 @@ function HomeContent() {
     weightedDownvotes: number;
   }>>({});
   const [isVotingPlace, setIsVotingPlace] = useState<Record<string, boolean>>({});
-  const [sortBy, setSortBy] = useState<FeedSortMode>('recommended');
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
   const [maxDistance, setMaxDistance] = useState<number | null>(10);
@@ -309,7 +313,7 @@ function HomeContent() {
 
   const { toast } = useToast();
   const { user, userProfile, loading: authLoading } = useAuth();
-  const { hiddenIds: hiddenCategoryIds, ready: categoryVisibilityReady, toggle: toggleCategoryVisibility, showAll: showAllCategories } = useFeedCategoryVisibility(user?.uid, FEED_CATEGORY_IDS);
+  const { hiddenIds: hiddenCategoryIds, sortBy, setSortBy, ready: categoryVisibilityReady, toggle: toggleCategoryVisibility, showAll: showAllCategories, syncError: feedPreferencesSyncError, retrySync: retryFeedPreferencesSync } = useFeedCategoryVisibility(user?.uid, FEED_CATEGORY_IDS);
   const hiddenCategoryQueries = useMemo(() => availableTabs
     .filter(tab => hiddenCategoryIds.includes(tab.id))
     .flatMap(tab => tab.query), [hiddenCategoryIds]);
@@ -325,7 +329,6 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [selectedMapEntity, setSelectedMapEntity] = useState<SelectedMapEntity>(null);
-  const { planningState, exitPlanningMode } = usePlanningMode();
   const { favorites, addFavorite, removeFavorite, checkIsFavorite } = useFavorites();
   const [isMobile, setIsMobile] = useState(false);
   const [gridColumns, setGridColumns] = useState<2 | 3 | 4 | 5 | null>(null);
@@ -1368,23 +1371,6 @@ function HomeContent() {
     }
   }, [requestLocation, user]);
 
-  // Expired Premium Location Reset
-  useEffect(() => {
-    if (authLoading) return;
-    
-    const isPremium = isPremiumActive(userProfile);
-    if (!isPremium && planningState.isPlanning) {
-      console.warn("[LOCATION DEBUG] Non-premium user has active planning mode. Resetting location.");
-      requestLocation({ interactive: false });
-      toast({
-        title: language === 'de' ? 'Premium erforderlich' : 'Premium Required',
-        description: language === 'de'
-          ? 'Deine Standortauswahl wurde zurückgesetzt, da dein Premium-Status nicht mehr aktiv ist.'
-          : 'Your location selection has been reset because your premium status is no longer active.',
-      });
-    }
-  }, [authLoading, userProfile, planningState.isPlanning]);
-
   useEffect(() => {
     // Fallback termination: If we are specifically searching for a name, we don't fallback to defaults.
     if (shouldFilterByName) return;
@@ -2219,6 +2205,7 @@ function HomeContent() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        exitPlanningMode();
                         requestLocation({ interactive: false });
                       }}
                       className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[11px] leading-none shrink-0"
@@ -2280,7 +2267,7 @@ function HomeContent() {
                 cityName={cityName}
                 isPlanningLocation={planningState.isPlanning}
                 onOpenLocationDialog={() => setIsLocationSearchOpen(true)}
-                onResetPlanningLocation={() => requestLocation({ interactive: false })}
+                onResetPlanningLocation={() => { exitPlanningMode(); requestLocation({ interactive: false }); }}
                 searchQuery={searchQuery}
                 onSearchQueryChange={handleSearchInput}
                 onClearSearch={() => setSearchQuery('')}
@@ -2314,7 +2301,7 @@ function HomeContent() {
           <div className="max-w-[1536px] mx-auto w-full pt-2">
             <div className="px-3 sm:px-6 mb-3 sm:mb-4" data-tutorial-id="feed-intro">
                 <ActivaPulseHero 
-                  cityName={isLocationLoading ? null : resolvedCityName}
+                  cityName={isLocationLoading ? null : cityName}
                   openRoomsCount={openRoomsCount}
                   uniqueParticipantsCount={uniqueParticipantsCount}
                   language={language}
@@ -2325,6 +2312,10 @@ function HomeContent() {
             <div ref={discoverFeedRef} id="discover-feed" data-tutorial-id="feed-main" className="scroll-mt-24">
               {!isOpenRoomsMode && !isCommunityCategory && !isMySpotsCategory && (
                 <div className="px-3 sm:px-6 pt-3 sm:pt-6">
+                  {feedPreferencesSyncError && <div role="alert" className="text-xs text-amber-600 dark:text-amber-400">
+                    <p>{language === 'de' ? 'Auswahl lokal gespeichert. Kontosynchronisierung fehlgeschlagen.' : 'Choice saved locally. Account synchronization failed.'}</p>
+                    <button type="button" className="underline mt-1" onClick={retryFeedPreferencesSync}>{language === 'de' ? 'Erneut versuchen' : 'Try again'}</button>
+                  </div>}
                   <FeedSortSelect value={sortBy} language={language} onChange={value => {
                     setSortBy(value);
                     setVisibleCount(PLACES_PER_PAGE);
@@ -2399,7 +2390,7 @@ function HomeContent() {
       <LocationSearchDialog 
         open={isLocationSearchOpen} 
         onOpenChange={setIsLocationSearchOpen} 
-        isPremium={isPremiumActive(userProfile)}
+        isPremium={true}
         onOpenPremiumUpgrade={() => setIsPremiumUpsellOpen(true)}
       />
       <PremiumUpgradeModal

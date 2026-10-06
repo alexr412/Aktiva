@@ -17,6 +17,7 @@ interface ChatSyncContextType {
   cacheHydrated: boolean;
   remoteLoading: boolean;
   lastSyncedAt: number | null;
+  retry: () => void;
 }
 
 const ChatSyncContext = createContext<ChatSyncContextType | undefined>(undefined);
@@ -30,6 +31,9 @@ export function ChatSyncProvider({ children }: { children: React.ReactNode }) {
   const [cacheHydrated, setCacheHydrated] = useState(false);
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [retryVersion, setRetryVersion] = useState(0);
+  const userId = user?.uid;
+  const hiddenEntityKey = JSON.stringify(userProfile?.hiddenEntityIds || []);
 
   useEffect(() => {
     // Immediately wipe in-memory state on user change to prevent leakage
@@ -37,6 +41,8 @@ export function ChatSyncProvider({ children }: { children: React.ReactNode }) {
     setUnreadTotal(0);
     setCacheHydrated(false);
     setLastSyncedAt(null);
+    setError(null);
+    setLoading(!!userId);
 
     if (!user || !db) {
       setRemoteLoading(false);
@@ -46,6 +52,9 @@ export function ChatSyncProvider({ children }: { children: React.ReactNode }) {
 
     setRemoteLoading(true);
     let active = true;
+    let revision = 0;
+    let cacheWrites: Promise<void> = Promise.resolve();
+    const hiddenEntityIds: string[] = JSON.parse(hiddenEntityKey);
     const activityMetadata = new Map<string, Promise<Partial<Activity> | null>>();
     const hydrateChat = (chat: Chat) => hydrateActivityChatMetadata(chat, (activityId) => {
       let pending = activityMetadata.get(activityId);
@@ -68,41 +77,47 @@ export function ChatSyncProvider({ children }: { children: React.ReactNode }) {
 
     // Visibility filter helper
     const shouldDisplayChat = (chat: Chat) => {
-      if (!userProfile?.hiddenEntityIds) return true;
-      if (chat.activityId && userProfile.hiddenEntityIds.includes(chat.activityId)) return false;
+      if (chat.activityId && hiddenEntityIds.includes(chat.activityId)) return false;
       
       const isDM = !chat.activityId;
       if (isDM) {
         const otherUserId = chat.participantIds.find((id) => id !== user!.uid);
-        if (otherUserId && userProfile.hiddenEntityIds.includes(otherUserId)) return false;
+        if (otherUserId && hiddenEntityIds.includes(otherUserId)) return false;
       }
       return true;
     };
 
-    async function loadCacheAndSync() {
+    const publish = (visibleChats: Chat[]) => {
+      visibleChats.sort((a, b) => (b.lastMessage?.sentAt?.toMillis() || b.createdAt?.toMillis() || 0)
+        - (a.lastMessage?.sentAt?.toMillis() || a.createdAt?.toMillis() || 0));
+      setChats(visibleChats);
+      setUnreadTotal(visibleChats.reduce((sum, chat) => sum + (chat.unreadCount?.[userId!] || 0), 0));
+    };
+
+    async function loadCache() {
       // 1. First, load cached chats from IndexedDB
       try {
         const cached = await getCachedChats(user!.uid);
-        if (active) {
+        if (active && revision === 0) {
           // Filter cached chats using the visibility rules to prevent flashing hidden/blocked chats
-          const visibleCached = await Promise.all(cached.filter(shouldDisplayChat).map(hydrateChat));
-          if (!active) return;
-          const total = visibleCached.reduce((sum, chat) => sum + (chat.unreadCount?.[user!.uid] || 0), 0);
-          setChats(visibleCached);
-          setUnreadTotal(total);
+          const visibleCached = cached.filter(shouldDisplayChat);
+          publish(visibleCached);
           setCacheHydrated(true);
           // If we have cached chats, stop displaying a fullscreen skeleton
           if (visibleCached.length > 0) {
             setLoading(false);
           }
+          const hydrated = await Promise.all(visibleCached.map(hydrateChat));
+          if (active && revision === 0) publish(hydrated);
         }
       } catch (err) {
         console.error('Error loading cached chats in ChatSyncProvider:', err);
       }
 
-      if (!active) return;
+    }
+    void loadCache();
 
-      // 2. Start Firestore Listener
+      // Start the listener immediately; neither IndexedDB nor metadata delay it.
       const q = query(
         collection(db!, 'chats'),
         where('participantIds', 'array-contains', user!.uid)
@@ -110,8 +125,12 @@ export function ChatSyncProvider({ children }: { children: React.ReactNode }) {
 
       const unsubscribe = onSnapshot(
         q,
-        async (querySnapshot) => {
+        { includeMetadataChanges: true },
+        (querySnapshot) => {
           if (!active) return;
+          // An empty SDK cache is not evidence that the account has no chats.
+          if (querySnapshot.metadata.fromCache && querySnapshot.empty) return;
+          const currentRevision = ++revision;
 
           const userChats = querySnapshot.docs.map((doc) => ({
             id: doc.id,
@@ -120,58 +139,42 @@ export function ChatSyncProvider({ children }: { children: React.ReactNode }) {
 
 
 
-          // Process document removals and modifications to keep cache clean
-          for (const change of querySnapshot.docChanges()) {
-            const docId = change.doc.id;
-            if (change.type === 'removed') {
-              await deleteCachedChat(user!.uid, docId);
-              await clearCachedMessagesForChat(user!.uid, docId);
-              const chatData = change.doc.data();
-              if (chatData?.activityId) {
-                await deleteCachedActivity(user!.uid, chatData.activityId);
-              }
-            } else {
-              // added or modified - check if visibility rules hide it now
-              const chat = { id: docId, ...change.doc.data() } as Chat;
-              if (!shouldDisplayChat(chat)) {
-                await deleteCachedChat(user!.uid, docId);
-                await clearCachedMessagesForChat(user!.uid, docId);
-                if (chat.activityId) {
-                  await deleteCachedActivity(user!.uid, chat.activityId);
-                }
+          const visibleChats = userChats.filter(shouldDisplayChat);
+          publish(visibleChats);
+          setLoading(querySnapshot.metadata.fromCache && visibleChats.length === 0);
+          setCacheHydrated(true);
+          setRemoteLoading(querySnapshot.metadata.fromCache);
+          if (!querySnapshot.metadata.fromCache) setLastSyncedAt(Date.now());
+          setError(null);
+
+          // Serialize cache writes so an older snapshot cannot restore deleted chats.
+          const hydration = Promise.all(visibleChats.map(hydrateChat));
+          void hydration.then(hydrated => {
+            if (active && currentRevision === revision) publish(hydrated);
+          });
+          cacheWrites = cacheWrites.then(async () => {
+          const hydrated = await hydration;
+          if (!active || currentRevision !== revision) return;
+          // Reconcile the full authoritative snapshot, including removals in skipped revisions.
+          if (!querySnapshot.metadata.fromCache) {
+            const retained = new Set(visibleChats.map(chat => chat.id));
+            const previous = await getCachedChats(userId!);
+            for (const chat of previous) {
+              if (!active || currentRevision !== revision) return;
+              if (!retained.has(chat.id)) {
+                await deleteCachedChat(userId!, chat.id);
+                await clearCachedMessagesForChat(userId!, chat.id);
+                if (chat.activityId) await deleteCachedActivity(userId!, chat.activityId);
               }
             }
           }
 
           // Apply visibility filtering to display set
-          const visibleChats = await Promise.all(userChats.filter(shouldDisplayChat).map(hydrateChat));
-          if (!active) return;
-
-          // Update IndexedDB cache with the updated list of visible chats
-          if (visibleChats.length > 0) {
-            await upsertCachedChats(user!.uid, visibleChats);
-          }
-
-          // Sort visible chats by latest message or creation date
-          visibleChats.sort((a, b) => {
-            const aTime = a.lastMessage?.sentAt?.toMillis() || a.createdAt?.toMillis() || 0;
-            const bTime = b.lastMessage?.sentAt?.toMillis() || b.createdAt?.toMillis() || 0;
-            return bTime - aTime;
-          });
-
-          // Calculate unreadTotal count
-          const total = visibleChats.reduce((sum, chat) => {
-            return sum + (chat.unreadCount?.[user!.uid] || 0);
-          }, 0);
-
-          setChats(visibleChats);
-          setUnreadTotal(total);
-          setLoading(false);
-          setRemoteLoading(false);
-          setLastSyncedAt(Date.now());
-          setError(null);
+          if (active && currentRevision === revision && hydrated.length) await upsertCachedChats(userId!, hydrated);
+          }).catch(err => console.error('Error updating chat cache:', err));
         },
         (err) => {
+          if (!active) return;
           console.error('Error fetching chats in ChatSyncContext:', err);
           setError(err as Error);
           setLoading(false);
@@ -179,18 +182,11 @@ export function ChatSyncProvider({ children }: { children: React.ReactNode }) {
         }
       );
 
-      return unsubscribe;
-    }
-
-    const unsubPromise = loadCacheAndSync();
-
     return () => {
       active = false;
-      unsubPromise.then((unsub) => {
-        if (unsub) unsub();
-      });
+      unsubscribe();
     };
-  }, [user, userProfile]);
+  }, [userId, hiddenEntityKey, retryVersion]);
 
   const getChatById = (chatId: string) => {
     return chats.find((c) => c.id === chatId);
@@ -207,6 +203,7 @@ export function ChatSyncProvider({ children }: { children: React.ReactNode }) {
         cacheHydrated,
         remoteLoading,
         lastSyncedAt,
+        retry: () => setRetryVersion(version => version + 1),
       }}
     >
       {children}

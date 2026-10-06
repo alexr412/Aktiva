@@ -188,6 +188,7 @@ export function LocationSearchDialog({
                 <input
                   ref={inputRef}
                   type="text"
+                  aria-label={language === 'de' ? 'Stadt oder Ort' : 'City or place'}
                   placeholder={
                     language === 'de'
                       ? 'z. B. Berlin, Deutschland'

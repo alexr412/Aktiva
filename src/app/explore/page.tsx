@@ -53,9 +53,11 @@ export default function ExplorePage() {
     
     const { gateState, isLocating, position, requestLocation } = useLocation();
     const userLocation = useMemo(() => {
+      const destination = planningState.isPlanning ? planningState.destination : null;
+      if (destination && Number.isFinite(destination.lat) && Number.isFinite(destination.lng)) return { lat: destination.lat, lng: destination.lng };
       return position ? { lat: position.latitude, lng: position.longitude } : null;
-    }, [position]);
-    const isLocationLoading = gateState === 'requesting' || gateState === 'checking' || isLocating;
+    }, [position, planningState]);
+    const isLocationLoading = !userLocation && (gateState === 'requesting' || gateState === 'checking' || isLocating);
     const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<string[]>(['all']);
     const [activeTabId, setActiveTabId] = useState<string>('all');

@@ -24,6 +24,7 @@
     "test:reset-password": "npx tsx src/lib/firebase/reset-password.test.ts",
     "test:address": "npx tsx src/components/activa/place-details-address.test.ts",
     "test:optimistic-chat": "npx tsx src/app/chat/optimistic-chat.test.ts",
+    "test:chat-feed": "node --import tsx --test src/lib/chat-feed-agenda.test.ts src/lib/chat-activity-metadata.test.ts src/lib/feed-sort.test.ts src/lib/feed-category-visibility.test.ts && node scripts/test-chat-feed-sync.cjs",
     "test:notifications": "npx tsx src/lib/notifications.test.ts",
     "test:geoapify": "npx tsx src/lib/geoapify.test.ts",
     "test:discovery": "npx tsx src/lib/place-discovery.test.ts && npx tsx src/lib/geoapify-gateway.test.ts",
