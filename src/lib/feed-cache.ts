@@ -9,15 +9,16 @@ export interface CacheKeyParams {
   activeCategory: string[];
   activeTabId: string;
   debouncedSearchQuery: string;
+  radiusMeters?: number;
 }
 
 const DEFAULT_TTL_MS = 15 * 60 * 1000; // 15 minutes default
 
 export function getFeedCacheKey(params: CacheKeyParams): string {
-  const roundedLat = params.lat.toFixed(3);
-  const roundedLng = params.lng.toFixed(3);
+  const roundedLat = String(params.lat);
+  const roundedLng = String(params.lng);
   const sortedCategories = [...params.activeCategory].sort().join(',');
-  return `activa_feed_cache_${roundedLat}_${roundedLng}_${sortedCategories}_${params.activeTabId}_${params.debouncedSearchQuery}`;
+  return `activa_feed_cache_v2_${roundedLat}_${roundedLng}_${params.radiusMeters ?? 100000}_${sortedCategories}_${params.activeTabId}_${params.debouncedSearchQuery}`;
 }
 
 export function getFeedCache(key: string, ttlMs: number = DEFAULT_TTL_MS): FeedCacheEntry | null {

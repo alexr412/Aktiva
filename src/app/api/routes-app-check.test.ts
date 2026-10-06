@@ -101,14 +101,14 @@ test('Dedicated Custom API Routes App Check Integration Suite', async (t) => {
       verifyAppCheck: async () => ({ valid: true }),
       adminAuth: mockAdminAuth as any,
       rateLimit: () => ({ success: true, headers: {} }),
-      aiGenerate: async () => { aiCalls++; return { output: { categories: ['entertainment.cinema'], filterByName: false } } as any; },
+      aiGenerate: async () => { aiCalls++; return { output: { categories: ['entertainment.cinema'], filterByName: false }, usage: { inputTokens: 100, outputTokens: 15 } } as any; },
       recordUserTokenUsage: async (data) => { usageCalls++; loggedUid = data.uid; }
     });
 
     // 1. Malformed Authorization header ("Basic xyz") -> 401
     const reqMalformed = {
       headers: { get: (name: string) => name.toLowerCase() === 'authorization' ? 'Basic xyz' : null },
-      json: async () => ({ query: 'kino' })
+      json: async () => ({ query: 'Filmabend mit Freunden' })
     } as any;
     const resMalformed = await handler(reqMalformed);
     assert.strictEqual(resMalformed.status, 401);
@@ -117,7 +117,7 @@ test('Dedicated Custom API Routes App Check Integration Suite', async (t) => {
     // 2. Empty Bearer token ("Bearer ") -> 401
     const reqEmptyBearer = {
       headers: { get: (name: string) => name.toLowerCase() === 'authorization' ? 'Bearer ' : null },
-      json: async () => ({ query: 'kino' })
+      json: async () => ({ query: 'Filmabend mit Freunden' })
     } as any;
     const resEmptyBearer = await handler(reqEmptyBearer);
     assert.strictEqual(resEmptyBearer.status, 401);
@@ -126,7 +126,7 @@ test('Dedicated Custom API Routes App Check Integration Suite', async (t) => {
     // 3. Invalid/revoked token ("Bearer invalid_jwt") -> 401
     const reqInvalid = {
       headers: { get: (name: string) => name.toLowerCase() === 'authorization' ? 'Bearer invalid_jwt' : null },
-      json: async () => ({ query: 'kino' })
+      json: async () => ({ query: 'Filmabend mit Freunden' })
     } as any;
     const resInvalid = await handler(reqInvalid);
     assert.strictEqual(resInvalid.status, 401);
@@ -135,7 +135,7 @@ test('Dedicated Custom API Routes App Check Integration Suite', async (t) => {
     // 4. Valid token ("Bearer valid_jwt_user") -> 200 OK & usage tracked
     const reqValid = {
       headers: { get: (name: string) => name.toLowerCase() === 'authorization' ? 'Bearer valid_jwt_user' : null },
-      json: async () => ({ query: 'kino' })
+      json: async () => ({ query: 'Filmabend mit Freunden' })
     } as any;
     const resValid = await handler(reqValid);
     assert.strictEqual(resValid.status, 200);
@@ -169,14 +169,14 @@ test('Dedicated Custom API Routes App Check Integration Suite', async (t) => {
       verifyAppCheck: async () => ({ valid: true }),
       adminAuth: mockAdminAuth as any,
       rateLimit: () => ({ success: true, headers: {} }),
-      aiGenerate: async () => ({ output: { categories: ['entertainment.cinema'], filterByName: false } } as any),
+      aiGenerate: async () => ({ output: { categories: ['entertainment.cinema'], filterByName: false }, usage: { inputTokens: 100, outputTokens: 15 } } as any),
       loadUsageTracker: mockLoadUsageTracker,
       // deps.recordUserTokenUsage is intentionally left undefined to test default control flow via loader
     });
 
     const req = {
       headers: { get: (name: string) => name.toLowerCase() === 'authorization' ? 'Bearer valid_jwt' : null },
-      json: async () => ({ query: 'kino' })
+      json: async () => ({ query: 'Filmabend mit Freunden' })
     } as any;
 
     const res = await handler(req);

@@ -45,7 +45,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MapPin, Map as MapIcon, List, Plus, Search, Bookmark, RotateCcw, Lock, Sparkles, Check, Loader2, Crown, MessageSquare, ChevronDown, Globe, X, Compass, Clock, Trophy, TreePine, VolumeX, Heart, Users2 } from 'lucide-react';
 import {
-  getCachedTilePlaces,
   saveTilePlaces,
   searchCachedPlaces,
   pruneExpiredCache,
@@ -83,6 +82,10 @@ import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { UserBadge } from '@/components/common/UserBadge';
 import { calculateDistance } from '@/lib/geo-utils';
 import { useLanguage } from '@/hooks/use-language';
+import { SearchIntentFilters } from '@/components/search/SearchIntentFilters';
+import { parseLocalSearchIntent, type SearchIntent } from '@/lib/search-intent';
+import { toGeocodingFeatures } from '@/lib/geocoding-results';
+import { getCachedPlaceQuery, savePlaceQuery, placeQueryKey } from '@/lib/cache/place-query-cache';
 import { getFeedCacheKey, getFeedCache, setFeedCache } from '@/lib/feed-cache';
 import { trackInteraction } from '@/lib/telemetry';
 import { isDuplicate } from '@/lib/duplicate-detector';
@@ -131,7 +134,7 @@ const PREMIUM_FILTERS = [
   { id: 'group_activities', label: 'Gruppen-Aktivitäten', labelEn: 'Group Activities', icon: Users2 },
 ];
 
-const placeDetailsCache = new Map<string, string[]>();
+
 
 function HomeContent() {
   const ENABLE_NEW_RANKING_PIPELINE = true;
@@ -198,6 +201,10 @@ function HomeContent() {
   const [activeTabId, setActiveTabId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [submittedSearchQuery, setSubmittedSearchQuery] = useState("");
+  const [searchRevision, setSearchRevision] = useState(0);
+  const [searchSource, setSearchSource] = useState<SearchIntent['source']>();
+  const [searchRadiusKm, setSearchRadiusKm] = useState<number | null>(null);
   const [requestedActivityIds, setRequestedActivityIds] = useState<Record<string, boolean>>({});
   const [placesMetaMap, setPlacesMetaMap] = useState<Record<string, {
     upvotes: number;
@@ -213,7 +220,9 @@ function HomeContent() {
   const [isVotingPlace, setIsVotingPlace] = useState<Record<string, boolean>>({});
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
   const [isPremiumUpsellOpen, setIsPremiumUpsellOpen] = useState(false);
-  const [maxDistance, setMaxDistance] = useState<number | null>(10);
+  const [preferredMaxDistance, setPreferredMaxDistance] = useState<number | null>(10);
+  const maxDistance = searchRadiusKm ?? preferredMaxDistance;
+  const setMaxDistance = (value: number | null) => { setSearchRadiusKm(null); setPreferredMaxDistance(value); };
   const [activityCategoryFilter, setActivityCategoryFilter] = useState<ActivityCategory | 'Alle' | 'All'>(language === 'de' ? 'Alle' : 'All');
   const [visibleCount, setVisibleCount] = useState(PLACES_PER_PAGE);
   const [actionSheetPlace, setActionSheetPlace] = useState<Place | null>(null);
@@ -304,12 +313,7 @@ function HomeContent() {
     );
   };
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 750); // Live-Search Debounce (requested 500-800ms)
-    return () => clearTimeout(handler);
-  }, [searchQuery]);
+
 
   const { toast } = useToast();
   const { user, userProfile, loading: authLoading } = useAuth();
@@ -451,38 +455,17 @@ function HomeContent() {
     if (!key) return null;
     const { type, cursorValue } = key;
     const startTime = Date.now();
-
+    const queryCacheKey = ['geoapify', 'multi_fetch_discovery', 'geocoding'].includes(type) ? placeQueryKey(key) : null;
+    if (queryCacheKey) {
+      const cached = await getCachedPlaceQuery(queryCacheKey);
+      if (cached !== null) { monitoring.logCacheHit(); return cached; }
+    }
+    let completeQuery = true;
     try {
       let result: any = null;
       if (type === 'geoapify') {
         const { lat, lng, radiusMeters, categories, queryLimit = 50, offset = 0 } = key;
         debugLog('feed', 'multiFetcher type=geoapify', { categories, lat, lng });
-        if (offset === 0 && radiusMeters) {
-          const cachedPlaces = await getCachedTilePlaces(lat, lng, radiusMeters);
-          debugLog('feed', 'getCachedTilePlaces total count:', cachedPlaces ? cachedPlaces.length : 0);
-          if (cachedPlaces && cachedPlaces.length > 0) {
-            const targetCategories: string[] = Array.isArray(categories) ? categories : (activeCategory || []);
-            const matchingPlaces = cachedPlaces.filter(p => {
-              if (targetCategories.length === 0) return true;
-              const pCats = p.categories || [];
-              return pCats.some(cat =>
-                targetCategories.some((targetCat: string) =>
-                  cat === targetCat || cat.startsWith(targetCat + '.')
-                )
-              );
-            });
-
-            debugLog('feed', 'matchingPlaces count for category:', matchingPlaces.length, targetCategories);
-
-            if (matchingPlaces.length >= 1) {
-              const features = matchingPlaces.map((p: any) => ({
-                properties: p,
-                geometry: { coordinates: [p.lon, p.lat] }
-              }));
-              return { features, _fromCache: true };
-            }
-          }
-        }
         debugLog('feed', 'Fetching fresh from Geoapify for category tab:', categories);
         const { callGeoapifyGateway } = await import('@/lib/geoapify');
         result = await callGeoapifyGateway('places', {
@@ -516,19 +499,6 @@ function HomeContent() {
       } else if (type === 'multi_fetch_discovery') {
         const { lat, lng, radiusMeters: r } = key;
 
-        // 1. Versuche zuerst, frische Daten aus dem lokalen IndexedDB-Cache zu laden
-        const cachedPlaces = await getCachedTilePlaces(lat, lng, r);
-        if (cachedPlaces && cachedPlaces.length > 0) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`[GEOAPIFY CACHE HIT PAGE.TSX] Loaded ${cachedPlaces.length} places from IndexedDB`);
-          }
-          const features = cachedPlaces.map((p: any) => ({
-            properties: p,
-            geometry: { coordinates: [p.lon, p.lat] }
-          }));
-          return { features, _fromCache: true };
-        }
-
         const categoryBuckets = [
           "entertainment.zoo,entertainment.cinema,entertainment.water_park,sport.swimming_pool,entertainment.miniature_golf,entertainment.bowling_alley,entertainment.aquarium,entertainment.escape_game,entertainment.activity_park,entertainment.activity_park.trampoline,entertainment.amusement_arcade",
           "entertainment,leisure,adult.nightclub,sport,tourism",
@@ -536,13 +506,14 @@ function HomeContent() {
         ];
 
         const { callGeoapifyGateway } = await import('@/lib/geoapify');
-        const { features: merged } = await fetchPlaceBuckets(categoryBuckets, cats =>
-            callGeoapifyGateway('places', {
+        const { features: merged } = await fetchPlaceBuckets(categoryBuckets, async cats => {
+          try { return await callGeoapifyGateway('places', {
               categories: cats,
               filter: `circle:${lng},${lat},${r}`,
               bias: `proximity:${lng},${lat}`,
               limit: '30',
-            })
+            }); } catch (error) { completeQuery = false; throw error; }
+          }
         );
 
         // Gefundene Orte im lokalen Cache speichern
@@ -572,43 +543,16 @@ function HomeContent() {
         result = { features: merged };
       } else if (type === 'geocoding') {
         const { callGeoapifyGateway } = await import('@/lib/geoapify');
-        const rMeters = (maxDistance || 10) * 1000;
-        const fallbackRadius = (activeCategory.length > 0) ? Math.min(rMeters * 5, 100000) : rMeters;
-        const filterStr = userLocation ? `circle:${userLocation.lng},${userLocation.lat},${fallbackRadius}` : '';
-        const biasStr = userLocation ? `proximity:${userLocation.lng},${userLocation.lat}` : '';
+        const { lat, lng, radiusMeters, searchText } = key;
+        const rMeters = radiusMeters;
+        const fallbackRadius = rMeters;
+        const filterStr = `circle:${lng},${lat},${fallbackRadius}`;
+        const biasStr = `proximity:${lng},${lat}`;
         const res = await callGeoapifyGateway('geocoding', {
-          text: debouncedSearchQuery,
+          text: searchText,
           ...(filterStr ? { filter: filterStr, bias: biasStr } : {}),
         });
-        const results = res.results || [];
-
-        const detailedFeatures = await Promise.all(results.slice(0, 8).map(async (item: any) => {
-          let categories = item.categories || [];
-          if (item.place_id) {
-            if (placeDetailsCache.has(item.place_id)) {
-              categories = placeDetailsCache.get(item.place_id)!;
-            } else {
-              try {
-                const { callGeoapifyGateway } = await import('@/lib/geoapify');
-                const dData = await callGeoapifyGateway('place_details', { id: item.place_id });
-                if (dData.features && dData.features.length > 0) {
-                  categories = dData.features?.[0]?.properties?.categories || categories;
-                  placeDetailsCache.set(item.place_id, categories);
-                }
-              } catch (e) {
-                console.error("Detail enrichment failed for:", item.place_id, e);
-              }
-            }
-          }
-          return {
-            properties: {
-              ...item,
-              categories
-            }
-          };
-        }));
-
-        result = { features: detailedFeatures };
+        result = { features: toGeocodingFeatures(res) };
       } else if (type === 'activities') {
         const queryLimit = 300;
         const constraints: any[] = [
@@ -645,6 +589,7 @@ function HomeContent() {
       if (type === 'geoapify' || type === 'multi_fetch_discovery' || type === 'geocoding') {
         monitoring.logRequest(Date.now() - startTime, true);
       }
+      if (queryCacheKey && completeQuery && result) await savePlaceQuery(queryCacheKey, result);
       return result;
     } catch (error: any) {
       console.error('[FEED QUERY ERROR]', { type, message: error.message });
@@ -685,13 +630,13 @@ function HomeContent() {
 
     const radiusMeters = maxDistance ? maxDistance * 1000 : 100000;
 
-    if (debouncedSearchQuery && activeCategory.length === 0 && isSearching) {
+    if (isSearching) {
       return null;
     }
 
     if (shouldFilterByName && debouncedSearchQuery) {
       if (pageIndex > 0) return null;
-      return { type: 'geocoding', pageIndex };
+      return { type: 'geocoding', pageIndex, searchText: debouncedSearchQuery, lat: userLocation.lat, lng: userLocation.lng, radiusMeters };
     }
 
     const rawCategories: string[] = activeCategory.length > 0
@@ -752,6 +697,7 @@ function HomeContent() {
       activeCategory,
       activeTabId,
       debouncedSearchQuery,
+      radiusMeters: maxDistance === null ? 100000 : maxDistance * 1000,
     });
     const entry = getFeedCache(cacheKey);
     if (entry) {
@@ -760,20 +706,21 @@ function HomeContent() {
     } else {
       setCachedData(undefined);
     }
-  }, [userLocation, activeCategory, activeTabId, debouncedSearchQuery]);
+  }, [userLocation, activeCategory, activeTabId, debouncedSearchQuery, maxDistance]);
 
   // Save SWR data to cache
   useEffect(() => {
-    if (!data || !userLocation || isValidating) return;
+    if (!data || !userLocation || isValidating || isSearching) return;
     const cacheKey = getFeedCacheKey({
       lat: userLocation.lat,
       lng: userLocation.lng,
       activeCategory,
       activeTabId,
       debouncedSearchQuery,
+      radiusMeters: maxDistance === null ? 100000 : maxDistance * 1000,
     });
     setFeedCache(cacheKey, data);
-  }, [data, userLocation, activeCategory, activeTabId, debouncedSearchQuery, isValidating]);
+  }, [data, userLocation, activeCategory, activeTabId, debouncedSearchQuery, maxDistance, isValidating, isSearching]);
 
   const displayData = data || cachedData;
 
@@ -1405,7 +1352,7 @@ function HomeContent() {
       setIsSwitchingTab(true);
       setTimeout(() => setIsSwitchingTab(false), 800); // Guarantee skeleton animation for at least 800ms
     }
-    setSearchQuery("");
+    clearSearch();
     setShouldFilterByName(false);
     setActiveCategory(categoryId);
     setActiveTabId(tabId);
@@ -1413,103 +1360,56 @@ function HomeContent() {
     setVisibleCount(PLACES_PER_PAGE);
   };
 
-  // ---------------------------------------------------------------------------
-  // SEARCH INTERCEPTOR — LLM-powered intent parser (Live-Search)
-  // ---------------------------------------------------------------------------
-
-  const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value.slice(0, 100));
+  const clearSearch = () => {
+    setSearchQuery(''); setSubmittedSearchQuery(''); setDebouncedSearchQuery('');
+    setSearchRadiusKm(null); setSearchSource(undefined); setShouldFilterByName(false);
+    setActiveCategory([]); setIsSearching(false);
   };
-
+  const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.slice(0, 200);
+    if (!value.trim()) clearSearch(); else setSearchQuery(value);
+  };
   useEffect(() => {
+    if (!submittedSearchQuery) return;
     const controller = new AbortController();
-    const signal = controller.signal;
-
+    const applyIntent = (intent: SearchIntent) => {
+      if (controller.signal.aborted) return;
+      setShouldFilterByName(intent.filterByName);
+      setActiveCategory(intent.categories);
+      setSearchRadiusKm(intent.radiusKm ?? null);
+      setSearchSource(intent.source);
+      setDebouncedSearchQuery(intent.filterByName ? intent.nameQuery || submittedSearchQuery : submittedSearchQuery);
+    };
     const performSearch = async () => {
-      const query = debouncedSearchQuery.trim();
-
-      // Empty query → reset to discovery feed (broad defaults)
-      if (!query) {
-        setShouldFilterByName(false);
-        setActiveCategory([]);
-        return;
-      }
-
-      // Guard: Don't search for extremely short strings (API spam prevention)
-      if (query.length < 2) return;
-
+      const local = parseLocalSearchIntent(submittedSearchQuery);
+      if (local) { applyIntent(local); setIsSearching(false); return; }
       try {
-        setIsSearching(true);
         const { fetchWithAppCheck } = await import('@/lib/api-client');
         const { auth } = await import('@/lib/firebase/client');
-        let idToken: string | undefined = undefined;
-        if (auth?.currentUser) {
-          try {
-            idToken = await auth.currentUser.getIdToken();
-          } catch (tokenErr) {
-            throw new Error(`Authentication token retrieval failed: ${tokenErr instanceof Error ? tokenErr.message : String(tokenErr)}`);
-          }
-        }
+        const idToken = await auth?.currentUser?.getIdToken();
+        if (controller.signal.aborted) return;
         const response = await fetchWithAppCheck('/api/parse-intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query }),
-          idToken,
-          signal,
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: submittedSearchQuery }), idToken, signal: controller.signal,
         });
-
-        if (!response.ok) {
-          const err = new Error(`HTTP ${response.status}`);
-          (err as any).status = response.status;
-          throw err;
-        }
-        const { categories, filterByName } = await response.json();
-
-        // 1. Set the filter flag (determines if we do local .includes(name) filtering)
-        setShouldFilterByName(!!filterByName);
-
-        // 2. Set the categories (triggers SWR getKey)
-        if (Array.isArray(categories) && categories.length > 0) {
-          setActiveCategory(categories);
-        } else {
-          debugWarn('live-search', 'LLM returned no categories. Falling back to default category pool.');
-          setActiveCategory([]);
-        }
-      } catch (err: any) {
-        if (err.name === 'AbortError') return;
-        debugError('live-search', 'Intent Parsing Failed:', err);
-        setShouldFilterByName(true); // Fallback to name filtering
-        setActiveCategory([]);
-
-        // User-friendly error message depending on error status
-        let title = language === 'de' ? "Suche eingeschränkt" : "Search limited";
-        let description = language === 'de' 
-          ? "Wir konnten deine Suchanfrage nicht intelligent verarbeiten. Die Suche filtert nun nach dem Namen."
-          : "We could not process your search query intelligently. Search is now filtering by name.";
-
-        if (err.status === 429 || err.message?.includes('429')) {
-          title = language === 'de' ? "Zu viele Anfragen" : "Too many requests";
-          description = language === 'de'
-            ? "Bitte warte einen Moment, bevor du erneut suchst."
-            : "Please wait a moment before searching again.";
-        }
-
-        toast({
-          variant: "destructive",
-          title,
-          description,
-        });
-      } finally {
-        setIsSearching(false);
-      }
+        if (!response.ok) throw new Error('Search unavailable');
+        applyIntent(await response.json());
+      } catch {
+        applyIntent({ categories: [], filterByName: true, nameQuery: submittedSearchQuery, radiusKm: null, source: 'fallback' });
+      } finally { if (!controller.signal.aborted) setIsSearching(false); }
     };
-
-    performSearch();
+    void performSearch();
     return () => controller.abort();
-  }, [debouncedSearchQuery, language, toast]);
-
+  }, [submittedSearchQuery, searchRevision]);
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // Handled automatically by Live-Search useEffect
+    e.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) { clearSearch(); return; }
+    if (query.length < 2) return;
+    setIsOpenRoomsMode(false); setActiveTabId(''); setActiveCategory([]);
+    setShouldFilterByName(false); setIsSearching(true);
+    setSubmittedSearchQuery(query); setDebouncedSearchQuery(query);
+    setSearchRevision(revision => revision + 1);
   };
 
   useEffect(() => {
@@ -1866,7 +1766,7 @@ function HomeContent() {
           {actionType === 'clear_search' && (
             <Button 
               onClick={() => {
-                setSearchQuery("");
+                clearSearch();
                 setShouldFilterByName(false);
               }} 
               variant="outline" 
@@ -2240,25 +2140,26 @@ function HomeContent() {
                   <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
                     {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
                     <Input 
-                      type="search" 
+                      type="search" enterKeyHint="search"
                       id="search-input"
                       aria-label={language === "de" ? "Aktivitätssuche" : "Activity search"}
                       placeholder={language === "de" ? "Was möchtest du unternehmen?" : "What do you want to do?"} 
                       value={searchQuery} 
                       onChange={handleSearchInput} 
-                      disabled={isSearching} 
-                      className="w-full pl-9 pr-9 h-11 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400" 
+                      disabled={false}
+                      className="w-full pl-9 pr-20 h-11 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400"
                     />
                     {searchQuery && (
                       <button
                         type="button"
                         aria-label={language === "de" ? "Suche löschen" : "Clear search"}
-                        onClick={() => setSearchQuery('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors rounded-full"
+                        onClick={clearSearch}
+                        className="absolute right-11 top-1/2 -translate-y-1/2 p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors rounded-full"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
                     )}
+                    <button type="submit" aria-label={language === 'de' ? 'Suche starten' : 'Search'} className="absolute right-0 top-0 h-11 w-11 flex items-center justify-center text-emerald-500 rounded-xl hover:bg-emerald-500/10"><Search className="h-4 w-4" /></button>
                   </form>
                   <div className="relative group shrink-0">
                     <DropdownMenu>
@@ -2287,7 +2188,7 @@ function HomeContent() {
                 onResetPlanningLocation={() => { exitPlanningMode(); requestLocation({ interactive: false }); }}
                 searchQuery={searchQuery}
                 onSearchQueryChange={handleSearchInput}
-                onClearSearch={() => setSearchQuery('')}
+                onClearSearch={clearSearch}
                 onSearchSubmit={handleSearchSubmit}
                 isSearching={isSearching}
                 maxDistance={maxDistance}
@@ -2296,6 +2197,16 @@ function HomeContent() {
               />
             </div>
 
+            <div className="px-4 sm:px-6">
+              <SearchIntentFilters draft={searchQuery} submitted={!!submittedSearchQuery && searchQuery.trim() === submittedSearchQuery && !isSearching}
+                intent={submittedSearchQuery ? { categories: activeCategory, filterByName: shouldFilterByName, radiusKm: searchRadiusKm, source: searchSource } : null}
+                language={language} onClear={clearSearch} onRemoveRadius={() => setSearchRadiusKm(null)}
+                onRemoveCategory={tag => {
+                  const remaining = activeCategory.filter(category => category !== tag);
+                  setActiveCategory(remaining);
+                  if (!remaining.length) { setDebouncedSearchQuery(''); setShouldFilterByName(false); }
+                }} />
+            </div>
             {/* Category Filters */}
             <div className="px-4 sm:px-6">
               <CategoryFilters 

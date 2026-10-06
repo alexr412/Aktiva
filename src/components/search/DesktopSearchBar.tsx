@@ -95,6 +95,7 @@ export function DesktopSearchBar({
         )}
         <Input
           type="search"
+          enterKeyHint="search"
           id="desktop-search-input"
           aria-label={isDe ? 'Aktivitätssuche' : 'Activity search'}
           placeholder={isDe ? 'Was möchtest du unternehmen?' : 'What do you want to do?'}
@@ -108,11 +109,12 @@ export function DesktopSearchBar({
             type="button"
             aria-label={isDe ? 'Suche löschen' : 'Clear search'}
             onClick={onClearSearch}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors rounded-full shrink-0"
+            className="absolute right-12 top-1/2 -translate-y-1/2 p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors rounded-full shrink-0"
           >
             <X className="h-3.5 w-3.5" />
           </button>
         )}
+        <button type="submit" aria-label={isDe ? 'Suche starten' : 'Search'} className="h-11 w-11 shrink-0 flex items-center justify-center rounded-xl text-emerald-500 hover:bg-emerald-500/10"><Search className="h-4 w-4" /></button>
       </form>
 
       {/* Vertical Divider */}

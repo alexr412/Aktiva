@@ -44,7 +44,7 @@ export function AiRecommendation({ place }: AiRecommendationProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Sparkles className="text-primary" />
-          <span>{language === 'de' ? 'KI-Empfehlung' : 'AI Recommendation'}</span>
+          <span>{language === 'de' ? 'Ortsübersicht' : 'Place summary'}</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -52,12 +52,12 @@ export function AiRecommendation({ place }: AiRecommendationProps) {
           <div className="space-y-4">
              <p className="text-sm text-muted-foreground">
                 {language === 'de' 
-                    ? 'Möchtest du eine schnelle, personalisierte Zusammenfassung? Lass dir eine KI-Empfehlung für diesen Ort geben.' 
-                    : 'Want a quick, personalized summary? Let our AI give you a recommendation for this place.'}
+                    ? 'Name, Kategorie und Adresse dieses Ortes auf einen Blick.'
+                    : 'Name, category and address of this place at a glance.'}
             </p>
             <Button onClick={getRecommendation} disabled={isLoading}>
               <Sparkles className="mr-2 h-4 w-4" />
-              {language === 'de' ? 'Generieren' : 'Generate'}
+              {language === 'de' ? 'Übersicht anzeigen' : 'Show summary'}
             </Button>
           </div>
         )}
