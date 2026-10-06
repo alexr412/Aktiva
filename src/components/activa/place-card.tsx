@@ -1,289 +1,131 @@
 'use client';
 
 import { useState } from 'react';
-import type { Place } from '@/lib/types';
-import {
-    Plus,
-    Bookmark,
-    ThumbsUp,
-    ThumbsDown,
-    Sparkles,
-    Star,
-} from 'lucide-react';
+import type { Activity, Place } from '@/lib/types';
+import { Plus, Bookmark, ThumbsUp, ThumbsDown, Sparkles, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, isToday, isTomorrow } from 'date-fns';
-import { getPrimaryIconData, translateTag, getCleanTags } from '@/lib/tag-config';
+import { getPrimaryIconData, translateTag, getCleanTags, translateAppString } from '@/lib/tag-config';
 import { formatOpeningHours } from '@/lib/tag-parser';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { isEntityBoosted } from '@/lib/ranking';
 import { CategoryCardDecoration } from './category-card-decoration';
+import { PlaceActivityPreview } from './place-activity-preview';
 import { useLanguage } from '@/hooks/use-language';
 import { formatDistance } from '@/lib/geo-utils';
 
-type PlaceCardProps = {
-    place: Place;
-    onClick: () => void;
-    onAddActivity: (place: Place) => void;
-    upvotes: number;
-    downvotes: number;
-    userVote: 'up' | 'down' | 'none';
-    activityCount: number;
-    isFavorite: boolean;
-    onVote: (type: 'up' | 'down' | 'none') => void;
-    onBookmarkToggle: () => void;
-    role?: string | null;
-    weightedUpvotes?: number;
-    weightedDownvotes?: number;
-    compact?: boolean;
+export type PlaceCardProps = {
+  place: Place;
+  onClick: () => void;
+  onAddActivity: (place: Place) => void;
+  upvotes: number;
+  downvotes: number;
+  userVote: 'up' | 'down' | 'none';
+  activityCount: number;
+  activityPreview?: Activity;
+  activityPreviewLoading?: boolean;
+  isFavorite: boolean;
+  onVote: (type: 'up' | 'down' | 'none') => void;
+  onBookmarkToggle: () => void;
+  role?: string | null;
+  weightedUpvotes?: number;
+  weightedDownvotes?: number;
+  compact?: boolean;
+  featured?: boolean;
 };
 
-export function PlaceCard({
-    place,
-    onClick,
-    onAddActivity,
-    upvotes,
-    downvotes,
-    userVote,
-    activityCount,
-    isFavorite,
-    onVote,
-    onBookmarkToggle,
-    role,
-    weightedUpvotes = 0,
-    weightedDownvotes = 0,
-    compact = false
-}: PlaceCardProps) {
-    const language = useLanguage();
-    const [isPressed, setIsPressed] = useState(false);
+export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCount, activityPreview,
+  activityPreviewLoading, isFavorite, onVote, onBookmarkToggle, role, weightedUpvotes = 0,
+  weightedDownvotes = 0, compact = false, featured = false }: PlaceCardProps) {
+  const language = useLanguage();
+  const [isPressed, setIsPressed] = useState(false);
+  if (!place) return null;
+  const german = language === 'de';
+  const primaryStyle = getPrimaryIconData(place, language);
+  const PrimaryIcon = primaryStyle.icon;
+  const tags = getCleanTags(place.categories || []).filter(item => item.isMain).slice(0, compact ? 1 : 2);
+  const showWeights = role === 'admin' || role === 'supporter';
+  const rating = place.rating || (place as Place & { averageRating?: number }).averageRating;
+  const interactive = (target: EventTarget) => (target as HTMLElement).closest('button, a, input, select, textarea, [role="button"], [data-card-interactive]');
+  const vote = (type: 'up' | 'down') => onVote(userVote === type ? 'none' : type);
+  const voteLabel = (type: 'up' | 'down') => type === 'up' ? (german ? 'Gefällt mir' : 'Like') : (german ? 'Gefällt mir nicht' : 'Dislike');
 
-    if (!place) return null;
+  return (
+    <article onClick={e => { if (!interactive(e.target) && !window.getSelection()?.toString()) onClick(); }}
+      onPointerDown={e => { if (!interactive(e.target)) setIsPressed(true); }}
+      onPointerUp={() => setIsPressed(false)} onPointerCancel={() => setIsPressed(false)} onPointerLeave={() => setIsPressed(false)}
+      className={cn('group relative flex h-full w-full min-w-0 cursor-pointer overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-lg dark:border-white/[0.07] dark:bg-card motion-reduce:transition-none',
+        featured ? 'flex-row min-h-[210px]' : 'flex-col', isPressed && 'scale-[0.985] motion-reduce:transform-none')}>
+      <CategoryCardDecoration gradientClass={primaryStyle.gradientClass} icon={PrimaryIcon} label={primaryStyle.label}
+        variant={featured ? 'featured' : 'standard'} appearance="feed"
+        className={featured ? 'w-[76px] sm:w-40 md:w-52 self-stretch' : 'h-[74px] sm:h-[94px] shrink-0'}>
+        {featured ? <>
+          <span className="absolute top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900/85 px-1.5 sm:px-2 py-1 text-[7px] sm:text-[9px] font-semibold text-emerald-300">{translateAppString('featured.label', language)}</span>
+          <div className="mt-6 flex flex-col items-center gap-3 px-2 text-center">
+            <PrimaryIcon className="h-10 w-10 sm:h-14 sm:w-14 text-white" strokeWidth={1.6} />
+            <span className="max-w-full text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-white/95">{primaryStyle.label}</span>
+          </div>
+        </> : <>
+          <PrimaryIcon className="absolute left-3 bottom-3 h-9 w-9 sm:left-4 sm:bottom-4 sm:h-11 sm:w-11 text-white" strokeWidth={1.7} />
+          {place.distance !== undefined && <span className="absolute right-2.5 top-2.5 rounded-full border border-white/20 bg-black/25 px-2 py-1 text-[10px] sm:text-[11px] font-semibold text-white">{formatDistance(place.distance)}</span>}
+        </>}
+      </CategoryCardDecoration>
 
-    const primaryStyle = getPrimaryIconData(place, language);
-    const PrimaryIcon = primaryStyle.icon;
-
-    const categories = (place.categories || []);
-    const processedTags = getCleanTags(categories).slice(0, 6);
-
-    const handleVoteClick = (e: React.MouseEvent, type: 'up' | 'down' | 'none') => {
-        e.stopPropagation();
-        onVote(type);
-    };
-
-    const handleBookmarkToggle = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        onBookmarkToggle();
-    };
-
-    return (
-        <article
-            onClick={(e) => {
-                const selection = window.getSelection();
-                if (selection && selection.toString()) {
-                    return;
-                }
-                const target = e.target as HTMLElement;
-                if (target.closest('button, a, input, select, textarea, [role="button"], [data-card-interactive]')) {
-                    return;
-                }
-                onClick();
-            }}
-            onPointerDown={(e) => {
-                const target = e.target as HTMLElement;
-                if (target.closest('button, a, input, select, textarea, [role="button"], [data-card-interactive]')) {
-                    return;
-                }
-                setIsPressed(true);
-            }}
-            onPointerUp={() => setIsPressed(false)}
-            onPointerCancel={() => setIsPressed(false)}
-            onPointerLeave={() => setIsPressed(false)}
-            className={cn(
-                "cursor-pointer group overflow-hidden bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium hover:shadow-premium-active transition-[transform,box-shadow,border-color] duration-200 flex flex-col relative p-0 h-full w-full min-w-0",
-                compact ? "rounded-xl sm:rounded-[22px]" : "rounded-[22px]",
-                isPressed ? "scale-[0.985] duration-75" : ""
-            )}
-        >
-            {/* Oberer Bild/Icon-Bereich mit Dekoration */}
-            <CategoryCardDecoration
-                gradientClass={primaryStyle.gradientClass}
-                icon={PrimaryIcon}
-                label={primaryStyle.label}
-                variant="standard"
-                className={cn("group-hover:scale-105", compact && "h-16 sm:h-20")}
-            >
-                {/* Status Badges */}
-                <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-20 pointer-events-none select-none">
-                    {(activityCount > 0 || (place.activityCount !== undefined && place.activityCount > 0)) && (
-                        <div className="h-5 bg-emerald-500/90 backdrop-blur-md text-white text-[8px] font-black uppercase px-2 rounded-full shadow-lg animate-pulse tracking-widest flex items-center gap-1 border border-white/20">
-                            <div className="h-1 w-1 rounded-full bg-white animate-ping" />
-                            {(() => {
-                                const activityDate = (place as any).activityDate?.toDate?.() || null;
-                                if (!activityDate) return language === 'de' ? 'Aktiv' : 'Active';
-                                const timeStr = format(activityDate, 'HH:mm');
-                                if (isToday(activityDate)) return `${language === 'de' ? 'Heute' : 'Today'} ${timeStr}`;
-                                if (isTomorrow(activityDate)) return `${language === 'de' ? 'Morgen' : 'Tomorrow'} ${timeStr}`;
-                                return format(activityDate, 'dd.MM. HH:mm');
-                            })()}
-                        </div>
-                    )}
-                </div>
-
-                {/* Relevance Score Badge */}
-                {role === 'admin' && place.relevanceScore !== undefined && (
-                    <div className="absolute top-2.5 right-4 z-20 pointer-events-none select-none h-5 bg-amber-400 text-white text-[8px] font-black px-2 rounded-2xl shadow-lg flex items-center gap-1 border border-white/20">
-                        <Sparkles className="h-2.5 w-2.5" />
-                        {place.relevanceScore.toFixed(1)}
-                    </div>
-                )}
-
-                {/* Direct Rating Badge - Top Right */}
-                {((place.rating && place.rating > 0) || ((place as any).averageRating && (place as any).averageRating > 0)) && (
-                    <div className="absolute top-2.5 right-2.5 z-20 pointer-events-none select-none h-5 bg-black/60 backdrop-blur-md text-amber-400 text-[9px] font-black px-2 rounded-full shadow-md flex items-center gap-1 border border-white/10">
-                        <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-                        <span>{((place.rating || (place as any).averageRating) as number).toFixed(1)}</span>
-                    </div>
-                )}
-
-                {/* Distance Badge - Bottom Left */}
-                {place.distance !== undefined && (
-                    <div className="absolute bottom-2.5 left-2.5 z-20 pointer-events-none select-none h-5 bg-black/40 backdrop-blur-md text-white text-[8px] font-black px-2 rounded-full whitespace-nowrap flex items-center justify-center border border-white/10">
-                        {formatDistance(place.distance)}
-                    </div>
-                )}
-            </CategoryCardDecoration>
-
-            {/* Content Bereich */}
-            <div className={cn(compact ? "p-2 sm:p-3 pb-2.5 sm:pb-4" : "p-3 pb-4", "flex flex-col flex-1 min-w-0")}>
-                <div className={cn(compact ? "mb-1 sm:mb-2" : "mb-2", "min-w-0")}>
-                    <h3 className={cn(
-                        "font-black tracking-tight flex items-center gap-1 flex-wrap min-w-0",
-                        compact 
-                            ? "text-xs sm:text-lg line-clamp-2 min-h-0 sm:min-h-[2.5rem] leading-snug" 
-                            : "text-base sm:text-lg line-clamp-2 min-h-[2.5rem] leading-snug"
-                    )}>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onClick(); }}
-                            className={cn(
-                                "font-black text-left text-[#0f172a] dark:text-neutral-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded max-w-full min-w-0",
-                                compact ? "text-xs sm:text-base line-clamp-2" : "text-base truncate"
-                            )}
-                        >
-                            {place.name || (role === 'admin' ? `POI POI Ref: ${place.id.slice(-6)}` : (language === 'de' ? 'Unbekannter Ort' : 'Unknown Place'))}
-                        </button>
-                        {isEntityBoosted(place) && (
-                            <Sparkles className={cn("text-amber-500 fill-amber-500/20 shrink-0 animate-pulse", compact ? "h-3 w-3 sm:h-4 sm:w-4" : "h-4 w-4")} />
-                        )}
-                    </h3>
-                    <div className={cn(
-                        "flex items-center text-neutral-400 dark:text-neutral-500 font-bold min-w-0",
-                        compact ? "gap-1 text-[9px] sm:text-[9px] mt-0.5 sm:mt-0" : "gap-1.5 text-[9px]"
-                    )}>
-                        {place.openingHours ? (
-                            <span className="truncate">{formatOpeningHours(place.openingHours)}</span>
-                        ) : (
-                            <span className="truncate">{(place.address || (language === 'de' ? 'Adresse steht noch aus...' : 'Address pending sync...')).split(',').slice(0, 2).join(', ')}</span>
-                        )}
-                    </div>
-                </div>
-
-                <div className={cn(compact ? "flex flex-wrap gap-0.5 sm:gap-1 mb-0.5 sm:mb-1 max-w-full overflow-hidden" : "flex flex-wrap gap-1 mb-1 max-w-full")}>
-                    {(compact ? processedTags.slice(0, 1) : processedTags).filter(item => item.isMain).map((item, index) => (
-                        <Badge
-                            key={index}
-                            variant="secondary"
-                            className={cn(
-                                "border-none bg-primary/5 text-primary max-w-full truncate font-black uppercase",
-                                compact ? "rounded-[6px] sm:rounded-[10px] text-[7.5px] sm:text-[7px] tracking-wider sm:tracking-widest px-1.5 sm:px-2 py-0.5" : "rounded-[10px] text-[7px] tracking-widest px-2 py-0.5"
-                            )}
-                        >
-                            {translateTag(item.tag, language)}
-                        </Badge>
-                    ))}
-                    {role === 'admin' && (
-                        (place.categories || []).map((tag: string, idx: number) => (
-                            <span
-                                key={`${tag}-${idx}`}
-                                className="px-2 py-0.5 text-[8px] font-mono bg-neutral-50 dark:bg-neutral-900 text-neutral-400 dark:text-neutral-500 rounded-[10px] border border-neutral-100 dark:border-neutral-800 whitespace-nowrap max-w-full truncate"
-                            >
-                                {tag}
-                            </span>
-                        ))
-                    )}
-                </div>
-
-                {/* Footer Actions - Einheitliche Zeile */}
-                <div className={cn("flex items-center justify-between gap-1 sm:gap-2 mt-auto max-w-full", compact ? "pt-1 sm:pt-2" : "pt-2")}>
-                    <div className={cn("flex items-center bg-neutral-50 dark:bg-neutral-900 p-0.5 gap-0.5 border border-neutral-100 dark:border-neutral-800 shrink-0", compact ? "rounded-xl sm:rounded-2xl" : "rounded-2xl")}>
-                        <button
-                            onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
-                            aria-pressed={userVote === 'up'}
-                            className={cn(
-                                "flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 font-black leading-none gap-0.5 sm:gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-                                compact ? "h-6 sm:h-7 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px]" : "h-7 rounded-xl text-[11px]",
-                                (role === 'admin' || role === 'supporter') ? "px-1 sm:px-2" : compact ? "w-6 sm:w-7" : "w-7",
-                                userVote === 'up'
-                                    ? "bg-emerald-600 text-white border border-emerald-500 shadow-md shadow-emerald-500/25 scale-[1.04] active:scale-95"
-                                    : "bg-transparent text-emerald-600/50 dark:text-emerald-400/50 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent active:scale-95"
-                            )}
-                        >
-                            <ThumbsUp className={cn("shrink-0", compact ? "h-3 w-3 sm:h-3.5 sm:w-3.5" : "h-3.5 w-3.5")} />
-                            {(role === 'admin' || role === 'supporter') && (
-                                <span className={cn("text-[9px] sm:text-[10px] font-black", userVote === 'up' ? "text-white opacity-100" : "opacity-70")}>
-                                    {weightedUpvotes > 0 ? `+${weightedUpvotes}` : '0'}
-                                </span>
-                            )}
-                        </button>
-
-                        <button
-                            onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
-                            aria-pressed={userVote === 'down'}
-                            className={cn(
-                                "flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 font-black leading-none gap-0.5 sm:gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
-                                compact ? "h-6 sm:h-7 rounded-lg sm:rounded-xl text-[10px] sm:text-[11px]" : "h-7 rounded-xl text-[11px]",
-                                (role === 'admin' || role === 'supporter') ? "px-1 sm:px-2" : compact ? "w-6 sm:w-7" : "w-7",
-                                userVote === 'down'
-                                    ? "bg-rose-600 text-white border border-rose-500 shadow-md shadow-rose-500/25 scale-[1.04] active:scale-95"
-                                    : "bg-transparent text-rose-600/50 dark:text-rose-400/50 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 border border-transparent active:scale-95"
-                            )}
-                        >
-                            <ThumbsDown className={cn("shrink-0", compact ? "h-3 w-3 sm:h-3.5 sm:w-3.5" : "h-3.5 w-3.5")} />
-                            {(role === 'admin' || role === 'supporter') && (
-                                <span className={cn("text-[9px] sm:text-[10px] font-black", userVote === 'down' ? "text-white opacity-100" : "opacity-70")}>
-                                    {weightedDownvotes > 0 ? `-${weightedDownvotes}` : '0'}
-                                </span>
-                            )}
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-auto">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleBookmarkToggle}
-                            className={cn(
-                                "transition-colors duration-200 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                                compact ? "h-6 w-6 sm:h-8 sm:w-8 rounded-lg sm:rounded-xl" : "h-7 w-7 sm:h-8 sm:w-8 rounded-xl",
-                                isFavorite ? "text-primary bg-primary/10" : "text-neutral-300 hover:text-primary hover:bg-primary/5"
-                            )}
-                        >
-                            <Bookmark className={cn("transition-colors duration-200", compact ? "h-3 w-3 sm:h-4 sm:w-4" : "h-3.5 w-3.5 sm:h-4 sm:w-4", isFavorite && "fill-primary")} />
-                        </Button>
-
-                        <Button
-                            size="icon"
-                            data-tutorial-id="spot-card-create"
-                            onClick={(e) => { e.stopPropagation(); onAddActivity(place); }}
-                            className={cn(
-                                "rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 transition-[color,background-color,transform,box-shadow] duration-200 active:scale-95 flex items-center justify-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                                compact ? "h-6 w-6 sm:h-8 sm:w-8" : "h-7 w-7 sm:h-8 sm:w-8"
-                            )}
-                        >
-                            <Plus className={compact ? "h-3 w-3 sm:h-4 sm:w-4" : "h-3.5 w-3.5 sm:h-4 sm:w-4"} strokeWidth={3} />
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        </article>
-    );
+      <div className={cn('flex min-w-0 flex-1 flex-col', featured ? 'p-3 sm:p-5' : 'p-2.5 sm:p-4')}>
+        <div className="flex min-w-0 items-start justify-between gap-2">
+          <h3 className={cn('min-w-0 flex-1 font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100', featured ? 'text-base sm:text-xl' : 'text-sm sm:text-base min-h-[2.5rem]')}>
+            <button type="button" onClick={e => { e.stopPropagation(); onClick(); }} className="w-full max-w-full min-w-0 line-clamp-2 break-words text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded">
+              {place.name || (german ? 'Unbekannter Ort' : 'Unknown place')}
+            </button>
+            {isEntityBoosted(place) && <Sparkles className="inline h-3.5 w-3.5 text-amber-500" aria-label={german ? 'Highlight' : 'Featured'} />}
+          </h3>
+          {featured && place.distance !== undefined && <span className="shrink-0 rounded-full bg-slate-100 dark:bg-white/5 px-2 py-1 text-[10px] sm:text-xs font-medium text-slate-600 dark:text-slate-300">{formatDistance(place.distance)}</span>}
+        </div>
+        <p className="mt-1 line-clamp-2 min-h-[2rem] text-[11px] sm:text-xs leading-relaxed text-slate-500 dark:text-slate-400 break-words">
+          {place.openingHours ? formatOpeningHours(place.openingHours) : (place.address || (german ? 'Adresse noch nicht verfügbar' : 'Address not available')).split(',').slice(0, 2).join(', ')}
+        </p>
+        <div className="mt-2 flex min-h-5 flex-wrap items-center gap-1.5">
+          {tags.map(item => <span key={item.tag} className="max-w-full truncate rounded-md bg-primary/10 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-medium text-emerald-700 dark:text-emerald-400">{translateTag(item.tag, language)}</span>)}
+          {rating !== undefined && rating > 0 && <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400"><Star className="h-3 w-3 fill-current" />{rating.toFixed(1)}</span>}
+          {role === 'admin' && place.relevanceScore !== undefined && <span className="text-[10px] text-amber-600 dark:text-amber-400">Score {place.relevanceScore.toFixed(1)}</span>}
+          {role === 'admin' && (place.categories || []).map((tag, index) => <span key={`${tag}-${index}`} className="max-w-full truncate text-[9px] font-mono text-slate-500 dark:text-slate-400">{tag}</span>)}
+        </div>
+        <PlaceActivityPreview activity={activityPreview} activityCount={activityCount} loading={activityPreviewLoading} language={language} onClick={onClick} onCreate={() => onAddActivity(place)} />
+        <div className="-mx-2 mt-auto flex items-center justify-between border-t border-slate-100 pt-2 dark:border-white/5 sm:mx-0 sm:gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" aria-label={german ? 'Spot bewerten' : 'Rate spot'} onClick={e => e.stopPropagation()}
+                className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 dark:bg-background dark:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:hidden', userVote === 'up' && 'text-emerald-600 dark:text-emerald-400', userVote === 'down' && 'text-rose-600 dark:text-rose-400')}>
+                {userVote === 'down' ? <ThumbsDown className="h-4 w-4" /> : <ThumbsUp className="h-4 w-4" />}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" onClick={e => e.stopPropagation()}>
+              {(['up', 'down'] as const).map(type => <DropdownMenuItem key={type} onSelect={() => vote(type)} className="min-h-11 gap-2">
+                {type === 'up' ? <ThumbsUp className="h-4 w-4" /> : <ThumbsDown className="h-4 w-4" />}
+                {voteLabel(type)}{userVote === type && ' ✓'}{showWeights && ` (${type === 'up' ? `+${weightedUpvotes}` : `-${weightedDownvotes}`})`}
+              </DropdownMenuItem>)}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <div className="hidden shrink-0 items-center gap-0.5 rounded-xl bg-slate-50 dark:bg-background sm:flex">
+            {(['up', 'down'] as const).map(type => <button type="button" key={type} aria-label={voteLabel(type)} aria-pressed={userVote === type}
+              onClick={e => { e.stopPropagation(); vote(type); }}
+              className={cn('flex h-11 min-w-11 items-center justify-center gap-1 rounded-xl px-2 text-xs text-slate-500 dark:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:bg-primary/10', userVote === type && (type === 'up' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' : 'bg-rose-500/15 text-rose-700 dark:text-rose-400'))}>
+              {type === 'up' ? <ThumbsUp className="h-4 w-4" /> : <ThumbsDown className="h-4 w-4" />}
+              {showWeights && <span>{type === 'up' ? `+${weightedUpvotes}` : `-${weightedDownvotes}`}</span>}
+            </button>)}
+          </div>
+          <div className="ml-auto flex shrink-0 sm:gap-0.5">
+            <Button type="button" variant="ghost" size="icon" aria-label={german ? (isFavorite ? 'Aus Favoriten entfernen' : 'Spot merken') : (isFavorite ? 'Remove favorite' : 'Save spot')} aria-pressed={isFavorite}
+              onClick={e => { e.stopPropagation(); onBookmarkToggle(); }} className={cn('h-11 w-11 rounded-xl text-slate-500 dark:text-slate-300', isFavorite && 'bg-primary/10 text-primary')}>
+              <Bookmark className={cn('h-4 w-4', isFavorite && 'fill-current')} />
+            </Button>
+            <Button type="button" size="icon" data-tutorial-id="spot-card-create" aria-label={german ? 'Aktivität planen' : 'Plan activity'}
+              onClick={e => { e.stopPropagation(); onAddActivity(place); }} className="h-11 w-11 rounded-full bg-primary text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90">
+              <Plus className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
 }

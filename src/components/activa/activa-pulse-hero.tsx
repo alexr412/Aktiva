@@ -66,7 +66,7 @@ export function ActivaPulseHero({
 
   return (
     <div 
-      className="w-full flex flex-row items-center justify-between py-4 px-[18px] md:p-5 lg:py-5 lg:px-6 rounded-[22px] bg-gradient-to-br from-emerald-600 to-teal-800 dark:from-emerald-800 dark:to-teal-950 text-white shadow-premium relative overflow-hidden transition-all duration-300 gap-4 min-h-[135px]"
+      className="w-full flex flex-wrap sm:flex-nowrap items-center justify-between p-4 sm:p-6 rounded-[20px] bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-900 dark:from-emerald-700 dark:via-emerald-800 dark:to-teal-950 text-white shadow-sm relative overflow-hidden gap-4 min-h-[160px]"
       aria-labelledby="pulse-heading"
     >
       {/* Decorative background blurs */}
@@ -80,7 +80,7 @@ export function ActivaPulseHero({
       />
 
       {/* Left side content wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 gap-2">
+      <div className="flex-1 basis-full sm:basis-auto flex flex-col min-w-0 gap-3 relative">
         {/* Eyebrow */}
         <div className="flex items-center gap-1.5">
           {/* Status breathing pulse dot */}
@@ -88,7 +88,7 @@ export function ActivaPulseHero({
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
           </span>
-          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-emerald-200">
+          <span className="text-[10px] md:text-xs font-semibold uppercase tracking-widest text-emerald-200">
             {translateAppString('pulse.eyebrow', language)}
           </span>
         </div>
@@ -97,12 +97,12 @@ export function ActivaPulseHero({
         <div className="flex flex-col gap-0.5 min-w-0">
           <h2 
             id="pulse-heading" 
-            className="text-[17px] md:text-xl lg:text-xl xl:text-2xl font-black tracking-tight leading-tight text-white m-0 truncate"
+            className="text-xl sm:text-2xl font-semibold tracking-tight leading-tight text-white m-0"
           >
             {headingText}
           </h2>
 
-          <p className="text-xs md:text-sm text-emerald-100/90 font-medium leading-tight m-0 truncate">
+          <p className="mt-1 text-xs md:text-sm text-emerald-100/90 leading-relaxed m-0">
             {!metricsAvailable
               ? translateAppString('pulse.location_fallback', language)
               : translateAppString('pulse.unique_participants_count', language, uniqueParticipantsCount ?? 0)}
@@ -110,23 +110,27 @@ export function ActivaPulseHero({
         </div>
 
         {/* CTA Button positioned on the left under text block */}
-        <div className="pt-1 flex items-center justify-start">
+        <div className="pt-1 flex flex-wrap items-center justify-start gap-2">
           <Button
             onClick={onExplore}
             disabled={openRoomsCount === null}
-            className="h-10 lg:h-11 px-4 lg:px-5 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 font-black text-xs transition-all uppercase tracking-wider active:scale-[0.985] border-none shadow-sm flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            className="h-11 px-4 lg:px-5 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 font-semibold text-xs transition-colors border-none shadow-sm flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             aria-label={openRoomsCount === 0 ? translateAppString('pulse.cta.create', language) : translateAppString('pulse.cta.open_rooms', language)}
             aria-disabled={openRoomsCount === null}
           >
             {openRoomsCount === 0 ? <Plus className="h-4 w-4" /> : <Compass className="h-4 w-4" />}
             {openRoomsCount === 0 ? translateAppString('pulse.cta.create', language) : translateAppString('pulse.cta.open_rooms', language)}
           </Button>
+          {metricsAvailable && <span className="sm:hidden flex items-center gap-1.5 text-xs text-emerald-100">
+            <DoorOpen className="h-4 w-4" aria-hidden="true" />
+            {openRoomsCount} {language === 'de' ? (openRoomsCount === 1 ? 'Raum' : 'Räume') : (openRoomsCount === 1 ? 'Room' : 'Rooms')}
+          </span>}
         </div>
       </div>
 
       {/* Right side fixed info panel */}
       {metricsAvailable && (
-        <div className="shrink-0 flex flex-col rounded-xl bg-white/[0.07] border border-white/10 px-3.5 py-2.5 min-w-[100px] md:min-w-[120px] shadow-sm">
+        <div className="hidden sm:flex shrink-0 flex-col rounded-xl bg-white/[0.07] border border-white/10 px-3.5 py-2.5 min-w-[100px] md:min-w-[120px] shadow-sm">
           <div className="flex items-center gap-2 text-xs md:text-sm font-semibold text-white whitespace-nowrap">
             <DoorOpen className="h-4 w-4 text-emerald-300 shrink-0" />
             <span>
@@ -137,7 +141,7 @@ export function ActivaPulseHero({
             </span>
           </div>
 
-          <div className="my-1.5 h-px w-full bg-white/10" />
+          <div className="hidden sm:block my-1.5 h-px w-full bg-white/10" />
 
           <div className="flex items-center gap-2 text-xs md:text-sm font-semibold text-white whitespace-nowrap">
             <Users className="h-4 w-4 text-emerald-300 shrink-0" />

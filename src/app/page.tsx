@@ -1045,6 +1045,17 @@ function HomeContent() {
     });
   }, [openRooms, userLocation, currentTime]);
 
+  // Reuse the existing room subscription; cards only present its first joinable activity.
+  const placeActivityPreviews = useMemo(() => {
+    const previews = new Map<string, Activity>();
+    for (const activity of sortedOpenRooms) {
+      if (activity.placeId && !activity.isCustomActivity && !previews.has(activity.placeId)) {
+        previews.set(activity.placeId, activity);
+      }
+    }
+    return previews;
+  }, [sortedOpenRooms]);
+
   const { items: visiblePlaces, hasHiddenMatches: hasHiddenPlaceMatches } = useMemo(() => {
     if (!categoryVisibilityReady) return { items: [], hasHiddenMatches: false };
     let filtered = places.filter(place => {
@@ -2003,6 +2014,8 @@ function HomeContent() {
                   <div key={place.id} className="min-h-[280px] w-full">
                     <PlaceCard 
                       place={placeObj} 
+                      activityPreview={placeActivityPreviews.get(placeObj.id)}
+                      activityPreviewLoading={isCommunityLoading || Boolean(communityError)}
                       onClick={() => handlePlaceSelect(placeObj)} 
                       onAddActivity={() => handleOpenActivityModal(placeObj)} 
                       upvotes={live ? live.upvotes : (placeObj.upvotes || 0)}
@@ -2082,6 +2095,8 @@ function HomeContent() {
                   return (
                     <FeaturedPlaceCard 
                       place={featuredPlace} 
+                      activityPreview={placeActivityPreviews.get(featuredPlace.id)}
+                      activityPreviewLoading={isCommunityLoading || Boolean(communityError)}
                       onClick={() => handlePlaceSelect(featuredPlace)} 
                       onAddActivity={() => handleOpenActivityModal(featuredPlace)} 
                       upvotes={live ? live.upvotes : (featuredPlace.upvotes || 0)}
@@ -2115,6 +2130,8 @@ function HomeContent() {
                     <div key={place.id} className="min-h-[210px] w-full">
                       <PlaceCard 
                         place={place} 
+                        activityPreview={placeActivityPreviews.get(place.id)}
+                        activityPreviewLoading={isCommunityLoading || Boolean(communityError)}
                         onClick={() => handlePlaceSelect(place)} 
                         onAddActivity={() => handleOpenActivityModal(place)} 
                         upvotes={live ? live.upvotes : (place.upvotes || 0)}
@@ -2316,10 +2333,13 @@ function HomeContent() {
                     <p>{language === 'de' ? 'Auswahl lokal gespeichert. Kontosynchronisierung fehlgeschlagen.' : 'Choice saved locally. Account synchronization failed.'}</p>
                     <button type="button" className="underline mt-1" onClick={retryFeedPreferencesSync}>{language === 'de' ? 'Erneut versuchen' : 'Try again'}</button>
                   </div>}
-                  <FeedSortSelect value={sortBy} language={language} onChange={value => {
-                    setSortBy(value);
-                    setVisibleCount(PLACES_PER_PAGE);
-                  }} />
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="text-base sm:text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">{language === 'de' ? 'Spots entdecken' : 'Discover spots'}</h2>
+                    <FeedSortSelect value={sortBy} language={language} onChange={value => {
+                      setSortBy(value);
+                      setVisibleCount(PLACES_PER_PAGE);
+                    }} />
+                  </div>
                 </div>
               )}
               {renderContent()}
