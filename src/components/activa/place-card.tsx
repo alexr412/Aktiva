@@ -58,7 +58,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
         featured ? 'flex-row min-h-[210px]' : 'flex-col', isPressed && 'scale-[0.985] motion-reduce:transform-none')}>
       <CategoryCardDecoration gradientClass={primaryStyle.gradientClass} icon={PrimaryIcon} label={primaryStyle.label}
         variant={featured ? 'featured' : 'standard'} appearance="feed"
-        className={featured ? 'w-[76px] sm:w-40 md:w-52 self-stretch' : 'h-[74px] sm:h-[94px] shrink-0'}>
+        className={featured ? 'w-[76px] sm:w-40 md:w-28 lg:w-36 xl:w-40 self-stretch' : 'h-[74px] sm:h-[94px] shrink-0'}>
         {featured ? <>
           <span className="absolute top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900/85 px-1.5 sm:px-2 py-1 text-[7px] sm:text-[9px] font-semibold text-emerald-300">{translateAppString('featured.label', language)}</span>
           <div className="mt-6 flex flex-col items-center gap-3 px-2 text-center">

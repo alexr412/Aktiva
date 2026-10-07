@@ -1593,6 +1593,22 @@ function HomeContent() {
     else if (maxDistance === 25) setMaxDistance(null);
   };
 
+  const useSideBySideIntro = !isOpenRoomsMode && !isFavoritesCategory && !isCommunityCategory && !isMySpotsCategory
+    && activeFeedHasUsableData && activeVisibleItemCount > 0 && finalFeedPlaces.length > 0;
+
+  const renderPulseHero = (compact = false) => (
+    <ActivaPulseHero
+      cityName={isLocationLoading ? null : cityName}
+      openRoomsCount={openRoomsCount}
+      uniqueParticipantsCount={uniqueParticipantsCount}
+      language={language}
+      onExplore={handleExploreClick}
+      loading={isInitialFeedLoading && !hasUsableFeedData}
+      compact={compact}
+      headingId={compact ? 'pulse-heading-desktop' : 'pulse-heading'}
+    />
+  );
+
   const renderContent = () => {
     if (isOpenRoomsMode) {
       const renderList = () => {
@@ -1989,7 +2005,11 @@ function HomeContent() {
         return (
           <div className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-6">
             {featuredPlace && (
-              <div className="w-full">
+              <div className="grid min-w-0 gap-3 sm:gap-6 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]" data-tutorial-id="feed-intro">
+                <div className="hidden min-w-0 md:flex">
+                  {renderPulseHero(true)}
+                </div>
+                <div className="min-w-0">
                 {(() => {
                   const live = placesMetaMap[featuredPlace.id];
                   return (
@@ -2012,6 +2032,7 @@ function HomeContent() {
                     />
                   );
                 })()}
+                </div>
               </div>
             )}
             {displayFeedItems.length > 0 && (
@@ -2227,15 +2248,8 @@ function HomeContent() {
         </AppHeader>
         <main className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
           <div className="max-w-[1536px] mx-auto w-full pt-2">
-            <div className="px-3 sm:px-6 mb-3 sm:mb-4" data-tutorial-id="feed-intro">
-                <ActivaPulseHero 
-                  cityName={isLocationLoading ? null : cityName}
-                  openRoomsCount={openRoomsCount}
-                  uniqueParticipantsCount={uniqueParticipantsCount}
-                  language={language}
-                  onExplore={handleExploreClick}
-                  loading={isInitialFeedLoading && !hasUsableFeedData}
-                />
+            <div className={cn('px-3 sm:px-6 mb-3 sm:mb-4', useSideBySideIntro && 'md:hidden')} data-tutorial-id={useSideBySideIntro ? undefined : 'feed-intro'}>
+                {renderPulseHero()}
               </div>
             <div ref={discoverFeedRef} id="discover-feed" data-tutorial-id="feed-main" className="scroll-mt-24">
               {!isOpenRoomsMode && !isCommunityCategory && !isMySpotsCategory && (
