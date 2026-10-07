@@ -40,7 +40,7 @@ import { useFavorites } from '@/contexts/favorites-context';
 import { SaveToCollectionModal } from '@/components/premium/save-to-collection-modal';
 import { OrganizerAnalyticsSheet } from '@/components/premium/organizer-analytics-sheet';
 import { cn } from '@/lib/utils';
-import { getPrimaryIconData, translateTag } from '@/lib/tag-config';
+import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatOpeningHours } from '@/lib/tag-parser';
 import { trackInteraction } from '@/lib/telemetry';
 import { getReviewsForTarget } from '@/lib/firebase/firestore';
@@ -295,53 +295,44 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
         }
     }, [place.id, user?.uid, place.categories]);
 
-    const categories = (place.categories || []);
+    const openingHoursText = formatOpeningHours(place.openingHours);
 
     return (
-        <div className="flex flex-col h-full min-h-0 w-full bg-white dark:bg-neutral-900 overflow-hidden rounded-none sm:rounded-[2.5rem] relative">
-            {/* Immersiver Header mit dynamischem Verlauf */}
+        <div className="flex flex-col h-full min-h-0 w-full bg-white dark:bg-card overflow-hidden rounded-none sm:rounded-3xl relative">
+            {/* Compact category header */}
             <div className={cn(
-                "relative h-[115px] md:h-64 w-full flex-shrink-0 flex items-center justify-center overflow-hidden",
+                "relative w-full shrink-0 flex items-center gap-3 py-5 pl-4 pr-16 sm:pl-5 overflow-hidden",
                 primaryStyle.gradientClass
             )}
             >
+                <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full border-[20px] border-white/10 pointer-events-none" aria-hidden="true" />
+                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 border border-white/20" aria-hidden="true">
+                    <PrimaryIcon className="h-7 w-7 text-white" strokeWidth={1.7} />
+                </div>
+                <div className="relative min-w-0">
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/85">{primaryStyle.label}</p>
+                    <h2 title={place.name} className="text-xl sm:text-2xl font-semibold leading-tight tracking-tight text-white line-clamp-2 [overflow-wrap:anywhere]">{place.name}</h2>
+                </div>
                 {/* Close Button */}
                 {onClose && (
                     <button
                         onClick={onClose}
-                        className="absolute top-3 right-3 z-30 h-11 w-11 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none border-none shadow-sm"
+                        type="button"
+                        className="absolute top-3 right-3 z-30 h-11 w-11 rounded-xl bg-black/15 hover:bg-black/30 text-white flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-white focus:outline-none"
                         aria-label={language === 'de' ? 'Schließen' : 'Close'}
                     >
                         <X className="h-5 w-5" />
                     </button>
                 )}
 
-                {/* Main Dynamic Icon (Reduced Scale) */}
-                <div className="relative z-20 drop-shadow-[0_15px_30px_rgba(0,0,0,0.4)] transform transition-transform duration-700 hover:scale-110">
-                    <div className="absolute inset-0 blur-2xl opacity-40 scale-150" style={{ color: primaryStyle.color }}>
-                        <PrimaryIcon className="w-full h-full fill-current" />
-                    </div>
-                    <PrimaryIcon className="h-12 w-12 md:h-20 md:w-20 text-white fill-current/10" strokeWidth={1.5} />
-                    <PrimaryIcon className="h-12 w-12 md:h-20 md:w-20 text-white absolute inset-0" strokeWidth={1.5} />
-                </div>
-
-                {/* Overlapping Badges */}
-                <div className="absolute bottom-3 md:bottom-6 left-3 md:left-6 flex items-center gap-2 z-20">
-                    <div className="bg-white/90 backdrop-blur-md text-neutral-800 px-4 h-7 flex items-center rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg border border-white/30 leading-none">
-                        {translateTag(categories[0] || '', language)}
-                    </div>
-                </div>
             </div>
 
-            <ScrollArea viewportRef={viewportRef} className="flex-1 min-h-0 w-full bg-white dark:bg-neutral-900 border-t border-slate-100 dark:border-neutral-800/50">
-                <div className="p-4 pb-12 md:p-8 md:pb-16">
+            <ScrollArea viewportRef={viewportRef} className="flex-1 min-h-0 w-full bg-white dark:bg-card">
+                <div className="p-4 sm:p-5 pb-6 sm:pb-6">
                     {/* 1. Core metadata */}
-                    <div className="mb-4 md:mb-6">
-                        <h2 className="text-xl md:text-3xl font-black text-slate-900 dark:text-neutral-50 mb-1 leading-snug">
-                            {place.name}
-                        </h2>
-                        <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 flex-wrap">
+                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-background p-3">
+                        <div className="space-y-2">
+                            <div className="flex items-start gap-2">
                                 <a 
                                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`}
                                     target="_blank"
@@ -352,11 +343,11 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     onPointerCancel={handleAddressPointerCancel}
                                     onContextMenu={handleAddressContextMenu}
                                     onClick={handleAddressClick}
-                                    className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 cursor-pointer group select-none"
+                                    className="flex min-w-0 flex-1 items-start gap-2 text-slate-700 dark:text-slate-200 hover:text-rose-500 cursor-pointer group select-none pt-2"
                                     style={{ WebkitTouchCallout: 'none' }}
                                 >
-                                    <MapPin className="h-3.5 w-3.5 fill-current group-hover:scale-110 transition-transform shrink-0" />
-                                    <h4 className="text-[12px] md:text-sm font-bold leading-tight underline decoration-rose-500/40 underline-offset-2">{place.address}</h4>
+                                    <MapPin className="h-4 w-4 text-rose-500 mt-0.5 shrink-0" />
+                                    <span className="min-w-0 text-xs sm:text-sm font-medium leading-relaxed [overflow-wrap:anywhere] underline decoration-rose-500/40 underline-offset-2">{place.address}</span>
                                 </a>
                                 <Button
                                     onClick={handleCopyAddress}
@@ -364,27 +355,28 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     size="icon"
                                     className="h-11 w-11 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-400 hover:text-slate-600 transition-all shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none"
                                     title={language === 'de' ? 'Adresse kopieren' : 'Copy address'}
+                                    aria-label={language === 'de' ? 'Adresse kopieren' : 'Copy address'}
                                 >
                                     {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                                 </Button>
                             </div>
-                            <div className="flex items-start gap-1.5 text-slate-500 dark:text-neutral-400">
+                            {openingHoursText && <div className="flex items-start gap-2 text-slate-500 dark:text-slate-400">
                                 <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                                 <span className="text-[12px] md:text-sm font-medium leading-tight">
-                                    {formatOpeningHours(place.openingHours)}
+                                    {openingHoursText}
                                 </span>
-                            </div>
+                            </div>}
                         </div>
                     </div>
 
                     <Separator className="my-4 dark:bg-neutral-800/80" />
 
                     {/* 2. Local Activities Section */}
-                    <div className="mb-6">
-                        <div className="flex items-center justify-between mb-4">
+                    <div className="mb-4">
+                        <div className="flex items-center justify-between gap-2 mb-3">
                             <div className="flex items-center gap-2">
                                 <Users className="h-5 w-5 text-[#1e293b] dark:text-neutral-100" />
-                                <h3 className="text-sm font-black text-slate-800 dark:text-neutral-200">
+                                <h3 className="text-sm font-semibold text-slate-800 dark:text-neutral-200">
                                     {language === 'de' ? 'Aktivitäten vor Ort' : 'Local Activities'}
                                     {activities.length > 0 && ` · ${activities.length}`}
                                 </h3>
@@ -437,10 +429,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                         <div 
                                             key={activity.id} 
                                             onClick={() => setSelectedInfoActivity(activity)}
-                                            className="bg-white dark:bg-neutral-800 rounded-2xl p-3 md:p-3.5 flex flex-row items-start gap-3 border border-slate-100 dark:border-neutral-800 hover:shadow-md transition-all shadow-sm group cursor-pointer min-h-[96px] md:min-h-[104px]"
+                                            className="bg-slate-50 dark:bg-background rounded-2xl p-3 flex items-start gap-2.5 border border-slate-200 dark:border-white/10 hover:border-primary/30 transition-colors group cursor-pointer"
                                         >
                                             {/* Date badge: links, flex-none */}
-                                            <div className="h-[52px] w-[48px] bg-accent dark:bg-emerald-950/20 rounded-xl flex flex-col items-center justify-center border border-emerald-100/50 dark:border-emerald-900/30 flex-none select-none">
+                                            <div className="h-11 w-10 bg-accent dark:bg-emerald-950/20 rounded-xl flex flex-col items-center justify-center border border-emerald-100/50 dark:border-emerald-900/30 shrink-0 select-none">
                                                 <span className="text-lg font-black text-primary leading-none">{format(actDate, 'd')}</span>
                                                 <span className="text-[8px] font-black text-primary uppercase tracking-tighter mt-0.5">{format(actDate, 'MMM', { locale: language === 'de' ? de : enUS })}</span>
                                             </div>
@@ -448,11 +440,11 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                             {/* Main content area: flex-1 min-w-0 */}
                                             <div className="flex-1 min-w-0 flex flex-col">
                                                 {/* Obere Reihe */}
-                                                <div className="flex items-start justify-between gap-2 w-full">
+                                                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 w-full">
                                                     {/* Linker Block: Avatar + Title block */}
-                                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 min-w-[100px] sm:min-w-0 flex-1">
                                                         {/* Resized Avatar */}
-                                                        <div className="w-12 h-12 sm:w-[52px] sm:h-[52px] md:w-14 md:h-14 rounded-full border border-slate-100 dark:border-neutral-800 bg-slate-200 overflow-hidden flex-none shadow-sm">
+                                                        <div className="hidden sm:block w-8 h-8 rounded-full border border-slate-100 dark:border-neutral-800 bg-slate-200 overflow-hidden shrink-0">
                                                             <img 
                                                                 src={activity.participantsPreview?.[0]?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activity.participantsPreview?.[0]?.uid || activity.hostId}`} 
                                                                 alt="avatar" 
@@ -463,9 +455,12 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                         </div>
                                                         {/* Title block */}
                                                         <div className="min-w-0 flex-1">
-                                                            <h4 className="font-bold text-sm md:text-[15px] text-slate-800 dark:text-neutral-200 line-clamp-2 leading-snug break-words">
+                                                            <h4 className="font-semibold text-sm text-slate-800 dark:text-neutral-200 line-clamp-2 leading-snug break-words">
                                                                 {activity.isCustomActivity ? (activity.title || activity.placeName) : (activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup'))}
                                                             </h4>
+                                                            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                                                {activity.participantIds.length} {language === 'de' ? 'Teilnehmer' : 'Participants'}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                     {/* Rechter Actions-Block */}
@@ -477,6 +472,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                             }}
                                                             variant="ghost"
                                                             size="icon"
+                                                            aria-label={language === 'de' ? 'Details zur Aktivität' : 'Activity details'}
                                                             className="h-11 w-11 rounded-full bg-slate-50 dark:bg-neutral-900 hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-400 hover:text-primary transition-colors border border-slate-150 dark:border-neutral-800 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none flex-none"
                                                         >
                                                             <Info className="h-4 w-4" />
@@ -519,12 +515,6 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                             </Button>
                                                         )}
                                                     </div>
-                                                </div>
-                                                {/* Teilnehmerzahl darunter, linksbündig unter dem Titel */}
-                                                <div className="pl-[58px] sm:pl-[62px] md:pl-[66px] mt-1">
-                                                    <span className="text-[10px] md:text-[11px] font-bold text-slate-400 dark:text-neutral-500 block">
-                                                        {activity.participantIds.length} {language === 'de' ? 'Teilnehmer' : 'Participants'}
-                                                    </span>
                                                 </div>
                                             </div>
                                         </div>

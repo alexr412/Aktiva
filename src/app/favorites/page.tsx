@@ -643,7 +643,7 @@ export default function FavoritesPage() {
             />
 
             <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && setSelectedPlace(null)}>
-                <DialogContent className="p-0 w-full max-w-4xl h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] sm:h-[88vh] sm:max-h-[88vh] flex flex-col min-h-0 gap-0 overflow-hidden border-none outline-none rounded-none sm:rounded-[2.5rem] dark:bg-neutral-900" hideCloseButton>
+                <DialogContent className="p-0 sm:p-0 w-[calc(100vw-2rem)] max-w-2xl h-[min(82dvh,620px)] max-h-[calc(100dvh-2rem)] flex flex-col min-h-0 gap-0 overflow-hidden border border-slate-200 dark:border-white/10 outline-none rounded-3xl bg-white dark:bg-card" hideCloseButton>
                     <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
                     <DialogDescription className="sr-only">Favorisierter Ort Details</DialogDescription>
                     {selectedPlace && (

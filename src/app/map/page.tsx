@@ -182,7 +182,7 @@ export default function MapPage() {
       {/* Mobile Place Details Sheet */}
       {isMobile ? (
         <Sheet open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-          <SheetContent side="bottom" className="p-0 h-[92vh] w-full border-none rounded-t-[2.5rem] overflow-hidden outline-none" hideCloseButton>
+          <SheetContent side="bottom" className="p-0 h-[92dvh] w-full border-none rounded-t-3xl overflow-hidden outline-none" hideCloseButton>
             <SheetHeader className="sr-only">
               <SheetTitle>{selectedPlace?.name}</SheetTitle>
             </SheetHeader>
@@ -200,7 +200,7 @@ export default function MapPage() {
       ) : (
         /* Desktop Place Details Dialog */
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-          <DialogContent className="p-0 w-full max-w-4xl h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] sm:h-[88vh] sm:max-h-[88vh] flex flex-col min-h-0 gap-0 overflow-hidden border-none outline-none rounded-none sm:rounded-[2.5rem] dark:bg-neutral-900" hideCloseButton>
+          <DialogContent className="p-0 sm:p-0 w-[calc(100vw-2rem)] max-w-2xl h-[min(82dvh,620px)] max-h-[calc(100dvh-2rem)] flex flex-col min-h-0 gap-0 overflow-hidden border border-slate-200 dark:border-white/10 outline-none rounded-3xl bg-white dark:bg-card" hideCloseButton>
             <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
             <DialogDescription className="sr-only">Details zum ausgewählten Ort</DialogDescription>
             {selectedPlace && (
