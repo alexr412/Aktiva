@@ -31,7 +31,7 @@ test('provider errors are never cached and App Check/auth/rate limits run before
   assert.equal((await handler(request(params))).status, 429);
   assert.equal(calls, 2);
   const previousReads = cacheReads;
-  const invalidAppCheck = createGeoapifyHandler({ ...deps, verifyAppCheck: async () => ({ valid: false }) });
+  const invalidAppCheck = createGeoapifyHandler({ ...deps, verifyAppCheck: async () => ({ valid: false, errorResponse: Response.json({ error: 'Unauthorized' }, { status: 401 }) as any }) });
   assert.equal((await invalidAppCheck(request(params))).status, 401);
   assert.equal((await handler(request(params, 'Basic invalid'))).status, 401);
   const limited = createGeoapifyHandler({ ...deps, limiter: async () => ({ success: false, resetTimeMs: Date.now() }) as any });

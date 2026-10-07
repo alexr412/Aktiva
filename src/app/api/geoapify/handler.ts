@@ -75,7 +75,8 @@ const auth = deps.auth !== undefined ? deps.auth : adminAuth;
 return async function POST(req: NextRequest) {
   // 1. App Check Verification (Must run prior to any rate limit processing or Geoapify API proxying)
   const appCheckRes = await (deps.verifyAppCheck ?? verifyNextRequestAppCheck)(req, { routeId: 'API_GEOAPIFY' });
-  if (!appCheckRes.valid) return appCheckRes.errorResponse ?? NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Observation mode reports missing/invalid tokens without a rejection response.
+  if (!appCheckRes.valid && appCheckRes.errorResponse) return appCheckRes.errorResponse;
 
   // 2. Verify Authentication & Extract Server-Side UID
   let uid = 'anonymous';

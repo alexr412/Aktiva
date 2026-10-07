@@ -30,7 +30,8 @@ export function createParseIntentHandler(deps: ParseIntentDependencies = {}) {
   const loadTracker = deps.loadUsageTracker || (async () => import('@/lib/usage-tracker'));
   return async function POST(req: NextRequest) {
     const appCheckRes = await verifier(req, { routeId: 'API_PARSE_INTENT' });
-    if (!appCheckRes.valid) return appCheckRes.errorResponse ?? NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Observation mode reports missing/invalid tokens without a rejection response.
+    if (!appCheckRes.valid && appCheckRes.errorResponse) return appCheckRes.errorResponse;
     let userId = 'anonymous';
     const authHeader = req.headers.get('authorization') || '';
     if (authHeader) {

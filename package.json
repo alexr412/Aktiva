@@ -36,7 +36,7 @@
     "test:profile-activity": "npx tsx src/components/profile/__tests__/profile-activity-card.test.ts",
     "test:permissions": "npx tsx src/lib/permissions.test.ts && npx tsx src/lib/permissions-parity.test.ts",
     "test:admin-api": "npx tsx src/app/api/admin/usage/route.test.ts",
-    "test:app-check": "npx tsx src/lib/firebase/app-check.test.ts && npx tsx src/lib/api-client.test.ts && npx tsx src/lib/firebase/admin-app-check.test.ts && npx tsx src/app/api/admin/usage/route.test.ts && npx tsx src/app/api/routes-app-check.test.ts",
+    "test:app-check": "npx tsx src/lib/firebase/app-check.test.ts && npx tsx src/lib/api-client.test.ts && npx tsx src/lib/firebase/admin-app-check.test.ts && npx tsx src/app/api/admin/usage/route.test.ts && npx tsx src/app/api/routes-app-check.test.ts && npx tsx src/app/api/app-check-observation.test.ts",
     "test:security": "npm run test:permissions && npm run test:admin-api",
     "test:backend": "npm --prefix functions run test",
     "test:integration:guard": "node scripts/run-integration-isolated.mjs --self-test",
