@@ -243,13 +243,13 @@ export function FeaturedActivityCard({ activity, user, onJoin, hasRequested }: F
                     {/* Exclude avatars on mobile to avoid card vertical bloating */}
                     <div className="hidden md:flex items-center gap-3 mb-4">
                         {visibleAvatars.length > 0 && (
-                            <div className="flex -space-x-1.5 overflow-hidden">
+                            <div className="flex shrink-0 -space-x-1.5 overflow-hidden">
                                 {visibleAvatars.map((p) => (
                                     <ProfileAvatar 
                                         key={p.uid} 
                                         photoURL={p.photoURL}
                                         displayName={p.displayName}
-                                        className="h-5.5 w-5.5 border border-white shadow-sm"
+                                        className="h-6 w-6 shrink-0 border border-white shadow-sm"
                                     />
                                 ))}
                             </div>
@@ -301,7 +301,7 @@ export function FeaturedActivityCard({ activity, user, onJoin, hasRequested }: F
                                 variant="outline" 
                                 size="sm" 
                                 onClick={(e) => { e.stopPropagation(); handleViewChatClick(activity.id!); }} 
-                                className="h-11 md:h-7.5 rounded-lg text-xs md:text-[9px] font-black text-primary border-primary/20 px-3 flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                className="h-11 md:h-8 rounded-lg text-xs md:text-[9px] font-black text-primary border-primary/20 px-3 flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                             >
                                 <MessageSquare className="h-3.5 w-3.5" />
                                 Chat
@@ -312,7 +312,7 @@ export function FeaturedActivityCard({ activity, user, onJoin, hasRequested }: F
                                 onClick={handleJoinClick} 
                                 disabled={isJoining || isFull || isRequested}
                                 className={cn(
-                                    "h-11 md:h-7.5 rounded-lg text-xs md:text-[9px] font-black px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 relative flex items-center justify-center min-w-[72px]",
+                                    "h-11 md:h-8 rounded-lg text-xs md:text-[9px] font-black px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 relative flex items-center justify-center min-w-[72px]",
                                     isPaidEvent ? "bg-slate-900 text-white" : "bg-primary text-white"
                                 )}
                             >
