@@ -71,7 +71,7 @@ export function ActivaPulseHero({
 
   return (
     <div 
-      className={cn('w-full flex flex-wrap sm:flex-nowrap items-center justify-between p-4 sm:p-6 rounded-[20px] bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-900 dark:from-emerald-700 dark:via-emerald-800 dark:to-teal-950 text-white shadow-sm relative overflow-hidden gap-4 min-h-[160px]', compact && 'md:flex-col md:items-start xl:flex-row xl:items-center')}
+      className={cn('w-full flex flex-wrap sm:flex-nowrap items-center justify-between p-4 sm:p-6 rounded-[20px] bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-900 dark:from-emerald-700 dark:via-emerald-800 dark:to-teal-950 text-white shadow-sm relative overflow-hidden gap-4 min-h-[160px]', compact && 'md:p-4 md:gap-3 md:flex-col md:items-start xl:flex-row xl:items-center')}
       aria-labelledby={headingId}
     >
       {/* Decorative background blurs */}
@@ -85,7 +85,7 @@ export function ActivaPulseHero({
       />
 
       {/* Left side content wrapper */}
-      <div className="flex-1 basis-full sm:basis-auto flex flex-col min-w-0 gap-3 relative">
+      <div className={cn('flex-1 basis-full sm:basis-auto flex flex-col min-w-0 gap-3 relative', compact && 'md:flex-none md:gap-2 xl:flex-1')}>
         {/* Eyebrow */}
         <div className="flex items-center gap-1.5">
           {/* Status breathing pulse dot */}
@@ -102,7 +102,7 @@ export function ActivaPulseHero({
         <div className="flex flex-col gap-0.5 min-w-0">
           <h2 
             id={headingId}
-            className="text-xl sm:text-2xl font-semibold tracking-tight leading-tight text-white m-0"
+            className={cn('text-xl sm:text-2xl font-semibold tracking-tight leading-tight text-white m-0', compact && 'md:text-xl')}
           >
             {headingText}
           </h2>
@@ -135,7 +135,7 @@ export function ActivaPulseHero({
 
       {/* Right side fixed info panel */}
       {metricsAvailable && (
-        <div className={cn('hidden sm:flex shrink-0 flex-col rounded-xl bg-white/[0.07] border border-white/10 px-3.5 py-2.5 min-w-[100px] md:min-w-[120px] shadow-sm', compact && 'md:w-full md:flex-row md:flex-wrap md:gap-x-4 md:gap-y-2 xl:w-auto xl:flex-col xl:gap-0')}>
+        <div className={cn('hidden sm:flex shrink-0 flex-col rounded-xl bg-white/[0.07] border border-white/10 px-3.5 py-2.5 min-w-[100px] md:min-w-[120px] shadow-sm', compact && 'md:px-3 md:py-2 md:w-full md:flex-row md:flex-wrap md:gap-x-4 md:gap-y-2 xl:w-auto xl:flex-col xl:gap-0')}>
           <div className="flex items-center gap-2 text-xs md:text-sm font-semibold text-white whitespace-nowrap">
             <DoorOpen className="h-4 w-4 text-emerald-300 shrink-0" />
             <span>

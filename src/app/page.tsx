@@ -1927,7 +1927,7 @@ function HomeContent() {
                 const live = placesMetaMap[place.id];
                 const placeObj = place;
                 return (
-                  <div key={place.id} className="min-h-[280px] w-full">
+                  <div key={place.id} className="min-h-[210px] w-full">
                     <PlaceCard 
                       place={placeObj} 
                       activityPreview={placeActivityPreviews.get(placeObj.id)}

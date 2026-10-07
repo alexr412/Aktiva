@@ -55,25 +55,25 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
       onPointerDown={e => { if (!interactive(e.target)) setIsPressed(true); }}
       onPointerUp={() => setIsPressed(false)} onPointerCancel={() => setIsPressed(false)} onPointerLeave={() => setIsPressed(false)}
       className={cn('group relative flex h-full w-full min-w-0 cursor-pointer overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-lg dark:border-white/[0.07] dark:bg-card motion-reduce:transition-none',
-        featured ? 'flex-row min-h-[210px]' : 'flex-col', isPressed && 'scale-[0.985] motion-reduce:transform-none')}>
+        featured ? 'flex-row min-h-[180px]' : 'flex-col', isPressed && 'scale-[0.985] motion-reduce:transform-none')}>
       <CategoryCardDecoration gradientClass={primaryStyle.gradientClass} icon={PrimaryIcon} label={primaryStyle.label}
         variant={featured ? 'featured' : 'standard'} appearance="feed"
-        className={featured ? 'w-[76px] sm:w-40 md:w-28 lg:w-36 xl:w-40 self-stretch' : 'h-[74px] sm:h-[94px] shrink-0'}>
+        className={featured ? 'w-[72px] sm:w-28 md:w-24 lg:w-28 xl:w-32 self-stretch' : 'h-14 sm:h-16 shrink-0'}>
         {featured ? <>
           <span className="absolute top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900/85 px-1.5 sm:px-2 py-1 text-[7px] sm:text-[9px] font-semibold text-emerald-300">{translateAppString('featured.label', language)}</span>
-          <div className="mt-6 flex flex-col items-center gap-3 px-2 text-center">
-            <PrimaryIcon className="h-10 w-10 sm:h-14 sm:w-14 text-white" strokeWidth={1.6} />
+          <div className="mt-6 flex flex-col items-center gap-2 px-2 text-center">
+            <PrimaryIcon className="h-9 w-9 sm:h-11 sm:w-11 text-white" strokeWidth={1.6} />
             <span className="max-w-full text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-white/95">{primaryStyle.label}</span>
           </div>
         </> : <>
-          <PrimaryIcon className="absolute left-3 bottom-3 h-9 w-9 sm:left-4 sm:bottom-4 sm:h-11 sm:w-11 text-white" strokeWidth={1.7} />
+          <PrimaryIcon className="absolute left-3 bottom-2.5 h-8 w-8 sm:h-9 sm:w-9 text-white" strokeWidth={1.7} />
           {place.distance !== undefined && <span className="absolute right-2.5 top-2.5 rounded-full border border-white/20 bg-black/25 px-2 py-1 text-[10px] sm:text-[11px] font-semibold text-white">{formatDistance(place.distance)}</span>}
         </>}
       </CategoryCardDecoration>
 
-      <div className={cn('flex min-w-0 flex-1 flex-col', featured ? 'p-3 sm:p-5' : 'p-2.5 sm:p-4')}>
+      <div className={cn('flex min-w-0 flex-1 flex-col', featured ? 'p-3 sm:p-3.5' : 'p-2.5 sm:p-3')}>
         <div className="flex min-w-0 items-start justify-between gap-2">
-          <h3 className={cn('min-w-0 flex-1 font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100', featured ? 'text-base sm:text-xl' : 'text-sm sm:text-base min-h-[2.5rem]')}>
+          <h3 className={cn('min-w-0 flex-1 font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100', featured ? 'text-base sm:text-lg' : 'text-sm sm:text-base min-h-9')}>
             <button type="button" onClick={e => { e.stopPropagation(); onClick(); }} className="w-full max-w-full min-w-0 line-clamp-2 break-words text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded">
               {place.name || (german ? 'Unbekannter Ort' : 'Unknown place')}
             </button>
@@ -81,17 +81,17 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
           </h3>
           {featured && place.distance !== undefined && <span className="shrink-0 rounded-full bg-slate-100 dark:bg-white/5 px-2 py-1 text-[10px] sm:text-xs font-medium text-slate-600 dark:text-slate-300">{formatDistance(place.distance)}</span>}
         </div>
-        <p className="mt-1 line-clamp-2 min-h-[2rem] text-[11px] sm:text-xs leading-relaxed text-slate-500 dark:text-slate-400 break-words">
+        <p className="mt-1 line-clamp-2 text-[11px] sm:text-xs leading-relaxed text-slate-500 dark:text-slate-400 break-words">
           {place.openingHours ? formatOpeningHours(place.openingHours) : (place.address || (german ? 'Adresse noch nicht verfügbar' : 'Address not available')).split(',').slice(0, 2).join(', ')}
         </p>
-        <div className="mt-2 flex min-h-5 flex-wrap items-center gap-1.5">
+        <div className="mt-1.5 flex min-h-5 flex-wrap items-center gap-1.5">
           {tags.map(item => <span key={item.tag} className="max-w-full truncate rounded-md bg-primary/10 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-medium text-emerald-700 dark:text-emerald-400">{translateTag(item.tag, language)}</span>)}
           {rating !== undefined && rating > 0 && <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400"><Star className="h-3 w-3 fill-current" />{rating.toFixed(1)}</span>}
           {role === 'admin' && place.relevanceScore !== undefined && <span className="text-[10px] text-amber-600 dark:text-amber-400">Score {place.relevanceScore.toFixed(1)}</span>}
           {role === 'admin' && (place.categories || []).map((tag, index) => <span key={`${tag}-${index}`} className="max-w-full truncate text-[9px] font-mono text-slate-500 dark:text-slate-400">{tag}</span>)}
         </div>
         <PlaceActivityPreview activity={activityPreview} activityCount={activityCount} loading={activityPreviewLoading} language={language} onClick={onClick} onCreate={() => onAddActivity(place)} />
-        <div className="-mx-2 mt-auto flex items-center justify-between border-t border-slate-100 pt-2 dark:border-white/5 sm:mx-0 sm:gap-1">
+        <div className="-mx-2 mt-auto flex items-center justify-between border-t border-slate-100 pt-1.5 dark:border-white/5 sm:mx-0 sm:gap-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" aria-label={german ? 'Spot bewerten' : 'Rate spot'} onClick={e => e.stopPropagation()}
