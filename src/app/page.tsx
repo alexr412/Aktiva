@@ -2111,6 +2111,7 @@ function HomeContent() {
         <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
         <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
         <AppHeader
+          className="!pb-2"
           headerIdentityTutorialId="header-profile-identity"
           headerTutorialId="header-feed"
           icon={
@@ -2253,7 +2254,7 @@ function HomeContent() {
               </div>
             <div ref={discoverFeedRef} id="discover-feed" data-tutorial-id="feed-main" className="scroll-mt-24">
               {!isOpenRoomsMode && !isCommunityCategory && !isMySpotsCategory && (
-                <div className="px-3 sm:px-6 pt-3 sm:pt-6">
+                <div className="px-3 sm:px-6 pt-1 sm:pt-2">
                   {feedPreferencesSyncError && <div role="alert" className="text-xs text-amber-600 dark:text-amber-400">
                     <p>{language === 'de' ? 'Auswahl lokal gespeichert. Kontosynchronisierung fehlgeschlagen.' : 'Choice saved locally. Account synchronization failed.'}</p>
                     <button type="button" className="underline mt-1" onClick={retryFeedPreferencesSync}>{language === 'de' ? 'Erneut versuchen' : 'Try again'}</button>
