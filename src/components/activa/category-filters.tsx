@@ -36,7 +36,7 @@ import { availableTabs } from './category-filters-data';
 import { cn, formatLabel } from '@/lib/utils';
 import { useLanguage } from '@/hooks/use-language';
 import { translateAppString } from '@/lib/tag-config';
-import { FeedFiltersPanel } from './feed-filters-panel';
+import { FeedFiltersPanel, type FeedFiltersToolbar } from './feed-filters-panel';
 
 // Re-export für Onboarding und andere Konsumenten
 export { availableTabs };
@@ -83,6 +83,7 @@ type CategoryFiltersProps = {
   onToggleCategoryVisibility?: (tabId: string) => void;
   onShowAllCategories?: () => void;
   visibilityReady?: boolean;
+  toolbar?: FeedFiltersToolbar;
 };
 
 export function CategoryFilters({ 
@@ -98,6 +99,7 @@ export function CategoryFilters({
   onToggleCategoryVisibility,
   onShowAllCategories,
   visibilityReady = true,
+  toolbar,
 }: CategoryFiltersProps) {
   const { user, userProfile } = useAuth();
   const language = useLanguage();
@@ -211,6 +213,7 @@ export function CategoryFilters({
         onToggleCategoryVisibility={onToggleCategoryVisibility}
         onShowAllCategories={onShowAllCategories}
         visibilityReady={visibilityReady}
+        toolbar={toolbar}
       />
     );
   }

@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Compass, Eye, EyeOff, SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +11,8 @@ import { cn, formatLabel } from '@/lib/utils';
 import { translateAppString } from '@/lib/tag-config';
 import { availableTabs } from './category-filters-data';
 import type { CategoryTab } from './category-filters';
+
+export type FeedFiltersToolbar = { title?: string; actions?: ReactNode };
 
 type FeedFiltersPanelProps = {
   systemTabs: CategoryTab[];
@@ -22,12 +25,13 @@ type FeedFiltersPanelProps = {
   onToggleCategoryVisibility?: (tabId: string) => void;
   onShowAllCategories?: () => void;
   visibilityReady: boolean;
+  toolbar?: FeedFiltersToolbar;
 };
 
 export function FeedFiltersPanel({
   systemTabs, activeCategory, activeTabId, onCategoryChange, isOpenRoomsMode,
   onOpenRoomsChange, hiddenCategoryIds, onToggleCategoryVisibility,
-  onShowAllCategories, visibilityReady,
+  onShowAllCategories, visibilityReady, toolbar,
 }: FeedFiltersPanelProps) {
   const language = useLanguage();
   const de = language === 'de';
@@ -49,18 +53,29 @@ export function FeedFiltersPanel({
 
   return (
     <Sheet>
-      <div data-tutorial-id="feed-filters" className="flex min-w-0 items-center gap-3 pb-3 sm:pb-4">
-        <SheetTrigger asChild>
-          <Button variant="outline" className="h-11 shrink-0 gap-2 rounded-full px-4 font-bold">
-            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-            {de ? 'Filter' : 'Filters'}
-            {hiddenCount > 0 && <span className="rounded-full bg-emerald-500/15 px-1.5 text-xs text-emerald-700 dark:text-emerald-300">{hiddenCount}</span>}
-          </Button>
-        </SheetTrigger>
-        <div className="min-w-0 text-sm" aria-live="polite" aria-atomic="true">
+      <div data-tutorial-id="feed-filters" className={cn('flex min-w-0 gap-3', toolbar ? 'flex-wrap items-center justify-between' : 'items-center pb-3 sm:pb-4')}>
+        {toolbar && <div className="min-w-0 w-full sm:w-auto sm:flex-1" aria-live="polite" aria-atomic="true">
+          <h2 className="text-base sm:text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">{toolbar.title || summary}</h2>
+          {(toolbar.title || hiddenCount > 0) && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            {toolbar.title && (summary === allSpotsLabel ? (de ? 'Alle Spots in deiner Nähe' : 'All spots near you') : summary)}
+            {toolbar.title && hiddenCount > 0 && ' · '}
+            {hiddenCount > 0 && `${hiddenCount} ${de ? (hiddenCount === 1 ? 'Kategorie ausgeblendet' : 'Kategorien ausgeblendet') : (hiddenCount === 1 ? 'category hidden' : 'categories hidden')}`}
+          </p>}
+        </div>}
+        <div className={toolbar ? 'flex w-full sm:w-auto shrink-0 flex-wrap items-center justify-between gap-2' : 'contents'}>
+          <SheetTrigger asChild>
+            <Button variant="outline" className={cn('h-11 shrink-0 gap-2', toolbar ? 'rounded-xl border-slate-200/50 bg-white px-3 font-semibold dark:border-neutral-800 dark:bg-neutral-900' : 'rounded-full px-4 font-bold', toolbar && (hiddenCount > 0 || !!activeCategory.length || isOpenRoomsMode) && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300')}>
+              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+              {de ? 'Filter' : 'Filters'}
+              {hiddenCount > 0 && <span className="rounded-full bg-emerald-500/15 px-1.5 text-xs text-emerald-700 dark:text-emerald-300">{hiddenCount}</span>}
+            </Button>
+          </SheetTrigger>
+          {toolbar?.actions}
+        </div>
+        {!toolbar && <div className="min-w-0 text-sm" aria-live="polite" aria-atomic="true">
           <p className="truncate font-semibold" title={summary}>{summary}</p>
           {hiddenCount > 0 && <p className="truncate text-xs text-muted-foreground">{hiddenCount} {de ? 'ausgeblendet' : 'hidden'}</p>}
-        </div>
+        </div>}
       </div>
       <SheetContent side="left" hideCloseButton className="flex h-[100dvh] w-[calc(100%-20px)] max-w-[420px] flex-col gap-0 overflow-hidden rounded-r-3xl p-0 sm:max-w-[420px] motion-reduce:animate-none motion-reduce:transition-none">
         <div className="shrink-0 border-b px-5 pb-4 pt-[max(20px,env(safe-area-inset-top))]">

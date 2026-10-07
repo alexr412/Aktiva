@@ -2233,6 +2233,13 @@ function HomeContent() {
             <div className="px-4 sm:px-6">
               <CategoryFilters 
                 presentation="panel"
+                toolbar={{
+                  title: !isOpenRoomsMode && !isCommunityCategory && !isMySpotsCategory && !isFavoritesCategory ? (language === 'de' ? 'Spots entdecken' : 'Discover spots') : undefined,
+                  actions: !isOpenRoomsMode && !isCommunityCategory && !isMySpotsCategory ? <FeedSortSelect compact value={sortBy} language={language} onChange={value => {
+                    setSortBy(value);
+                    setVisibleCount(PLACES_PER_PAGE);
+                  }} /> : undefined,
+                }}
                 activeCategory={activeCategory} 
                 activeTabId={activeTabId} 
                 onCategoryChange={handleCategoryChange} 
@@ -2253,19 +2260,12 @@ function HomeContent() {
                 {renderPulseHero()}
               </div>
             <div ref={discoverFeedRef} id="discover-feed" data-tutorial-id="feed-main" className="scroll-mt-24">
-              {!isOpenRoomsMode && !isCommunityCategory && !isMySpotsCategory && (
+              {!isOpenRoomsMode && !isCommunityCategory && !isMySpotsCategory && feedPreferencesSyncError && (
                 <div className="px-3 sm:px-6 pt-1 sm:pt-2">
                   {feedPreferencesSyncError && <div role="alert" className="text-xs text-amber-600 dark:text-amber-400">
                     <p>{language === 'de' ? 'Auswahl lokal gespeichert. Kontosynchronisierung fehlgeschlagen.' : 'Choice saved locally. Account synchronization failed.'}</p>
                     <button type="button" className="underline mt-1" onClick={retryFeedPreferencesSync}>{language === 'de' ? 'Erneut versuchen' : 'Try again'}</button>
                   </div>}
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h2 className="text-base sm:text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">{language === 'de' ? 'Spots entdecken' : 'Discover spots'}</h2>
-                    <FeedSortSelect value={sortBy} language={language} onChange={value => {
-                      setSortBy(value);
-                      setVisibleCount(PLACES_PER_PAGE);
-                    }} />
-                  </div>
                 </div>
               )}
               {renderContent()}
