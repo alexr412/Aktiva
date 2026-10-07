@@ -200,7 +200,7 @@ export default function MapPage() {
       ) : (
         /* Desktop Place Details Dialog */
         <Dialog open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}>
-          <DialogContent className="p-0 sm:p-0 w-[calc(100vw-2rem)] max-w-2xl h-[min(82dvh,620px)] max-h-[calc(100dvh-2rem)] flex flex-col min-h-0 gap-0 overflow-hidden border border-slate-200 dark:border-white/10 outline-none rounded-3xl bg-white dark:bg-card" hideCloseButton>
+          <DialogContent className="p-0 sm:p-0 w-[calc(100vw-2rem)] max-w-2xl h-auto max-h-[min(82dvh,620px)] flex flex-col min-h-0 gap-0 overflow-hidden border border-slate-200 dark:border-white/10 outline-none rounded-3xl bg-white dark:bg-card" hideCloseButton>
             <DialogTitle className="sr-only">{selectedPlace?.name || 'Ort Details'}</DialogTitle>
             <DialogDescription className="sr-only">Details zum ausgewählten Ort</DialogDescription>
             {selectedPlace && (

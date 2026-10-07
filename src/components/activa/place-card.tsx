@@ -95,22 +95,22 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" aria-label={german ? 'Spot bewerten' : 'Rate spot'} onClick={e => e.stopPropagation()}
-                className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 dark:bg-background dark:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:hidden', userVote === 'up' && 'text-emerald-600 dark:text-emerald-400', userVote === 'down' && 'text-rose-600 dark:text-rose-400')}>
-                {userVote === 'down' ? <ThumbsDown className="h-4 w-4" /> : <ThumbsUp className="h-4 w-4" />}
+                className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:hidden', userVote === 'none' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20' : userVote === 'up' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-rose-600 text-white hover:bg-rose-700')}>
+                {userVote === 'down' ? <ThumbsDown className="h-4 w-4 fill-current" /> : <ThumbsUp className={cn('h-4 w-4', userVote === 'up' && 'fill-current')} />}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" onClick={e => e.stopPropagation()}>
-              {(['up', 'down'] as const).map(type => <DropdownMenuItem key={type} onSelect={() => vote(type)} className="min-h-11 gap-2">
+              {(['up', 'down'] as const).map(type => <DropdownMenuItem key={type} onSelect={() => vote(type)} className={cn('min-h-11 gap-2', type === 'up' ? 'text-emerald-700 dark:text-emerald-400 focus:bg-emerald-500/15 focus:text-emerald-700 dark:focus:text-emerald-400' : 'text-rose-700 dark:text-rose-400 focus:bg-rose-500/15 focus:text-rose-700 dark:focus:text-rose-400', userVote === type && (type === 'up' ? 'bg-emerald-500/10' : 'bg-rose-500/10'))}>
                 {type === 'up' ? <ThumbsUp className="h-4 w-4" /> : <ThumbsDown className="h-4 w-4" />}
                 {voteLabel(type)}{userVote === type && ' ✓'}{showWeights && ` (${type === 'up' ? `+${weightedUpvotes}` : `-${weightedDownvotes}`})`}
               </DropdownMenuItem>)}
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className="hidden shrink-0 items-center gap-0.5 rounded-xl bg-slate-50 dark:bg-background sm:flex">
+          <div className="hidden shrink-0 items-center gap-1 sm:flex">
             {(['up', 'down'] as const).map(type => <button type="button" key={type} aria-label={voteLabel(type)} aria-pressed={userVote === type}
               onClick={e => { e.stopPropagation(); vote(type); }}
-              className={cn('flex h-11 min-w-11 items-center justify-center gap-1 rounded-xl px-2 text-xs text-slate-500 dark:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:bg-primary/10', userVote === type && (type === 'up' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' : 'bg-rose-500/15 text-rose-700 dark:text-rose-400'))}>
-              {type === 'up' ? <ThumbsUp className="h-4 w-4" /> : <ThumbsDown className="h-4 w-4" />}
+              className={cn('flex h-11 min-w-11 items-center justify-center gap-1 rounded-xl px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2', type === 'up' ? 'focus-visible:ring-emerald-500' : 'focus-visible:ring-rose-500', userVote === type ? (type === 'up' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-rose-600 text-white hover:bg-rose-700') : (type === 'up' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20' : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20'))}>
+              {type === 'up' ? <ThumbsUp className={cn('h-4 w-4', userVote === type && 'fill-current')} /> : <ThumbsDown className={cn('h-4 w-4', userVote === type && 'fill-current')} />}
               {showWeights && <span>{type === 'up' ? `+${weightedUpvotes}` : `-${weightedDownvotes}`}</span>}
             </button>)}
           </div>

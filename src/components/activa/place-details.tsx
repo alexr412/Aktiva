@@ -30,7 +30,6 @@ import {
     MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -318,7 +317,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     <button
                         onClick={onClose}
                         type="button"
-                        className="absolute top-3 right-3 z-30 h-11 w-11 rounded-xl bg-black/15 hover:bg-black/30 text-white flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-white focus:outline-none"
+                        className="absolute top-3 right-3 z-30 h-11 w-11 rounded-full bg-black/20 hover:bg-black/35 text-white flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white focus:outline-none"
                         aria-label={language === 'de' ? 'Schließen' : 'Close'}
                     >
                         <X className="h-5 w-5" />
@@ -327,8 +326,8 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
 
             </div>
 
-            <ScrollArea viewportRef={viewportRef} className="flex-1 min-h-0 w-full bg-white dark:bg-card">
-                <div className="p-4 sm:p-5 pb-6 sm:pb-6">
+            <div ref={viewportRef} tabIndex={0} role="region" aria-label={language === 'de' ? 'Spot-Details' : 'Spot details'} className="flex-1 min-h-0 w-full overflow-y-auto overscroll-contain [scrollbar-width:thin] bg-white dark:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
+                <div className="p-4">
                     {/* 1. Core metadata */}
                     <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-background p-3">
                         <div className="space-y-2">
@@ -369,10 +368,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         </div>
                     </div>
 
-                    <Separator className="my-4 dark:bg-neutral-800/80" />
+                    <Separator className="my-3 dark:bg-neutral-800/80" />
 
                     {/* 2. Local Activities Section */}
-                    <div className="mb-4">
+                    <div>
                         <div className="flex items-center justify-between gap-2 mb-3">
                             <div className="flex items-center gap-2">
                                 <Users className="h-5 w-5 text-[#1e293b] dark:text-neutral-100" />
@@ -402,16 +401,18 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                 <Skeleton className="h-20 w-full rounded-2xl" />
                             </div>
                         ) : activities.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-5 bg-slate-50/50 dark:bg-neutral-800/40 rounded-2xl border border-slate-100 dark:border-neutral-800/50 text-center my-1 max-w-md mx-auto">
-                                <h4 className="font-bold text-sm text-slate-800 dark:text-neutral-200 mb-1 leading-snug">
-                                    {language === 'de' ? 'Noch keine offenen Aktivitäten an diesem Ort' : 'No open activities at this place yet'}
-                                </h4>
-                                <p className="text-xs text-slate-400 font-semibold mb-4 leading-normal max-w-xs">
-                                    {language === 'de' ? 'Erstelle die erste Aktivität und finde Leute, die mitmachen.' : 'Create the first activity and find people to join.'}
-                                </p>
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-emerald-50 dark:bg-emerald-500/5 rounded-2xl border border-emerald-200/60 dark:border-emerald-500/15">
+                                <div className="min-w-0">
+                                    <h4 className="font-semibold text-sm text-slate-800 dark:text-neutral-200 mb-1 leading-snug">
+                                        {language === 'de' ? 'Hier ist noch Platz für deine Idee' : 'There is room for your idea here'}
+                                    </h4>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        {language === 'de' ? 'Plane die erste Aktivität und finde Leute, die mitmachen.' : 'Plan the first activity and find people to join.'}
+                                    </p>
+                                </div>
                                 <Button
                                     onClick={onCreateActivity}
-                                    className="h-11 px-5 rounded-xl bg-primary text-white font-bold text-xs uppercase tracking-wider active:scale-[0.985] flex items-center gap-1.5 shadow shadow-primary/10 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none"
+                                    className="h-11 w-full sm:w-auto shrink-0 px-4 rounded-xl bg-primary text-white font-semibold text-xs active:scale-[0.985] flex items-center gap-1.5 shadow shadow-primary/10 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none"
                                 >
                                     <Plus className="h-4 w-4" />
                                     {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
@@ -524,10 +525,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         )}
                     </div>
 
-                    <Separator className="my-4 dark:bg-neutral-800/80" />
+                    <Separator className="my-3 dark:bg-neutral-800/80" />
 
                     {/* 3. Secondary Actions */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 my-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                         <Button 
                             onClick={handleBookmarkToggle}
                             className={cn(
@@ -564,10 +565,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     </div>
 
                     {/* 4. Rating and Distance Statistics */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 my-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                         <button 
                             onClick={handleOpenReviewsModal}
-                            className="bg-[#fff7ed] dark:bg-amber-950/20 p-3 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-center border border-amber-100/50 dark:border-amber-900/30 hover:scale-105 active:scale-95 transition-all cursor-pointer group shadow-xs"
+                            className="bg-amber-50 dark:bg-amber-500/10 min-h-11 p-2 rounded-xl flex flex-col items-center justify-center gap-0.5 text-center border border-amber-200/60 dark:border-amber-500/15 hover:bg-amber-100 dark:hover:bg-amber-500/15 transition-colors cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                         >
                             <div className="flex items-center gap-1">
                                 <Star className="w-3.5 h-3.5 text-[#f59e0b] fill-[#f59e0b] group-hover:scale-110 transition-transform" />
@@ -580,13 +581,13 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                             </div>
                             <span className="text-[10px] font-bold text-amber-900/80 dark:text-amber-400/80 underline decoration-amber-400/40 underline-offset-2">Community</span>
                         </button>
-                        <div className="bg-[#f0f9ff] dark:bg-blue-950/20 p-3 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-center border border-blue-100/50 dark:border-blue-900/30">
+                        <div className="bg-blue-50 dark:bg-blue-500/10 p-2 rounded-xl flex flex-col items-center justify-center gap-0.5 text-center border border-blue-200/60 dark:border-blue-500/15">
                              <span className="text-sm font-black text-[#0369a1] dark:text-blue-400">
                                 {formattedDistance || '---'}
                             </span>
                             <span className="text-[10px] font-bold text-blue-900/80 dark:text-blue-400/80">{language === 'de' ? 'Entfernung' : 'Distance'}</span>
                         </div>
-                        <div className="hidden md:flex bg-[#fef2f2] dark:bg-rose-950/20 p-3 rounded-2xl flex-col items-center justify-center gap-0.5 text-center border border-rose-100/50 dark:border-rose-900/30">
+                        <div className="hidden md:flex bg-rose-50 dark:bg-rose-500/10 p-2 rounded-xl flex-col items-center justify-center gap-0.5 text-center border border-rose-200/60 dark:border-rose-500/15">
                              <span className="text-sm font-black text-[#b91c1c] dark:text-rose-400">
                                 {activities.length}
                             </span>
@@ -594,50 +595,52 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         </div>
                     </div>
 
-                    {/* Voting Widget */}
-                    <div className="flex items-center gap-3 pt-2 justify-center">
-                        <div className="flex items-center bg-neutral-50 dark:bg-neutral-800 rounded-2xl p-0.5 gap-0.5 border border-neutral-100 dark:border-neutral-800">
-                            <button
-                                onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
-                                aria-pressed={userVote === 'up'}
-                                className={cn(
-                                    "h-7 rounded-xl flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-                                    (userProfile?.role === 'admin' || userProfile?.role === 'supporter') ? "px-2" : "w-7",
-                                    userVote === 'up'
-                                        ? "bg-emerald-600 text-white border border-emerald-500 shadow-md shadow-emerald-500/25 scale-[1.04] active:scale-95"
-                                        : "bg-transparent text-emerald-600/50 dark:text-emerald-400/50 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent active:scale-95"
-                                )}
-                            >
-                                <ThumbsUp className="h-3.5 w-3.5 shrink-0" />
-                                {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
-                                    <span className={cn("text-[10px] font-black", userVote === 'up' ? "text-white opacity-100" : "opacity-70")}>
-                                        {(placeMeta.weightedUpvotes || 0) > 0 ? `+${placeMeta.weightedUpvotes}` : '0'}
-                                    </span>
-                                )}
-                            </button>
-
-                            <button
-                                onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
-                                aria-pressed={userVote === 'down'}
-                                className={cn(
-                                    "h-7 rounded-xl flex items-center justify-center transition-[background-color,color,border-color,transform,box-shadow] duration-200 text-[11px] font-black leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
-                                    (userProfile?.role === 'admin' || userProfile?.role === 'supporter') ? "px-2" : "w-7",
-                                    userVote === 'down'
-                                        ? "bg-rose-600 text-white border border-rose-500 shadow-md shadow-rose-500/25 scale-[1.04] active:scale-95"
-                                        : "bg-transparent text-rose-600/50 dark:text-rose-400/50 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 border border-transparent active:scale-95"
-                                )}
-                            >
-                                <ThumbsDown className="h-3.5 w-3.5 shrink-0" />
-                                {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
-                                    <span className={cn("text-[10px] font-black", userVote === 'down' ? "text-white opacity-100" : "opacity-70")}>
-                                        {(placeMeta.weightedDownvotes || 0) > 0 ? `-${placeMeta.weightedDownvotes}` : '0'}
-                                    </span>
-                                )}
-                            </button>
-                        </div>
-                    </div>
                 </div>
-            </ScrollArea>
+            </div>
+
+            {/* Keep voting reachable while the details scroll. */}
+            <div className="shrink-0 flex items-center justify-between gap-3 border-t border-slate-200 dark:border-white/10 bg-white dark:bg-card px-4 py-3">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{language === 'de' ? 'Dein Eindruck vom Spot' : 'Your impression of this spot'}</span>
+                <div className="flex items-center gap-1.5">
+                    <button
+                        onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
+                        aria-pressed={userVote === 'up'}
+                        aria-label={language === 'de' ? 'Gefällt mir' : 'Like'}
+                        className={cn(
+                            "h-11 min-w-11 px-2 rounded-xl flex items-center justify-center transition-colors duration-200 text-[11px] font-semibold leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
+                            userVote === 'up'
+                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20"
+                        )}
+                    >
+                        <ThumbsUp className={cn("h-4 w-4 shrink-0", userVote === 'up' && 'fill-current')} />
+                        {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
+                            <span className={cn("text-[10px] font-black", userVote === 'up' ? "text-white opacity-100" : "opacity-70")}>
+                                {(placeMeta.weightedUpvotes || 0) > 0 ? `+${placeMeta.weightedUpvotes}` : '0'}
+                            </span>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={(e) => handleVoteClick(e, userVote === 'down' ? 'none' : 'down')}
+                        aria-pressed={userVote === 'down'}
+                        aria-label={language === 'de' ? 'Gefällt mir nicht' : 'Dislike'}
+                        className={cn(
+                            "h-11 min-w-11 px-2 rounded-xl flex items-center justify-center transition-colors duration-200 text-[11px] font-semibold leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
+                            userVote === 'down'
+                                ? "bg-rose-600 text-white hover:bg-rose-700"
+                                : "bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20"
+                        )}
+                    >
+                        <ThumbsDown className={cn("h-4 w-4 shrink-0", userVote === 'down' && 'fill-current')} />
+                        {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
+                            <span className={cn("text-[10px] font-black", userVote === 'down' ? "text-white opacity-100" : "opacity-70")}>
+                                {(placeMeta.weightedDownvotes || 0) > 0 ? `-${placeMeta.weightedDownvotes}` : '0'}
+                            </span>
+                        )}
+                    </button>
+                </div>
+            </div>
 
             {/* Reusable SaveToCollectionModal */}
             <SaveToCollectionModal
