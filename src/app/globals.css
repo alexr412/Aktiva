@@ -187,9 +187,9 @@
 
 /* Theme: Mint (Default) */
 .theme-mint {
-  --primary: 153 72% 30%;
+  --primary: 142 100% 26.5%;
   --primary-foreground: 0 0% 100%;
-  --ring: 153 72% 30%;
+  --ring: 142 100% 26.5%;
 }
 .dark.theme-mint {
   --primary: 150 60% 45%;

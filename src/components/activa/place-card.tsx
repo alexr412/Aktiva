@@ -54,7 +54,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
       onPointerUp={() => setIsPressed(false)} onPointerCancel={() => setIsPressed(false)} onPointerLeave={() => setIsPressed(false)}
       className={cn('group relative flex w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[14px] border border-border bg-card transition-[transform,border-color] duration-200 hover:border-primary/40 motion-reduce:transition-none',
         isPressed && 'scale-[0.985] motion-reduce:transform-none')}>
-      <div aria-hidden="true" className={cn('h-[3px] w-full shrink-0', primaryStyle.gradientClass)} />
+      <div aria-hidden="true" className={cn('h-1 w-full shrink-0', primaryStyle.gradientClass)} />
 
       <div className="flex min-w-0 flex-col p-3 sm:p-4">
         <div className="mb-2 flex items-center gap-2">
@@ -106,7 +106,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" aria-label={german ? 'Spot bewerten' : 'Rate spot'} onClick={e => e.stopPropagation()}
-                className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:hidden', userVote === 'none' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20' : userVote === 'up' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-rose-600 text-white hover:bg-rose-700')}>
+                className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:hidden', userVote === 'none' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20' : userVote === 'up' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-rose-600 text-white hover:bg-rose-700')}>
                 {userVote === 'down' ? <ThumbsDown className="h-4 w-4 fill-current" /> : <ThumbsUp className={cn('h-4 w-4', userVote === 'up' && 'fill-current')} />}
               </button>
             </DropdownMenuTrigger>
@@ -120,7 +120,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
           <div className="hidden shrink-0 items-center gap-1 sm:flex">
             {(['up', 'down'] as const).map(type => <button type="button" key={type} aria-label={voteLabel(type)} aria-pressed={userVote === type}
               onClick={e => { e.stopPropagation(); vote(type); }}
-              className={cn('flex h-9 min-w-9 items-center justify-center gap-1 rounded-lg px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2', type === 'up' ? 'focus-visible:ring-emerald-500' : 'focus-visible:ring-rose-500', userVote === type ? (type === 'up' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-rose-600 text-white hover:bg-rose-700') : (type === 'up' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20' : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20'))}>
+              className={cn('flex h-9 min-w-9 items-center justify-center gap-1 rounded-lg px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2', type === 'up' ? 'focus-visible:ring-emerald-500' : 'focus-visible:ring-rose-500', userVote === type ? (type === 'up' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-rose-600 text-white hover:bg-rose-700') : (type === 'up' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20' : 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20'))}>
               {type === 'up' ? <ThumbsUp className={cn('h-4 w-4', userVote === type && 'fill-current')} /> : <ThumbsDown className={cn('h-4 w-4', userVote === type && 'fill-current')} />}
               {showWeights && <span>{type === 'up' ? `+${weightedUpvotes}` : `-${weightedDownvotes}`}</span>}
             </button>)}

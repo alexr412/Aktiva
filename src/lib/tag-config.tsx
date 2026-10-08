@@ -223,7 +223,7 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
       return { icon: Gamepad2, color: '#8b5cf6', label: language === 'de' ? 'Gaming' : 'Gaming', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-indigo-500 to-violet-600' };
     }
     if (matchedCategory === 'tech') {
-      return { icon: Zap, color: '#06b6d4', label: language === 'de' ? 'Tech' : 'Tech', bgClass: 'bg-cyan-50', gradientClass: 'bg-gradient-to-br from-cyan-400 to-blue-500' };
+      return { icon: Zap, color: '#06b6d4', label: language === 'de' ? 'Tech' : 'Tech', bgClass: 'bg-cyan-50', gradientClass: 'bg-gradient-to-br from-cyan-500 to-blue-600' };
     }
     if (matchedCategory === 'networking') {
       return { icon: Coffee, color: '#d97706', label: language === 'de' ? 'Networking' : 'Networking', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-orange-400 to-rose-500' };
@@ -246,7 +246,7 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
     return { icon: Landmark, color: '#4f46e5', label: language === 'de' ? 'Museum' : 'Museum', bgClass: 'bg-indigo-50', gradientClass: 'bg-gradient-to-br from-indigo-600 to-blue-700', imageUrl: 'https://images.unsplash.com/photo-1544333323-c242144ebd53?q=80&w=800&auto=format&fit=crop' };
   }
   if (tags.some((t: string) => t.includes('cinema')) || name.includes('kino')) {
-    return { icon: Film, color: '#4c1d95', label: language === 'de' ? 'Kino' : 'Cinema', bgClass: 'bg-purple-50', gradientClass: 'bg-gradient-to-br from-rose-500 to-orange-500', imageUrl: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800&auto=format&fit=crop' };
+    return { icon: Film, color: '#4c1d95', label: language === 'de' ? 'Kino' : 'Cinema', bgClass: 'bg-purple-50', gradientClass: 'bg-gradient-to-br from-rose-500 to-orange-600', imageUrl: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800&auto=format&fit=crop' };
   }
   if (tags.some((t: string) => t.includes('escape')) || name.includes('quest') || name.includes('escape') || name.includes('rätsel')) {
     return { icon: EscapeRoomIcon as any, color: '#7c3aed', label: language === 'de' ? 'Escape Room' : 'Escape Room', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-slate-900 to-violet-800' };
@@ -288,7 +288,7 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
 
   // --- MARITIM & ZOO ---
   if (tags.some((t: string) => t.includes('zoo')) || name.includes('zoo') || name.includes('tierpark')) {
-    return { icon: ZooIcon as any, color: '#7c2d12', label: language === 'de' ? 'Zoo & Tierpark' : 'Zoo', bgClass: 'bg-orange-50', gradientClass: 'bg-gradient-to-br from-amber-500 to-orange-600', imageUrl: 'https://images.unsplash.com/photo-1541315570220-449e7591244d?q=80&w=800&auto=format&fit=crop' };
+    return { icon: ZooIcon as any, color: '#7c2d12', label: language === 'de' ? 'Zoo & Tierpark' : 'Zoo', bgClass: 'bg-orange-50', gradientClass: 'bg-gradient-to-br from-orange-500 to-amber-500', imageUrl: 'https://images.unsplash.com/photo-1541315570220-449e7591244d?q=80&w=800&auto=format&fit=crop' };
   }
   if (tags.some((t: string) => t.includes('ship')) || name.includes('schiff') || name.includes('boot')) {
     return { icon: Ship, color: '#3b82f6', label: language === 'de' ? 'Maritim' : 'Maritime', bgClass: 'bg-blue-50', gradientClass: 'bg-gradient-to-br from-blue-500 to-cyan-400', imageUrl: 'https://images.unsplash.com/photo-1540946484610-45cd54ff3ad2?q=80&w=800&auto=format&fit=crop' };
@@ -296,7 +296,7 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
 
   // --- WASSER & WELLNESS ---
   if (tags.some((t: string) => t.includes('water_park') || t.includes('waterpark')) || name.includes('wasserpark')) {
-    return { icon: WaterparkIcon as any, color: '#0284c7', label: language === 'de' ? 'Schwimmbad' : 'Water Park', bgClass: 'bg-sky-50', gradientClass: 'bg-gradient-to-br from-sky-400 to-blue-600', imageUrl: 'https://images.unsplash.com/photo-1562095241-8c6714fd4178?q=80&w=800&auto=format&fit=crop' };
+    return { icon: WaterparkIcon as any, color: '#0284c7', label: language === 'de' ? 'Schwimmbad' : 'Water Park', bgClass: 'bg-sky-50', gradientClass: 'bg-gradient-to-br from-blue-500 to-indigo-600', imageUrl: 'https://images.unsplash.com/photo-1562095241-8c6714fd4178?q=80&w=800&auto=format&fit=crop' };
   }
   if (
     tags.some((t: string) =>
@@ -319,7 +319,7 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
     name.includes('erlebnisbad') ||
     name.includes('badeanstalt')
   ) {
-    return { icon: Droplets, color: '#0ea5e9', label: language === 'de' ? 'Schwimmbad' : 'Pool', bgClass: 'bg-sky-50', gradientClass: 'bg-gradient-to-br from-cyan-400 to-blue-500' };
+    return { icon: Droplets, color: '#0ea5e9', label: language === 'de' ? 'Schwimmbad' : 'Pool', bgClass: 'bg-sky-50', gradientClass: 'bg-gradient-to-br from-cyan-500 to-blue-600' };
   }
   if (
     tags.some((t: string) => t.includes('spa') || t.includes('wellness') || t.includes('sauna') || t.includes('therme')) ||
@@ -335,7 +335,7 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
     return { icon: PlaygroundIcon as any, color: '#10b981', label: language === 'de' ? 'Spielplatz' : 'Playground', bgClass: 'bg-emerald-50', gradientClass: 'bg-gradient-to-br from-emerald-400 to-teal-500' };
   }
   if (tags.includes('leisure.park') || tags.includes('pet.dog_park') || n.includes('wiese') || n.includes('park') || n.includes('garten')) {
-    return { icon: Trees, color: '#059669', label: language === 'de' ? 'Natur & Park' : 'Nature & Park', bgClass: 'bg-green-50', gradientClass: 'bg-gradient-to-br from-emerald-500 to-lime-400' };
+    return { icon: Trees, color: '#059669', label: language === 'de' ? 'Natur & Park' : 'Nature & Park', bgClass: 'bg-green-50', gradientClass: 'bg-gradient-to-br from-green-500 to-lime-500' };
   }
 
   // --- KULTUR & FREIZEIT ---
@@ -379,7 +379,7 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
 
   // --- NACHTLEBEN ---
   if (tags.includes('adult.nightclub') || name.includes('club') || name.includes('disco')) {
-    return { icon: NightclubIcon as any, color: '#9333ea', label: language === 'de' ? 'Nachtclub' : 'Nightclub', bgClass: 'bg-purple-50', gradientClass: 'bg-gradient-to-br from-pink-600 to-purple-700' };
+    return { icon: NightclubIcon as any, color: '#9333ea', label: language === 'de' ? 'Nachtclub' : 'Nightclub', bgClass: 'bg-purple-50', gradientClass: 'bg-gradient-to-br from-fuchsia-500 to-purple-600' };
   }
 
   // --- USER EVENT SPECIFIC CATEGORIES ---
@@ -399,7 +399,7 @@ export const getPrimaryIconData = (place: any, language: 'de' | 'en' = 'de'): Ta
     return { icon: Gamepad2, color: '#8b5cf6', label: language === 'de' ? 'Gaming' : 'Gaming', bgClass: 'bg-violet-50', gradientClass: 'bg-gradient-to-br from-indigo-500 to-violet-600' };
   }
   if (tags.includes('tech')) {
-    return { icon: Zap, color: '#06b6d4', label: language === 'de' ? 'Tech' : 'Tech', bgClass: 'bg-cyan-50', gradientClass: 'bg-gradient-to-br from-cyan-400 to-blue-500' };
+    return { icon: Zap, color: '#06b6d4', label: language === 'de' ? 'Tech' : 'Tech', bgClass: 'bg-cyan-50', gradientClass: 'bg-gradient-to-br from-cyan-500 to-blue-600' };
   }
   if (tags.includes('networking')) {
     return { icon: Coffee, color: '#d97706', label: language === 'de' ? 'Networking' : 'Networking', bgClass: 'bg-amber-50', gradientClass: 'bg-gradient-to-br from-orange-400 to-rose-500' };
