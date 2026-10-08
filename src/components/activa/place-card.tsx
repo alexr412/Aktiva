@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { Activity, Place } from '@/lib/types';
 import { Plus, Bookmark, ThumbsUp, ThumbsDown, Sparkles, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getPrimaryIconData, translateTag, getCleanTags, translateAppString } from '@/lib/tag-config';
+import { getPrimaryIconData, translateAppString } from '@/lib/tag-config';
 import { formatOpeningHours } from '@/lib/tag-parser';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -36,14 +36,13 @@ export type PlaceCardProps = {
 
 export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCount, activityPreview,
   activityPreviewLoading, isFavorite, onVote, onBookmarkToggle, role, weightedUpvotes = 0,
-  weightedDownvotes = 0, compact = false, featured = false }: PlaceCardProps) {
+  weightedDownvotes = 0, featured = false }: PlaceCardProps) {
   const language = useLanguage();
   const [isPressed, setIsPressed] = useState(false);
   if (!place) return null;
   const german = language === 'de';
   const primaryStyle = getPrimaryIconData(place, language);
   const PrimaryIcon = primaryStyle.icon;
-  const tags = getCleanTags(place.categories || []).filter(item => item.isMain).slice(0, compact ? 1 : 2);
   const showWeights = role === 'admin' || role === 'supporter';
   const rating = place.rating || (place as Place & { averageRating?: number }).averageRating;
   const interactive = (target: EventTarget) => (target as HTMLElement).closest('button, a, input, select, textarea, [role="button"], [data-card-interactive]');
@@ -54,44 +53,43 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
     <article onClick={e => { if (!interactive(e.target) && !window.getSelection()?.toString()) onClick(); }}
       onPointerDown={e => { if (!interactive(e.target)) setIsPressed(true); }}
       onPointerUp={() => setIsPressed(false)} onPointerCancel={() => setIsPressed(false)} onPointerLeave={() => setIsPressed(false)}
-      className={cn('group relative flex h-full w-full min-w-0 cursor-pointer overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-lg dark:border-white/[0.07] dark:bg-card motion-reduce:transition-none',
-        featured ? 'flex-row min-h-[180px]' : 'flex-col', isPressed && 'scale-[0.985] motion-reduce:transform-none')}>
-      <CategoryCardDecoration gradientClass={primaryStyle.gradientClass} icon={PrimaryIcon} label={primaryStyle.label}
-        variant={featured ? 'featured' : 'standard'} appearance="feed"
-        className={featured ? 'w-[72px] sm:w-28 md:w-24 lg:w-28 xl:w-32 self-stretch' : 'h-14 sm:h-16 shrink-0'}>
-        {featured ? <>
-          <span className="absolute top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900/85 px-1.5 sm:px-2 py-1 text-[7px] sm:text-[9px] font-semibold text-emerald-300">{translateAppString('featured.label', language)}</span>
-          <div className="mt-6 flex flex-col items-center gap-2 px-2 text-center">
-            <PrimaryIcon className="h-9 w-9 sm:h-11 sm:w-11 text-white" strokeWidth={1.6} />
-            <span className="max-w-full text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-white/95">{primaryStyle.label}</span>
-          </div>
-        </> : <>
-          <PrimaryIcon className="absolute left-3 bottom-2.5 h-8 w-8 sm:h-9 sm:w-9 text-white" strokeWidth={1.7} />
-          {place.distance !== undefined && <span className="absolute right-2.5 top-2.5 rounded-full border border-white/20 bg-black/25 px-2 py-1 text-[10px] sm:text-[11px] font-semibold text-white">{formatDistance(place.distance)}</span>}
-        </>}
-      </CategoryCardDecoration>
+      className={cn('group relative flex h-full w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-[transform,box-shadow,border-color] duration-200 hover:border-primary/25 hover:shadow-md md:flex-row motion-reduce:transition-none',
+        isPressed && 'scale-[0.985] motion-reduce:transform-none')}>
+      <div className="relative h-20 shrink-0 self-stretch md:h-auto md:w-24 lg:w-28">
+        <CategoryCardDecoration gradientClass={primaryStyle.gradientClass} icon={PrimaryIcon} label={primaryStyle.label}
+          appearance="feed" className="h-full min-h-20 w-full">
+          <PrimaryIcon className="absolute bottom-3 left-3 h-9 w-9 text-white md:bottom-auto md:left-1/2 md:top-1/2 md:h-12 md:w-12 md:-translate-x-1/2 md:-translate-y-1/2 md:-rotate-6" strokeWidth={1.6} />
+        </CategoryCardDecoration>
+        <Button type="button" variant="ghost" size="icon" aria-label={german ? (isFavorite ? 'Aus Favoriten entfernen' : 'Spot merken') : (isFavorite ? 'Remove favorite' : 'Save spot')} aria-pressed={isFavorite}
+          onClick={e => { e.stopPropagation(); onBookmarkToggle(); }} className={cn('absolute right-1 top-1 h-11 w-11 rounded-xl bg-black/10 text-white hover:bg-black/25 hover:text-white', isFavorite && 'bg-white/90 text-emerald-800 hover:bg-white hover:text-emerald-900')}>
+          <Bookmark className={cn('h-4 w-4', isFavorite && 'fill-current')} />
+        </Button>
+      </div>
 
-      <div className={cn('flex min-w-0 flex-1 flex-col', featured ? 'p-3 sm:p-3.5' : 'p-2.5 sm:p-3')}>
+      <div className="flex min-w-0 flex-1 flex-col p-2.5 sm:p-3 md:p-3.5">
+        <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground line-clamp-2">{primaryStyle.label}</p>
+          {featured && <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300"><Sparkles className="h-3 w-3" aria-hidden="true" />{translateAppString('featured.label', language)}</span>}
+        </div>
         <div className="flex min-w-0 items-start justify-between gap-2">
-          <h3 className={cn('min-w-0 flex-1 font-semibold leading-snug tracking-tight text-slate-900 dark:text-slate-100', featured ? 'text-base sm:text-lg' : 'text-sm sm:text-base min-h-9')}>
+          <h3 className="min-w-0 flex-1 text-base font-semibold leading-snug tracking-tight text-card-foreground sm:text-lg md:text-xl">
             <button type="button" onClick={e => { e.stopPropagation(); onClick(); }} className="w-full max-w-full min-w-0 line-clamp-2 break-words text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded">
               {place.name || (german ? 'Unbekannter Ort' : 'Unknown place')}
             </button>
             {isEntityBoosted(place) && <Sparkles className="inline h-3.5 w-3.5 text-amber-500" aria-label={german ? 'Highlight' : 'Featured'} />}
           </h3>
-          {featured && place.distance !== undefined && <span className="shrink-0 rounded-full bg-slate-100 dark:bg-white/5 px-2 py-1 text-[10px] sm:text-xs font-medium text-slate-600 dark:text-slate-300">{formatDistance(place.distance)}</span>}
         </div>
-        <p className="mt-1 line-clamp-2 text-[11px] sm:text-xs leading-relaxed text-slate-500 dark:text-slate-400 break-words">
+        <p className="mt-1 line-clamp-2 text-[11px] sm:text-xs leading-relaxed text-muted-foreground break-words">
+          {place.distance !== undefined && <span className="font-medium text-card-foreground">{formatDistance(place.distance)} · </span>}
           {place.openingHours ? formatOpeningHours(place.openingHours) : (place.address || (german ? 'Adresse noch nicht verfügbar' : 'Address not available')).split(',').slice(0, 2).join(', ')}
         </p>
-        <div className="mt-1.5 flex min-h-5 flex-wrap items-center gap-1.5">
-          {tags.map(item => <span key={item.tag} className="max-w-full truncate rounded-md bg-primary/10 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-medium text-emerald-700 dark:text-emerald-400">{translateTag(item.tag, language)}</span>)}
+        {((rating !== undefined && rating > 0) || role === 'admin') && <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {rating !== undefined && rating > 0 && <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400"><Star className="h-3 w-3 fill-current" />{rating.toFixed(1)}</span>}
           {role === 'admin' && place.relevanceScore !== undefined && <span className="text-[10px] text-amber-600 dark:text-amber-400">Score {place.relevanceScore.toFixed(1)}</span>}
           {role === 'admin' && (place.categories || []).map((tag, index) => <span key={`${tag}-${index}`} className="max-w-full truncate text-[9px] font-mono text-slate-500 dark:text-slate-400">{tag}</span>)}
-        </div>
-        <PlaceActivityPreview activity={activityPreview} activityCount={activityCount} loading={activityPreviewLoading} language={language} onClick={onClick} onCreate={() => onAddActivity(place)} />
-        <div className="-mx-2 mt-auto flex items-center justify-between border-t border-slate-100 pt-1.5 dark:border-white/5 sm:mx-0 sm:gap-1">
+        </div>}
+        <PlaceActivityPreview activity={activityPreview} activityCount={activityCount} loading={activityPreviewLoading} language={language} onClick={onClick} onCreate={() => onAddActivity(place)} hideEmpty />
+        <div className="mt-auto flex items-center justify-between gap-1 pt-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" aria-label={german ? 'Spot bewerten' : 'Rate spot'} onClick={e => e.stopPropagation()}
@@ -109,21 +107,15 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
           <div className="hidden shrink-0 items-center gap-1 sm:flex">
             {(['up', 'down'] as const).map(type => <button type="button" key={type} aria-label={voteLabel(type)} aria-pressed={userVote === type}
               onClick={e => { e.stopPropagation(); vote(type); }}
-              className={cn('flex h-11 min-w-11 items-center justify-center gap-1 rounded-xl px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2', type === 'up' ? 'focus-visible:ring-emerald-500' : 'focus-visible:ring-rose-500', userVote === type ? (type === 'up' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-rose-600 text-white hover:bg-rose-700') : (type === 'up' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20' : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20'))}>
+              className={cn('flex h-9 min-w-9 items-center justify-center gap-1 rounded-lg px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2', type === 'up' ? 'focus-visible:ring-emerald-500' : 'focus-visible:ring-rose-500', userVote === type ? (type === 'up' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-rose-600 text-white hover:bg-rose-700') : (type === 'up' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20' : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20'))}>
               {type === 'up' ? <ThumbsUp className={cn('h-4 w-4', userVote === type && 'fill-current')} /> : <ThumbsDown className={cn('h-4 w-4', userVote === type && 'fill-current')} />}
               {showWeights && <span>{type === 'up' ? `+${weightedUpvotes}` : `-${weightedDownvotes}`}</span>}
             </button>)}
           </div>
-          <div className="ml-auto flex shrink-0 sm:gap-0.5">
-            <Button type="button" variant="ghost" size="icon" aria-label={german ? (isFavorite ? 'Aus Favoriten entfernen' : 'Spot merken') : (isFavorite ? 'Remove favorite' : 'Save spot')} aria-pressed={isFavorite}
-              onClick={e => { e.stopPropagation(); onBookmarkToggle(); }} className={cn('h-11 w-11 rounded-xl text-slate-500 dark:text-slate-300', isFavorite && 'bg-primary/10 text-primary')}>
-              <Bookmark className={cn('h-4 w-4', isFavorite && 'fill-current')} />
-            </Button>
-            <Button type="button" size="icon" data-tutorial-id="spot-card-create" aria-label={german ? 'Aktivität planen' : 'Plan activity'}
-              onClick={e => { e.stopPropagation(); onAddActivity(place); }} className="h-11 w-11 rounded-full bg-primary text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90">
-              <Plus className="h-5 w-5" />
-            </Button>
-          </div>
+          <Button type="button" variant="ghost" data-tutorial-id="spot-card-create" aria-label={german ? 'Aktivität planen' : 'Plan activity'}
+            onClick={e => { e.stopPropagation(); onAddActivity(place); }} className="ml-auto h-11 w-11 shrink-0 gap-1 rounded-xl bg-emerald-500/10 p-0 text-emerald-800 hover:bg-emerald-500/20 dark:text-emerald-300 sm:h-9 sm:w-auto sm:rounded-lg sm:px-2.5">
+            <Plus className="h-4 w-4" /><span className="hidden text-xs sm:inline">{german ? 'Planen' : 'Plan'}</span>
+          </Button>
         </div>
       </div>
     </article>

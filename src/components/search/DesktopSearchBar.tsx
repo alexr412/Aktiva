@@ -47,7 +47,7 @@ export function DesktopSearchBar({
   return (
     <div
       className={cn(
-        'flex items-center w-full bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md border border-slate-200/80 dark:border-neutral-800 rounded-2xl shadow-xs hover:shadow-sm focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/10 transition-all duration-200 h-12 px-2 gap-1 group',
+        'flex items-center w-full bg-card/90 dark:bg-neutral-900/90 backdrop-blur-md border border-border dark:border-neutral-800 rounded-2xl shadow-xs hover:shadow-sm focus-within:border-emerald-500/50 focus-within:ring-2 focus-within:ring-emerald-500/10 transition-all duration-200 h-12 px-2 gap-1 group',
         className
       )}
     >

@@ -50,7 +50,7 @@ import {
   pruneExpiredCache,
 } from '@/lib/cache/places-cache';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlaceCardSkeleton, FeaturedPlaceCardSkeleton, ActivityCardSkeleton, FeaturedActivityCardSkeleton } from '@/components/activa/card-skeletons';
+import { PlaceCardSkeleton, ActivityCardSkeleton, FeaturedActivityCardSkeleton } from '@/components/activa/card-skeletons';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
 import { AppTutorialProvider, useAppTutorial } from '@/lib/tutorial/tutorial-context';
 import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
@@ -1593,10 +1593,7 @@ function HomeContent() {
     else if (maxDistance === 25) setMaxDistance(null);
   };
 
-  const useSideBySideIntro = !isOpenRoomsMode && !isFavoritesCategory && !isCommunityCategory && !isMySpotsCategory
-    && activeFeedHasUsableData && activeVisibleItemCount > 0 && finalFeedPlaces.length > 0;
-
-  const renderPulseHero = (compact = false) => (
+  const renderPulseHero = () => (
     <ActivaPulseHero
       cityName={isLocationLoading ? null : cityName}
       openRoomsCount={openRoomsCount}
@@ -1604,8 +1601,8 @@ function HomeContent() {
       language={language}
       onExplore={handleExploreClick}
       loading={isInitialFeedLoading && !hasUsableFeedData}
-      compact={compact}
-      headingId={compact ? 'pulse-heading-desktop' : 'pulse-heading'}
+      layout="strip"
+      headingId="pulse-heading"
     />
   );
 
@@ -1851,8 +1848,8 @@ function HomeContent() {
             role="region" 
             aria-label={translateAppString('loading.results', language)}
           >
-            <FeaturedPlaceCardSkeleton />
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+              <PlaceCardSkeleton />
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
@@ -1922,12 +1919,12 @@ function HomeContent() {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
           }
           return (
-            <div className="p-4 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
+            <div className="p-3 sm:p-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
               {finalFeedPlaces.map(place => {
                 const live = placesMetaMap[place.id];
                 const placeObj = place;
                 return (
-                  <div key={place.id} className="min-h-[210px] w-full">
+                  <div key={place.id} className="min-w-0 w-full">
                     <PlaceCard 
                       place={placeObj} 
                       activityPreview={placeActivityPreviews.get(placeObj.id)}
@@ -2003,13 +2000,9 @@ function HomeContent() {
         });
 
         return (
-          <div className="p-3 sm:p-6 flex flex-col gap-3 sm:gap-6">
+          <div className="p-3 sm:p-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
             {featuredPlace && (
-              <div className="grid min-w-0 gap-3 sm:gap-6 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]" data-tutorial-id="feed-intro">
-                <div className="hidden min-w-0 md:flex">
-                  {renderPulseHero(true)}
-                </div>
-                <div className="min-w-0">
+              <div className="min-w-0">
                 {(() => {
                   const live = placesMetaMap[featuredPlace.id];
                   return (
@@ -2032,15 +2025,14 @@ function HomeContent() {
                     />
                   );
                 })()}
-                </div>
               </div>
             )}
             {displayFeedItems.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
+              <>
                 {displayFeedItems.map((item) => {
                   if (item.type === 'ad') {
                     return (
-                      <div key={item.id} className="min-h-[210px] w-full">
+                      <div key={item.id} className="min-w-0 w-full">
                         <AdCard adIndex={item.adIndex} />
                       </div>
                     );
@@ -2048,7 +2040,7 @@ function HomeContent() {
                   const place = item.place;
                   const live = placesMetaMap[place.id];
                   return (
-                    <div key={place.id} className="min-h-[210px] w-full">
+                    <div key={place.id} className="min-w-0 w-full">
                       <PlaceCard 
                         place={place} 
                         activityPreview={placeActivityPreviews.get(place.id)}
@@ -2069,7 +2061,7 @@ function HomeContent() {
                     </div>
                   );
                 })}
-              </div>
+              </>
             )}
           </div>
         );
@@ -2094,7 +2086,7 @@ function HomeContent() {
           </div>
           {renderList()}
           {isFetchingNextPage && !isReachingEnd && (
-            <div className="p-3 sm:p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
+            <div className={cn('p-3 sm:p-6 grid grid-cols-2 gap-3', isCommunityCategory ? 'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 sm:gap-6' : 'xl:grid-cols-3 sm:gap-4')}>
               {isCommunityCategory ? <ActivityCardSkeleton /> : <PlaceCardSkeleton />}
             </div>
           )}
@@ -2169,7 +2161,7 @@ function HomeContent() {
                       value={searchQuery} 
                       onChange={handleSearchInput} 
                       disabled={false}
-                      className="w-full pl-9 pr-20 h-11 rounded-[16px] border border-slate-200/50 dark:border-neutral-800 bg-white font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400"
+                      className="w-full pl-9 pr-20 h-11 rounded-[16px] border border-border dark:border-neutral-800 bg-card font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400"
                     />
                     {searchQuery && (
                       <button
@@ -2186,7 +2178,7 @@ function HomeContent() {
                   <div className="relative group shrink-0">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" className="group h-11 px-3 rounded-[16px] bg-white dark:bg-neutral-900 border border-slate-200/50 dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className="h-3.5 w-3.5 opacity-30 transition-transform group-data-[state=open]:rotate-180" /></Button>
+                        <Button variant="secondary" className="group h-11 px-3 rounded-[16px] bg-card dark:bg-neutral-900 border border-border dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className="h-3.5 w-3.5 opacity-30 transition-transform group-data-[state=open]:rotate-180" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
                         <div className="space-y-4">
@@ -2256,7 +2248,7 @@ function HomeContent() {
         </AppHeader>
         <main className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
           <div className="max-w-[1536px] mx-auto w-full pt-2">
-            <div className={cn('px-3 sm:px-6 mb-3 sm:mb-4', useSideBySideIntro && 'md:hidden')} data-tutorial-id={useSideBySideIntro ? undefined : 'feed-intro'}>
+            <div className="px-3 sm:px-6 mb-3 sm:mb-4" data-tutorial-id="feed-intro">
                 {renderPulseHero()}
               </div>
             <div ref={discoverFeedRef} id="discover-feed" data-tutorial-id="feed-main" className="scroll-mt-24">

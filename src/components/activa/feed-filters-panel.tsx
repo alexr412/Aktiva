@@ -64,7 +64,7 @@ export function FeedFiltersPanel({
         </div>}
         <div className={toolbar ? 'flex w-full sm:w-auto shrink-0 flex-wrap items-center justify-between gap-2' : 'contents'}>
           <SheetTrigger asChild>
-            <Button variant="outline" className={cn('h-11 shrink-0 gap-2', toolbar ? 'rounded-xl border-slate-200/50 bg-white px-3 font-semibold dark:border-neutral-800 dark:bg-neutral-900' : 'rounded-full px-4 font-bold', toolbar && (hiddenCount > 0 || !!activeCategory.length || isOpenRoomsMode) && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300')}>
+            <Button variant="outline" className={cn('h-11 shrink-0 gap-2', toolbar ? 'rounded-xl border-border bg-card px-3 font-semibold dark:border-neutral-800 dark:bg-neutral-900' : 'rounded-full px-4 font-bold', toolbar && (hiddenCount > 0 || !!activeCategory.length || isOpenRoomsMode) && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300')}>
               <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
               {de ? 'Filter' : 'Filters'}
               {hiddenCount > 0 && <span className="rounded-full bg-emerald-500/15 px-1.5 text-xs text-emerald-700 dark:text-emerald-300">{hiddenCount}</span>}

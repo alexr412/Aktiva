@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 
 export function PlaceCardSkeleton() {
   return (
-    <div className="w-full min-w-0 overflow-hidden rounded-[22px] bg-white dark:bg-neutral-900 border border-slate-200/40 dark:border-neutral-800/60 shadow-premium flex flex-col h-full pointer-events-none select-none" aria-hidden="true">
+    <div className="w-full min-w-0 overflow-hidden rounded-2xl bg-card border border-border shadow-sm flex flex-col md:flex-row h-full pointer-events-none select-none" aria-hidden="true">
       {/* Top decoration area placeholder */}
-      <div className="h-14 sm:h-16 w-full bg-slate-100/50 dark:bg-neutral-800/40 flex items-center justify-center relative">
+      <div className="h-20 md:h-auto md:w-24 lg:w-28 min-h-20 shrink-0 bg-muted flex items-center justify-center relative">
         <Skeleton className="h-8 w-8 rounded-full motion-reduce:animate-none" />
       </div>
       {/* Content area placeholder */}
@@ -20,8 +20,7 @@ export function PlaceCardSkeleton() {
           <Skeleton className="h-4.5 w-12 rounded-[10px] motion-reduce:animate-none" />
           <Skeleton className="h-4.5 w-16 rounded-[10px] motion-reduce:animate-none" />
         </div>
-        <Skeleton className="my-2 h-11 w-full rounded-lg motion-reduce:animate-none" />
-        <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-100/50 dark:border-neutral-800/40">
+        <div className="flex items-center justify-between mt-auto pt-2">
           <div className="flex gap-1.5">
             <Skeleton className="h-11 w-11 sm:w-20 rounded-lg motion-reduce:animate-none" />
           </div>

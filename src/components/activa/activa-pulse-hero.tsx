@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Compass, Plus, DoorOpen, Users } from 'lucide-react';
+import { Compass, Plus, DoorOpen, Users, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { translateAppString } from '@/lib/tag-config';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,7 @@ export interface ActivaPulseHeroProps {
   loading?: boolean;
   compact?: boolean;
   headingId?: string;
+  layout?: 'hero' | 'strip';
 }
 
 /**
@@ -35,7 +36,8 @@ export function ActivaPulseHero({
   onExplore,
   loading = false,
   compact = false,
-  headingId = 'pulse-heading'
+  headingId = 'pulse-heading',
+  layout = 'hero'
 }: ActivaPulseHeroProps) {
   // Derive city and heading
   const normalizedCity = useMemo(() => normalizeCityName(cityName), [cityName]);
@@ -44,6 +46,30 @@ export function ActivaPulseHero({
     : translateAppString('pulse.heading.near_you', language);
 
   const metricsAvailable = openRoomsCount !== null && uniqueParticipantsCount !== null;
+
+  if (layout === 'strip') {
+    return (
+      <section className="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2.5 sm:px-4" aria-labelledby={headingId} aria-busy={loading}>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 sm:flex"><Radio className="h-4 w-4" aria-hidden="true" /></span>
+          <div className="min-w-0">
+            <h2 id={headingId} className="text-sm font-semibold tracking-tight text-card-foreground">{translateAppString('pulse.eyebrow', language)}</h2>
+            <p className="mt-0.5 text-[11px] sm:text-xs text-muted-foreground">
+              {loading ? (language === 'de' ? 'Aktivitäten werden geladen …' : 'Loading activities …') : metricsAvailable
+                ? `${openRoomsCount} ${language === 'de' ? (openRoomsCount === 1 ? 'Raum' : 'Räume') : (openRoomsCount === 1 ? 'Room' : 'Rooms')} · ${uniqueParticipantsCount} ${language === 'de' ? (uniqueParticipantsCount === 1 ? 'Person' : 'Personen') : (uniqueParticipantsCount === 1 ? 'Person' : 'People')}`
+                : translateAppString('pulse.location_fallback', language)}
+            </p>
+          </div>
+        </div>
+        <Button type="button" variant="ghost" onClick={onExplore} disabled={loading || openRoomsCount === null}
+          aria-label={openRoomsCount === 0 ? translateAppString('pulse.cta.create', language) : translateAppString('pulse.cta.open_rooms', language)}
+          className="h-11 w-11 shrink-0 gap-2 rounded-lg p-0 text-emerald-800 hover:bg-emerald-500/10 dark:text-emerald-300 sm:w-auto sm:px-3">
+          {openRoomsCount === 0 ? <Plus className="h-4 w-4" /> : <Compass className="h-4 w-4" />}
+          <span className="hidden text-xs sm:inline">{openRoomsCount === 0 ? translateAppString('pulse.cta.create', language) : translateAppString('pulse.cta.open_rooms', language)}</span>
+        </Button>
+      </section>
+    );
+  }
 
   // Loading state placeholder skeleton
   if (loading) {
