@@ -439,7 +439,7 @@ export default function FavoritesPage() {
                                     </p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+                                <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
                                     {favorites.map(fav => {
                                         const live = placesMetaMap[fav.id];
                                         const favPlace = fav as Place;
@@ -580,7 +580,7 @@ export default function FavoritesPage() {
                                 <p className="text-slate-400 font-semibold text-xs mt-1">Füge Orte direkt vom Feed aus hinzu.</p>
                               </div>
                             ) : (
-                              <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+                              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
                                 {selectedCollection.places.map(placeId => {
                                   const place = cachedDetails[placeId];
                                   const isLoading = loadingPlaces[placeId];

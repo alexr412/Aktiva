@@ -5,13 +5,14 @@ import { cn } from "@/lib/utils";
 
 export function PlaceCardSkeleton() {
   return (
-    <div className="w-full min-w-0 overflow-hidden rounded-2xl bg-card border border-border shadow-sm flex flex-col md:flex-row h-full pointer-events-none select-none" aria-hidden="true">
-      {/* Top decoration area placeholder */}
-      <div className="h-20 md:h-auto md:w-24 lg:w-28 min-h-20 shrink-0 bg-muted flex items-center justify-center relative">
-        <Skeleton className="h-8 w-8 rounded-full motion-reduce:animate-none" />
-      </div>
-      {/* Content area placeholder */}
-      <div className="p-2.5 sm:p-3 flex flex-col flex-1 gap-2 min-w-0">
+    <div className="w-full min-w-0 overflow-hidden rounded-[14px] bg-card border border-border flex flex-col h-full pointer-events-none select-none" aria-hidden="true">
+      <div className="h-[3px] w-full shrink-0 bg-muted" />
+      <div className="p-3 sm:p-4 flex flex-col flex-1 gap-2 min-w-0">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-[38px] w-[38px] sm:h-11 sm:w-11 rounded-xl motion-reduce:animate-none" />
+          <Skeleton className="h-4 w-6 rounded motion-reduce:animate-none" />
+        </div>
+        <Skeleton className="h-3 w-20 rounded motion-reduce:animate-none" />
         <div className="space-y-1.5 min-w-0">
           <Skeleton className="h-4.5 w-11/12 rounded-lg motion-reduce:animate-none" />
           <Skeleton className="h-3.5 w-2/3 rounded-md motion-reduce:animate-none" />

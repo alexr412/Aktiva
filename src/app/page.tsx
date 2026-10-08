@@ -1848,7 +1848,7 @@ function HomeContent() {
             role="region" 
             aria-label={translateAppString('loading.results', language)}
           >
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
@@ -1919,7 +1919,7 @@ function HomeContent() {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
           }
           return (
-            <div className="p-3 sm:p-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+            <div className="p-3 sm:p-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
               {finalFeedPlaces.map(place => {
                 const live = placesMetaMap[place.id];
                 const placeObj = place;
@@ -2000,7 +2000,7 @@ function HomeContent() {
         });
 
         return (
-          <div className="p-3 sm:p-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+          <div className="p-3 sm:p-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
             {featuredPlace && (
               <div className="min-w-0">
                 {(() => {
@@ -2086,7 +2086,7 @@ function HomeContent() {
           </div>
           {renderList()}
           {isFetchingNextPage && !isReachingEnd && (
-            <div className={cn('p-3 sm:p-6 grid grid-cols-2 gap-3', isCommunityCategory ? 'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 sm:gap-6' : 'xl:grid-cols-3 sm:gap-4')}>
+            <div className={cn('p-3 sm:p-6 grid grid-cols-2 gap-3', isCommunityCategory ? 'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 sm:gap-6' : 'lg:grid-cols-3 2xl:grid-cols-4 sm:gap-4')}>
               {isCommunityCategory ? <ActivityCardSkeleton /> : <PlaceCardSkeleton />}
             </div>
           )}

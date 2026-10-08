@@ -4,7 +4,7 @@ import { Users } from 'lucide-react';
 import type { Activity } from '@/lib/types';
 import { getPlaceActivityPreview } from './place-activity-preview-model';
 
-export function PlaceActivityPreview({ activity, activityCount, language, onClick, onCreate, loading = false, hideEmpty = false }: {
+export function PlaceActivityPreview({ activity, activityCount, language, onClick, onCreate, loading = false, hideEmpty = false, compact = false }: {
   activity?: Activity;
   activityCount: number;
   language: string;
@@ -12,6 +12,7 @@ export function PlaceActivityPreview({ activity, activityCount, language, onClic
   onCreate: () => void;
   loading?: boolean;
   hideEmpty?: boolean;
+  compact?: boolean;
 }) {
   const preview = activity ? getPlaceActivityPreview(activity, language) : null;
   const german = language === 'de';
@@ -19,6 +20,7 @@ export function PlaceActivityPreview({ activity, activityCount, language, onClic
   if (hideEmpty && !preview && !hasActivities) return null;
   return (
     <button type="button" onClick={e => { e.stopPropagation(); preview || hasActivities ? onClick() : onCreate(); }}
+      aria-label={preview ? `${german ? 'Aktivität ansehen' : 'View activity'}: ${preview.title} · ${preview.schedule} · ${preview.availability}` : undefined}
       className="my-1.5 flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg bg-emerald-500/10 p-2 text-left transition-colors hover:bg-emerald-500/15 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
       <span aria-hidden="true" className="hidden shrink-0 sm:flex -space-x-1.5 pt-0.5">
         {preview?.initials.length ? preview.initials.map((initials, index) => (
@@ -27,11 +29,12 @@ export function PlaceActivityPreview({ activity, activityCount, language, onClic
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[11px] sm:text-xs font-semibold leading-snug text-slate-700 dark:text-slate-200 line-clamp-2 break-words">
-          {preview?.title || (hasActivities
+          {(preview && compact ? (activityCount > 1
+            ? (german ? `${activityCount} Aktivitäten ansehen` : `View ${activityCount} activities`) : preview.schedule) : preview?.title) || (hasActivities
             ? (german ? `${activityCount} ${activityCount === 1 ? 'Aktivität' : 'Aktivitäten'} ansehen` : `View ${activityCount} ${activityCount === 1 ? 'activity' : 'activities'}`)
             : (german ? (loading ? 'Gemeinsam etwas planen' : 'Plane hier eine Aktivität') : (loading ? 'Plan something together' : 'Plan an activity here')))}
         </span>
-        {preview && <span className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] sm:text-[11px] leading-relaxed text-slate-500 dark:text-slate-400"><span>{preview.schedule}</span><span className="text-emerald-700 dark:text-emerald-400">{preview.availability}</span></span>}
+        {preview && <span className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] sm:text-[11px] leading-relaxed text-muted-foreground">{(!compact || activityCount > 1) && <span>{preview.schedule}</span>}<span className="text-emerald-700 dark:text-emerald-400">{preview.availability}</span></span>}
       </span>
     </button>
   );

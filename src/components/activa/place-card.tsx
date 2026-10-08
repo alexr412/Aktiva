@@ -2,14 +2,13 @@
 
 import { useState } from 'react';
 import type { Activity, Place } from '@/lib/types';
-import { Plus, Bookmark, ThumbsUp, ThumbsDown, Sparkles, Star } from 'lucide-react';
+import { Plus, Bookmark, BookmarkCheck, MoreHorizontal, Info, ThumbsUp, ThumbsDown, Sparkles, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getPrimaryIconData, translateAppString } from '@/lib/tag-config';
+import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatOpeningHours } from '@/lib/tag-parser';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { isEntityBoosted } from '@/lib/ranking';
-import { CategoryCardDecoration } from './category-card-decoration';
 import { PlaceActivityPreview } from './place-activity-preview';
 import { useLanguage } from '@/hooks/use-language';
 import { formatDistance } from '@/lib/geo-utils';
@@ -53,33 +52,47 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
     <article onClick={e => { if (!interactive(e.target) && !window.getSelection()?.toString()) onClick(); }}
       onPointerDown={e => { if (!interactive(e.target)) setIsPressed(true); }}
       onPointerUp={() => setIsPressed(false)} onPointerCancel={() => setIsPressed(false)} onPointerLeave={() => setIsPressed(false)}
-      className={cn('group relative flex h-full w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-[transform,box-shadow,border-color] duration-200 hover:border-primary/25 hover:shadow-md md:flex-row motion-reduce:transition-none',
+      className={cn('group relative flex h-full w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[14px] border border-border bg-card transition-[transform,border-color] duration-200 hover:border-primary/40 motion-reduce:transition-none',
         isPressed && 'scale-[0.985] motion-reduce:transform-none')}>
-      <div className="relative h-20 shrink-0 self-stretch md:h-auto md:w-24 lg:w-28">
-        <CategoryCardDecoration gradientClass={primaryStyle.gradientClass} icon={PrimaryIcon} label={primaryStyle.label}
-          appearance="feed" className="h-full min-h-20 w-full">
-          <PrimaryIcon className="absolute bottom-3 left-3 h-9 w-9 text-white md:bottom-auto md:left-1/2 md:top-1/2 md:h-12 md:w-12 md:-translate-x-1/2 md:-translate-y-1/2 md:-rotate-6" strokeWidth={1.6} />
-        </CategoryCardDecoration>
-        <Button type="button" variant="ghost" size="icon" aria-label={german ? (isFavorite ? 'Aus Favoriten entfernen' : 'Spot merken') : (isFavorite ? 'Remove favorite' : 'Save spot')} aria-pressed={isFavorite}
-          onClick={e => { e.stopPropagation(); onBookmarkToggle(); }} className={cn('absolute right-1 top-1 h-11 w-11 rounded-xl bg-black/10 text-white hover:bg-black/25 hover:text-white', isFavorite && 'bg-white/90 text-emerald-800 hover:bg-white hover:text-emerald-900')}>
-          <Bookmark className={cn('h-4 w-4', isFavorite && 'fill-current')} />
-        </Button>
-      </div>
+      <div aria-hidden="true" className={cn('h-[3px] w-full shrink-0', primaryStyle.gradientClass)} />
 
-      <div className="flex min-w-0 flex-1 flex-col p-2.5 sm:p-3 md:p-3.5">
+      <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
+        <div className="mb-2 flex items-center justify-between gap-1">
+          <span aria-hidden="true" className={cn('flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-xl text-white sm:h-11 sm:w-11', primaryStyle.gradientClass)}>
+            <PrimaryIcon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.7} />
+          </span>
+          <div className="flex items-center gap-1">
+            {isFavorite && <BookmarkCheck className="h-4 w-4 text-emerald-700 dark:text-emerald-300" aria-label={german ? 'Gespeichert' : 'Saved'} />}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" aria-label={german ? `Optionen für ${place.name || 'diesen Spot'}` : `Options for ${place.name || 'this spot'}`}
+                  onClick={e => e.stopPropagation()} className="h-11 w-11 rounded-lg text-muted-foreground hover:bg-muted hover:text-card-foreground sm:h-9 sm:w-9">
+                  <MoreHorizontal className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                <DropdownMenuItem onSelect={onBookmarkToggle} className="min-h-11 gap-2">
+                  {isFavorite ? <BookmarkCheck /> : <Bookmark />}
+                  {german ? (isFavorite ? 'Aus Favoriten entfernen' : 'Spot merken') : (isFavorite ? 'Remove favorite' : 'Save spot')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={onClick} className="min-h-11 gap-2"><Info />{german ? 'Details ansehen' : 'View details'}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
         <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground line-clamp-2">{primaryStyle.label}</p>
-          {featured && <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300"><Sparkles className="h-3 w-3" aria-hidden="true" />{translateAppString('featured.label', language)}</span>}
+          <p className="line-clamp-2 text-[10px] font-medium text-muted-foreground sm:text-[11px]">{primaryStyle.label}</p>
+          {featured && <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300 sm:text-[11px]"><Sparkles className="h-3 w-3" aria-hidden="true" />{german ? 'Empfohlen' : 'Recommended'}</span>}
         </div>
         <div className="flex min-w-0 items-start justify-between gap-2">
-          <h3 className="min-w-0 flex-1 text-base font-semibold leading-snug tracking-tight text-card-foreground sm:text-lg md:text-xl">
+          <h3 className="min-w-0 flex-1 text-base font-semibold leading-snug tracking-tight text-card-foreground sm:text-lg">
             <button type="button" onClick={e => { e.stopPropagation(); onClick(); }} className="w-full max-w-full min-w-0 line-clamp-2 break-words text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded">
               {place.name || (german ? 'Unbekannter Ort' : 'Unknown place')}
             </button>
             {isEntityBoosted(place) && <Sparkles className="inline h-3.5 w-3.5 text-amber-500" aria-label={german ? 'Highlight' : 'Featured'} />}
           </h3>
         </div>
-        <p className="mt-1 line-clamp-2 text-[11px] sm:text-xs leading-relaxed text-muted-foreground break-words">
+        <p className="mt-1 line-clamp-2 break-words text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
           {place.distance !== undefined && <span className="font-medium text-card-foreground">{formatDistance(place.distance)} · </span>}
           {place.openingHours ? formatOpeningHours(place.openingHours) : (place.address || (german ? 'Adresse noch nicht verfügbar' : 'Address not available')).split(',').slice(0, 2).join(', ')}
         </p>
@@ -88,7 +101,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
           {role === 'admin' && place.relevanceScore !== undefined && <span className="text-[10px] text-amber-600 dark:text-amber-400">Score {place.relevanceScore.toFixed(1)}</span>}
           {role === 'admin' && (place.categories || []).map((tag, index) => <span key={`${tag}-${index}`} className="max-w-full truncate text-[9px] font-mono text-slate-500 dark:text-slate-400">{tag}</span>)}
         </div>}
-        <PlaceActivityPreview activity={activityPreview} activityCount={activityCount} loading={activityPreviewLoading} language={language} onClick={onClick} onCreate={() => onAddActivity(place)} hideEmpty />
+        <PlaceActivityPreview activity={activityPreview} activityCount={activityCount} loading={activityPreviewLoading} language={language} onClick={onClick} onCreate={() => onAddActivity(place)} hideEmpty compact />
         <div className="mt-auto flex items-center justify-between gap-1 pt-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
