@@ -1,9 +1,62 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { fetchPlaceBuckets, getDiscoveryDistanceKm } from './place-discovery';
+import { DISCOVERY_CATEGORY_BUCKETS, DISCOVERY_PAGE_SIZE, fetchDiscoveryPage, fetchPlaceBuckets, getDiscoveryBucketCursors, getDiscoveryDistanceKm } from './place-discovery';
 import { buildGeoapifyRequestUrl } from '../app/api/geoapify/request-url';
 
 const feature = (id: string) => ({ properties: { place_id: id } });
+
+test('bucket pagination loads every provider result without a merged offset or skipped rows', async () => {
+  const datasets = new Map(DISCOVERY_CATEGORY_BUCKETS.map((category, bucket) => [category,
+    Array.from({ length: [65, 41, 12][bucket] }, (_, index) => feature(`${bucket}-${index}`))]));
+  const calls: Array<{ categories: string; offset: number }> = [];
+  const all = new Set<string>();
+  let cursors = getDiscoveryBucketCursors();
+  while (cursors.length) {
+    const page = await fetchDiscoveryPage(cursors, async cursor => {
+      calls.push(cursor);
+      return { features: datasets.get(cursor.categories)!.slice(cursor.offset, cursor.offset + DISCOVERY_PAGE_SIZE) };
+    });
+    for (const item of page.features) all.add(item.properties.place_id);
+    cursors = getDiscoveryBucketCursors(page);
+  }
+  assert.equal(all.size, 118);
+  assert.deepEqual(calls.map(call => call.offset), [0, 0, 0, 30, 30, 60]);
+  for (const dataset of datasets.values()) for (const item of dataset) assert(all.has(item.properties.place_id));
+});
+
+test('deduplicating overlapping buckets does not prematurely end their pagination', async () => {
+  const shared = Array.from({ length: 30 }, (_, index) => feature(String(index)));
+  const page = await fetchDiscoveryPage(getDiscoveryBucketCursors(), async () => ({ features: shared }));
+  assert.equal(page.features.length, 30);
+  assert.equal(getDiscoveryBucketCursors(page).length, 3);
+  assert(getDiscoveryBucketCursors(page).every(cursor => cursor.offset === 30));
+});
+
+test('partial failures retry the same offset once and cannot cause infinite automatic requests', async () => {
+  const requests = getDiscoveryBucketCursors();
+  const failed = requests[0].categories;
+  const request = async (cursor: { categories: string }) => {
+    if (cursor.categories === failed) throw new Error('provider unavailable');
+    return { features: Array.from({ length: 30 }, (_, index) => feature(String(index))) };
+  };
+  const first = await fetchDiscoveryPage(requests, request);
+  assert.equal(first._partial, true);
+  const retry = getDiscoveryBucketCursors(first);
+  assert.equal(retry.find(cursor => cursor.categories === failed)?.offset, 0);
+  const second = await fetchDiscoveryPage(retry, request);
+  assert(!getDiscoveryBucketCursors(second).some(cursor => cursor.categories === failed));
+  assert.equal(second._discoveryBuckets.find(bucket => bucket.categories === failed)?.failures, 2);
+});
+
+test('empty buckets and the configured provider offset boundary finish cleanly', async () => {
+  const empty = await fetchDiscoveryPage(getDiscoveryBucketCursors(), async () => ({ features: [] }));
+  assert.deepEqual(getDiscoveryBucketCursors(empty), []);
+  const last = await fetchDiscoveryPage([{ categories: 'catering', offset: 480 }], async () => ({
+    features: Array.from({ length: 30 }, (_, index) => feature(String(index))),
+  }));
+  assert.deepEqual(getDiscoveryBucketCursors(last), []);
+  await assert.rejects(fetchDiscoveryPage(getDiscoveryBucketCursors(), async () => { throw new Error('all failed'); }), /all failed/);
+});
 
 test('initial discovery returns one feature collection and deduplicates buckets', async () => {
   const page = await fetchPlaceBuckets(['cinema', 'sport'], async () => ({

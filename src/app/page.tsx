@@ -74,7 +74,8 @@ import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
 import { applyFilters } from '@/lib/geoapify';
-import { fetchPlaceBuckets, getDiscoveryDistanceKm } from '@/lib/place-discovery';
+import { DISCOVERY_PAGE_SIZE, fetchDiscoveryPage, getDiscoveryBucketCursors, getDiscoveryDistanceKm } from '@/lib/place-discovery';
+import { getFeedLoadAction, observeFeedEnd } from '@/lib/feed-pagination';
 import { calculateRelevance, rankPlacesPipeline } from '@/lib/ranking';
 import { Slider } from '@/components/ui/slider';
 import { cn, formatFirstName } from '@/lib/utils';
@@ -497,24 +498,20 @@ function HomeContent() {
           void saveTilePlaces(lat, lng, radiusMeters, placesToCache);
         }
       } else if (type === 'multi_fetch_discovery') {
-        const { lat, lng, radiusMeters: r } = key;
-
-        const categoryBuckets = [
-          "entertainment.zoo,entertainment.cinema,entertainment.water_park,sport.swimming_pool,entertainment.miniature_golf,entertainment.bowling_alley,entertainment.aquarium,entertainment.escape_game,entertainment.activity_park,entertainment.activity_park.trampoline,entertainment.amusement_arcade",
-          "entertainment,leisure,adult.nightclub,sport,tourism",
-          "catering,heritage",
-        ];
+        const { lat, lng, radiusMeters: r, buckets } = key;
 
         const { callGeoapifyGateway } = await import('@/lib/geoapify');
-        const { features: merged } = await fetchPlaceBuckets(categoryBuckets, async cats => {
-          try { return await callGeoapifyGateway('places', {
-              categories: cats,
+        const discoveryPage = await fetchDiscoveryPage(buckets, async bucket => {
+          return await callGeoapifyGateway('places', {
+              categories: bucket.categories,
               filter: `circle:${lng},${lat},${r}`,
               bias: `proximity:${lng},${lat}`,
-              limit: '30',
-            }); } catch (error) { completeQuery = false; throw error; }
-          }
-        );
+              limit: String(DISCOVERY_PAGE_SIZE),
+              offset: String(bucket.offset),
+            });
+        });
+        const merged = discoveryPage.features;
+        completeQuery = !discoveryPage._partial;
 
         // Gefundene Orte im lokalen Cache speichern
         if (merged.length > 0) {
@@ -540,7 +537,7 @@ function HomeContent() {
           void saveTilePlaces(lat, lng, r, placesToCache);
         }
 
-        result = { features: merged };
+        result = discoveryPage;
       } else if (type === 'geocoding') {
         const { callGeoapifyGateway } = await import('@/lib/geoapify');
         const { lat, lng, radiusMeters, searchText } = key;
@@ -609,7 +606,7 @@ function HomeContent() {
     if (previousPageData) {
       const firstPage = Array.isArray(previousPageData) ? previousPageData[0] : previousPageData;
       if (firstPage?._fromCache) return null;
-      if ((previousPageData.features && previousPageData.features.length === 0) ||
+      if ((previousPageData.features && previousPageData.features.length === 0 && !previousPageData._discoveryBuckets) ||
           (Array.isArray(previousPageData) && previousPageData.length === 0)) return null;
     }
 
@@ -665,20 +662,17 @@ function HomeContent() {
       return { type: 'geoapify', queryLimit, offset, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters, categories: categoriesToFetch };
     }
 
-    if (pageIndex === 0) {
-      return {
+    const buckets = getDiscoveryBucketCursors(pageIndex === 0 ? undefined : previousPageData);
+    if (buckets.length === 0) return null;
+    return {
         type: 'multi_fetch_discovery',
         lat: userLocation.lat,
         lng: userLocation.lng,
         radiusMeters,
         pageIndex,
+        discoveryVersion: 2,
+        buckets,
       };
-    }
-
-    const allCategories = "entertainment,leisure,sport,tourism,catering,adult.nightclub";
-    const offset = 90 + (pageIndex - 1) * 50;
-    if (offset > GEOAPIFY_MAX_OFFSET) return null;
-    return { type: 'geoapify', categories: allCategories.split(','), offset, pageIndex, lat: userLocation.lat, lng: userLocation.lng, radiusMeters };
   }
 
   const { data, size, setSize, isValidating, error, mutate } = useSWRInfinite(getKey, multiFetcher, {
@@ -1099,22 +1093,25 @@ function HomeContent() {
 
   const activeError = activeFeedError;
 
-  const isReachingEnd = useMemo(() => {
-    if (isCommunityCategory || isMySpotsCategory) return true;
-    if (activeFeedError) return true;
-    if (isEmpty && hiddenCategoryQueries.length === 0) return true;
-    if (!displayData || displayData.length === 0) return false;
+  const hasMoreFeedPages = useMemo(() => {
+    if (isFavoritesCategory || isCommunityCategory || isMySpotsCategory || activeFeedError) return false;
+    if (!displayData || displayData.length === 0) return true;
     const lastPage = displayData[displayData.length - 1];
-    if (lastPage?._fromCache) return true;
-    const expectedLimit = activeCategory.length > 0
-      ? (displayData.length === 1 ? 50 : 25)
-      : (displayData.length === 1 ? 0 : 50);
+    if (!lastPage) return true;
+    if (lastPage._fromCache) return false;
+    if (lastPage._discoveryBuckets) return getDiscoveryBucketCursors(lastPage).length > 0;
     if (isAktivCategory || isHighlightsCategory) {
-      let fbLimit = (displayData.length - 1) === 0 ? 50 : 10;
-      return Boolean(lastPage && lastPage.length < fbLimit);
+      const fbLimit = displayData.length === 1 ? 50 : 10;
+      return lastPage.length >= fbLimit;
     }
-    return Boolean(lastPage && lastPage.features?.length < expectedLimit);
-  }, [displayData, isEmpty, activeFeedError, activeCategory, isCommunityCategory, isMySpotsCategory, isAktivCategory, isHighlightsCategory, hiddenCategoryQueries]);
+    if (shouldFilterByName && debouncedSearchQuery) return false;
+    const nextOffset = 50 + (displayData.length - 1) * 25;
+    const expectedLimit = displayData.length === 1 ? 50 : 25;
+    return nextOffset <= GEOAPIFY_MAX_OFFSET && (lastPage.features?.length || 0) >= expectedLimit;
+  }, [displayData, activeFeedError, isFavoritesCategory, isCommunityCategory, isMySpotsCategory, isAktivCategory, isHighlightsCategory, shouldFilterByName, debouncedSearchQuery]);
+
+  const isReachingEnd = isFavoritesCategory || isCommunityCategory || isMySpotsCategory ||
+    getFeedLoadAction({ loadedCount: visiblePlaces.length, visibleCount, hasMorePages: hasMoreFeedPages }) === null;
 
   const handleActiveFeedRetry = useCallback(async () => {
     if (activeFeedIsValidating) return;
@@ -1294,32 +1291,30 @@ function HomeContent() {
     });
   }, [basePlaceIdsKey]);
 
-  const observer = useRef<IntersectionObserver | null>(null);
+  const feedObserverCleanup = useRef<(() => void) | null>(null);
   const isLoadingMore = useRef(false);
-  const lastElementRef = useCallback((node: any) => {
-    if (observer.current) observer.current.disconnect();
-    if (isReachingEnd || isFetchingNextPage || isValidating) return;
-    const options = { rootMargin: '0px 0px -50px 0px', threshold: 1.0 };
-    observer.current = new IntersectionObserver(entries => {
-      const target = entries[0];
-      if (target.isIntersecting && !isLoadingMore.current) {
-        isLoadingMore.current = true;
-        if (!isFavoritesCategory && !isCommunityCategory && !isMySpotsCategory && !isAktivCategory && !isHighlightsCategory) {
-          const totalFetched = displayData ? displayData.flat().length : 0;
-          if (visibleCount < totalFetched) {
-            setVisibleCount(prev => prev + PLACES_PER_PAGE);
-          } else {
-            setSize(prev => prev + 1);
-            setVisibleCount(prev => prev + PLACES_PER_PAGE);
-          }
-        } else {
-          setSize(prev => prev + 1);
-        }
-        setTimeout(() => { isLoadingMore.current = false; }, 1000);
-      }
-    }, options);
-    if (node) observer.current.observe(node);
-  }, [isFetchingNextPage, isReachingEnd, isValidating, setSize, displayData, visibleCount, isFavoritesCategory, isCommunityCategory, isMySpotsCategory, isAktivCategory, isHighlightsCategory]);
+  const handleLoadMoreFeed = useCallback(async () => {
+    if (isLoadingMore.current || isFavoritesCategory || isCommunityCategory || isMySpotsCategory) return;
+    const action = getFeedLoadAction({ loadedCount: visiblePlaces.length, visibleCount,
+      hasMorePages: hasMoreFeedPages, loading: isFetchingNextPage || isValidating });
+    if (!action) return;
+    setVisibleCount(prev => prev + PLACES_PER_PAGE);
+    if (action === 'fetch') {
+      isLoadingMore.current = true;
+      try { await setSize(prev => prev + 1); }
+      catch (error) { debugWarn('feed', 'Failed to load more spots', error); }
+      finally { isLoadingMore.current = false; }
+    }
+  }, [visiblePlaces.length, visibleCount, hasMoreFeedPages, isFetchingNextPage, isValidating, setSize, isFavoritesCategory, isCommunityCategory, isMySpotsCategory]);
+
+  const lastElementRef = useCallback((node: HTMLDivElement | null) => {
+    feedObserverCleanup.current?.();
+    feedObserverCleanup.current = null;
+    if (!node || isReachingEnd || isFetchingNextPage || isValidating) return;
+    feedObserverCleanup.current = observeFeedEnd(node, () => { void handleLoadMoreFeed(); });
+  }, [isReachingEnd, isFetchingNextPage, isValidating, handleLoadMoreFeed]);
+
+  useEffect(() => () => feedObserverCleanup.current?.(), []);
 
 
 
@@ -2091,7 +2086,13 @@ function HomeContent() {
             </div>
           )}
           {!isReachingEnd && !isLoadingInitialData && !debouncedSearchQuery && !isOpenRoomsMode && (
-            <div ref={lastElementRef} className="h-1 w-full flex-shrink-0 bg-transparent" aria-hidden="true" />
+            <div className="relative flex justify-center px-3 pb-4 sm:px-6">
+              <div ref={lastElementRef} className="absolute top-0 h-1 w-full" aria-hidden="true" />
+              <Button type="button" variant="outline" onClick={() => { void handleLoadMoreFeed(); }} disabled={isFetchingNextPage || isValidating} className="h-11 rounded-lg text-xs">
+                {isFetchingNextPage || isValidating ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
+                {language === 'de' ? 'Weitere Spots laden' : 'Load more spots'}
+              </Button>
+            </div>
           )}
         </div>
       );

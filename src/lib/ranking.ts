@@ -79,6 +79,9 @@ const tagRules = [
   { pattern: /^sport\.stadium(\..*)?$/, score: 62 },
   { pattern: /^entertainment(\..*)?$/, score: 62 },
 
+  // Food stays below leisure spots; mixed entertainment tags retain their higher tier.
+  { pattern: /^catering(\..*)?$/, score: 35 },
+
   // Tier 4: Kultur & Passiv (50)
   { pattern: /^tourism(\..*)?$/, score: 50 },
   { pattern: /^sport(\..*)?$/, score: 50 },
