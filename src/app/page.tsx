@@ -1843,7 +1843,7 @@ function HomeContent() {
             role="region" 
             aria-label={translateAppString('loading.results', language)}
           >
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-2 items-start gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
@@ -1914,7 +1914,7 @@ function HomeContent() {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
           }
           return (
-            <div className="p-3 sm:p-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className="p-3 sm:p-6 grid grid-cols-2 items-start gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
               {finalFeedPlaces.map(place => {
                 const live = placesMetaMap[place.id];
                 const placeObj = place;
@@ -1995,7 +1995,7 @@ function HomeContent() {
         });
 
         return (
-          <div className="p-3 sm:p-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className="p-3 sm:p-6 grid grid-cols-2 items-start gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
             {featuredPlace && (
               <div className="min-w-0">
                 {(() => {
@@ -2101,8 +2101,8 @@ function HomeContent() {
   return (
     <>
       <div className="flex flex-col h-full bg-transparent relative">
-        <div className="absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
-        <div className="absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
+        <div className="hidden dark:block absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+        <div className="hidden dark:block absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
         <AppHeader
           className="!pb-2"
           headerIdentityTutorialId="header-profile-identity"

@@ -52,16 +52,20 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
     <article onClick={e => { if (!interactive(e.target) && !window.getSelection()?.toString()) onClick(); }}
       onPointerDown={e => { if (!interactive(e.target)) setIsPressed(true); }}
       onPointerUp={() => setIsPressed(false)} onPointerCancel={() => setIsPressed(false)} onPointerLeave={() => setIsPressed(false)}
-      className={cn('group relative flex h-full w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[14px] border border-border bg-card transition-[transform,border-color] duration-200 hover:border-primary/40 motion-reduce:transition-none',
+      className={cn('group relative flex w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[14px] border border-border bg-card transition-[transform,border-color] duration-200 hover:border-primary/40 motion-reduce:transition-none',
         isPressed && 'scale-[0.985] motion-reduce:transform-none')}>
       <div aria-hidden="true" className={cn('h-[3px] w-full shrink-0', primaryStyle.gradientClass)} />
 
-      <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
-        <div className="mb-2 flex items-center justify-between gap-1">
-          <span aria-hidden="true" className={cn('flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-xl text-white sm:h-11 sm:w-11', primaryStyle.gradientClass)}>
-            <PrimaryIcon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.7} />
+      <div className="flex min-w-0 flex-col p-3 sm:p-4">
+        <div className="mb-2 flex items-center gap-2">
+          <span aria-hidden="true" className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white', primaryStyle.gradientClass)}>
+            <PrimaryIcon className="h-6 w-6" strokeWidth={1.7} />
           </span>
-          <div className="flex items-center gap-1">
+          <div className="min-w-0 flex-1">
+            <p className="line-clamp-2 text-[10px] font-medium text-muted-foreground sm:text-[11px]">{primaryStyle.label}</p>
+            {featured && <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300 sm:text-[11px]"><Sparkles className="h-3 w-3 shrink-0" aria-hidden="true" />{german ? 'Empfohlen' : 'Recommended'}</span>}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
             {isFavorite && <BookmarkCheck className="h-4 w-4 text-emerald-700 dark:text-emerald-300" aria-label={german ? 'Gespeichert' : 'Saved'} />}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -79,10 +83,6 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
-        <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <p className="line-clamp-2 text-[10px] font-medium text-muted-foreground sm:text-[11px]">{primaryStyle.label}</p>
-          {featured && <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300 sm:text-[11px]"><Sparkles className="h-3 w-3" aria-hidden="true" />{german ? 'Empfohlen' : 'Recommended'}</span>}
         </div>
         <div className="flex min-w-0 items-start justify-between gap-2">
           <h3 className="min-w-0 flex-1 text-base font-semibold leading-snug tracking-tight text-card-foreground sm:text-lg">
@@ -102,7 +102,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
           {role === 'admin' && (place.categories || []).map((tag, index) => <span key={`${tag}-${index}`} className="max-w-full truncate text-[9px] font-mono text-slate-500 dark:text-slate-400">{tag}</span>)}
         </div>}
         <PlaceActivityPreview activity={activityPreview} activityCount={activityCount} loading={activityPreviewLoading} language={language} onClick={onClick} onCreate={() => onAddActivity(place)} hideEmpty compact />
-        <div className="mt-auto flex items-center justify-between gap-1 pt-2">
+        <div className="mt-3 flex items-center justify-between gap-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" aria-label={german ? 'Spot bewerten' : 'Rate spot'} onClick={e => e.stopPropagation()}
@@ -126,7 +126,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
             </button>)}
           </div>
           <Button type="button" variant="ghost" data-tutorial-id="spot-card-create" aria-label={german ? 'Aktivität planen' : 'Plan activity'}
-            onClick={e => { e.stopPropagation(); onAddActivity(place); }} className="ml-auto h-11 w-11 shrink-0 gap-1 rounded-xl bg-emerald-500/10 p-0 text-emerald-800 hover:bg-emerald-500/20 dark:text-emerald-300 sm:h-9 sm:w-auto sm:rounded-lg sm:px-2.5">
+            onClick={e => { e.stopPropagation(); onAddActivity(place); }} className="ml-auto h-11 w-11 shrink-0 gap-1 rounded-xl bg-primary p-0 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20 sm:h-9 sm:w-auto sm:rounded-lg sm:px-2.5">
             <Plus className="h-4 w-4" /><span className="hidden text-xs sm:inline">{german ? 'Planen' : 'Plan'}</span>
           </Button>
         </div>

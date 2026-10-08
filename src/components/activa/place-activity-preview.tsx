@@ -28,7 +28,7 @@ export function PlaceActivityPreview({ activity, activityCount, language, onClic
         )) : <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[11px] sm:text-xs font-semibold leading-snug text-slate-700 dark:text-slate-200 line-clamp-2 break-words">
+        <span className="block text-[11px] sm:text-xs font-semibold leading-snug text-foreground dark:text-slate-200 line-clamp-2 break-words">
           {(preview && compact ? (activityCount > 1
             ? (german ? `${activityCount} Aktivitäten ansehen` : `View ${activityCount} activities`) : preview.schedule) : preview?.title) || (hasActivities
             ? (german ? `${activityCount} ${activityCount === 1 ? 'Aktivität' : 'Aktivitäten'} ansehen` : `View ${activityCount} ${activityCount === 1 ? 'activity' : 'activities'}`)

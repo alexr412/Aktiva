@@ -56,7 +56,7 @@ export function FeedFiltersPanel({
       <div data-tutorial-id="feed-filters" className={cn('flex min-w-0 gap-3', toolbar ? 'flex-wrap items-center justify-between' : 'items-center pb-3 sm:pb-4')}>
         {toolbar && <div className="min-w-0 w-full sm:w-auto sm:flex-1" aria-live="polite" aria-atomic="true">
           <h2 className="text-base sm:text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">{toolbar.title || summary}</h2>
-          {(toolbar.title || hiddenCount > 0) && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          {(toolbar.title || hiddenCount > 0) && <p className="mt-0.5 text-xs text-muted-foreground dark:text-slate-400">
             {toolbar.title && (summary === allSpotsLabel ? (de ? 'Alle Spots in deiner Nähe' : 'All spots near you') : summary)}
             {toolbar.title && hiddenCount > 0 && ' · '}
             {hiddenCount > 0 && `${hiddenCount} ${de ? (hiddenCount === 1 ? 'Kategorie ausgeblendet' : 'Kategorien ausgeblendet') : (hiddenCount === 1 ? 'category hidden' : 'categories hidden')}`}

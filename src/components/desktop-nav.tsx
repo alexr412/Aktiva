@@ -16,7 +16,7 @@ export function DesktopNav({ className }: { className?: string }) {
     <nav
       aria-label="Hauptnavigation"
       className={cn(
-        "hidden lg:flex items-center gap-1 bg-slate-100/80 dark:bg-neutral-900/80 p-1.5 rounded-2xl border border-slate-200/50 dark:border-neutral-800/80 shadow-sm shrink-0",
+        "hidden lg:flex items-center gap-1 bg-muted dark:bg-neutral-900/80 p-1.5 rounded-2xl border border-border dark:border-neutral-800/80 shrink-0",
         className
       )}
     >
@@ -35,7 +35,7 @@ export function DesktopNav({ className }: { className?: string }) {
               "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 relative whitespace-nowrap",
               isActive
                 ? "bg-white dark:bg-neutral-800 text-primary shadow-sm scale-100"
-                : "text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-neutral-800/50"
+                : "text-muted-foreground dark:text-neutral-400 hover:text-foreground dark:hover:text-white hover:bg-white/50 dark:hover:bg-neutral-800/50"
             )}
           >
             <div className="relative shrink-0 flex items-center justify-center">

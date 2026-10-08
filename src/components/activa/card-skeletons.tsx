@@ -5,14 +5,14 @@ import { cn } from "@/lib/utils";
 
 export function PlaceCardSkeleton() {
   return (
-    <div className="w-full min-w-0 overflow-hidden rounded-[14px] bg-card border border-border flex flex-col h-full pointer-events-none select-none" aria-hidden="true">
+    <div className="w-full min-w-0 overflow-hidden rounded-[14px] bg-card border border-border flex flex-col pointer-events-none select-none" aria-hidden="true">
       <div className="h-[3px] w-full shrink-0 bg-muted" />
-      <div className="p-3 sm:p-4 flex flex-col flex-1 gap-2 min-w-0">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-[38px] w-[38px] sm:h-11 sm:w-11 rounded-xl motion-reduce:animate-none" />
+      <div className="p-3 sm:p-4 flex flex-col gap-2 min-w-0">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-9 shrink-0 rounded-lg motion-reduce:animate-none" />
+          <Skeleton className="h-3 w-20 mr-auto rounded motion-reduce:animate-none" />
           <Skeleton className="h-4 w-6 rounded motion-reduce:animate-none" />
         </div>
-        <Skeleton className="h-3 w-20 rounded motion-reduce:animate-none" />
         <div className="space-y-1.5 min-w-0">
           <Skeleton className="h-4.5 w-11/12 rounded-lg motion-reduce:animate-none" />
           <Skeleton className="h-3.5 w-2/3 rounded-md motion-reduce:animate-none" />
@@ -21,7 +21,7 @@ export function PlaceCardSkeleton() {
           <Skeleton className="h-4.5 w-12 rounded-[10px] motion-reduce:animate-none" />
           <Skeleton className="h-4.5 w-16 rounded-[10px] motion-reduce:animate-none" />
         </div>
-        <div className="flex items-center justify-between mt-auto pt-2">
+        <div className="flex items-center justify-between mt-3">
           <div className="flex gap-1.5">
             <Skeleton className="h-11 w-11 sm:w-20 rounded-lg motion-reduce:animate-none" />
           </div>
