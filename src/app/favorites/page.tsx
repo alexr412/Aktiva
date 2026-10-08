@@ -600,7 +600,7 @@ export default function FavoritesPage() {
                                   const live = placesMetaMap[place.id];
 
                                   return (
-                                    <div key={placeId} className="relative group">
+                                    <div key={placeId} className="flex min-w-0 flex-col gap-2">
                                       <PlaceCard
                                         place={place}
                                         onClick={() => setSelectedPlace(place)}
@@ -617,12 +617,12 @@ export default function FavoritesPage() {
                                         weightedDownvotes={live ? live.weightedDownvotes : (place.downvotes || 0)}
                                       />
                                       <Button
-                                        variant="destructive"
-                                        size="icon"
+                                        variant="ghost"
                                         onClick={() => removePlaceFromCollection(selectedCollection.id, placeId)}
-                                        className="absolute top-3 right-3 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="h-auto min-h-11 w-full gap-2 whitespace-normal rounded-xl px-2 py-2 text-xs text-rose-700 hover:bg-rose-500/10 hover:text-rose-800 dark:text-rose-400 dark:hover:text-rose-300"
                                       >
-                                        <Trash2 className="h-4 w-4" />
+                                        <Trash2 className="h-4 w-4 shrink-0" />
+                                        {language === 'de' ? 'Aus Sammlung entfernen' : 'Remove from collection'}
                                       </Button>
                                     </div>
                                   );
