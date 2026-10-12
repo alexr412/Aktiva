@@ -52,11 +52,11 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
     <article onClick={e => { if (!interactive(e.target) && !window.getSelection()?.toString()) onClick(); }}
       onPointerDown={e => { if (!interactive(e.target)) setIsPressed(true); }}
       onPointerUp={() => setIsPressed(false)} onPointerCancel={() => setIsPressed(false)} onPointerLeave={() => setIsPressed(false)}
-      className={cn('group relative flex w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[14px] border border-border bg-card transition-[transform,border-color] duration-200 hover:border-primary/40 motion-reduce:transition-none',
+      className={cn('group relative flex h-full w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-[14px] border border-border bg-card transition-[transform,border-color] duration-200 hover:border-primary/40 motion-reduce:transition-none',
         isPressed && 'scale-[0.985] motion-reduce:transform-none')}>
       <div aria-hidden="true" className={cn('h-1 w-full shrink-0', primaryStyle.gradientClass)} />
 
-      <div className="flex min-w-0 flex-col p-3 sm:p-4">
+      <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
         <div className="mb-2 flex items-center gap-2">
           <span aria-hidden="true" className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white', primaryStyle.gradientClass)}>
             <PrimaryIcon className="h-6 w-6" strokeWidth={1.7} />
@@ -102,7 +102,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
           {role === 'admin' && (place.categories || []).map((tag, index) => <span key={`${tag}-${index}`} className="max-w-full truncate text-[9px] font-mono text-slate-500 dark:text-slate-400">{tag}</span>)}
         </div>}
         <PlaceActivityPreview activity={activityPreview} activityCount={activityCount} loading={activityPreviewLoading} language={language} onClick={onClick} onCreate={() => onAddActivity(place)} hideEmpty compact />
-        <div className="mt-3 flex items-center justify-between gap-1">
+        <div className="mt-auto flex items-center justify-between gap-1 pt-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" aria-label={german ? 'Spot bewerten' : 'Rate spot'} onClick={e => e.stopPropagation()}

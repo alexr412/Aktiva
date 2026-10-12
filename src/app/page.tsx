@@ -1843,7 +1843,7 @@ function HomeContent() {
             role="region" 
             aria-label={translateAppString('loading.results', language)}
           >
-            <div className="grid grid-cols-2 items-start gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
@@ -1914,12 +1914,12 @@ function HomeContent() {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
           }
           return (
-            <div className="p-3 sm:p-6 grid grid-cols-2 items-start gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className="p-3 sm:p-6 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
               {finalFeedPlaces.map(place => {
                 const live = placesMetaMap[place.id];
                 const placeObj = place;
                 return (
-                  <div key={place.id} className="min-w-0 w-full">
+                  <div key={place.id} className="h-full min-w-0 w-full">
                     <PlaceCard 
                       place={placeObj} 
                       activityPreview={placeActivityPreviews.get(placeObj.id)}
@@ -1995,9 +1995,9 @@ function HomeContent() {
         });
 
         return (
-          <div className="p-3 sm:p-6 grid grid-cols-2 items-start gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className="p-3 sm:p-6 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
             {featuredPlace && (
-              <div className="min-w-0">
+              <div className="h-full min-w-0">
                 {(() => {
                   const live = placesMetaMap[featuredPlace.id];
                   return (
@@ -2027,7 +2027,7 @@ function HomeContent() {
                 {displayFeedItems.map((item) => {
                   if (item.type === 'ad') {
                     return (
-                      <div key={item.id} className="min-w-0 w-full">
+                      <div key={item.id} className="h-full min-w-0 w-full">
                         <AdCard adIndex={item.adIndex} />
                       </div>
                     );
@@ -2035,7 +2035,7 @@ function HomeContent() {
                   const place = item.place;
                   const live = placesMetaMap[place.id];
                   return (
-                    <div key={place.id} className="min-w-0 w-full">
+                    <div key={place.id} className="h-full min-w-0 w-full">
                       <PlaceCard 
                         place={place} 
                         activityPreview={placeActivityPreviews.get(place.id)}
