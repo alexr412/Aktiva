@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { format } from 'date-fns';
 import { de, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/hooks/use-language';
-import { cn, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay, formatLabel } from '@/lib/utils';
+import { cn, formatFirstName, formatActivityDateRange, formatActivityTimeDisplay } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import type { Activity } from '@/lib/types';
 import { useAddressLongPress } from '@/hooks/use-address-long-press';
@@ -27,7 +27,6 @@ import {
 } from '@/components/ui/dialog';
 import { ProfileAvatar } from '@/components/ui/profile-avatar';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Calendar,
   Users,
@@ -182,84 +181,70 @@ export function ActivityInfoSheet({
   };
 
   const modalContent = (
-    <div className="flex flex-col h-full min-h-0 w-full overflow-hidden bg-white dark:bg-neutral-950">
-      <ScrollArea className="flex-1 min-h-0">
-        {/* Header Banner */}
-        <div className={cn('w-full h-48 sm:h-52 flex flex-col items-center justify-center relative p-6 text-white text-center select-none overflow-hidden shrink-0', primaryStyle.gradientClass)}>
-          {/* Glassmorphism Close Button */}
-          <button
-            onClick={() => onOpenChange(false)}
-            className="absolute top-4 right-4 z-30 h-10 w-10 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center backdrop-blur-md transition-all active:scale-90 border border-white/20 shadow-md cursor-pointer"
-            aria-label={language === 'de' ? 'Schließen' : 'Close'}
-          >
-            <X className="h-5 w-5 stroke-[2.5]" />
-          </button>
-
-          {/* Category Badge */}
-          <div className="absolute top-4 left-4 flex gap-2 z-20">
-            <span className="bg-white/25 backdrop-blur-md text-white text-[10px] font-black uppercase px-3 py-1 rounded-full border border-white/20 shadow-sm tracking-wider">
-              {formatLabel(activity.categories?.[0] || (language === 'de' ? 'Aktivität' : 'Activity'))}
-            </span>
-          </div>
-
-          <div className="relative z-10 flex flex-col items-center pt-2">
-            <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-xl border border-white/30 mb-2 transform rotate-2 hover:rotate-0 transition-transform duration-300">
-              <PrimaryIcon className="text-white h-8 w-8 sm:h-9 sm:w-9 drop-shadow-md" />
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black truncate max-w-full drop-shadow-md px-4 tracking-tight">
-              {activity.isCustomActivity ? (activity.title || activity.placeName) : (activity.placeName || (language === 'de' ? 'Aktivität' : 'Activity'))}
-            </h2>
-            {activity.placeAddress && (
-              <ActivityAddressLink
-                address={formatActivityLocationDisplay(activity)}
-                placeName={activity.placeName}
-                language={language}
-              />
-            )}
-          </div>
+    <div className="flex flex-col min-h-0 w-full overflow-hidden bg-card text-card-foreground">
+      <div className="relative flex items-start gap-3 border-b border-border p-5 pr-16 shrink-0">
+        <div className={cn('h-12 w-12 rounded-2xl flex items-center justify-center text-white shrink-0', primaryStyle.gradientClass)}>
+          <PrimaryIcon className="h-6 w-6" />
         </div>
-
-        <div className="p-6 sm:p-8 space-y-6">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">{primaryStyle.label}</p>
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight break-words">
+            {activity.isCustomActivity ? (activity.title || activity.placeName) : (activity.placeName || (language === 'de' ? 'Aktivität' : 'Activity'))}
+          </h2>
+          {activity.placeAddress && (
+            <ActivityAddressLink address={formatActivityLocationDisplay(activity)} placeName={activity.placeName} language={language} />
+          )}
+        </div>
+        <button
+          onClick={() => onOpenChange(false)}
+          className="absolute top-3 right-3 h-10 w-10 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={language === 'de' ? 'Schließen' : 'Close'}
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      <div className="min-h-0 overflow-y-auto overscroll-contain">
+        <div className="p-5 space-y-5">
           {/* Date & Time and Cost section */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-4 flex items-center gap-3.5 border border-slate-100 dark:border-neutral-800/80">
-              <div className="h-11 w-11 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
+            <div className="bg-muted/40 rounded-xl p-3 flex items-center gap-3 border border-border">
+              <div className="h-9 w-9 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
                 <Calendar className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-wider">
+                <p className="text-xs font-medium text-muted-foreground">
                   {language === 'de' ? 'Datum & Uhrzeit' : 'Date & Time'}
                 </p>
-                <p className="text-sm font-black text-slate-800 dark:text-neutral-200 truncate">
+                <p className="text-sm font-semibold text-foreground break-words">
                   {renderDate()}
                 </p>
               </div>
             </div>
 
             {isPaidEvent ? (
-              <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-4 flex items-center gap-3.5 border border-slate-100 dark:border-neutral-800/80">
-                <div className="h-11 w-11 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+              <div className="bg-muted/40 rounded-xl p-3 flex items-center gap-3 border border-border">
+                <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                   <span className="font-black text-base">€</span>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-muted-foreground">
                     {language === 'de' ? 'Eintrittspreis' : 'Price'}
                   </p>
-                  <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                     {activity.price?.toFixed(2)} €
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-4 flex items-center gap-3.5 border border-slate-100 dark:border-neutral-800/80">
-                <div className="h-11 w-11 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+              <div className="bg-muted/40 rounded-xl p-3 flex items-center gap-3 border border-border">
+                <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
                   <Users className="h-5 w-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-black text-slate-400 dark:text-neutral-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-muted-foreground">
                     {language === 'de' ? 'Teilnehmer' : 'Participants'}
                   </p>
-                  <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                     {participantIds.length} {activity.maxParticipants ? `/ ${activity.maxParticipants}` : ''} {language === 'de' ? 'dabei' : 'joined'}
                   </p>
                 </div>
@@ -270,12 +255,12 @@ export function ActivityInfoSheet({
           {/* Description/Comment Box */}
           {activity.description && (
             <div className="space-y-2">
-              <h4 className="text-xs font-black text-slate-400 dark:text-neutral-500 uppercase tracking-wider px-1">
-                {language === 'de' ? 'Kommentar / Beschreibung' : 'Comment / Description'}
+              <h4 className="text-sm font-semibold text-foreground">
+                {language === 'de' ? 'Über die Aktivität' : 'About this activity'}
               </h4>
-              <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-4 border border-primary/10">
-                <p className="text-sm font-bold text-slate-700 dark:text-neutral-300 italic leading-relaxed">
-                  "{activity.description}"
+              <div className="bg-muted/40 rounded-xl p-4 border border-border">
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                  {activity.description}
                 </p>
               </div>
             </div>
@@ -283,18 +268,18 @@ export function ActivityInfoSheet({
 
           {/* Requirements / Criteria */}
           <div className="space-y-2.5">
-            <h4 className="text-xs font-black text-slate-400 dark:text-neutral-500 uppercase tracking-wider px-1">
+            <h4 className="text-sm font-semibold text-foreground">
               {language === 'de' ? 'Kriterien zum Beitreten' : 'Join Criteria'}
             </h4>
-            <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-5 border border-slate-100 dark:border-neutral-800/80 space-y-3.5">
+            <div className="rounded-xl p-4 border border-border space-y-3">
               {/* Join Mode */}
               <div className="flex items-start gap-3">
                 <HelpCircle className="h-4 w-4 mt-0.5 text-slate-400 shrink-0" />
                 <div>
-                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">
+                  <span className="text-xs font-medium text-muted-foreground block">
                     {language === 'de' ? 'Beitrittsmethode' : 'Join Method'}
                   </span>
-                  <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                  <span className="text-sm font-medium text-foreground">
                     {activity.joinMode === 'request'
                       ? (language === 'de' ? 'Anfrage erforderlich' : 'Request required')
                       : (language === 'de' ? 'Direkter Beitritt' : 'Direct join')}
@@ -307,10 +292,10 @@ export function ActivityInfoSheet({
                 <div className="flex items-start gap-3">
                   <Star className="h-4 w-4 mt-0.5 text-amber-500 fill-amber-500 shrink-0" />
                   <div>
-                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">
+                    <span className="text-xs font-medium text-muted-foreground block">
                       {language === 'de' ? 'Mindestbewertung' : 'Minimum Rating'}
                     </span>
-                    <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                    <span className="text-sm font-medium text-foreground">
                       {activity.requirements.minimumRating.toFixed(1)} {language === 'de' ? 'Sterne' : 'Stars'}
                     </span>
                   </div>
@@ -322,10 +307,10 @@ export function ActivityInfoSheet({
                 <div className="flex items-start gap-3">
                   <Users className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
                   <div>
-                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">
+                    <span className="text-xs font-medium text-muted-foreground block">
                       {language === 'de' ? 'Altersbereich' : 'Age Range'}
                     </span>
-                    <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                    <span className="text-sm font-medium text-foreground">
                       {activity.requirements.ageRange.min !== undefined && activity.requirements.ageRange.max !== undefined
                         ? `${activity.requirements.ageRange.min} - ${activity.requirements.ageRange.max} ${language === 'de' ? 'Jahre' : 'years'}`
                         : activity.requirements.ageRange.min !== undefined
@@ -341,10 +326,10 @@ export function ActivityInfoSheet({
                 <div className="flex items-start gap-3">
                   <UserCircle className="h-4 w-4 mt-0.5 text-purple-500 shrink-0" />
                   <div>
-                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">
+                    <span className="text-xs font-medium text-muted-foreground block">
                       {language === 'de' ? 'Zugelassene Geschlechter' : 'Allowed Genders'}
                     </span>
-                    <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                    <span className="text-sm font-medium text-foreground">
                       {activity.requirements.gender.map(g => genderLabels[g] || g).join(', ')}
                     </span>
                   </div>
@@ -356,10 +341,10 @@ export function ActivityInfoSheet({
                 <div className="flex items-start gap-3">
                   <CheckCircle className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" />
                   <div>
-                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">
+                    <span className="text-xs font-medium text-muted-foreground block">
                       {language === 'de' ? 'Profilbild' : 'Profile Picture'}
                     </span>
-                    <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                    <span className="text-sm font-medium text-foreground">
                       {language === 'de' ? 'Profilbild ist erforderlich' : 'Profile picture is required'}
                     </span>
                   </div>
@@ -371,10 +356,10 @@ export function ActivityInfoSheet({
                 <div className="flex items-start gap-3">
                   <ShieldCheck className="h-4 w-4 mt-0.5 text-primary shrink-0" />
                   <div>
-                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">
+                    <span className="text-xs font-medium text-muted-foreground block">
                       {language === 'de' ? 'Verifizierung' : 'Verification'}
                     </span>
-                    <span className="text-xs font-black text-slate-800 dark:text-neutral-200">
+                    <span className="text-sm font-medium text-foreground">
                       {language === 'de' ? 'Verifiziertes Profil (KYC) ist erforderlich' : 'Verified profile (KYC) is required'}
                     </span>
                   </div>
@@ -388,9 +373,9 @@ export function ActivityInfoSheet({
                 (!activity.requirements?.gender || activity.requirements.gender.length === 0) &&
                 !activity.requirements?.requireProfilePicture &&
                 !activity.requirements?.requireVerification && (
-                  <div className="flex items-center gap-3 text-slate-400 py-1">
+                  <div className="flex items-center gap-3 text-muted-foreground">
                     <ShieldCheck className="h-4 w-4 text-slate-400 shrink-0" />
-                    <span className="text-xs font-black">
+                    <span className="text-xs font-medium">
                       {language === 'de' ? 'Keine Einschränkungen zum Beitreten' : 'No requirements to join'}
                     </span>
                   </div>
@@ -401,7 +386,7 @@ export function ActivityInfoSheet({
           {/* Participant List */}
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <h4 className="text-xs font-black text-slate-400 dark:text-neutral-500 uppercase tracking-wider">
+              <h4 className="text-sm font-semibold text-foreground">
                 {language === 'de' ? 'Mitglieder' : 'Members'}
               </h4>
               <span className="text-[11px] font-black text-primary px-2.5 py-0.5 rounded-full bg-primary/10">
@@ -409,7 +394,7 @@ export function ActivityInfoSheet({
               </span>
             </div>
 
-            <div className="bg-slate-50/80 dark:bg-neutral-900/80 rounded-2xl p-4 border border-slate-100 dark:border-neutral-800/80">
+            <div className="rounded-xl p-4 border border-border">
               <ul className="space-y-3">
                 {Object.entries(activity.participantDetails || {}).map(([uid, p]) => {
                   const isSelf = uid === user?.uid;
@@ -431,7 +416,7 @@ export function ActivityInfoSheet({
                       />
                       <div className="flex-1 min-w-0 flex flex-col">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-bold text-slate-800 dark:text-neutral-200 truncate">
+                          <span className="text-sm font-medium text-foreground truncate">
                             {formatFirstName(p.displayName, 'User')}
                           </span>
                           {uid === activity.hostId && (
@@ -462,14 +447,14 @@ export function ActivityInfoSheet({
             </div>
           </div>
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Footer Action */}
-      <div className="p-5 sm:p-6 bg-slate-50/90 dark:bg-neutral-900/90 backdrop-blur-md border-t border-slate-100 dark:border-neutral-800 shrink-0">
+      <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-border shrink-0">
         <Button
           onClick={handleAction}
           disabled={isJoining || (!isParticipant && !isHost && isFull)}
-          className="w-full h-14 text-base font-black rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/25 transition-all active:scale-95 flex items-center justify-center gap-2"
+          className="w-full h-12 text-sm font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-2"
         >
           {isJoining ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -504,7 +489,7 @@ export function ActivityInfoSheet({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" hideCloseButton className="flex flex-col p-0 w-full h-[90vh] border-none rounded-t-[2.5rem] overflow-hidden outline-none bg-white dark:bg-neutral-950 z-[9999]">
+        <SheetContent side="bottom" hideCloseButton className="flex flex-col p-0 w-full max-h-[90dvh] gap-0 border border-border rounded-t-3xl overflow-hidden outline-none bg-card z-[9999]">
           <SheetHeader className="sr-only">
             <SheetTitle>{activity.isCustomActivity ? (activity.title || activity.placeName) : activity.placeName}</SheetTitle>
             <SheetDescription>
@@ -521,7 +506,7 @@ export function ActivityInfoSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="p-0 w-full max-w-2xl sm:max-w-2xl h-[85vh] max-h-[85vh] flex flex-col min-h-0 gap-0 overflow-hidden border border-slate-200/40 dark:border-neutral-800/80 outline-none rounded-[2.5rem] bg-white dark:bg-neutral-950 z-[9999] shadow-2xl" hideCloseButton>
+      <DialogContent className="p-0 sm:p-0 w-full max-w-xl sm:max-w-xl max-h-[85dvh] flex flex-col min-h-0 gap-0 overflow-hidden border border-border outline-none rounded-3xl bg-card z-[9999] shadow-2xl" hideCloseButton>
         <DialogTitle className="sr-only">{activity.isCustomActivity ? (activity.title || activity.placeName) : activity.placeName}</DialogTitle>
         <DialogDescription className="sr-only">
           {language === 'de'
@@ -555,12 +540,12 @@ function ActivityAddressLink({
       target="_blank"
       rel="noopener noreferrer"
       {...handlers}
-      className="text-[11px] font-bold opacity-90 hover:opacity-100 truncate max-w-full flex items-center gap-1 mt-1 drop-shadow-sm underline decoration-white/40 underline-offset-2 cursor-pointer select-none"
+      className="text-xs text-muted-foreground hover:text-primary flex items-start gap-1.5 underline decoration-border underline-offset-4 cursor-pointer select-none"
       style={{ WebkitTouchCallout: 'none' }}
       title={language === 'de' ? 'Antippen zum Öffnen, gedrückt halten zum Kopieren' : 'Tap to open, hold to copy'}
     >
-      <MapPin className="h-3 w-3 shrink-0" />
-      <span className="truncate">{address}</span>
+      <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+      <span className="break-words">{address}</span>
     </a>
   );
 }

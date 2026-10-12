@@ -282,7 +282,8 @@ export function MapEntityCard({
                 joinState.btnClass
               )}
             >
-              <span>{joinState.label}</span>
+              {joinState.action === 'manage' && <MessageCircle className="h-4 w-4" />}
+              <span>{joinState.action === 'manage' ? (isDe ? 'Zum Chat' : 'Open chat') : joinState.label}</span>
             </Button>
             <Button
               type="button"
