@@ -2267,44 +2267,17 @@ function HomeContent() {
         </main>
       </div>
 
-<div className="fixed bottom-24 right-5 z-40 animate-in slide-in-from-bottom-4 fade-in duration-500">
-  <Button
-    data-tutorial-id="nav-create"
-    variant="ghost"
-    size="icon"
-    className="
-      relative h-14 w-14 overflow-hidden rounded-full
-      bg-primary
-      border border-white/55
-      text-white hover:text-white hover:bg-primary
-      transition-all duration-150
-      hover:-translate-y-[1px]
-      active:translate-y-[3px]
-
-      before:absolute
-      before:inset-[2px]
-      before:rounded-full
-      before:bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.40),transparent_42%)]
-      before:pointer-events-none
-
-      after:absolute
-      after:inset-0
-      after:rounded-full
-      after:shadow-[inset_-3px_-4px_6px_rgba(0,70,50,0.20)]
-      after:pointer-events-none
-    "
-    style={{
-      boxShadow:
-        "inset 0 2px 2px rgba(255,255,255,0.35), inset 0 -3px 4px rgba(0,0,0,0.16), 0 5px 0 #08785f, 0 8px 10px rgba(0,0,0,0.18), 0 13px 22px rgba(0,0,0,0.16)"
-    }}
-    onClick={handleOpenCustomActivityModal}
-  >
-    <Plus
-      className="relative z-10 h-7 w-7 text-white drop-shadow-[0_2px_1px_rgba(0,0,0,0.22)]"
-      strokeWidth={2.5}
-    />
-  </Button>
-</div>
+      <div className="fixed bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px)+16px)] right-4 z-40 sm:right-6 lg:bottom-6">
+        <Button
+          data-tutorial-id="nav-create"
+          aria-label={language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
+          className="h-14 w-14 gap-2 rounded-2xl border-0 bg-primary p-0 text-primary-foreground shadow-[0_4px_16px_rgba(0,0,0,0.16)] transition-[background-color,transform] duration-150 hover:bg-primary/90 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400 motion-reduce:transform-none motion-reduce:transition-none lg:h-12 lg:w-auto lg:px-4"
+          onClick={handleOpenCustomActivityModal}
+        >
+          <Plus className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+          <span className="hidden text-sm font-semibold lg:inline">{language === 'de' ? 'Erstellen' : 'Create'}</span>
+        </Button>
+      </div>
 
       {isMobile ? (
         <Sheet open={!!selectedPlace} onOpenChange={(open) => !open && handleDialogClose()}><SheetContent side="bottom" className="p-0 h-[92dvh] w-full border-none rounded-t-3xl overflow-hidden outline-none" hideCloseButton><SheetHeader className="sr-only"><SheetTitle>{selectedPlace?.name}</SheetTitle></SheetHeader><div className="h-full w-full">{selectedPlace && <PlaceDetails place={selectedPlace} onClose={handleDialogClose} onCreateActivity={() => setActivityModalPlace(selectedPlace)} />}</div></SheetContent></Sheet>
