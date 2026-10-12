@@ -60,6 +60,7 @@ export interface ActivaMapProps {
   onCreateActivity?: (place: Place) => void;
   onJoinActivity?: (activity: Activity) => Promise<any>;
   onPlaceSelect?: (place: Place) => void;
+  onActivitySelect?: (activity: Activity) => void;
   checkIsFavoriteProp?: (placeId: string) => boolean;
   onToggleFavorite?: (place: Place) => void;
 }
@@ -81,6 +82,7 @@ export function ActivaMap({
   onCreateActivity,
   onJoinActivity,
   onPlaceSelect,
+  onActivitySelect,
   checkIsFavoriteProp,
   onToggleFavorite,
 }: ActivaMapProps) {
@@ -826,7 +828,7 @@ export function ActivaMap({
           }
         } else {
           el.className =
-            'w-7 h-7 bg-emerald-500 border-2 border-white rounded-full shadow-xl animate-bounce flex items-center justify-center';
+            'w-7 h-7 bg-emerald-500 border-2 border-white rounded-full shadow-xl animate-pulse motion-reduce:animate-none flex items-center justify-center';
           el.innerHTML = '<span class="w-2.5 h-2.5 bg-white rounded-full ring-2 ring-emerald-300"></span>';
         }
 
@@ -903,6 +905,8 @@ export function ActivaMap({
           onViewDetails={(ent) => {
             if (ent && ent.type === 'place') {
               onPlaceSelect?.(ent.data as Place);
+            } else if (ent && ent.type === 'activity') {
+              onActivitySelect?.(ent.data as Activity);
             }
           }}
           isFavorite={selectedEntity.type === 'place' ? checkIsFavorite(selectedEntity.id) : false}
@@ -929,6 +933,8 @@ export function ActivaMap({
           onViewDetails={(ent) => {
             if (ent && ent.type === 'place') {
               onPlaceSelect?.(ent.data as Place);
+            } else if (ent && ent.type === 'activity') {
+              onActivitySelect?.(ent.data as Activity);
             }
           }}
           isFavorite={selectedEntity && selectedEntity.type === 'place' ? checkIsFavorite(selectedEntity.id) : false}

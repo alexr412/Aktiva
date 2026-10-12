@@ -15,6 +15,7 @@ import { createActivity, joinActivity, votePlace } from '@/lib/firebase/firestor
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { PlaceDetails } from '@/components/activa/place-details';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
+import { ActivityInfoSheet } from '@/components/activa/activity-info-sheet';
 import type { CallableActivityPayload } from '@/features/activities/create/activity-payload';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { DesktopNav } from '@/components/desktop-nav';
@@ -53,6 +54,7 @@ export default function MapPage() {
 
   const [selectedMapEntity, setSelectedMapEntity] = useState<SelectedMapEntity>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [activityModalPlace, setActivityModalPlace] = useState<Place | 'custom' | null>(null);
   const [isLocationSearchOpen, setIsLocationSearchOpen] = useState(false);
 
@@ -154,6 +156,7 @@ export default function MapPage() {
           onCreateActivity={(place) => setActivityModalPlace(place)}
           onJoinActivity={handleJoin}
           onPlaceSelect={handlePlaceSelect}
+          onActivitySelect={setSelectedActivity}
           checkIsFavoriteProp={checkIsFavorite}
           onToggleFavorite={handleToggleFavorite}
         />
@@ -208,6 +211,14 @@ export default function MapPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Selected Activity Details */}
+      <ActivityInfoSheet
+        activity={selectedActivity}
+        open={!!selectedActivity}
+        onOpenChange={(open) => !open && setSelectedActivity(null)}
+        onJoin={handleJoin}
+      />
 
       {/* Create Activity Dialog */}
       <CreateActivityDialog

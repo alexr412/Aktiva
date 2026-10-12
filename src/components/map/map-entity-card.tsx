@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { X, MapPin, Calendar, Users, Star, Share2, Navigation, Heart, ChevronRight, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Place, Activity } from '@/lib/types';
@@ -50,6 +51,7 @@ export function MapEntityCard({
   className,
   isLocationCurrent = true,
 }: MapEntityCardProps) {
+  const router = useRouter();
   if (!entity || !entity.data) return null;
 
   const isDe = language === 'de';
@@ -269,6 +271,10 @@ export function MapEntityCard({
               disabled={joinState.disabled}
               onClick={(e) => {
                 e.stopPropagation();
+                if (joinState.action === 'manage') {
+                  router.push(`/chat/${activity.id}`);
+                  return;
+                }
                 if (onJoinActivity) onJoinActivity(activity);
               }}
               className={cn(
