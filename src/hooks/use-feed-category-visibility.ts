@@ -72,8 +72,10 @@ export function useFeedCategoryVisibility(userId: string | undefined, knownIds: 
       if (active && pending.size) void flush();
     };
     const change = (field: Field, next: FeedPreferences[Field]) => {
+      const normalized = normalizeFeedPreferences({ ...value, [field]: next }, knownIds);
+      if (JSON.stringify(value[field]) === JSON.stringify(normalized[field])) return;
       if (field === 'hiddenCategoryIds') migrationPending = false;
-      value = normalizeFeedPreferences({ ...value, [field]: next }, knownIds);
+      value = normalized;
       if (userId) pending.set(field, ++version);
       publish();
       void flush();

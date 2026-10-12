@@ -1,0 +1,475 @@
+{
+  "status": "draft",
+  "selected": [
+    {
+      "label": "Lieblingsplatz",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "51f3e670adf62421405963ba6b64b2c64a40f00103f9018adbc4910200000092030e4c6965626c696e6773706c61747a"
+    },
+    {
+      "label": "Das Beet",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "5119fca2a94327214059ca9f145223c74a40f00103f901492e8295020000009203084461732042656574"
+    },
+    {
+      "label": "Café am Park",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "510d480c4cb831214059a31b06989ec44a40f00103f901dbb52f380300000092030d436166c3a920616d205061726b"
+    },
+    {
+      "label": "Café Stuck",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "512c5b90d21129214059bc6df0cf56c74a40f00103f90137d12e9f0200000092030b436166c3a920537475636b"
+    },
+    {
+      "label": "Mojo Coffee",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "512640a8e6cd24214059c09657aeb7c64a40f00103f90170c56e920200000092030b4d6f6a6f20436f66666565"
+    },
+    {
+      "label": "Café Cardoso",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "51728f00c9cf2921405908dc0429c2c64a40f00103f901c4b4c4910200000092030d436166c3a920436172646f736f"
+    },
+    {
+      "label": "Geestebogen Café",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "5177d7d9907f2a21405955409072e6c64a40f00103f9015c860abc02000000920311476565737465626f67656e20436166c3a9"
+    },
+    {
+      "label": "Katie's Café am Deich",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "51cb8058dbb921214059112851e56ac64a40f00103f901d1905fa7020000009203164b61746965277320436166c3a920616d204465696368"
+    },
+    {
+      "label": "Katie's Konditorei & Café Wulsdorf",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "516a90381a76322140598137eede9bc04a40f00103f9017d439680010000009203234b617469652773204b6f6e6469746f726569202620436166c3a92057756c73646f7266"
+    },
+    {
+      "label": "Café Blume",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "51d77f42e2c33921405975dc3a4904c94a40f00103f9014d9a4cdb0200000092030b436166c3a920426c756d65"
+    },
+    {
+      "label": "Annie's Café",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "51df0841fd1d4421405912e5c1cc2dc24a40f00103f9018d8bff4e0200000092030d416e6e6965277320436166c3a9"
+    },
+    {
+      "label": "Café Süße Träume",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "51e8eb43280030214059c2d0347227c44a40f00103f901e8da670d02000000920314436166c3a92053c3bcc39f65205472c3a4756d65"
+    },
+    {
+      "label": "Ematha",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "51f9db9e20b12d2140590a8e812b8fc74a40f00103f901262b9b6a00000000920306456d61746861"
+    },
+    {
+      "label": "Caspar David & Co.",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "51b09696ec332a214059fcc2d08f2bc54a40f00103f9015126242900000000920312436173706172204461766964202620436f2e"
+    },
+    {
+      "label": "Foodart Bremerhaven Cake's & Bowl's",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "5100e07dfa7425214059744b619456c64a40f00103f9013520efee02000000920323466f6f64617274204272656d6572686176656e2043616b652773202620426f776c2773"
+    },
+    {
+      "label": "Fiedlers Kolonialwarenladen",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "5111829f820d2d214059ee395563aec24a40f00103f9013c260b3c0100000092031b466965646c657273204b6f6c6f6e69616c776172656e6c6164656e"
+    },
+    {
+      "label": "Wellenrausch-Café",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "511224004922292140591747e5266ac64a40f00103f9011e044cce0200000092031257656c6c656e7261757363682d436166c3a9"
+    },
+    {
+      "label": "Toddy's Eis",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "511574d602d64121405932cdcf6806c44a40f00103f901e46695190000000092030b546f646479277320456973"
+    },
+    {
+      "label": "überSEE",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "5139f471c8612321405935eb313619c64a40f00103f901627fa51a00000000920308c3bc626572534545"
+    },
+    {
+      "label": "Grete's - Café am Kai",
+      "group": "Cafés, Eis und entspannte Treffen",
+      "id": "51f833bc598327214059c1583a7a57c34a40f00103f90159bf71090100000092031647726574652773202d20436166c3a920616d204b6169"
+    },
+    {
+      "label": "Villa Seebeck",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "51504dee1c6f2b21405913b46e2821c54a40f00103f901c2641bec0000000092030d56696c6c61205365656265636b"
+    },
+    {
+      "label": "Kais Restaurant",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "51f5e5bb4a2d2a2140593c97f3d60ac34a40f00103f901264db3370200000092030f4b6169732052657374617572616e74"
+    },
+    {
+      "label": "Natusch",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "5101f15fc54e2921405923f77475c7c24a40f00103f901f7029519000000009203074e617475736368"
+    },
+    {
+      "label": "Dock IV",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "5116736b2d272c214059b91567b1b9c24a40f00103f90120e79e5e00000000920307446f636b204956"
+    },
+    {
+      "label": "Dat Fischhus",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "51304388d0ad2c2140599e149cb0b3c24a40f00103f901b8469f5e0000000092030c446174204669736368687573"
+    },
+    {
+      "label": "PIER 6",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "5156e99381a824214059f2f56ba11ac64a40f00103f901ad4c08b000000000920306504945522036"
+    },
+    {
+      "label": "Weinrot",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "515a0d897b2c29214059794b283394c54a40f00103f9015b0e1823020000009203075765696e726f74"
+    },
+    {
+      "label": "Mulberry St",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "51a7a66e788b252140597072648adec54a40f00103f901ed5863230200000092030b4d756c6265727279205374"
+    },
+    {
+      "label": "Burgermeister Schmitzz",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "51bf1479ed2d24214059315ef3aacec64a40f00103f901bf8417d4000000009203164275726765726d656973746572205363686d69747a7a"
+    },
+    {
+      "label": "B Burger Bar",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "51bb5a93139229214059afc1b11d42c54a40f00103f901cb096a5e0000000092030c422042757267657220426172"
+    },
+    {
+      "label": "Himalaya Indian Cuisine",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "519b0b129150292140596c932f0d68c54a40f00103f90101d0ad3d0200000092031748696d616c61796120496e6469616e2043756973696e65"
+    },
+    {
+      "label": "Käpt'n Sushi",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "5165389ecf80262140599d2d20b41ec64a40f00103f9014776f18d0000000092030d4bc3a47074276e205375736869"
+    },
+    {
+      "label": "Persia",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "518b321b64922d21405983d1f6f939c44a40f00103f901adb98f5700000000920306506572736961"
+    },
+    {
+      "label": "Marasum",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "51c482b174f42a214059a91a18d412c74a40f00103f9012b851618020000009203074d61726173756d"
+    },
+    {
+      "label": "Olympisches Feuer",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "51f220e28b9b2b2140591d7ae6406ac74a40f00103f901701c842f000000009203114f6c796d70697363686573204665756572"
+    },
+    {
+      "label": "Osteria Agnes",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "51af61a98a123221405948bb5af554be4a40f00102f901c03034070000000092030d4f7374657269612041676e6573"
+    },
+    {
+      "label": "Auflauf-Haus",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "514010c5895429214059e42373767cc74a40f00103f901d9a288fe0200000092030c4175666c6175662d48617573"
+    },
+    {
+      "label": "Mut's Kitchen",
+      "group": "Restaurants und gemeinsames Essen",
+      "id": "51d03c258c0b302140594881aa76f2c64a40f00103f901dead68f20000000092030d4d75742773204b69746368656e"
+    },
+    {
+      "label": "Bürgerpark",
+      "group": "Parks und draußen treffen",
+      "id": "5191898fb96b3621405957bf58620bc54a40f00102f9016de749070000000092030b42c3bc726765727061726b"
+    },
+    {
+      "label": "Speckenbütteler Park",
+      "group": "Parks und draußen treffen",
+      "id": "5178c67fc7c42a21405908b01af269cb4a40f00102f901c008991f00000000920315537065636b656e62c3bc7474656c6572205061726b"
+    },
+    {
+      "label": "Thieles Garten",
+      "group": "Parks und draußen treffen",
+      "id": "51cd3f86ddc03b2140596598a034b2cb4a40f00102f901b945f70a0000000092030e546869656c65732047617274656e"
+    },
+    {
+      "label": "Stadtpark",
+      "group": "Parks und draußen treffen",
+      "id": "514e248e30e62c2140599f5f476fb1c74a40f00102f901b5fd28070000000092030953746164747061726b"
+    },
+    {
+      "label": "Park Reinkenheide",
+      "group": "Parks und draußen treffen",
+      "id": "511d079b9e4a432140598506d2079ec44a40f00102f9019a263302000000009203115061726b205265696e6b656e6865696465"
+    },
+    {
+      "label": "Schleusengarten",
+      "group": "Parks und draußen treffen",
+      "id": "5122c39c075823214059134598aae5c54a40f00102f901787b9b390000000092030f5363686c657573656e67617274656e"
+    },
+    {
+      "label": "Saarpark",
+      "group": "Parks und draußen treffen",
+      "id": "516b6a166c932c2140591e42b9d336c74a40f00102f9018707b00100000000920308536161727061726b"
+    },
+    {
+      "label": "Zollinlandplatz",
+      "group": "Parks und draußen treffen",
+      "id": "51bf8cbc2c0b27214059eec84e8531c74a40f00102f90146fdf40e0000000092030f5a6f6c6c696e6c616e64706c61747a"
+    },
+    {
+      "label": "Martin-Donandt-Platz",
+      "group": "Parks und draußen treffen",
+      "id": "51e98f5e179425214059690d45ab95c64a40f00102f90175af7f02000000009203144d617274696e2d446f6e616e64742d506c61747a"
+    },
+    {
+      "label": "Waldemar-Becké-Platz",
+      "group": "Parks und draußen treffen",
+      "id": "51e5f724e9df232140593087b5a114c74a40f00102f9017d08f8340000000092031557616c64656d61722d4265636bc3a92d506c61747a"
+    },
+    {
+      "label": "Hot Court Padel",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "catalog-bremerhaven-hot-court-padel"
+    },
+    {
+      "label": "BAD 3",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "51acfafaad98292140592d995d4b2cca4a40f00102f9017ab07902000000009203054241442033"
+    },
+    {
+      "label": "Bremerhaven Boulder Club",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "518a1cc7b4db27214059cb06e3f1fec64a40f00103f901465f1c11030000009203184272656d6572686176656e20426f756c64657220436c7562"
+    },
+    {
+      "label": "Rollsportanlage am Bürgerpark",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "514020693ab73a2140592ddda50317c54a40f00102f901d2e74e060000000092031e526f6c6c73706f7274616e6c61676520616d2042c3bc726765727061726b"
+    },
+    {
+      "label": "BMX-Park",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "51bf6ce467fc27214059b48f216b29cb4a40f00102f9015d46e80700000000920308424d582d5061726b"
+    },
+    {
+      "label": "HAVENGLOW Schwarzlicht-Minigolf",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "catalog-bremerhaven-havenglow"
+    },
+    {
+      "label": "Beyond Bowling (ehemals Fun Bowling)",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "510f8e07606732214059d93c8fec2bca4a40f00102f901662043070000000092030b66756e20426f776c696e67"
+    },
+    {
+      "label": "Zoo am Meer",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "511940ee2f02242140594062c69ebbc54a40f00102f9010f5cde010000000092030b5a6f6f20616d204d656572"
+    },
+    {
+      "label": "Deutsches Auswandererhaus",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "5122499585df252140594db7f873ccc54a40f00102f901c825fe2b000000009203194465757473636865732041757377616e646572657268617573"
+    },
+    {
+      "label": "Klimahaus Bremerhaven",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "517096bee41d2621405919d7afac87c54a40f00102f90135459c02000000009203154b6c696d6168617573204272656d6572686176656e"
+    },
+    {
+      "label": "CineMotion",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "5182114889dc29214059ebdedbdf25c54a40f00102f9012d2a410f0000000092030a43696e654d6f74696f6e"
+    },
+    {
+      "label": "Phänomenta Bremerhaven e.V.",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "51b9c9141857292140591b564c00d9c24a40f00102f90195de5e130000000092031c5068c3a46e6f6d656e7461204272656d6572686176656e20652e562e"
+    },
+    {
+      "label": "Deutsches Schifffahrtsmuseum",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "514850fc187327214059c8efc8b326c54a40f00103f9015c14f6850200000092031c446575747363686573205363686966666661687274736d757365756d"
+    },
+    {
+      "label": "JUMPIN Trampolinpark",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "catalog-bremerhaven-jumpin"
+    },
+    {
+      "label": "EXIT Escape Room",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "catalog-bremerhaven-exit"
+    },
+    {
+      "label": "Stadtbibliothek Bremerhaven",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "51b54d96ff35292140594cd2eb0555c54a40f00103f9012298e77c0000000092031b53746164746269626c696f7468656b204272656d6572686176656e"
+    },
+    {
+      "label": "Stadtteilbibliothek Leherheide",
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "id": "513f9201973d3b214059a0ed6ccc5fcb4a40f00102f901c335010e0000000092031e53746164747465696c6269626c696f7468656b204c656865726865696465"
+    },
+    {
+      "label": "Snooker's",
+      "group": "Bars, Karaoke und Spiele",
+      "id": "51c7889f5ad8262140596648ba0b39c64a40f00103f90109b1373602000000920309536e6f6f6b65722773"
+    },
+    {
+      "label": "Rüssel",
+      "group": "Bars, Karaoke und Spiele",
+      "id": "519310f637b224214059f2d9f0aabdc64a40f00103f9010666c01d0000000092030752c3bc7373656c"
+    },
+    {
+      "label": "Karlsburg",
+      "group": "Bars, Karaoke und Spiele",
+      "id": "51b7a7f5c830242140596aaff490dfc64a40f00103f9017109b92b030000009203094b61726c7362757267"
+    },
+    {
+      "label": "Kim's Karaoke Bar",
+      "group": "Bars, Karaoke und Spiele",
+      "id": "51e553b6fe4c2b2140592629fa8dc0c74a40f00103f9017aec5c30000000009203114b696d2773204b6172616f6b6520426172"
+    },
+    {
+      "label": "GLENN'S PLACE – Karaoke & Game Nights",
+      "group": "Bars, Karaoke und Spiele",
+      "id": "catalog-bremerhaven-glenns-place"
+    },
+    {
+      "label": "One Up Game Bar",
+      "group": "Bars, Karaoke und Spiele",
+      "id": "5141005fc0812321405960330a93f3c64a40f00103f901b58082950200000092030f4f6e652055702047616d6520426172"
+    },
+    {
+      "label": "Kapovaz",
+      "group": "Bars, Karaoke und Spiele",
+      "id": "51468a123ea524214059bb7207fbc0c64a40f00103f901eb8ecb23000000009203074b61706f76617a"
+    },
+    {
+      "label": "Schluckspecht",
+      "group": "Bars, Karaoke und Spiele",
+      "id": "51a5cc17c5bc24214059c461c499bac64a40f00103f901bae6a5ee0200000092030d5363686c75636b737065636874"
+    },
+    {
+      "label": "Cafe de Fiets",
+      "group": "Bars, Karaoke und Spiele",
+      "id": "51e91038126824214059b94f3349d1c64a40f00103f901f18ecb230000000092030d43616665206465204669657473"
+    },
+    {
+      "label": "Quartier No. 159",
+      "group": "Bars, Karaoke und Spiele",
+      "id": "51e87cc2233b2421405924511eccdcc64a40f00103f901c9412327010000009203105175617274696572204e6f2e20313539"
+    }
+  ],
+  "groups": [
+    {
+      "group": "Cafés, Eis und entspannte Treffen",
+      "spots": 20
+    },
+    {
+      "group": "Restaurants und gemeinsames Essen",
+      "spots": 18
+    },
+    {
+      "group": "Parks und draußen treffen",
+      "spots": 10
+    },
+    {
+      "group": "Sport, Freizeit, Kultur und Bibliotheken",
+      "spots": 17
+    },
+    {
+      "group": "Bars, Karaoke und Spiele",
+      "spots": 10
+    }
+  ],
+  "sources": [
+    {
+      "label": "Hot Court Padel: neue Halle und Adresse",
+      "url": "https://www.bis-bremerhaven.de/de/news/gruender-bringen-padel-nach-bremerhaven/2103"
+    },
+    {
+      "label": "HAVENGLOW: Schwarzlicht-Minigolf und Adresse",
+      "url": "https://www.havenglow.de/"
+    },
+    {
+      "label": "Zoo am Meer: Betreiber",
+      "url": "https://zoo-am-meer-bremerhaven.de/"
+    },
+    {
+      "label": "Beyond Bowling: heutiger Name und Adresse",
+      "url": "https://beyondbowling.de/"
+    },
+    {
+      "label": "Altes Eiswerk: KAIS, JUMPIN und EXIT mit separatem Eingang",
+      "url": "https://www.alteseiswerk.de/ueber-uns/"
+    },
+    {
+      "label": "GLENN'S PLACE: Karaoke und Game Nights",
+      "url": "https://linktr.ee/glennsplace.bhv"
+    },
+    {
+      "label": "Boulder Club: öffentlicher Zugang und Öffnungszeiten",
+      "url": "https://www.bremerhaven-boulderclub.de/"
+    },
+    {
+      "label": "Übersee: Café und Bistro",
+      "url": "https://www.bremerhaven-erleben.de/gastro/cafe-bistro-uebersee"
+    },
+    {
+      "label": "Grete's: Café am Kai (Tourismusbericht 2021)",
+      "url": "https://www.logbuch-bremerhaven.de/dreamteam-gretes-und-fischkai57/"
+    },
+    {
+      "label": "Restaurant-Auswahl: städtische Tourismusgesellschaft",
+      "url": "https://www.bremerhaven-erleben.de/essen-und-trinken"
+    },
+    {
+      "label": "Villa Seebeck: Restaurant und Adresse",
+      "url": "https://www.villaseebeck.de/"
+    },
+    {
+      "label": "Natusch: Restaurant und Adresse",
+      "url": "https://www.natusch.de/kontakt/"
+    },
+    {
+      "label": "Dock IV: Betreiber",
+      "url": "https://dock4-restaurant.de/"
+    },
+    {
+      "label": "Dat Fischhus: Betreiber",
+      "url": "https://fischhus-bremerhaven.de/"
+    },
+    {
+      "label": "Foodart: Betreiber und Adresse",
+      "url": "https://www.cakesandbowls.de/about-1"
+    }
+  ],
+  "supplementRetrievedAt": {
+    "leisure": "2026-10-12T15:41:45.594Z",
+    "food": "2026-10-12T17:30:56.065Z",
+    "venues": "2026-10-12T17:30:57.869Z"
+  },
+  "requests": 0,
+  "spots": 251,
+  "pilotSpots": 75,
+  "version": "7d67a7071d562f49894132bb902f54c08b291b903ae33b9e0b6c8e7c8616ad5c",
+  "sourceVersion": "c80c96e63e9f515282539f4fdb217c381037227c4746c9cde6abc9ec9357603f",
+  "pages": 1
+}

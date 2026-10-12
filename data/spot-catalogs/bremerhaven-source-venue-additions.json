@@ -1,0 +1,50 @@
+{
+  "retrievedAt": "2026-10-12T17:30:57.869Z",
+  "places": [
+    {
+      "id": "catalog-bremerhaven-jumpin",
+      "name": "JUMPIN Trampolinpark",
+      "address": "Herwigstraße 24, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5238062,
+      "lon": 8.5824615,
+      "categories": [
+        "entertainment",
+        "entertainment.activity_park",
+        "entertainment.activity_park.trampoline"
+      ]
+    },
+    {
+      "id": "catalog-bremerhaven-kais",
+      "name": "KAIS Restaurant",
+      "address": "Herwigstraße 24, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5238062,
+      "lon": 8.5824615,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "catalog-bremerhaven-exit",
+      "name": "EXIT Escape Room",
+      "address": "Oststraße 1, 27572 Bremerhaven, Deutschland",
+      "lat": 53.523568,
+      "lon": 8.583154,
+      "categories": [
+        "entertainment",
+        "entertainment.escape_game"
+      ]
+    },
+    {
+      "id": "catalog-bremerhaven-glenns-place",
+      "name": "GLENN'S PLACE – Karaoke & Game Nights",
+      "address": "Moltkestraße 17, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5546988,
+      "lon": 8.5780479,
+      "categories": [
+        "catering",
+        "catering.bar"
+      ]
+    }
+  ]
+}

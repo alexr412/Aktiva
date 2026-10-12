@@ -1,0 +1,952 @@
+{
+  "cityId": "bremerhaven",
+  "name": "Bremerhaven",
+  "lat": 53.5505392,
+  "lon": 8.5851945,
+  "radiusMeters": 20000,
+  "places": [
+    {
+      "id": "51f3e670adf62421405963ba6b64b2c64a40f00103f9018adbc4910200000092030e4c6965626c696e6773706c61747a",
+      "name": "Lieblingsplatz",
+      "address": "Lieblingsplatz, Schleusenstraße 24, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5523191,
+      "lon": 8.5721945,
+      "categories": [
+        "catering",
+        "catering.cafe",
+        "wheelchair",
+        "wheelchair.yes"
+      ],
+      "openingHours": "We-Mo 09:00-16:00; PH 09:00-14:00"
+    },
+    {
+      "id": "5119fca2a94327214059ca9f145223c74a40f00103f901492e8295020000009203084461732042656574",
+      "name": "Das Beet",
+      "address": "Das Beet, Kistnerstraße 54, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5557654,
+      "lon": 8.5766881,
+      "categories": [
+        "catering",
+        "catering.cafe"
+      ],
+      "openingHours": "Tu-Su 14:00-22:00"
+    },
+    {
+      "id": "510d480c4cb831214059a31b06989ec44a40f00103f901dbb52f380300000092030d436166c3a920616d205061726b",
+      "name": "Café am Park",
+      "address": "Café am Park, Bismarckstraße 53, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5360899,
+      "lon": 8.5971092,
+      "categories": [
+        "catering",
+        "catering.cafe"
+      ]
+    },
+    {
+      "id": "512c5b90d21129214059bc6df0cf56c74a40f00103f90137d12e9f0200000092030b436166c3a920537475636b",
+      "name": "Café Stuck",
+      "address": "Café Stuck, Uhlandstraße 18, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5573368,
+      "lon": 8.5802141,
+      "categories": [
+        "catering",
+        "catering.cafe"
+      ],
+      "openingHours": "Mo-Fr 12:30-16:30,18:30-22:00; Sa,Su 14:30-17:00"
+    },
+    {
+      "id": "512640a8e6cd24214059c09657aeb7c64a40f00103f90170c56e920200000092030b4d6f6a6f20436f66666565",
+      "name": "Mojo Coffee",
+      "address": "Mojo Coffee, Schleusenstraße, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5524805,
+      "lon": 8.5718834,
+      "categories": [
+        "catering",
+        "catering.cafe"
+      ]
+    },
+    {
+      "id": "51728f00c9cf2921405908dc0429c2c64a40f00103f901c4b4c4910200000092030d436166c3a920436172646f736f",
+      "name": "Café Cardoso",
+      "address": "Café Cardoso, Hafenstraße 33, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5528003,
+      "lon": 8.5816634,
+      "categories": [
+        "catering",
+        "catering.cafe",
+        "commercial",
+        "commercial.food_and_drink",
+        "commercial.food_and_drink.bakery"
+      ],
+      "openingHours": "Tu-Su 06:00-21:00"
+    },
+    {
+      "id": "5177d7d9907f2a21405955409072e6c64a40f00103f9015c860abc02000000920311476565737465626f67656e20436166c3a9",
+      "name": "Geestebogen Café",
+      "address": "Geestebogen Café, Hafenstraße 58, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5539077,
+      "lon": 8.5830045,
+      "categories": [
+        "catering",
+        "catering.cafe",
+        "commercial",
+        "commercial.food_and_drink",
+        "commercial.food_and_drink.bakery"
+      ],
+      "openingHours": "Mo-Sa 07:00-19:00"
+    },
+    {
+      "id": "51cb8058dbb921214059112851e56ac64a40f00103f901d1905fa7020000009203164b61746965277320436166c3a920616d204465696368",
+      "name": "Katie's Café am Deich",
+      "address": "Katie's Café am Deich, Lohmannstraße 32b, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5501372,
+      "lon": 8.5658711,
+      "categories": [
+        "catering",
+        "catering.cafe",
+        "catering.cafe.cake"
+      ],
+      "openingHours": "We-Su 12:00-17:00"
+    },
+    {
+      "id": "516a90381a76322140598137eede9bc04a40f00103f9017d439680010000009203234b617469652773204b6f6e6469746f726569202620436166c3a92057756c73646f7266",
+      "name": "Katie's Konditorei & Café Wulsdorf",
+      "address": "Katie's Konditorei & Café Wulsdorf, Weserstraße 66, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5047568,
+      "lon": 8.5985573,
+      "categories": [
+        "catering",
+        "catering.cafe",
+        "catering.cafe.cake",
+        "wheelchair",
+        "wheelchair.yes"
+      ],
+      "openingHours": "Tu-Su 12:00-18:00"
+    },
+    {
+      "id": "51d77f42e2c33921405975dc3a4904c94a40f00103f9014d9a4cdb0200000092030b436166c3a920426c756d65",
+      "name": "Café Blume",
+      "address": "Café Blume, Spadener Straße 128, 27578 Bremerhaven, Deutschland",
+      "lat": 53.5704433,
+      "lon": 8.6128226,
+      "categories": [
+        "catering",
+        "catering.cafe"
+      ]
+    },
+    {
+      "id": "51df0841fd1d4421405912e5c1cc2dc24a40f00103f9018d8bff4e0200000092030d416e6e6965277320436166c3a9",
+      "name": "Annie's Café",
+      "address": "Annie's Café, Vieländer Weg 230, 27574 Bremerhaven, Deutschland",
+      "lat": 53.5170227,
+      "lon": 8.6330413,
+      "categories": [
+        "catering",
+        "catering.cafe"
+      ],
+      "openingHours": "Mo-Tu,Th-Sa, 08:00-12:00,14:00-17:00; We off; Su 09:00-16:00"
+    },
+    {
+      "id": "51e8eb43280030214059c2d0347227c44a40f00103f901e8da670d02000000920314436166c3a92053c3bcc39f65205472c3a4756d65",
+      "name": "Café Süße Träume",
+      "address": "Café Süße Träume, Grashoffstraße 21a, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5324538,
+      "lon": 8.5937512,
+      "categories": [
+        "catering",
+        "catering.cafe"
+      ],
+      "openingHours": "Tu-Sa 09:00-18:00; Su 13:00-18:00"
+    },
+    {
+      "id": "51f9db9e20b12d2140590a8e812b8fc74a40f00103f901262b9b6a00000000920306456d61746861",
+      "name": "Ematha",
+      "address": "Ematha, Hinrich-Schmalfeldt-Straße 24, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5590567,
+      "lon": 8.589242,
+      "categories": [
+        "catering",
+        "catering.cafe"
+      ],
+      "openingHours": "Mo-Su 10:00-20:00"
+    },
+    {
+      "id": "51b09696ec332a214059fcc2d08f2bc54a40f00103f9015126242900000000920312436173706172204461766964202620436f2e",
+      "name": "Caspar David & Co.",
+      "address": "Caspar David & Co., Karlsburg 4, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5403919,
+      "lon": 8.5824274,
+      "categories": [
+        "catering",
+        "catering.cafe",
+        "wheelchair",
+        "wheelchair.limited"
+      ],
+      "openingHours": "Mo-Sa 11:00-24:00+"
+    },
+    {
+      "id": "5100e07dfa7425214059744b619456c64a40f00103f9013520efee02000000920323466f6f64617274204272656d6572686176656e2043616b652773202620426f776c2773",
+      "name": "Foodart Bremerhaven Cake's & Bowl's",
+      "address": "Foodart Bremerhaven Cake's & Bowl's, Bürgermeister-Smidt-Straße 148, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5495172,
+      "lon": 8.5731581,
+      "categories": [
+        "catering",
+        "catering.cafe"
+      ]
+    },
+    {
+      "id": "5111829f820d2d214059ee395563aec24a40f00103f9013c260b3c0100000092031b466965646c657273204b6f6c6f6e69616c776172656e6c6164656e",
+      "name": "Fiedlers Kolonialwarenladen",
+      "address": "Fiedlers Kolonialwarenladen, An der Packhalle IV 34, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5209469,
+      "lon": 8.5879937,
+      "categories": [
+        "catering",
+        "catering.cafe"
+      ],
+      "openingHours": "Mo-Su 10:00-17:00"
+    },
+    {
+      "id": "511224004922292140591747e5266ac64a40f00103f9011e044cce0200000092031257656c6c656e7261757363682d436166c3a9",
+      "name": "Wellenrausch-Café",
+      "address": "Wellenrausch-Café, Hafenstraße 10, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5501145,
+      "lon": 8.5803397,
+      "categories": [
+        "catering",
+        "catering.cafe"
+      ]
+    },
+    {
+      "id": "511574d602d64121405932cdcf6806c44a40f00103f901e46695190000000092030b546f646479277320456973",
+      "name": "Toddy's Eis",
+      "address": "Toddy's Eis, Gagelstraße 11, 27574 Bremerhaven, Deutschland",
+      "lat": 53.5314456,
+      "lon": 8.6285859,
+      "categories": [
+        "catering",
+        "catering.cafe",
+        "catering.cafe.ice_cream",
+        "catering.ice_cream"
+      ],
+      "openingHours": "Tu-Su 14:00-18:00; PH 14:00-18:00"
+    },
+    {
+      "id": "5139f471c8612321405935eb313619c64a40f00103f901627fa51a00000000920308c3bc626572534545",
+      "name": "überSEE",
+      "address": "überSEE, Am Leuchtturm 1, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5476444,
+      "lon": 8.5691054,
+      "categories": [
+        "catering",
+        "catering.cafe",
+        "catering.restaurant",
+        "catering.restaurant.regional",
+        "vegetarian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51f833bc598327214059c1583a7a57c34a40f00103f90159bf71090100000092031647726574652773202d20436166c3a920616d204b6169",
+      "name": "Grete's - Café am Kai",
+      "address": "Grete's - Café am Kai, Fischkai 57, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5261071,
+      "lon": 8.577174,
+      "categories": [
+        "catering",
+        "catering.cafe",
+        "catering.restaurant",
+        "catering.restaurant.regional",
+        "vegetarian",
+        "vegetarian.only"
+      ]
+    },
+    {
+      "id": "51504dee1c6f2b21405913b46e2821c54a40f00103f901c2641bec0000000092030d56696c6c61205365656265636b",
+      "name": "Villa Seebeck",
+      "address": "Villa Seebeck, Deichstraße 15, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5400744,
+      "lon": 8.5848321,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "vegetarian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51f5e5bb4a2d2a2140593c97f3d60ac34a40f00103f901264db3370200000092030f4b6169732052657374617572616e74",
+      "name": "Kais Restaurant",
+      "address": "Kais Restaurant, Herwigstraße 24, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5237683,
+      "lon": 8.5823768,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "5101f15fc54e2921405923f77475c7c24a40f00103f901f7029519000000009203074e617475736368",
+      "name": "Natusch",
+      "address": "Natusch, Am Fischbahnhof 1, 27572 Bremerhaven, Deutschland",
+      "lat": 53.521712,
+      "lon": 8.5806791,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.fish"
+      ]
+    },
+    {
+      "id": "5116736b2d272c214059b91567b1b9c24a40f00103f90120e79e5e00000000920307446f636b204956",
+      "name": "Dock IV",
+      "address": "Dock IV, An der Packhalle IV 4, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5212919,
+      "lon": 8.5862364,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51304388d0ad2c2140599e149cb0b3c24a40f00103f901b8469f5e0000000092030c446174204669736368687573",
+      "name": "Dat Fischhus",
+      "address": "Dat Fischhus, An der Packhalle IV 9, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5211087,
+      "lon": 8.5872636,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.fish"
+      ]
+    },
+    {
+      "id": "5156e99381a824214059f2f56ba11ac64a40f00103f901ad4c08b000000000920306504945522036",
+      "name": "PIER 6",
+      "address": "PIER 6, Barkhausenstraße 6, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5476877,
+      "lon": 8.5715981,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german",
+        "catering.restaurant.mediterranean",
+        "internet_access",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "515a0d897b2c29214059794b283394c54a40f00103f9015b0e1823020000009203075765696e726f74",
+      "name": "Weinrot",
+      "address": "Weinrot, Schleswiger Straße 27, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5435852,
+      "lon": 8.5804175,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51a7a66e788b252140597072648adec54a40f00103f901ed5863230200000092030b4d756c6265727279205374",
+      "name": "Mulberry St",
+      "address": "Mulberry St, Columbusstraße 67, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5458539,
+      "lon": 8.5733297,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51bf1479ed2d24214059315ef3aacec64a40f00103f901bf8417d4000000009203164275726765726d656973746572205363686d69747a7a",
+      "name": "Burgermeister Schmitzz",
+      "address": "Burgermeister Schmitzz, Bürgermeister-Smidt-Straße 202, 27568 Bremerhaven, Deutschland",
+      "lat": 53.553182,
+      "lon": 8.5706629,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.burger"
+      ]
+    },
+    {
+      "id": "51bb5a93139229214059afc1b11d42c54a40f00103f901cb096a5e0000000092030c422042757267657220426172",
+      "name": "B Burger Bar",
+      "address": "B Burger Bar, Theodor-Heuss-Platz 10, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5410802,
+      "lon": 8.5811926,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.burger",
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "519b0b129150292140596c932f0d68c54a40f00103f90101d0ad3d0200000092031748696d616c61796120496e6469616e2043756973696e65",
+      "name": "Himalaya Indian Cuisine",
+      "address": "Himalaya Indian Cuisine, Bürgermeister-Smidt-Straße 17-19, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5422379,
+      "lon": 8.5806928,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.indian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "5165389ecf80262140599d2d20b41ec64a40f00103f9014776f18d0000000092030d4bc3a47074276e205375736869",
+      "name": "Käpt'n Sushi",
+      "address": "Käpt'n Sushi, Lloydstraße 34, 27568 Bremerhaven, Deutschland",
+      "lat": 53.547812,
+      "lon": 8.5752015,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.asian"
+      ]
+    },
+    {
+      "id": "518b321b64922d21405983d1f6f939c44a40f00103f901adb98f5700000000920306506572736961",
+      "name": "Persia",
+      "address": "Persia, Georgstraße 28, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5330193,
+      "lon": 8.5890075,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51c482b174f42a214059a91a18d412c74a40f00103f9012b851618020000009203074d61726173756d",
+      "name": "Marasum",
+      "address": "Marasum, Hafenstraße 78, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5552621,
+      "lon": 8.5838963,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51f220e28b9b2b2140591d7ae6406ac74a40f00103f901701c842f000000009203114f6c796d70697363686573204665756572",
+      "name": "Olympisches Feuer",
+      "address": "Olympisches Feuer, Hafenstraße 117, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5579301,
+      "lon": 8.5851711,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.greek"
+      ]
+    },
+    {
+      "id": "51af61a98a123221405948bb5af554be4a40f00102f901c03034070000000092030d4f7374657269612041676e6573",
+      "name": "Osteria Agnes",
+      "address": "Osteria Agnes, Seeborg 9, 27572 Bremerhaven, Deutschland",
+      "lat": 53.4869677,
+      "lon": 8.5977977,
+      "categories": [
+        "building",
+        "building.catering",
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "514010c5895429214059e42373767cc74a40f00103f901d9a288fe0200000092030c4175666c6175662d48617573",
+      "name": "Auflauf-Haus",
+      "address": "Auflauf-Haus, Goethestraße 60, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5584858,
+      "lon": 8.5807231,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51d03c258c0b302140594881aa76f2c64a40f00103f901dead68f20000000092030d4d75742773204b69746368656e",
+      "name": "Mut's Kitchen",
+      "address": "Mut's Kitchen, Stresemannstraße 110, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5542744,
+      "lon": 8.5938381,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "5191898fb96b3621405957bf58620bc54a40f00102f9016de749070000000092030b42c3bc726765727061726b",
+      "name": "Bürgerpark",
+      "address": "Bürgerpark, Geestemünde, Bremerhaven, Bremen, Deutschland",
+      "lat": 53.5396871,
+      "lon": 8.6052777,
+      "categories": [
+        "heritage",
+        "leisure",
+        "leisure.park"
+      ]
+    },
+    {
+      "id": "5178c67fc7c42a21405908b01af269cb4a40f00102f901c008991f00000000920315537065636b656e62c3bc7474656c6572205061726b",
+      "name": "Speckenbütteler Park",
+      "address": "Speckenbütteler Park, Bremerhaven, Bremen, Deutschland",
+      "lat": 53.5881486,
+      "lon": 8.5846383,
+      "categories": [
+        "leisure",
+        "leisure.park"
+      ]
+    },
+    {
+      "id": "51cd3f86ddc03b2140596598a034b2cb4a40f00102f901b945f70a0000000092030e546869656c65732047617274656e",
+      "name": "Thieles Garten",
+      "address": "Thieles Garten, Leherheide, Bremerhaven, Bremen, Deutschland",
+      "lat": 53.5916387,
+      "lon": 8.6164022,
+      "categories": [
+        "heritage",
+        "leisure",
+        "leisure.park"
+      ]
+    },
+    {
+      "id": "514e248e30e62c2140599f5f476fb1c74a40f00102f901b5fd28070000000092030953746164747061726b",
+      "name": "Stadtpark",
+      "address": "Stadtpark, Lehe, Bremerhaven, Bremen, Deutschland",
+      "lat": 53.5602705,
+      "lon": 8.5879045,
+      "categories": [
+        "leisure",
+        "leisure.park"
+      ]
+    },
+    {
+      "id": "511d079b9e4a432140598506d2079ec44a40f00102f9019a263302000000009203115061726b205265696e6b656e6865696465",
+      "name": "Park Reinkenheide",
+      "address": "Park Reinkenheide, Schiffdorferdamm, Bremerhaven, Bremen, Deutschland",
+      "lat": 53.535841,
+      "lon": 8.6328546,
+      "categories": [
+        "leisure",
+        "leisure.park"
+      ]
+    },
+    {
+      "id": "5122c39c075823214059134598aae5c54a40f00102f901787b9b390000000092030f5363686c657573656e67617274656e",
+      "name": "Schleusengarten",
+      "address": "Schleusengarten, Mitte, Bremerhaven, Bremen, Deutschland",
+      "lat": 53.5460593,
+      "lon": 8.5691119,
+      "categories": [
+        "leisure",
+        "leisure.park"
+      ]
+    },
+    {
+      "id": "516b6a166c932c2140591e42b9d336c74a40f00102f9018707b00100000000920308536161727061726b",
+      "name": "Saarpark",
+      "address": "Saarpark, Lehe, Bremerhaven, Bremen, Deutschland",
+      "lat": 53.5558279,
+      "lon": 8.5873704,
+      "categories": [
+        "leisure",
+        "leisure.park"
+      ]
+    },
+    {
+      "id": "51bf8cbc2c0b27214059eec84e8531c74a40f00102f90146fdf40e0000000092030f5a6f6c6c696e6c616e64706c61747a",
+      "name": "Zollinlandplatz",
+      "address": "Zollinlandplatz, Lehe, Bremerhaven, Bremen, Deutschland",
+      "lat": 53.5561201,
+      "lon": 8.5763021,
+      "categories": [
+        "leisure",
+        "leisure.park"
+      ],
+      "openingHours": "17:30-22:00"
+    },
+    {
+      "id": "51e98f5e179425214059690d45ab95c64a40f00102f90175af7f02000000009203144d617274696e2d446f6e616e64742d506c61747a",
+      "name": "Martin-Donandt-Platz",
+      "address": "Martin-Donandt-Platz, Mitte, Bremerhaven, Bremen, Deutschland",
+      "lat": 53.5513938,
+      "lon": 8.5734023,
+      "categories": [
+        "leisure",
+        "leisure.park"
+      ]
+    },
+    {
+      "id": "51e5f724e9df232140593087b5a114c74a40f00102f9017d08f8340000000092031557616c64656d61722d4265636bc3a92d506c61747a",
+      "name": "Waldemar-Becké-Platz",
+      "address": "Waldemar-Becké-Platz, Mitte, Bremerhaven, Bremen, Deutschland",
+      "lat": 53.5553183,
+      "lon": 8.5700601,
+      "categories": [
+        "leisure",
+        "leisure.park"
+      ]
+    },
+    {
+      "id": "catalog-bremerhaven-hot-court-padel",
+      "name": "Hot Court Padel",
+      "address": "Nordenhamer Straße 6, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5163128,
+      "lon": 8.5905924,
+      "categories": [
+        "sport",
+        "sport.sports_centre"
+      ]
+    },
+    {
+      "id": "51acfafaad98292140592d995d4b2cca4a40f00102f9017ab07902000000009203054241442033",
+      "name": "BAD 3",
+      "address": "BAD 3, Am Stadion 10, 27580 Bremerhaven, Deutschland",
+      "lat": 53.5794768,
+      "lon": 8.581243,
+      "categories": [
+        "sport",
+        "sport.swimming_pool"
+      ],
+      "openingHours": "Mo-Fr 06:00-08:00; Mo,We 19:00-21:00; Sa 08:00-11:00"
+    },
+    {
+      "id": "518a1cc7b4db27214059cb06e3f1fec64a40f00103f901465f1c11030000009203184272656d6572686176656e20426f756c64657220436c7562",
+      "name": "Bremerhaven Boulder Club",
+      "address": "Bremerhaven Boulder Club, Moltkestraße 13, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5546553,
+      "lon": 8.5778481,
+      "categories": [
+        "entertainment",
+        "entertainment.activity_park",
+        "entertainment.activity_park.climbing",
+        "sport",
+        "sport.sports_centre"
+      ]
+    },
+    {
+      "id": "514020693ab73a2140592ddda50317c54a40f00102f901d2e74e060000000092031e526f6c6c73706f7274616e6c61676520616d2042c3bc726765727061726b",
+      "name": "Rollsportanlage am Bürgerpark",
+      "address": "Rollsportanlage am Bürgerpark, In den Nedderwiesen 2, 27574 Bremerhaven, Deutschland",
+      "lat": 53.5398579,
+      "lon": 8.6146612,
+      "categories": [
+        "sport",
+        "sport.sports_centre"
+      ]
+    },
+    {
+      "id": "51bf6ce467fc27214059b48f216b29cb4a40f00102f9015d46e80700000000920308424d582d5061726b",
+      "name": "BMX-Park",
+      "address": "BMX-Park, Wurster Straße, 27580 Bremerhaven, Deutschland",
+      "lat": 53.5872015,
+      "lon": 8.5780976,
+      "categories": [
+        "sport",
+        "sport.pitch"
+      ]
+    },
+    {
+      "id": "catalog-bremerhaven-havenglow",
+      "name": "HAVENGLOW Schwarzlicht-Minigolf",
+      "address": "Herwigstraße 24, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5238062,
+      "lon": 8.5824615,
+      "categories": [
+        "entertainment",
+        "entertainment.miniature_golf"
+      ]
+    },
+    {
+      "id": "510f8e07606732214059d93c8fec2bca4a40f00102f901662043070000000092030b66756e20426f776c696e67",
+      "name": "Beyond Bowling (ehemals Fun Bowling)",
+      "address": "Beyond Bowling, Langener Landstraße 134, 27580 Bremerhaven, Deutschland",
+      "lat": 53.5794079,
+      "lon": 8.5984379,
+      "categories": [
+        "building",
+        "building.sport",
+        "entertainment",
+        "entertainment.bowling_alley"
+      ]
+    },
+    {
+      "id": "511940ee2f02242140594062c69ebbc54a40f00102f9010f5cde010000000092030b5a6f6f20616d204d656572",
+      "name": "Zoo am Meer",
+      "address": "Zoo am Meer, H.-H.-Meier-Straße 7, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5447835,
+      "lon": 8.5701615,
+      "categories": [
+        "entertainment",
+        "entertainment.zoo",
+        "fee",
+        "wheelchair",
+        "wheelchair.limited"
+      ],
+      "openingHours": "Apr-Sep PH,Mo-Su 09:00-19:00; Mar-Oct PH,Mo-Su 09:00-18:00; Nov-Feb PH,Mo-Su 09:00-16:30; Dec 24 09:00-12:00; Dec 31 09:00-12:00"
+    },
+    {
+      "id": "5122499585df252140594db7f873ccc54a40f00102f901c825fe2b000000009203194465757473636865732041757377616e646572657268617573",
+      "name": "Deutsches Auswandererhaus",
+      "address": "Deutsches Auswandererhaus, Columbusstraße 65, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5453291,
+      "lon": 8.5740341,
+      "categories": [
+        "building",
+        "building.tourism",
+        "entertainment",
+        "entertainment.museum",
+        "fee",
+        "wheelchair",
+        "wheelchair.yes"
+      ],
+      "openingHours": "Mar-Oct Mo-Su 10:00-18:00; Nov-Feb Mo-Su 10:00-17:00; Dec 24 off"
+    },
+    {
+      "id": "517096bee41d2621405919d7afac87c54a40f00102f90135459c02000000009203154b6c696d6168617573204272656d6572686176656e",
+      "name": "Klimahaus Bremerhaven",
+      "address": "Klimahaus Bremerhaven, Am Längengrad 8, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5432125,
+      "lon": 8.5744602,
+      "categories": [
+        "building",
+        "building.tourism",
+        "entertainment",
+        "entertainment.museum",
+        "wheelchair",
+        "wheelchair.yes"
+      ],
+      "openingHours": "Apr-Aug Mo-Fr 09:00-19:00; Sa-Su 10:00-19:00; PH 10:00-19:00; Sep-Mar Mo-Fr 10:00-18:00; Sa-Su 10:00-18:00; PH 10:00-18:00; Dec 24-25 off; Dec 31 off; Jan 01 off"
+    },
+    {
+      "id": "5182114889dc29214059ebdedbdf25c54a40f00102f9012d2a410f0000000092030a43696e654d6f74696f6e",
+      "name": "CineMotion",
+      "address": "CineMotion, Karlsburg 1, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5402186,
+      "lon": 8.5817608,
+      "categories": [
+        "entertainment",
+        "entertainment.cinema",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51b9c9141857292140591b564c00d9c24a40f00102f90195de5e130000000092031c5068c3a46e6f6d656e7461204272656d6572686176656e20652e562e",
+      "name": "Phänomenta Bremerhaven e.V.",
+      "address": "Phänomenta Bremerhaven e.V., Hoebelstraße 24, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5222474,
+      "lon": 8.5807426,
+      "categories": [
+        "building",
+        "building.tourism",
+        "entertainment",
+        "entertainment.museum",
+        "fee"
+      ],
+      "openingHours": "Mo-Su,PH 10:00-18:00 \"letzter Einlass 17:00\""
+    },
+    {
+      "id": "514850fc187327214059c8efc8b326c54a40f00103f9015c14f6850200000092031c446575747363686573205363686966666661687274736d757365756d",
+      "name": "Deutsches Schifffahrtsmuseum",
+      "address": "Deutsches Schifffahrtsmuseum, Hans-Scharoun-Platz 1, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5402436,
+      "lon": 8.57705,
+      "categories": [
+        "entertainment",
+        "entertainment.museum",
+        "fee",
+        "wheelchair",
+        "wheelchair.yes"
+      ],
+      "openingHours": "Mo-Su 10:00-18:00"
+    },
+    {
+      "id": "catalog-bremerhaven-jumpin",
+      "name": "JUMPIN Trampolinpark",
+      "address": "Herwigstraße 24, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5238062,
+      "lon": 8.5824615,
+      "categories": [
+        "entertainment",
+        "entertainment.activity_park",
+        "entertainment.activity_park.trampoline"
+      ]
+    },
+    {
+      "id": "catalog-bremerhaven-exit",
+      "name": "EXIT Escape Room",
+      "address": "Oststraße 1, 27572 Bremerhaven, Deutschland",
+      "lat": 53.523568,
+      "lon": 8.583154,
+      "categories": [
+        "entertainment",
+        "entertainment.escape_game"
+      ]
+    },
+    {
+      "id": "51b54d96ff35292140594cd2eb0555c54a40f00103f9012298e77c0000000092031b53746164746269626c696f7468656b204272656d6572686176656e",
+      "name": "Stadtbibliothek Bremerhaven",
+      "address": "Stadtbibliothek Bremerhaven, Bürgermeister-Smidt-Straße 10, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5416572,
+      "lon": 8.5804901,
+      "categories": [
+        "education",
+        "education.library",
+        "wheelchair",
+        "wheelchair.yes"
+      ],
+      "openingHours": "Mo,Tu,We,Fr 11:00-18:00; Th 11:00-19:00; Sa 11:00-14:00"
+    },
+    {
+      "id": "513f9201973d3b214059a0ed6ccc5fcb4a40f00102f901c335010e0000000092031e53746164747465696c6269626c696f7468656b204c656865726865696465",
+      "name": "Stadtteilbibliothek Leherheide",
+      "address": "Stadtteilbibliothek Leherheide, Hans-Böckler-Straße 39, 27578 Bremerhaven, Deutschland",
+      "lat": 53.5888629,
+      "lon": 8.615705,
+      "categories": [
+        "building",
+        "building.public_and_civil",
+        "education",
+        "education.library",
+        "internet_access",
+        "internet_access.free",
+        "wheelchair",
+        "wheelchair.yes"
+      ],
+      "openingHours": "Mo,Fr 14:30-18:00; We 10:00-13:00,14:30-18:00; Sa 10:00-13:00; PH closed"
+    },
+    {
+      "id": "51c7889f5ad8262140596648ba0b39c64a40f00103f90109b1373602000000920309536e6f6f6b65722773",
+      "name": "Snooker's",
+      "address": "Snooker's, Gasstraße 14, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5486159,
+      "lon": 8.5758694,
+      "categories": [
+        "catering",
+        "catering.bar"
+      ],
+      "openingHours": "Mo-Th 18:00-00:30; Fr 18:00-02:30; Sa 16:00-02:30; Su 16:00-00:30"
+    },
+    {
+      "id": "519310f637b224214059f2d9f0aabdc64a40f00103f9010666c01d0000000092030752c3bc7373656c",
+      "name": "Rüssel",
+      "address": "Rüssel, Bürgermeister-Smidt-Straße 145, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5526632,
+      "lon": 8.5716722,
+      "categories": [
+        "catering",
+        "catering.pub",
+        "wheelchair",
+        "wheelchair.limited"
+      ],
+      "openingHours": "Mo-Su 18:00+"
+    },
+    {
+      "id": "51b7a7f5c830242140596aaff490dfc64a40f00103f9017109b92b030000009203094b61726c7362757267",
+      "name": "Karlsburg",
+      "address": "Karlsburg, Bürgermeister-Smidt-Straße 161, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5536977,
+      "lon": 8.5706847,
+      "categories": [
+        "catering",
+        "catering.bar"
+      ]
+    },
+    {
+      "id": "51e553b6fe4c2b2140592629fa8dc0c74a40f00103f9017aec5c30000000009203114b696d2773204b6172616f6b6520426172",
+      "name": "Kim's Karaoke Bar",
+      "address": "Kim's Karaoke Bar, Rickmersstraße 9, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5605638,
+      "lon": 8.5845718,
+      "categories": [
+        "catering",
+        "catering.bar"
+      ]
+    },
+    {
+      "id": "catalog-bremerhaven-glenns-place",
+      "name": "GLENN'S PLACE – Karaoke & Game Nights",
+      "address": "Moltkestraße 17, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5546988,
+      "lon": 8.5780479,
+      "categories": [
+        "catering",
+        "catering.bar"
+      ]
+    },
+    {
+      "id": "5141005fc0812321405960330a93f3c64a40f00103f901b58082950200000092030f4f6e652055702047616d6520426172",
+      "name": "One Up Game Bar",
+      "address": "One Up Game Bar, Am Gitter 1-3, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5543083,
+      "lon": 8.5693493,
+      "categories": [
+        "catering",
+        "catering.bar"
+      ],
+      "openingHours": "Mo,Th,Fr 10:00-18:00"
+    },
+    {
+      "id": "51468a123ea524214059bb7207fbc0c64a40f00103f901eb8ecb23000000009203074b61706f76617a",
+      "name": "Kapovaz",
+      "address": "Kapovaz, Bürgermeister-Smidt-Straße 147, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5527643,
+      "lon": 8.5715732,
+      "categories": [
+        "catering",
+        "catering.pub"
+      ],
+      "openingHours": "Mo-Th 20:00-02:00; Fr-Sa 21:00+"
+    },
+    {
+      "id": "51a5cc17c5bc24214059c461c499bac64a40f00103f901bae6a5ee0200000092030d5363686c75636b737065636874",
+      "name": "Schluckspecht",
+      "address": "Schluckspecht, Bürgermeister-Smidt-Straße 143, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5525696,
+      "lon": 8.5717527,
+      "categories": [
+        "catering",
+        "catering.pub"
+      ]
+    },
+    {
+      "id": "51e91038126824214059b94f3349d1c64a40f00103f901f18ecb230000000092030d43616665206465204669657473",
+      "name": "Cafe de Fiets",
+      "address": "Cafe de Fiets, Bürgermeister-Smidt-Straße 155, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5532619,
+      "lon": 8.5711065,
+      "categories": [
+        "catering",
+        "catering.pub",
+        "wheelchair",
+        "wheelchair.limited"
+      ],
+      "openingHours": "We-Th 18:00+; Fr-Sa 19:00+"
+    },
+    {
+      "id": "51e87cc2233b2421405924511eccdcc64a40f00103f901c9412327010000009203105175617274696572204e6f2e20313539",
+      "name": "Quartier No. 159",
+      "address": "Quartier No. 159, Bürgermeister-Smidt-Straße 159, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5536132,
+      "lon": 8.5707637,
+      "categories": [
+        "catering",
+        "catering.bar"
+      ],
+      "openingHours": "We-Sa 18:00-00:00"
+    }
+  ]
+}

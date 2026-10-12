@@ -79,6 +79,9 @@ test('existing account preferences take precedence over a stale browser-only mig
   listener({metadata:{fromCache:false,hasPendingWrites:false},data:()=>({feedPreferences:{sortBy:'distance',hiddenCategoryIds:['religion']}})});
   await tick();
   assert.equal(read().hiddenIds.join(','),'religion');assert.equal(read().sortBy,'distance');assert.equal(writes,0);
+  read().setSortBy('distance');
+  await tick();
+  assert.equal(writes,0,'selecting the already saved sort order must not write');
   h.close();
 });
 

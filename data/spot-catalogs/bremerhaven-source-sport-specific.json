@@ -1,0 +1,1307 @@
+{
+  "retrievedAt": "2026-10-12T15:23:23.046Z",
+  "features": [
+    {
+      "properties": {
+        "place_id": "514b328908332c214059ce218d7503c64a40f00102f901827f7d0200000000",
+        "formatted": "Geestewanderweg, 27576 Bremerhaven, Deutschland",
+        "lat": 53.5469806,
+        "lon": 8.5863268,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "517d70649c662e214059d5f25226cec64a40f00102f9016804c34d00000000",
+        "formatted": "Grimsbystraße, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5531789,
+        "lon": 8.5906242,
+        "categories": [
+          "sport",
+          "sport.pitch",
+          "sport.skateboard"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51bb3adaed302f214059a9a224b39cc64a40f00102f901de01090c000000009203214272656d6572686176656e657220527564657276657265696e20762e2031383839",
+        "name": "Bremerhavener Ruderverein v. 1889",
+        "formatted": "Bremerhavener Ruderverein v. 1889, Grimsbystraße, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5517521,
+        "lon": 8.5921081,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e5daabea40292140591e3b037ee8c54a40f00103f9012b20992f0000000092030b46726f6865204661687274",
+        "name": "Frohe Fahrt",
+        "formatted": "Frohe Fahrt, Geestewanderweg, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5461576,
+        "lon": 8.5805734,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "518a1cc7b4db27214059cb06e3f1fec64a40f00103f901465f1c11030000009203184272656d6572686176656e20426f756c64657220436c7562",
+        "name": "Bremerhaven Boulder Club",
+        "formatted": "Bremerhaven Boulder Club, Moltkestraße 13, 27576 Bremerhaven, Deutschland",
+        "lat": 53.5546553,
+        "lon": 8.5778481,
+        "categories": [
+          "entertainment",
+          "entertainment.activity_park",
+          "entertainment.activity_park.climbing",
+          "sport",
+          "sport.sports_centre"
+        ],
+        "opening_hours": "24/7"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f1f85168b4302140592da3474211c64a40f00103f90176f11531000000009203254b61726174652d536368756c65204e6970706f6e204272656d6572686176656e20652e562e",
+        "name": "Karate-Schule Nippon Bremerhaven e.V.",
+        "formatted": "Karate-Schule Nippon Bremerhaven e.V., Wiesenstraße 2-8, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5474017,
+        "lon": 8.5951264,
+        "categories": [
+          "sport",
+          "sport.sports_hall"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f8302020042d21405946d3348353c74a40f00102f9015c39c60e00000000",
+        "formatted": "Melchior-Schwoon-Straße, 27576 Bremerhaven, Deutschland",
+        "lat": 53.5572361,
+        "lon": 8.5879221,
+        "categories": [
+          "sport",
+          "sport.pitch",
+          "wheelchair",
+          "wheelchair.limited"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "516adb690cc131214059b77049ebc2c64a40f00102f9013c8124070000000092031b416e67656c73706f727476657265696e20556e7465727765736572",
+        "name": "Angelsportverein Unterweser",
+        "formatted": "Angelsportverein Unterweser, Zur Hexenbrücke, 27570 Bremerhaven, Deutschland",
+        "lat": 53.55285,
+        "lon": 8.597138,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "511efa6751632c2140593b3f74552ac54a40f00102f901db0c4c0b0000000092031b4b616e752d56657265696e20556e746572776573657220652e562e",
+        "name": "Kanu-Verein Unterweser e.V.",
+        "formatted": "Kanu-Verein Unterweser e.V., Ludwigstraße, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5403251,
+        "lon": 8.5866823,
+        "categories": [
+          "sport",
+          "sport.sports_centre",
+          "wheelchair",
+          "wheelchair.yes"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "515d638baf82342140595b5ce2b764c64a40f00102f90168f54e0600000000",
+        "formatted": "Grimsbystraße, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5498994,
+        "lon": 8.6025747,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51b511cb7fdc242140592f37a3445fc74a40f00102f901bf5943070000000092031157616c7465722d4b6f6c622d48616c6c65",
+        "name": "Walter-Kolb-Halle",
+        "formatted": "Walter-Kolb-Halle, Walter-Kolb-Weg, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5576111,
+        "lon": 8.5720025,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51a8497f082f352140593abbb4f959c64a40f00102f901fed1610a0000000092031453706f727468616c6c6520466575657277656872",
+        "name": "Sporthalle Feuerwehr",
+        "formatted": "Sporthalle Feuerwehr, Grimsbystraße, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5496208,
+        "lon": 8.6038745,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f437fcc97324214059ad1ee6817ec74a40f00102f901ad477f0200000000",
+        "formatted": "Gneisenaustraße, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5585482,
+        "lon": 8.5711959,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "519c30b1997524214059963eba7a98c74a40f00102f901ab477f0200000000",
+        "formatted": "Rickmersstraße, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5593408,
+        "lon": 8.5712097,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5195b5c3915324214059b688a3f093c74a40f00102f901246084080000000092031842657a69726b7373706f7274616e6c616765204d69747465",
+        "name": "Bezirkssportanlage Mitte",
+        "formatted": "Bezirkssportanlage Mitte, Pestalozzistraße, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5589973,
+        "lon": 8.5708734,
+        "categories": [
+          "sport",
+          "sport.sports_centre",
+          "wheelchair",
+          "wheelchair.yes"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "515da041c0cc33214059ae27682e6fc54a40f00102f901c5742e5900000000",
+        "formatted": "Friedrich-Plettke-Weg, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5424555,
+        "lon": 8.6011715,
+        "categories": [
+          "access",
+          "access.yes",
+          "no_fee",
+          "no_fee.no",
+          "sport",
+          "sport.pitch"
+        ],
+        "access": "yes"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51d582c16bd521214059a67f02fe2ac74a40f00102f9016451630a0000000092031154616e7a73706f72742d5a656e7472756d",
+        "name": "Tanzsport-Zentrum",
+        "formatted": "Tanzsport-Zentrum, Rudloffstraße 121, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5559995,
+        "lon": 8.5660814,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51ef0cda348a22214059348d844184c74a40f00102f901b4628408000000009203205475726e2d20756e642053706f72747a656e7472756d20526f74657273616e64",
+        "name": "Turn- und Sportzentrum Rotersand",
+        "formatted": "Turn- und Sportzentrum Rotersand, Bürgermeister-Smidt-Straße 207, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5587236,
+        "lon": 8.5674607,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "517ad1ae436f36214059d43f7d319dc54a40f00102f901a3837b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5438597,
+        "lon": 8.6063176,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5135bcf51b9136214059f3ab50f39bc54a40f00102f901a4837b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5438217,
+        "lon": 8.6065758,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "519af68370bb362140590bc50c439ac54a40f00102f901ab837b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5437702,
+        "lon": 8.6068988,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51251cc542df36214059c4eda8fe98c54a40f00102f901a5837b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5437315,
+        "lon": 8.6071721,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "517080380e4b2e2140599afd6d199bc44a40f00102f901f5e10c3900000000",
+        "formatted": "Am Holzhafen, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5359833,
+        "lon": 8.5904164,
+        "categories": [
+          "access",
+          "access.yes",
+          "sport",
+          "sport.pitch"
+        ],
+        "access": "yes"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "513dd7f7e12037214059c41e7f0e98c54a40f00102f901a2837b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5437029,
+        "lon": 8.6076728,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51ec191deb3d2e214059723804d891c44a40f00102f901b9160f0c00000000",
+        "formatted": "Am Holzhafen, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5357008,
+        "lon": 8.5903162,
+        "categories": [
+          "access",
+          "access.yes",
+          "sport",
+          "sport.pitch"
+        ],
+        "access": "yes"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51602d70cf4b37214059ce70078e99c54a40f00102f901a8837b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5437432,
+        "lon": 8.6080024,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51ee4dbd7e3037214059fde8950f8dc54a40f00102f901a9837b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5433594,
+        "lon": 8.6077945,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51d03eb9e471372140592fb4af0799c54a40f00102f901a7837b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5437432,
+        "lon": 8.6082868,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5114d566b05a37214059af8ec7788cc54a40f00102f901aa837b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5433594,
+        "lon": 8.6081104,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51143f587e8e372140599752afce95c54a40f00102f901f7ff6c0a000000009203284272656d6572686176656e65722054656e6e697376657265696e20762e203139303520652e20562e",
+        "name": "Bremerhavener Tennisverein v. 1905 e. V.",
+        "formatted": "Bremerhavener Tennisverein v. 1905 e. V., Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.543639,
+        "lon": 8.6083753,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e710829f823721405911b0b1a68dc54a40f00102f901ac837b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5433853,
+        "lon": 8.6084185,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "519a8933d0c637214059cde8a27c9cc54a40f00102f90178847b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5438381,
+        "lon": 8.6089387,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51cdbe42d48d2d2140590bfcfa739ec84a40f00102f901f90729070000000092031753706f727468616c6c652042726f6f6b73747261c39f65",
+        "name": "Sporthalle Brookstraße",
+        "formatted": "Sporthalle Brookstraße, Nordstraße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5673832,
+        "lon": 8.5889636,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51d5328368312d21405957de5de9b7c84a40f00102f901fa08290700000000",
+        "formatted": "Reichenberger Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5681125,
+        "lon": 8.5882676,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51d666086c733821405937e7960c36c54a40f00102f90121877b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.540712,
+        "lon": 8.6102556,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51c352c09c7f38214059df5e3ea32bc54a40f00102f90120877b0700000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5403938,
+        "lon": 8.6103486,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "510c2b2040cc382140593e63afa13cc54a40f00102f901974b5b0600000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5409128,
+        "lon": 8.6109333,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51159ca1726a3821405908e4927611c54a40f00102f9014fcc205900000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5395153,
+        "lon": 8.6102081,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "513d53a0198e3921405997c1998843c54a40f00102f9019e4b5b0600000000",
+        "formatted": "In den Nedderwiesen, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5411242,
+        "lon": 8.6124122,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5159496d7f3439214059f04074fd20c54a40f00102f9016fe7490700000000",
+        "formatted": "In den Nedderwiesen, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5394805,
+        "lon": 8.611765,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51ef79162c2039214059ea8765e51bc54a40f00102f901a34b5b0600000000",
+        "formatted": "Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5399139,
+        "lon": 8.6115736,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5183d70557b838214059ca5a2435f7c44a40f00102f9013c2c2e5900000000",
+        "formatted": "Johann-Wichels-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5387617,
+        "lon": 8.6107869,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51a77114c55039214059d1e05bfdfdc44a40f00102f901a64b5b0600000000",
+        "formatted": "Johann-Wichels-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5390012,
+        "lon": 8.6119444,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "513b97f3d60a3a2140592887aaf303c54a40f00102f901a96b810600000000",
+        "formatted": "In den Nedderwiesen, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5391831,
+        "lon": 8.613364,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51b35e0ce544392140597b196ab9d8c44a40f00102f901ab6b810600000000",
+        "formatted": "Johann-Wichels-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5378639,
+        "lon": 8.6118538,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51a22c847885392140598591027bdac44a40f00102f9016ee7490700000000920310455343204765657374656dc3bc6e6465",
+        "name": "ESC Geestemünde",
+        "formatted": "ESC Geestemünde, Johann-Wichels-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5379387,
+        "lon": 8.6123724,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "514020693ab73a2140592ddda50317c54a40f00102f901d2e74e060000000092031e526f6c6c73706f7274616e6c61676520616d2042c3bc726765727061726b",
+        "name": "Rollsportanlage am Bürgerpark",
+        "formatted": "Rollsportanlage am Bürgerpark, In den Nedderwiesen 2, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5398579,
+        "lon": 8.6146612,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "510582b648df3a21405925a132bf16c54a40f00102f9013df7880600000000",
+        "formatted": "In den Nedderwiesen, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5397567,
+        "lon": 8.6149848,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "516125d013df3921405938efcdeeddc44a40f00102f901aa4b5b0600000000",
+        "formatted": "Johann-Wichels-Weg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5380229,
+        "lon": 8.6130301,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5117ebd9c16030214059f70c238174c94a40f00102f901765ecb0a00000000",
+        "formatted": "Kleiner Blink, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5738869,
+        "lon": 8.5944597,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5136b9fc3cde3a2140597f1330ea4ac44a40f00102f901ae6620080000000092030a53706f727468616c6c65",
+        "name": "Sporthalle",
+        "formatted": "Sporthalle, Georg-Büchner-Straße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5334585,
+        "lon": 8.6148933,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51d30010384232214059e958374e5ec34a40f00102f901e777a70200000000",
+        "formatted": "Humboldtstraße, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5263155,
+        "lon": 8.5981615,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51672870d36f4121405919631634b9c64a40f00102f901e6cefb3e0000000092030f464d47204272656d6572686176656e",
+        "name": "FMG Bremerhaven",
+        "formatted": "FMG Bremerhaven, Westerwiese, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5525183,
+        "lon": 8.6278073,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "516ac82fdb6132214059da9954e44ec34a40f00102f901241df90800000000",
+        "formatted": "Humboldtstraße, 27570 Bremerhaven, Deutschland",
+        "lat": 53.526345,
+        "lon": 8.5977696,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "513880264b6e32214059a7119aea4cc34a40f00102f90108f9142e00000000",
+        "formatted": "Hamburger Straße, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5257848,
+        "lon": 8.5984977,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "511a881ba66c39214059ca86dadbd2c34a40f00102f9014c111a1500000000",
+        "formatted": "Schiffdorfer Chaussee, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5298724,
+        "lon": 8.6121571,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51060375d9544121405971d520e05ec54a40f00102f901c1d4760900000000",
+        "formatted": "Weg 64, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5419102,
+        "lon": 8.6275018,
+        "categories": [
+          "sport",
+          "sport.pitch",
+          "sport.shooting"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f8c07ace79412140597a6e15155bc54a40f00102f901d5768106000000009203194765657374656dc3bc6e64657220535620766f6e2031383438",
+        "name": "Geestemünder SV von 1848",
+        "formatted": "Geestemünder SV von 1848, Höllenhammsweg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5417236,
+        "lon": 8.6272528,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5129daaed7003c2140597572bf9700c44a40f00102f901a93dbe3100000000",
+        "formatted": "Georg-Herwegh-Straße 2a, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5312681,
+        "lon": 8.6171939,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "510f19fb37d43c214059fec2e1bb03c44a40f00102f901ae3dbe3100000000",
+        "formatted": "Ludwig-Börne-Straße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.531364,
+        "lon": 8.6188066,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f97a918ed43c214059e3310e9b03c44a40f00101f901a9fcba0000000000",
+        "formatted": "Ludwig-Börne-Straße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5313602,
+        "lon": 8.618573,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "518d3a843b612b21405929594e42e9c24a40f00103f90125f031e80000000092032450726f416b74697620e28093204669746e65737320262057656c6c6e65737320476d6248",
+        "name": "ProAktiv – Fitness & Wellness GmbH",
+        "formatted": "ProAktiv – Fitness & Wellness GmbH, Am Schaufenster 7, 27572 Bremerhaven, Deutschland",
+        "lat": 53.5227435,
+        "lon": 8.5847262,
+        "categories": [
+          "sport",
+          "sport.sports_centre",
+          "wheelchair",
+          "wheelchair.limited"
+        ],
+        "opening_hours": "Mo 08:00-22:00; Tu 08:00-22:00; We 08:00-22:00; Th 08:00-22:00; Fr 08:00-22:00; Sa 10:00-18:00; Su 10:00-18:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51bb8c518d4d3d21405955e8cdf206c44a40f00102f901a53dbe3100000000",
+        "formatted": "Ludwig-Börne-Straße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5314621,
+        "lon": 8.6197323,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51ec747ba41c29214059cb9f6f0b16ca4a40f00102f901ca08e40600000000",
+        "formatted": "Albert-Pfitzer-Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5787978,
+        "lon": 8.5802967,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "518658ece64d3d21405930c34ac9f5c34a40f00102f901ac3dbe3100000000",
+        "formatted": "Ludwig-Börne-Straße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5309383,
+        "lon": 8.619735,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51c01d9727c6282140598594e9e115ca4a40f00102f901c908e40600000000",
+        "formatted": "Albert-Pfitzer-Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5787928,
+        "lon": 8.5796368,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5100a94d9cdc35214059e547574428c34a40f00102f901f022103a00000000920317426f6c7a706c61747a204d656973656e73747261c39f65",
+        "name": "Bolzplatz Meisenstraße",
+        "formatted": "Bolzplatz Meisenstraße, Meisenstraße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5246664,
+        "lon": 8.6051988,
+        "categories": [
+          "access",
+          "access.yes",
+          "sport",
+          "sport.pitch"
+        ],
+        "access": "yes"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5111d336dc3731214059fcbd20dae9c24a40f00102f90135498f0a000000009203114f736361722d44726565732d48616c6c65",
+        "name": "Oscar-Drees-Halle",
+        "formatted": "Oscar-Drees-Halle, Schillerstraße 142, 27570 Bremerhaven, Deutschland",
+        "lat": 53.522863,
+        "lon": 8.5960958,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "517fb0193f8f292140591fd111d11fca4a40f00102f901b4b0d00a0000000092030a4c6568726265636b656e",
+        "name": "Lehrbecken",
+        "formatted": "Lehrbecken, Am Stadion 10, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5790798,
+        "lon": 8.5811666,
+        "categories": [
+          "sport",
+          "sport.swimming_pool"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "511dde4962ff28214059efd0d7d229ca4a40f00102f90141b5da0d00000000",
+        "formatted": "Am Stadion, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5794014,
+        "lon": 8.5800734,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51acfafaad98292140592d995d4b2cca4a40f00102f9017ab07902000000009203054241442033",
+        "name": "BAD 3",
+        "formatted": "BAD 3, Am Stadion 10, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5794768,
+        "lon": 8.581243,
+        "categories": [
+          "sport",
+          "sport.swimming_pool"
+        ],
+        "opening_hours": "Mo-Fr 06:00-08:00; Mo,We 19:00-21:00; Sa 08:00-11:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f79320861a2a214059ca52ff122eca4a40f00101f901f07e74000000000092031953706f72747061726b204e6f72647365652d53746164696f6e",
+        "name": "Sportpark Nordsee-Stadion",
+        "formatted": "Sportpark Nordsee-Stadion, Cherbourger Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5796509,
+        "lon": 8.5822648,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51eca2d4216a2a2140594adfb77f30ca4a40f00102f90178b0790200000000",
+        "formatted": "Am Stadion, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5796063,
+        "lon": 8.5828414,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "513e892a49ee2b2140591b137d0335ca4a40f00102f9013dcfdc0a0000000092031653706f727468616c6c6520476175c39f736368756c65",
+        "name": "Sporthalle Gaußschule",
+        "formatted": "Sporthalle Gaußschule, Gaußstraße 107, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5797429,
+        "lon": 8.5858023,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre",
+          "wheelchair",
+          "wheelchair.yes"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "513de273d6662b214059d20b71d139ca4a40f00102f901090610020000000092030f4b756e7374726173656e706c61747a",
+        "name": "Kunstrasenplatz",
+        "formatted": "Kunstrasenplatz, Cherbourger Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5798894,
+        "lon": 8.584769,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "510e5ff9d1a729214059014b8ffb3bca4a40f00102f9013a08e4060000000092031d53706f727468616c6c6520756e642047796d6e617374696b68616c6c65",
+        "name": "Sporthalle und Gymnastikhalle",
+        "formatted": "Sporthalle und Gymnastikhalle, Am Stadion 10, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5799555,
+        "lon": 8.5813585,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "517cd9cb72d644214059d3e89e4bfdc54a40f00102f90133527b320000000092031a52656974636c7562204272656d6572686176656e20652e20562e",
+        "name": "Reitclub Bremerhaven e. V.",
+        "formatted": "Reitclub Bremerhaven e. V., Reinkenheide, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5467704,
+        "lon": 8.6344345,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5126e19dd73329214059cd31207b3dca4a40f00102f9012b859c0a00000000",
+        "formatted": "Cherbourger Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5800012,
+        "lon": 8.5804737,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51c456646b444021405908b4942d9dc34a40f00102f9015a892b4500000000",
+        "formatted": "Carsten-Lücken-Straße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5282342,
+        "lon": 8.625522,
+        "categories": [
+          "sport",
+          "sport.pitch",
+          "sport.shooting"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51751607e11b402140598cfe863f79c34a40f00102f90107defb0600000000",
+        "formatted": "Poristraße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5271377,
+        "lon": 8.6252127,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51a2efe13bc738214059e7d7e598a8c24a40f00102f901fb2cfe0600000000",
+        "formatted": "Auf der Bult, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5207763,
+        "lon": 8.6107982,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f7336dd47940214059018976f87fc34a40f00102f901c8004a0600000000",
+        "formatted": "Carsten-Lücken-Straße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5277425,
+        "lon": 8.6254678,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51adac23fdac402140595750622184c34a40f00102f90108defb0600000000",
+        "formatted": "Carsten-Lücken-Straße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5274698,
+        "lon": 8.6263198,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "515a6f2c472e4121405960fa1a5e74c34a40f00102f90109defb0600000000",
+        "formatted": "Carsten-Lücken-Straße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5270316,
+        "lon": 8.6273826,
+        "categories": [
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51240950970f412140593714862466c34a40f00102f90106defb0600000000",
+        "formatted": "Poristraße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5265547,
+        "lon": 8.6270721,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "510ad2c7ac334421405989ab3285c4c34a40f00102f901c87c961300000000",
+        "formatted": "Elsterweg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5294348,
+        "lon": 8.6332067,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f2052d24603821405930630ad638c24a40f00102f9013d2dfe0600000000",
+        "formatted": "Marschbrookweg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5173595,
+        "lon": 8.6101085,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e139bf071d3921405936c4941f3fc24a40f00102f9013e2dfe0600000000",
+        "formatted": "Marschbrookweg, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5175514,
+        "lon": 8.6115496,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51042df509d43821405904e697b634c24a40f00101f90153bd18000000000092030f42534347204772c3bc6e68c3b66665",
+        "name": "BSCG Grünhöfe",
+        "formatted": "BSCG Grünhöfe, Auerstraße, 27574 Bremerhaven, Deutschland",
+        "lat": 53.517511,
+        "lon": 8.6123445,
+        "categories": [
+          "sport",
+          "sport.sports_centre"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51bf6ce467fc27214059b48f216b29cb4a40f00102f9015d46e80700000000920308424d582d5061726b",
+        "name": "BMX-Park",
+        "formatted": "BMX-Park, Wurster Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5872015,
+        "lon": 8.5780976,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "510f3a4f6d192621405987762cc929cb4a40f00102f901f8f8770200000000",
+        "formatted": "Wurster Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5872543,
+        "lon": 8.5744677,
+        "categories": [
+          "access_limited",
+          "access_limited.private",
+          "building",
+          "building.sport",
+          "sport",
+          "sport.sports_hall"
+        ],
+        "access": "private"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51fafce6b45d2721405976af93fa32cb4a40f00102f901f9f8770200000000",
+        "formatted": "Wurster Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5874932,
+        "lon": 8.5768868,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5127c37d368c26214059243c5bdc33cb4a40f00102f901f7f8770200000000",
+        "name": "1",
+        "formatted": "1, Siebenbergensweg, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5875197,
+        "lon": 8.5752884,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51c7fd6c155f26214059467f511535cb4a40f00102f9012d087c4300000000",
+        "name": "2",
+        "formatted": "2, Siebenbergensweg, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5875579,
+        "lon": 8.5749443,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e910694e2a39214059dd1ca293d4ca4a40f00102f901b8ef7b4300000000",
+        "formatted": "Hafentunnel Cherbourger Straße, 27578 Bremerhaven, Deutschland",
+        "lat": 53.5846114,
+        "lon": 8.6116531,
+        "categories": [
+          "access",
+          "access.yes",
+          "sport",
+          "sport.pitch"
+        ],
+        "access": "yes"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51a6d7466d0926214059c8c3a6cb34cb4a40f00102f9012f087c4300000000",
+        "formatted": "Wurster Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5875487,
+        "lon": 8.5742907,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5107cfc9878b39214059ed6db237d0ca4a40f00102f901bbef7b4300000000",
+        "formatted": "Hafentunnel Cherbourger Straße, 27578 Bremerhaven, Deutschland",
+        "lat": 53.5844795,
+        "lon": 8.6123942,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "510ce28a99292621405933ce86b836cb4a40f00102f901f6f8770200000000",
+        "name": "3",
+        "formatted": "3, Wurster Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5876076,
+        "lon": 8.5745362,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "514c546f0d6c29214059283b472e49cb4a40f00103f901bfe988d002000000",
+        "formatted": "Fitnesspfad, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5881708,
+        "lon": 8.5809025,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5192ca147310262140593c399e2a3acb4a40f00102f9012e087c4300000000",
+        "formatted": "Wurster Straße, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5877126,
+        "lon": 8.5743443,
+        "categories": [
+          "sport",
+          "sport.pitch"
+        ]
+      }
+    }
+  ]
+}

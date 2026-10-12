@@ -52,6 +52,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlaceCardSkeleton, ActivityCardSkeleton, FeaturedActivityCardSkeleton } from '@/components/activa/card-skeletons';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
+import { ActivityIdeas } from '@/components/activa/activity-ideas';
+import type { ActivityIdea } from '@/lib/activity-ideas';
 import { AppTutorialProvider, useAppTutorial } from '@/lib/tutorial/tutorial-context';
 import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -60,7 +62,9 @@ import { useFriendRadar } from '@/hooks/use-friend-radar';
 import type { SelectedMapEntity } from '@/components/map/map-types';
 import { createActivity, joinActivity, searchActivitiesBySemanticVector, castActivityVote, votePlace, subscribeCommunityActivities } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { collection, query, where, getDocs, onSnapshot, orderBy, limit, startAfter, doc, documentId } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, limit, startAfter } from "firebase/firestore";
+import { watchCachedPlaceMetadata } from '@/lib/firebase/place-metadata-cache';
+import { loadSpotCatalog } from '@/lib/firebase/spot-catalog-client';
 import { db } from "@/lib/firebase/client";
 import { debugLog, debugWarn, debugError } from '@/lib/debug';
 import { ActivityListItem } from "@/components/activa/activity-list-item";
@@ -456,6 +460,12 @@ function HomeContent() {
     if (!key) return null;
     const { type, cursorValue } = key;
     const startTime = Date.now();
+    if (['geoapify', 'multi_fetch_discovery', 'geocoding', 'city_catalog'].includes(type)) {
+      const catalog = await loadSpotCatalog(user?.uid, key);
+      if (catalog) return catalog;
+      // Keep an in-progress catalog pagination from switching to a different provider.
+      if (type === 'city_catalog') return { features: [], _catalog: true, _catalogHasMore: false };
+    }
     const queryCacheKey = ['geoapify', 'multi_fetch_discovery', 'geocoding'].includes(type) ? placeQueryKey(key) : null;
     if (queryCacheKey) {
       const cached = await getCachedPlaceQuery(queryCacheKey);
@@ -603,6 +613,10 @@ function HomeContent() {
 
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (isFavoritesCategory) return null;
+    if (previousPageData?._catalog) {
+      if (!previousPageData._catalogHasMore) return null;
+      return { ...previousPageData._catalogQuery, offset: previousPageData._catalogNextOffset, pageIndex };
+    }
     if (previousPageData) {
       const firstPage = Array.isArray(previousPageData) ? previousPageData[0] : previousPageData;
       if (firstPage?._fromCache) return null;
@@ -1098,6 +1112,7 @@ function HomeContent() {
     if (!displayData || displayData.length === 0) return true;
     const lastPage = displayData[displayData.length - 1];
     if (!lastPage) return true;
+    if (lastPage._catalog) return lastPage._catalogHasMore;
     if (lastPage._fromCache) return false;
     if (lastPage._discoveryBuckets) return getDiscoveryBucketCursors(lastPage).length > 0;
     if (isAktivCategory || isHighlightsCategory) {
@@ -1129,9 +1144,7 @@ function HomeContent() {
     }
   }, [isCommunityCategory, isMySpotsCategory, isFavoritesCategory, activeFeedIsValidating, mutate]);
 
-  // Live Vote-Daten: onSnapshot-Listener für alle sichtbaren Spot-IDs.
-  // Wenn ein Vote eingeht (auch von anderen Usern/Admins), wird votesMap live aktualisiert
-  // → places memo recalculated → Startseite automatisch neu sortiert.
+  // Feed metadata is cached for five minutes; open spot details still update live.
   const basePlaceIdsKey = useMemo(() => {
     if (basePlaces.length === 0) return '';
     const ids: string[] = [];
@@ -1155,9 +1168,9 @@ function HomeContent() {
     activeUnsubs.current = {};
   }, [user?.uid]);
 
-  // Live Vote & Metadata: chunked subscription manager
+  // Reuse cached metadata watchers across pagination and filter changes.
   useEffect(() => {
-    if (!db) return;
+    if (!db || !user?.uid) return;
     const placeIds = basePlaceIdsKey ? basePlaceIdsKey.split(',') : [];
     if (placeIds.length === 0) {
       Object.values(activeUnsubs.current).forEach(unsub => unsub());
@@ -1178,15 +1191,14 @@ function HomeContent() {
         newUnsubs[chunkKey] = activeUnsubs.current[chunkKey];
         delete activeUnsubs.current[chunkKey];
       } else {
-        const q = query(collection(db!, 'places'), where(documentId(), 'in', chunk));
-        const unsub = onSnapshot(q, (snap) => {
+        const unsub = watchCachedPlaceMetadata(user.uid, chunk, (snap) => {
           if (!requiredChunkKeys.includes(chunkKey)) return;
 
           setVotesMap(prev => {
             const updated = { ...prev };
             let changed = false;
             snap.forEach(docSnap => {
-              const d = docSnap.data();
+              const d = docSnap.data;
               const newEntry = {
                 upvotes: d.upvotes || 0,
                 downvotes: d.downvotes || 0,
@@ -1212,7 +1224,7 @@ function HomeContent() {
             const updated = { ...prev };
             let changed = false;
             snap.forEach(docSnap => {
-              const d = docSnap.data();
+              const d = docSnap.data;
               const newEntry = {
                 upvotes: d.upvotes || 0,
                 downvotes: d.downvotes || 0,
@@ -1436,7 +1448,19 @@ function HomeContent() {
     }
     setActionSheetPlace(place);
   }, [user, router]);
-  const handleOpenCustomActivityModal = () => { if (!user) { router.push('/login'); return; } setActivityModalPlace('custom'); };
+  const handleOpenCustomActivityModal = () => {
+    if (!user) { router.push('/login'); return; }
+    setPresetTitle('');
+    setPresetCategory(undefined);
+    setActivityModalPlace('custom');
+  };
+
+  const handleStartActivityIdea = (idea: ActivityIdea) => {
+    if (!user) { router.push('/login'); return; }
+    setPresetTitle(language === 'de' ? idea.titleDe : idea.titleEn);
+    setPresetCategory(idea.category);
+    setActivityModalPlace('custom');
+  };
 
   const handleExploreClick = useCallback(() => {
     if (openRoomsCount === null) return;
@@ -2252,6 +2276,11 @@ function HomeContent() {
             <div className="px-3 sm:px-6 mb-3 sm:mb-4" data-tutorial-id="feed-intro">
                 {renderPulseHero()}
               </div>
+            {!submittedSearchQuery && !isFavoritesCategory && !isMySpotsCategory && (
+              <div className="px-3 sm:px-6 mb-3 sm:mb-4">
+                <ActivityIdeas language={language} onSelect={handleStartActivityIdea} />
+              </div>
+            )}
             <div ref={discoverFeedRef} id="discover-feed" data-tutorial-id="feed-main" className="scroll-mt-24">
               {!isOpenRoomsMode && !isCommunityCategory && !isMySpotsCategory && feedPreferencesSyncError && (
                 <div className="px-3 sm:px-6 pt-1 sm:pt-2">
@@ -2262,6 +2291,13 @@ function HomeContent() {
                 </div>
               )}
               {renderContent()}
+              {displayData?.some(page => page?._catalog) && (
+                <p className="px-3 sm:px-6 py-3 text-xs text-muted-foreground">
+                  {language === 'de' ? 'Ortsdaten: ' : 'Place data: '}
+                  <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">© OpenStreetMap</a>
+                  {' · '}<a href="https://www.geoapify.com/" target="_blank" rel="noopener noreferrer" className="underline">Powered by Geoapify</a>
+                </p>
+              )}
             </div>
           </div>
         </main>

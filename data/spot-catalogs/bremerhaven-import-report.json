@@ -1,0 +1,577 @@
+{
+  "status": "draft",
+  "cityId": "bremerhaven",
+  "sources": [
+    {
+      "bucket": "outdoor",
+      "retrievedAt": "2026-10-12T15:23:22.442Z",
+      "returned": 45,
+      "selected": 15
+    },
+    {
+      "bucket": "sport-specific",
+      "retrievedAt": "2026-10-12T15:23:23.046Z",
+      "returned": 100,
+      "selected": 33
+    },
+    {
+      "bucket": "cafe",
+      "retrievedAt": "2026-10-12T15:23:23.643Z",
+      "returned": 37,
+      "selected": 37
+    },
+    {
+      "bucket": "night",
+      "retrievedAt": "2026-10-12T15:23:24.590Z",
+      "returned": 77,
+      "selected": 40
+    },
+    {
+      "bucket": "culture-specific",
+      "retrievedAt": "2026-10-12T15:23:24.955Z",
+      "returned": 19,
+      "selected": 19
+    }
+  ],
+  "requests": 0,
+  "rejected": [
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "(ohne Namen)",
+      "reason": "Name/ID/Kategorien/Koordinaten fehlen"
+    },
+    {
+      "name": "Meisterjäger",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Night Liner",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Babylon Bar",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Zum Pantoffel",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Stadtparkstuben",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Mabuhay",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Zur Gemütlichen Ecke",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Casa Roma Club",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "X Bar",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Budapest Cafe",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Mit Leib und Seele",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Bei Heidis",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Gießkanne",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Metropol",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Zur Einigkeit",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Hansa Krug",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Bei Bobby",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Matchball",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Union-Stuben",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Der Laubenpieper",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Gaststätte Glühwürmchen",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Drei Kronen",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Zum schwarzen Kater",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Markt-Treff",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Vereinsheim - Geestemünder SC",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Cheers",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Zum Pitty's",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Altdeutsche Bierstube",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Alberts am Platz",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Krohn's Eck",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Zum Stübchen",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Zur Geetkann",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Zur Möwe",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Mondi",
+      "reason": "Gleicher Name innerhalb von 40 m"
+    },
+    {
+      "name": "Sinatra",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Wurster Hof",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    },
+    {
+      "name": "Trinkfest Bottle & Billard",
+      "reason": "Kategorie-Limit für ausgewogenen Pilot erreicht"
+    }
+  ],
+  "version": "7f4c072625aabca0b4ae6fc7a86a7347ea21c4e8ab0d0aa59ff7b6f5107099d2",
+  "pages": 1
+}

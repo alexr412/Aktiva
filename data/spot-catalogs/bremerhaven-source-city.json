@@ -1,0 +1,13 @@
+{
+  "retrievedAt": "2026-10-12T15:23:21.847Z",
+  "results": [
+    {
+      "name": "Bremerhaven",
+      "lat": 53.5505392,
+      "lon": 8.5851945,
+      "place_id": "5120990e9d9e2b2140594095891178c64a40f00101f901c2f4000000000000c0020892030b4272656d6572686176656e",
+      "country_code": "de",
+      "result_type": "city"
+    }
+  ]
+}

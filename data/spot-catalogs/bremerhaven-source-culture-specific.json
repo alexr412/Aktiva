@@ -1,0 +1,326 @@
+{
+  "retrievedAt": "2026-10-12T15:23:24.955Z",
+  "features": [
+    {
+      "properties": {
+        "place_id": "5122499585df252140594db7f873ccc54a40f00102f901c825fe2b000000009203194465757473636865732041757377616e646572657268617573",
+        "name": "Deutsches Auswandererhaus",
+        "formatted": "Deutsches Auswandererhaus, Columbusstraße 65, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5453291,
+        "lon": 8.5740341,
+        "categories": [
+          "building",
+          "building.tourism",
+          "entertainment",
+          "entertainment.museum",
+          "fee",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Mar-Oct Mo-Su 10:00-18:00; Nov-Feb Mo-Su 10:00-17:00; Dec 24 off"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51b54d96ff35292140594cd2eb0555c54a40f00103f9012298e77c0000000092031b53746164746269626c696f7468656b204272656d6572686176656e",
+        "name": "Stadtbibliothek Bremerhaven",
+        "formatted": "Stadtbibliothek Bremerhaven, Bürgermeister-Smidt-Straße 10, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5416572,
+        "lon": 8.5804901,
+        "categories": [
+          "education",
+          "education.library",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Mo,Tu,We,Fr 11:00-18:00; Th 11:00-19:00; Sa 11:00-14:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "517096bee41d2621405919d7afac87c54a40f00102f90135459c02000000009203154b6c696d6168617573204272656d6572686176656e",
+        "name": "Klimahaus Bremerhaven",
+        "formatted": "Klimahaus Bremerhaven, Am Längengrad 8, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5432125,
+        "lon": 8.5744602,
+        "categories": [
+          "building",
+          "building.tourism",
+          "entertainment",
+          "entertainment.museum",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Apr-Aug Mo-Fr 09:00-19:00; Sa-Su 10:00-19:00; PH 10:00-19:00; Sep-Mar Mo-Fr 10:00-18:00; Sa-Su 10:00-18:00; PH 10:00-18:00; Dec 24-25 off; Dec 31 off; Jan 01 off"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5163b8b2e9d427214059e9f48d234dc54a40f00102f9019c93a70700000000920314552d426f6f742057696c68656c6d204261756572",
+        "name": "U-Boot Wilhelm Bauer",
+        "formatted": "U-Boot Wilhelm Bauer, Columbusstraße, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5414128,
+        "lon": 8.5777998,
+        "categories": [
+          "building",
+          "building.historic",
+          "building.tourism",
+          "entertainment",
+          "entertainment.museum",
+          "fee",
+          "tourism",
+          "tourism.sights",
+          "tourism.sights.memorial",
+          "tourism.sights.memorial.ship"
+        ],
+        "opening_hours": "Apr 01-Nov 11: 08:00-18:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51adb882b7512a214059423b4ca02dc54a40f00103f9011cced6890000000092031c4b6162696e6574742066c3bc7220616b7475656c6c65204b756e7374",
+        "name": "Kabinett für aktuelle Kunst",
+        "formatted": "Kabinett für aktuelle Kunst, Karlsburg 4, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5404549,
+        "lon": 8.5826547,
+        "categories": [
+          "entertainment",
+          "entertainment.museum"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51ecdf635add29214059f274c5402fc54a40f00102f901127bba0d0000000092030b4b756e73746d757365756d",
+        "name": "Kunstmuseum",
+        "formatted": "Kunstmuseum, Karlsburg 1, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5405047,
+        "lon": 8.5817673,
+        "categories": [
+          "building",
+          "building.tourism",
+          "entertainment",
+          "entertainment.museum",
+          "fee",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Tu-Su 11:00-18:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51c24cdbbfb22a2140592ca7f397ccc74a40f00103f9012dc8ec200000000092030753657873686f77",
+        "name": "Sexshow",
+        "formatted": "Sexshow, Rickmersstraße, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5609312,
+        "lon": 8.583395,
+        "categories": [
+          "entertainment",
+          "entertainment.cinema"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5182114889dc29214059ebdedbdf25c54a40f00102f9012d2a410f0000000092030a43696e654d6f74696f6e",
+        "name": "CineMotion",
+        "formatted": "CineMotion, Karlsburg 1, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5402186,
+        "lon": 8.5817608,
+        "categories": [
+          "entertainment",
+          "entertainment.cinema",
+          "wheelchair",
+          "wheelchair.yes"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5154cd075ff329214059f18a96f210c54a40f00103f9016deb3c760000000092031353555542205442204272656d6572686176656e",
+        "name": "SUUB TB Bremerhaven",
+        "formatted": "SUUB TB Bremerhaven, Karlsburg 7, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5395797,
+        "lon": 8.5819349,
+        "categories": [
+          "education",
+          "education.library",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Mo-Fr 09:00-18:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "514850fc187327214059c8efc8b326c54a40f00103f9015c14f6850200000092031c446575747363686573205363686966666661687274736d757365756d",
+        "name": "Deutsches Schifffahrtsmuseum",
+        "formatted": "Deutsches Schifffahrtsmuseum, Hans-Scharoun-Platz 1, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5402436,
+        "lon": 8.57705,
+        "categories": [
+          "entertainment",
+          "entertainment.museum",
+          "fee",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Mo-Su 10:00-18:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "512992e995d02b2140597ce1e644f6c44a40f00102f901b0424a020000000092031f486973746f72697363686573204d757365756d204272656d6572686176656e",
+        "name": "Historisches Museum Bremerhaven",
+        "formatted": "Historisches Museum Bremerhaven, An der Geeste, 27570 Bremerhaven, Deutschland",
+        "lat": 53.538779,
+        "lon": 8.5855784,
+        "categories": [
+          "building",
+          "building.tourism",
+          "entertainment",
+          "entertainment.museum",
+          "no_fee",
+          "no_fee.no",
+          "wheelchair",
+          "wheelchair.limited"
+        ],
+        "opening_hours": "Tu-Su 10:00-17:00; Dec 24 off; Dec 31 off"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51b9c9141857292140591b564c00d9c24a40f00102f90195de5e130000000092031c5068c3a46e6f6d656e7461204272656d6572686176656e20652e562e",
+        "name": "Phänomenta Bremerhaven e.V.",
+        "formatted": "Phänomenta Bremerhaven e.V., Hoebelstraße 24, 27572 Bremerhaven, Deutschland",
+        "lat": 53.5222474,
+        "lon": 8.5807426,
+        "categories": [
+          "building",
+          "building.tourism",
+          "entertainment",
+          "entertainment.museum",
+          "fee"
+        ],
+        "opening_hours": "Mo-Su,PH 10:00-18:00 \"letzter Einlass 17:00\""
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5152f9f86e942b214059452d1e13cec24a40f00102f9019d836a0a00000000920308464d532047657261",
+        "name": "FMS Gera",
+        "formatted": "FMS Gera, Fischkai, 27572 Bremerhaven, Deutschland",
+        "lat": 53.5219194,
+        "lon": 8.5851014,
+        "categories": [
+          "building",
+          "building.historic",
+          "building.tourism",
+          "entertainment",
+          "entertainment.museum",
+          "fee",
+          "tourism",
+          "tourism.sights",
+          "tourism.sights.memorial",
+          "tourism.sights.memorial.ship"
+        ],
+        "opening_hours": "Apr-Oct: 11:00-18:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5112c53fc7a22c214059af3d586bcdc24a40f00103f9014d50ac210000000092031246697363686261686e686f6620333630c2b0",
+        "name": "Fischbahnhof 360°",
+        "formatted": "Fischbahnhof 360°, Am Schaufenster 6, 27572 Bremerhaven, Deutschland",
+        "lat": 53.5218939,
+        "lon": 8.5871794,
+        "categories": [
+          "entertainment",
+          "entertainment.museum",
+          "fee",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Mo-Su 10:00-18:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "514bb846ba552a214059cda66d0db6c24a40f00103f901e12009a90200000092032f496e746572696d736269626c696f7468656b20446575747363686573205363686966666661687274736d757365756d",
+        "name": "Interimsbibliothek Deutsches Schifffahrtsmuseum",
+        "formatted": "Interimsbibliothek Deutsches Schifffahrtsmuseum, Hoebelstraße 23, 27572 Bremerhaven, Deutschland",
+        "lat": 53.5211808,
+        "lon": 8.5826853,
+        "categories": [
+          "education",
+          "education.library"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "510f8e07606732214059d93c8fec2bca4a40f00102f901662043070000000092030b66756e20426f776c696e67",
+        "name": "fun Bowling",
+        "formatted": "fun Bowling, Langener Landstraße 134, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5794079,
+        "lon": 8.5984379,
+        "categories": [
+          "building",
+          "building.sport",
+          "entertainment",
+          "entertainment.bowling_alley"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f9927cdb022a2140592b3009bc38cb4a40f00102f901edf877020000000092031f4d6172736368656e68617573202d2042617565726e686175736d757365756d",
+        "name": "Marschenhaus - Bauernhausmuseum",
+        "formatted": "Marschenhaus - Bauernhausmuseum, Marschenhausweg 2, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5876689,
+        "lon": 8.5820531,
+        "categories": [
+          "building",
+          "building.tourism",
+          "entertainment",
+          "entertainment.museum"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "513f9201973d3b214059a0ed6ccc5fcb4a40f00102f901c335010e0000000092031e53746164747465696c6269626c696f7468656b204c656865726865696465",
+        "name": "Stadtteilbibliothek Leherheide",
+        "formatted": "Stadtteilbibliothek Leherheide, Hans-Böckler-Straße 39, 27578 Bremerhaven, Deutschland",
+        "lat": 53.5888629,
+        "lon": 8.615705,
+        "categories": [
+          "building",
+          "building.public_and_civil",
+          "education",
+          "education.library",
+          "internet_access",
+          "internet_access.free",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Mo,Fr 14:30-18:00; We 10:00-13:00,14:30-18:00; Sa 10:00-13:00; PH closed"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "517d83e5be8b192140597b60110d9ccb4a40f00103f901836d7c96020000009203154d757365756d206465722035306572204a61687265",
+        "name": "Museum der 50er Jahre",
+        "formatted": "Museum der 50er Jahre, Amerikaring 9, 27580 Bremerhaven, Deutschland",
+        "lat": 53.5906998,
+        "lon": 8.5498943,
+        "categories": [
+          "entertainment",
+          "entertainment.museum"
+        ],
+        "opening_hours": "Su 11:00-17:00; Nov-Mar off"
+      }
+    }
+  ]
+}

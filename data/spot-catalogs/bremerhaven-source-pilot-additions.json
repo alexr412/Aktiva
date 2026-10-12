@@ -1,0 +1,71 @@
+{
+  "retrievedAt": "2026-10-12T15:41:45.594Z",
+  "places": [
+    {
+      "id": "510f8e07606732214059d93c8fec2bca4a40f00102f901662043070000000092030b66756e20426f776c696e67",
+      "name": "fun Bowling",
+      "address": "fun Bowling, Langener Landstraße 134, 27580 Bremerhaven, Deutschland",
+      "lat": 53.5794079,
+      "lon": 8.5984379,
+      "categories": [
+        "building",
+        "building.sport",
+        "entertainment",
+        "entertainment.bowling_alley"
+      ]
+    },
+    {
+      "id": "511940ee2f02242140594062c69ebbc54a40f00102f9010f5cde010000000092030b5a6f6f20616d204d656572",
+      "name": "Zoo am Meer",
+      "address": "Zoo am Meer, H.-H.-Meier-Straße 7, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5447835,
+      "lon": 8.5701615,
+      "categories": [
+        "entertainment",
+        "entertainment.zoo",
+        "fee",
+        "wheelchair",
+        "wheelchair.limited"
+      ],
+      "openingHours": "Apr-Sep PH,Mo-Su 09:00-19:00; Mar-Oct PH,Mo-Su 09:00-18:00; Nov-Feb PH,Mo-Su 09:00-16:30; Dec 24 09:00-12:00; Dec 31 09:00-12:00"
+    },
+    {
+      "id": "51f8d20b334a3421405901d452ab5dc54a40f00102f901bbdbde440000000092030a54696572676568656765",
+      "name": "Tiergehege",
+      "address": "Tiergehege, Adolf-Hoff-Weg, 27574 Bremerhaven, Deutschland",
+      "lat": 53.5419412,
+      "lon": 8.602068,
+      "categories": [
+        "entertainment",
+        "entertainment.zoo",
+        "no_fee",
+        "no_fee.no",
+        "wheelchair",
+        "wheelchair.yes"
+      ],
+      "openingHours": "24/7"
+    },
+    {
+      "id": "catalog-bremerhaven-havenglow",
+      "name": "HAVENGLOW Schwarzlicht-Minigolf",
+      "address": "Herwigstraße 24, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5238062,
+      "lon": 8.5824615,
+      "categories": [
+        "entertainment",
+        "entertainment.miniature_golf"
+      ]
+    },
+    {
+      "id": "catalog-bremerhaven-hot-court-padel",
+      "name": "Hot Court Padel",
+      "address": "Nordenhamer Straße 6, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5163128,
+      "lon": 8.5905924,
+      "categories": [
+        "sport",
+        "sport.sports_centre"
+      ]
+    }
+  ]
+}

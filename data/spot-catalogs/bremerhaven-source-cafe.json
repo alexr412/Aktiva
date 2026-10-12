@@ -1,0 +1,572 @@
+{
+  "retrievedAt": "2026-10-12T15:23:23.643Z",
+  "features": [
+    {
+      "properties": {
+        "place_id": "511224004922292140591747e5266ac64a40f00103f9011e044cce0200000092031257656c6c656e7261757363682d436166c3a9",
+        "name": "Wellenrausch-Café",
+        "formatted": "Wellenrausch-Café, Hafenstraße 10, 27576 Bremerhaven, Deutschland",
+        "lat": 53.5501145,
+        "lon": 8.5803397,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51728f00c9cf2921405908dc0429c2c64a40f00103f901c4b4c4910200000092030d436166c3a920436172646f736f",
+        "name": "Café Cardoso",
+        "formatted": "Café Cardoso, Hafenstraße 33, 27576 Bremerhaven, Deutschland",
+        "lat": 53.5528003,
+        "lon": 8.5816634,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "commercial",
+          "commercial.food_and_drink",
+          "commercial.food_and_drink.bakery"
+        ],
+        "opening_hours": "Tu-Su 06:00-21:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5177d7d9907f2a21405955409072e6c64a40f00103f9015c860abc02000000920311476565737465626f67656e20436166c3a9",
+        "name": "Geestebogen Café",
+        "formatted": "Geestebogen Café, Hafenstraße 58, 27576 Bremerhaven, Deutschland",
+        "lat": 53.5539077,
+        "lon": 8.5830045,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "commercial",
+          "commercial.food_and_drink",
+          "commercial.food_and_drink.bakery"
+        ],
+        "opening_hours": "Mo-Sa 07:00-19:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51385ac466362a21405966ab819ce6c64a40f00103f901b8bb589b0000000092030b436166c3a9204461766964",
+        "name": "Café David",
+        "formatted": "Café David, Hafenstraße 53, 27576 Bremerhaven, Deutschland",
+        "lat": 53.5539127,
+        "lon": 8.5824463,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5159a7caf78c28214059dc8df458e9c54a40f00103f90189ab132f0000000092030a506574697420466f7572",
+        "name": "Petit Four",
+        "formatted": "Petit Four, Rampenstraße, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5461837,
+        "lon": 8.5792005,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ],
+        "opening_hours": "Tu-Su,PH 10:00-17:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "511c508072252821405973d13538b6c54a40f00103f9011b424c210000000092031147656c61746572696120436f636361746f",
+        "name": "Gelateria Coccato",
+        "formatted": "Gelateria Coccato, Mühlenstraße 11, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5446234,
+        "lon": 8.5784107,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "wheelchair",
+          "wheelchair.yes"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5100e07dfa7425214059744b619456c64a40f00103f9013520efee02000000920323466f6f64617274204272656d6572686176656e2043616b652773202620426f776c2773",
+        "name": "Foodart Bremerhaven Cake's & Bowl's",
+        "formatted": "Foodart Bremerhaven Cake's & Bowl's, Bürgermeister-Smidt-Straße 148, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5495172,
+        "lon": 8.5731581,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5119fca2a94327214059ca9f145223c74a40f00103f901492e8295020000009203084461732042656574",
+        "name": "Das Beet",
+        "formatted": "Das Beet, Kistnerstraße 54, 27576 Bremerhaven, Deutschland",
+        "lat": 53.5557654,
+        "lon": 8.5766881,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ],
+        "opening_hours": "Tu-Su 14:00-22:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "512c5b90d21129214059bc6df0cf56c74a40f00103f90137d12e9f0200000092030b436166c3a920537475636b",
+        "name": "Café Stuck",
+        "formatted": "Café Stuck, Uhlandstraße 18, 27576 Bremerhaven, Deutschland",
+        "lat": 53.5573368,
+        "lon": 8.5802141,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ],
+        "opening_hours": "Mo-Fr 12:30-16:30,18:30-22:00; Sa,Su 14:30-17:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51b06c8bd7612521405930213020c5c64a40f00103f901e5df24780000000092031a537461647462c3a4636b6572656920456e67656c627265636874",
+        "name": "Stadtbäckerei Engelbrecht",
+        "formatted": "Stadtbäckerei Engelbrecht, Schleusenstraße 33, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5528908,
+        "lon": 8.5730121,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "commercial",
+          "commercial.food_and_drink",
+          "commercial.food_and_drink.bakery",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Mo-Fr 06:00-16:00; Sa 07:00-13:00; Su 08:00-16:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e1293f04b02821405920065f3d93c54a40f00103f9012e424c2100000000920315456e67656c62726563687420436166c3a968617573",
+        "name": "Engelbrecht Caféhaus",
+        "formatted": "Engelbrecht Caféhaus, Bürgermeister-Smidt-Straße 41, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5435559,
+        "lon": 8.5794679,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "commercial",
+          "commercial.food_and_drink",
+          "commercial.food_and_drink.bakery",
+          "vegetarian",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Mo-Fr 07:00-18:00; Sa 07:00-17:00; PH off"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f3e670adf62421405963ba6b64b2c64a40f00103f9018adbc4910200000092030e4c6965626c696e6773706c61747a",
+        "name": "Lieblingsplatz",
+        "formatted": "Lieblingsplatz, Schleusenstraße 24, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5523191,
+        "lon": 8.5721945,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "We-Mo 09:00-16:00; PH 09:00-14:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "512640a8e6cd24214059c09657aeb7c64a40f00103f90170c56e920200000092030b4d6f6a6f20436f66666565",
+        "name": "Mojo Coffee",
+        "formatted": "Mojo Coffee, Schleusenstraße, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5524805,
+        "lon": 8.5718834,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f9db9e20b12d2140590a8e812b8fc74a40f00103f901262b9b6a00000000920306456d61746861",
+        "name": "Ematha",
+        "formatted": "Ematha, Hinrich-Schmalfeldt-Straße 24, 27576 Bremerhaven, Deutschland",
+        "lat": 53.5590567,
+        "lon": 8.589242,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ],
+        "opening_hours": "Mo-Su 10:00-20:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51392861a6ed272140595d0a592778c54a40f00103f901df9faf5e00000000920310456973636166c3a92056656e657a6961",
+        "name": "Eiscafé Venezia",
+        "formatted": "Eiscafé Venezia, Obere Bürger, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5427293,
+        "lon": 8.577985,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "catering.cafe.ice_cream",
+          "catering.ice_cream",
+          "wheelchair",
+          "wheelchair.yes"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "518b598a3fe52321405933aa679ce1c64a40f00103f901da7d44840100000092030e456973636166652053616e746f73",
+        "name": "Eiscafe Santos",
+        "formatted": "Eiscafe Santos, Bürgermeister-Smidt-Straße 212, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5537601,
+        "lon": 8.5701084,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "catering.cafe.ice_cream",
+          "catering.ice_cream",
+          "wheelchair",
+          "wheelchair.limited"
+        ],
+        "opening_hours": "Mar-Sep Mo-Sa 10:00-20:00; Mar-Sep PH,Su 11:00-20:00; Feb-Oct PH,Su 11:00-19:00; Feb-Oct Mo,We-Sa 10:00-19:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51b09696ec332a214059fcc2d08f2bc54a40f00103f9015126242900000000920312436173706172204461766964202620436f2e",
+        "name": "Caspar David & Co.",
+        "formatted": "Caspar David & Co., Karlsburg 4, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5403919,
+        "lon": 8.5824274,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "wheelchair",
+          "wheelchair.limited"
+        ],
+        "opening_hours": "Mo-Sa 11:00-24:00+"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5162b02ce285262140594e017a2b5cc54a40f00103f901a7ea3c5000000000920307436f636361746f",
+        "name": "Coccato",
+        "formatted": "Coccato, Am Längengrad 12, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5418753,
+        "lon": 8.5752402,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "catering.cafe.ice_cream",
+          "catering.ice_cream",
+          "wheelchair",
+          "wheelchair.yes"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5159b043eb972a214059fed137691ac54a40f00103f9015ea2199c000000009203055374754361",
+        "name": "StuCa",
+        "formatted": "StuCa, An der Karlstadt 8, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5398685,
+        "lon": 8.5831903,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "vegan",
+          "vegetarian",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Mo-Fr 09:00-17:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51cb8058dbb921214059112851e56ac64a40f00103f901d1905fa7020000009203164b61746965277320436166c3a920616d204465696368",
+        "name": "Katie's Café am Deich",
+        "formatted": "Katie's Café am Deich, Lohmannstraße 32b, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5501372,
+        "lon": 8.5658711,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "catering.cafe.cake"
+        ],
+        "opening_hours": "We-Su 12:00-17:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5103b6deca6d362140597a14538e6ec64a40f00103f9019c3e3ad00200000092030b456e67656c627265636874",
+        "name": "Engelbrecht",
+        "formatted": "Engelbrecht, An der Feuerwache 8, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5502489,
+        "lon": 8.6063064,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "commercial",
+          "commercial.food_and_drink",
+          "commercial.food_and_drink.bakery"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51fada964eef27214059ce6db034dcc44a40f00102f9013d9df80a0000000092031654657272617373656e636166c3a9205365656c757374",
+        "name": "Terrassencafé Seelust",
+        "formatted": "Terrassencafé Seelust, Am Strom 7, 27568 Bremerhaven, Deutschland",
+        "lat": 53.5379681,
+        "lon": 8.5779978,
+        "categories": [
+          "building",
+          "building.catering",
+          "catering",
+          "catering.cafe",
+          "wheelchair",
+          "wheelchair.limited"
+        ],
+        "opening_hours": "May-Sep Mo-Sa 12:00+, May-Sep Su 11:00+"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "510d480c4cb831214059a31b06989ec44a40f00103f901dbb52f380300000092030d436166c3a920616d205061726b",
+        "name": "Café am Park",
+        "formatted": "Café am Park, Bismarckstraße 53, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5360899,
+        "lon": 8.5971092,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5198ffeb376e3021405950b637ae35c44a40f00103f901acfa90f20000000092030c57657365722042697374726f",
+        "name": "Weser Bistro",
+        "formatted": "Weser Bistro, Grashoffstraße 36, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5328882,
+        "lon": 8.5945909,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "09:00-14:30"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e8eb43280030214059c2d0347227c44a40f00103f901e8da670d02000000920314436166c3a92053c3bcc39f65205472c3a4756d65",
+        "name": "Café Süße Träume",
+        "formatted": "Café Süße Träume, Grashoffstraße 21a, 27570 Bremerhaven, Deutschland",
+        "lat": 53.5324538,
+        "lon": 8.5937512,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ],
+        "opening_hours": "Tu-Sa 09:00-18:00; Su 13:00-18:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51323212eb9e2e214059d2510e6613c44a40f00103f9015d6b0efa000000009203064875676f2773",
+        "name": "Hugo's",
+        "formatted": "Hugo's, Grashoffstraße 7, 27570 Bremerhaven, Deutschland",
+        "lat": 53.531842,
+        "lon": 8.5910562,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5196f2b5c24f2f2140593d433866d9c34a40f00103f901676b8acb0000000092030d4569732d436166c3a92054656f",
+        "name": "Eis-Café Teo",
+        "formatted": "Eis-Café Teo, An der Mühle 33, 27570 Bremerhaven, Deutschland",
+        "lat": 53.530072,
+        "lon": 8.5924054,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ],
+        "opening_hours": "Tu-Fr,Su 11:00-20:00; Sa 10:00-20:00; Mo off"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51d77f42e2c33921405975dc3a4904c94a40f00103f9014d9a4cdb0200000092030b436166c3a920426c756d65",
+        "name": "Café Blume",
+        "formatted": "Café Blume, Spadener Straße 128, 27578 Bremerhaven, Deutschland",
+        "lat": 53.5704433,
+        "lon": 8.6128226,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5111829f820d2d214059ee395563aec24a40f00103f9013c260b3c0100000092031b466965646c657273204b6f6c6f6e69616c776172656e6c6164656e",
+        "name": "Fiedlers Kolonialwarenladen",
+        "formatted": "Fiedlers Kolonialwarenladen, An der Packhalle IV 34, 27572 Bremerhaven, Deutschland",
+        "lat": 53.5209469,
+        "lon": 8.5879937,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ],
+        "opening_hours": "Mo-Su 10:00-17:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "511574d602d64121405932cdcf6806c44a40f00103f901e46695190000000092030b546f646479277320456973",
+        "name": "Toddy's Eis",
+        "formatted": "Toddy's Eis, Gagelstraße 11, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5314456,
+        "lon": 8.6285859,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "catering.cafe.ice_cream",
+          "catering.ice_cream"
+        ],
+        "opening_hours": "Tu-Su 14:00-18:00; PH 14:00-18:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "511c0c7558e146214059cb64389ecfc44a40f00103f90147708c7a0000000092030b456e67656c627265636874",
+        "name": "Engelbrecht",
+        "formatted": "Engelbrecht, Postbrookstraße 103, 27574 Bremerhaven, Deutschland",
+        "lat": 53.537586,
+        "lon": 8.638438,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "commercial",
+          "commercial.food_and_drink",
+          "commercial.food_and_drink.bakery",
+          "internet_access",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Mo-Fr 06:00-20:00; Sa,Su 08:00-18:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51c899266c3f352140598748f20126c24a40f00103f9012285bf650200000092030a436166652052656c6178",
+        "name": "Cafe Relax",
+        "formatted": "Cafe Relax, Boschstraße 17, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5167849,
+        "lon": 8.6039995,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5197242aaff0312140596cf992d794cb4a40f00103f901d02d4c19020000009203054d6f6e6469",
+        "name": "Mondi",
+        "formatted": "Mondi, Langener Landstraße 270, 27578 Bremerhaven, Deutschland",
+        "lat": 53.5904798,
+        "lon": 8.5975394,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5176a15e95b033214059a260c614accb4a40f00103f901bb325c30000000009203044c696665",
+        "name": "Life",
+        "formatted": "Life, Debstedter Weg, 27578 Bremerhaven, Deutschland",
+        "lat": 53.591189,
+        "lon": 8.6009566,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51df0841fd1d4421405912e5c1cc2dc24a40f00103f9018d8bff4e0200000092030d416e6e6965277320436166c3a9",
+        "name": "Annie's Café",
+        "formatted": "Annie's Café, Vieländer Weg 230, 27574 Bremerhaven, Deutschland",
+        "lat": 53.5170227,
+        "lon": 8.6330413,
+        "categories": [
+          "catering",
+          "catering.cafe"
+        ],
+        "opening_hours": "Mo-Tu,Th-Sa, 08:00-12:00,14:00-17:00; We off; Su 09:00-16:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "511adfd881db3b214059818e0c00b7cb4a40f00102f90157dac51100000000920305436166c3a9",
+        "name": "Café",
+        "formatted": "Café, Wilhelm-Leuschner-Straße, 27578 Bremerhaven, Deutschland",
+        "lat": 53.5915222,
+        "lon": 8.6169091,
+        "categories": [
+          "building",
+          "building.catering",
+          "catering",
+          "catering.cafe",
+          "wheelchair",
+          "wheelchair.limited"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "516a90381a76322140598137eede9bc04a40f00103f9017d439680010000009203234b617469652773204b6f6e6469746f726569202620436166c3a92057756c73646f7266",
+        "name": "Katie's Konditorei & Café Wulsdorf",
+        "formatted": "Katie's Konditorei & Café Wulsdorf, Weserstraße 66, 27572 Bremerhaven, Deutschland",
+        "lat": 53.5047568,
+        "lon": 8.5985573,
+        "categories": [
+          "catering",
+          "catering.cafe",
+          "catering.cafe.cake",
+          "wheelchair",
+          "wheelchair.yes"
+        ],
+        "opening_hours": "Tu-Su 12:00-18:00"
+      }
+    }
+  ]
+}

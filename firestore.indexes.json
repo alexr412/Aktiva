@@ -59,5 +59,8 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    { "collectionGroup": "spot_catalogs", "fieldPath": "catalogs", "indexes": [] },
+    { "collectionGroup": "spot_catalog_pages", "fieldPath": "places", "indexes": [] }
+  ]
 }

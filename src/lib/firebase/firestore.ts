@@ -518,6 +518,8 @@ export async function votePlace(placeId: string, userId: string, type: 'up' | 'd
   >(functions, 'secureVotePlace');
 
   const result = await secureVote({ placeId, type, placeData });
+  const { invalidatePlaceMetadata } = await import('./place-metadata-cache');
+  await invalidatePlaceMetadata(userId, placeId);
   return result.data.weightedCommunityScore;
 }
 

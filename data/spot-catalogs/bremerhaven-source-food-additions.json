@@ -1,0 +1,1261 @@
+{
+  "retrievedAt": "2026-10-12T17:30:56.065Z",
+  "places": [
+    {
+      "id": "517a43d0871d40214059fd4f59a890bf4a40f00103f9013ac963b401000000920315426973736665737420466173742026204672657368",
+      "name": "Bissfest Fast & Fresh",
+      "address": "Bissfest Fast & Fresh, Frederikshavner Straße 101, 27572 Bremerhaven, Deutschland",
+      "lat": 53.4966021,
+      "lon": 8.6252253,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51af61a98a123221405948bb5af554be4a40f00102f901c03034070000000092030d4f7374657269612041676e6573",
+      "name": "Osteria Agnes",
+      "address": "Osteria Agnes, Seeborg 9, 27572 Bremerhaven, Deutschland",
+      "lat": 53.4869677,
+      "lon": 8.5977977,
+      "categories": [
+        "building",
+        "building.catering",
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51d03c258c0b302140594881aa76f2c64a40f00103f901dead68f20000000092030d4d75742773204b69746368656e",
+      "name": "Mut's Kitchen",
+      "address": "Mut's Kitchen, Stresemannstraße 110, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5542744,
+      "lon": 8.5938381,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51b8020af5f439214059928bd6f61bc54a40f00103f9016c6b175300000000920308475456204865696d",
+      "name": "GTV Heim",
+      "address": "GTV Heim, In den Nedderwiesen 3, 27574 Bremerhaven, Deutschland",
+      "lat": 53.5399159,
+      "lon": 8.613197,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "518147af61e12f21405971a2a712afc44a40f00103f90190a1ad61000000009203125765737466c3a46c69736368657220486f66",
+      "name": "Westfälischer Hof",
+      "address": "Westfälischer Hof, Rheinstraße 16, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5365928,
+      "lon": 8.5935164,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "51234333f4f42a21405956a98f7692c44a40f00103f90140e0111b0000000092030d50617072696b61204772696c6c",
+      "name": "Paprika Grill",
+      "address": "Paprika Grill, Verdener Straße 19, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5357197,
+      "lon": 8.5839001,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.regional"
+      ]
+    },
+    {
+      "id": "51c292a23671242140596a17b083a6c54a40f00102f901585cde010000000092030b537472616e6468616c6c65",
+      "name": "Strandhalle",
+      "address": "Strandhalle, H.-H.-Meier-Straße 1, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5441524,
+      "lon": 8.5711677,
+      "categories": [
+        "building",
+        "building.catering",
+        "catering",
+        "catering.restaurant",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "518692c9a99d25214059b68c2f359dc54a40f00103f9018ea6cf47000000009203074c6c6f79642773",
+      "name": "Lloyd's",
+      "address": "Lloyd's, H.-H.-Meier-Straße, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5438601,
+      "lon": 8.5734685,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "5131c0f4ac5a242140590cb7d7dd97c64a40f00103f901ca91e0b30200000092031e4175526573204175737a7562696c64656e64656e72657374617572616e74",
+      "name": "AuRes Auszubildendenrestaurant",
+      "address": "AuRes Auszubildendenrestaurant, Rudloffstraße 22, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5515096,
+      "lon": 8.5710043,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51b04802c3a826214059659b65602ec64a40f00103f9011a180b12000000009203104368696e612d52657374617572616e74",
+      "name": "China-Restaurant",
+      "address": "China-Restaurant, Grazer Straße 62, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5482903,
+      "lon": 8.5755063,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.chinese"
+      ]
+    },
+    {
+      "id": "51b5b39e10f02a214059338cbb41b4c74a40f00103f901b4a7bfbd0200000092030d5365616d656e277320436c7562",
+      "name": "Seamen's Club",
+      "address": "Seamen's Club, Fritz-Reuter-Straße 18, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5601885,
+      "lon": 8.5838628,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.american"
+      ]
+    },
+    {
+      "id": "5194f4d5fac7272140592b99ad0672c54a40f00103f9011202b05e0000000092031350697a7a6572696120446f6c63652056697461",
+      "name": "Pizzeria Dolce Vita",
+      "address": "Pizzeria Dolce Vita, Obere Bürger 37, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5425423,
+      "lon": 8.5776976,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.pizza",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "5188fb2367bc282140591a2bd615d8c64a40f00103f901e0630e12000000009203094d616d6d61204d6961",
+      "name": "Mamma Mia",
+      "address": "Mamma Mia, Bremerhavener Straße 20, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5534694,
+      "lon": 8.5795624,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian",
+        "vegetarian",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "5133a836381129214059793e03eacdc24a40f00103f901e891f7b202000000920308696c20466f726e6f",
+      "name": "il Forno",
+      "address": "il Forno, Am Fischbahnhof, 27572 Bremerhaven, Deutschland",
+      "lat": 53.521909,
+      "lon": 8.5802095,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian"
+      ]
+    },
+    {
+      "id": "518b00023164282140595f402fdcb9c54a40f00103f9011e424c2100000000920310526973746f72616e7465205363616c61",
+      "name": "Ristorante Scala",
+      "address": "Ristorante Scala, Mühlenstraße 11, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5447345,
+      "lon": 8.5788894,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "51811255aea629214059c20a010a3fc54a40f00103f901c2096a5e000000009203074d61726c656e65",
+      "name": "Marlene",
+      "address": "Marlene, Theodor-Heuss-Platz 8, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5409863,
+      "lon": 8.5813498,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "519c55fa64202a2140592f0d0dd5dec64a40f00103f901babb589b0000000092031250697a7a65726961204c61205374616c6c61",
+      "name": "Pizzeria La Stalla",
+      "address": "Pizzeria La Stalla, Hafenstraße 49, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5536753,
+      "lon": 8.5822784,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian"
+      ]
+    },
+    {
+      "id": "51504dee1c6f2b21405913b46e2821c54a40f00103f901c2641bec0000000092030d56696c6c61205365656265636b",
+      "name": "Villa Seebeck",
+      "address": "Villa Seebeck, Deichstraße 15, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5400744,
+      "lon": 8.5848321,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "vegetarian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51f220e28b9b2b2140591d7ae6406ac74a40f00103f901701c842f000000009203114f6c796d70697363686573204665756572",
+      "name": "Olympisches Feuer",
+      "address": "Olympisches Feuer, Hafenstraße 117, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5579301,
+      "lon": 8.5851711,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.greek"
+      ]
+    },
+    {
+      "id": "512ffa0ad28c21214059563f8056aac74a40f00103f9010a032d6102000000920318486176656e2d4b6f6d62c3bc736520526f74657273616e64",
+      "name": "Haven-Kombüse Rotersand",
+      "address": "Haven-Kombüse Rotersand, Rudloffstraße 148, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5598858,
+      "lon": 8.5655275,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "5122e17b7f83362140593f24d7a8e2c34a40f00103f901686b3f1903000000920307536d696c657973",
+      "name": "Smileys",
+      "address": "Smileys, Schiffdorfer Chaussee 44, 27574 Bremerhaven, Deutschland",
+      "lat": 53.5303546,
+      "lon": 8.606472,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.pizza",
+        "vegan",
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "51509374289e32214059b488cd6cfcc34a40f00103f901c45cdf5f0000000092030d5461737479204b69746368656e",
+      "name": "Tasty Kitchen",
+      "address": "Tasty Kitchen, Metzer Straße 12, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5311409,
+      "lon": 8.5988629,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.pizza"
+      ]
+    },
+    {
+      "id": "5173e6689fd83021405916551a8c6cca4a40f00103f901d69d8d7c0000000092031447617374726f6e6f6d696520616d20426c696e6b",
+      "name": "Gastronomie am Blink",
+      "address": "Gastronomie am Blink, Adolf-Butenandt-Straße 7, 27580 Bremerhaven, Deutschland",
+      "lat": 53.5814376,
+      "lon": 8.5954027,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51df162cd5052821405927b1b508d6c44a40f00103f901686823610000000092030850616e6f72616d61",
+      "name": "Panorama",
+      "address": "Panorama, Am Alten Vorhafen 8, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5377818,
+      "lon": 8.5781695,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "514bc56b031c27214059fbce2f4ad0c54a40f00103f9017e4e3b180100000092030a48756f6e672056696574",
+      "name": "Huong Viet",
+      "address": "Huong Viet, Keilstraße 12-14, 27568 Bremerhaven, Deutschland",
+      "lat": 53.545419,
+      "lon": 8.5763856,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.sushi",
+        "catering.restaurant.vietnamese"
+      ]
+    },
+    {
+      "id": "5169e5b919c92d21405949b1edfec2c34a40f00103f9016493827c0200000092030d436f6f6b205468697320576179",
+      "name": "Cook This Way",
+      "address": "Cook This Way, Georgstraße 84, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5293883,
+      "lon": 8.5894249,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.vietnamese"
+      ]
+    },
+    {
+      "id": "512f916687533121405917cca9ae8dbe4a40f00103f901ea25e0f50000000092031c4368696e612d52657374617572616e742050656b696e672d48617573",
+      "name": "China-Restaurant Peking-Haus",
+      "address": "China-Restaurant Peking-Haus, Am Lunedeich 189, 27572 Bremerhaven, Deutschland",
+      "lat": 53.4886988,
+      "lon": 8.5963404,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.chinese",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "51df0841fd1d2c214059d8fcaebe70c44a40f00103f901f45e8555010000009203314c69656765706c61747a204576656e747320696d20576573657220596163687420436c7562204272656d6572686176656e",
+      "name": "Liegeplatz Events im Weser Yacht Club Bremerhaven",
+      "address": "Liegeplatz Events im Weser Yacht Club Bremerhaven, Borriesstraße 52a, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5346907,
+      "lon": 8.5861663,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.regional",
+        "catering.restaurant.seafood"
+      ]
+    },
+    {
+      "id": "51fae1314d222c214059460147a753be4a40f00103f9012db5236100000000920311416c7465204c756e657363686c65757365",
+      "name": "Alte Luneschleuse",
+      "address": "Alte Luneschleuse 9, 27572 Bremerhaven, Deutschland",
+      "lat": 53.4869279,
+      "lon": 8.5861992,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "51c6ff780a1424214059e6c9da4bbfc54a40f00103f90102d5cadb0000000092030c44656c6920616d204d656572",
+      "name": "Deli am Meer",
+      "address": "Deli am Meer, H.-H.-Meier-Straße 7, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5449004,
+      "lon": 8.5704654,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51ff3f4e98302a2140593c5ffde950c24a40f00103f90152764fd30000000092030c5a657573204b69746368656e",
+      "name": "Zeus Kitchen",
+      "address": "Zeus Kitchen, Am Lunedeich 35, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5180943,
+      "lon": 8.582402,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "5144b3a1517033214059c02154a9d9be4a40f00103f9016899394b0000000092031456616e20546174204173696120476f75726d6574",
+      "name": "Van Tat Asia Gourmet",
+      "address": "Van Tat Asia Gourmet, Bohmsiel 1, 27572 Bremerhaven, Deutschland",
+      "lat": 53.4910175,
+      "lon": 8.6004663,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.asian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51066bf706ba29214059b3356ca521ca4a40f00103f901597e5d72000000009203124e6f726473656573746164696f6e204f5343",
+      "name": "Nordseestadion OSC",
+      "address": "Nordseestadion OSC, Am Stadion 10, 27580 Bremerhaven, Deutschland",
+      "lat": 53.5791518,
+      "lon": 8.5814974,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51f5e5bb4a2d2a2140593c97f3d60ac34a40f00103f901264db3370200000092030f4b6169732052657374617572616e74",
+      "name": "Kais Restaurant",
+      "address": "Kais Restaurant, Herwigstraße 24, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5237683,
+      "lon": 8.5823768,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51bb5a93139229214059afc1b11d42c54a40f00103f901cb096a5e0000000092030c422042757267657220426172",
+      "name": "B Burger Bar",
+      "address": "B Burger Bar, Theodor-Heuss-Platz 10, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5410802,
+      "lon": 8.5811926,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.burger",
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "5139f471c8612321405935eb313619c64a40f00103f901627fa51a00000000920308c3bc626572534545",
+      "name": "überSEE",
+      "address": "überSEE, Am Leuchtturm 1, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5476444,
+      "lon": 8.5691054,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.regional",
+        "vegetarian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "5116736b2d272c214059b91567b1b9c24a40f00103f90120e79e5e00000000920307446f636b204956",
+      "name": "Dock IV",
+      "address": "Dock IV, An der Packhalle IV 4, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5212919,
+      "lon": 8.5862364,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51f833bc598327214059c1583a7a57c34a40f00103f90159bf71090100000092031647726574652773202d20436166c3a920616d204b6169",
+      "name": "Grete's - Café am Kai",
+      "address": "Grete's - Café am Kai, Fischkai 57, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5261071,
+      "lon": 8.577174,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.regional",
+        "vegetarian",
+        "vegetarian.only"
+      ]
+    },
+    {
+      "id": "519138752f4133214059b76c63a2f7c34a40f00103f901b018ec4e000000009203084d6f6e676f6c6569",
+      "name": "Mongolei",
+      "address": "Mongolei, An der Mühle 72, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5309947,
+      "lon": 8.6001067,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.asian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "517e0283ff082621405909104fc0c0c54a40f00103f901bd6f842d0000000092030a5370656973657361616c",
+      "name": "Speisesaal",
+      "address": "Speisesaal, Columbusstraße 65, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5449448,
+      "lon": 8.5742874,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "513061d971683621405966f6798cf2bf4a40f00103f901a6acf41200000000920308446f72666b727567",
+      "name": "Dorfkrug",
+      "address": "Dorfkrug, Süderstraße, 27572 Bremerhaven, Deutschland",
+      "lat": 53.4995895,
+      "lon": 8.6062656,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51c0677ffb95372140599232987535c74a40f00102f901ae3bed100000000092030e496d2057696573656e6772756e64",
+      "name": "Im Wiesengrund",
+      "address": "Im Wiesengrund, Thebushelmde 2, 27576 Bremerhaven, Deutschland",
+      "lat": 53.556319,
+      "lon": 8.6085662,
+      "categories": [
+        "building",
+        "building.catering",
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51a846f993422a2140596bba9ee8bac44a40f00103f901461b05ee0000000092030a50697a7a61686176656e",
+      "name": "Pizzahaven",
+      "address": "Pizzahaven, Bülowstraße, 27570 Bremerhaven, Deutschland",
+      "lat": 53.536954,
+      "lon": 8.5825392,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.pizza",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "51e2390087f5232140594aa7bfa8eec64a40f00103f90186e3d5aa000000009203064368616c6574",
+      "name": "Chalet",
+      "address": "Chalet, Bürgermeister-Smidt-Straße 169, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5541583,
+      "lon": 8.5702326,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "511980fc5bb826214059d7851f9c4fc54a40f00103f90154223c500000000092030942656c204d6f6e646f",
+      "name": "Bel Mondo",
+      "address": "Bel Mondo, Am Längengrad 12, 27568 Bremerhaven, Deutschland",
+      "lat": 53.541492,
+      "lon": 8.5756253,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "515a0d897b2c29214059794b283394c54a40f00103f9015b0e1823020000009203075765696e726f74",
+      "name": "Weinrot",
+      "address": "Weinrot, Schleswiger Straße 27, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5435852,
+      "lon": 8.5804175,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51d1162186672b2140591635f33f54c74a40f00103f901a44d88120000000092030441796c61",
+      "name": "Ayla",
+      "address": "Ayla, Hafenstraße 107, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5572586,
+      "lon": 8.5847742,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51d08140c28b292140595428c1d144c54a40f00103f901f7cfad3d02000000920308536f757269616e61",
+      "name": "Souriana",
+      "address": "Souriana, Theodor-Heuss-Platz, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5411627,
+      "lon": 8.5811444,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51ba68c87894322140592992544bdfc34a40f00103f9014cd3f61200000000920317537465616b6861757320416e20646572204dc3bc686c65",
+      "name": "Steakhaus An der Mühle",
+      "address": "Steakhaus An der Mühle, Hölderlinstraße 7, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5302519,
+      "lon": 8.598789,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.steak_house"
+      ]
+    },
+    {
+      "id": "5135b39602d22e2140593b7716180dc44a40f00103f901f6a2dbae000000009203115375736869204772696c6c202620426172",
+      "name": "Sushi Grill & Bar",
+      "address": "Sushi Grill & Bar, Grashoffstraße 7, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5316496,
+      "lon": 8.591446,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.sushi"
+      ]
+    },
+    {
+      "id": "51a823360eab26214059233f2ce5c6c74a40f00103f901e5819784020000009203074d656920576569",
+      "name": "Mei Wei",
+      "address": "Mei Wei, Rickmersstraße 70, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5607573,
+      "lon": 8.5755238,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.asian"
+      ]
+    },
+    {
+      "id": "5157337c55782d2140594b0746b98fc74a40f00103f9012a2d9b6a000000009203104c61204e756f766120476f6e646f6c61",
+      "name": "La Nuova Gondola",
+      "address": "La Nuova Gondola, Hinrich-Schmalfeldt-Straße 22, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5590736,
+      "lon": 8.5888087,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51a7a66e788b252140597072648adec54a40f00103f901ed5863230200000092030b4d756c6265727279205374",
+      "name": "Mulberry St",
+      "address": "Mulberry St, Columbusstraße 67, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5458539,
+      "lon": 8.5733297,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51a810d951e6242140590d51853fc3c54a40f00103f901917d5e0b0300000092031253616c6f6e64616d706665722048616e7361",
+      "name": "Salondampfer Hansa",
+      "address": "Salondampfer Hansa, H.-H.-Meier-Straße, 27568 Bremerhaven, Deutschland",
+      "lat": 53.545021,
+      "lon": 8.5720697,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.regional",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "5158b89b960e24214059f2553c3fd6c64a40f00103f901d721d7aa000000009203064974616c6961",
+      "name": "Italia",
+      "address": "Italia, Bürgermeister-Smidt-Straße 206, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5534133,
+      "lon": 8.5704238,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "5101987cfd5a2c2140596de0b31ab7c24a40f00103f901b9469f5e00000000920311446572204b757474657266697363686572",
+      "name": "Der Kutterfischer",
+      "address": "Der Kutterfischer, An der Packhalle IV 6, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5212129,
+      "lon": 8.5866317,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.fish",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "5165389ecf80262140599d2d20b41ec64a40f00103f9014776f18d0000000092030d4bc3a47074276e205375736869",
+      "name": "Käpt'n Sushi",
+      "address": "Käpt'n Sushi, Lloydstraße 34, 27568 Bremerhaven, Deutschland",
+      "lat": 53.547812,
+      "lon": 8.5752015,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.asian"
+      ]
+    },
+    {
+      "id": "5113acbbc3373221405972e8e390c3c04a40f00103f9012d2c50cf020000009203125a756d2064657574736368656e2048617573",
+      "name": "Zum deutschen Haus",
+      "address": "Zum deutschen Haus, Weserstraße 86, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5059682,
+      "lon": 8.5980817,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german"
+      ]
+    },
+    {
+      "id": "515b4c22b1933021405902ec489ae4c34a40f00103f9017d01de660000000092030d416e20646572204dc3bc686c65",
+      "name": "An der Mühle",
+      "address": "An der Mühle, Schillerstraße 68, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5304139,
+      "lon": 8.5948768,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "510322c495b333214059d07932a42fc54a40f00103f901861bc74500000000920315426f6f7473686175732042c3bc726765727061726b",
+      "name": "Bootshaus Bürgerpark",
+      "address": "Bootshaus Bürgerpark, Adolf-Hoff-Weg 24, 27574 Bremerhaven, Deutschland",
+      "lat": 53.5405164,
+      "lon": 8.6009795,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51d074c0bf52272140597f70992e1fc54a40f00103f901984fd4700000000092031950616e6f72616d612d436166c3a9205765736572626c69636b",
+      "name": "Panorama-Café Weserblick",
+      "address": "Panorama-Café Weserblick, Hans-Scharoun-Platz 1, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5400141,
+      "lon": 8.5768032,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "5191f2936a9f2e21405922ecca1decc34a40f00103f901fca45620020000009203154368696e612052657374617572616e74205a686f75",
+      "name": "China Restaurant Zhou",
+      "address": "China Restaurant Zhou, Max-Dietrich-Straße 28a, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5306432,
+      "lon": 8.59106,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.chinese"
+      ]
+    },
+    {
+      "id": "51304388d0ad2c2140599e149cb0b3c24a40f00103f901b8469f5e0000000092030c446174204669736368687573",
+      "name": "Dat Fischhus",
+      "address": "Dat Fischhus, An der Packhalle IV 9, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5211087,
+      "lon": 8.5872636,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.fish"
+      ]
+    },
+    {
+      "id": "5101101c3cb82821405993d4f83bcac54a40f00103f901f3069a120000000092030644656c706869",
+      "name": "Delphi",
+      "address": "Delphi, Mühlenstraße, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5452342,
+      "lon": 8.5795306,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.greek"
+      ]
+    },
+    {
+      "id": "519b0b129150292140596c932f0d68c54a40f00103f90101d0ad3d0200000092031748696d616c61796120496e6469616e2043756973696e65",
+      "name": "Himalaya Indian Cuisine",
+      "address": "Himalaya Indian Cuisine, Bürgermeister-Smidt-Straße 17-19, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5422379,
+      "lon": 8.5806928,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.indian",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "5183f178ffc42d2140598e7cb9aa47c44a40f00103f901079a1531000000009203054461666e69",
+      "name": "Dafni",
+      "address": "Dafni, Georgstraße 19-21, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5334371,
+      "lon": 8.5893936,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.greek"
+      ]
+    },
+    {
+      "id": "512050ec57f031214059ec8497e0d4c04a40f00103f901e075b8d60000000092030a47656e7465722045636b",
+      "name": "Genter Eck",
+      "address": "Genter Eck, Grodenstraße, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5064965,
+      "lon": 8.5975368,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "5149b5f40df140214059255af2785ac54a40f00103f9010c975e58000000009203054b61726d61",
+      "name": "Karma",
+      "address": "Karma, Höllenhammsweg 13, 27574 Bremerhaven, Deutschland",
+      "lat": 53.5418235,
+      "lon": 8.6268391,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german"
+      ]
+    },
+    {
+      "id": "5142b28009dc32214059fd8f02fa33c84a40f00103f901a7a785120000000092031042c3bc7267657268617573204c656865",
+      "name": "Bürgerhaus Lehe",
+      "address": "Bürgerhaus Lehe, Friedhofstraße 15, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5640862,
+      "lon": 8.599335,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51bf1479ed2d24214059315ef3aacec64a40f00103f901bf8417d4000000009203164275726765726d656973746572205363686d69747a7a",
+      "name": "Burgermeister Schmitzz",
+      "address": "Burgermeister Schmitzz, Bürgermeister-Smidt-Straße 202, 27568 Bremerhaven, Deutschland",
+      "lat": 53.553182,
+      "lon": 8.5706629,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.burger"
+      ]
+    },
+    {
+      "id": "51f1d35d7e4c24214059f6c484e2d8c64a40f00103f901d921d7aa00000000920308506f736569646f6e",
+      "name": "Poseidon",
+      "address": "Poseidon, Bürgermeister-Smidt-Straße 157, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5534938,
+      "lon": 8.5708961,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.greek",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "51dea925c22b2a214059782975c938c54a40f00103f9015c26242900000000920306536572767573",
+      "name": "Servus",
+      "address": "Servus, Theodor-Heuss-Platz 1, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5407955,
+      "lon": 8.5823651,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "vegan",
+        "vegetarian",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "5133fad170ca2c214059694991c6b2c24a40f00103f901b7469f5e000000009203084d65657266616e67",
+      "name": "Meerfang",
+      "address": "Meerfang, An der Packhalle IV, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5210808,
+      "lon": 8.587482,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.fish"
+      ]
+    },
+    {
+      "id": "51490ed8d5e43121405970d4658c6ac44a40f00103f90103fda34e00000000920305546f726f73",
+      "name": "Toros",
+      "address": "Toros, Friedrich-Ebert-Straße 60, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5345016,
+      "lon": 8.597449,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.turkish",
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "511648f542a6252140592268716b77c54a40f00103f90145572361000000009203055354524f4d",
+      "name": "STROM",
+      "address": "STROM, Am Strom 1, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5427069,
+      "lon": 8.5735341,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "5190b3fa343827214059474c9a50d2c54a40f00103f9018f45567e000000009203154d617274696e27732046697363682026206d656872",
+      "name": "Martin's Fisch & mehr",
+      "address": "Martin's Fisch & mehr, Keilstraße 16, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5454808,
+      "lon": 8.5766007,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.seafood"
+      ]
+    },
+    {
+      "id": "5101f15fc54e2921405923f77475c7c24a40f00103f901f7029519000000009203074e617475736368",
+      "name": "Natusch",
+      "address": "Natusch, Am Fischbahnhof 1, 27572 Bremerhaven, Deutschland",
+      "lat": 53.521712,
+      "lon": 8.5806791,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.fish"
+      ]
+    },
+    {
+      "id": "51b7d100de022d2140598e59f624b0c24a40f00103f9019d919a4202000000920311466965646c657273204b6f6d62c3bc7365",
+      "name": "Fiedlers Kombüse",
+      "address": "Fiedlers Kombüse, An der Packhalle IV, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5210005,
+      "lon": 8.5879125,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51d44334ba832c2140597ff5b86fb5c24a40f00103f9011fe79e5e0000000092031252657374617572616e7420466965646c6572",
+      "name": "Restaurant Fiedler",
+      "address": "Restaurant Fiedler, An der Packhalle IV 7, 27572 Bremerhaven, Deutschland",
+      "lat": 53.521162,
+      "lon": 8.5869425,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.fish"
+      ]
+    },
+    {
+      "id": "519ca0f2542c332140598f4bc1bfadc04a40f00103f9019d159cd600000000920317537465616b2d486f7573652042616c6b616e6772696c6c",
+      "name": "Steak-House Balkangrill",
+      "address": "Steak-House Balkangrill, Lindenallee 11, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5053024,
+      "lon": 8.5999476,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "5187e52a7178342140591262d3ef67c04a40f00103f901715f71810100000092031d5363686d69647427732057756c73646f7266657220427565726e687573",
+      "name": "Schmidt's Wulsdorfer Buernhus",
+      "address": "Schmidt's Wulsdorfer Buernhus, Bremer Straße 15, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5031719,
+      "lon": 8.6024814,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51e05d786f5626214059271422e010c64a40f00103f9015f54341b0000000092031922477574657220467265756e6422204368696e6120466f6f64",
+      "name": "\"Guter Freund\" China Food",
+      "address": "\"Guter Freund\" China Food, Ankerstraße, 27568 Bremerhaven, Deutschland",
+      "lat": 53.54739,
+      "lon": 8.5748782,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.chinese"
+      ]
+    },
+    {
+      "id": "514010c5895429214059e42373767cc74a40f00103f901d9a288fe0200000092030c4175666c6175662d48617573",
+      "name": "Auflauf-Haus",
+      "address": "Auflauf-Haus, Goethestraße 60, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5584858,
+      "lon": 8.5807231,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51d6b5acb13a2c214059e4c924d9d9cb4a40f00103f901cbd135170000000092031157697274736861757320696d205061726b",
+      "name": "Wirtshaus im Park",
+      "address": "Wirtshaus im Park, Siebenbergensweg 36, 27580 Bremerhaven, Deutschland",
+      "lat": 53.5925857,
+      "lon": 8.5863853,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german"
+      ]
+    },
+    {
+      "id": "51c482b174f42a214059a91a18d412c74a40f00103f9012b851618020000009203074d61726173756d",
+      "name": "Marasum",
+      "address": "Marasum, Hafenstraße 78, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5552621,
+      "lon": 8.5838963,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51ff976bd1022c214059dbd2b4d5f6c74a40f00103f901bd7fd91801000000920314526973746f72616e74652042656c766564657265",
+      "name": "Ristorante Belvedere",
+      "address": "Ristorante Belvedere, Hafenstraße 183, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5622203,
+      "lon": 8.585959,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian"
+      ]
+    },
+    {
+      "id": "5102b04b9efc2b214059f9e41714bcc24a40f00103f90121e79e5e000000009203074260484156454e",
+      "name": "B`HAVEN",
+      "address": "B`HAVEN, An der Packhalle IV, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5213647,
+      "lon": 8.5859117,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51d769a4a5f22a214059840200112cc74a40f00103f901731c842f000000009203054164726961",
+      "name": "Adria",
+      "address": "Adria, Hafenstraße 89, 27576 Bremerhaven, Deutschland",
+      "lat": 53.5560323,
+      "lon": 8.5838825,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.greek"
+      ]
+    },
+    {
+      "id": "518b321b64922d21405983d1f6f939c44a40f00103f901adb98f5700000000920306506572736961",
+      "name": "Persia",
+      "address": "Persia, Georgstraße 28, 27570 Bremerhaven, Deutschland",
+      "lat": 53.5330193,
+      "lon": 8.5890075,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "510114234be6382140594ac1093b7bc94a40f00103f901249c5c3000000000920311496e6469736368652054616e646f6f7269",
+      "name": "Indische Tandoori",
+      "address": "Indische Tandoori, Ratiborer Straße 40, 27578 Bremerhaven, Deutschland",
+      "lat": 53.5740732,
+      "lon": 8.611132,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.indian"
+      ]
+    },
+    {
+      "id": "513fccb96f102821405952729879bcc54a40f00103f901e6414c210000000092030a50696363616c696c6c69",
+      "name": "Piccalilli",
+      "address": "Piccalilli, Bürgermeister-Smidt-Straße 49, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5448143,
+      "lon": 8.5782504,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "51608b8285383b214059a437dc476ec44a40f00103f901d66a1f540200000092030948656d696e67776179",
+      "name": "Hemingway",
+      "address": "Hemingway, Georg-Büchner-Straße 19, 27574 Bremerhaven, Deutschland",
+      "lat": 53.5346155,
+      "lon": 8.6156656,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian"
+      ]
+    },
+    {
+      "id": "512420cb27d028214059a7131ad2f2c44a40f00103f90153eee7200000000092030c5761737365727363686f7574",
+      "name": "Wasserschout",
+      "address": "Wasserschout, Van-Ronzelen-Straße 4, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5386603,
+      "lon": 8.5797131,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german",
+        "wheelchair",
+        "wheelchair.limited"
+      ]
+    },
+    {
+      "id": "51183845ecb82e2140599cbf098508c44a40f00103f9013c4f6338020000009203094c61205069617a7a61",
+      "name": "La Piazza",
+      "address": "La Piazza, Grashoffstraße 7, 27570 Bremerhaven, Deutschland",
+      "lat": 53.53151,
+      "lon": 8.5912546,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.italian"
+      ]
+    },
+    {
+      "id": "5148cca266fe272140596bcc35165ec54a40f00103f9010f02b05e0000000092030d536368696666657267696c6465",
+      "name": "Schiffergilde",
+      "address": "Schiffergilde, Columbusstraße, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5419338,
+      "lon": 8.5781128,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.fish",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "517a2af1ca3f2c21405936f5cb71b8c24a40f00103f901bb469f5e0000000092030854616b656c616765",
+      "name": "Takelage",
+      "address": "Takelage, An der Packhalle IV 5, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5212538,
+      "lon": 8.5864242,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    },
+    {
+      "id": "5161f07a7ab6282140598826f50ab0c24a40f00103f9015d594ed30000000092030f4765726ec2b420616e73204d656572",
+      "name": "Gern´ ans Meer",
+      "address": "Gern´ ans Meer, Am Lunedeich, 27572 Bremerhaven, Deutschland",
+      "lat": 53.5209974,
+      "lon": 8.5795172,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.fish"
+      ]
+    },
+    {
+      "id": "518918c0a5ad3f2140596a8e07b6a5c34a40f00103f901430dfbc6000000009203184368696e612052657374617572616e742059616e67747a65",
+      "name": "China Restaurant Yangtze",
+      "address": "China Restaurant Yangtze, Schiffdorfer Chaussee 172a, 27574 Bremerhaven, Deutschland",
+      "lat": 53.5284946,
+      "lon": 8.6243717,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.chinese",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "5156e99381a824214059f2f56ba11ac64a40f00103f901ad4c08b000000000920306504945522036",
+      "name": "PIER 6",
+      "address": "PIER 6, Barkhausenstraße 6, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5476877,
+      "lon": 8.5715981,
+      "categories": [
+        "catering",
+        "catering.restaurant",
+        "catering.restaurant.german",
+        "catering.restaurant.mediterranean",
+        "internet_access",
+        "wheelchair",
+        "wheelchair.yes"
+      ]
+    },
+    {
+      "id": "512385b2f0f5292140596a6ad95a5fc54a40f00103f901ad7b7a280000000092031152657374617572616e742046696e676572",
+      "name": "Restaurant Finger",
+      "address": "Restaurant Finger, Schleswiger Straße 3, 27568 Bremerhaven, Deutschland",
+      "lat": 53.5419725,
+      "lon": 8.5819545,
+      "categories": [
+        "catering",
+        "catering.restaurant"
+      ]
+    }
+  ]
+}

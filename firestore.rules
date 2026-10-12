@@ -995,6 +995,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Public spot fields only, published by the admin import script. Clients cannot modify versions.
+    match /spot_catalogs/{catalogId} {
+      allow read: if isSignedIn() && isUserOnboardedAndActive(request.auth.uid);
+      allow write: if false;
+    }
+    match /spot_catalog_pages/{pageId} {
+      allow read: if isSignedIn() && isUserOnboardedAndActive(request.auth.uid);
+      allow write: if false;
+    }
+
     match /places/{placeId} {
       // Places require authenticated/onboarded read.
       allow read: if isSignedIn() && isUserOnboardedAndActive(request.auth.uid);

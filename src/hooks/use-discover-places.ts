@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useFavorites } from '@/contexts/favorites-context';
 import { subscribeCommunityActivities } from '@/lib/firebase/firestore';
 import { fetchPlaceBuckets, getDiscoveryDistanceKm } from '@/lib/place-discovery';
+import { loadSpotCatalog } from '@/lib/firebase/spot-catalog-client';
 import {
   getCachedTilePlaces,
   saveTilePlaces,
@@ -18,6 +19,10 @@ import {
 
 const multiFetcher = async (keyObj: any) => {
   if (!keyObj) return [];
+
+  const catalog = await loadSpotCatalog(keyObj.uid, keyObj);
+  if (catalog) return catalog;
+  if (keyObj.type === 'city_catalog') return { features: [], _catalog: true, _catalogHasMore: false };
 
   if (keyObj.type === 'multi_fetch_discovery') {
     const { lat, lng, radiusMeters } = keyObj;
@@ -196,6 +201,20 @@ export function useDiscoverPlaces() {
       if (!isMounted) return;
       setSearchResults(localMatches);
 
+      const catalog = await loadSpotCatalog(userProfile?.uid, {
+        lat: userLocation.lat, lng: userLocation.lng, radiusMeters: (maxDistance ?? 100) * 1000,
+        searchText: debouncedSearchQuery, queryLimit: 1000,
+      });
+      if (!isMounted) return;
+      if (catalog) {
+        setSearchResults(catalog.features.map(feature => ({
+          ...feature.properties, id: feature.properties.place_id,
+          distance: feature.properties.distance / 1000,
+        })));
+        setIsSearchingNetwork(false);
+        return;
+      }
+
       // 2. Falls weniger als 5 lokale Treffer existieren, gezielt Geoapify-Suche aufrufen
       if (localMatches.length < 5) {
         setIsSearchingNetwork(true);
@@ -229,7 +248,7 @@ export function useDiscoverPlaces() {
     return () => {
       isMounted = false;
     };
-  }, [debouncedSearchQuery, userLocation, maxDistance]);
+  }, [debouncedSearchQuery, userLocation, maxDistance, userProfile?.uid]);
 
   // Subscribe to Firestore Community Activities
   useEffect(() => {
@@ -250,6 +269,10 @@ export function useDiscoverPlaces() {
 
   const getKey = (pageIndex: number, previousPageData: any) => {
     if (!userLocation) return null;
+    if (previousPageData?._catalog) {
+      if (!previousPageData._catalogHasMore) return null;
+      return { ...previousPageData._catalogQuery, offset: previousPageData._catalogNextOffset, pageIndex };
+    }
 
     if (previousPageData) {
       const firstPage = previousPageData;

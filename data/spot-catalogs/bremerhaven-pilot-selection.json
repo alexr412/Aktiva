@@ -1,0 +1,104 @@
+{
+  "groups": [
+    {
+      "label": "Cafés, Eis und entspannte Treffen",
+      "names": [
+        "Lieblingsplatz",
+        "Das Beet",
+        "Café am Park",
+        "Café Stuck",
+        "Mojo Coffee",
+        "Café Cardoso",
+        "Geestebogen Café",
+        "Katie's Café am Deich",
+        "Katie's Konditorei & Café Wulsdorf",
+        "Café Blume",
+        "Annie's Café",
+        "Café Süße Träume",
+        "Ematha",
+        "Caspar David & Co.",
+        "Foodart Bremerhaven Cake's & Bowl's",
+        "Fiedlers Kolonialwarenladen",
+        "Wellenrausch-Café",
+        "Toddy's Eis",
+        "überSEE",
+        "Grete's - Café am Kai"
+      ]
+    },
+    {
+      "label": "Restaurants und gemeinsames Essen",
+      "names": [
+        "Villa Seebeck",
+        "Kais Restaurant",
+        "Natusch",
+        "Dock IV",
+        "Dat Fischhus",
+        "PIER 6",
+        "Weinrot",
+        "Mulberry St",
+        "Burgermeister Schmitzz",
+        "B Burger Bar",
+        "Himalaya Indian Cuisine",
+        "Käpt'n Sushi",
+        "Persia",
+        "Marasum",
+        "Olympisches Feuer",
+        "Osteria Agnes",
+        "Auflauf-Haus",
+        "Mut's Kitchen"
+      ]
+    },
+    {
+      "label": "Parks und draußen treffen",
+      "names": [
+        "Bürgerpark",
+        "Speckenbütteler Park",
+        "Thieles Garten",
+        "Stadtpark",
+        "Park Reinkenheide",
+        "Schleusengarten",
+        "Saarpark",
+        "Zollinlandplatz",
+        "Martin-Donandt-Platz",
+        "Waldemar-Becké-Platz"
+      ]
+    },
+    {
+      "label": "Sport, Freizeit, Kultur und Bibliotheken",
+      "names": [
+        "Hot Court Padel",
+        "BAD 3",
+        "Bremerhaven Boulder Club",
+        "Rollsportanlage am Bürgerpark",
+        "BMX-Park",
+        "HAVENGLOW Schwarzlicht-Minigolf",
+        "Beyond Bowling (ehemals Fun Bowling)",
+        "Zoo am Meer",
+        "Deutsches Auswandererhaus",
+        "Klimahaus Bremerhaven",
+        "CineMotion",
+        "Phänomenta Bremerhaven e.V.",
+        "Deutsches Schifffahrtsmuseum",
+        "JUMPIN Trampolinpark",
+        "EXIT Escape Room",
+        "Stadtbibliothek Bremerhaven",
+        "Stadtteilbibliothek Leherheide"
+      ]
+    },
+    {
+      "label": "Bars, Karaoke und Spiele",
+      "names": [
+        "Snooker's",
+        "Rüssel",
+        "Karlsburg",
+        "Kim's Karaoke Bar",
+        "GLENN'S PLACE – Karaoke & Game Nights",
+        "One Up Game Bar",
+        "Kapovaz",
+        "Schluckspecht",
+        "Cafe de Fiets",
+        "Quartier No. 159"
+      ]
+    }
+  ]
+}

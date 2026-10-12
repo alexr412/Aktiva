@@ -1,0 +1,564 @@
+{
+  "retrievedAt": "2026-10-12T15:23:22.442Z",
+  "features": [
+    {
+      "properties": {
+        "place_id": "51b57c410c1c2b214059d36a988953c64a40f00102f901c758f63200000000",
+        "formatted": "Lehe, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5494949,
+        "lon": 8.583966,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5170e1712e822b214059fe65f81e1ec64a40f00102f901c658f63200000000",
+        "formatted": "Lehe, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5475628,
+        "lon": 8.5814692,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51316b00eccc2f214059fefcc1ae0cc64a40f00102f9010716994000000000",
+        "formatted": "Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5470249,
+        "lon": 8.5933082,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51440995a1282a21405955125c2abec54a40f00102f9012463803200000000",
+        "formatted": "Mitte, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5446844,
+        "lon": 8.5819401,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "516b6a166c932c2140591e42b9d336c74a40f00102f9018707b00100000000920308536161727061726b",
+        "name": "Saarpark",
+        "formatted": "Saarpark, Lehe, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5558279,
+        "lon": 8.5873704,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51443f8e3bca28214059c2f77687bcc54a40f00102f9013970b90d000000009203096b697263685041524b",
+        "name": "kirchPARK",
+        "formatted": "kirchPARK, Mitte, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5448506,
+        "lon": 8.5795963,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e98f5e179425214059690d45ab95c64a40f00102f90175af7f02000000009203144d617274696e2d446f6e616e64742d506c61747a",
+        "name": "Martin-Donandt-Platz",
+        "formatted": "Martin-Donandt-Platz, Mitte, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5513938,
+        "lon": 8.5734023,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51b7ae70c8e9282140595defd2aca6c54a40f00102f9013470b90d00000000",
+        "formatted": "Mitte, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5441787,
+        "lon": 8.5798737,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51bf8cbc2c0b27214059eec84e8531c74a40f00102f90146fdf40e0000000092030f5a6f6c6c696e6c616e64706c61747a",
+        "name": "Zollinlandplatz",
+        "formatted": "Zollinlandplatz, Lehe, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5561201,
+        "lon": 8.5763021,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ],
+        "opening_hours": "17:30-22:00"
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51f5ac9a8d422c214059db08be8b6bc54a40f00102f9017ed63a3900000000",
+        "formatted": "Mitte, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5419153,
+        "lon": 8.5866524,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "514e248e30e62c2140599f5f476fb1c74a40f00102f901b5fd28070000000092030953746164747061726b",
+        "name": "Stadtpark",
+        "formatted": "Stadtpark, Lehe, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5602705,
+        "lon": 8.5879045,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e5f724e9df232140593087b5a114c74a40f00102f9017d08f8340000000092031557616c64656d61722d4265636bc3a92d506c61747a",
+        "name": "Waldemar-Becké-Platz",
+        "formatted": "Waldemar-Becké-Platz, Mitte, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5553183,
+        "lon": 8.5700601,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5122c39c075823214059134598aae5c54a40f00102f901787b9b390000000092030f5363686c657573656e67617274656e",
+        "name": "Schleusengarten",
+        "formatted": "Schleusengarten, Mitte, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5460593,
+        "lon": 8.5691119,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e46ec578062b214059fe96c5a10ac54a40f00102f90124d41d0600000000",
+        "formatted": "Mitte, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5394112,
+        "lon": 8.5840908,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51b1ad7967e62c21405924ab82a8edc74a40f00102f901a01da60100000000",
+        "formatted": "Lehe, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5619818,
+        "lon": 8.587738,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51d7bd2149572b21405991132b9286c44a40f00102f901fff378100000000092030e4265726c696e657220506c61747a",
+        "name": "Berliner Platz",
+        "formatted": "Berliner Platz, Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5353068,
+        "lon": 8.584765,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51302f9bc0bd2e21405985b2830792c44a40f00102f901f3e1eb3200000000",
+        "formatted": "Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5358418,
+        "lon": 8.5914346,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e3f13d03f52c2140590466130583c44a40f00102f901da57033300000000",
+        "formatted": "Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5351878,
+        "lon": 8.5879249,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5170c8e556c92d2140598f0690b17bc44a40f00102f9013b06850a00000000",
+        "formatted": "Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.53503,
+        "lon": 8.5894525,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51205f3792e3302140595aabcd2a89c44a40f00102f9018ee7a2380000000092031657616c746865722d52617468656e61752d506c61747a",
+        "name": "Walther-Rathenau-Platz",
+        "formatted": "Walther-Rathenau-Platz, Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5353584,
+        "lon": 8.5955341,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5127a247f947322140599c8c636997c44a40f00102f9011f2b891400000000",
+        "formatted": "Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5357822,
+        "lon": 8.5980794,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5191898fb96b3621405957bf58620bc54a40f00102f9016de749070000000092030b42c3bc726765727061726b",
+        "name": "Bürgerpark",
+        "formatted": "Bürgerpark, Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5396871,
+        "lon": 8.6052777,
+        "categories": [
+          "heritage",
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51c8d1b212ad33214059faa657059ec44a40f00102f901007b803200000000",
+        "formatted": "Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5360646,
+        "lon": 8.6009293,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51287d5bbd682f2140596a4383e8c0c84a40f00102f9010ca7650f00000000",
+        "formatted": "Lehe, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5683938,
+        "lon": 8.5926254,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51d1a4b4bab02c214059bb75477310c44a40f00102f90194550e2e00000000",
+        "formatted": "Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5319681,
+        "lon": 8.5874158,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51c9692df00f2e2140591cadf610a0c94a40f00102f901620b9d0a00000000",
+        "formatted": "Lehe, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5752999,
+        "lon": 8.5900367,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51eb0eb8f5e23d21405989fe6babf7c34a40f00102f901ca004a0600000000",
+        "formatted": "Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.531108,
+        "lon": 8.621234,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51be2cb3a4a342214059534d32d90dc54a40f00102f901f7872c0600000000",
+        "formatted": "Schiffdorferdamm, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5395037,
+        "lon": 8.6301651,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "517b2c9ded6e31214059ebfde78eb6c24a40f00102f901263a7c3b0000000092030f49736cc3a46e64657220506c61747a",
+        "name": "Isländer Platz",
+        "formatted": "Isländer Platz, Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5212063,
+        "lon": 8.5965442,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "511d079b9e4a432140598506d2079ec44a40f00102f9019a263302000000009203115061726b205265696e6b656e6865696465",
+        "name": "Park Reinkenheide",
+        "formatted": "Park Reinkenheide, Schiffdorferdamm, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.535841,
+        "lon": 8.6328546,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e7d0eeae3638214059b3fcad8522ca4a40f00102f901706a663900000000",
+        "formatted": "Lehe, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5791905,
+        "lon": 8.6095781,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "513741aebf7d30214059c3f7de9560c24a40f00102f9015bf33a4200000000",
+        "formatted": "Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5183449,
+        "lon": 8.5997662,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51e9b969b9903a2140596041e89502ca4a40f00102f9016e6a663900000000",
+        "formatted": "Lehe, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5781406,
+        "lon": 8.6146622,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "512d2bb98ec1392140590d44e4e316ca4a40f00102f9016f6a663900000000",
+        "formatted": "Lehe, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5788339,
+        "lon": 8.6129409,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5178de20bd1c3821405960bbd78698c24a40f00102f901af2cfe0600000000",
+        "formatted": "Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.520948,
+        "lon": 8.6096363,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5147227db7574721405917ed94c2adc44a40f00102f901b310e41200000000",
+        "formatted": "Schiffdorferdamm, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5365874,
+        "lon": 8.6396394,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5178c67fc7c42a21405908b01af269cb4a40f00102f901c008991f00000000920315537065636b656e62c3bc7474656c6572205061726b",
+        "name": "Speckenbütteler Park",
+        "formatted": "Speckenbütteler Park, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5881486,
+        "lon": 8.5846383,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5144594e980a39214059dbfbfc2acec14a40f00102f901eb2bfe0600000000",
+        "formatted": "Geestemünde, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5146749,
+        "lon": 8.6115661,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51d1ab477e2c3b2140594b87af4774cb4a40f00102f901dcd51d1100000000",
+        "formatted": "Leherheide, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5895712,
+        "lon": 8.6156255,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51cd3f86ddc03b2140596598a034b2cb4a40f00102f901b945f70a0000000092030e546869656c65732047617274656e",
+        "name": "Thieles Garten",
+        "formatted": "Thieles Garten, Leherheide, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5916387,
+        "lon": 8.6164022,
+        "categories": [
+          "heritage",
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5104e230262433214059f8d1c38122cc4a40f00102f901f8d8211100000000",
+        "formatted": "Leherheide, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5948274,
+        "lon": 8.5997824,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51cf2d3479cc412140595dbd15fe6dcb4a40f00102f901c01d660600000000",
+        "formatted": "Leherheide, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5894061,
+        "lon": 8.6284568,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "5130e248bb0e342140596316fdc521c04a40f00102f90108c63b5100000000",
+        "formatted": "Wulsdorf, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.5009678,
+        "lon": 8.6017584,
+        "categories": [
+          "leisure",
+          "leisure.park",
+          "religion"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51088f807a6f35214059cc6bf677c4bf4a40f00102f901e1eaa138000000009203075357205061726b",
+        "name": "SW Park",
+        "formatted": "SW Park, Wulsdorf, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.4980044,
+        "lon": 8.6033596,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "place_id": "51921847a33137214059586e695cd2bf4a40f00102f901e0eaa13800000000",
+        "formatted": "Wulsdorf, Bremerhaven, Bremen, Deutschland",
+        "lat": 53.4986066,
+        "lon": 8.6078003,
+        "categories": [
+          "leisure",
+          "leisure.park"
+        ]
+      }
+    }
+  ]
+}

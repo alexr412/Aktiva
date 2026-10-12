@@ -9,6 +9,7 @@ import {
 } from '../activity-payload';
 import { createActivitySchema, validateActivityCreationDates } from '../../../../../functions/src/activities';
 import type { Place } from '@/lib/types';
+import { ACTIVITY_IDEAS } from '@/lib/activity-ideas';
 
 const mockPlace: Place = {
   id: 'place_boulder',
@@ -118,6 +119,25 @@ async function runActivityPayloadTests() {
     minimumRating: 4,
   });
   console.log('✅ testBuildActivityPayloadCustomMode passed');
+
+  // Starting from an idea must keep its title/category even when the chosen venue is a sports hall.
+  for (const idea of ACTIVITY_IDEAS) {
+    for (const language of ['de', 'en']) {
+      const ideaOptions = { ...options, language, activityTitle: language === 'de' ? idea.titleDe : idea.titleEn, selectedCategory: idea.category };
+      assert.equal(buildActivityPayload({ ...ideaOptions, selectedLocation: null }), null, 'An idea alone must not create an activity without a real meeting point');
+      const planned = buildActivityPayload(ideaOptions)!;
+      assert.equal(planned.title, ideaOptions.activityTitle);
+      assert.equal(planned.category, idea.category);
+      assert.equal(planned.selectedLocation.id, mockPlace.id);
+      const callable = buildCallableActivityPayload({
+        operationId: '00000000-0000-4000-8000-000000000001',
+        startDate: planned.startDate, title: planned.title, category: planned.category,
+        place: planned.selectedLocation, maxParticipants: planned.maxParticipants,
+      });
+      assert.equal(createActivitySchema.safeParse(callable).success, true, `Idea ${idea.id} must remain compatible with the server schema`);
+    }
+  }
+  console.log('✅ activity ideas require a meeting point and preserve localized titles/categories');
 
   // Test 3: Auto category override in specific place mode
   console.log('Running testCategoryAutoOverride...');
