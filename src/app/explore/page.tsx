@@ -334,12 +334,12 @@ export default function ExplorePage() {
     const [dragX, setDragX] = useState(0);
 
     return (
-        <div className="flex h-full w-full pb-bottom-nav-safe lg:pb-0 flex-col lg:flex-row bg-[#fdfdfd] dark:bg-neutral-950 overflow-hidden font-jakarta">
+        <div className="flex h-full w-full pb-bottom-nav-safe lg:pb-0 flex-col lg:flex-row bg-background overflow-hidden font-jakarta">
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:flex w-[320px] shrink-0 border-r border-slate-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 flex-col overflow-y-auto">
+            <aside className="hidden lg:flex w-[320px] shrink-0 border-r border-border bg-card flex-col overflow-y-auto">
                 <div className="p-8 space-y-12">
                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-2xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20 shrink-0">
+                        <div className="h-10 w-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shrink-0">
                             <Compass className="h-6 w-6 text-white" />
                         </div>
                         <h1 className="truncate">{language === 'de' ? 'Erkunden' : 'Explore'}</h1>
@@ -350,7 +350,7 @@ export default function ExplorePage() {
                             <h3 className="truncate">Activa Radar</h3>
                             <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
                         </div>
-                        <div className="bg-slate-50/50 dark:bg-neutral-800/30 rounded-[2.25rem] p-5 border border-slate-50 dark:border-neutral-800/50">
+                        <div className="bg-muted/50 rounded-[2.25rem] p-5 border border-border">
                             <ProximityRadarView />
                         </div>
                     </div>
@@ -379,7 +379,7 @@ export default function ExplorePage() {
                     title={
                         <span className="flex items-center gap-2">
                             {language === 'de' ? 'Aktivitäten' : 'Activities'}
-                            <Compass className="h-5 w-5 text-orange-500 shrink-0" />
+                            <Compass className="h-5 w-5 text-primary dark:text-emerald-400 shrink-0" />
                         </span>
                     }
                 />
@@ -398,9 +398,9 @@ export default function ExplorePage() {
                          <div className="flex items-center justify-between px-1">
                             <DropdownMenu>
                                 <DropdownMenuTrigger className="outline-none">
-                                    <div className="flex items-center gap-2 bg-slate-100 dark:bg-neutral-900 rounded-full py-1.5 px-3 active:scale-95 transition-transform">
-                                        <MapPin className="h-2.5 w-2.5 text-rose-400" />
-                                        <span className="text-[10px] font-extrabold text-slate-600">{radiusKm === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `< ${radiusKm} km`}</span>
+                                    <div className="flex items-center gap-2 bg-muted rounded-full py-1.5 px-3 active:scale-95 transition-transform">
+                                        <MapPin className="h-2.5 w-2.5 text-primary dark:text-emerald-400" />
+                                        <span className="text-[10px] font-extrabold text-foreground">{radiusKm === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `< ${radiusKm} km`}</span>
                                         <ChevronDown className="h-3 w-3 text-slate-400" />
                                     </div>
                                 </DropdownMenuTrigger>
@@ -435,7 +435,7 @@ export default function ExplorePage() {
                                     <div className="relative w-12 h-12 animate-pulse">
                                         <Image src="/assets/logo-heart.png" alt="Activa" fill sizes="48px" className="object-contain" />
                                     </div>
-                                    <p className="mt-4 text-sm font-semibold text-slate-500 dark:text-neutral-400">
+                                    <p className="mt-4 text-sm font-semibold text-muted-foreground">
                                         {language === 'de' ? 'Standort wird ermittelt...' : 'Determining location...'}
                                     </p>
                                 </div>
@@ -448,10 +448,10 @@ export default function ExplorePage() {
                                     <div className="w-24 h-24 bg-rose-50 dark:bg-rose-950/20 rounded-full flex items-center justify-center mb-6 shadow-sm">
                                         <MapPin className="h-10 w-10 text-rose-500" strokeWidth={1.5} />
                                     </div>
-                                    <h3 className="text-xl font-black mb-2 text-slate-800 dark:text-neutral-200">
+                                    <h3 className="text-xl font-black mb-2 text-foreground">
                                         {language === 'de' ? 'Standort erforderlich' : 'Location Required'}
                                     </h3>
-                                    <p className="text-sm text-slate-500 dark:text-neutral-400 mb-8 max-w-[260px]">
+                                    <p className="text-sm text-muted-foreground mb-8 max-w-[260px]">
                                         {language === 'de' 
                                           ? 'Activa benötigt deinen Standort, um spannende Aktivitäten in deiner Nähe anzuzeigen.' 
                                           : 'Activa requires your location to display exciting activities near you.'}
@@ -460,7 +460,7 @@ export default function ExplorePage() {
                                     <div className="w-full max-w-[240px] space-y-3">
                                         <Button 
                                             onClick={() => setIsLocationSearchOpen(true)}
-                                            className="bg-primary hover:bg-primary/95 text-white rounded-full px-8 py-5 h-auto text-sm font-bold shadow-lg shadow-emerald-200/50 w-full"
+                                            className="h-12 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90 w-full"
                                         >
                                             {language === 'de' ? 'Ort manuell suchen' : 'Search location manually'}
                                         </Button>
@@ -503,7 +503,7 @@ export default function ExplorePage() {
                                                   }
                                               }}
                                               className={cn(
-                                                "absolute inset-0 bg-white dark:bg-neutral-900 rounded-[2rem] sm:rounded-[2.5rem] elevation-high border-none overflow-hidden flex flex-col transition-shadow duration-300",
+                                                "absolute inset-0 bg-card rounded-[2rem] sm:rounded-[2.5rem] elevation-high border-none overflow-hidden flex flex-col transition-shadow duration-300",
                                                 isTopCard && "cursor-pointer select-none"
                                               )}
                                               style={{ 
@@ -559,7 +559,7 @@ export default function ExplorePage() {
                                                       </motion.div>
                                                   </>
                                               )}
-                                              <div className={cn("flex-1 flex flex-col bg-white dark:bg-neutral-900", !isTopCard && "pointer-events-none")}>
+                                              <div className={cn("flex-1 flex flex-col bg-card", !isTopCard && "pointer-events-none")}>
                                               <div className={cn("h-[62%] w-full relative overflow-hidden bg-slate-200", !isTopCard && "pointer-events-none")}>
                                                       {card.imageUrl ? (
                                                           <img 
@@ -609,21 +609,21 @@ export default function ExplorePage() {
                                                       </div>
                                                   </div>
 
-                                                  <div className="flex-1 p-6 flex flex-col justify-around bg-white dark:bg-neutral-900">
+                                                  <div className="flex-1 p-6 flex flex-col justify-around bg-card">
                                                       <div className="grid grid-cols-3 gap-2 px-1">
-                                                           <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
+                                                           <div className="bg-muted rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-border">
                                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Wann' : 'When'}</span>
-                                                               <span className="text-[11px] font-black text-[#0f172a] dark:text-neutral-200">
+                                                               <span className="text-[11px] font-black text-foreground">
                                                                    {format(card.activityDate.toDate(), language === 'de' ? "eee, d. MMM" : "eee, MMM d", { locale: language === 'de' ? de : enUS })}
                                                                </span>
                                                            </div>
-                                                           <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
+                                                           <div className="bg-muted rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-border">
                                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Uhrzeit' : 'Time'}</span>
-                                                               <span className="text-[11px] font-black text-[#0f172a] dark:text-neutral-200">{language === 'de' ? 'Flexibel' : 'Flexible'}</span>
+                                                               <span className="text-[11px] font-black text-foreground">{language === 'de' ? 'Flexibel' : 'Flexible'}</span>
                                                            </div>
-                                                           <div className="bg-slate-50 dark:bg-neutral-800/80 rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-slate-100 dark:border-neutral-800">
+                                                           <div className="bg-muted rounded-2xl p-2.5 flex flex-col items-center justify-center text-center border border-border">
                                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{language === 'de' ? 'Plätze' : 'Spots'}</span>
-                                                               <span className="text-emerald-600">
+                                                               <span className="text-primary dark:text-emerald-400">
                                                                    {(card.maxParticipants || 10) - card.participantIds.length} {language === 'de' ? 'frei' : 'free'}
                                                                </span>
                                                            </div>
@@ -685,16 +685,16 @@ export default function ExplorePage() {
                                       animate={{ opacity: 1, scale: 1 }}
                                       className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center"
                                   >
-                                      <div className="w-24 h-24 bg-orange-50 dark:bg-neutral-800 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                                          <PlusCircle className="h-10 w-10 text-orange-500" strokeWidth={1.5} />
+                                      <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                                          <PlusCircle className="h-10 w-10 text-primary dark:text-emerald-400" strokeWidth={1.5} />
                                       </div>
                                       <h3 className="">{language === 'de' ? 'Alles entdeckt!' : 'Everything discovered!'}</h3>
-                                      <p className="text-sm text-slate-500 dark:text-neutral-400 mb-8 max-w-[240px]">
+                                      <p className="text-sm text-muted-foreground mb-8 max-w-[240px]">
                                           {language === 'de' ? 'Aktuell gibt es keine weiteren Aktivitäten in deiner Nähe. Starte doch einfach selbst etwas!' : 'Currently there are no more activities near you. Why not start something yourself!'}
                                       </p>
                                       <Button 
                                           onClick={() => setActivityModalPlace('custom')}
-                                          className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-8 py-6 h-auto text-base font-bold shadow-lg shadow-orange-500/20 active:scale-95 transition-all w-full max-w-[200px]"
+                                          className="h-12 gap-2 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-95 transition-colors dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400 w-full max-w-[200px]"
                                       >
                                           <Plus className="h-5 w-5 mr-2" />
                                           {language === 'de' ? 'Erstellen' : 'Create'}
@@ -720,7 +720,7 @@ export default function ExplorePage() {
                                 <motion.div 
                                     initial={{ y: 20, opacity: 0 }}
                                     animate={{ y: 0, opacity: 1 }}
-                                    className="bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl px-5 py-2 rounded-[2.5rem] flex items-center gap-5 shadow-[0_15px_35px_rgba(0,0,0,0.25)] border border-white/20 dark:border-neutral-800 pointer-events-auto"
+                                    className="bg-card/95 backdrop-blur-xl px-5 py-2 rounded-[2.5rem] flex items-center gap-5 shadow-[0_15px_35px_rgba(0,0,0,0.25)] border border-border pointer-events-auto"
                                 >
                                     <motion.button 
                                         whileHover={{ scale: 1.15 }}
@@ -740,7 +740,7 @@ export default function ExplorePage() {
                                             if (topCard) setSelectedActivity(topCard);
                                         }}
                                         aria-label={language === 'de' ? 'Details anzeigen' : 'Show details'}
-                                        className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-slate-100 dark:bg-neutral-800 text-slate-400 flex items-center justify-center transition-colors hover:bg-slate-200"
+                                        className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted text-slate-400 flex items-center justify-center transition-colors hover:bg-slate-200"
                                     >
                                         <Info className="h-4 w-4 sm:h-5 sm:w-5 stroke-[3]"/>
                                     </motion.button>
@@ -750,7 +750,7 @@ export default function ExplorePage() {
                                         whileTap={{ scale: 0.9 }}
                                         onClick={() => handleSwipe('right')}
                                         aria-label={language === 'de' ? 'Aktivität beitreten' : 'Join activity'}
-                                        className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-[0_10px_25px_rgba(16,185,129,0.3)] transition-all hover:bg-emerald-600 active:shadow-none"
+                                        className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-primary text-primary-foreground dark:bg-emerald-500 dark:text-emerald-950 flex items-center justify-center shadow-sm transition-colors hover:bg-primary/90 dark:hover:bg-emerald-400 active:shadow-none"
                                     >
                                         <Check className="h-6 w-6 sm:h-7 sm:w-7 stroke-[3]"/>
                                     </motion.button>
@@ -762,15 +762,15 @@ export default function ExplorePage() {
             </main>
 
             {/* Desktop Right Preview Sidebar */}
-            <aside className="hidden xl:flex w-[340px] 2xl:w-[380px] shrink-0 border-l border-slate-100 dark:border-neutral-900 bg-white dark:bg-neutral-900 flex-col overflow-y-auto p-6 gap-6">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-neutral-800">
+            <aside className="hidden xl:flex w-[340px] 2xl:w-[380px] shrink-0 border-l border-border bg-card flex-col overflow-y-auto p-6 gap-6">
+                <div className="flex items-center justify-between pb-3 border-b border-border">
                     <div className="flex items-center gap-2">
                         <MapPin className="h-5 w-5 text-rose-500" />
-                        <h3 className="font-black text-slate-900 dark:text-neutral-100 text-sm">
+                        <h3 className="font-black text-foreground text-sm">
                             {language === 'de' ? 'Vorschau & Ort' : 'Preview & Location'}
                         </h3>
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-muted px-2 py-0.5 rounded-full">
                         {language === 'de' ? 'Top Karte' : 'Top Card'}
                     </span>
                 </div>
@@ -779,9 +779,9 @@ export default function ExplorePage() {
                     const topCard = cards[cards.length - 1];
                     if (!topCard) {
                         return (
-                            <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-neutral-800/30 rounded-3xl border border-slate-100 dark:border-neutral-800/50 gap-3 my-auto">
+                            <div className="flex flex-col items-center justify-center p-8 text-center bg-muted/50 rounded-3xl border border-border gap-3 my-auto">
                                 <Compass className="h-10 w-10 text-slate-300 dark:text-neutral-600" />
-                                <p className="text-xs font-bold text-slate-400 dark:text-neutral-500">
+                                <p className="text-xs font-bold text-muted-foreground">
                                     {language === 'de' ? 'Keine weiteren Karten zum Anzeigen.' : 'No more cards to preview.'}
                                 </p>
                             </div>
@@ -795,7 +795,7 @@ export default function ExplorePage() {
                     return (
                         <div className="flex flex-col gap-5">
                             {/* Map Preview Embed */}
-                            <div className="relative h-44 w-full rounded-3xl overflow-hidden border border-slate-100 dark:border-neutral-800 bg-slate-100 dark:bg-neutral-800 group shadow-sm">
+                            <div className="relative h-44 w-full rounded-3xl overflow-hidden border border-border bg-muted group shadow-sm">
                                 {topCard.lat && topCard.lon ? (
                                     <iframe
                                         width="100%"
@@ -816,7 +816,7 @@ export default function ExplorePage() {
                                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(topCard.placeAddress || topCard.placeName || '')}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="absolute bottom-3 left-3 right-3 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-3 py-2 rounded-2xl text-xs font-bold text-slate-800 dark:text-neutral-200 flex items-center justify-between shadow-md hover:bg-white dark:hover:bg-neutral-900 transition-all"
+                                    className="absolute bottom-3 left-3 right-3 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-3 py-2 rounded-2xl text-xs font-bold text-foreground flex items-center justify-between shadow-md hover:bg-white dark:hover:bg-neutral-900 transition-all"
                                 >
                                     <span className="truncate pr-2">{topCard.placeAddress || topCard.placeName}</span>
                                     <ExternalLink className="h-3.5 w-3.5 text-rose-500 shrink-0" />
@@ -824,7 +824,7 @@ export default function ExplorePage() {
                             </div>
 
                             {/* Card Quick Info */}
-                            <div className="bg-slate-50/70 dark:bg-neutral-800/40 rounded-3xl p-5 border border-slate-100 dark:border-neutral-800/60 flex flex-col gap-4">
+                            <div className="bg-muted/50 rounded-3xl p-5 border border-border flex flex-col gap-4">
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className="bg-amber-400 text-white text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase">
@@ -836,26 +836,26 @@ export default function ExplorePage() {
                                             </span>
                                         )}
                                     </div>
-                                    <h4 className="font-black text-base text-slate-900 dark:text-neutral-100 leading-snug">
+                                    <h4 className="font-black text-base text-foreground leading-snug">
                                         {topCard.title || topCard.placeName}
                                     </h4>
                                     {topCard.placeAddress && (
-                                        <p className="text-xs font-bold text-slate-400 dark:text-neutral-400 truncate mt-0.5">
+                                        <p className="text-xs font-bold text-muted-foreground truncate mt-0.5">
                                             {topCard.placeAddress}
                                         </p>
                                     )}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-                                    <div className="bg-white dark:bg-neutral-900 p-2.5 rounded-2xl border border-slate-100 dark:border-neutral-800/80 flex flex-col">
+                                    <div className="bg-card p-2.5 rounded-2xl border border-border flex flex-col">
                                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{language === 'de' ? 'Datum' : 'Date'}</span>
-                                        <span className="text-slate-800 dark:text-neutral-200 mt-0.5 truncate">
+                                        <span className="text-foreground mt-0.5 truncate">
                                             {format(topCard.activityDate.toDate(), language === 'de' ? "eee, d. MMM" : "eee, MMM d", { locale: language === 'de' ? de : enUS })}
                                         </span>
                                     </div>
-                                    <div className="bg-white dark:bg-neutral-900 p-2.5 rounded-2xl border border-slate-100 dark:border-neutral-800/80 flex flex-col">
+                                    <div className="bg-card p-2.5 rounded-2xl border border-border flex flex-col">
                                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{language === 'de' ? 'Freie Plätze' : 'Free spots'}</span>
-                                        <span className="text-emerald-600 mt-0.5 font-black">
+                                        <span className="text-primary dark:text-emerald-400 mt-0.5 font-black">
                                             {(topCard.maxParticipants || 10) - topCard.participantIds.length} {language === 'de' ? 'frei' : 'free'}
                                         </span>
                                     </div>
@@ -863,7 +863,7 @@ export default function ExplorePage() {
 
                                 <Button
                                     onClick={() => setSelectedActivity(topCard)}
-                                    className="w-full rounded-2xl bg-slate-900 dark:bg-neutral-100 hover:bg-slate-800 dark:hover:bg-neutral-200 text-white dark:text-slate-900 font-extrabold text-xs py-3.5 h-auto transition-all shadow-md active:scale-95"
+                                    className="w-full rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400 font-extrabold text-xs py-3.5 h-auto transition-all shadow-md active:scale-95"
                                 >
                                     <Info className="h-4 w-4 mr-2" />
                                     {language === 'de' ? 'Details öffnen' : 'Open Details'}

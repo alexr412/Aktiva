@@ -158,20 +158,15 @@ export default function MapPage() {
           onToggleFavorite={handleToggleFavorite}
         />
 
-        {/* Green Create Activity Floating Action Button (+ FAB) */}
-        <div className="fixed bottom-20 right-4 lg:bottom-8 lg:right-8 z-40 animate-in slide-in-from-bottom-4 fade-in duration-300">
+        {/* Create Activity Floating Action Button */}
+        <div className="fixed bottom-[calc(var(--bottom-nav-height)+env(safe-area-inset-bottom,0px)+16px)] right-4 z-40 sm:right-6 lg:bottom-6">
           <Button
-            variant="ghost"
-            size="icon"
-            className="
-              relative h-14 w-14 overflow-hidden rounded-full
-              bg-primary text-white shadow-xl hover:bg-emerald-600
-              border border-white/40 active:scale-95 transition-transform
-            "
+            className="h-14 w-14 gap-2 rounded-2xl border-0 bg-primary p-0 text-primary-foreground shadow-[0_4px_16px_rgba(0,0,0,0.16)] transition-[background-color,transform] duration-150 hover:bg-primary/90 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400 motion-reduce:transform-none motion-reduce:transition-none lg:h-12 lg:w-auto lg:px-4"
             onClick={() => setActivityModalPlace('custom')}
             aria-label={language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
           >
-            <Plus className="relative z-10 h-7 w-7 text-white" strokeWidth={2.5} />
+            <Plus className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
+            <span className="hidden text-sm font-semibold lg:inline">{language === 'de' ? 'Erstellen' : 'Create'}</span>
           </Button>
         </div>
       </main>
