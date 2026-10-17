@@ -53,6 +53,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PlaceCardSkeleton, ActivityCardSkeleton, FeaturedActivityCardSkeleton } from '@/components/activa/card-skeletons';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
 import { ActivityIdeas } from '@/components/activa/activity-ideas';
+import spotStyles from '@/components/activa/spot-card.module.css';
 import type { ActivityIdea } from '@/lib/activity-ideas';
 import { AppTutorialProvider, useAppTutorial } from '@/lib/tutorial/tutorial-context';
 import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
@@ -1867,7 +1868,7 @@ function HomeContent() {
             role="region" 
             aria-label={translateAppString('loading.results', language)}
           >
-            <div className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className={spotStyles.feedGrid}>
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
@@ -1938,7 +1939,7 @@ function HomeContent() {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
           }
           return (
-            <div className="p-3 sm:p-6 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className={spotStyles.feedGrid}>
               {finalFeedPlaces.map(place => {
                 const live = placesMetaMap[place.id];
                 const placeObj = place;
@@ -2019,7 +2020,7 @@ function HomeContent() {
         });
 
         return (
-          <div className="p-3 sm:p-6 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className={spotStyles.feedGrid}>
             {featuredPlace && (
               <div className="h-full min-w-0">
                 {(() => {
@@ -2105,7 +2106,7 @@ function HomeContent() {
           </div>
           {renderList()}
           {isFetchingNextPage && !isReachingEnd && (
-            <div className={cn('p-3 sm:p-6 grid grid-cols-2 gap-3', isCommunityCategory ? 'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 sm:gap-6' : 'lg:grid-cols-3 2xl:grid-cols-4 sm:gap-4')}>
+            <div className={isCommunityCategory ? 'p-3 sm:p-6 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 sm:gap-6' : spotStyles.feedGrid}>
               {isCommunityCategory ? <ActivityCardSkeleton /> : <PlaceCardSkeleton />}
             </div>
           )}
@@ -2124,11 +2125,9 @@ function HomeContent() {
 
   return (
     <>
-      <div className="flex flex-col h-full bg-transparent relative">
-        <div className="hidden dark:block absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
-        <div className="hidden dark:block absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className={cn(spotStyles.discovery, 'flex flex-col h-full relative')}>
         <AppHeader
-          className="!pb-2"
+          className={cn(spotStyles.discoveryHeader, '!pb-2')}
           headerIdentityTutorialId="header-profile-identity"
           headerTutorialId="header-feed"
           icon={
@@ -2221,6 +2220,7 @@ function HomeContent() {
             {/* Desktop Layout (>= 768px): Unified Desktop Search Bar */}
             <div className="hidden md:block px-4 sm:px-6">
               <DesktopSearchBar
+                className={spotStyles.searchBar}
                 cityName={cityName}
                 isPlanningLocation={planningState.isPlanning}
                 onOpenLocationDialog={() => setIsLocationSearchOpen(true)}
@@ -2272,7 +2272,11 @@ function HomeContent() {
           </div>
         </AppHeader>
         <main className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
-          <div className="max-w-[1536px] mx-auto w-full pt-2">
+          <div className="max-w-[1280px] mx-auto w-full pt-2">
+            {!submittedSearchQuery && !isFavoritesCategory && !isMySpotsCategory && !isCommunityCategory && !isOpenRoomsMode && <div className={spotStyles.intro}>
+              <h2>{language === 'de' ? 'Was machen wir zusammen?' : 'What shall we do together?'}</h2>
+              <p>{language === 'de' ? 'Entdecke schöne Orte und sieh, was dort schon geplant ist. Oder lade selbst andere ein.' : 'Discover lovely places and see what people are planning. Or invite others yourself.'}</p>
+            </div>}
             <div className="px-3 sm:px-6 mb-3 sm:mb-4" data-tutorial-id="feed-intro">
                 {renderPulseHero()}
               </div>
