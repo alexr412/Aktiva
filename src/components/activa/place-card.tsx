@@ -79,7 +79,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
           </div>
           {detail && <p className={styles.meta}>{place.openingHours ? <Clock aria-hidden="true" /> : <MapPin aria-hidden="true" />}<span>{detail}</span></p>}
           {(featured || isEntityBoosted(place) || (rating !== undefined && rating > 0) || role === 'admin') && <div className={styles.admin}>
-            {(featured || isEntityBoosted(place)) && <span className="inline-flex items-center gap-1 text-[#2d6b50]"><Sparkles className="h-3 w-3" aria-hidden="true" />{german ? 'Empfohlen' : 'Recommended'}</span>}
+            {(featured || isEntityBoosted(place)) && <span className={styles.recommended}><Sparkles className="h-3 w-3" aria-hidden="true" />{german ? 'Empfohlen' : 'Recommended'}</span>}
             {rating !== undefined && rating > 0 && <span className="inline-flex items-center gap-1"><Star className="h-3 w-3" aria-hidden="true" />{rating.toFixed(1)}</span>}
             {role === 'admin' && place.relevanceScore !== undefined && <span>Score {place.relevanceScore.toFixed(1)}</span>}
           </div>}
