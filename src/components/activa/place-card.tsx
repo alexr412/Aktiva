@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Activity, Place } from '@/lib/types';
-import { Plus, Bookmark, MoreHorizontal, Info, ThumbsUp, ThumbsDown, Sparkles, Star, MapPin, Clock, ArrowRight, X } from 'lucide-react';
+import { Plus, Bookmark, MoreHorizontal, Info, ThumbsUp, ThumbsDown, Sparkles, Star, MapPin, Clock, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatOpeningHours } from '@/lib/tag-parser';
@@ -42,7 +42,6 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
   if (!place) return null;
   const german = language === 'de';
   const primaryStyle = getPrimaryIconData(place, language);
-  const hasActivities = activityCount > 0 || Boolean(activityPreview);
   const showWeights = role === 'admin' || role === 'supporter';
   const rating = place.rating || (place as Place & { averageRating?: number }).averageRating;
   const vote = (type: 'up' | 'down') => onVote(userVote === type ? 'none' : type);
@@ -67,32 +66,30 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
         <div className={styles.art}>
           <SpotIllustration place={place} />
           <span className={styles.categoryBadge}>{primaryStyle.label}</span>
+          {(featured || isEntityBoosted(place) || (rating !== undefined && rating > 0) || role === 'admin') && <div className={styles.imageMeta}>
+            {(featured || isEntityBoosted(place)) && <span className={styles.recommended}><Sparkles className="h-3 w-3" aria-hidden="true" />{german ? 'Empfohlen' : 'Recommended'}</span>}
+            {rating !== undefined && rating > 0 && <span className="inline-flex items-center gap-1"><Star className="h-3 w-3" aria-hidden="true" />{rating.toFixed(1)}</span>}
+            {role === 'admin' && place.relevanceScore !== undefined && <span>Score {place.relevanceScore.toFixed(1)}</span>}
+          </div>}
         </div>
         <button type="button" className={styles.bookmark} aria-label={german ? (isFavorite ? `${place.name} nicht mehr merken` : `${place.name} merken`) : (isFavorite ? `Unsave ${place.name}` : `Save ${place.name}`)} aria-pressed={isFavorite}
           onClick={onBookmarkToggle}><Bookmark className={isFavorite ? 'fill-current' : undefined} /></button>
         <button type="button" className={styles.more} aria-label={german ? `Optionen für ${place.name}` : `Options for ${place.name}`} aria-haspopup="dialog" onClick={() => setMenuOpen(true)}><MoreHorizontal /></button>
         <div className={styles.content}>
           <div className={styles.identity}>
-            <h3 className={styles.name}><button type="button" onClick={onClick}>{place.name || (german ? 'Unbekannter Ort' : 'Unknown place')}</button></h3>
-            <span className={styles.category}>{primaryStyle.label}</span>
-            {place.distance !== undefined && <span className={styles.distance}><MapPin aria-hidden="true" />{formatDistance(place.distance)}</span>}
+            <h3 className={styles.name}><button type="button" title={place.name} onClick={onClick}>{place.name || (german ? 'Unbekannter Ort' : 'Unknown place')}</button></h3>
           </div>
-          {detail && <p className={styles.meta}>{place.openingHours ? <Clock aria-hidden="true" /> : <MapPin aria-hidden="true" />}<span>{detail}</span></p>}
-          {(featured || isEntityBoosted(place) || (rating !== undefined && rating > 0) || role === 'admin') && <div className={styles.admin}>
-            {(featured || isEntityBoosted(place)) && <span className={styles.recommended}><Sparkles className="h-3 w-3" aria-hidden="true" />{german ? 'Empfohlen' : 'Recommended'}</span>}
-            {rating !== undefined && rating > 0 && <span className="inline-flex items-center gap-1"><Star className="h-3 w-3" aria-hidden="true" />{rating.toFixed(1)}</span>}
-            {role === 'admin' && place.relevanceScore !== undefined && <span>Score {place.relevanceScore.toFixed(1)}</span>}
-          </div>}
+          <p className={styles.meta}>
+            {place.distance !== undefined && <span className={styles.distance}><MapPin aria-hidden="true" />{formatDistance(place.distance)}</span>}
+            {detail && <span className={styles.detail} title={detail}>{place.openingHours && <Clock aria-hidden="true" />}<span>{detail}</span></span>}
+          </p>
           <PlaceActivityPreview activity={activityPreview} activityCount={activityCount} loading={activityPreviewLoading} language={language} onClick={onClick} onCreate={plan} appearance="warm" />
         </div>
         <div className={styles.actions}>
-          <button type="button" className={styles.primary} onClick={hasActivities ? onClick : plan} data-tutorial-id={hasActivities ? undefined : 'spot-card-create'}
-            aria-label={german ? (hasActivities ? `Aktivitäten bei ${place.name} ansehen` : `Aktivität bei ${place.name} planen`) : (hasActivities ? `View activities at ${place.name}` : `Plan an activity at ${place.name}`)}>
-            {!hasActivities && <Plus aria-hidden="true" />}
-            {german ? (hasActivities ? (activityCount > 1 ? 'Aktivitäten ansehen' : 'Aktivität ansehen') : 'Treffen planen') : (hasActivities ? 'View activities' : 'Plan a meetup')}
-            {hasActivities && <ArrowRight aria-hidden="true" />}
+          <button type="button" className={styles.primary} onClick={plan} data-tutorial-id="spot-card-create"
+            aria-label={german ? `Treffen planen: ${place.name}` : `Plan a meetup: ${place.name}`}>
+            <Plus aria-hidden="true" />{german ? 'Treffen planen' : 'Plan a meetup'}
           </button>
-          {hasActivities && <button type="button" className={styles.secondary} onClick={plan} data-tutorial-id="spot-card-create"><Plus aria-hidden="true" />{german ? 'Eigenes Treffen planen' : 'Plan your own meetup'}</button>}
         </div>
         <div className={styles.voteFooter}><span>{german ? 'Passt der Ort für dich?' : 'Is this your kind of place?'}</span>{voteButtons()}</div>
       </article>

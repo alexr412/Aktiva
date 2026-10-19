@@ -1,6 +1,6 @@
 'use client';
 
-import { Users, Plus, Loader2 } from 'lucide-react';
+import { Users, Plus, Loader2, ArrowRight } from 'lucide-react';
 import type { Activity } from '@/lib/types';
 import { getPlaceActivityPreview } from './place-activity-preview-model';
 import styles from './spot-card.module.css';
@@ -23,14 +23,18 @@ export function PlaceActivityPreview({ activity, activityCount, language, onClic
   if (appearance === 'warm') {
     const present = Boolean(preview) || hasActivities;
     const waiting = loading && !present;
-    return <button type="button" onClick={present ? onClick : onCreate} className={`${styles.preview} ${present ? '' : styles.previewEmpty}`} aria-busy={waiting || undefined}>
+    const count = Math.max(activityCount, preview ? 1 : 0);
+    const title = present ? (german ? `${count} ${count === 1 ? 'Aktivität ansehen' : 'Aktivitäten ansehen'}` : `View ${count} ${count === 1 ? 'activity' : 'activities'}`) : waiting ? (german ? 'Aktivitäten werden geladen …' : 'Loading activities …') : (german ? 'Wer kommt mit?' : 'Who’s joining?');
+    const subtitle = preview ? `${preview.title} · ${preview.schedule} · ${preview.availability}` : present ? (german ? 'Entdecke die geplanten Treffen.' : 'Discover the planned meetups.') : waiting ? (german ? 'Du kannst schon ein Treffen planen.' : 'You can already plan a meetup.') : (german ? 'Starte ein Treffen.' : 'Start a meetup.');
+    return <button type="button" onClick={present ? onClick : onCreate} className={`${styles.preview} ${present ? '' : styles.previewEmpty}`} aria-busy={waiting || undefined} aria-label={`${title}: ${subtitle}`} title={subtitle}>
       <span className={styles.avatars} aria-hidden="true">
         {present ? (preview?.initials.length ? preview.initials.map((initials, index) => <span className={styles.avatar} key={index}>{initials}</span>) : <Users className="h-6 w-6" />) : waiting ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Plus className="h-5 w-5" />}
       </span>
       <span className="min-w-0 flex-1">
-        <span className={styles.previewTitle}>{preview?.title || (present ? (german ? `${activityCount} ${activityCount === 1 ? 'Aktivität geplant' : 'Aktivitäten geplant'}` : `${activityCount} ${activityCount === 1 ? 'activity' : 'activities'}`) : waiting ? (german ? 'Aktivitäten werden geladen …' : 'Loading activities …') : (german ? 'Noch ruhig hier' : 'Quiet here for now'))}</span>
-        <span className={styles.previewDetails}>{preview ? `${preview.schedule} · ${preview.availability}` : present ? (german ? 'Schau, was hier gemeinsam geplant ist.' : 'See what people are planning here.') : waiting ? (german ? 'Du kannst schon ein eigenes Treffen planen.' : 'You can already plan your own meetup.') : (german ? 'Mach den Anfang und lade andere ein.' : 'Make the first move and invite others.')}</span>
+        <span className={styles.previewTitle}>{present ? (german ? `${count} ${count === 1 ? 'Aktivität' : 'Aktivitäten'}` : `${count} ${count === 1 ? 'activity' : 'activities'}`) : title}</span>
+        <span className={styles.previewDetails}>{subtitle}</span>
       </span>
+      {present && <ArrowRight className={styles.previewArrow} aria-hidden="true" />}
     </button>;
   }
   return (
