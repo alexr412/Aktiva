@@ -3,7 +3,7 @@ import type { Place } from '@/lib/types';
 /** Only chooses artwork; it does not change the place's category or ranking. */
 export function getSpotIllustrationKind(place: Pick<Place, 'name' | 'categories'>) {
   const text = `${place.name || ''} ${(place.categories || []).join(' ')}`.toLowerCase();
-  if (/minigolf|mini_golf/.test(text)) return 'minigolf';
+  if (/minigolf|mini_golf|miniature_golf|adventure golf/.test(text)) return 'minigolf';
   if (/bowling|kegel/.test(text)) return 'bowling';
   if (/nightclub|nachtclub|disco|karaoke|kühlhouse|kuehlhouse/.test(text)) return 'music';
   if (/zoo|animal|tierpark|tiergehege/.test(text)) return /meer|aquarium/.test(text) ? 'seal' : 'deer';
