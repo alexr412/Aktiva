@@ -2,14 +2,15 @@
 
 import { useState } from 'react';
 import type { Activity, Place } from '@/lib/types';
-import { Plus, Bookmark, MoreHorizontal, Info, ThumbsUp, ThumbsDown, Sparkles, Star, MapPin, Clock, X } from 'lucide-react';
+import { Plus, Bookmark, MoreHorizontal, Info, ThumbsUp, ThumbsDown, Sparkles, Star, MapPin, Clock, X, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatOpeningHours } from '@/lib/tag-parser';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { isEntityBoosted } from '@/lib/ranking';
 import { PlaceActivityPreview } from './place-activity-preview';
-import { SpotIllustration } from './spot-illustration';
+import { SpotCover } from './spot-cover';
+import { getSpotPhoto } from '@/lib/spot-photos';
 import { useLanguage } from '@/hooks/use-language';
 import { formatDistance } from '@/lib/geo-utils';
 import styles from './spot-card.module.css';
@@ -41,6 +42,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
   const [menuOpen, setMenuOpen] = useState(false);
   if (!place) return null;
   const german = language === 'de';
+  const photo = getSpotPhoto(place);
   const primaryStyle = getPrimaryIconData(place, language);
   const showWeights = role === 'admin' || role === 'supporter';
   const rating = place.rating || (place as Place & { averageRating?: number }).averageRating;
@@ -64,7 +66,8 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
         if (!(event.target as HTMLElement).closest('button, a, input, [role="button"]') && !window.getSelection()?.toString()) onClick();
       }}>
         <div className={styles.art}>
-          <SpotIllustration place={place} />
+          <SpotCover place={place} photo={photo} german={german} />
+          {photo && <button type="button" className={styles.photoCredit} aria-label={german ? `Bildnachweis: ${photo.author}` : `Photo credit: ${photo.author}`} title={`${photo.author} · ${photo.license}`} onClick={() => setMenuOpen(true)}><Camera aria-hidden="true" /></button>}
           <span className={styles.categoryBadge}>{primaryStyle.label}</span>
           {(featured || isEntityBoosted(place) || (rating !== undefined && rating > 0) || role === 'admin') && <div className={styles.imageMeta}>
             {(featured || isEntityBoosted(place)) && <span className={styles.recommended}><Sparkles className="h-3 w-3" aria-hidden="true" />{german ? 'Empfohlen' : 'Recommended'}</span>}
@@ -97,13 +100,18 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
         <SheetContent side="bottom" className={cn(styles.menu, 'max-h-[85dvh] overflow-y-auto')} hideCloseButton>
           <button type="button" className={styles.menuClose} aria-label={german ? 'Schließen' : 'Close'} onClick={() => setMenuOpen(false)}><X /></button>
           <SheetHeader className={styles.menuHeader}>
-            <div className={styles.menuArt}><SpotIllustration place={place} /></div>
+            <div className={styles.menuArt}><SpotCover place={place} photo={photo} german={german} /></div>
             <div className="min-w-0 text-left"><SheetTitle>{place.name}</SheetTitle><SheetDescription>{primaryStyle.label}{place.distance !== undefined ? ` · ${formatDistance(place.distance)}` : ''}</SheetDescription></div>
           </SheetHeader>
           <button type="button" className={styles.menuAction} aria-pressed={isFavorite} onClick={onBookmarkToggle}><Bookmark className={isFavorite ? 'fill-current' : undefined} /><span><strong>{german ? (isFavorite ? 'Ort gemerkt' : 'Ort merken') : (isFavorite ? 'Place saved' : 'Save place')}</strong><small>{german ? (isFavorite ? 'Tippen zum Entfernen' : 'Für später aufheben') : (isFavorite ? 'Tap to remove' : 'Keep for later')}</small></span></button>
           <button type="button" className={styles.menuAction} onClick={() => { setMenuOpen(false); plan(); }}><Plus /><strong>{german ? 'Eigenes Treffen planen' : 'Plan your own meetup'}</strong></button>
           <button type="button" className={styles.menuAction} onClick={() => { setMenuOpen(false); onClick(); }}><Info /><strong>{german ? 'Details ansehen' : 'View details'}</strong></button>
           <div className={styles.menuRating}><p>{german ? 'Passt der Ort für dich?' : 'Is this your kind of place?'}</p><div className={styles.menuVotes}>{voteButtons(true)}</div></div>
+          {photo && <div className={styles.photoAttribution}>
+            <p><strong>{german ? 'Bildnachweis' : 'Photo credit'}</strong></p>
+            <p><a href={photo.sourceUrl} target="_blank" rel="noopener noreferrer">{photo.author} · Wikimedia Commons</a>{' · '}<a href={photo.licenseUrl} target="_blank" rel="noopener noreferrer">{photo.license}</a></p>
+            <p>{german ? 'Darstellung als Bildausschnitt.' : 'Displayed with cropping.'}{photo.kind === 'example' && (german ? ' Beispielfoto, zeigt nicht diesen Ort.' : ' Example photo, not this venue.')}</p>
+          </div>}
         </SheetContent>
       </Sheet>
     </>

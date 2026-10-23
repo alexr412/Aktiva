@@ -17,6 +17,13 @@
 .card:hover { box-shadow:0 12px 28px #423d3019; }
 .art { position:relative; height:100%; overflow:hidden; }
 .illustration { display:block; width:100%; height:100%; }
+.photo { object-fit:cover; }
+.photoCredit { position:absolute; right:8px; bottom:8px; z-index:1; display:grid; place-items:center; width:24px; height:24px; border-radius:7px; background:#172629cf; color:#fff; }
+.photoCredit svg { width:13px; height:13px; }
+.exampleLabel { position:absolute; bottom:8px; left:8px; max-width:calc(100% - 16px); padding:2px 5px; border-radius:5px; background:#172629df; color:#fff; font-size:10px; line-height:14px; }
+.photoAttribution { margin-top:18px; padding-top:14px; border-top:1px solid var(--spot-border); }
+.photoAttribution p { margin:0 0 5px; font-size:12px; line-height:18px; }
+.photoAttribution a { text-decoration:underline; text-underline-offset:2px; }
 .categoryBadge { position:absolute; top:12px; left:12px; max-width:calc(100% - 116px); padding:5px 10px; border-radius:100px; background:var(--spot-control); font-size:11px; font-weight:600; color:var(--spot-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .content { display:grid; grid-template-rows:42px 18px 52px; gap:8px; min-width:0; min-height:0; padding:12px 14px 0; }
 .identity { min-width:0; overflow:hidden; }
@@ -60,7 +67,7 @@
 .menuClose svg { width:22px; height:22px; }
 .menuHeader { display:flex; flex-direction:row; align-items:center; gap:13px; padding:10px 40px 18px 0; }
 .menuHeader > * { margin-top:0 !important; }
-.menuArt { width:64px; height:64px; border-radius:17px; overflow:hidden; flex-shrink:0; }
+.menuArt { position:relative; width:64px; height:64px; border-radius:17px; overflow:hidden; flex-shrink:0; }
 .menu h2 { color:var(--spot-ink); font-size:21px; }
 .card .name, .menu h2 { color:var(--spot-ink); }
 .menu p { color:var(--spot-muted); font-size:13px; }

@@ -1,0 +1,66 @@
+{
+  "retrievedAt": "2026-10-23T09:42:29.390Z",
+  "provider": "Wikimedia Commons",
+  "photos": [
+    {
+      "placeId": "511940ee2f02242140594062c69ebbc54a40f00102f9010f5cde010000000092030b5a6f6f20616d204d656572",
+      "placeName": "Zoo am Meer",
+      "kind": "venue",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/09/Ursus_maritimus_-_Zoo_am_Meer_-_Bremerhaven_01.jpg/960px-Ursus_maritimus_-_Zoo_am_Meer_-_Bremerhaven_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ursus_maritimus_-_Zoo_am_Meer_-_Bremerhaven_01.jpg",
+      "author": "H. Zell",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "capturedAt": "2022-07-02",
+      "objectPosition": "50% 45%"
+    },
+    {
+      "placeId": "5191898fb96b3621405957bf58620bc54a40f00102f9016de749070000000092030b42c3bc726765727061726b",
+      "placeName": "Bürgerpark",
+      "kind": "venue",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fc/B%C3%BCrgerpark_-_Bremerhaven_02.jpg/960px-B%C3%BCrgerpark_-_Bremerhaven_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:B%C3%BCrgerpark_-_Bremerhaven_02.jpg",
+      "author": "H. Zell",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "capturedAt": "2022-07-03",
+      "objectPosition": "50% 50%"
+    },
+    {
+      "placeId": "517096bee41d2621405919d7afac87c54a40f00102f90135459c02000000009203154b6c696d6168617573204272656d6572686176656e",
+      "placeName": "Klimahaus Bremerhaven",
+      "kind": "venue",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/Klimahaus_Bremerhaven_01.jpg/960px-Klimahaus_Bremerhaven_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Klimahaus_Bremerhaven_01.jpg",
+      "author": "H. Zell",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "capturedAt": "2022-06-29",
+      "objectPosition": "50% 50%"
+    },
+    {
+      "placeId": "5122499585df252140594db7f873ccc54a40f00102f901c825fe2b000000009203194465757473636865732041757377616e646572657268617573",
+      "placeName": "Deutsches Auswandererhaus",
+      "kind": "venue",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2d/Bremerhaven%2C_Deutsches_Auswandererhaus_--_2024_--_2240.jpg/960px-Bremerhaven%2C_Deutsches_Auswandererhaus_--_2024_--_2240.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bremerhaven,_Deutsches_Auswandererhaus_--_2024_--_2240.jpg",
+      "author": "Dietmar Rabich",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "capturedAt": "Taken on 31 August 2024, 15:57",
+      "objectPosition": "50% 50%"
+    },
+    {
+      "placeId": "514850fc187327214059c8efc8b326c54a40f00103f9015c14f6850200000092031c446575747363686573205363686966666661687274736d757365756d",
+      "placeName": "Deutsches Schifffahrtsmuseum",
+      "kind": "venue",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/Deutsches_Schiffahrtsmuseum.jpg/960px-Deutsches_Schiffahrtsmuseum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Deutsches_Schiffahrtsmuseum.jpg",
+      "author": "Uwe H. Friese",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "capturedAt": "17 December 2004 (date of upload to de:)",
+      "objectPosition": "50% 50%"
+    }
+  ]
+}
