@@ -92,6 +92,7 @@
   color-scheme:dark;
 }
 :global(.dark) .card { box-shadow:0 6px 20px #0002; }
+.mobileList { min-width:0; }
 @container (max-width:250px) {
   .categoryBadge { display:none; }
   .content { padding-left:10px; padding-right:10px; }
@@ -108,6 +109,37 @@
   .bookmark { right:56px; }
   .more { right:10px; }
   .skeletonBody { padding:10px; }
+}
+@media (max-width:767px) {
+  .mobileList .card { grid-template-columns:80px minmax(0,1fr); grid-template-rows:76px 32px; gap:6px 12px; height:136px; padding:10px; border-radius:14px; box-shadow:none; }
+  .mobileList .art { grid-column:1; grid-row:1 / 3; height:100%; border-radius:10px; }
+  .mobileList .categoryBadge { display:none; }
+  .mobileList .imageMeta { left:4px; bottom:4px; max-width:calc(100% - 8px); padding:4px 5px; font-size:9px; gap:4px; }
+  .mobileList .recommended { font-size:0; gap:0; }
+  .mobileList .recommended svg { width:13px; height:13px; }
+  .mobileList .content { grid-column:2; grid-row:1; grid-template-rows:36px 16px 20px; gap:2px; padding:0; }
+  .mobileList .name { font-size:15px; line-height:18px; letter-spacing:-.2px; }
+  .mobileList .name button { padding-right:32px; }
+  .mobileList .meta { gap:6px; font-size:10px; line-height:16px; }
+  .mobileList .distance { font-size:10px; }
+  .mobileList .meta svg { width:12px; height:12px; }
+  .mobileList .preview { height:20px; padding:0; border:0; border-radius:4px; gap:5px; background:transparent; color:var(--spot-green); }
+  .mobileList .previewEmpty { color:var(--spot-muted); }
+  .mobileList .previewTitle { font-size:11px; line-height:20px; }
+  .mobileList .previewDetails, .mobileList .avatars { display:none; }
+  .mobileList .previewArrow { width:14px; height:14px; }
+  .mobileList .actions { grid-column:2; grid-row:2; padding:0 40px 0 0; }
+  .mobileList .primary { width:auto; height:32px; padding:5px 10px; border-radius:8px; gap:5px; font-size:11px; }
+  .mobileList .primary svg { width:14px; height:14px; }
+  .mobileList .bookmark, .mobileList .more { right:10px; width:32px; height:32px; border:0; border-radius:8px; background:transparent; }
+  .mobileList .bookmark { top:10px; }
+  .mobileList .bookmark[aria-pressed=true] { color:var(--spot-green); }
+  .mobileList .more { top:auto; bottom:10px; }
+  .mobileList .bookmark svg, .mobileList .more svg { width:18px; height:18px; }
+  .mobileList .skeletonArt { grid-column:1; grid-row:1 / 3; height:100%; border-radius:10px; }
+  .mobileList .skeletonBody { grid-column:2; grid-row:1 / 3; padding:4px 0; }
+  .mobileList .skeletonLine { height:12px; margin-bottom:8px; }
+  .mobileList .skeletonPreview { height:32px; margin-top:14px; }
 }
 @media (forced-colors:active) { .card, .preview, .primary { border:1px solid ButtonText; } }
 @media (prefers-reduced-motion:reduce) { .card { transition:none; } }

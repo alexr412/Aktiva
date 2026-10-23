@@ -51,6 +51,7 @@ import {
 } from '@/lib/cache/places-cache';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlaceCardSkeleton, ActivityCardSkeleton, FeaturedActivityCardSkeleton } from '@/components/activa/card-skeletons';
+import spotStyles from '@/components/activa/spot-card.module.css';
 import { CreateActivityDialog } from '@/components/activa/create-activity-dialog';
 import { ActivityIdeas } from '@/components/activa/activity-ideas';
 import type { ActivityIdea } from '@/lib/activity-ideas';
@@ -1867,7 +1868,7 @@ function HomeContent() {
             role="region" 
             aria-label={translateAppString('loading.results', language)}
           >
-            <div className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className={cn(spotStyles.mobileList, 'grid auto-rows-auto grid-cols-1 gap-3 sm:gap-4 md:auto-rows-fr md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4')}>
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
               <PlaceCardSkeleton />
@@ -1938,7 +1939,7 @@ function HomeContent() {
             return <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center h-full"><div className="bg-primary/10 p-6 rounded-3xl"><Bookmark className="h-12 w-12 text-primary" /></div><h2 className="">{language === "de" ? "Noch keine Favoriten" : "No favorites yet"}</h2></div>;
           }
           return (
-            <div className="p-3 sm:p-6 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className={cn(spotStyles.mobileList, 'p-3 sm:p-6 grid auto-rows-auto grid-cols-1 gap-3 sm:gap-4 md:auto-rows-fr md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4')}>
               {finalFeedPlaces.map(place => {
                 const live = placesMetaMap[place.id];
                 const placeObj = place;
@@ -2019,7 +2020,7 @@ function HomeContent() {
         });
 
         return (
-          <div className="p-3 sm:p-6 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className={cn(spotStyles.mobileList, 'p-3 sm:p-6 grid auto-rows-auto grid-cols-1 gap-3 sm:gap-4 md:auto-rows-fr md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4')}>
             {featuredPlace && (
               <div className="h-full min-w-0">
                 {(() => {
@@ -2105,7 +2106,7 @@ function HomeContent() {
           </div>
           {renderList()}
           {isFetchingNextPage && !isReachingEnd && (
-            <div className={cn('p-3 sm:p-6 grid grid-cols-2 gap-3', isCommunityCategory ? 'lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 sm:gap-6' : 'lg:grid-cols-3 2xl:grid-cols-4 sm:gap-4')}>
+            <div className={cn('p-3 sm:p-6 grid gap-3', isCommunityCategory ? 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 sm:gap-6' : [spotStyles.mobileList, 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 sm:gap-4'])}>
               {isCommunityCategory ? <ActivityCardSkeleton /> : <PlaceCardSkeleton />}
             </div>
           )}
