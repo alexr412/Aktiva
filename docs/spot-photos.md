@@ -1,33 +1,32 @@
-# Spot photos (pilot)
+# Verified venue photos
 
-The five reviewed Bremerhaven venues use real photographs from Wikimedia Commons.
-Twenty explicitly labelled category examples cover the remaining pilot venues and
-legacy results (including Tiergehege, BAD 2 and fun Bowling). A real venue photo
-always takes priority. Category/name hints select only the example image; they
-never assign a photograph as a verified venue image or change feed ranking.
-`src/lib/spot-photos.json` stores image URLs, exact catalog IDs, author, source page,
-license URL and capture-date metadata. No photo binaries or API secrets are stored.
+The active catalog contains 12 reviewed photos of the actual Bremerhaven venues.
+Automatic category/example photos have been removed. Unknown venues or failed
+image requests use the existing illustration rather than a different venue's photo.
+This is partial real-photo coverage, not complete coverage of the 75-spot pilot.
 
-`node --import tsx scripts/import-spot-photos.ts` refreshes the reviewed selection
-in one public Commons API request. This is an editorial import, never a request
-per user, per card or per render. Search results must be checked manually before
-adding a venue/file pair. Confirm the actual venue, license and thumbnail crop.
+Nine photos come from Wikimedia Commons. Three come from explicitly credited
+CC BY 4.0 images on Erlebnis Bremerhaven or the verified Cuxland-Tourismus page
+on Outdooractive. The exact selected image and its individual license matter:
+BAD 2's first gallery photo is CC BY-NC-ND, while its second photo is CC BY 4.0.
+Only the second is included. Bowling uses a licensed exterior photo from 2017,
+with a notice in the image credit; current interior photos require permission.
 
-The cards load the thumbnail directly from Wikimedia, lazily. No Firestore reads,
-writes or runtime photo-search requests are added. Browser/CDN caching follows
-the image server's HTTP headers. Broken images and unreviewed venues fall back to
-the existing category illustration. Matching uses exact place IDs, never names.
+`node --import tsx scripts/import-spot-photos.ts` refreshes the reviewed Commons
+metadata and combines it with the documented external selection in
+`data/spot-catalogs/bremerhaven-venue-photo-sources.json`. No image binaries,
+secrets, paid APIs, Firestore reads/writes or per-view image searches are added.
+The browser loads thumbnails directly from their source CDN, following HTTP cache
+headers. The source/author, title, license and cropping notice are in the card menu.
 
-The camera control on each photo opens its image credit in the spot menu:
-author/source link, license link and cropping notice. The same photo is used in
-the menu thumbnail. Keep the credit with the photo when reusing it elsewhere.
+An exact source ID is preferred. Legacy and curated discovery results can have
+different IDs: a manually approved name alias also matches only when the venue
+coordinates are within 150 metres of the reviewed location. Name-only and
+category-only matches are forbidden. This does not affect feed ranking or place data.
 
-All `kind: "example"` images show a visible “Beispielfoto” label on the cover,
-an explicit image alternative and the same disclaimer beside the source credit.
-They do not show the named venue. The five exact-ID photos remain `kind: "venue"`.
-
-Commons coverage for neighborhood
-cafés, bars and sports venues is limited. Extend it with verified Commons photos
-or owner-provided images with documented permission, rather than assigning a
-different venue's photograph. Google Places and stock-photo APIs have separate
-usage, billing and attribution requirements; they are not enabled by this pilot.
+Further actual photos have been found for CineMotion and HAVENGLOW on their
+operator pages, but no reusable license has been established. Do not hotlink or
+copy them into the app merely because they are publicly viewable. The remaining
+venues need further source research, documented owner permission or an authorized
+Places-photo provider. Google Places is not enabled by this change and has its own
+billing, attribution and caching rules.

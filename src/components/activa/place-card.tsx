@@ -11,7 +11,6 @@ import { isEntityBoosted } from '@/lib/ranking';
 import { PlaceActivityPreview } from './place-activity-preview';
 import { SpotCover } from './spot-cover';
 import { getSpotPhoto } from '@/lib/spot-photos';
-import { getSpotPhotoKind } from './spot-photo-kind';
 import { useLanguage } from '@/hooks/use-language';
 import { formatDistance } from '@/lib/geo-utils';
 import styles from './spot-card.module.css';
@@ -43,7 +42,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
   const [menuOpen, setMenuOpen] = useState(false);
   if (!place) return null;
   const german = language === 'de';
-  const photo = getSpotPhoto(place, getSpotPhotoKind(place));
+  const photo = getSpotPhoto(place);
   const primaryStyle = getPrimaryIconData(place, language);
   const showWeights = role === 'admin' || role === 'supporter';
   const rating = place.rating || (place as Place & { averageRating?: number }).averageRating;
@@ -110,7 +109,9 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
           <div className={styles.menuRating}><p>{german ? 'Passt der Ort für dich?' : 'Is this your kind of place?'}</p><div className={styles.menuVotes}>{voteButtons(true)}</div></div>
           {photo && <div className={styles.photoAttribution}>
             <p><strong>{german ? 'Bildnachweis' : 'Photo credit'}</strong></p>
-            <p><a href={photo.sourceUrl} target="_blank" rel="noopener noreferrer">{photo.author} · Wikimedia Commons</a>{' · '}<a href={photo.licenseUrl} target="_blank" rel="noopener noreferrer">{photo.license}</a></p>
+            <p><a href={photo.sourceUrl} target="_blank" rel="noopener noreferrer">{photo.author} · {photo.provider ?? 'Wikimedia Commons'}</a>{' · '}<a href={photo.licenseUrl} target="_blank" rel="noopener noreferrer">{photo.license}</a></p>
+            {photo.title && <p>{photo.title}</p>}
+            {photo.caption && <p>{photo.caption}</p>}
             <p>{german ? 'Darstellung als Bildausschnitt.' : 'Displayed with cropping.'}{photo.kind === 'example' && (german ? ' Beispielfoto, zeigt nicht diesen Ort.' : ' Example photo, not this venue.')}</p>
           </div>}
         </SheetContent>

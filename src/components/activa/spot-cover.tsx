@@ -12,7 +12,7 @@ export function SpotCover({ place, photo, german }: { place: Place; photo?: Spot
   if (!photo || failedUrl === photo.url) return <SpotIllustration place={place} />;
   return <>
     <SpotIllustration place={place} />
-    <Image src={photo.url} alt={photo.kind === 'venue' ? place.name : (german ? 'Beispielfoto, zeigt nicht diesen Ort' : 'Example photo, not this venue')}
+    <Image src={photo.url} alt={photo.kind === 'venue' ? (photo.alt ?? place.name) : (german ? 'Beispielfoto, zeigt nicht diesen Ort' : 'Example photo, not this venue')}
       fill unoptimized sizes="(max-width: 767px) 80px, 400px" className={styles.photo}
       style={{ objectPosition: photo.objectPosition }} onError={() => setFailedUrl(photo.url)} />
     {photo.kind === 'example' && <span className={styles.exampleLabel}>{german ? 'Beispielfoto' : 'Example photo'}</span>}

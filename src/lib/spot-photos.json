@@ -1,328 +1,282 @@
 {
-  "retrievedAt": "2026-10-26T11:02:54.953Z",
-  "provider": "Wikimedia Commons",
+  "retrievedAt": "2026-10-26T13:28:14.441Z",
+  "provider": "Reviewed venue sources",
   "photos": [
     {
       "placeId": "511940ee2f02242140594062c69ebbc54a40f00102f9010f5cde010000000092030b5a6f6f20616d204d656572",
       "placeName": "Zoo am Meer",
       "kind": "venue",
       "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/09/Ursus_maritimus_-_Zoo_am_Meer_-_Bremerhaven_01.jpg/960px-Ursus_maritimus_-_Zoo_am_Meer_-_Bremerhaven_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "provider": "Wikimedia Commons",
+      "title": "Ursus maritimus - Zoo am Meer - Bremerhaven 01.jpg",
       "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ursus_maritimus_-_Zoo_am_Meer_-_Bremerhaven_01.jpg",
       "author": "H. Zell",
       "license": "CC BY-SA 3.0",
       "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
       "capturedAt": "2022-07-02",
-      "objectPosition": "50% 45%"
+      "objectPosition": "50% 45%",
+      "match": {
+        "names": [
+          "Zoo am Meer"
+        ],
+        "lat": 53.5447835,
+        "lon": 8.5701615,
+        "radiusMeters": 150
+      }
     },
     {
       "placeId": "5191898fb96b3621405957bf58620bc54a40f00102f9016de749070000000092030b42c3bc726765727061726b",
       "placeName": "Bürgerpark",
       "kind": "venue",
       "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fc/B%C3%BCrgerpark_-_Bremerhaven_02.jpg/960px-B%C3%BCrgerpark_-_Bremerhaven_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "provider": "Wikimedia Commons",
+      "title": "Bürgerpark - Bremerhaven 02.jpg",
       "sourceUrl": "https://commons.wikimedia.org/wiki/File:B%C3%BCrgerpark_-_Bremerhaven_02.jpg",
       "author": "H. Zell",
       "license": "CC BY-SA 3.0",
       "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
       "capturedAt": "2022-07-03",
-      "objectPosition": "50% 50%"
+      "objectPosition": "50% 50%",
+      "match": {
+        "names": [
+          "Bürgerpark"
+        ],
+        "lat": 53.5396871,
+        "lon": 8.6052777,
+        "radiusMeters": 150
+      }
     },
     {
       "placeId": "517096bee41d2621405919d7afac87c54a40f00102f90135459c02000000009203154b6c696d6168617573204272656d6572686176656e",
       "placeName": "Klimahaus Bremerhaven",
       "kind": "venue",
       "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/14/Klimahaus_Bremerhaven_01.jpg/960px-Klimahaus_Bremerhaven_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "provider": "Wikimedia Commons",
+      "title": "Klimahaus Bremerhaven 01.jpg",
       "sourceUrl": "https://commons.wikimedia.org/wiki/File:Klimahaus_Bremerhaven_01.jpg",
       "author": "H. Zell",
       "license": "CC BY-SA 3.0",
       "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
       "capturedAt": "2022-06-29",
-      "objectPosition": "50% 50%"
+      "objectPosition": "50% 50%",
+      "match": {
+        "names": [
+          "Klimahaus Bremerhaven"
+        ],
+        "lat": 53.5432125,
+        "lon": 8.5744602,
+        "radiusMeters": 150
+      }
     },
     {
       "placeId": "5122499585df252140594db7f873ccc54a40f00102f901c825fe2b000000009203194465757473636865732041757377616e646572657268617573",
       "placeName": "Deutsches Auswandererhaus",
       "kind": "venue",
       "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2d/Bremerhaven%2C_Deutsches_Auswandererhaus_--_2024_--_2240.jpg/960px-Bremerhaven%2C_Deutsches_Auswandererhaus_--_2024_--_2240.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "provider": "Wikimedia Commons",
+      "title": "Bremerhaven, Deutsches Auswandererhaus -- 2024 -- 2240.jpg",
       "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bremerhaven,_Deutsches_Auswandererhaus_--_2024_--_2240.jpg",
       "author": "Dietmar Rabich",
       "license": "CC BY-SA 4.0",
       "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
       "capturedAt": "Taken on 31 August 2024, 15:57",
-      "objectPosition": "50% 50%"
+      "objectPosition": "50% 50%",
+      "match": {
+        "names": [
+          "Deutsches Auswandererhaus"
+        ],
+        "lat": 53.5453291,
+        "lon": 8.5740341,
+        "radiusMeters": 150
+      }
     },
     {
       "placeId": "514850fc187327214059c8efc8b326c54a40f00103f9015c14f6850200000092031c446575747363686573205363686966666661687274736d757365756d",
       "placeName": "Deutsches Schifffahrtsmuseum",
       "kind": "venue",
       "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/Deutsches_Schiffahrtsmuseum.jpg/960px-Deutsches_Schiffahrtsmuseum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "provider": "Wikimedia Commons",
+      "title": "Deutsches Schiffahrtsmuseum.jpg",
       "sourceUrl": "https://commons.wikimedia.org/wiki/File:Deutsches_Schiffahrtsmuseum.jpg",
       "author": "Uwe H. Friese",
       "license": "CC BY-SA 3.0",
       "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
       "capturedAt": "17 December 2004 (date of upload to de:)",
-      "objectPosition": "50% 50%"
-    }
-  ],
-  "examples": [
-    {
-      "exampleKind": "deer",
-      "placeId": "example:deer",
-      "placeName": "Tiergehege",
-      "kind": "example",
-      "url": "https://upload.wikimedia.org/wikipedia/commons/c/cc/Dama_dama8.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Dama_dama8.JPG",
-      "author": "B.Navez",
-      "license": "CC BY-SA 3.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
-      "capturedAt": "2005-07-10",
-      "objectPosition": "50% 50%"
+      "objectPosition": "50% 50%",
+      "match": {
+        "names": [
+          "Deutsches Schifffahrtsmuseum"
+        ],
+        "lat": 53.5402436,
+        "lon": 8.57705,
+        "radiusMeters": 150
+      }
     },
     {
-      "exampleKind": "seal",
-      "placeId": "example:seal",
-      "placeName": "Zoo und Aquarium",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/09/Ursus_maritimus_-_Zoo_am_Meer_-_Bremerhaven_01.jpg/960px-Ursus_maritimus_-_Zoo_am_Meer_-_Bremerhaven_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ursus_maritimus_-_Zoo_am_Meer_-_Bremerhaven_01.jpg",
-      "author": "H. Zell",
-      "license": "CC BY-SA 3.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-      "capturedAt": "2022-07-02",
-      "objectPosition": "50% 50%"
+      "placeId": "510f8e07606732214059d93c8fec2bca4a40f00102f901662043070000000092030b66756e20426f776c696e67",
+      "placeName": "Beyond Bowling (ehemals Fun Bowling)",
+      "kind": "venue",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0f/Bowlingcenter_Bremerhaven.JPG/960px-Bowlingcenter_Bremerhaven.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "provider": "Wikimedia Commons",
+      "title": "Bowlingcenter Bremerhaven.JPG",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bowlingcenter_Bremerhaven.JPG",
+      "author": "Peter Raap",
+      "license": "CC BY-SA 3.0 de",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/de/deed.en",
+      "capturedAt": "2017-08-21",
+      "objectPosition": "50% 50%",
+      "match": {
+        "names": [
+          "Beyond Bowling (ehemals Fun Bowling)",
+          "fun Bowling",
+          "Beyond Bowling"
+        ],
+        "lat": 53.5794079,
+        "lon": 8.5984379,
+        "radiusMeters": 150
+      },
+      "caption": "Außenaufnahme von 2017, vor dem Umbau zu Beyond Bowling."
     },
     {
-      "exampleKind": "pool",
-      "placeId": "example:pool",
-      "placeName": "Schwimmen",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a0/Karori_swimming_pool.jpg/960px-Karori_swimming_pool.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Karori_swimming_pool.jpg",
-      "author": "Marshelec",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "capturedAt": "2018-02-22 20:46:26",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "bowling",
-      "placeId": "example:bowling",
-      "placeName": "Bowling",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/AMF_bowling_center.jpg/960px-AMF_bowling_center.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:AMF_bowling_center.jpg",
-      "author": "TenPinGeek",
-      "license": "CC BY-SA 3.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-      "capturedAt": "2014-01-29",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "cinema",
-      "placeId": "example:cinema",
-      "placeName": "Kino",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/75/Auditorium_at_Maxim_in_May_2024.jpg/960px-Auditorium_at_Maxim_in_May_2024.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Auditorium_at_Maxim_in_May_2024.jpg",
-      "author": "JIP",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "capturedAt": "2024-05-30",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "minigolf",
-      "placeId": "example:minigolf",
-      "placeName": "Minigolf",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ac/Minigolf_course_at_Hartv%C3%ADkovick%C3%A1_pl%C3%A1%C5%BE_camp_near_Hartv%C3%ADkovice%2C_T%C5%99eb%C3%AD%C4%8D_District.jpg/960px-Minigolf_course_at_Hartv%C3%ADkovick%C3%A1_pl%C3%A1%C5%BE_camp_near_Hartv%C3%ADkovice%2C_T%C5%99eb%C3%AD%C4%8D_District.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Minigolf_course_at_Hartv%C3%ADkovick%C3%A1_pl%C3%A1%C5%BE_camp_near_Hartv%C3%ADkovice,_T%C5%99eb%C3%AD%C4%8D_District.jpg",
-      "author": "Frettie",
+      "placeId": "5178c67fc7c42a21405908b01af269cb4a40f00102f901c008991f00000000920315537065636b656e62c3bc7474656c6572205061726b",
+      "placeName": "Speckenbütteler Park",
+      "kind": "venue",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d5/Bhv-park-allee_hg.jpg/960px-Bhv-park-allee_hg.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "provider": "Wikimedia Commons",
+      "title": "Bhv-park-allee hg.jpg",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bhv-park-allee_hg.jpg",
+      "author": "Hannes Grobe (talk)",
       "license": "CC BY 3.0",
       "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
-      "capturedAt": "2009-08-31",
-      "objectPosition": "50% 50%"
+      "capturedAt": "2009-04",
+      "objectPosition": "50% 50%",
+      "match": {
+        "names": [
+          "Speckenbütteler Park"
+        ],
+        "lat": 53.5881486,
+        "lon": 8.5846383,
+        "radiusMeters": 150
+      }
     },
     {
-      "exampleKind": "music",
-      "placeId": "example:music",
-      "placeName": "Musik und Ausgehen",
-      "kind": "example",
-      "url": "https://upload.wikimedia.org/wikipedia/commons/d/d4/The_Den_Nightclub_Somerset_New_Jersey_Dance_Floor.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:The_Den_Nightclub_Somerset_New_Jersey_Dance_Floor.jpg",
-      "author": "Scott Silver",
+      "placeId": "51cd3f86ddc03b2140596598a034b2cb4a40f00102f901b945f70a0000000092030e546869656c65732047617274656e",
+      "placeName": "Thieles Garten",
+      "kind": "venue",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/12/Bremerhaven_Thiele_1.jpg/960px-Bremerhaven_Thiele_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "provider": "Wikimedia Commons",
+      "title": "Bremerhaven Thiele 1.jpg",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bremerhaven_Thiele_1.jpg",
+      "author": "Uwe Barghaan",
       "license": "CC BY 3.0",
       "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
-      "capturedAt": "2009-03-15",
-      "objectPosition": "50% 50%"
+      "capturedAt": "2007-10-07",
+      "objectPosition": "50% 50%",
+      "match": {
+        "names": [
+          "Thieles Garten"
+        ],
+        "lat": 53.5916387,
+        "lon": 8.6164022,
+        "radiusMeters": 150
+      }
     },
     {
-      "exampleKind": "coffee",
-      "placeId": "example:coffee",
-      "placeName": "Kaffee trinken",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/24/Espresso_Coffee_01.jpg/960px-Espresso_Coffee_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Espresso_Coffee_01.jpg",
-      "author": "Jubair1985",
-      "license": "CC0",
-      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
-      "capturedAt": "2024-08-02 15:12:52",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "bar",
-      "placeId": "example:bar",
-      "placeName": "Bar und Pub",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/Sir_Alexander_Fleming_pub_interior%2C_Paddington.jpg/960px-Sir_Alexander_Fleming_pub_interior%2C_Paddington.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sir_Alexander_Fleming_pub_interior,_Paddington.jpg",
-      "author": "The wub",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "capturedAt": "2025-10-08 17:23:52",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "billiards",
-      "placeId": "example:billiards",
-      "placeName": "Billard",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Craigdarroch_Castle_Billiards_Room.jpg/960px-Craigdarroch_Castle_Billiards_Room.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Craigdarroch_Castle_Billiards_Room.jpg",
-      "author": "Fletcher6",
+      "placeId": "51504dee1c6f2b21405913b46e2821c54a40f00103f901c2641bec0000000092030d56696c6c61205365656265636b",
+      "placeName": "Villa Seebeck",
+      "kind": "venue",
+      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d2/Seebeck_Villa_Geeste.JPG/960px-Seebeck_Villa_Geeste.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "provider": "Wikimedia Commons",
+      "title": "Seebeck Villa Geeste.JPG",
+      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Seebeck_Villa_Geeste.JPG",
+      "author": "Dominic Techau (talk)",
       "license": "CC BY-SA 3.0",
       "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-      "capturedAt": "2011-08-04",
-      "objectPosition": "50% 50%"
+      "capturedAt": "2011-09-07",
+      "objectPosition": "50% 50%",
+      "match": {
+        "names": [
+          "Villa Seebeck"
+        ],
+        "lat": 53.5400744,
+        "lon": 8.5848321,
+        "radiusMeters": 150
+      }
     },
     {
-      "exampleKind": "food",
-      "placeId": "example:food",
-      "placeName": "Essen gehen",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a6/DSCF0800_Quiet_cafe_nook_framed_by_pink_blossoms_and_lanterns_overlooking_a_busy_street_beyond.jpg/960px-DSCF0800_Quiet_cafe_nook_framed_by_pink_blossoms_and_lanterns_overlooking_a_busy_street_beyond.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:DSCF0800_Quiet_cafe_nook_framed_by_pink_blossoms_and_lanterns_overlooking_a_busy_street_beyond.jpg",
-      "author": "PattayaPatrol",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "capturedAt": "2025-06-07 11:18:16",
-      "objectPosition": "50% 50%"
+      "placeId": "editorial-bremerhaven-tiergehege",
+      "placeName": "Tiergehege im Bürgerpark",
+      "kind": "venue",
+      "url": "https://img.destination.one/remote/.webp?url=https%3A%2F%2Fdam.destination.one%2F3721278%2F2b3242954c8682041a20427f412d6d3a55ef8cdbb03fc20bd84e2fc4ea3be769%2Fj6419-c-helmut-gross_erlebnis-bremerhaven_web-jpg.jpg&scale=both&mode=crop&quality=90&width=612&height=459&focuspoint=0.09,-0.33",
+      "sourceUrl": "https://www.bremerhaven-erleben.de/poi/tiergehege",
+      "provider": "Erlebnis Bremerhaven",
+      "author": "Helmut Gross / Erlebnis Bremerhaven",
+      "title": "J6419 (c) Helmut Gross_Erlebnis Bremerhaven_WEB.jpg",
+      "alt": "Ziegen und Reetdachstall im Tiergehege im Bürgerpark Bremerhaven",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "capturedAt": null,
+      "objectPosition": "50% 55%",
+      "match": {
+        "names": [
+          "Tiergehege",
+          "Tiergehege im Bürgerpark"
+        ],
+        "lat": 53.541910846492414,
+        "lon": 8.602069616317747,
+        "radiusMeters": 150
+      }
     },
     {
-      "exampleKind": "culture",
-      "placeId": "example:culture",
-      "placeName": "Museum",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fd/Oxford_University_Museum_of_Natural_History%2C_Oxford%2C_UK_-_Diliff.jpg/960px-Oxford_University_Museum_of_Natural_History%2C_Oxford%2C_UK_-_Diliff.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Oxford_University_Museum_of_Natural_History,_Oxford,_UK_-_Diliff.jpg",
-      "author": "Diliff",
-      "license": "CC BY-SA 3.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-      "capturedAt": "2015-03-09",
-      "objectPosition": "50% 50%"
+      "placeId": "editorial-bremerhaven-bad2",
+      "placeName": "BAD 2",
+      "kind": "venue",
+      "url": "https://img.destination.one/remote/.webp?url=https%3A%2F%2Fdam.destination.one%2F3634729%2Fd542b7ab6454c7320fa18b578a73fbc7a13562a70990e86ed53b0f14e876d507%2Fbad-2_kelosauna-c-martina-buchholz_b-dergesellschaft-bremerhaven-mbh_web-jpg.jpg&scale=both&mode=crop&quality=90&width=612&height=459&focuspoint=0.05,-0.07",
+      "sourceUrl": "https://www.bremerhaven-erleben.de/poi/bad2",
+      "provider": "Erlebnis Bremerhaven",
+      "author": "Martina Buchholz / Bädergesellschaft Bremerhaven mbH",
+      "title": "BAD 2_Kelosauna (c) Martina Buchholz_Bädergesellschaft Bremerhaven mbH_WEB.jpg",
+      "alt": "Kelosauna im BAD 2 in Bremerhaven",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "capturedAt": null,
+      "objectPosition": "50% 50%",
+      "match": {
+        "names": [
+          "BAD 2",
+          "Bad 2/Wellnessbad",
+          "Bad 2 Geestemünde"
+        ],
+        "lat": 53.52219,
+        "lon": 8.5961852,
+        "radiusMeters": 150
+      },
+      "caption": "Kelosauna im BAD 2."
     },
     {
-      "exampleKind": "park",
-      "placeId": "example:park",
-      "placeName": "Park",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fc/B%C3%BCrgerpark_-_Bremerhaven_02.jpg/960px-B%C3%BCrgerpark_-_Bremerhaven_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:B%C3%BCrgerpark_-_Bremerhaven_02.jpg",
-      "author": "H. Zell",
-      "license": "CC BY-SA 3.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-      "capturedAt": "2022-07-03",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "sport",
-      "placeId": "example:sport",
-      "placeName": "Sport",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/Mejorset_Full_Panoramic_Padel_Court_Delivered_by_SG_Padel.jpg/960px-Mejorset_Full_Panoramic_Padel_Court_Delivered_by_SG_Padel.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mejorset_Full_Panoramic_Padel_Court_Delivered_by_SG_Padel.jpg",
-      "author": "OCHAPPS",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "capturedAt": "2025-10-22",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "padel",
-      "placeId": "example:padel",
-      "placeName": "Padel",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/Mejorset_Full_Panoramic_Padel_Court_Delivered_by_SG_Padel.jpg/960px-Mejorset_Full_Panoramic_Padel_Court_Delivered_by_SG_Padel.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Mejorset_Full_Panoramic_Padel_Court_Delivered_by_SG_Padel.jpg",
-      "author": "OCHAPPS",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "capturedAt": "2025-10-22",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "bouldering",
-      "placeId": "example:bouldering",
-      "placeName": "Bouldern",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/ff/Man_climbing_in_bouldering_gym.jpg/960px-Man_climbing_in_bouldering_gym.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Man_climbing_in_bouldering_gym.jpg",
-      "author": "John Kane",
-      "license": "CC0",
-      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
-      "capturedAt": "2022-08-19 16:20:53",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "trampoline",
-      "placeId": "example:trampoline",
-      "placeName": "Trampolinpark",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/Trampoline_Park.jpg/960px-Trampoline_Park.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Trampoline_Park.jpg",
-      "author": "3steph14",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "capturedAt": "3 May 2022 (according to <span lang=\"en\" dir=\"ltr\"><a href=\"https://en.wikipedia.org/wiki/Exif\" class=\"extiw\" title=\"en:Exif\">Exif</a></span> data)",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "escape",
-      "placeId": "example:escape",
-      "placeName": "Escape Room",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a8/Escape_Room_-_%22The_Expedition%22_%28Escape_Quest_Bethesda%29.jpg/960px-Escape_Room_-_%22The_Expedition%22_%28Escape_Quest_Bethesda%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Escape_Room_-_%22The_Expedition%22_(Escape_Quest_Bethesda).jpg",
-      "author": "Hudson Bloom",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "capturedAt": "2019-06-26 21:12:00",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "library",
-      "placeId": "example:library",
-      "placeName": "Bibliothek",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/ff/Bookshelves_in_Hove_Library_2025-08-20.jpg/960px-Bookshelves_in_Hove_Library_2025-08-20.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bookshelves_in_Hove_Library_2025-08-20.jpg",
-      "author": "Andy Li",
-      "license": "CC0",
-      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
-      "capturedAt": "2025-08-20 15:59:53",
-      "objectPosition": "50% 50%"
-    },
-    {
-      "exampleKind": "skate",
-      "placeId": "example:skate",
-      "placeName": "Skatepark",
-      "kind": "example",
-      "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f3/Bowl-Marseille2020-2.jpg/960px-Bowl-Marseille2020-2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bowl-Marseille2020-2.jpg",
-      "author": "Irønie",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "capturedAt": "2020-02-24 11:24:15",
-      "objectPosition": "50% 50%"
+      "placeId": "51f3e670adf62421405963ba6b64b2c64a40f00103f9018adbc4910200000092030e4c6965626c696e6773706c61747a",
+      "placeName": "Café Lieblingsplatz",
+      "kind": "venue",
+      "url": "https://img.oastatic.com/img2/637300935/600x300r/variant.webp",
+      "sourceUrl": "https://www.outdooractive.com/en/gastro/elbe-weser-dreieck/cafe-lieblingsplatz/812249466/",
+      "provider": "Cuxland-Tourismus / Outdooractive",
+      "author": "Andreas Behr / Lieblingsplatz",
+      "title": "2025-09-01-lieblingsplatz-093_(c) Andreas Behr_WEB.jpg",
+      "alt": "Café Lieblingsplatz in Bremerhaven",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "capturedAt": null,
+      "objectPosition": "50% 50%",
+      "match": {
+        "names": [
+          "Lieblingsplatz",
+          "Café Lieblingsplatz",
+          "Cafe Lieblingsplatz"
+        ],
+        "lat": 53.552279,
+        "lon": 8.57219,
+        "radiusMeters": 150
+      }
     }
   ]
 }

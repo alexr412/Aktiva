@@ -1,4 +1,5 @@
 import manifest from './spot-photos.json';
+import { calculateDistanceKm } from './geo-utils';
 
 export type SpotPhoto = {
   placeId: string;
@@ -11,12 +12,26 @@ export type SpotPhoto = {
   licenseUrl: string;
   capturedAt: string | null;
   objectPosition: string;
+  provider?: string;
+  title?: string;
+  alt?: string;
+  caption?: string;
+  match?: { names: string[]; lat: number; lon: number; radiusMeters: number };
 };
 
 const photos = new Map<string, SpotPhoto>(manifest.photos.map(photo => [photo.placeId, photo as SpotPhoto]));
-const examples = new Map<string, SpotPhoto>(manifest.examples.map(photo => [photo.exampleKind, photo as SpotPhoto]));
 
-// Exact IDs only: a same-name venue in another city must not inherit a photo.
-export function getSpotPhoto(place: { id: string }, exampleKind?: string): SpotPhoto | undefined {
-  return photos.get(place.id) ?? (exampleKind ? examples.get(exampleKind) : undefined);
+// Source IDs may differ between the pilot catalog and legacy results. An alias
+// requires both an explicitly reviewed name and coordinates within 150 metres.
+export function getSpotPhoto(place: { id: string; name?: string; lat?: number; lon?: number }): SpotPhoto | undefined {
+  const direct = photos.get(place.id);
+  if (direct) return direct;
+  const name = place.name?.normalize('NFKC').trim().toLocaleLowerCase('de');
+  if (!name) return undefined;
+  return [...photos.values()].find(photo => {
+    const match = photo.match;
+    if (!match?.names.some(alias => alias.normalize('NFKC').trim().toLocaleLowerCase('de') === name)) return false;
+    const distance = calculateDistanceKm(place.lat, place.lon, match.lat, match.lon);
+    return distance !== null && distance * 1000 <= match.radiusMeters;
+  });
 }
