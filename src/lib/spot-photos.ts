@@ -14,8 +14,9 @@ export type SpotPhoto = {
 };
 
 const photos = new Map<string, SpotPhoto>(manifest.photos.map(photo => [photo.placeId, photo as SpotPhoto]));
+const examples = new Map<string, SpotPhoto>(manifest.examples.map(photo => [photo.exampleKind, photo as SpotPhoto]));
 
 // Exact IDs only: a same-name venue in another city must not inherit a photo.
-export function getSpotPhoto(place: { id: string }): SpotPhoto | undefined {
-  return photos.get(place.id);
+export function getSpotPhoto(place: { id: string }, exampleKind?: string): SpotPhoto | undefined {
+  return photos.get(place.id) ?? (exampleKind ? examples.get(exampleKind) : undefined);
 }

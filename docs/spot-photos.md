@@ -1,6 +1,10 @@
 # Spot photos (pilot)
 
 The five reviewed Bremerhaven venues use real photographs from Wikimedia Commons.
+Twenty explicitly labelled category examples cover the remaining pilot venues and
+legacy results (including Tiergehege, BAD 2 and fun Bowling). A real venue photo
+always takes priority. Category/name hints select only the example image; they
+never assign a photograph as a verified venue image or change feed ranking.
 `src/lib/spot-photos.json` stores image URLs, exact catalog IDs, author, source page,
 license URL and capture-date metadata. No photo binaries or API secrets are stored.
 
@@ -18,10 +22,11 @@ The camera control on each photo opens its image credit in the spot menu:
 author/source link, license link and cropping notice. The same photo is used in
 the menu thumbnail. Keep the credit with the photo when reusing it elsewhere.
 
-The photo model also supports `kind: "example"`; these images always show a
-visible “Beispielfoto” label. None of the initial five photos are example images.
+All `kind: "example"` images show a visible “Beispielfoto” label on the cover,
+an explicit image alternative and the same disclaimer beside the source credit.
+They do not show the named venue. The five exact-ID photos remain `kind: "venue"`.
 
-The current selection is small on purpose. Commons coverage for neighborhood
+Commons coverage for neighborhood
 cafés, bars and sports venues is limited. Extend it with verified Commons photos
 or owner-provided images with documented permission, rather than assigning a
 different venue's photograph. Google Places and stock-photo APIs have separate

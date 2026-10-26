@@ -11,6 +11,7 @@ import { isEntityBoosted } from '@/lib/ranking';
 import { PlaceActivityPreview } from './place-activity-preview';
 import { SpotCover } from './spot-cover';
 import { getSpotPhoto } from '@/lib/spot-photos';
+import { getSpotPhotoKind } from './spot-photo-kind';
 import { useLanguage } from '@/hooks/use-language';
 import { formatDistance } from '@/lib/geo-utils';
 import styles from './spot-card.module.css';
@@ -42,7 +43,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
   const [menuOpen, setMenuOpen] = useState(false);
   if (!place) return null;
   const german = language === 'de';
-  const photo = getSpotPhoto(place);
+  const photo = getSpotPhoto(place, getSpotPhotoKind(place));
   const primaryStyle = getPrimaryIconData(place, language);
   const showWeights = role === 'admin' || role === 'supporter';
   const rating = place.rating || (place as Place & { averageRating?: number }).averageRating;
