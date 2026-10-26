@@ -299,25 +299,20 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     return (
         <div className="flex flex-col h-full min-h-0 w-full bg-white dark:bg-card overflow-hidden rounded-none sm:rounded-3xl relative">
             {/* Compact category header */}
-            <div className={cn(
-                "relative w-full shrink-0 flex items-center gap-3 py-5 pl-4 pr-16 sm:pl-5 overflow-hidden",
-                primaryStyle.gradientClass
-            )}
-            >
-                <div className="absolute -right-6 -top-10 h-32 w-32 rounded-full border-[20px] border-white/10 pointer-events-none" aria-hidden="true" />
-                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 border border-white/20" aria-hidden="true">
-                    <PrimaryIcon className="h-7 w-7 text-white" strokeWidth={1.7} />
+            <div className="relative w-full shrink-0 flex items-center gap-3 py-5 pl-4 pr-16 sm:pl-5 overflow-hidden border-b border-border bg-muted/30">
+                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary" aria-hidden="true">
+                    <PrimaryIcon className="h-7 w-7" strokeWidth={1.7} />
                 </div>
                 <div className="relative min-w-0">
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/85">{primaryStyle.label}</p>
-                    <h2 title={place.name} className="text-xl sm:text-2xl font-semibold leading-tight tracking-tight text-white line-clamp-2 [overflow-wrap:anywhere]">{place.name}</h2>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{primaryStyle.label}</p>
+                    <h2 title={place.name} className="text-xl sm:text-2xl font-semibold leading-tight tracking-tight text-foreground line-clamp-2 [overflow-wrap:anywhere]">{place.name}</h2>
                 </div>
                 {/* Close Button */}
                 {onClose && (
                     <button
                         onClick={onClose}
                         type="button"
-                        className="absolute top-3 right-3 z-30 h-11 w-11 rounded-full bg-black/20 hover:bg-black/35 text-white flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white focus:outline-none"
+                        className="absolute top-3 right-3 z-30 h-11 w-11 rounded-full bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary focus:outline-none"
                         aria-label={language === 'de' ? 'Schließen' : 'Close'}
                     >
                         <X className="h-5 w-5" />
@@ -329,7 +324,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
             <div ref={viewportRef} tabIndex={0} role="region" aria-label={language === 'de' ? 'Spot-Details' : 'Spot details'} className="flex-1 min-h-0 w-full overflow-y-auto overscroll-contain [scrollbar-width:thin] bg-white dark:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
                 <div className="p-4">
                     {/* 1. Core metadata */}
-                    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-background p-3">
+                    <div className="rounded-2xl border border-border bg-muted/30 p-3">
                         <div className="space-y-2">
                             <div className="flex items-start gap-2">
                                 <a 
@@ -342,24 +337,24 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     onPointerCancel={handleAddressPointerCancel}
                                     onContextMenu={handleAddressContextMenu}
                                     onClick={handleAddressClick}
-                                    className="flex min-w-0 flex-1 items-start gap-2 text-slate-700 dark:text-slate-200 hover:text-rose-500 cursor-pointer group select-none pt-2"
+                                    className="flex min-w-0 flex-1 items-start gap-2 text-foreground hover:text-primary cursor-pointer group select-none pt-2"
                                     style={{ WebkitTouchCallout: 'none' }}
                                 >
-                                    <MapPin className="h-4 w-4 text-rose-500 mt-0.5 shrink-0" />
-                                    <span className="min-w-0 text-xs sm:text-sm font-medium leading-relaxed [overflow-wrap:anywhere] underline decoration-rose-500/40 underline-offset-2">{place.address}</span>
+                                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                                    <span className="min-w-0 text-xs sm:text-sm font-medium leading-relaxed [overflow-wrap:anywhere] underline decoration-muted-foreground/40 underline-offset-2">{place.address}</span>
                                 </a>
                                 <Button
                                     onClick={handleCopyAddress}
                                     variant="ghost"
                                     size="icon"
-                                    className="h-11 w-11 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-slate-400 hover:text-slate-600 transition-all shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none"
+                                    className="h-11 w-11 rounded-xl bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                                     title={language === 'de' ? 'Adresse kopieren' : 'Copy address'}
                                     aria-label={language === 'de' ? 'Adresse kopieren' : 'Copy address'}
                                 >
-                                    {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                                    {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                                 </Button>
                             </div>
-                            {openingHoursText && <div className="flex items-start gap-2 text-slate-500 dark:text-slate-400">
+                            {openingHoursText && <div className="flex items-start gap-2 text-muted-foreground">
                                 <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                                 <span className="text-[12px] md:text-sm font-medium leading-tight">
                                     {openingHoursText}
@@ -401,7 +396,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                 <Skeleton className="h-20 w-full rounded-2xl" />
                             </div>
                         ) : activities.length === 0 ? (
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-emerald-50 dark:bg-emerald-500/5 rounded-2xl border border-emerald-200/60 dark:border-emerald-500/15">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-muted/30 rounded-2xl border border-border">
                                 <div className="min-w-0">
                                     <h4 className="font-semibold text-sm text-slate-800 dark:text-neutral-200 mb-1 leading-snug">
                                         {language === 'de' ? 'Hier ist noch Platz für deine Idee' : 'There is room for your idea here'}
@@ -532,10 +527,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         <Button 
                             onClick={handleBookmarkToggle}
                             className={cn(
-                                "h-11 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 border shadow-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none",
+                                "h-11 rounded-xl font-semibold text-xs transition-colors flex items-center justify-center gap-2 border shadow-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none",
                                 isFavorite 
-                                    ? "bg-rose-500 hover:bg-rose-600 text-white border-transparent" 
-                                    : "bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 border-slate-100 dark:border-neutral-800"
+                                    ? "bg-primary/10 hover:bg-primary/15 text-primary border-primary/25"
+                                    : "bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground border-border"
                             )}
                         >
                             <Bookmark className={cn("h-4 w-4 shrink-0", isFavorite && "fill-current")} />
@@ -543,23 +538,23 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         </Button>
                         <Button 
                             onClick={() => setIsSaveToCollectionOpen(true)}
-                            className="h-11 rounded-xl bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-slate-100 dark:border-neutral-800 font-bold text-xs transition-all flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none"
+                            className="h-11 rounded-xl bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground border border-border font-semibold text-xs transition-colors flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                         >
-                            <FolderPlus className="h-4 w-4 text-emerald-500 shrink-0" />
+                            <FolderPlus className="h-4 w-4 shrink-0" />
                             <span className="whitespace-nowrap truncate">{language === 'de' ? 'Liste' : 'List'}</span>
                         </Button>
                         <Button 
                             onClick={() => setIsAnalyticsOpen(true)}
-                            className="h-11 rounded-xl bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-slate-100 dark:border-neutral-800 font-bold text-xs transition-all flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none"
+                            className="h-11 rounded-xl bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground border border-border font-semibold text-xs transition-colors flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                         >
-                            <BarChart3 className="h-4 w-4 text-violet-500 shrink-0" />
+                            <BarChart3 className="h-4 w-4 shrink-0" />
                             <span className="whitespace-nowrap truncate">{language === 'de' ? 'Statistik' : 'Stats'}</span>
                         </Button>
                         <Button 
                             onClick={handleSharePlace}
-                            className="h-11 rounded-xl bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 border border-slate-100 dark:border-neutral-800 font-bold text-xs transition-all flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none"
+                            className="h-11 rounded-xl bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground border border-border font-semibold text-xs transition-colors flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                         >
-                            <Share2 className="h-4 w-4 text-sky-500 shrink-0" />
+                            <Share2 className="h-4 w-4 shrink-0" />
                             <span className="whitespace-nowrap truncate">{language === 'de' ? 'Teilen' : 'Share'}</span>
                         </Button>
                     </div>
@@ -568,30 +563,30 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                         <button 
                             onClick={handleOpenReviewsModal}
-                            className="bg-amber-50 dark:bg-amber-500/10 min-h-11 p-2 rounded-xl flex flex-col items-center justify-center gap-0.5 text-center border border-amber-200/60 dark:border-amber-500/15 hover:bg-amber-100 dark:hover:bg-amber-500/15 transition-colors cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                            className="bg-muted/30 min-h-11 p-2 rounded-xl flex flex-col items-center justify-center gap-0.5 text-center border border-border hover:bg-muted transition-colors cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         >
                             <div className="flex items-center gap-1">
-                                <Star className="w-3.5 h-3.5 text-[#f59e0b] fill-[#f59e0b] group-hover:scale-110 transition-transform" />
+                                <Star className="w-3.5 h-3.5 text-muted-foreground" />
                                 <span className={cn(
-                                    "font-black text-[#854d0e] dark:text-amber-400 text-sm",
+                                    "font-semibold text-foreground text-sm",
                                     placeMeta.avgRating > 0 ? "text-[14px]" : "text-[10px]"
                                 )}>
                                     {placeMeta.avgRating > 0 ? placeMeta.avgRating.toFixed(1) : (language === 'de' ? 'Noch keine' : 'No ratings')}
                                 </span>
                             </div>
-                            <span className="text-[10px] font-bold text-amber-900/80 dark:text-amber-400/80 underline decoration-amber-400/40 underline-offset-2">Community</span>
+                            <span className="text-[10px] font-medium text-muted-foreground underline decoration-muted-foreground/40 underline-offset-2">Community</span>
                         </button>
-                        <div className="bg-blue-50 dark:bg-blue-500/10 p-2 rounded-xl flex flex-col items-center justify-center gap-0.5 text-center border border-blue-200/60 dark:border-blue-500/15">
-                             <span className="text-sm font-black text-[#0369a1] dark:text-blue-400">
+                        <div className="bg-muted/30 p-2 rounded-xl flex flex-col items-center justify-center gap-0.5 text-center border border-border">
+                             <span className="text-sm font-semibold text-foreground">
                                 {formattedDistance || '---'}
                             </span>
-                            <span className="text-[10px] font-bold text-blue-900/80 dark:text-blue-400/80">{language === 'de' ? 'Entfernung' : 'Distance'}</span>
+                            <span className="text-[10px] font-medium text-muted-foreground">{language === 'de' ? 'Entfernung' : 'Distance'}</span>
                         </div>
-                        <div className="hidden md:flex bg-rose-50 dark:bg-rose-500/10 p-2 rounded-xl flex-col items-center justify-center gap-0.5 text-center border border-rose-200/60 dark:border-rose-500/15">
-                             <span className="text-sm font-black text-[#b91c1c] dark:text-rose-400">
+                        <div className="hidden md:flex bg-muted/30 p-2 rounded-xl flex-col items-center justify-center gap-0.5 text-center border border-border">
+                             <span className="text-sm font-semibold text-foreground">
                                 {activities.length}
                             </span>
-                            <span className="text-[10px] font-bold text-rose-900/80 dark:text-rose-400/80">{language === 'de' ? 'Aktivitäten' : 'Activities'}</span>
+                            <span className="text-[10px] font-medium text-muted-foreground">{language === 'de' ? 'Aktivitäten' : 'Activities'}</span>
                         </div>
                     </div>
 
@@ -599,23 +594,23 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
             </div>
 
             {/* Keep voting reachable while the details scroll. */}
-            <div className="shrink-0 flex items-center justify-between gap-3 border-t border-slate-200 dark:border-white/10 bg-white dark:bg-card px-4 py-3">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{language === 'de' ? 'Dein Eindruck vom Spot' : 'Your impression of this spot'}</span>
+            <div className="shrink-0 flex items-center justify-between gap-3 border-t border-border bg-white dark:bg-card px-4 py-3">
+                <span className="text-xs font-medium text-muted-foreground">{language === 'de' ? 'Dein Eindruck vom Spot' : 'Your impression of this spot'}</span>
                 <div className="flex items-center gap-1.5">
                     <button
                         onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
                         aria-pressed={userVote === 'up'}
                         aria-label={language === 'de' ? 'Gefällt mir' : 'Like'}
                         className={cn(
-                            "h-11 min-w-11 px-2 rounded-xl flex items-center justify-center transition-colors duration-200 text-[11px] font-semibold leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
+                            "h-11 min-w-11 px-2 rounded-xl border flex items-center justify-center transition-colors duration-200 text-[11px] font-semibold leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                             userVote === 'up'
-                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20"
+                                ? "bg-primary/10 text-primary border-primary/40 hover:bg-primary/15"
+                                : "bg-muted/30 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
                         )}
                     >
                         <ThumbsUp className={cn("h-4 w-4 shrink-0", userVote === 'up' && 'fill-current')} />
                         {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
-                            <span className={cn("text-[10px] font-black", userVote === 'up' ? "text-white opacity-100" : "opacity-70")}>
+                            <span className={cn("text-[10px] font-black", userVote === 'up' ? "opacity-100" : "opacity-70")}>
                                 {(placeMeta.weightedUpvotes || 0) > 0 ? `+${placeMeta.weightedUpvotes}` : '0'}
                             </span>
                         )}
@@ -626,15 +621,15 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         aria-pressed={userVote === 'down'}
                         aria-label={language === 'de' ? 'Gefällt mir nicht' : 'Dislike'}
                         className={cn(
-                            "h-11 min-w-11 px-2 rounded-xl flex items-center justify-center transition-colors duration-200 text-[11px] font-semibold leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2",
+                            "h-11 min-w-11 px-2 rounded-xl border flex items-center justify-center transition-colors duration-200 text-[11px] font-semibold leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                             userVote === 'down'
-                                ? "bg-rose-600 text-white hover:bg-rose-700"
-                                : "bg-rose-500/10 text-rose-700 dark:text-rose-400 hover:bg-rose-500/20"
+                                ? "bg-muted text-foreground border-foreground/40 hover:bg-muted/80"
+                                : "bg-muted/30 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
                         )}
                     >
                         <ThumbsDown className={cn("h-4 w-4 shrink-0", userVote === 'down' && 'fill-current')} />
                         {(userProfile?.role === 'admin' || userProfile?.role === 'supporter') && (
-                            <span className={cn("text-[10px] font-black", userVote === 'down' ? "text-white opacity-100" : "opacity-70")}>
+                            <span className={cn("text-[10px] font-black", userVote === 'down' ? "opacity-100" : "opacity-70")}>
                                 {(placeMeta.weightedDownvotes || 0) > 0 ? `-${placeMeta.weightedDownvotes}` : '0'}
                             </span>
                         )}
