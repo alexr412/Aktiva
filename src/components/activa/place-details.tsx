@@ -30,7 +30,6 @@ import {
     MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import type { Place, Activity, Review } from '@/lib/types';
@@ -57,7 +56,6 @@ type PlaceDetailsProps = {
 export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsProps) {
     const language = useLanguage();
     const primaryStyle = getPrimaryIconData(place, language);
-    const PrimaryIcon = primaryStyle.icon;
     
     const { user, userProfile } = useAuth();
     const { position } = useLocation();
@@ -299,10 +297,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     return (
         <div className="flex flex-col h-full min-h-0 w-full bg-white dark:bg-card overflow-hidden rounded-none sm:rounded-3xl relative">
             {/* Compact category header */}
-            <div className="relative w-full shrink-0 flex items-center gap-3 py-5 pl-4 pr-16 sm:pl-5 overflow-hidden border-b border-border bg-muted/30">
-                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary" aria-hidden="true">
-                    <PrimaryIcon className="h-7 w-7" strokeWidth={1.7} />
-                </div>
+            <div className="relative w-full shrink-0 pt-6 pb-4 pl-6 pr-16 sm:pl-7">
                 <div className="relative min-w-0">
                     <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{primaryStyle.label}</p>
                     <h2 title={place.name} className="text-xl sm:text-2xl font-semibold leading-tight tracking-tight text-foreground line-clamp-2 [overflow-wrap:anywhere]">{place.name}</h2>
@@ -312,7 +307,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     <button
                         onClick={onClose}
                         type="button"
-                        className="absolute top-3 right-3 z-30 h-11 w-11 rounded-full bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary focus:outline-none"
+                        className="absolute top-4 right-4 z-30 h-11 w-11 rounded-full hover:bg-muted/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary focus:outline-none"
                         aria-label={language === 'de' ? 'Schließen' : 'Close'}
                     >
                         <X className="h-5 w-5" />
@@ -322,10 +317,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
             </div>
 
             <div ref={viewportRef} tabIndex={0} role="region" aria-label={language === 'de' ? 'Spot-Details' : 'Spot details'} className="flex-1 min-h-0 w-full overflow-y-auto overscroll-contain [scrollbar-width:thin] bg-white dark:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
-                <div className="p-4">
+                <div className="px-6 pb-3 sm:px-7">
                     {/* 1. Core metadata */}
-                    <div className="rounded-2xl border border-border bg-muted/30 p-3">
-                        <div className="space-y-2">
+                    <div>
+                        <div className="space-y-1">
                             <div className="flex items-start gap-2">
                                 <a 
                                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`}
@@ -337,7 +332,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     onPointerCancel={handleAddressPointerCancel}
                                     onContextMenu={handleAddressContextMenu}
                                     onClick={handleAddressClick}
-                                    className="flex min-w-0 flex-1 items-start gap-2 text-foreground hover:text-primary cursor-pointer group select-none pt-2"
+                                    className="flex min-w-0 flex-1 items-start gap-2 text-foreground hover:text-primary cursor-pointer group select-none py-2"
                                     style={{ WebkitTouchCallout: 'none' }}
                                 >
                                     <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
@@ -347,7 +342,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     onClick={handleCopyAddress}
                                     variant="ghost"
                                     size="icon"
-                                    className="h-11 w-11 rounded-xl bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+                                    className="h-11 w-11 rounded-xl hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                                     title={language === 'de' ? 'Adresse kopieren' : 'Copy address'}
                                     aria-label={language === 'de' ? 'Adresse kopieren' : 'Copy address'}
                                 >
@@ -363,10 +358,8 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         </div>
                     </div>
 
-                    <Separator className="my-3 dark:bg-neutral-800/80" />
-
                     {/* 2. Local Activities Section */}
-                    <div>
+                    <div className="mt-6">
                         <div className="flex items-center justify-between gap-2 mb-3">
                             <div className="flex items-center gap-2">
                                 <Users className="h-5 w-5 text-[#1e293b] dark:text-neutral-100" />
@@ -379,7 +372,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                 <Button
                                     onClick={onCreateActivity}
                                     variant="ghost"
-                                    className="h-11 px-4 text-xs font-black bg-primary/10 hover:bg-primary/20 text-primary rounded-xl flex items-center gap-1.5 shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none"
+                                    className="h-11 px-3 text-xs font-semibold hover:bg-muted/60 text-primary hover:text-primary rounded-xl flex items-center gap-1.5 shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                                     aria-label={language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
                                 >
                                     <Plus className="h-4 w-4" />
@@ -396,7 +389,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                 <Skeleton className="h-20 w-full rounded-2xl" />
                             </div>
                         ) : activities.length === 0 ? (
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-muted/30 rounded-2xl border border-border">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-1">
                                 <div className="min-w-0">
                                     <h4 className="font-semibold text-sm text-slate-800 dark:text-neutral-200 mb-1 leading-snug">
                                         {language === 'de' ? 'Hier ist noch Platz für deine Idee' : 'There is room for your idea here'}
@@ -407,14 +400,14 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                 </div>
                                 <Button
                                     onClick={onCreateActivity}
-                                    className="h-11 w-full sm:w-auto shrink-0 px-4 rounded-xl bg-primary text-white font-semibold text-xs active:scale-[0.985] flex items-center gap-1.5 shadow shadow-primary/10 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none"
+                                    className="h-11 w-full sm:w-auto shrink-0 px-4 rounded-xl bg-primary text-white font-semibold text-xs active:scale-[0.985] flex items-center gap-1.5 shadow-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                                 >
                                     <Plus className="h-4 w-4" />
                                     {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
                                 </Button>
                             </div>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="divide-y divide-border/60">
                                 {activities.map(activity => {
                                     const actDate = activity.activityDate.toDate();
                                     const isParticipant = activity.participantIds.includes(user?.uid || '---');
@@ -425,12 +418,12 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                         <div 
                                             key={activity.id} 
                                             onClick={() => setSelectedInfoActivity(activity)}
-                                            className="bg-slate-50 dark:bg-background rounded-2xl p-3 flex items-start gap-2.5 border border-slate-200 dark:border-white/10 hover:border-primary/30 transition-colors group cursor-pointer"
+                                            className="py-3 flex items-start gap-2.5 group cursor-pointer"
                                         >
                                             {/* Date badge: links, flex-none */}
-                                            <div className="h-11 w-10 bg-accent dark:bg-emerald-950/20 rounded-xl flex flex-col items-center justify-center border border-emerald-100/50 dark:border-emerald-900/30 shrink-0 select-none">
-                                                <span className="text-lg font-black text-primary leading-none">{format(actDate, 'd')}</span>
-                                                <span className="text-[8px] font-black text-primary uppercase tracking-tighter mt-0.5">{format(actDate, 'MMM', { locale: language === 'de' ? de : enUS })}</span>
+                                            <div className="h-11 w-10 flex flex-col items-center justify-center shrink-0 select-none">
+                                                <span className="text-lg font-semibold text-foreground leading-none">{format(actDate, 'd')}</span>
+                                                <span className="text-[9px] font-medium text-muted-foreground uppercase mt-0.5">{format(actDate, 'MMM', { locale: language === 'de' ? de : enUS })}</span>
                                             </div>
 
                                             {/* Main content area: flex-1 min-w-0 */}
@@ -469,7 +462,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                             variant="ghost"
                                                             size="icon"
                                                             aria-label={language === 'de' ? 'Details zur Aktivität' : 'Activity details'}
-                                                            className="h-11 w-11 rounded-full bg-slate-50 dark:bg-neutral-900 hover:bg-slate-100 dark:hover:bg-neutral-800 text-slate-400 hover:text-primary transition-colors border border-slate-150 dark:border-neutral-800 focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none flex-none"
+                                                            className="h-11 w-11 rounded-xl hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none flex-none"
                                                         >
                                                             <Info className="h-4 w-4" />
                                                         </Button>
@@ -480,8 +473,8 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                                     e.stopPropagation();
                                                                     router.push(`/chat/${activity.id}`);
                                                                 }}
-                                                                variant="secondary"
-                                                                className="bg-[#f5f3f2] hover:bg-slate-200 text-[#0f172a] rounded-xl h-11 min-w-[64px] px-3 font-bold text-xs border-none shadow-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none flex-none whitespace-nowrap"
+                                                                variant="ghost"
+                                                                className="hover:bg-muted/60 text-foreground rounded-xl h-11 min-w-[64px] px-3 font-semibold text-xs shadow-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none flex-none whitespace-nowrap"
                                                             >
                                                                 Chat
                                                             </Button>
@@ -520,17 +513,16 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         )}
                     </div>
 
-                    <Separator className="my-3 dark:bg-neutral-800/80" />
-
                     {/* 3. Secondary Actions */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                    <div className="grid grid-cols-4 gap-1 mt-6 pt-3 border-t border-border/60">
                         <Button 
                             onClick={handleBookmarkToggle}
+                            variant="ghost"
                             className={cn(
-                                "h-11 rounded-xl font-semibold text-xs transition-colors flex items-center justify-center gap-2 border shadow-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none",
+                                "h-11 px-1 rounded-xl font-medium text-[11px] sm:text-xs transition-colors flex items-center justify-center gap-1.5 shadow-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none",
                                 isFavorite 
-                                    ? "bg-primary/10 hover:bg-primary/15 text-primary border-primary/25"
-                                    : "bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground border-border"
+                                    ? "text-primary hover:text-primary"
+                                    : "text-muted-foreground hover:text-foreground"
                             )}
                         >
                             <Bookmark className={cn("h-4 w-4 shrink-0", isFavorite && "fill-current")} />
@@ -538,21 +530,24 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         </Button>
                         <Button 
                             onClick={() => setIsSaveToCollectionOpen(true)}
-                            className="h-11 rounded-xl bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground border border-border font-semibold text-xs transition-colors flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+                            variant="ghost"
+                            className="h-11 px-1 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground font-medium text-[11px] sm:text-xs transition-colors flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                         >
                             <FolderPlus className="h-4 w-4 shrink-0" />
                             <span className="whitespace-nowrap truncate">{language === 'de' ? 'Liste' : 'List'}</span>
                         </Button>
                         <Button 
                             onClick={() => setIsAnalyticsOpen(true)}
-                            className="h-11 rounded-xl bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground border border-border font-semibold text-xs transition-colors flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+                            variant="ghost"
+                            className="h-11 px-1 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground font-medium text-[11px] sm:text-xs transition-colors flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                         >
                             <BarChart3 className="h-4 w-4 shrink-0" />
                             <span className="whitespace-nowrap truncate">{language === 'de' ? 'Statistik' : 'Stats'}</span>
                         </Button>
                         <Button 
                             onClick={handleSharePlace}
-                            className="h-11 rounded-xl bg-muted/30 text-muted-foreground hover:bg-muted hover:text-foreground border border-border font-semibold text-xs transition-colors flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+                            variant="ghost"
+                            className="h-11 px-1 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground font-medium text-[11px] sm:text-xs transition-colors flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                         >
                             <Share2 className="h-4 w-4 shrink-0" />
                             <span className="whitespace-nowrap truncate">{language === 'de' ? 'Teilen' : 'Share'}</span>
@@ -560,33 +555,29 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     </div>
 
                     {/* 4. Rating and Distance Statistics */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    <div className="flex flex-wrap items-center gap-x-5 text-xs text-muted-foreground">
                         <button 
                             onClick={handleOpenReviewsModal}
-                            className="bg-muted/30 min-h-11 p-2 rounded-xl flex flex-col items-center justify-center gap-0.5 text-center border border-border hover:bg-muted transition-colors cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            className="min-h-11 rounded-md flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         >
-                            <div className="flex items-center gap-1">
-                                <Star className="w-3.5 h-3.5 text-muted-foreground" />
-                                <span className={cn(
-                                    "font-semibold text-foreground text-sm",
-                                    placeMeta.avgRating > 0 ? "text-[14px]" : "text-[10px]"
-                                )}>
-                                    {placeMeta.avgRating > 0 ? placeMeta.avgRating.toFixed(1) : (language === 'de' ? 'Noch keine' : 'No ratings')}
-                                </span>
-                            </div>
-                            <span className="text-[10px] font-medium text-muted-foreground underline decoration-muted-foreground/40 underline-offset-2">Community</span>
+                            <Star className="w-3.5 h-3.5" />
+                            <span className="underline decoration-muted-foreground/40 underline-offset-2">
+                                {placeMeta.avgRating > 0
+                                    ? `${placeMeta.avgRating.toFixed(1)} · Community`
+                                    : (language === 'de' ? 'Noch keine Bewertungen' : 'No reviews yet')}
+                            </span>
                         </button>
-                        <div className="bg-muted/30 p-2 rounded-xl flex flex-col items-center justify-center gap-0.5 text-center border border-border">
-                             <span className="text-sm font-semibold text-foreground">
+                        <div className="min-h-11 flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5" />
+                            <span>
                                 {formattedDistance || '---'}
                             </span>
-                            <span className="text-[10px] font-medium text-muted-foreground">{language === 'de' ? 'Entfernung' : 'Distance'}</span>
                         </div>
-                        <div className="hidden md:flex bg-muted/30 p-2 rounded-xl flex-col items-center justify-center gap-0.5 text-center border border-border">
-                             <span className="text-sm font-semibold text-foreground">
-                                {activities.length}
+                        <div className="hidden md:flex min-h-11 items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5" />
+                            <span>
+                                {activities.length} {language === 'de' ? 'Aktivitäten' : 'Activities'}
                             </span>
-                            <span className="text-[10px] font-medium text-muted-foreground">{language === 'de' ? 'Aktivitäten' : 'Activities'}</span>
                         </div>
                     </div>
 
@@ -594,7 +585,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
             </div>
 
             {/* Keep voting reachable while the details scroll. */}
-            <div className="shrink-0 flex items-center justify-between gap-3 border-t border-border bg-white dark:bg-card px-4 py-3">
+            <div className="shrink-0 flex items-center justify-between gap-3 bg-white dark:bg-card px-6 pt-1 pb-4 sm:px-7">
                 <span className="text-xs font-medium text-muted-foreground">{language === 'de' ? 'Dein Eindruck vom Spot' : 'Your impression of this spot'}</span>
                 <div className="flex items-center gap-1.5">
                     <button
@@ -602,10 +593,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         aria-pressed={userVote === 'up'}
                         aria-label={language === 'de' ? 'Gefällt mir' : 'Like'}
                         className={cn(
-                            "h-11 min-w-11 px-2 rounded-xl border flex items-center justify-center transition-colors duration-200 text-[11px] font-semibold leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                            "h-11 min-w-11 px-2 rounded-xl flex items-center justify-center transition-colors duration-200 text-[11px] font-semibold leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                             userVote === 'up'
-                                ? "bg-primary/10 text-primary border-primary/40 hover:bg-primary/15"
-                                : "bg-muted/30 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                                ? "bg-primary/10 text-primary hover:bg-primary/15"
+                                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                         )}
                     >
                         <ThumbsUp className={cn("h-4 w-4 shrink-0", userVote === 'up' && 'fill-current')} />
@@ -621,10 +612,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         aria-pressed={userVote === 'down'}
                         aria-label={language === 'de' ? 'Gefällt mir nicht' : 'Dislike'}
                         className={cn(
-                            "h-11 min-w-11 px-2 rounded-xl border flex items-center justify-center transition-colors duration-200 text-[11px] font-semibold leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                            "h-11 min-w-11 px-2 rounded-xl flex items-center justify-center transition-colors duration-200 text-[11px] font-semibold leading-none gap-1 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                             userVote === 'down'
-                                ? "bg-muted text-foreground border-foreground/40 hover:bg-muted/80"
-                                : "bg-muted/30 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                                ? "bg-muted/60 text-foreground hover:bg-muted"
+                                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                         )}
                     >
                         <ThumbsDown className={cn("h-4 w-4 shrink-0", userVote === 'down' && 'fill-current')} />
