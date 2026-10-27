@@ -514,7 +514,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     </div>
 
                     {/* 3. Secondary Actions */}
-                    <div className="grid grid-cols-4 gap-1 mt-6 pt-3 border-t border-border/60">
+                    <div className="flex items-center justify-between gap-1 mt-6 pt-3 border-t border-border/60 [&>button]:min-w-0">
                         <Button 
                             onClick={handleBookmarkToggle}
                             variant="ghost"
