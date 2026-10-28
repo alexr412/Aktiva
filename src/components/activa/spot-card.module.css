@@ -18,6 +18,7 @@
 .art { position:relative; height:100%; overflow:hidden; }
 .illustration { display:block; width:100%; height:100%; }
 .photo { object-fit:cover; }
+.modernIllustration { object-position:var(--spot-art-position,50% 50%); }
 .photoCredit { position:absolute; right:8px; bottom:8px; z-index:1; display:grid; place-items:center; width:24px; height:24px; border-radius:7px; background:#172629cf; color:#fff; }
 .photoCredit svg { width:13px; height:13px; }
 .exampleLabel { position:absolute; bottom:8px; right:40px; max-width:calc(100% - 48px); padding:2px 4px; border-radius:5px; background:#172629df; color:#fff; font-size:10px; line-height:14px; white-space:nowrap; }
@@ -120,6 +121,7 @@
 }
 @media (max-width:767px) {
   .mobileList .exampleLabel { top:6px; left:4px; bottom:auto; right:auto; max-width:calc(100% - 8px); padding:2px 3px; }
+  .mobileList .modernIllustration { object-position:var(--spot-art-mobile-position,50% 50%); }
   .mobileList .card { grid-template-columns:80px minmax(0,1fr); grid-template-rows:76px 32px; gap:6px 12px; height:136px; padding:10px; border-radius:14px; box-shadow:none; }
   .mobileList .art { grid-column:1; grid-row:1 / 3; height:100%; border-radius:10px; }
   .mobileList .categoryBadge { display:none; }

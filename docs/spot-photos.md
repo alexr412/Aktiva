@@ -1,6 +1,8 @@
 # Verified venue photos
 
-The active catalog contains 12 reviewed photos of the actual Bremerhaven venues.
+The photo catalog retains 12 reviewed photos of the actual Bremerhaven venues.
+The [modern activity illustrations](spot-illustrations.md) take priority for their
+six selected subjects; photo selection remains available for other categories.
 Automatic category/example photos have been removed. Unknown venues or failed
 image requests use the existing illustration rather than a different venue's photo.
 This is partial real-photo coverage, not complete coverage of the 75-spot pilot.
