@@ -1,8 +1,9 @@
-# Verified venue photos
+# Reviewed venue-photo archive
 
 The photo catalog retains 12 reviewed photos of the actual Bremerhaven venues.
-The [modern activity illustrations](spot-illustrations.md) take priority for their
-six selected subjects; photo selection remains available for other categories.
+Normal spot cards now use the [modern activity illustrations](spot-illustrations.md)
+for all activity subjects. The photo catalog and importer remain available as an
+archive; the original images and metadata have not been deleted.
 Automatic category/example photos have been removed. Unknown venues or failed
 image requests use the existing illustration rather than a different venue's photo.
 This is partial real-photo coverage, not complete coverage of the 75-spot pilot.

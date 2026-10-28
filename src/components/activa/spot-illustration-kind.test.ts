@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { getSpotIllustrationKind } from './spot-illustration-kind';
 import { getSpotIllustrationArtwork } from './spot-illustration-artwork';
+import { getSpotIllustrationSubject } from './spot-illustration-subject';
 
 test('nightlife and leisure venues receive their own artwork', () => {
   assert.equal(getSpotIllustrationKind({name:'Kühlhouse',categories:['entertainment.nightclub']}),'music');
@@ -25,13 +26,13 @@ test('unknown venues do not silently become parks', () => {
 test('modern illustrations do not substitute unrelated sports or animal habitats', () => {
   assert.ok(getSpotIllustrationArtwork({name:'Hot Court Padel',categories:['sport.tennis']}));
   assert.ok(getSpotIllustrationArtwork({name:'Zoo am Meer',categories:['entertainment.zoo']}));
-  assert.equal(getSpotIllustrationArtwork({name:'Bremerhaven Boulder Club',categories:['sport.activity_park']}),undefined);
-  assert.equal(getSpotIllustrationArtwork({name:'Tiergehege',categories:['entertainment.zoo']}),undefined);
-  assert.equal(getSpotIllustrationArtwork({name:'Am Spadener See',categories:['sport.minigolf']}),undefined);
+  assert.equal(getSpotIllustrationSubject({name:'Bremerhaven Boulder Club',categories:['sport.activity_park']}),'climbing');
+  assert.equal(getSpotIllustrationSubject({name:'Tiergehege',categories:['entertainment.zoo']}),'deer');
+  assert.equal(getSpotIllustrationSubject({name:'Am Spadener See',categories:['sport.minigolf']}),'minigolf');
 });
 
 test('park artwork does not replace beaches or restaurants with a park in their name', () => {
   assert.ok(getSpotIllustrationArtwork({name:'Bürgerpark',categories:['leisure.park']}));
-  assert.equal(getSpotIllustrationArtwork({name:'Weserstrand',categories:['beach']}),undefined);
-  assert.equal(getSpotIllustrationArtwork({name:'Bootshaus Bürgerpark',categories:['catering.restaurant']}),undefined);
+  assert.equal(getSpotIllustrationSubject({name:'Weserstrand',categories:['beach']}),'beach');
+  assert.equal(getSpotIllustrationSubject({name:'Bootshaus Bürgerpark',categories:['catering.restaurant']}),'food');
 });

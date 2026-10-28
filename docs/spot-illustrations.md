@@ -1,25 +1,37 @@
 # Modern activity illustrations
 
-The six approved modern illustrations take priority in spot cards for bowling,
-coffee, swimming, padel, parks and maritime zoos. Selection is presentation-only.
-The existing category resolver still decides which activity a place represents.
-Padel artwork is not used for other sports; the seal is not used for deer parks,
-and the park scene is not used for beaches. Unsupported categories keep their
-existing cover selection.
+Spot cards use 39 modern activity illustrations: the six approved motifs and 33
+additional subjects. Every venue in the 75-place Bremerhaven pilot has a specific
+subject. Unknown meeting places receive a neutral community scene. All images
+illustrate activity categories rather than the appearance of a real venue.
 
-`src/components/activa/spot-illustration-artwork.ts` contains the mapping and the
-desktop/mobile crop positions. The card menu identifies the images as generated
-activity illustrations, rather than photos of the particular venue. Failed image
-requests fall back to the existing SVG artwork.
+`spot-illustration-subject.ts` selects artwork using specific activity tags and
+reviewed name hints before broad categories. Padel, tennis, football, basketball,
+bouldering, billiards, karaoke, board games, minigolf and general fitness remain
+distinct. Restaurant tags outrank a park in the venue name. Accessibility, WLAN,
+fees and dietary metadata do not choose the artwork. This is presentation-only;
+the resolver never changes discovery, ranking, category data or catalog entries.
 
-The web assets are 960 × 640 WebP files in
-`public/assets/spot-illustrations/modern-v2/`. They are derived from the original
-1536 × 1024 PNGs in the task output folder
-`output/aktiva-illustrationen-modern-v2/` (beside this worktree). Its `prompts.json`
-records the integrated Imagegen prompts and style reference. Web export uses the
-installed Sharp image processor with quality 82; there is no runtime image API.
+`spot-illustration-artwork.ts` maps subjects to files, accessible descriptions and
+separate desktop/mobile crop positions. The card menu identifies the artwork as
+AI-generated and not a photo of the particular venue. A failed image request uses
+the retained SVG illustration.
 
-Both original PNG series, their ZIP archives, the older SVG illustrations and the
-reviewed venue-photo manifest remain available. The first series has not been
-overwritten. The photo importer and photo attributions still apply where venue
-photos are displayed.
+The web files are 960 × 640 WebP assets in
+`public/assets/spot-illustrations/modern-v2/` and `modern-v3/`. Export uses the
+installed Sharp processor at quality 82. These are shared static assets: no
+per-visit image search, paid image API or extra database query is needed.
+
+The full PNGs, exact integrated Imagegen prompts and generation manifests live in
+the task output folders beside this worktree:
+
+- `output/aktiva-illustrationen-modern-v2/`
+- `output/aktiva-illustrationen-modern-ergaenzung-v3/`
+
+The extension folder includes an incremental `export-web-assets.cjs` script and a
+preservation check for both previous series and their archives. Older PNGs, ZIPs,
+SVG illustrations and the reviewed photo catalog are retained.
+
+Targeted checks cover category distinctions, ambiguous names, optional metadata,
+all 75 pilot venues, and the unchanged venue-photo archive. The coverage report
+in the extension output folder records each pilot venue's selected subject.
