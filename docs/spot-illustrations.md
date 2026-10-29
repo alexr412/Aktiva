@@ -6,6 +6,12 @@ style and activity settings are preserved. Every venue in the 75-place Bremerhav
 subject. Unknown meeting places receive a neutral community scene. All images
 illustrate activity categories rather than the appearance of a real venue.
 
+The two v5 corrections replace cinema seating with four aligned individual seats
+and remove all playing cards from the dice-and-pawn board-game scene. These two
+subjects use `modern-v5/`; the other 37 continue to use v4. Earlier assets remain
+archived. The complete current set of 39 PNGs is in
+`output/aktiva-illustrationen-aktuell-v5/` beside this worktree.
+
 `spot-illustration-subject.ts` selects artwork using specific activity tags and
 reviewed name hints before broad categories. Padel, tennis, football, basketball,
 bouldering, billiards, karaoke, board games, minigolf and general fitness remain

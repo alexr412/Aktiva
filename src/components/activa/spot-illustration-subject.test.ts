@@ -41,7 +41,7 @@ test('all 75 pilot venues have a specific modern illustration without changing t
   const before = JSON.stringify(catalog);
   for (const place of catalog.places) {
     assert.notEqual(getSpotIllustrationSubject(place),'community',place.name);
-    assert.match(getSpotIllustrationArtwork(place)!.src,/^\/assets\/spot-illustrations\/modern-v4\//,place.name);
+    assert.match(getSpotIllustrationArtwork(place)!.src,/^\/assets\/spot-illustrations\/modern-v[45]\//,place.name);
   }
   assert.equal(JSON.stringify(catalog),before);
 });
