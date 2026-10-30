@@ -1,5 +1,5 @@
 import type { Place } from '@/lib/types';
-import { getSpotIllustrationSubject } from './spot-illustration-subject';
+import { getSpotIllustrationSubject, type SpotIllustrationSubject } from './spot-illustration-subject';
 
 export type SpotIllustrationArtwork = {
   src: string;
@@ -14,6 +14,9 @@ const extensionRoot = root;
 const extra = (key: string, de: string, en: string, y = 40, x = 50): SpotIllustrationArtwork => ({
   src: `${extensionRoot}/${key}.webp`, label: { de, en },
   objectPosition: `50% ${y}%`, mobileObjectPosition: `${x}% 50%`,
+});
+const subtag = (key: string, de: string, en: string, y = 25, x = 50): SpotIllustrationArtwork => ({
+  ...extra(key, de, en, y, x), src: `/assets/spot-illustrations/modern-v6/${key}.webp`,
 });
 const artworks = {
   bowling: { src: `${root}/bowling.webp`, label: { de: 'Gemeinsam bowlen', en: 'Bowling with friends' }, objectPosition: '50% 32%', mobileObjectPosition: '50% 50%' },
@@ -55,9 +58,34 @@ const artworks = {
   maritime: extra('maritime', "Hafen & Maritimes", "Harbour and maritime places", 20),
   aquarium: extra('aquarium', "Aquarium", "Aquarium"),
   community: extra('community', "Gemeinsame Freizeit", "Shared leisure and meeting people", 30),
-} satisfies Record<string, SpotIllustrationArtwork>;
+  coworking: subtag('coworking', 'Coworking', 'Coworking'),
+  study: subtag('study', 'Gemeinsam lernen', 'Studying together'),
+  iceskating: subtag('iceskating', 'Eislaufen', 'Ice skating', 5),
+  planetarium: subtag('planetarium', 'Planetarium', 'Planetarium', 35),
+  themepark: subtag('themepark', 'Freizeitpark', 'Amusement park', 25),
+  activitypark: subtag('activitypark', 'Aktivitätspark', 'Outdoor activity park', 15),
+  lake: subtag('lake', 'See & Flussufer', 'Lake and riverside', 30),
+  gallery: subtag('gallery', 'Galerie & Ausstellung', 'Art gallery and exhibition', 25),
+  biergarten: subtag('biergarten', 'Biergarten', 'Beer garden'),
+  fastfood: subtag('fastfood', 'Burger & Streetfood', 'Burgers and street food', 30),
+  bakery: subtag('bakery', 'Bäckerei & Gebäck', 'Bakery and pastries', 30),
+  running: subtag('running', 'Laufen & Joggen', 'Running and jogging', 5),
+  cooking: subtag('cooking', 'Gemeinsam kochen', 'Cooking together', 30),
+  baking: subtag('baking', 'Gemeinsam backen', 'Baking together', 30),
+  photography: subtag('photography', 'Fotografie', 'Photography', 25),
+  painting: subtag('painting', 'Malen & Kreativworkshop', 'Painting and creative workshop'),
+  travel: subtag('travel', 'Reisen & Ausflüge', 'Travel and day trips'),
+  concert: subtag('concert', 'Konzert & Livemusik', 'Concert and live music', 25),
+  festival: subtag('festival', 'Festival', 'Festival', 25),
+  comedy: subtag('comedy', 'Comedy & Stand-up', 'Comedy and stand-up'),
+  dogwalking: subtag('dogwalking-compact', 'Mit Hund unterwegs', 'Walking with a dog', 30),
+  viewpoint: subtag('viewpoint', 'Aussichtspunkt', 'Scenic viewpoint', 25),
+  pizza: subtag('pizza', 'Pizza & Pizzeria', 'Pizza restaurant', 30),
+  sushi: subtag('sushi', 'Sushi', 'Sushi restaurant', 25),
+  fish: subtag('fish', 'Fischrestaurant', 'Seafood restaurant', 30),
+} satisfies Record<SpotIllustrationSubject, SpotIllustrationArtwork>;
 
 /** Selects category artwork only; it never changes discovery or place data. */
-export function getSpotIllustrationArtwork(place: Pick<Place, 'name' | 'categories'>): SpotIllustrationArtwork | undefined {
+export function getSpotIllustrationArtwork(place: Pick<Place, 'name' | 'categories' | 'category' | 'normalizedCategory'>): SpotIllustrationArtwork | undefined {
   return artworks[getSpotIllustrationSubject(place)];
 }
