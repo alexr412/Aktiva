@@ -14,12 +14,27 @@ export function PlaceActivityPreview({ activity, activityCount, language, onClic
   loading?: boolean;
   hideEmpty?: boolean;
   compact?: boolean;
-  appearance?: 'warm';
+  appearance?: 'warm' | 'social';
 }) {
   const preview = activity ? getPlaceActivityPreview(activity, language) : null;
   const german = language === 'de';
   const hasActivities = activityCount > 0;
   if (hideEmpty && !preview && !hasActivities) return null;
+  if (appearance === 'social') {
+    const present = Boolean(preview) || hasActivities;
+    if (!present && !loading) return <div className={styles.socialPlaceholder} aria-hidden="true" />;
+    const count = Math.max(activityCount, preview ? 1 : 0);
+    const label = present
+      ? (german ? `${count} ${count === 1 ? 'Aktivität' : 'Aktivitäten'} ansehen` : `View ${count} ${count === 1 ? 'activity' : 'activities'}`)
+      : (german ? 'Aktivitäten werden geladen …' : 'Loading activities …');
+    const details = preview ? `${preview.title} · ${preview.schedule} · ${preview.availability}` : label;
+    return <button type="button" className={styles.socialPreview} onClick={onClick}
+      aria-label={`${label}${preview ? `: ${details}` : ''}`} aria-busy={!present || undefined} title={details}>
+      {present ? <Users aria-hidden="true" /> : <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+      <span>{label}</span>
+      {present && <ArrowRight className={styles.socialArrow} aria-hidden="true" />}
+    </button>;
+  }
   if (appearance === 'warm') {
     const present = Boolean(preview) || hasActivities;
     const waiting = loading && !present;

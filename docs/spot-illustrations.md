@@ -34,6 +34,11 @@ separate desktop/mobile crop positions. The card menu identifies the artwork as
 AI-generated and not a photo of the particular venue. A failed image request uses
 the retained SVG illustration.
 
+The approved Variant 2 card layout uses a 168px edge-to-edge cover, soft 20px
+corners and a compact activity link above the vote/plan footer. Desktop spot
+cards, loading placeholders and ad slots share a 344px height. Mobile keeps one
+horizontal card per row at 136px, with ratings available in the options sheet.
+
 The web files are 960 × 640 WebP assets in
 `public/assets/spot-illustrations/modern-v4/`, `modern-v5/` and `modern-v6/`. The previous `modern-v2/` and
 `modern-v3/` assets remain available as archived versions. Export uses the

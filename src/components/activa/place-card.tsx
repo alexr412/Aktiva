@@ -46,6 +46,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
   const artwork = getSpotIllustrationArtwork(place);
   const photo = artwork ? undefined : getSpotPhoto(place);
   const primaryStyle = getPrimaryIconData(place, language);
+  const CategoryIcon = primaryStyle.icon;
   const showWeights = role === 'admin' || role === 'supporter';
   const rating = place.rating || (place as Place & { averageRating?: number }).averageRating;
   const vote = (type: 'up' | 'down') => onVote(userVote === type ? 'none' : type);
@@ -58,7 +59,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
       onClick={e => { e.stopPropagation(); vote(type); }}>
       <Icon className={userVote === type ? 'fill-current' : undefined} />
       {withLabels && <span>{label}</span>}
-      {showWeights && <span>{type === 'up' ? `+${weightedUpvotes}` : `−${weightedDownvotes}`}</span>}
+      {showWeights && withLabels && <span>{type === 'up' ? `+${weightedUpvotes}` : `−${weightedDownvotes}`}</span>}
     </button>;
   });
 
@@ -70,6 +71,7 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
         <div className={styles.art}>
           <SpotCover place={place} photo={photo} artwork={artwork} german={german} />
           {photo && <button type="button" className={styles.photoCredit} aria-label={german ? `Bildnachweis: ${photo.author}` : `Photo credit: ${photo.author}`} title={`${photo.author} · ${photo.license}`} onClick={() => setMenuOpen(true)}><Camera aria-hidden="true" /></button>}
+          <span className={styles.categoryIcon} aria-hidden="true"><CategoryIcon /></span>
           <span className={styles.categoryBadge}>{primaryStyle.label}</span>
           {(featured || isEntityBoosted(place) || (rating !== undefined && rating > 0) || role === 'admin') && <div className={styles.imageMeta}>
             {(featured || isEntityBoosted(place)) && <span className={styles.recommended}><Sparkles className="h-3 w-3" aria-hidden="true" />{german ? 'Empfohlen' : 'Recommended'}</span>}
@@ -88,15 +90,15 @@ export function PlaceCard({ place, onClick, onAddActivity, userVote, activityCou
             {place.distance !== undefined && <span className={styles.distance}><MapPin aria-hidden="true" />{formatDistance(place.distance)}</span>}
             {detail && <span className={styles.detail} title={detail}>{place.openingHours && <Clock aria-hidden="true" />}<span>{detail}</span></span>}
           </p>
-          <PlaceActivityPreview activity={activityPreview} activityCount={activityCount} loading={activityPreviewLoading} language={language} onClick={onClick} onCreate={plan} appearance="warm" />
+          <PlaceActivityPreview activity={activityPreview} activityCount={activityCount} loading={activityPreviewLoading} language={language} onClick={onClick} onCreate={plan} appearance="social" />
         </div>
         <div className={styles.actions}>
+          <div className={styles.cardVotes}>{voteButtons()}</div>
           <button type="button" className={styles.primary} onClick={plan} data-tutorial-id="spot-card-create"
             aria-label={german ? `Treffen planen: ${place.name}` : `Plan a meetup: ${place.name}`}>
-            <Plus aria-hidden="true" />{german ? 'Treffen planen' : 'Plan a meetup'}
+            <Plus aria-hidden="true" />{german ? 'Planen' : 'Plan'}
           </button>
         </div>
-        <div className={styles.voteFooter}><span>{german ? 'Passt der Ort für dich?' : 'Is this your kind of place?'}</span>{voteButtons()}</div>
       </article>
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent side="bottom" className={cn(styles.menu, 'max-h-[85dvh] overflow-y-auto')} hideCloseButton>
