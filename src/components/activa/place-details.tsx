@@ -42,6 +42,9 @@ import { getPrimaryIconData } from '@/lib/tag-config';
 import { formatOpeningHours } from '@/lib/tag-parser';
 import { trackInteraction } from '@/lib/telemetry';
 import { getReviewsForTarget } from '@/lib/firebase/firestore';
+import { SpotCover } from './spot-cover';
+import { getSpotIllustrationArtwork } from './spot-illustration-artwork';
+import styles from './place-details.module.css';
 
 import { usePlaceActivities } from '@/features/places/details/use-place-activities';
 import { usePlaceVoting } from '@/features/places/details/use-place-voting';
@@ -56,6 +59,8 @@ type PlaceDetailsProps = {
 export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsProps) {
     const language = useLanguage();
     const primaryStyle = getPrimaryIconData(place, language);
+    const CategoryIcon = primaryStyle.icon;
+    const artwork = getSpotIllustrationArtwork(place);
     
     const { user, userProfile } = useAuth();
     const { position } = useLocation();
@@ -295,19 +300,20 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
     const openingHoursText = formatOpeningHours(place.openingHours);
 
     return (
-        <div className="flex flex-col h-full min-h-0 w-full bg-white dark:bg-card overflow-hidden rounded-none sm:rounded-3xl relative">
-            {/* Compact category header */}
-            <div className="relative w-full shrink-0 pt-6 pb-4 pl-6 pr-16 sm:pl-7">
-                <div className="relative min-w-0">
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{primaryStyle.label}</p>
-                    <h2 title={place.name} className="text-xl sm:text-2xl font-semibold leading-tight tracking-tight text-foreground line-clamp-2 [overflow-wrap:anywhere]">{place.name}</h2>
+        <div className={styles.root}>
+            <div className={styles.hero}>
+                <SpotCover place={place} artwork={artwork} german={language === 'de'} />
+                <div className={styles.heroScrim} />
+                <div className={styles.heroContent}>
+                    <p className={styles.eyebrow}><span className={styles.eyebrowIcon} aria-hidden="true"><CategoryIcon /></span>{primaryStyle.label}<span aria-hidden="true">·</span><span>{formattedDistance || '---'}</span></p>
+                    <h2 title={place.name} className={styles.title}>{place.name}</h2>
                 </div>
                 {/* Close Button */}
                 {onClose && (
                     <button
                         onClick={onClose}
                         type="button"
-                        className="absolute top-4 right-4 z-30 h-11 w-11 rounded-full hover:bg-muted/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary focus:outline-none"
+                        className={styles.close}
                         aria-label={language === 'de' ? 'Schließen' : 'Close'}
                     >
                         <X className="h-5 w-5" />
@@ -316,12 +322,12 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
 
             </div>
 
-            <div ref={viewportRef} tabIndex={0} role="region" aria-label={language === 'de' ? 'Spot-Details' : 'Spot details'} className="flex-1 min-h-0 w-full overflow-y-auto overscroll-contain [scrollbar-width:thin] bg-white dark:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
-                <div className="px-6 pb-3 sm:px-7">
+            <div ref={viewportRef} tabIndex={0} role="region" aria-label={language === 'de' ? 'Spot-Details' : 'Spot details'} className={styles.viewport}>
+                <div className={styles.body}>
                     {/* 1. Core metadata */}
                     <div>
-                        <div className="space-y-1">
-                            <div className="flex items-start gap-2">
+                        <div className={styles.metadata}>
+                            <div className={styles.address}>
                                 <a 
                                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.address)}`}
                                     target="_blank"
@@ -332,24 +338,24 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     onPointerCancel={handleAddressPointerCancel}
                                     onContextMenu={handleAddressContextMenu}
                                     onClick={handleAddressClick}
-                                    className="flex min-w-0 flex-1 items-start gap-2 text-foreground hover:text-primary cursor-pointer group select-none py-2"
+                                    className={styles.addressLink}
                                     style={{ WebkitTouchCallout: 'none' }}
                                 >
-                                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                                    <span className="min-w-0 text-xs sm:text-sm font-medium leading-relaxed [overflow-wrap:anywhere] underline decoration-muted-foreground/40 underline-offset-2">{place.address}</span>
+                                    <MapPin aria-hidden="true" />
+                                    <span>{place.address}</span>
                                 </a>
                                 <Button
                                     onClick={handleCopyAddress}
                                     variant="ghost"
                                     size="icon"
-                                    className="h-11 w-11 rounded-xl hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+                                    className={styles.copy}
                                     title={language === 'de' ? 'Adresse kopieren' : 'Copy address'}
                                     aria-label={language === 'de' ? 'Adresse kopieren' : 'Copy address'}
                                 >
                                     {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                                 </Button>
                             </div>
-                            {openingHoursText && <div className="flex items-start gap-2 text-muted-foreground">
+                            {openingHoursText && <div className={styles.hours}>
                                 <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                                 <span className="text-[12px] md:text-sm font-medium leading-tight">
                                     {openingHoursText}
@@ -359,28 +365,15 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     </div>
 
                     {/* 2. Local Activities Section */}
-                    <div className="mt-6">
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                            <div className="flex items-center gap-2">
-                                <Users className="h-5 w-5 text-[#1e293b] dark:text-neutral-100" />
-                                <h3 className="text-sm font-semibold text-slate-800 dark:text-neutral-200">
-                                    {language === 'de' ? 'Aktivitäten vor Ort' : 'Local Activities'}
-                                    {activities.length > 0 && ` · ${activities.length}`}
+                    <div className={styles.activities}>
+                        <div className={styles.sectionHeading}>
+                            <div className={styles.sectionTitle}>
+                                <Users aria-hidden="true" />
+                                <h3>
+                                    {language === 'de' ? 'Gemeinsam hierher' : 'Meet up here'}
                                 </h3>
                             </div>
-                            {activities.length > 0 && (
-                                <Button
-                                    onClick={onCreateActivity}
-                                    variant="ghost"
-                                    className="h-11 px-3 text-xs font-semibold hover:bg-muted/60 text-primary hover:text-primary rounded-xl flex items-center gap-1.5 shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
-                                    aria-label={language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
-                                >
-                                    <Plus className="h-4 w-4" />
-                                    <span>
-                                        {language === 'de' ? 'Erstellen' : 'Create'}
-                                    </span>
-                                </Button>
-                            )}
+                            {activities.length > 0 && <span className={styles.activityCount}>{activities.length} {language === 'de' ? 'Treffen' : (activities.length === 1 ? 'meetup' : 'meetups')}</span>}
                         </div>
 
                         {loadingActivities ? (
@@ -389,25 +382,19 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                 <Skeleton className="h-20 w-full rounded-2xl" />
                             </div>
                         ) : activities.length === 0 ? (
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-1">
+                            <div className={styles.empty}>
+                                <span className={styles.emptyIcon} aria-hidden="true"><Users /></span>
                                 <div className="min-w-0">
                                     <h4 className="font-semibold text-sm text-slate-800 dark:text-neutral-200 mb-1 leading-snug">
-                                        {language === 'de' ? 'Hier ist noch Platz für deine Idee' : 'There is room for your idea here'}
+                                        {language === 'de' ? 'Deine Idee macht den Anfang' : 'Start with your idea'}
                                     </h4>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                        {language === 'de' ? 'Plane die erste Aktivität und finde Leute, die mitmachen.' : 'Plan the first activity and find people to join.'}
+                                        {language === 'de' ? 'Schlage ein Treffen vor und finde Leute, die mitkommen.' : 'Suggest a meetup and find people to join you.'}
                                     </p>
                                 </div>
-                                <Button
-                                    onClick={onCreateActivity}
-                                    className="h-11 w-full sm:w-auto shrink-0 px-4 rounded-xl bg-primary text-white font-semibold text-xs active:scale-[0.985] flex items-center gap-1.5 shadow-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
-                                >
-                                    <Plus className="h-4 w-4" />
-                                    {language === 'de' ? 'Aktivität erstellen' : 'Create activity'}
-                                </Button>
                             </div>
                         ) : (
-                            <div className="divide-y divide-border/60">
+                            <div className={styles.activityList}>
                                 {activities.map(activity => {
                                     const actDate = activity.activityDate.toDate();
                                     const isParticipant = activity.participantIds.includes(user?.uid || '---');
@@ -418,10 +405,10 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                         <div 
                                             key={activity.id} 
                                             onClick={() => setSelectedInfoActivity(activity)}
-                                            className="py-3 flex items-start gap-2.5 group cursor-pointer"
+                                            className={styles.activityRow}
                                         >
                                             {/* Date badge: links, flex-none */}
-                                            <div className="h-11 w-10 flex flex-col items-center justify-center shrink-0 select-none">
+                                            <div className={styles.date}>
                                                 <span className="text-lg font-semibold text-foreground leading-none">{format(actDate, 'd')}</span>
                                                 <span className="text-[9px] font-medium text-muted-foreground uppercase mt-0.5">{format(actDate, 'MMM', { locale: language === 'de' ? de : enUS })}</span>
                                             </div>
@@ -433,7 +420,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                     {/* Linker Block: Avatar + Title block */}
                                                     <div className="flex items-center gap-2 min-w-[100px] sm:min-w-0 flex-1">
                                                         {/* Resized Avatar */}
-                                                        <div className="hidden sm:block w-8 h-8 rounded-full border border-slate-100 dark:border-neutral-800 bg-slate-200 overflow-hidden shrink-0">
+                                                        <div className={styles.avatar}>
                                                             <img 
                                                                 src={activity.participantsPreview?.[0]?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${activity.participantsPreview?.[0]?.uid || activity.hostId}`} 
                                                                 alt="avatar" 
@@ -444,11 +431,14 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                         </div>
                                                         {/* Title block */}
                                                         <div className="min-w-0 flex-1">
-                                                            <h4 className="font-semibold text-sm text-slate-800 dark:text-neutral-200 line-clamp-2 leading-snug break-words">
+                                                            <h4 className={styles.activityName}>
+                                                                <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedInfoActivity(activity); }}>
                                                                 {activity.isCustomActivity ? (activity.title || activity.placeName) : (activity.placeName || (language === 'de' ? 'Treffen' : 'Meetup'))}
+                                                                </button>
                                                             </h4>
                                                             <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                                                                {activity.participantIds.length} {language === 'de' ? 'Teilnehmer' : 'Participants'}
+                                                                {activity.participantIds.length}{activity.maxParticipants ? `/${activity.maxParticipants}` : ''} {language === 'de' ? 'dabei' : 'joining'}
+                                                                {activity.isTimeFlexible === false && ` · ${format(actDate, 'HH:mm')}`}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -462,7 +452,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                             variant="ghost"
                                                             size="icon"
                                                             aria-label={language === 'de' ? 'Details zur Aktivität' : 'Activity details'}
-                                                            className="h-11 w-11 rounded-xl hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none flex-none"
+                                                            className={styles.activityInfo}
                                                         >
                                                             <Info className="h-4 w-4" />
                                                         </Button>
@@ -474,9 +464,9 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                                     router.push(`/chat/${activity.id}`);
                                                                 }}
                                                                 variant="ghost"
-                                                                className="hover:bg-muted/60 text-foreground rounded-xl h-11 min-w-[64px] px-3 font-semibold text-xs shadow-none focus-visible:ring-2 focus-visible:ring-primary focus:outline-none flex-none whitespace-nowrap"
+                                                                className={styles.chat}
                                                             >
-                                                                Chat
+                                                                <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />Chat
                                                             </Button>
                                                         ) : (
                                                             <Button 
@@ -489,7 +479,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                                                     hasRequested
                                                                       ? "bg-slate-100 dark:bg-neutral-800 text-slate-400 dark:text-neutral-500 hover:opacity-100 cursor-not-allowed shadow-none"
                                                                       : "bg-primary text-white hover:opacity-90 shadow-sm",
-                                                                    "rounded-xl h-11 min-w-[64px] px-3 font-bold text-xs border-none transition-all focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none flex-none whitespace-nowrap"
+                                                                    "rounded-xl h-11 min-w-[64px] px-3 font-bold text-xs border-none transition-all focus-visible:ring-2 focus-visible:ring-emerald-500 focus:outline-none flex-none whitespace-nowrap", styles.join
                                                                 )}
                                                             >
                                                                 {joiningActivityId === activity.id ? (
@@ -514,7 +504,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     </div>
 
                     {/* 3. Secondary Actions */}
-                    <div className="flex items-center justify-between gap-1 mt-6 pt-3 border-t border-border/60 [&>button]:min-w-0">
+                    <div className={styles.tools}>
                         <Button 
                             onClick={handleBookmarkToggle}
                             variant="ghost"
@@ -555,7 +545,7 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                     </div>
 
                     {/* 4. Rating and Distance Statistics */}
-                    <div className="flex flex-wrap items-center gap-x-5 text-xs text-muted-foreground">
+                    <div className={styles.summary}>
                         <button 
                             onClick={handleOpenReviewsModal}
                             className="min-h-11 rounded-md flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -567,27 +557,14 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                                     : (language === 'de' ? 'Noch keine Bewertungen' : 'No reviews yet')}
                             </span>
                         </button>
-                        <div className="min-h-11 flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5" />
-                            <span>
-                                {formattedDistance || '---'}
-                            </span>
-                        </div>
-                        <div className="hidden md:flex min-h-11 items-center gap-1.5">
-                            <Users className="w-3.5 h-3.5" />
-                            <span>
-                                {activities.length} {language === 'de' ? 'Aktivitäten' : 'Activities'}
-                            </span>
-                        </div>
                     </div>
 
                 </div>
             </div>
 
             {/* Keep voting reachable while the details scroll. */}
-            <div className="shrink-0 flex items-center justify-between gap-3 bg-white dark:bg-card px-6 pt-1 pb-4 sm:px-7">
-                <span className="text-xs font-medium text-muted-foreground">{language === 'de' ? 'Dein Eindruck vom Spot' : 'Your impression of this spot'}</span>
-                <div className="flex items-center gap-1.5">
+            <div className={styles.footer}>
+                <div className={styles.votes}>
                     <button
                         onClick={(e) => handleVoteClick(e, userVote === 'up' ? 'none' : 'up')}
                         aria-pressed={userVote === 'up'}
@@ -626,6 +603,9 @@ export function PlaceDetails({ place, onClose, onCreateActivity }: PlaceDetailsP
                         )}
                     </button>
                 </div>
+                <Button onClick={onCreateActivity} className={styles.plan} aria-label={language === 'de' ? 'Treffen planen' : 'Plan a meetup'}>
+                    <Plus className="h-4 w-4" aria-hidden="true" />{language === 'de' ? 'Treffen planen' : 'Plan a meetup'}
+                </Button>
             </div>
 
             {/* Reusable SaveToCollectionModal */}

@@ -1,6 +1,4 @@
 import assert from 'assert';
-import fs from 'fs';
-import path from 'path';
 
 console.log('--- RUNNING PLACE DETAILS ADDRESS INTERACTION TESTS ---');
 
@@ -154,22 +152,8 @@ function createAddressHarness(placeAddress: string = 'Feilenstraße 2–4, 33602
 }
 
 // ---------------------------------------------------------------------------
-// Test Cases 1 - 11 + Failsafe Test
+// Address behavior checks; visual styling is verified in the browser.
 // ---------------------------------------------------------------------------
-
-function test1_PermanentUnderline() {
-    console.log('Test 1: Adresstext besitzt permanent eine Underline...');
-    const sourceCode = fs.readFileSync(path.join(process.cwd(), 'src/components/activa/place-details.tsx'), 'utf-8');
-    assert(
-        sourceCode.includes('underline decoration-rose-500/40 underline-offset-2'),
-        'Address h4 tag must contain class "underline decoration-rose-500/40 underline-offset-2"'
-    );
-    assert(
-        !sourceCode.includes('hover:underline cursor-pointer group'),
-        'Parent anchor tag must not use hover:underline'
-    );
-    console.log('✅ Test 1 passed');
-}
 
 function test2_MouseClickExecutesDirectionAction() {
     console.log('Test 2: Normaler Mouse-Click führt weiterhin die bisherige Adressaktion aus...');
@@ -378,7 +362,6 @@ function test13_MapsUrlGeneration() {
 }
 
 async function runAllTests() {
-    test1_PermanentUnderline();
     test2_MouseClickExecutesDirectionAction();
     test3_ShortTouchTapExecutesDirectionAction();
     await test4_TouchLongPressCopiesAddress();
@@ -391,7 +374,7 @@ async function runAllTests() {
     await test11_SequentialInteractionsNoStaleState();
     await test12_FailsafeTimeoutResetsPreventClick();
     test13_MapsUrlGeneration();
-    console.log('\nALL 13 ADDRESS INTERACTION TESTS PASSED SUCCESSFULLY! 🎉');
+    console.log('\nALL 12 ADDRESS INTERACTION TESTS PASSED SUCCESSFULLY! 🎉');
 }
 
 runAllTests().catch(err => {

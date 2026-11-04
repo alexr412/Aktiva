@@ -39,6 +39,11 @@ corners and a compact activity link above the vote/plan footer. Desktop spot
 cards, loading placeholders and ad slots share a 344px height. Mobile keeps one
 horizontal card per row at 136px, with ratings available in the options sheet.
 
+Spot details reuse the selected illustration in a shaded header with the place
+name, category and distance. A single scrolling body contains the address,
+opening hours, meetup rows and secondary tools. The footer keeps planning and
+voting reachable, including on small phones and with long meetup lists.
+
 The web files are 960 × 640 WebP assets in
 `public/assets/spot-illustrations/modern-v4/`, `modern-v5/` and `modern-v6/`. The previous `modern-v2/` and
 `modern-v3/` assets remain available as archived versions. Export uses the
