@@ -1955,7 +1955,7 @@ function HomeContent() {
                 const live = placesMetaMap[place.id];
                 const placeObj = place;
                 return (
-                  <div key={place.id} className="h-full min-w-0 w-full">
+                  <div key={place.id} className="grid min-w-0">
                     <PlaceCard 
                       place={placeObj} 
                       activityPreview={placeActivityPreviews.get(placeObj.id)}
@@ -2033,7 +2033,7 @@ function HomeContent() {
         return (
           <div className={cn(spotStyles.mobileList, 'p-3 sm:p-6 grid auto-rows-auto grid-cols-1 gap-3 sm:gap-4 md:auto-rows-fr md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4')}>
             {featuredPlace && (
-              <div className="h-full min-w-0">
+              <div className="grid min-w-0">
                 {(() => {
                   const live = placesMetaMap[featuredPlace.id];
                   return (
@@ -2063,7 +2063,7 @@ function HomeContent() {
                 {displayFeedItems.map((item) => {
                   if (item.type === 'ad') {
                     return (
-                      <div key={item.id} className="h-full min-w-0 w-full">
+                      <div key={item.id} className="grid min-w-0">
                         <AdCard adIndex={item.adIndex} />
                       </div>
                     );
@@ -2071,7 +2071,7 @@ function HomeContent() {
                   const place = item.place;
                   const live = placesMetaMap[place.id];
                   return (
-                    <div key={place.id} className="h-full min-w-0 w-full">
+                    <div key={place.id} className="grid min-w-0">
                       <PlaceCard 
                         place={place} 
                         activityPreview={placeActivityPreviews.get(place.id)}
