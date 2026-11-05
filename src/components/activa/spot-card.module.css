@@ -13,7 +13,7 @@
   color-scheme:light;
   color:var(--spot-ink);
 }
-.card { container-type:inline-size; position:relative; display:grid; grid-template-rows:168px minmax(0,1fr) 56px; min-width:0; height:344px; overflow:hidden; background:var(--spot-surface); border:1px solid var(--spot-border); border-radius:20px; box-shadow:0 6px 20px #24342c0a; transition:box-shadow .18s,border-color .18s; }
+.card { container-type:inline-size; position:relative; display:grid; grid-template-rows:144px minmax(0,1fr) 52px; min-width:0; height:296px; overflow:hidden; background:var(--spot-surface); border:1px solid var(--spot-border); border-radius:20px; box-shadow:0 6px 20px #24342c0a; transition:box-shadow .18s,border-color .18s; }
 .card:hover { border-color:var(--spot-green); box-shadow:0 10px 28px #24342c14; }
 .card button:focus-visible { outline:2px solid var(--spot-green); outline-offset:3px; }
 .art { position:relative; height:100%; overflow:hidden; }
@@ -30,9 +30,9 @@
 .photoAttribution p { margin:0 0 5px; font-size:12px; line-height:18px; }
 .photoAttribution a { text-decoration:underline; text-underline-offset:2px; }
 .categoryBadge { position:absolute; bottom:10px; left:12px; z-index:1; max-width:calc(100% - 24px); padding:3px 8px; border:1px solid #ffffff20; border-radius:7px; background:#102526bf; font-size:10px; line-height:15px; font-weight:500; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.content { display:grid; grid-template-rows:44px 18px 24px; gap:4px; min-width:0; min-height:0; padding:10px 14px 0; }
+.content { display:grid; grid-template-rows:40px 18px 20px; gap:4px; min-width:0; min-height:0; padding:8px 14px 0; }
 .identity { min-width:0; overflow:hidden; }
-.name { margin:0; font-size:19px; line-height:22px; font-weight:650; letter-spacing:-.4px; color:var(--spot-ink); overflow-wrap:anywhere; }
+.name { margin:0; font-size:19px; line-height:20px; font-weight:650; letter-spacing:-.4px; color:var(--spot-ink); overflow-wrap:anywhere; }
 .name button { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; width:100%; text-align:left; border-radius:6px; }
 .distance { flex-shrink:0; display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--spot-muted); white-space:nowrap; }
 .distance svg { width:14px; height:14px; }
@@ -45,12 +45,12 @@
 .bookmark[aria-pressed=true] { background:var(--spot-action); color:#fff; border-color:var(--spot-action); }
 .more { right:12px; }
 .bookmark svg,.more svg { width:17px; height:17px; }
-.socialPreview { display:flex; align-items:center; gap:6px; width:100%; height:24px; min-width:0; padding:0; text-align:left; color:var(--spot-green); font-size:11px; line-height:18px; font-weight:600; border-radius:5px; }
+.socialPreview { display:flex; align-items:center; gap:6px; width:100%; height:20px; min-width:0; padding:0; text-align:left; color:var(--spot-green); font-size:11px; line-height:18px; font-weight:600; border-radius:5px; }
 .socialPreview > svg { width:15px; height:15px; flex-shrink:0; }
 .socialPreview > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .socialPreview:hover > span { text-decoration:underline; text-underline-offset:3px; }
 .socialPreview .socialArrow { width:13px; height:13px; }
-.socialPlaceholder { height:24px; }
+.socialPlaceholder { height:20px; }
 .preview { display:flex; align-items:center; gap:8px; width:100%; height:52px; min-width:0; overflow:hidden; text-align:left; padding:8px 10px; border:1px solid transparent; border-radius:12px; background:var(--spot-highlight); color:var(--spot-ink); }
 .preview:hover { border-color:var(--spot-green); }
 .previewEmpty { background:var(--spot-soft); }
@@ -62,7 +62,7 @@
 .avatar:first-child { margin-left:0; }
 .avatar:nth-child(2) { background:#9bc4c6; }
 .previewEmpty .avatars { display:grid; place-items:center; border-radius:50%; width:28px; height:28px; color:var(--spot-green); }
-.actions { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:4px 14px 12px; }
+.actions { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:4px 14px 8px; }
 .primary { display:flex; align-items:center; justify-content:center; gap:5px; flex-shrink:0; width:auto; height:36px; padding:7px 13px; border-radius:100px; background:var(--spot-action); color:#fff; font-size:12px; font-weight:600; text-align:center; }
 .primary:hover { background:var(--spot-action-hover); }
 .primary svg { width:15px; height:15px; flex-shrink:0; }
@@ -117,7 +117,7 @@
 }
 :global(.dark) .card { box-shadow:0 6px 20px #0002; }
 :global(.dark) .cardVotes .vote:nth-child(2) { background:#9b415329; color:#df899a; }
-.card.adCard { display:flex; flex-direction:column; justify-content:space-between; gap:12px; width:100%; height:344px; min-height:0; padding:16px; background:var(--spot-surface); user-select:none; }
+.card.adCard { display:flex; flex-direction:column; justify-content:space-between; gap:12px; width:100%; min-height:0; padding:16px; background:var(--spot-surface); user-select:none; }
 .adTop, .adFooter { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .adContent { display:flex; flex-direction:column; align-items:center; text-align:center; margin:auto; padding:8px; }
 .adContent p { color:var(--spot-muted); }
@@ -141,14 +141,14 @@
   .skeletonBody { padding:10px; }
 }
 @media (max-width:767px) {
-  .mobileList .adCard { height:136px; padding:10px 12px; gap:4px; border-radius:14px; }
+  .mobileList .adCard { padding:9px 12px; gap:4px; }
   .mobileList .adContent { flex-direction:row; flex-wrap:wrap; justify-content:center; column-gap:8px; padding:0; }
   .mobileList .adContent > div { margin-bottom:0; width:28px; height:28px; }
   .mobileList .adContent p { width:100%; margin-top:3px; font-size:10px; }
   .mobileList .adFooter { padding-top:5px; }
   .mobileList .exampleLabel { top:6px; left:4px; bottom:auto; right:auto; max-width:calc(100% - 8px); padding:2px 3px; }
   .mobileList .modernIllustration { object-position:var(--spot-art-mobile-position,50% 50%); }
-  .mobileList .card { grid-template-columns:80px minmax(0,1fr); grid-template-rows:76px 32px; gap:6px 12px; height:136px; padding:10px; border-radius:14px; box-shadow:none; }
+  .mobileList .card { grid-template-columns:76px minmax(0,1fr); grid-template-rows:70px 32px; gap:4px 12px; height:126px; padding:9px; border-radius:14px; box-shadow:none; }
   .mobileList .art { grid-column:1; grid-row:1 / 3; height:100%; border-radius:10px; }
   .mobileList .art::after { background:linear-gradient(180deg,transparent 65%,#09181966); }
   .mobileList .categoryIcon { display:none; }
@@ -156,10 +156,10 @@
   .mobileList .imageMeta { top:auto; left:4px; bottom:4px; max-width:calc(100% - 8px); height:22px; padding:3px 4px; font-size:9px; gap:4px; }
   .mobileList .recommended { font-size:0; gap:0; }
   .mobileList .recommended svg { width:13px; height:13px; }
-  .mobileList .content { grid-column:2; grid-row:1; grid-template-rows:36px 16px 20px; gap:2px; padding:0; }
-  .mobileList .name { font-size:15px; line-height:18px; letter-spacing:-.2px; }
+  .mobileList .content { grid-column:2; grid-row:1; grid-template-rows:34px 14px 18px; gap:2px; padding:0; }
+  .mobileList .name { font-size:15px; line-height:17px; letter-spacing:-.2px; }
   .mobileList .name button { padding-right:32px; }
-  .mobileList .meta { gap:6px; font-size:10px; line-height:16px; }
+  .mobileList .meta { gap:6px; font-size:10px; line-height:14px; }
   .mobileList .distance { font-size:10px; }
   .mobileList .meta svg { width:12px; height:12px; }
   .mobileList .preview { height:20px; padding:0; border:0; border-radius:4px; gap:5px; background:transparent; color:var(--spot-green); }
@@ -167,9 +167,9 @@
   .mobileList .previewTitle { font-size:11px; line-height:20px; }
   .mobileList .previewDetails, .mobileList .avatars { display:none; }
   .mobileList .previewArrow { width:14px; height:14px; }
-  .mobileList .socialPreview { height:20px; font-size:11px; line-height:20px; gap:5px; }
+  .mobileList .socialPreview { height:18px; font-size:11px; line-height:18px; gap:5px; }
   .mobileList .socialPreview > svg { width:13px; height:13px; }
-  .mobileList .socialPlaceholder { height:20px; }
+  .mobileList .socialPlaceholder { height:18px; }
   .mobileList .cardVotes { display:none; }
   .mobileList .actions { grid-column:2; grid-row:2; padding:0 40px 0 0; }
   .mobileList .primary { width:auto; height:32px; padding:5px 10px; border-radius:8px; gap:5px; font-size:11px; }

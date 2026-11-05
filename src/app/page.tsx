@@ -75,6 +75,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { usePlanningMode } from '@/contexts/planning-mode-context';
 import { useLocation } from '@/contexts/location-context';
+import { useDiscoverLocationName } from '@/hooks/use-discover-location-name';
 import { LocationSearchDialog } from '@/components/common/LocationSearchDialog';
 import { useFavorites } from '@/contexts/favorites-context';
 import useSWRInfinite from 'swr/infinite';
@@ -178,7 +179,7 @@ function HomeContent() {
       };
     }
   }, [scrollTriggerId, isOpenRoomsMode]);
-  const { gateState, isLocating, position, cityName: resolvedCityName, isResolvingCity, requestLocation } = useLocation();
+  const { gateState, isLocating, position, requestLocation } = useLocation();
   const { planningState, exitPlanningMode } = usePlanningMode();
   const manualDestination = planningState.isPlanning ? planningState.destination : null;
   const userLocation = useMemo(() => {
@@ -195,8 +196,6 @@ function HomeContent() {
       rawLng: position.longitude,
     };
   }, [position?.latitude, position?.longitude, manualDestination]);
-  const defaultLocationLabel = language === 'de' ? "Aktueller Standort" : "Current location";
-  const cityName = manualDestination?.city || manualDestination?.name || resolvedCityName || defaultLocationLabel;
   const isLocationLoading = !manualDestination && (gateState === 'requesting' || gateState === 'checking' || isLocating);
 
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
@@ -323,6 +322,18 @@ function HomeContent() {
 
   const { toast } = useToast();
   const { user, userProfile, loading: authLoading } = useAuth();
+  const currentLocation = useDiscoverLocationName(!!user && !manualDestination);
+  const cityName = manualDestination?.city || manualDestination?.name || currentLocation.name;
+  const isResolvingLocation = isLocationLoading || currentLocation.isResolving;
+  const locationLabel = cityName
+    ? (!manualDestination && currentLocation.isLastKnown ? `${language === 'de' ? 'Zuletzt' : 'Last known'}: ${cityName}` : cityName)
+    : isResolvingLocation
+      ? (language === 'de' ? 'Standort wird ermittelt…' : 'Finding your location…')
+      : (language === 'de' ? 'Standort nicht ermittelt' : 'Location unavailable');
+  const handleUseDeviceLocation = () => {
+    if (planningState.isPlanning) exitPlanningMode();
+    currentLocation.refresh();
+  };
   const { hiddenIds: hiddenCategoryIds, sortBy, setSortBy, ready: categoryVisibilityReady, toggle: toggleCategoryVisibility, showAll: showAllCategories, syncError: feedPreferencesSyncError, retrySync: retryFeedPreferencesSync } = useFeedCategoryVisibility(user?.uid, FEED_CATEGORY_IDS);
   const hiddenCategoryQueries = useMemo(() => availableTabs
     .filter(tab => hiddenCategoryIds.includes(tab.id))
@@ -2153,7 +2164,7 @@ function HomeContent() {
               <div className="px-4 sm:px-6 flex items-center justify-start">
                 <button data-tutorial-id="header-location" onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800 max-w-full min-w-0">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
-                  <span className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest truncate">{cityName}</span>
+                  <span aria-live="polite" className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest truncate">{locationLabel}</span>
                   {planningState.isPlanning && (
                     <span
                       role="button"
@@ -2162,8 +2173,7 @@ function HomeContent() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        exitPlanningMode();
-                        requestLocation({ interactive: false });
+                        handleUseDeviceLocation();
                       }}
                       className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-neutral-750 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors font-bold text-[11px] leading-none shrink-0"
                     >
@@ -2222,10 +2232,10 @@ function HomeContent() {
             {/* Desktop Layout (>= 768px): Unified Desktop Search Bar */}
             <div className="hidden md:block px-4 sm:px-6">
               <DesktopSearchBar
-                cityName={cityName}
+                cityName={locationLabel}
                 isPlanningLocation={planningState.isPlanning}
                 onOpenLocationDialog={() => setIsLocationSearchOpen(true)}
-                onResetPlanningLocation={() => { exitPlanningMode(); requestLocation({ interactive: false }); }}
+                onResetPlanningLocation={handleUseDeviceLocation}
                 searchQuery={searchQuery}
                 onSearchQueryChange={handleSearchInput}
                 onClearSearch={clearSearch}
@@ -2339,6 +2349,7 @@ function HomeContent() {
       <LocationSearchDialog 
         open={isLocationSearchOpen} 
         onOpenChange={setIsLocationSearchOpen} 
+        onUseDeviceLocation={handleUseDeviceLocation}
         isPremium={true}
         onOpenPremiumUpgrade={() => setIsPremiumUpsellOpen(true)}
       />

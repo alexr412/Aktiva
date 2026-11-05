@@ -6,13 +6,14 @@ import { usePlanningMode } from '@/contexts/planning-mode-context';
 import { searchLocation } from '@/lib/nominatim';
 import type { Destination } from '@/lib/types';
 import { useLanguage } from '@/hooks/use-language';
-import { Loader2, MapPin, Search, Crown, ChevronRight, X } from 'lucide-react';
+import { Loader2, MapPin, Search, Crown, ChevronRight, LocateFixed, X } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface LocationSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUseDeviceLocation?: () => void;
   isPremium?: boolean;
   onOpenPremiumUpgrade?: () => void;
 }
@@ -20,6 +21,7 @@ interface LocationSearchDialogProps {
 export function LocationSearchDialog({
   open,
   onOpenChange,
+  onUseDeviceLocation,
   isPremium = true,
   onOpenPremiumUpgrade = () => {},
 }: LocationSearchDialogProps) {
@@ -157,6 +159,20 @@ export function LocationSearchDialog({
               <span className="sr-only">Schließen</span>
             </DialogPrimitive.Close>
           </div>
+
+          {onUseDeviceLocation && (
+            <button
+              type="button"
+              onClick={() => {
+                handleClose(false);
+                onUseDeviceLocation();
+              }}
+              className="mt-4 flex w-fit shrink-0 items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
+            >
+              <LocateFixed className="h-4 w-4" aria-hidden="true" />
+              {language === 'de' ? 'Aktuellen Standort verwenden' : 'Use current location'}
+            </button>
+          )}
 
           {/* Search Form / Premium Gate */}
           <div className="mt-5">

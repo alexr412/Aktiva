@@ -61,7 +61,7 @@ export function DesktopSearchBar({
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-neutral-800/60 transition-colors max-w-full min-w-0 text-left group/loc"
         >
           <MapPin className="h-4 w-4 text-emerald-500 shrink-0" />
-          <span className="text-xs font-extrabold text-slate-700 dark:text-neutral-200 truncate tracking-tight">
+          <span aria-live="polite" title={cityName} className="text-xs font-extrabold text-slate-700 dark:text-neutral-200 truncate tracking-tight">
             {cityName}
           </span>
           {isPlanningLocation && (
