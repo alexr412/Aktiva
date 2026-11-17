@@ -1917,14 +1917,16 @@ function HomeContent() {
           <p className="text-neutral-500 dark:text-neutral-400 text-xs font-semibold max-w-xs mb-6">
             {language === 'de' ? 'Die Daten konnten nicht geladen werden.' : 'Failed to fetch directory data.'}
           </p>
-          <Button 
-            onClick={handleActiveFeedRetry} 
-            disabled={activeFeedIsValidating}
-            variant="outline" 
-            className="h-9 px-4 rounded-xl font-bold text-xs active:scale-[0.985] transition-[color,background-color,border-color,transform,box-shadow] duration-200"
-          >
-            {translateAppString('empty.action.retry', language)}
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button type="button" onClick={handleActiveFeedRetry} disabled={activeFeedIsValidating} variant="outline">
+              {translateAppString('empty.action.retry', language)}
+            </Button>
+            {!isCommunityCategory && !isMySpotsCategory && !cityName && (
+              <Button type="button" onClick={() => setIsLocationSearchOpen(true)}>
+                {language === 'de' ? 'Stadt auswählen' : 'Choose a city'}
+              </Button>
+            )}
+          </div>
         </div>
       );
     }
