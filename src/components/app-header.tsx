@@ -20,6 +20,7 @@ export interface AppHeaderProps {
   containerClassName?: string;
   headerTutorialId?: string;
   headerIdentityTutorialId?: string;
+  appearance?: 'default' | 'flat';
 }
 
 export function AppHeader({
@@ -31,11 +32,13 @@ export function AppHeader({
   containerClassName = 'max-w-[1536px]',
   headerTutorialId,
   headerIdentityTutorialId,
+  appearance = 'default',
 }: AppHeaderProps) {
   const hasSubHeader = Boolean(children);
+  const flat = appearance === 'flat';
 
   return (
-    <header className={cn('global-viewport-header compact pb-3', className)}>
+    <header className={cn('global-viewport-header compact pb-3', flat && 'border-0 bg-background dark:bg-background', className)}>
       {/* Main Header Row - Fixed h-11 height (44px) without padding/margin distortion */}
       <div className={cn('global-header-container h-11', containerClassName, hasSubHeader && 'mb-3.5')}>
         {/* Left Slot: Icon/Avatar + Title */}
@@ -51,11 +54,11 @@ export function AppHeader({
         </div>
 
         {/* Center Slot: Desktop Navigation */}
-        <DesktopNav />
+        <DesktopNav flat={flat} />
 
         {/* Right Slot: Actions (NotificationBell + Custom Actions) */}
         <div className="flex items-center gap-3 shrink-0">
-          <NotificationBell />
+          <NotificationBell className={flat ? 'border-0 bg-transparent shadow-none dark:bg-transparent' : undefined} />
           {actions}
         </div>
       </div>

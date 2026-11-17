@@ -3,10 +3,12 @@
 import { useAuth } from '@/hooks/use-auth';
 import { useActivePremium } from '@/hooks/use-active-premium';
 import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 export function StatusBorder() {
   const { userProfile, actualRole, simulatedRole, setSimulatedRole } = useAuth();
   const { isPremium, formattedExpiry } = useActivePremium();
+  const isDiscover = usePathname() === '/';
 
   if (!userProfile) return null;
 
@@ -35,7 +37,7 @@ export function StatusBorder() {
 
   return (
     <>
-      {statusColor && (
+      {statusColor && !isDiscover && (
         <div className={cn(
           "fixed top-0 left-0 right-0 h-[2.5px] pointer-events-none z-[100000] transition-all duration-700 ease-in-out",
           statusColor,
@@ -53,11 +55,12 @@ export function StatusBorder() {
               }}
               title={simulatedRole === 'user' ? "Zurück zur Admin-/Supporter-Ansicht wechseln" : "Zur User-Ansicht wechseln"}
               className={cn(
-                "px-3 py-1 rounded-b-lg text-[10px] font-black uppercase tracking-widest text-white shadow-2xl transition-all duration-300",
+                "px-3 py-1 rounded-b-lg text-[10px] font-black uppercase tracking-widest text-white transition-all duration-300",
+                !isDiscover && "shadow-2xl",
                 "cursor-pointer hover:brightness-110 active:scale-95 select-none",
                 simulatedRole === 'user' 
                   ? "bg-slate-600/80 border border-t-0 border-slate-500 text-slate-200" 
-                  : (isPremium ? "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-600 text-slate-950 font-black" : 
+                  : (isPremium ? (isDiscover ? "bg-amber-500/10 text-amber-800 dark:text-amber-200" : "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-600 text-slate-950 font-black") :
                      isCreator ? "bg-[#A855F7]" : 
                      "bg-[#3B82F6]")
               )}
@@ -69,8 +72,9 @@ export function StatusBorder() {
             </button>
           ) : (
             <div className={cn(
-              "px-3 py-1 rounded-b-lg text-[10px] font-black uppercase tracking-widest text-white shadow-2xl",
-              isPremium ? "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-600 text-slate-950 font-black" : 
+              "px-3 py-1 rounded-b-lg text-[10px] font-black uppercase tracking-widest text-white",
+              !isDiscover && "shadow-2xl",
+              isPremium ? (isDiscover ? "bg-amber-500/10 text-amber-800 dark:text-amber-200" : "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-600 text-slate-950 font-black") :
               isCreator ? "bg-[#A855F7]" : 
               "bg-[#3B82F6]"
             )}>

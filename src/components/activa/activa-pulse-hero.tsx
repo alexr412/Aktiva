@@ -48,25 +48,33 @@ export function ActivaPulseHero({
   const metricsAvailable = openRoomsCount !== null && uniqueParticipantsCount !== null;
 
   if (layout === 'strip') {
+    let statusMessage = translateAppString('pulse.location_fallback', language);
+    if (loading) {
+      statusMessage = language === 'de' ? 'Aktivitäten werden geladen …' : 'Loading activities …';
+    } else if (metricsAvailable) {
+      if (openRoomsCount === 0) {
+        statusMessage = language === 'de' ? 'Gerade keine offenen Treffen' : 'No open meetups right now';
+      } else {
+        const roomsLabel = language === 'de' ? (openRoomsCount === 1 ? 'Raum' : 'Räume') : (openRoomsCount === 1 ? 'Room' : 'Rooms');
+        const participantsLabel = language === 'de' ? (uniqueParticipantsCount === 1 ? 'Person' : 'Personen') : (uniqueParticipantsCount === 1 ? 'Person' : 'People');
+        statusMessage = `${openRoomsCount} ${roomsLabel} · ${uniqueParticipantsCount} ${participantsLabel}`;
+      }
+    }
+
     return (
-      <section className="flex w-full min-w-0 items-center justify-between gap-2 border-b border-border py-1" aria-labelledby={headingId} aria-busy={loading}>
-        <div className="flex min-w-0 items-center gap-2">
-          <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-          <div className="flex min-w-0 flex-col gap-x-3 gap-y-0.5 sm:flex-row sm:flex-wrap sm:items-center">
-            <h2 id={headingId} className="text-xs font-semibold tracking-normal text-foreground">Activa Pulse</h2>
-            <p className="text-[11px] sm:text-xs text-muted-foreground">
-              {loading ? (language === 'de' ? 'Aktivitäten werden geladen …' : 'Loading activities …') : metricsAvailable
-                ? `${openRoomsCount} ${language === 'de' ? (openRoomsCount === 1 ? 'Raum' : 'Räume') : (openRoomsCount === 1 ? 'Room' : 'Rooms')} · ${uniqueParticipantsCount} ${language === 'de' ? (uniqueParticipantsCount === 1 ? 'Person' : 'Personen') : (uniqueParticipantsCount === 1 ? 'Person' : 'People')}`
-                : translateAppString('pulse.location_fallback', language)}
-            </p>
-          </div>
+      <section className="flex w-full min-w-0 flex-wrap items-center gap-x-2 py-1" aria-labelledby={headingId} aria-busy={loading}>
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h2 id={headingId} className="text-xs font-semibold tracking-normal text-foreground">Activa Pulse</h2>
+          <p className="text-xs text-muted-foreground">{statusMessage}</p>
         </div>
-        <Button type="button" variant="ghost" onClick={onExplore} disabled={loading || openRoomsCount === null}
-          aria-label={openRoomsCount === 0 ? translateAppString('pulse.cta.create', language) : translateAppString('pulse.cta.open_rooms', language)}
-          className="h-11 shrink-0 gap-1 rounded-lg px-2 text-emerald-800 hover:bg-emerald-500/10 dark:text-emerald-300 sm:px-3">
-          <span className="text-[11px] sm:text-xs">{language === 'de' ? (openRoomsCount === 0 ? 'Erstellen' : 'Ansehen') : (openRoomsCount === 0 ? 'Create' : 'View')}</span>
-          {openRoomsCount === 0 ? <Plus className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-        </Button>
+        {!loading && openRoomsCount !== null && openRoomsCount > 0 && (
+          <Button type="button" variant="ghost" onClick={onExplore}
+            aria-label={translateAppString('pulse.cta.open_rooms', language)}
+            className="h-11 shrink-0 gap-1 rounded-lg px-2 text-xs text-emerald-800 hover:bg-emerald-500/10 dark:text-emerald-300">
+            {language === 'de' ? 'Ansehen' : 'View'}
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        )}
       </section>
     );
   }

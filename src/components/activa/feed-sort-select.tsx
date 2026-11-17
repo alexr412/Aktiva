@@ -2,7 +2,6 @@
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { FeedSortMode } from '@/lib/feed-sort';
-import { ArrowDownWideNarrow } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function FeedSortSelect({ value, onChange, language, compact = false }: {
@@ -20,8 +19,7 @@ export function FeedSortSelect({ value, onChange, language, compact = false }: {
       <Select value={value} onValueChange={next => {
         if (next === 'recommended' || next === 'distance') onChange(next);
       }}>
-        <SelectTrigger aria-labelledby="feed-sort-label" className={cn('h-11 border-border bg-card text-xs dark:border-neutral-800 dark:bg-neutral-900', compact ? 'w-[144px] gap-1 rounded-xl px-2 font-semibold' : 'w-[160px] rounded-2xl font-bold')}>
-          {compact && <ArrowDownWideNarrow className="h-4 w-4 shrink-0 text-muted-foreground dark:text-slate-400" aria-hidden="true" />}
+        <SelectTrigger aria-labelledby="feed-sort-label" className={cn('h-11 text-xs', compact ? 'w-auto gap-1.5 rounded-lg border-0 bg-transparent px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground' : 'w-[160px] rounded-2xl border-border bg-card font-bold dark:border-neutral-800 dark:bg-neutral-900')}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="rounded-2xl">

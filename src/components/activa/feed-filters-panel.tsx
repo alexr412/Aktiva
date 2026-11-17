@@ -45,6 +45,7 @@ export function FeedFiltersPanel({
     ? translateAppString('pulse.feed_mode.open_rooms', language)
     : selectedTab ? labelFor(selectedTab) : activeCategory.length ? (de ? 'Suchergebnisse' : 'Search results') : allSpotsLabel;
   const hiddenCount = hiddenCategoryIds.length;
+  const showSummary = Boolean(toolbar?.title && summary !== allSpotsLabel);
   const select = (tab?: CategoryTab) => {
     onOpenRoomsChange?.(false);
     if (!tab || isSelected(tab)) onCategoryChange([], '');
@@ -53,18 +54,18 @@ export function FeedFiltersPanel({
 
   return (
     <Sheet>
-      <div data-tutorial-id="feed-filters" className={cn('flex min-w-0 gap-3', toolbar ? 'flex-wrap items-center justify-between' : 'items-center pb-3 sm:pb-4')}>
-        {toolbar && <div className="min-w-0 w-full sm:w-auto sm:flex-1" aria-live="polite" aria-atomic="true">
+      <div data-tutorial-id="feed-filters" className={cn('flex min-w-0', toolbar ? 'flex-wrap items-center justify-between gap-x-3' : 'items-center gap-3 pb-3 sm:pb-4')}>
+        {toolbar && <div className="min-w-0 flex-1 basis-auto" aria-live="polite" aria-atomic="true">
           <h2 className="text-base sm:text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">{toolbar.title || summary}</h2>
-          {(toolbar.title || hiddenCount > 0) && <p className="mt-0.5 text-xs text-muted-foreground dark:text-slate-400">
-            {toolbar.title && (summary === allSpotsLabel ? (de ? 'Alle Spots in deiner Nähe' : 'All spots near you') : summary)}
-            {toolbar.title && hiddenCount > 0 && ' · '}
+          {(showSummary || hiddenCount > 0) && <p className="mt-0.5 text-xs text-muted-foreground dark:text-slate-400">
+            {showSummary && summary}
+            {showSummary && hiddenCount > 0 && ' · '}
             {hiddenCount > 0 && `${hiddenCount} ${de ? (hiddenCount === 1 ? 'Kategorie ausgeblendet' : 'Kategorien ausgeblendet') : (hiddenCount === 1 ? 'category hidden' : 'categories hidden')}`}
           </p>}
         </div>}
-        <div className={toolbar ? 'flex w-full sm:w-auto shrink-0 flex-wrap items-center justify-between gap-2' : 'contents'}>
+        <div className={toolbar ? 'flex shrink-0 flex-wrap items-center gap-1' : 'contents'}>
           <SheetTrigger asChild>
-            <Button variant="outline" className={cn('h-11 shrink-0 gap-2', toolbar ? 'rounded-xl border-border bg-card px-3 font-semibold dark:border-neutral-800 dark:bg-neutral-900' : 'rounded-full px-4 font-bold', toolbar && (hiddenCount > 0 || !!activeCategory.length || isOpenRoomsMode) && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300')}>
+            <Button variant={toolbar ? 'ghost' : 'outline'} className={cn('h-11 shrink-0 gap-1.5', toolbar ? 'rounded-lg px-2.5 text-xs font-medium text-muted-foreground' : 'rounded-full px-4 font-bold', toolbar && (hiddenCount > 0 || !!activeCategory.length || isOpenRoomsMode) && 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300')}>
               <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
               {de ? 'Filter' : 'Filters'}
               {hiddenCount > 0 && <span className="rounded-full bg-emerald-500/15 px-1.5 text-xs text-emerald-700 dark:text-emerald-300">{hiddenCount}</span>}

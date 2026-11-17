@@ -7,7 +7,7 @@ import { useLanguage } from '@/hooks/use-language';
 import { useChatSync } from '@/contexts/chat-sync-context';
 import { MAIN_NAV_ITEMS, getIsActiveNav } from '@/lib/navigation-config';
 
-export function DesktopNav({ className }: { className?: string }) {
+export function DesktopNav({ className, flat = false }: { className?: string; flat?: boolean }) {
   const pathname = usePathname();
   const language = useLanguage();
   const { unreadTotal } = useChatSync();
@@ -16,7 +16,8 @@ export function DesktopNav({ className }: { className?: string }) {
     <nav
       aria-label="Hauptnavigation"
       className={cn(
-        "hidden lg:flex items-center gap-1 bg-muted dark:bg-neutral-900/80 p-1.5 rounded-2xl border border-border dark:border-neutral-800/80 shrink-0",
+        'hidden lg:flex shrink-0 items-center gap-1',
+        !flat && 'rounded-2xl border border-border bg-muted p-1.5 dark:border-neutral-800/80 dark:bg-neutral-900/80',
         className
       )}
     >
@@ -32,9 +33,10 @@ export function DesktopNav({ className }: { className?: string }) {
             data-tutorial-id={headerTutorialId}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
-              "flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 relative whitespace-nowrap",
+              'relative flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs transition-colors duration-200',
+              flat ? 'min-h-10 font-semibold' : 'font-black uppercase tracking-wider',
               isActive
-                ? "bg-white dark:bg-neutral-800 text-primary shadow-sm scale-100"
+                ? (flat ? 'bg-primary/10 text-primary' : 'bg-white text-primary shadow-sm dark:bg-neutral-800')
                 : "text-muted-foreground dark:text-neutral-400 hover:text-foreground dark:hover:text-white hover:bg-white/50 dark:hover:bg-neutral-800/50"
             )}
           >

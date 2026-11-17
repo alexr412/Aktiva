@@ -1492,14 +1492,10 @@ function HomeContent() {
   };
 
   const handleExploreClick = useCallback(() => {
-    if (openRoomsCount === null) return;
-    if (openRoomsCount === 0) {
-      handleOpenCustomActivityModal();
-      return;
-    }
+    if (!openRoomsCount) return;
     setIsOpenRoomsMode(true);
     setScrollTriggerId((prev) => prev + 1);
-  }, [openRoomsCount, handleOpenCustomActivityModal]);
+  }, [openRoomsCount]);
 
   const handleCreateActivity = async (submission: CallableActivityPayload): Promise<boolean> => {
     if (!user) return false;
@@ -2154,16 +2150,15 @@ function HomeContent() {
   return (
     <>
       <div className="flex flex-col h-full bg-transparent relative">
-        <div className="hidden dark:block absolute top-[10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
-        <div className="hidden dark:block absolute bottom-[20%] right-[-10%] w-[35%] h-[35%] bg-violet-400/5 rounded-full blur-[100px] pointer-events-none" />
         <AppHeader
+          appearance="flat"
           className="!pb-2"
           headerIdentityTutorialId="header-profile-identity"
           headerTutorialId="header-feed"
           icon={
             <Link href="/profile" className="shrink-0">
               <ProfileAvatar
-                className="h-9 w-9 border-2 border-white dark:border-neutral-800 shadow-xl shadow-primary/10 transition-transform active:scale-95 cursor-pointer"
+                className="h-9 w-9 transition-transform active:scale-95 cursor-pointer"
                 photoURL={userProfile?.photoURL}
                 displayName={userProfile?.displayName}
                 isPremium={isPremiumActive(userProfile)}
@@ -2174,14 +2169,14 @@ function HomeContent() {
           }
           title={language === "de" ? `Hallo, ${formatFirstName(userProfile?.displayName, 'Du')} 👋` : `Hi, ${formatFirstName(userProfile?.displayName, 'You')} 👋`}
         >
-          <div className="flex flex-col gap-2.5 md:gap-2 max-w-[1536px] mx-auto w-full">
+          <div className="mx-auto flex w-full max-w-[1536px] flex-col gap-2">
             {/* Mobile Layout (< 768px): Exact existing stacked layout */}
-            <div className="md:hidden flex flex-col gap-3">
+            <div className="flex flex-col gap-1 md:hidden">
               {/* Location Row */}
               <div className="px-4 sm:px-6 flex items-center justify-start">
-                <button data-tutorial-id="header-location" onClick={() => setIsLocationSearchOpen(true)} className="flex items-center gap-1.5 bg-slate-100 dark:bg-neutral-800/50 py-1.5 px-3.5 rounded-full transition-all hover:bg-slate-200 dark:hover:bg-neutral-800 max-w-full min-w-0">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none shrink-0" />
-                  <span aria-live="polite" className="text-[10px] font-black text-neutral-600 dark:text-neutral-400 uppercase tracking-widest truncate">{locationLabel}</span>
+                <button type="button" data-tutorial-id="header-location" onClick={() => setIsLocationSearchOpen(true)} className="flex min-h-10 max-w-full min-w-0 items-center gap-1.5 rounded-lg px-2 text-muted-foreground hover:bg-accent">
+                  <MapPin className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span aria-live="polite" className="truncate text-xs font-semibold text-foreground">{locationLabel}</span>
                   {planningState.isPlanning && (
                     <span
                       role="button"
@@ -2203,9 +2198,8 @@ function HomeContent() {
 
               {/* Search & Radius Row */}
               <div className="px-4 sm:px-6">
-                <div className="flex items-center gap-3 w-full max-w-2xl">
-                  <form onSubmit={handleSearchSubmit} className="flex relative flex-1 group">
-                    {isSearching ? <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500 animate-spin" /> : <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-300 group-focus-within:text-emerald-500 transition-colors" />}
+                <div className="flex w-full max-w-2xl items-center gap-1 rounded-xl bg-muted/65 focus-within:ring-2 focus-within:ring-primary/35">
+                  <form onSubmit={handleSearchSubmit} className="relative flex min-w-0 flex-1" aria-busy={isSearching}>
                     <Input 
                       type="search" enterKeyHint="search"
                       id="search-input"
@@ -2214,7 +2208,7 @@ function HomeContent() {
                       value={searchQuery} 
                       onChange={handleSearchInput} 
                       disabled={false}
-                      className="w-full pl-9 pr-20 h-11 rounded-[16px] border border-border dark:border-neutral-800 bg-card font-bold text-xs shadow-premium transition-all focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-neutral-900 dark:text-neutral-100 disabled:opacity-70 placeholder:text-neutral-400"
+                      className={cn('h-11 w-full border-0 bg-transparent pl-3 text-base sm:text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0', searchQuery ? 'pr-[4.5rem]' : 'pr-11')}
                     />
                     {searchQuery && (
                       <button
@@ -2226,12 +2220,14 @@ function HomeContent() {
                         <X className="h-3.5 w-3.5" />
                       </button>
                     )}
-                    <button type="submit" aria-label={language === 'de' ? 'Suche starten' : 'Search'} className="absolute right-0 top-0 h-11 w-11 flex items-center justify-center text-emerald-500 rounded-xl hover:bg-emerald-500/10"><Search className="h-4 w-4" /></button>
+                    <Button type="submit" variant="ghost" size="icon" aria-label={language === 'de' ? 'Suche starten' : 'Search'} className="absolute right-0 top-0 h-11 w-11 rounded-lg text-muted-foreground hover:text-foreground">
+                      {isSearching ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Search className="h-4 w-4" aria-hidden="true" />}
+                    </Button>
                   </form>
                   <div className="relative group shrink-0">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" className="group h-11 px-3 rounded-[16px] bg-card dark:bg-neutral-900 border border-border dark:border-neutral-800 shadow-premium font-black text-emerald-500 text-xs flex items-center gap-1.5">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className="h-3.5 w-3.5 opacity-30 transition-transform group-data-[state=open]:rotate-180" /></Button>
+                        <Button type="button" variant="ghost" aria-label={language === 'de' ? 'Radius ändern' : 'Change radius'} className="group h-11 gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground">{maxDistance === null ? (language === 'de' ? 'Überall' : 'Everywhere') : `${maxDistance} km`} <ChevronDown className="h-3.5 w-3.5 opacity-60 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="w-56 p-4 rounded-3xl border-none shadow-2xl">
                         <div className="space-y-4">
@@ -2264,7 +2260,7 @@ function HomeContent() {
               />
             </div>
 
-            <div className="px-4 sm:px-6">
+            <div className="px-4 empty:hidden sm:px-6">
               <SearchIntentFilters draft={searchQuery} submitted={!!submittedSearchQuery && searchQuery.trim() === submittedSearchQuery && !isSearching}
                 intent={submittedSearchQuery ? { categories: activeCategory, filterByName: shouldFilterByName, radiusKm: searchRadiusKm, source: searchSource } : null}
                 language={language} onClear={clearSearch} onRemoveRadius={() => setSearchRadiusKm(null)}
@@ -2300,12 +2296,12 @@ function HomeContent() {
           </div>
         </AppHeader>
         <main className="flex-1 min-h-0 w-full overflow-y-auto pb-bottom-nav-safe">
-          <div className="max-w-[1536px] mx-auto w-full pt-2">
-            <div className="px-3 sm:px-6 mb-3 sm:mb-4" data-tutorial-id="feed-intro">
+          <div className="mx-auto w-full max-w-[1536px]">
+            <div className="px-4 sm:px-6" data-tutorial-id="feed-intro">
                 {renderPulseHero()}
               </div>
-            {!submittedSearchQuery && !isFavoritesCategory && !isMySpotsCategory && (
-              <div className="px-3 sm:px-6 mb-3 sm:mb-4">
+            {!submittedSearchQuery && !isFavoritesCategory && !isMySpotsCategory && !isOpenRoomsMode && (
+              <div className="mt-2 px-4 sm:px-6">
                 <ActivityIdeas language={language} onSelect={handleStartActivityIdea} />
               </div>
             )}

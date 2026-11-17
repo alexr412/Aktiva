@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Bell } from 'lucide-react';
 import { NotificationItem } from './NotificationItem';
 import { Separator } from '../ui/separator';
+import { cn } from '@/lib/utils';
 
-export function NotificationBell() {
+export function NotificationBell({ className }: { className?: string }) {
     const language = useLanguage();
     const { notifications, unreadCount, unreadBadgeLabel, markAllAsRead } = useNotifications();
     const [isOpen, setIsOpen] = useState(false);
@@ -33,7 +34,7 @@ export function NotificationBell() {
                 <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="secondary-header-button relative"
+                    className={cn('secondary-header-button relative', className)}
                     aria-label={language === 'de' ? `Benachrichtigungen (${unreadCount} ungelesen)` : `Notifications (${unreadCount} unread)`}
                 >
                     <Bell className="h-5 w-5" />
