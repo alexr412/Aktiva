@@ -8,9 +8,9 @@ const recommendationNames = [
   'Beyond Bowling (ehemals Fun Bowling)',
   'Klimahaus Bremerhaven',
   'Zoo am Meer',
-  'Das Beet',
+  "Käpt'n Sushi",
   'Bremerhaven Boulder Club',
-  'Karlsburg',
+  'CineMotion',
 ];
 
 const recommendationSpots = recommendationNames.flatMap(name => {
