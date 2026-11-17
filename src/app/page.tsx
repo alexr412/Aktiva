@@ -19,6 +19,7 @@ import { AdCard } from '@/components/activa/ad-card';
 import { deriveFeedDisplayItems } from '@/lib/feed-ads';
 import { FeedSortSelect } from '@/components/activa/feed-sort-select';
 import { sortFeedPlaces } from '@/lib/feed-sort';
+import { getBremerhavenSpotRecommendations, prioritizeSpotRecommendations } from '@/lib/bremerhaven-spot-recommendations';
 
 type DiscoverFeedState =
   | 'initial_loading'
@@ -32,7 +33,6 @@ type DiscoverFeedState =
   | 'complete_loading_failure';
 import { FeaturedPlaceCard } from '@/components/activa/featured-place-card';
 import { FeaturedActivityCard } from '@/components/activa/featured-activity-card';
-import { SpotActionSheet } from '@/components/activa/spot-action-sheet';
 import type { Place, Activity, GeoapifyFeature, UserPreferences, ActivityCategory } from '@/lib/types';
 import type { CallableActivityPayload } from '@/features/activities/create/activity-payload';
 import { hasPremiumFeature, isPremiumActive } from '@/lib/types';
@@ -230,7 +230,6 @@ function HomeContent() {
   const setMaxDistance = (value: number | null) => { setSearchRadiusKm(null); setPreferredMaxDistance(value); };
   const [activityCategoryFilter, setActivityCategoryFilter] = useState<ActivityCategory | 'Alle' | 'All'>(language === 'de' ? 'Alle' : 'All');
   const [visibleCount, setVisibleCount] = useState(PLACES_PER_PAGE);
-  const [actionSheetPlace, setActionSheetPlace] = useState<Place | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [shouldFilterByName, setShouldFilterByName] = useState(false);
   const [isSwitchingTab, setIsSwitchingTab] = useState(false);
@@ -409,7 +408,7 @@ function HomeContent() {
 
   // Background scroll lock
   useEffect(() => {
-    const isAnyModalOpen = !!selectedPlace || !!activityModalPlace || isLocationSearchOpen || isPremiumUpsellOpen || !!actionSheetPlace;
+    const isAnyModalOpen = !!selectedPlace || !!activityModalPlace || isLocationSearchOpen || isPremiumUpsellOpen;
     if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -418,7 +417,7 @@ function HomeContent() {
     return () => {
       document.body.style.overflow = 'auto';
     };
-  }, [selectedPlace, activityModalPlace, isLocationSearchOpen, isPremiumUpsellOpen, actionSheetPlace]);
+  }, [selectedPlace, activityModalPlace, isLocationSearchOpen, isPremiumUpsellOpen]);
 
   const isCommunityCategory = activeTabId === "Community";
   const isFavoritesCategory = activeTabId === "Favorites";
@@ -1023,6 +1022,17 @@ function HomeContent() {
     return previews;
   }, [sortedOpenRooms]);
 
+  const recommendations = useMemo(() => {
+    if (!userLocation || isOpenRoomsMode || sortBy !== 'recommended' || activeTabId || activeCategory.length ||
+        activePremiumFilters.length || debouncedSearchQuery || submittedSearchQuery) return [];
+    const localSpots = getBremerhavenSpotRecommendations(
+      { lat: userLocation.rawLat, lng: userLocation.rawLng }, maxDistance,
+    );
+    return applyFilters(localSpots.map(place => ({ properties: place })), [], userProfile?.blacklist?.hard || [])
+      .map(({ properties }: { properties: Place }) => properties);
+  }, [userLocation, isOpenRoomsMode, sortBy, activeTabId, activeCategory.length, activePremiumFilters.length,
+    debouncedSearchQuery, submittedSearchQuery, maxDistance, userProfile?.blacklist?.hard]);
+
   const { items: visiblePlaces, hasHiddenMatches: hasHiddenPlaceMatches } = useMemo(() => {
     if (!categoryVisibilityReady) return { items: [], hasHiddenMatches: false };
     let filtered = places.filter(place => {
@@ -1057,8 +1067,15 @@ function HomeContent() {
     });
     const uniqueFiltered = Array.from(uniqueMap.values());
 
-    return { items: sortFeedPlaces(uniqueFiltered, sortBy), hasHiddenMatches };
-  }, [places, userProfile, debouncedSearchQuery, shouldFilterByName, isHighlightsCategory, isAktivCategory, maxDistance, sortBy, categoryVisibilityReady, hiddenCategoryQueries]);
+    const ordered = sortFeedPlaces(uniqueFiltered, sortBy);
+    const visibleRecommendations = recommendations.filter(place =>
+      !userProfile?.hiddenEntityIds?.includes(place.id) && !isFeedCategoryHidden(place.categories, hiddenCategoryQueries),
+    );
+    return {
+      items: visibleRecommendations.length ? prioritizeSpotRecommendations(ordered, visibleRecommendations) : ordered,
+      hasHiddenMatches,
+    };
+  }, [places, recommendations, userProfile, debouncedSearchQuery, shouldFilterByName, isHighlightsCategory, isAktivCategory, maxDistance, sortBy, categoryVisibilityReady, hiddenCategoryQueries]);
 
   const finalFeedPlaces = useMemo<Place[]>(() => {
     if (!categoryVisibilityReady) return [];
@@ -1103,7 +1120,7 @@ function HomeContent() {
         ? userJoinedActivities.length > 0
         : (isCommunityCategory
             ? communityActivities.length > 0
-            : !!(displayData && displayData.length > 0 && (displayData[0]?.features?.length > 0 || displayData[0]?.length > 0)))));
+            : (visiblePlaces.length > 0 || !!(displayData && displayData.length > 0 && (displayData[0]?.features?.length > 0 || displayData[0]?.length > 0))))));
 
   const activeVisibleItemCount = isFavoritesCategory
     ? finalFeedPlaces.length
@@ -1158,17 +1175,17 @@ function HomeContent() {
 
   // Feed metadata is cached for five minutes; open spot details still update live.
   const basePlaceIdsKey = useMemo(() => {
-    if (basePlaces.length === 0) return '';
+    if (basePlaces.length === 0 && recommendations.length === 0) return '';
     const ids: string[] = [];
     const seen = new Set<string>();
-    basePlaces.forEach(p => {
+    [...basePlaces, ...recommendations].forEach(p => {
       if (p.id && !seen.has(p.id)) {
         seen.add(p.id);
         ids.push(p.id);
       }
     });
     return ids.join(',');
-  }, [basePlaces]);
+  }, [basePlaces, recommendations]);
 
   const activeUnsubs = useRef<Record<string, () => void>>({});
 
@@ -1458,7 +1475,7 @@ function HomeContent() {
       router.push('/login');
       return;
     }
-    setActionSheetPlace(place);
+    setActivityModalPlace(place);
   }, [user, router]);
   const handleOpenCustomActivityModal = () => {
     if (!user) { router.push('/login'); return; }
@@ -1708,9 +1725,7 @@ function HomeContent() {
     let feedState: DiscoverFeedState = 'success_with_results';
     const isError = !!activeError;
 
-    const hasStructuredLocationFailure =
-      !isLocationLoading &&
-      gateState !== 'granted';
+    const hasStructuredLocationFailure = !isLocationLoading && !userLocation;
 
     const hasTerminalActiveError =
       Boolean(activeFeedError) &&
@@ -1718,14 +1733,14 @@ function HomeContent() {
       !activeFeedIsInitialLoading;
 
     // Precedence Chain
-    if (activeFeedIsInitialLoading && !activeFeedHasUsableData) {
+    if (hasStructuredLocationFailure && !activeFeedHasUsableData && !isFavoritesCategory && !isMySpotsCategory) {
+      feedState = 'location_unavailable';
+    } else if (activeFeedIsInitialLoading && !activeFeedHasUsableData) {
       feedState = 'initial_loading';
     } else if (hasTerminalActiveError && !activeFeedHasUsableData) {
       feedState = 'complete_loading_failure';
     } else if (activeFeedHasUsableData && activeVisibleItemCount > 0) {
       feedState = 'success_with_results';
-    } else if (hasStructuredLocationFailure && !activeFeedHasUsableData) {
-      feedState = 'location_unavailable';
     } else if (activeVisibleItemCount === 0) {
       if (debouncedSearchQuery) {
         feedState = 'empty_search';
@@ -1923,19 +1938,19 @@ function HomeContent() {
           <h3 className="font-black text-lg text-slate-900 dark:text-neutral-100 mb-1">
             {translateAppString('error.location_unavailable', language)}
           </h3>
-          <p className="text-neutral-500 dark:text-neutral-400 text-xs font-semibold max-w-xs mb-6 font-medium">
-            {language === 'de' 
-              ? 'Standortfreigabe ist blockiert oder nicht verfügbar.' 
-              : 'Location permission is blocked or unavailable.'}
+          <p className="text-neutral-500 dark:text-neutral-400 text-sm max-w-xs mb-5">
+            {language === 'de'
+              ? 'Wähle eine Stadt, um dort Spots zu entdecken.'
+              : 'Choose a city to discover spots there.'}
           </p>
-          <Button 
-            onClick={() => requestLocation({ interactive: true })} 
-            disabled={isLocationLoading}
-            variant="outline" 
-            className="h-9 px-4 rounded-xl font-bold text-xs active:scale-[0.985] transition-[color,background-color,border-color,transform,box-shadow] duration-200 animate-pulse"
-          >
-            {translateAppString('empty.action.retry', language)}
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button type="button" onClick={() => setIsLocationSearchOpen(true)}>
+              {language === 'de' ? 'Stadt auswählen' : 'Choose a city'}
+            </Button>
+            <Button type="button" onClick={handleUseDeviceLocation} variant="outline">
+              {language === 'de' ? 'Standort erneut ermitteln' : 'Find my location again'}
+            </Button>
+          </div>
         </div>
       );
     }
@@ -2099,7 +2114,7 @@ function HomeContent() {
       };
 
       const isResultsRegionBusy =
-        activeFeedIsInitialLoading ||
+        (activeFeedIsInitialLoading && !activeFeedHasUsableData) ||
         activeFeedIsFetchingNextPage ||
         (activeFeedIsValidating && !activeFeedHasUsableData);
 
@@ -2302,7 +2317,7 @@ function HomeContent() {
                 </div>
               )}
               {renderContent()}
-              {displayData?.some(page => page?._catalog) && (
+              {(recommendations.length > 0 || displayData?.some(page => page?._catalog)) && (
                 <p className="px-3 sm:px-6 py-3 text-xs text-muted-foreground">
                   {language === 'de' ? 'Ortsdaten: ' : 'Place data: '}
                   <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">© OpenStreetMap</a>
@@ -2345,7 +2360,6 @@ function HomeContent() {
         initialTitle={presetTitle}
         initialCategory={presetCategory}
       />
-      <SpotActionSheet place={actionSheetPlace} open={!!actionSheetPlace} onOpenChange={(open) => !open && setActionSheetPlace(null)} onCreateNew={(place) => setActivityModalPlace(place)} />
       <LocationSearchDialog 
         open={isLocationSearchOpen} 
         onOpenChange={setIsLocationSearchOpen} 
